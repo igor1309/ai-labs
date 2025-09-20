@@ -1,145 +1,84 @@
 ---
 title: “Component Improvement Review Guideline”
-version: “1.2.0”
+version: “2.0.0”
 date: “2025-09-20”
-description: “Guideline for AI agent reviews of software components with SOLID and Testability as mandatory foundations, extended with cross-guideline checks.”
+description: “A guideline for AI agents to conduct principle-driven reviews, focusing on strategic insights, root-cause analysis, and self-evaluation.”
 status: “stable”
 maintainer: “ai-agent-team”
-tags: [“guideline”, “review”, “solid”, “testability”, “design-patterns”, “architecture”]
+tags: [“guideline”, “review”, “principles”, “architecture”, “reasoning”]
 ---
 
-# Component Improvement Review Guideline (SOLID + Testability First)
+# Component Improvement Review Guideline (A Principle-Driven Approach)
 
-## 1. Purpose & Role
-- **Role:** Reviewer only (no code edits); output is a **report**.
-- **Audience:** AI agents and human reviewers applying structured, evidence-driven assessments.
-- **Goal:** Identify problems and improvements, with **SOLID and Testability as mandatory foundations**.
-- **Scope:** May extend analysis with other design guidelines (patterns, architecture, error handling, performance, etc.).
+## 1. Core Philosophy & Role
+- **Role:** Synthetic Architect. The AI's role is not to lint, but to provide deep, principle-driven architectural feedback. The output is a **strategic report**.
+- **Goal:** Uncover the root causes of architectural decay and provide high-leverage recommendations. The analysis must be grounded in first principles like **SOLID, Testability, and Cohesion**.
+- **Guiding Mindset:** Prioritize strategic impact over trivial correctness. A single, profound insight into a component's core design flaw is more valuable than a list of twenty minor infractions.
 
-## 2. Operating Rules
-- No assumptions; mark gaps as **Blocked (Insufficient Evidence)** and specify what evidence would unblock.
-- SOLID and Testability analysis are mandatory; other checks are flexible and case-driven.
-- Cite concrete **evidence** (file path + symbol + short quote + line numbers).
-- Provide **Severity, Impact, Effort, Confidence** for each finding and compute **Priority Score**.
-- Focus only on problems & improvements (no positives).
-- **Conflict resolution:** SOLID/Testability violations take precedence over performance/architecture optimizations unless clear, documented trade-offs exist.
+## 2. Operating Principles (Mandatory Cognitive Steps)
+
+1.  **Reason from First Principles:** Do not just identify a symptom (e.g., "a large class"). Trace it back to a violation of a core principle (e.g., "This class violates SRP by mixing data persistence, business logic, and API presentation, leading to high coupling and poor testability").
+2.  **Focus on Strategic Impact:** Evaluate every potential finding against the question: "Does this issue materially harm the component's ability to be changed, tested, understood, or scaled?" If the answer is no, deprioritize or discard it.
+3.  **Embrace Chain-of-Thought:** For each significant finding, explicitly reason from observation to principle to impact. Your internal monologue should become part of the justification.
+4.  **Mandate Self-Correction & Meta-Review:** Before finalizing the report, perform a mandatory self-critique. Ask:
+    *   "Is this report just a list of 'code smells,' or does it tell a coherent story about the component's health?"
+    *   "Have I fallen into the trap of recommending a pattern for its own sake?"
+    *   "If I could only make **one** recommendation to the team, what would it be and why?" This answer should be reflected in the report's priorities.
 
 ## 3. Output Structure
-The AI agent must produce a **Markdown report** with this skeleton:
+The AI agent must produce a **Markdown report** that reflects a strategic narrative.
 
 ```markdown
 # Component Review — <Component Name>
 
-## Summary
-<One-paragraph overview of main risks.>
+## Executive Synthesis
+<A concise, executive-level paragraph synthesizing the component's state. Tell a story about the central architectural challenge or risk. For example, "The component is brittle due to a conflation of business policy and external framework details. This entanglement makes testing difficult and future migrations costly. The key recommendations focus on establishing a clear architectural boundary to reclaim flexibility.">
 
 ## Scope & Inputs
 - Reviewed: …
 - Out of scope: …
-- Assumptions: None
+- Assumptions Made: …
 
-## Top Risks
-| # | Title | Severity | Impact | Effort | Confidence | Priority | Why it matters |
-|—|-——|-———|———|———|————|-———|-—————|
-| 1 | …     | High     | 5      | 2      | 4          | 10.0     | …              |
+## Strategic Findings
+| Priority | Finding | Strategic Justification |
+|:---|:---|:---|
+| **Critical** | `[Title of Finding 1]` | This issue represents a fundamental architectural flaw that actively impedes business goals (e.g., velocity, stability, scalability). It is the root cause of multiple other symptoms. |
+| **High**     | `[Title of Finding 2]` | This issue creates significant friction, maintenance overhead, or risk. While not a foundational flaw, it has a high negative impact on developers or system reliability. |
+| **Medium**   | `[Title of Finding 3]` | An important violation of principles that, if unaddressed, will lead to future complexity and technical debt. |
 
-## SOLID Assessment
-### S — Single Responsibility
-- Problem: …
-- Evidence: …
-- Why it matters: …
-- Actionable Recommendation: …
+## Detailed Analysis
 
-### O — Open/Closed
-…
+### Finding 1: [Title]
+- **Observation:** A brief, neutral description of the code structure or behavior.
+- **Evidence:** Concrete code citations (file path + symbol + line numbers).
+- **Principled Rationale (Chain-of-Thought):** Explain *how* the observation violates a core principle (SOLID, Testability, etc.). This section should articulate your reasoning.
+- **Strategic Impact:** Describe the concrete, negative consequences of this problem (e.g., "This makes the business logic untestable without a database," or "Changing one policy requires redeploying three unrelated services").
+- **Actionable Path:** Recommend a *verifiable improvement*, not a vague suggestion. Focus on the desired end-state (e.g., "Refactor the `OrderProcessor` to depend on an `IOrderRepository` abstraction, isolating business logic from data access concerns.").
 
-### L — Liskov Substitution
-…
-
-### I — Interface Segregation
-…
-
-### D — Dependency Inversion
-…
-
-## Testability
-- Problem: …
-- Evidence: …
-- Why it matters: …
-- Actionable Recommendation: …
-
-## Cross-Guideline Findings
-### Architecture & Boundaries
-…
-
-### Cohesion & Coupling
-…
-
-### Pattern Opportunities
-…
-
-### Error Handling & Observability
-…
-
-### Performance & Concurrency
-…
-
-### Naming & Public API Shape
-…
+*(Repeat this structure for each finding)*
 
 ## Blocked (Insufficient Evidence)
-- …
+- … <List areas where analysis was impossible and specify what information is needed.>
 
-## Appendix — Finding Details
-<Detailed reasoning for top risks.>
 ```
 
-## 4. Finding Anatomy
-Each issue must include:
-- **Title**
-- **Severity (High/Med/Low)** — calibrated across all reviews.
-- **Impact (1–5)**
-- **Effort (1–5)**
-- **Confidence (1–5)**
-- **Priority Score = (Impact / Effort) * Confidence** (show calculation inline).
-- **Problem → Evidence → Why it matters → Actionable Recommendation (testable/verifiable)**
+## 4. Guiding Principles & Mental Models (Heuristics for Thought)
 
-## 5. Heuristics
-- SRP violations = class mixing IO + business + orchestration; also flag *god objects*, `Utils`, and `Manager` classes.
-- Open/Closed = variants should add, not edit.
-- LSP = subtypes must honor contracts.
-- ISP = clients should not depend on unused methods.
-- DIP = depend on abstractions, not concretes; external libraries/frameworks should be wrapped behind abstractions.
-- Prefer composition, immutability, narrow APIs, and seams for testing.
-- **Testability:** Blockers include static dependencies, hidden state, side effects without seams, tight coupling to frameworks. Always prescribe isolation points (interfaces, dependency injection, factories, test doubles).
+Use these questions to guide your analysis, not as a checklist:
 
-## 6. Pattern Guidance
-Recommend patterns **only when concretely beneficial**:
-- Strategy vs. switch
-- State vs. flags
-- Decorator vs. inheritance
-- Adapter for external API mismatch
-- Facade for complex subsystem
-- Composite for trees
-- Builder for telescoping constructors
-- Repository for persistence
-- Observer for event-driven updates
+-   **Responsibility & Purpose:** Is the component's purpose singular and clear? Or is it a "God Object" or a junk-drawer `Utils` module that attracts unrelated logic?
+-   **Boundaries & Abstractions:** Does the core business logic know about external details (frameworks, databases, APIs)? Or is it protected by stable abstractions (DIP)? Are external libraries wrapped to prevent lock-in?
+-   **Change & Extension:** How would a developer add a new, similar feature? Would they need to modify existing, tested code (violating OCP), or can they add new code? Look for `switch` statements or long `if/else if` chains that are prime candidates for the Strategy or State patterns.
+-   **Testability & Seams:** Could I instantiate this component and its core logic in a unit test without a real database, network, or filesystem? Identify hard-coded dependencies (`new ...`), static method calls, and hidden state as primary blockers.
+-   **Complexity & Simplicity:** Is the complexity essential (inherent to the problem domain) or accidental (a result of poor design)? Are patterns being used to solve a real problem, or are they adding unnecessary layers of abstraction?
 
-**Do not recommend patterns** if added complexity outweighs benefits (e.g., small codebases).
+## 5. Definition of Done (A Checklist for Reasoning)
 
-## 7. Definition of Done
-- All five SOLID principles addressed.
-- **Testability explicitly assessed and improved where necessary.**
-- Top Risks table completed, ordered, and each entry includes **Why it matters**.
-- Every finding includes evidence + why + recommendation + priority.
-- Blocked areas clearly listed with required evidence noted.
-- Priority Scores explicitly justified (calculation shown).
-- No speculative claims; no code samples.
-- **Reviewer Checklist:**
-  - [ ] SOLID fully covered
-  - [ ] Testability fully covered
-  - [ ] Top Risks table complete
-  - [ ] Each finding testable/verifiable
-  - [ ] Evidence traceable (file + line numbers)
-  - [ ] Blocked areas documented
-  - [ ] Priority scoring explained
+Before concluding, verify that your process met these standards:
+
+-   [ ] **Strategic Focus:** The report prioritizes the most impactful issues and avoids a long tail of minor findings.
+-   [ ] **Principle-Grounded:** Every significant finding is explicitly tied back to a foundational software design principle.
+-   [ ] **Causal Analysis:** The report distinguishes between symptoms and their root causes.
+-   [ ] **Self-Critiqued:** You have performed the self-correction step and are confident the report is actionable and valuable.
+-   [ ] **Evidence-Based:** All claims are supported by traceable evidence from the source code.
+-   [ ] **No Speculation:** Blocked areas are clearly marked, and no assumptions are presented as facts.
