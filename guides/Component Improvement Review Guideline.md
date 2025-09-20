@@ -1,26 +1,28 @@
 ---
-title: "Component Improvement Review Guideline"
-version: "1.0.0"
-date: "2025-09-20"
-description: "Guideline for AI agent reviews of software components with SOLID as foundation and cross-guideline extensions."
-status: "stable"
-maintainer: "ai-agent-team"
-tags: ["guideline", "review", "solid", "design-patterns", "architecture"]
+title: “Component Improvement Review Guideline”
+version: “1.1.0”
+date: “2025-09-20”
+description: “Guideline for AI agent reviews of software components with SOLID as foundation and cross-guideline extensions.”
+status: “stable”
+maintainer: “ai-agent-team”
+tags: [“guideline”, “review”, “solid”, “design-patterns”, “architecture”]
 ---
 
 # Component Improvement Review Guideline (SOLID-First)
 
 ## 1. Purpose & Role
 - **Role:** Reviewer only (no code edits); output is a **report**.
+- **Audience:** AI agents and human reviewers applying structured, evidence-driven assessments.
 - **Goal:** Identify problems and improvements, with **SOLID as mandatory foundation**.
 - **Scope:** May extend analysis with other design guidelines (patterns, architecture, testability, performance, etc.).
 
 ## 2. Operating Rules
-- No assumptions; mark gaps as **Blocked (Insufficient Evidence)**.
+- No assumptions; mark gaps as **Blocked (Insufficient Evidence)** and specify what evidence would unblock.
 - SOLID analysis is mandatory; other checks are flexible and case-driven.
-- Cite concrete **evidence** (file path + symbol + short quote).
+- Cite concrete **evidence** (file path + symbol + short quote + line numbers).
 - Provide **Severity, Impact, Effort, Confidence** for each finding and compute **Priority Score**.
 - Focus only on problems & improvements (no positives).
+- **Conflict resolution:** SOLID violations take precedence over performance/architecture optimizations unless clear, documented trade-offs exist.
 
 ## 3. Output Structure
 The AI agent must produce a **Markdown report** with this skeleton:
@@ -37,16 +39,16 @@ The AI agent must produce a **Markdown report** with this skeleton:
 - Assumptions: None
 
 ## Top Risks
-| # | Title | Severity | Impact | Effort | Confidence | Priority |
-|---|-------|----------|--------|--------|------------|----------|
-| 1 | …     | High     | 5      | 2      | 4          | 10.0     |
+| # | Title | Severity | Impact | Effort | Confidence | Priority | Why it matters |
+|—|-——|-———|———|———|————|-———|-—————|
+| 1 | …     | High     | 5      | 2      | 4          | 10.0     | …              |
 
 ## SOLID Assessment
 ### S — Single Responsibility
 - Problem: …
 - Evidence: …
 - Why it matters: …
-- Prescription: …
+- Actionable Recommendation: …
 
 ### O — Open/Closed
 …
@@ -64,7 +66,7 @@ The AI agent must produce a **Markdown report** with this skeleton:
 ### Architecture & Boundaries
 - Problem: …
 - Evidence: …
-- Prescription: …
+- Actionable Recommendation: …
 
 ### Cohesion & Coupling
 …
@@ -94,20 +96,20 @@ The AI agent must produce a **Markdown report** with this skeleton:
 ## 4. Finding Anatomy
 Each issue must include:
 - **Title**
-- **Severity (High/Med/Low)**
+- **Severity (High/Med/Low)** — calibrated across all reviews.
 - **Impact (1–5)**
 - **Effort (1–5)**
 - **Confidence (1–5)**
-- **Priority Score = (Impact / Effort) * Confidence**
-- **Problem → Evidence → Why it matters → Concrete prescription**
+- **Priority Score = (Impact / Effort) * Confidence** (show calculation inline).
+- **Problem → Evidence → Why it matters → Actionable Recommendation (testable/verifiable)**
 
 ## 5. Heuristics
-- SRP violations = class mixing IO + business + orchestration.
+- SRP violations = class mixing IO + business + orchestration; also flag *god objects*, `Utils`, and `Manager` classes.
 - Open/Closed = variants should add, not edit.
 - LSP = subtypes must honor contracts.
 - ISP = clients should not depend on unused methods.
-- DIP = depend on abstractions, not concretes.
-- Prefer composition, immutability, narrow APIs, seams for testing.
+- DIP = depend on abstractions, not concretes; external libraries/frameworks should be wrapped behind abstractions.
+- Prefer composition, immutability, narrow APIs, and seams for testing.
 
 ## 6. Pattern Guidance
 Recommend patterns **only when concretely beneficial**:
@@ -118,10 +120,22 @@ Recommend patterns **only when concretely beneficial**:
 - Facade for complex subsystem
 - Composite for trees
 - Builder for telescoping constructors
+- Repository for persistence
+- Observer for event-driven updates
+
+**Do not recommend patterns** if added complexity outweighs benefits (e.g., small codebases).
 
 ## 7. Definition of Done
 - All five SOLID principles addressed.
-- Top Risks table completed and ordered.
-- Every finding includes evidence + why + prescription + priority.
-- Blocked areas clearly listed.
+- Top Risks table completed, ordered, and each entry includes **Why it matters**.
+- Every finding includes evidence + why + recommendation + priority.
+- Blocked areas clearly listed with required evidence noted.
+- Priority Scores explicitly justified (calculation shown).
 - No speculative claims; no code samples.
+- **Reviewer Checklist:**
+  - [ ] SOLID fully covered
+  - [ ] Top Risks table complete
+  - [ ] Each finding testable/verifiable
+  - [ ] Evidence traceable (file + line numbers)
+  - [ ] Blocked areas documented
+  - [ ] Priority scoring explained
