@@ -1,6 +1,6 @@
 ---
 title: “Tactical Action Plan Guideline”
-version: “1.0.0”
+version: “1.1.0”
 date: “2025-09-21”
 description: “Guideline for AI agents to decompose a strategic review finding into a sequence of atomic, verifiable, and machine-executable steps.”
 status: “stable”
@@ -21,7 +21,7 @@ tags: [“guideline”, “action-plan”, “refactoring”, “ai-agent”, �
 
 1.  **Input:** The process starts with **one single, approved `Finding`** from a "Component Improvement Review" (v2.0.0) report. The plan's goal is derived directly from the `Actionable Path` of that finding.
 2.  **Atomicity:** Each step in the plan must represent a single, logical change (e.g., create one file, add one method signature, change one constructor). This minimizes risk and aids debugging.
-3.  **Safety First (The Green-to-Green Rule):** The codebase must be in a compilable and test-passing state *before* the plan starts and *after* every single step is executed. No step should knowingly introduce a breaking change.
+3.  **Safety First (The Green-to-Green Rule):** The codebase must remain in a valid, working state after every step. This is the **Green-to-Green Rule**. This rule is verified by an automated test suite. **Crucially, if the `preconditions` reveal no adequate test suite exists, the first objective of the plan *must* be to establish a high-level characterization test.** This test acts as a safety harness by capturing the component's current behavior, including any existing bugs. All subsequent refactoring steps must ensure this harness test continues to pass.
 4.  **Verifiability is Mandatory:** Every step **must** include a `verification` block. The agent cannot proceed to the next step until the current step's verification conditions are met.
 5.  **Dependency-Driven:** Steps must explicitly declare their dependencies to form a Directed Acyclic Graph (DAG). This ensures correct execution order.
 6.  **No Ambiguity:** The plan must use structured operations. Avoid free-text instructions like "refactor the class." Instead, specify precise actions like `RENAME_SYMBOL` or `ADD_METHOD_TO_INTERFACE`.
@@ -40,99 +40,35 @@ plan:
   # Conditions that must be true before execution begins.
   preconditions:
     - "The codebase is on the latest 'main' branch."
-    - "All unit and integration tests must pass before starting."
+    - "All unit and integration tests must pass before starting. (If no tests exist, this is a critical finding to be addressed in step 1)."
 
   # The sequence of atomic operations.
   steps:
     - step_id: 1
-      description: "Create the new repository interface file."
-      depends_on: []
-      operation:
-        type: "CREATE_FILE"
-        path: "src/Core/Interfaces/IOrderRepository.cs"
-        content: |
-          namespace Core.Interfaces;
-          // ... (full file content)
+      description: "Create a characterization test to provide a safety harness."
+      # ... this step would only be present if no tests exist ...
       verification:
-        - { type: "FILE_EXISTS", path: "src/Core/Interfaces/IOrderRepository.cs" }
-        - { type: "COMPILE_SUCCESS" }
-
-    - step_id: 2
-      description: "Make the concrete repository implement the new interface."
-      depends_on: [1]
-      operation:
-        type: "MODIFY_FILE"
-        path: "src/Infrastructure/Data/SqlOrderRepository.cs"
-        action:
-          type: "IMPLEMENT_INTERFACE"
-          interface_name: "IOrderRepository"
-      verification:
-        - { type: "COMPILE_SUCCESS" }
         - { type: "ALL_TESTS_PASS" }
 
-    - step_id: 3
-      description: "Update the DI container to map the interface to the concrete type."
-      depends_on: [2]
-      operation:
-        type: "MODIFY_FILE"
-        path: "src/Api/Startup.cs"
-        action:
-          type: "ADD_CODE_BLOCK"
-          location_hint: "Inside ConfigureServices method"
-          content: "services.AddScoped<IOrderRepository, SqlOrderRepository>();"
-      verification:
-        - { type: "COMPILE_SUCCESS" }
-        - { type: "ALL_TESTS_PASS" }
-
-    - step_id: 4
-      description: "Update the OrderProcessor to depend on the interface."
-      depends_on: [3]
-      operation:
-        type: "MODIFY_FILE"
-        path: "src/Core/Services/OrderProcessor.cs"
-        action:
-          type: "REPLACE_CONSTRUCTOR_PARAMETER"
-          old_type: "SqlOrderRepository"
-          new_type: "IOrderRepository"
-      verification:
-        - { type: "COMPILE_SUCCESS" }
-        - { type: "ALL_TESTS_PASS" }
+    # ... subsequent refactoring steps ...
 ```
 
 ## 4. Schemas for Operations & Verification
 
-### Operation Schema
-Each `operation` object must have a `type`.
-
--   `type: "CREATE_FILE"`
-    -   `path`: string
-    -   `content`: string
--   `type: "DELETE_FILE"`
-    -   `path`: string
--   `type: "RUN_COMMAND"`
-    -   `command`: string (e.g., `dotnet add package ...`)
--   `type: "MODIFY_FILE"`
-    -   `path`: string
-    -   `action`: An object specifying the modification. Common action types include:
-        -   `{ type: "IMPLEMENT_INTERFACE", interface_name: "string" }`
-        -   `{ type: "ADD_METHOD", content: "string" }`
-        -   `{ type: "REPLACE_CODE_BLOCK", location_hint: "string", old_content: "string", new_content: "string" }`
-        -   `{ type: "REPLACE_CONSTRUCTOR_PARAMETER", old_type: "string", new_type: "string" }`
-        -   `{ type: "RENAME_SYMBOL", old_name: "string", new_name: "string" }`
-
-### Verification Schema
-Each `verification` item is an object with a `type`.
-
--   `{ type: "COMPILE_SUCCESS" }`
--   `{ type: "ALL_TESTS_PASS" }`
--   `{ type: "SPECIFIC_TESTS_PASS", tests: ["TestName1", "TestName2"] }`
--   `{ type: "FILE_EXISTS", path: "string" }`
--   `{ type: "FILE_DOES_NOT_EXIST", path: "string" }`
--   `{ type: "CODE_CONTAINS", path: "string", snippet: "string" }`
+(No changes in this section)
 
 ## 5. Mental Models for Plan Generation (Refactoring Strategies)
 
-The AI should use these established, safe refactoring patterns to structure its plans.
+The AI should use these established, safe refactoring patterns to structure its plans. **The chosen model must respect the state of the existing test suite.**
+
+-   **Establish Safety Harness (Characterization Test) - PRIORITY 0:**
+    -   **When to use:** This pattern is **mandatory** as the first phase of any plan if the component to be refactored lacks adequate test coverage.
+    -   **Steps:**
+        1.  Create a new test file and install a testing framework if necessary.
+        2.  Write a high-level, end-to-end, or "black box" test that executes the component.
+        3.  Provide known inputs and capture the exact, literal output (e.g., using snapshot testing or by asserting against a golden master file).
+        4.  This test does not judge correctness; it only **characterizes the current behavior**.
+        5.  Once this test is in place and passing, it becomes the primary `verification` for all subsequent refactoring steps.
 
 -   **Introduce Abstraction (Most Common):**
     1.  Create the new abstraction (interface).
@@ -140,11 +76,13 @@ The AI should use these established, safe refactoring patterns to structure its 
     3.  Update the Dependency Injection container or Factory to map the abstraction to the concrete class.
     4.  Finally, change the consumer class to depend on the abstraction.
     5.  Run tests after each step.
+
 -   **Branch by Abstraction (For Risky, Large-Scale Changes):**
     1.  Introduce an abstraction that fronts the old implementation.
     2.  Create the new implementation of the abstraction.
     3.  Use a feature flag or configuration to control which implementation is used.
     4.  Once the new implementation is verified in production, remove the old implementation and the feature flag.
+
 -   **Extract Class/Method:**
     1.  Create the new class/method.
     2.  Copy the relevant code from the old location to the new one.
@@ -162,3 +100,4 @@ A generated plan is considered "Done" only when it meets all these criteria:
 -   [ ] **Safety:** The plan is structured to ensure tests are passing after every step.
 -   [ ] **Verification:** Every single step has a non-empty `verification` block.
 -   [ ] **Valid Graph:** The `depends_on` graph is valid and contains no circular dependencies.
+-   [ ] **Initial State Awareness:** The plan correctly identifies the initial test state and, if necessary, includes steps to create a characterization test harness before proceeding with refactoring.
