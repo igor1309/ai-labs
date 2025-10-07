@@ -1,64 +1,95 @@
-# Strict TDD Process Essentials
+---
+date: 2025-10-07
+model: gpt-5
+version: 1.0.1
+audience: AI coding agents - not human developer guidelines
+---
 
-## Core TDD Discipline
-- **One test at a time** - Never write multiple tests simultaneously
-- **Red-Green-Refactor cycle** - Always see failing test before implementing
-- **Minimal implementation** - Write only enough code to pass the current test
-- **Two-level process** - Inner R-G-R cycle for individual tests, outer cycle runs ALL tests before commit
-- **Commit after green** - Every successful test cycle gets committed, but only after ALL tests pass
+# Strict TDD Essentials
 
-## Implementation Standards
-- **Document design decisions** - Add inline comments explaining non-obvious choices (like atomicBurn mutex decisions)
-- **Atomic commits** - Each commit represents one complete feature with all tests passing
-- **Meaningful commit messages** - Follow conventional commits with clear explanations
+## 1. Core Protocol
 
-## When Stuck Protocol
-- **Ask before proceeding** if unable to create a proper failing test
-- **Don't cheat TDD** - Resist urge to implement multiple behaviors at once
-- **Verify assumptions** - Always run tests to confirm red/green states
+### 1.1 Red — Write Tests First
+- Write **one or several related failing tests for a single behavior** before any production code.  
+- Do **not** write tests for future/independent behaviors yet.  
+- Ensure both test and production code **compile** — a non-compiling state is **not a valid red**.  
+- Run tests and **confirm failure (red)**.  
+- If the test does **not fail as expected**, stop, find the reason, **and ask for clarification if unclear**.
 
-## Quality Gates
-- **Inner cycle validation** - Individual test must pass before moving to next step
-- **Outer cycle validation** - Full test suite must pass before any commit
-- **No broken intermediate states** - Never leave code in failing state
-- **Progressive disclosure** - Each test reveals next requirement naturally
+### 1.2 Green — Minimal Implementation
+- Implement the **smallest possible change** to make the current behavior’s failing tests pass.
+- Run all tests and confirm they **turn green**.
+- Do not implement future behavior early.
 
-## Additional Best Practices
-- **Test naming clarity** - Descriptive test names that explain expected behavior
-- **Mock isolation** - Proper dependency injection for testable units
-- **Error-first testing** - Test failure cases before success cases
-- **Spec compliance** - Always reference original requirements in commits
+### 1.3 Commit
+- Commit only after **all tests pass**.
+- Each commit represents **one behavior**.
+- Use clear, behavior-focused messages describing what was implemented or fixed.
 
-## Advanced TDD Patterns
+### 1.4 Refactor
+- Improve clarity, naming, and structure of both test and production code.
+- Extract helpers and remove duplication.
+- Run the full suite to confirm **tests stay green**.
+- Commit or amend once stable.
 
-### Test-First Structure Design
-- **Define test signatures first** - Write all test method names before any implementation
-- **Create failing assertions** - Start with placeholder implementations that fail
-- **Implement incrementally** - Only write enough code to make current test pass
+### 1.5 Loop
+- Repeat for every new behavior or case.
+- Never skip red.
+- Never refactor on red.
+- If any step outcome is **unclear**, **pause and ask for clarification before continuing**.
 
-### Comprehensive Edge Case Testing
-- **Exhaustive boolean combinations** - Test all true/false state permutations
-- **Nested loop coverage** - Use systematic loops for complete state space testing
-- **Boundary condition testing** - Explicitly test edge cases and limits
+---
 
-### Documentation Standards
-- **Inline effect documentation** - Document expected behavior directly in effect definitions
-- **Complex logic comments** - Explain non-obvious guard conditions and business rules
-- **Decision rationale** - Record why specific implementation approaches were chosen
+## 2. Supporting Disciplines
 
-### Spy Pattern for Dependencies
-- **Typed spy objects** - Create specific spy classes for each external dependency
-- **Call verification** - Explicitly verify call counts and parameter values
-- **Asynchronous expectations** - Use XCTestExpectation for completion callback testing
+### 2.1 Quality Gates
+- Never leave code in a failing or non-compiling state.
+- Validate both the **inner** (current behavior’s tests) and **outer** (full suite) cycles before commit.
+- Each test (or small related set) should naturally reveal the next requirement.
 
-### Factory Method Best Practices
-- **Randomized defaults** - Use random values to catch hidden assumptions
-- **Specific overrides** - Allow targeted parameter customization for focused testing
-- **Centralized creation** - Keep all test data creation in dedicated factory methods
+### 2.2 Implementation Standards
+- Each commit is atomic — no partial features.
+- Inline comments only for **non-obvious design choices**.
+- Follow conventional commits; no emoji or shorthand.
 
-### Memory Safety in Tests
-- **Leak detection tracking** - Use trackForMemoryLeaks for all test subjects
-- **Precise error reporting** - Include file/line parameters for accurate failure location
-- **Long-lived object testing** - Verify memory management of persistent components
+### 2.3 Test Structure and Naming
+- Tests describe observable behavior.
+- Prefer names that read like sentences:
+  - Swift: `test_update_shouldDoThisOnThat`
+  - Python: `test_update_should_do_this_on_that`
+  - Java/Kotlin: `update_shouldDoThisOnThat`
+  - JS/TS (Jest): `it('updates …')`
 
-These principles have proven effective for maintaining code quality and preventing regressions while following true TDD methodology.
+### 2.4 Behavior-Driven Testing
+- Write **error/failure cases first**, then success.
+- Use mocks/spies to isolate external dependencies.
+- Verify call counts and parameters explicitly.
+- Keep factory methods centralized for test data setup.
+
+### 2.5 Memory and Safety
+- Track all subjects for leaks (`trackForMemoryLeaks` in Swift).
+- Include file/line for accurate error locations.
+- Test long-lived objects for correct lifecycle management.
+
+### 2.6 Test Design Guidance (concise)
+- **Boolean/state coverage**: exercise **all boolean combinations** for critical branches.
+- **Boundaries & limits**: test **min/max**, off-by-one, empty/one/two, overflow/underflow, and invalid inputs.
+- **State-space exploration**: when inputs are combinatorial, use **systematic loops** (or table-driven tests) to cover the state space without duplication.
+- **Order & idempotence**: test **ordering effects**, **retries**, and **idempotent** behavior where relevant.
+- **Determinism**: randomize **test data values**, not behavior; seed randomness to keep runs reproducible.
+
+---
+
+## 3. Decision and Documentation Discipline
+- Record *why* a specific implementation path was chosen if non-trivial.
+- Use inline notes for effects and guards that are not self-evident.
+- Never document the obvious; document reasoning.
+
+---
+
+## 4. Summary
+Strict TDD means:  
+**Red → Green → Commit → Refactor → Loop.**  
+One behavior at a time, with one **or several** related failing tests defining scope, verified, committed, and improved.  
+No skipped reds. No broken or non-compiling states. No untested code.  
+When uncertain, **ask for clarification before proceeding.**
