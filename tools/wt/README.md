@@ -15,7 +15,7 @@ Simplifies your workflow: one command = new branch + new worktree folder.
 
 ## 🧠 Concept
 
-Each branch lives in its own folder (`../wt-<prefix>-<name>`).
+Each branch lives in its own folder inside a shared parking lot (`<repo>-worktrees/wt-<prefix>-<name>`).
 No more `git checkout` flipping — just `cd` into the right directory.
 
 ---
@@ -41,9 +41,9 @@ wt [--type feat|fix|chore|rel] [--base <remote/branch>] <name>
 
 | Example | Description |
 |----------|-------------|
-| `wt auth` | Create `../wt-feature-auth` on branch `feature/auth` from `origin/trunk`. |
-| `wt --type fix crash-login` | Create `../wt-fix-crash-login` on branch `fix/crash-login`. |
-| `wt --type rel v1.2.0` | Create `../wt-release-v1.2.0` on branch `release/v1.2.0`. |
+| `wt auth` | Create `../<repo>-worktrees/wt-feature-auth` on branch `feature/auth` from `origin/trunk`. |
+| `wt --type fix crash-login` | Create `../<repo>-worktrees/wt-fix-crash-login` on branch `fix/crash-login`. |
+| `wt --type rel v1.2.0` | Create `../<repo>-worktrees/wt-release-v1.2.0` on branch `release/v1.2.0`. |
 | `wt --type feat search --base origin/main` | Use `origin/main` as base (default is `origin/trunk`). |
 
 ---
@@ -51,10 +51,10 @@ wt [--type feat|fix|chore|rel] [--base <remote/branch>] <name>
 ## 🪄 What It Does
 
 1. Verifies you're in a Git repo.
-2. Resolves the repository root so the new worktree is created alongside it, no matter where you call `wt` from.
+2. Resolves the repository root and uses a sibling parking lot (`<repo>-worktrees/`) so the new worktree lands there no matter where you call `wt` from.
 3. Fetches and prunes all remotes.
 4. Creates new branch `<prefix>/<name>` (e.g., `feature/auth`).
-5. Creates corresponding folder `../wt-<prefix>-<name>` (e.g., `wt-feature-auth`).
+5. Creates corresponding folder `<repo>-worktrees/wt-<prefix>-<name>` (e.g., `ai-coder-worktrees/wt-feature-auth`).
 6. Adds the new worktree and checks it out.
 7. Prints next steps (`cd`, commit, push).
 
@@ -64,7 +64,7 @@ wt [--type feat|fix|chore|rel] [--base <remote/branch>] <name>
 
 When done:
 ```bash
-git worktree remove ../wt-feature-auth
+git worktree remove ../<repo>-worktrees/wt-feature-auth
 git branch -d feature/auth
 git worktree prune
 ```

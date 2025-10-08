@@ -26,8 +26,17 @@ done
 
 [[ -z "${name}" ]] && { usage; exit 2; }
 git rev-parse --is-inside-work-tree >/dev/null || { echo "Not inside a git repo"; exit 3; }
-repository_root=$(git rev-parse --show-toplevel)
-repository_parent_directory=$(dirname "$repository_root")
+repository_root_directory=$(git rev-parse --show-toplevel)
+repository_parent_directory=$(dirname "$repository_root_directory")
+repository_name=$(basename "$repository_root_directory")
+worktree_base_directory="${repository_parent_directory}/${repository_name}-worktrees"
+
+if [[ -e "$worktree_base_directory" && ! -d "$worktree_base_directory" ]]; then
+  echo "Path exists but is not a directory: $worktree_base_directory"
+  exit 6
+fi
+
+mkdir -p "$worktree_base_directory"
 
 case "$type" in
   feat) prefix="feature" ;;
@@ -37,7 +46,7 @@ case "$type" in
   *) echo "Unknown --type: $type"; exit 4 ;;
 esac
 
-worktree_directory="${repository_parent_directory}/wt-${prefix}-${name}"
+worktree_directory="${worktree_base_directory}/wt-${prefix}-${name}"
 branch="${prefix}/${name}"
 
 [[ -e "$worktree_directory" ]] && { echo "Path exists: $worktree_directory"; exit 5; }
