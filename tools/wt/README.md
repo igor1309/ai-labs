@@ -51,11 +51,12 @@ wt [--type feat|fix|chore|rel] [--base <remote/branch>] <name>
 ## 🪄 What It Does
 
 1. Verifies you're in a Git repo.
-2. Fetches and prunes all remotes.
-3. Creates new branch `<prefix>/<name>` (e.g., `feature/auth`).
-4. Creates corresponding folder `../wt-<prefix>-<name>` (e.g., `wt-feature-auth`).
-5. Adds the new worktree and checks it out.
-6. Prints next steps (`cd`, commit, push).
+2. Resolves the repository root; run `wt` from there until path handling is improved.
+3. Fetches and prunes all remotes.
+4. Creates new branch `<prefix>/<name>` (e.g., `feature/auth`).
+5. Creates corresponding folder `../wt-<prefix>-<name>` (e.g., `wt-feature-auth`).
+6. Adds the new worktree and checks it out.
+7. Prints next steps (`cd`, commit, push).
 
 ---
 
