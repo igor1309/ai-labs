@@ -26,6 +26,8 @@ done
 
 [[ -z "${name}" ]] && { usage; exit 2; }
 git rev-parse --is-inside-work-tree >/dev/null || { echo "Not inside a git repo"; exit 3; }
+repository_root=$(git rev-parse --show-toplevel)
+repository_parent_directory=$(dirname "$repository_root")
 
 case "$type" in
   feat) prefix="feature" ;;
@@ -35,14 +37,14 @@ case "$type" in
   *) echo "Unknown --type: $type"; exit 4 ;;
 esac
 
-dir="../wt-${prefix}-${name}"
+worktree_directory="${repository_parent_directory}/wt-${prefix}-${name}"
 branch="${prefix}/${name}"
 
-[[ -e "$dir" ]] && { echo "Path exists: $dir"; exit 5; }
+[[ -e "$worktree_directory" ]] && { echo "Path exists: $worktree_directory"; exit 5; }
 git fetch --all --prune
-git worktree add -b "$branch" "$dir" "$base"
-echo "✅ Created $dir on $branch (base: $base)"
+git worktree add -b "$branch" "$worktree_directory" "$base"
+echo "✅ Created $worktree_directory on $branch (base: $base)"
 echo "Next:"
-echo "  cd $dir"
+echo "  cd $worktree_directory"
 echo "  # work, commit, then first push sets upstream"
 echo "  git push -u origin $branch"

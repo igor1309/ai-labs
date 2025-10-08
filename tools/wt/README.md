@@ -51,7 +51,7 @@ wt [--type feat|fix|chore|rel] [--base <remote/branch>] <name>
 ## 🪄 What It Does
 
 1. Verifies you're in a Git repo.
-2. Resolves the repository root; run `wt` from there until path handling is improved.
+2. Resolves the repository root so the new worktree is created alongside it, no matter where you call `wt` from.
 3. Fetches and prunes all remotes.
 4. Creates new branch `<prefix>/<name>` (e.g., `feature/auth`).
 5. Creates corresponding folder `../wt-<prefix>-<name>` (e.g., `wt-feature-auth`).
