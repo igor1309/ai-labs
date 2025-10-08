@@ -1,4 +1,4 @@
-# Project Vortex (Fora iOS)
+# Project `Vortex` (Fora iOS)
 
 Due to the size and complexity of the project it is essential to use `-quiet` with `xcodebuild` to reduce output.
 Xcode project file is located in a subfolder `Vortex`.
