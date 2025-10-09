@@ -3,6 +3,9 @@
 Due to the size and complexity of the project it is essential to use `-quiet` with `xcodebuild` to reduce output.
 Xcode project file is located in a subfolder `Vortex`.
 
+## LINTING
+Type declarations should be separated from body by empty line.
+
 ## BUILD
 cd Vortex &&                             \
 xcodebuild build -quiet                  \
