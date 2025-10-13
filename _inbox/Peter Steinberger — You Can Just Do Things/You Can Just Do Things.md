@@ -1,6 +1,10 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
+---
+source: https://youtu.be/68BS5GCRcBo?si=3kYqFvli9sdt_Jil
+agent: perplexity
+tags: "agentic coding workflow"
+---
 
-# summarise [https://youtu.be/68BS5GCRcBo?si=3kYqFvli9sdt_Jil](https://youtu.be/68BS5GCRcBo?si=3kYqFvli9sdt_Jil)
+# [You Can Just Do Things](https://youtu.be/68BS5GCRcBo?si=3kYqFvli9sdt_Jil)
 
 Peter Steinberger’s “You Can Just Do Things” talk is a fast-paced, highly practical live demo showing how AI agents can dramatically accelerate software development, especially when using workflows like Codex and Claude Code.[^1][^2][^3]
 

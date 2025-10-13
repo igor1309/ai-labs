@@ -1,3 +1,6 @@
+---
+source: Peter Steinberger — You Can Just Do Things
+---
 <ADD TO AGENTS.md or CLAUDE.md>
 
 ## Git Workflow
