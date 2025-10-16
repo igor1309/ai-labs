@@ -134,21 +134,40 @@ At this stop, there are two possible paths:
 **Path B - User says "go":**
 - Run ALL tests to verify everything passes
 - If refactoring was done (code changed):
-  - Keep the scope assessment explicit in your notes (local vs significant)
+  - Record the scope assessment (local vs significant) in your STOP #2 update or run log before touching git
   - If the refactoring scope is **local** (small cleanup, same files touched during GREEN, or cosmetic improvements), run `git commit --amend --no-edit`
   - If the refactoring scope is **significant** (cross-cutting changes, new abstractions, or touching files beyond the immediate feature), create a separate commit with a descriptive refactor message
-- If no refactoring (no changes): skip commit/amend
-- Automatically proceed to Phase 1 (RED) for next test
+- If no refactoring (no changes): skip commit/amend but still note "No refactor changes" in the STOP #2 update
+- Proceed immediately to Phase 5
 
 ### Common Mistakes to Avoid:
 - ❌ Skipping refactoring review entirely
 - ❌ Not running tests after refactoring changes
 - ❌ Deleting passing tests (tests are the specification!)
-- ❌ Creating new refactor commit when changes were purely local
-- ❌ Amending when refactoring introduced broader structural changes
-- ❌ Amending when no refactoring was done
+- ❌ Leaving the scope decision undocumented
+- ❌ Forgetting to run Phase 5 before returning to RED
 - ❌ Not waiting for user feedback at STOP #2
 - ❌ Proceeding to next test without stopping and waiting for approval
+
+---
+
+## Phase 5: Record Refactor Commit Decision
+
+### Actions:
+1. Summarize the refactoring outcome in your STOP #2 update or work log, explicitly stating `Refactor scope: local/significant` (or "No refactor changes")
+2. Execute the corresponding git action:
+   - Local scope → `git commit --amend --no-edit`
+   - Significant scope → `git commit -m "<descriptive refactor commit message>"`
+   - No changes → no git command needed
+3. Confirm the git history matches the documented decision
+4. Reset focus to the specification and return to Phase 1 (RED) for the next test
+
+### Common Mistakes to Avoid:
+- ❌ Failing to document the scope decision where reviewers can see it
+- ❌ Amending when refactoring introduced broader structural changes
+- ❌ Creating a separate refactor commit for purely local cleanups
+- ❌ Forgetting to verify git history before moving on
+- ❌ Skipping back to RED without capturing the decision
 
 ---
 
