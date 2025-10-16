@@ -3,16 +3,16 @@ title: TDD Flow - Mandatory Process
 purpose: Defines the strict Test-Driven Development cycle for AI coding agents
 audience: AI coding assistants implementing features using TDD
 stops: 2 (at RED and after REFACTOR)
-cycle: RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → AMEND_IF_REFACTORED
+cycle: RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → RECORD_REFACTOR_COMMIT
 ---
 
 # TDD Flow - Mandatory Process
 
-## The Sacred Cycle: RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → AMEND_IF_REFACTORED
+## The Sacred Cycle: RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → RECORD_REFACTOR_COMMIT
 
 **CRITICAL RULE: There are TWO mandatory stops:**
 1. **STOP #1 at RED** - Wait for "go" to proceed to GREEN
-2. **STOP #2 after REFACTOR** - Process feedback if any, then amend if refactored, then take next test
+2. **STOP #2 after REFACTOR** - Process feedback if any, then record the refactor commit decision (amend local changes or create a dedicated refactor commit), then take next test
 
 **Between STOP #1 and STOP #2: GREEN → COMMIT → REFACTOR happens automatically without pausing.**
 
@@ -133,15 +133,19 @@ At this stop, there are two possible paths:
 
 **Path B - User says "go":**
 - Run ALL tests to verify everything passes
-- If refactoring was done (code changed): `git commit --amend --no-edit`
-- If no refactoring (no changes): skip amend
+- If refactoring was done (code changed):
+  - Keep the scope assessment explicit in your notes (local vs significant)
+  - If the refactoring scope is **local** (small cleanup, same files touched during GREEN, or cosmetic improvements), run `git commit --amend --no-edit`
+  - If the refactoring scope is **significant** (cross-cutting changes, new abstractions, or touching files beyond the immediate feature), create a separate commit with a descriptive refactor message
+- If no refactoring (no changes): skip commit/amend
 - Automatically proceed to Phase 1 (RED) for next test
 
 ### Common Mistakes to Avoid:
 - ❌ Skipping refactoring review entirely
 - ❌ Not running tests after refactoring changes
 - ❌ Deleting passing tests (tests are the specification!)
-- ❌ Creating new commit instead of amending
+- ❌ Creating new refactor commit when changes were purely local
+- ❌ Amending when refactoring introduced broader structural changes
 - ❌ Amending when no refactoring was done
 - ❌ Not waiting for user feedback at STOP #2
 - ❌ Proceeding to next test without stopping and waiting for approval
