@@ -1,0 +1,22 @@
+{
+  "name": "dev-skills",
+  "owner": {
+    "name": "Igor Malyarov",
+    "email": "igor1309@gmail.com"
+  },
+  "metadata": {
+    "description": "Development workflows for software engineering",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "dev-skills",
+      "description": "Interactive development workflows with verification gates",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./tdd-interactive"
+      ]
+    }
+  ]
+}
