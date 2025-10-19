@@ -16,11 +16,11 @@ This skill implements Test-Driven Development through an **interactive, reviewer
 **Workflow structure:**
 - **Executing agent**: Performs TDD implementation work
 - **Reviewer**: Validates and approves at verification gates
-- **Process**: Five-phase cycle (RED → GREEN → COMMIT → REFACTOR → RECORD) with stops at RED and REFACTOR
+- **Process**: Five-phase cycle (RED → GREEN → COMMIT → REFACTOR → REFACTOR_COMMIT) with stops at RED and REFACTOR
 
 ## The Sacred Cycle
 
-**RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → RECORD_REFACTOR_COMMIT**
+**RED → [STOP #1] → GREEN → COMMIT → REFACTOR → [STOP #2] → REFACTOR_COMMIT**
 
 The cycle enforces discipline through two mandatory verification gates:
 1. **STOP #1 at RED** - Present failing test to reviewer and wait for approval to proceed to GREEN
@@ -47,7 +47,7 @@ Phase 4: REFACTOR (Improve Code)
   ↓
 STOP #2 → Present to reviewer, process feedback or get approval
   ↓
-Phase 5: Record Refactor Commit
+Phase 5: Refactor Commit
   ↓
 Return to Phase 1 for next test
 ```
@@ -200,7 +200,7 @@ At this stop, two paths are possible:
 - ❌ Not waiting for reviewer feedback at STOP #2
 - ❌ Proceeding to next test without stopping and waiting for approval
 
-## Phase 5: Record Refactor Commit
+## Phase 5: REFACTOR_COMMIT
 
 ### Objective
 Create a git commit for refactoring changes, maintaining immutable git history.
@@ -281,7 +281,7 @@ Use this convention for naming tests:
 - **GREEN**: Minimal implementation → No stop
 - **COMMIT**: Update docs, commit → No stop
 - **REFACTOR**: Improve code → STOP #2 (wait for reviewer approval)
-- **RECORD**: Create refactor commit (if changes made) → Return to RED
+- **REFACTOR_COMMIT**: Create refactor commit (if changes made) → Return to RED
 
 ### Refactor Commit Strategy
 - **Changes made**: Create new commit → `git commit -m "Refactor: <description>"`
