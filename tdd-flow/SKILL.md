@@ -1,6 +1,7 @@
 ---
 name: tdd-flow
 description: Strict Test-Driven Development workflow for implementing features through the RED-GREEN-REFACTOR cycle. Use this skill when implementing code features or functionality using TDD methodology, working with test specifications, or when explicitly asked to follow TDD practices. The skill enforces two mandatory stops (at RED and after REFACTOR) and ensures proper test-first development.
+when_to_use: When implementing features using test-first methodology to ensure proper test coverage, minimal implementation, and continuous refactoring.
 version: 1.0.0
 author: Igor Malyarov
 model: Sonnet 4.5
