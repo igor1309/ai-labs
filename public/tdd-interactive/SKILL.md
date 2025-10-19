@@ -108,11 +108,17 @@ This is a compilation error, not a proper RED state.
 
 ### Stop Condition
 
-**STOP #1 HERE.** Present the failing test output to the reviewer and wait for approval to proceed to GREEN.
+**STOP #1 HERE.** Present the failing test output to the reviewer and **wait for explicit "go" command** to proceed to GREEN.
+
+**Mandatory waiting rules:**
+- **DO NOT proceed** without explicit "go" (or clear equivalent like "proceed", "continue")
+- If reviewer gives feedback → implement it, run test again, **STOP again at STOP #1**, wait for "go"
+- If unclear whether reviewer approves → **ask explicitly**: "Should I proceed to GREEN?"
+- Reviewer feedback ≠ approval to proceed
 
 The reviewer will either:
 - Approve with "go" → Proceed to GREEN phase
-- Provide feedback → Address concerns and return to STOP #1
+- Provide feedback → Address concerns, **return to STOP #1**, wait for "go" again
 
 For reviewers: See `./review-guidelines.md` for RED phase review criteria.
 
@@ -120,6 +126,8 @@ For reviewers: See `./review-guidelines.md` for RED phase review criteria.
 
 - ❌ Treating compilation errors as RED state
 - ❌ Proceeding to GREEN without stopping
+- ❌ Proceeding to GREEN without explicit "go" from reviewer
+- ❌ Treating reviewer feedback as approval to proceed
 - ❌ Writing test that passes immediately without verifying RED
 - ❌ Over-asserting (checking more than test name promises)
 - ❌ Creating production code that isn't driven by the test
@@ -197,15 +205,21 @@ Improve code quality while maintaining all passing tests.
 
 ### Stop Condition
 
-**STOP #2 HERE** after refactoring is complete. Present the refactored code to the reviewer.
+**STOP #2 HERE** after refactoring is complete. Present the refactored code to the reviewer and **wait for explicit "go" command**.
+
+**Mandatory waiting rules:**
+- **DO NOT proceed** to Phase 5 without explicit "go" (or clear equivalent like "proceed", "continue")
+- If reviewer gives feedback → implement it, run tests, **STOP again at STOP #2**, wait for "go"
+- If reviewer suggests multiple improvements → implement one, **STOP again**, get feedback, repeat
+- If unclear whether reviewer approves → **ask explicitly**: "Should I proceed to REFACTOR_COMMIT?"
+- Reviewer feedback ≠ approval to proceed
 
 At this stop, two paths are possible:
 
 **Path A - Reviewer gives feedback:**
 - Process the requested changes
 - Run ALL tests to make sure they stay green
-- STOP again (return to STOP #2)
-- Repeat until reviewer gives "go"
+- Return to STOP #2 (see mandatory waiting rules above)
 
 **Path B - Reviewer approves with "go":**
 - Run ALL tests to verify everything passes
@@ -216,10 +230,12 @@ For reviewers: See `./review-guidelines.md` for REFACTOR phase review criteria.
 ### Common Mistakes to Avoid
 
 - ❌ Skipping refactoring review entirely
+- ❌ Proceeding to REFACTOR_COMMIT without explicit "go" from reviewer
+- ❌ Implementing feedback and immediately proceeding without stopping again
+- ❌ Treating reviewer feedback as approval to proceed
 - ❌ Not running tests after refactoring changes
 - ❌ Deleting passing tests (tests are the specification!)
 - ❌ Forgetting to run Phase 5 before returning to RED
-- ❌ Not waiting for reviewer feedback at STOP #2
 - ❌ Proceeding to next test without stopping and waiting for approval
 
 ## Phase 5: REFACTOR_COMMIT
