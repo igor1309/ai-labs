@@ -70,6 +70,7 @@ Write a test that fails for the right reason, demonstrating what needs to be imp
    - If test says "should increase balance", only verify balance increases
    - Never over-assert beyond what the test name states
 5. **Run the test and verify it FAILS for the RIGHT reason**
+   - For language-specific test commands, see `./testing-guide.md`
 6. **If test passes immediately, BREAK the implementation** to see RED
 7. **Confirm the failure message shows exactly what's missing**
 
@@ -121,6 +122,7 @@ Write minimal code to make the failing test pass.
 2. **Do NOT write extra code** for future tests
 3. **Do NOT refactor yet** - just make it green
 4. **Run ALL tests in the test suite** to ensure nothing broke and new test passes
+   - For language-specific test commands, see `./testing-guide.md`
 
 ### Stop Condition
 
