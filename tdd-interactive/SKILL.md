@@ -54,6 +54,8 @@ Phase 5: Refactor Commit
 Return to Phase 1 for next test
 ```
 
+**If you encounter problems during any phase**, see `./escalation-protocol.md` for guidance on when and how to ask for help.
+
 ## Phase 1: RED (Write Failing Test)
 
 ### Objective
@@ -82,6 +84,14 @@ A proper RED state requires:
 - ✅ Test fails for the RIGHT reason (not some other error)
 
 **Compilation errors are NOT a proper RED state.** The code must compile before reaching RED.
+
+**Focus on WHAT, not HOW:**
+- ❌ Don't think about implementation details during RED
+- ❌ Don't create mocks for imaginary dependencies
+- ✅ Write simple setup, action, and assertion
+- ✅ Think like a user: what should happen?
+
+For detailed guidance on avoiding implementation thinking during RED, see `./escalation-protocol.md`.
 
 **Example of proper RED:**
 ```
