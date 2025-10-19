@@ -13,6 +13,8 @@ metadata:
 
 This skill implements Test-Driven Development through an **interactive, reviewer-approved workflow** with two mandatory verification gates. A **reviewer** (human senior engineer or AI verifier) validates work at critical checkpoints, enabling **incremental, verified development**.
 
+This workflow requires test infrastructure and reviewer availability for verification gates.
+
 **Workflow structure:**
 - **Executing agent**: Performs TDD implementation work
 - **Reviewer**: Validates and approves at verification gates
