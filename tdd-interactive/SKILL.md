@@ -1,6 +1,6 @@
 ---
 name: tdd-interactive
-description: Strict Test-Driven Development workflow for implementing features through the RED-GREEN-REFACTOR cycle with interactive reviewer approval at two verification gates. Use when implementing code features using TDD methodology, working with test specifications, or when explicitly asked to follow TDD practices. Ensures proper test coverage, minimal implementation, and continuous refactoring through an interactive, step-by-step verified development process.
+description: Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required.
 metadata:
   version: "2.0.0"
   author: Igor Malyarov
