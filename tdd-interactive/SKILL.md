@@ -157,7 +157,10 @@ Save the working state with a descriptive commit message.
 3. **Create a commit** with a descriptive message focusing on WHAT, not HOW
    - Describe the behavior added, not the process
    - Example: "Reject zero amount when adding funds" ✅
-   - NOT: "TDD: Red → Green → Commit" ❌
+   - Do NOT include:
+     - TDD process references: "TDD: Red → Green", "using test-driven development" ❌
+     - Obvious statements: "all tests passing", "tests included" ❌
+     - Implementation details: "add test and implementation for X" ❌
 4. **Verify commit was successful**
 
 ### Stop Condition
