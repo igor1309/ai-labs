@@ -5,7 +5,7 @@ on:
     branches:
       - trunk
     paths:
-      - 'skills/**'
+      - 'public/**'
   workflow_dispatch:
 
 jobs:
@@ -25,15 +25,15 @@ jobs:
           token: ${{ secrets.PUBLIC_REPO_PAT }}
           path: skills-public
 
-      - name: Sync skills folder to public repo
+      - name: Sync public folder to public repo
         run: |
           # Remove all content from public repo (except .git)
           find skills-public -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
-          # Copy entire skills/ folder content to public repo root
-          cp -r dev-skills/skills/* skills-public/
+          # Copy entire public/ folder content to public repo root
+          cp -r dev-skills/public/* skills-public/
           # Copy hidden files except .git
-          find dev-skills/skills -mindepth 1 -maxdepth 1 -name '.*' ! -name '.git' -exec cp -r {} skills-public/ \;
+          find dev-skills/public -mindepth 1 -maxdepth 1 -name '.*' ! -name '.git' -exec cp -r {} skills-public/ \;
 
       - name: Commit and push to public repo
         run: |

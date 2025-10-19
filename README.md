@@ -6,7 +6,7 @@ Private development repository for Claude Code skills.
 
 ```
 dev-skills/
-├── skills/              # Public skills (synced to igor1309/skills)
+├── public/              # Public skills (synced to igor1309/skills)
 │   ├── tdd-interactive/
 │   ├── .claude-plugin/
 │   ├── README.md
@@ -19,13 +19,13 @@ dev-skills/
 ## Workflow
 
 **Development:**
-- Work on skills in `skills/` folder
+- Work on skills in `public/` folder
 - Maintain development docs in `docs/`
 - Track work-in-progress in `TODO/`
 
 **Publishing:**
 - Push to `trunk` branch
-- GitHub Action automatically syncs `skills/` → [igor1309/skills](https://github.com/igor1309/skills) (public)
+- GitHub Action automatically syncs `public/` → [igor1309/skills](https://github.com/igor1309/skills) (public)
 - Manual trigger available via workflow dispatch
 
 ## Public Repository
