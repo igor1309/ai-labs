@@ -26,7 +26,7 @@ Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implemen
 Add this marketplace to Claude Code:
 
 ```
-/plugin marketplace add igor1309/dev-skills
+/plugin marketplace add igor1309/skills
 ```
 
 Then install the skills you want:
