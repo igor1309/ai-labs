@@ -113,6 +113,8 @@ The reviewer will either:
 - Approve with "go" → Proceed to GREEN phase
 - Provide feedback → Address concerns and return to STOP #1
 
+For reviewers: See `./review-guidelines.md` for RED phase review criteria.
+
 ### Common Mistakes to Avoid
 
 - ❌ Treating compilation errors as RED state
@@ -207,6 +209,8 @@ At this stop, two paths are possible:
 **Path B - Reviewer approves with "go":**
 - Run ALL tests to verify everything passes
 - Proceed immediately to Phase 5 to record the refactoring commit
+
+For reviewers: See `./review-guidelines.md` for REFACTOR phase review criteria.
 
 ### Common Mistakes to Avoid
 
