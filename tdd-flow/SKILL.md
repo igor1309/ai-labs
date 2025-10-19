@@ -1,27 +1,34 @@
 ---
 name: tdd-flow
-description: Strict Test-Driven Development workflow for implementing features through the RED-GREEN-REFACTOR cycle. Use this skill when implementing code features or functionality using TDD methodology, working with test specifications, or when explicitly asked to follow TDD practices. The skill enforces two mandatory stops (at RED and after REFACTOR) and ensures proper test-first development.
-when_to_use: When implementing features using test-first methodology to ensure proper test coverage, minimal implementation, and continuous refactoring.
-version: 1.0.0
-author: Igor Malyarov
-model: Sonnet 4.5
+description: Strict Test-Driven Development workflow for implementing features through the RED-GREEN-REFACTOR cycle with interactive reviewer approval at two verification gates. Use when implementing code features using TDD methodology, working with test specifications, or when explicitly asked to follow TDD practices. Ensures proper test coverage, minimal implementation, and continuous refactoring through an interactive, step-by-step verified development process.
+metadata:
+  version: "2.0.0"
+  author: Igor Malyarov
+  model: Sonnet 4.5
 ---
 
 # TDD Flow
 
 ## Overview
 
-This skill provides a strict, disciplined approach to Test-Driven Development (TDD) through a mandatory five-phase cycle with two stopping points for human validation. Follow this workflow when implementing features using test-first methodology to ensure proper test coverage, minimal implementation, and continuous refactoring.
+This skill implements Test-Driven Development through an **interactive, reviewer-approved workflow** with two mandatory verification gates. A **reviewer** (human senior engineer or AI verifier) validates work at critical checkpoints, enabling **incremental, verified development**.
+
+**Workflow structure:**
+- **Executing agent**: Performs TDD implementation work
+- **Reviewer**: Validates and approves at verification gates
+- **Process**: Five-phase cycle (RED → GREEN → COMMIT → REFACTOR → RECORD) with stops at RED and REFACTOR
 
 ## The Sacred Cycle
 
 **RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → RECORD_REFACTOR_COMMIT**
 
-The cycle enforces discipline through two mandatory stops:
-1. **STOP #1 at RED** - Wait for "go" approval to proceed to GREEN
-2. **STOP #2 after REFACTOR** - Process feedback, then record refactor commit decision before taking next test
+The cycle enforces discipline through two mandatory verification gates:
+1. **STOP #1 at RED** - Present failing test to reviewer and wait for approval to proceed to GREEN
+2. **STOP #2 after REFACTOR** - Present refactored code to reviewer, process feedback, then record refactor commit before taking next test
 
 Between STOP #1 and STOP #2, the GREEN → COMMIT → REFACTOR phases execute automatically without pausing.
+
+**The reviewer's role:** At each stop, the reviewer validates the work quality and provides either approval ("go") or feedback for improvements. This ensures every step meets quality standards before progression.
 
 ## Workflow Decision Tree
 
@@ -30,7 +37,7 @@ Start
   ↓
 Phase 1: RED (Write Failing Test)
   ↓
-STOP #1 → Wait for "go"
+STOP #1 → Present to reviewer, wait for approval
   ↓
 Phase 2: GREEN (Make Test Pass)
   ↓
@@ -38,9 +45,9 @@ Phase 3: COMMIT (Save Progress)
   ↓
 Phase 4: REFACTOR (Improve Code)
   ↓
-STOP #2 → Wait for feedback or "go"
+STOP #2 → Present to reviewer, process feedback or get approval
   ↓
-Phase 5: Record Refactor Commit Decision
+Phase 5: Record Refactor Commit
   ↓
 Return to Phase 1 for next test
 ```
@@ -87,7 +94,11 @@ This is a compilation error, not a proper RED state.
 
 ### Stop Condition
 
-**STOP #1 HERE.** Show the failing test output and wait for "go" to proceed to GREEN.
+**STOP #1 HERE.** Present the failing test output to the reviewer and wait for approval to proceed to GREEN.
+
+The reviewer will either:
+- Approve with "go" → Proceed to GREEN phase
+- Provide feedback → Address concerns and return to STOP #1
 
 ### Common Mistakes to Avoid
 
@@ -166,57 +177,67 @@ Improve code quality while maintaining all passing tests.
 
 ### Stop Condition
 
-**STOP #2 HERE** after refactoring is complete.
+**STOP #2 HERE** after refactoring is complete. Present the refactored code to the reviewer.
 
 At this stop, two paths are possible:
 
-**Path A - User gives feedback:**
+**Path A - Reviewer gives feedback:**
 - Process the requested changes
 - Run ALL tests to make sure they stay green
 - STOP again (return to STOP #2)
-- Repeat until user gives "go"
+- Repeat until reviewer gives "go"
 
-**Path B - User says "go":**
+**Path B - Reviewer approves with "go":**
 - Run ALL tests to verify everything passes
-- If refactoring was done (code changed):
-  - Record the scope assessment (local vs significant) in STOP #2 update or run log before touching git
-  - If refactoring scope is **local** (small cleanup, same files touched during GREEN, or cosmetic improvements), run `git commit --amend --no-edit`
-  - If refactoring scope is **significant** (cross-cutting changes, new abstractions, or touching files beyond immediate feature), create a separate commit with descriptive refactor message
-- If no refactoring (no changes): skip commit/amend but still note "No refactor changes" in STOP #2 update
-- Proceed immediately to Phase 5
+- Proceed immediately to Phase 5 to record the refactoring commit
 
 ### Common Mistakes to Avoid
 
 - ❌ Skipping refactoring review entirely
 - ❌ Not running tests after refactoring changes
 - ❌ Deleting passing tests (tests are the specification!)
-- ❌ Leaving the scope decision undocumented
 - ❌ Forgetting to run Phase 5 before returning to RED
-- ❌ Not waiting for user feedback at STOP #2
+- ❌ Not waiting for reviewer feedback at STOP #2
 - ❌ Proceeding to next test without stopping and waiting for approval
 
-## Phase 5: Record Refactor Commit Decision
+## Phase 5: Record Refactor Commit
 
 ### Objective
-Document and execute the git action that matches the refactoring scope.
+Create a git commit for refactoring changes, maintaining immutable git history.
 
 ### Actions to Take
 
-1. **Summarize the refactoring outcome** in STOP #2 update or work log, explicitly stating `Refactor scope: local/significant` (or "No refactor changes")
-2. **Execute the corresponding git action:**
-   - Local scope → `git commit --amend --no-edit`
-   - Significant scope → `git commit -m "<descriptive refactor commit message>"`
-   - No changes → no git command needed
-3. **Confirm the git history** matches the documented decision
+1. **Determine if code changed during refactoring:**
+   - If **code changed** → Create a refactor commit with descriptive message
+   - If **no changes** → No git action needed, just note "No refactor changes"
+
+2. **For refactoring changes, create a separate commit:**
+   ```bash
+   git commit -m "Refactor: <description of what was improved>"
+   ```
+
+   Example commit messages:
+   - `Refactor: Extract duplicate validation logic into helper function`
+   - `Refactor: Rename variables for clarity in account creation`
+   - `Refactor: Simplify error handling in reserve operation`
+
+3. **Confirm the commit was created successfully**
+
 4. **Reset focus to the specification** and return to Phase 1 (RED) for the next test
+
+### Important Notes
+
+- **Never use `git commit --amend`** - This workflow maintains immutable history
+- **Always create a new commit** for refactoring changes, regardless of scope
+- **Every commit represents a verified checkpoint** approved by the reviewer
+- **Git history serves as an audit trail** of the complete TDD process
 
 ### Common Mistakes to Avoid
 
-- ❌ Failing to document the scope decision where reviewers can see it
-- ❌ Amending when refactoring introduced broader structural changes
-- ❌ Creating a separate refactor commit for purely local cleanups
-- ❌ Forgetting to verify git history before moving on
-- ❌ Skipping back to RED without capturing the decision
+- ❌ Using `git commit --amend` to modify previous commits
+- ❌ Rewriting git history in any way
+- ❌ Forgetting to verify commit was created before moving on
+- ❌ Skipping back to RED without recording refactoring changes
 
 ## Cardinal Rules
 
@@ -225,10 +246,12 @@ Apply these rules throughout the entire workflow:
 1. **NEVER skip RED** - Must see the test fail first
 2. **NEVER skip REFACTOR** - Must review code quality
 3. **NEVER delete passing tests** - Tests are the specification
-4. **Two stops only** - STOP #1 at RED, STOP #2 after REFACTOR (not at every phase)
-5. **One test at a time** - Complete the full cycle before moving on
-6. **Test name precision** - Assert exactly what the test name promises
-7. **Minimal implementation** - Only write code driven by failing tests
+4. **NEVER rewrite git history** - No amending, force pushing, or history modification
+5. **Two stops only** - STOP #1 at RED, STOP #2 after REFACTOR (not at every phase)
+6. **One test at a time** - Complete the full cycle before moving on
+7. **Test name precision** - Assert exactly what the test name promises
+8. **Minimal implementation** - Only write code driven by failing tests
+9. **Reviewer approval required** - Must wait for approval at each verification gate
 
 ## Test Naming Convention
 
@@ -244,18 +267,23 @@ Use this convention for naming tests:
 
 ## Quick Reference
 
-### The Two Stops
-1. **STOP #1**: At RED - show failing test, wait for "go"
-2. **STOP #2**: After REFACTOR - process feedback or record commit decision
+### Interactive Workflow
+- **Executing Agent**: Performs TDD implementation work
+- **Reviewer**: Validates work at checkpoints (human or AI)
+- **Git History**: Immutable audit trail, no history rewriting
+
+### The Two Verification Gates
+1. **STOP #1**: At RED - Present failing test to reviewer, wait for approval
+2. **STOP #2**: After REFACTOR - Present refactored code to reviewer, process feedback or get approval
 
 ### Phase Flow
-- **RED**: Write failing test → STOP #1
+- **RED**: Write failing test → STOP #1 (wait for reviewer approval)
 - **GREEN**: Minimal implementation → No stop
 - **COMMIT**: Update docs, commit → No stop
-- **REFACTOR**: Improve code → STOP #2
-- **RECORD**: Document and execute git action → Return to RED
+- **REFACTOR**: Improve code → STOP #2 (wait for reviewer approval)
+- **RECORD**: Create refactor commit (if changes made) → Return to RED
 
-### Refactoring Scope Decision
-- **Local**: Small cleanups, same files, cosmetic → `git commit --amend --no-edit`
-- **Significant**: Cross-cutting, new abstractions, multiple areas → `git commit -m "Refactor: <description>"`
-- **None**: No changes → No git command, just note it
+### Refactor Commit Strategy
+- **Changes made**: Create new commit → `git commit -m "Refactor: <description>"`
+- **No changes**: No git action → Note "No refactor changes"
+- **Never use**: `git commit --amend` or any history rewriting
