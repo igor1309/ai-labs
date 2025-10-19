@@ -49,7 +49,7 @@ Phase 4: REFACTOR (Improve Code)
   ↓
 STOP #2 → Present to reviewer, process feedback or get approval
   ↓
-Phase 5: Refactor Commit
+Phase 5: REFACTOR_COMMIT
   ↓
 Return to Phase 1 for next test
 ```
@@ -64,6 +64,7 @@ Write a test that fails for the right reason, demonstrating what needs to be imp
 ### Actions to Take
 
 1. **Review the specification document** to understand requirements
+   - The specification can be a markdown file, issue tracker, or any format agreed with your reviewer
 2. **Identify the next uncompleted test** (no ✅) from specification
    - If no uncompleted tests remain, ask what to do next
 3. **Mark that test as in_progress** in the TODO list
