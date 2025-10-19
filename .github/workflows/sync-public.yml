@@ -46,10 +46,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            COMMIT_MSG="${{ github.event.head_commit.message }}"
-            if [ -z "$COMMIT_MSG" ]; then
-              COMMIT_MSG="Manual sync trigger"
-            fi
-            git commit -m "Sync from dev-skills: $COMMIT_MSG"
+            git commit -m "Sync from dev-skills" -m "${{ github.event.head_commit.message }}"
             git push
           fi
