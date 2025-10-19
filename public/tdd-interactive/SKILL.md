@@ -1,10 +1,8 @@
 ---
 name: tdd-interactive
 description: Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required.
-metadata:
-  version: "2.0.0"
-  author: Igor Malyarov
-  model: Sonnet 4.5
+version: "2.0.1"
+author: Igor Malyarov
 ---
 
 # TDD Interactive
