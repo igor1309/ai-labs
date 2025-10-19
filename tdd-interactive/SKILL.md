@@ -1,5 +1,5 @@
 ---
-name: tdd-flow
+name: tdd-interactive
 description: Strict Test-Driven Development workflow for implementing features through the RED-GREEN-REFACTOR cycle with interactive reviewer approval at two verification gates. Use when implementing code features using TDD methodology, working with test specifications, or when explicitly asked to follow TDD practices. Ensures proper test coverage, minimal implementation, and continuous refactoring through an interactive, step-by-step verified development process.
 metadata:
   version: "2.0.0"
@@ -7,7 +7,7 @@ metadata:
   model: Sonnet 4.5
 ---
 
-# TDD Flow
+# TDD Interactive
 
 ## Overview
 

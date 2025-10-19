@@ -1,1 +1,1 @@
-1. Reflect interactivity of this flow in name and description.
+1. ✅ Reflected interactivity in name (renamed to tdd-interactive) and description.
