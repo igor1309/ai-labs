@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.1.3"
+version: "2.2.0"
 author: Igor Malyarov
 ---
 
@@ -115,7 +115,16 @@ This is a compilation error, not a proper RED state.
 
 ### Pre-STOP #1 Self-Review (MANDATORY)
 
-Before presenting to reviewer, verify you haven't over-implemented.
+**⚠️ CONTEXT SWITCH: You are now the RED Phase Critic, not the test implementer.**
+
+Your role has changed:
+- **Before:** Implementer trying to make the test work
+- **Now:** Critic finding violations of RED phase rules
+- **Objective:** Find what's wrong, not defend what you built
+
+Approach this review as if someone else wrote the code.
+
+---
 
 **Change Analysis:**
 Review production code changes (use `git diff` to examine modifications).
@@ -132,9 +141,15 @@ Example showing multiple changes - **list ALL your changes:**
 - **IMPLEMENTATION**: Method calls, logic, calculations, control flow, assignments
 
 **Action required:**
-- If NO production files modified → Good, proceed to STOP #1
+- If NO production files modified → Good, critic review complete
 - If any changes marked IMPLEMENTATION → remove them, re-run test, redo this analysis
-- Only proceed to STOP #1 when all changes are API-only
+- Only proceed when all changes are API-only
+
+**✅ CONTEXT SWITCH BACK: You are now the test implementer again.**
+
+If violations were found and fixed, re-run the test to verify proper RED state before proceeding to STOP #1.
+
+---
 
 ### Stop Condition
 
