@@ -45,12 +45,22 @@ cp -r tdd-interactive ~/.claude/skills/
 
 ## Usage
 
-Claude Code will automatically load skills from the skills directory. Invoke the skill by asking Claude to use TDD methodology or explicitly requesting the interactive TDD workflow.
+Claude Code will automatically load skills from the skills directory.
 
-Example:
+### Invoking TDD Interactive
+
+Invoke the skill by requesting interactive Test-Driven Development with verification gates.
+
+**Recommended prompt:**
 ```
-"Let's implement the user authentication feature using the interactive TDD workflow"
+Implement [task/test] using Test-Driven Development with step-by-step verification gates.
+I am the reviewer and will approve at each checkpoint.
 ```
+
+**What to expect:**
+- Claude will announce: "I'm using the TDD Interactive skill..."
+- You'll approve work at two points: after RED (failing test) and after REFACTOR
+- Just say "go" to approve and proceed
 
 ## License
 
