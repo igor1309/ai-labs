@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.0.2"
+version: "2.1.0"
 author: Igor Malyarov
 ---
 
@@ -104,6 +104,27 @@ error: cannot find 'Account' in scope
 ```
 This is a compilation error, not a proper RED state.
 
+### Pre-STOP #1 Self-Review (MANDATORY)
+
+Before presenting to reviewer, verify you haven't over-implemented.
+
+**Change Analysis:**
+Review production code changes (use `git diff` to examine modifications):
+
+| File | Line(s) | Change Description | Category | Action |
+|------|---------|-------------------|----------|--------|
+| Example.swift | 23 | Added property declaration | API | Keep |
+| Example.swift | 45 | Added method call | IMPLEMENTATION | ❌ Remove |
+
+**Categories:**
+- **API**: Type declarations, method signatures, property declarations, parameters (no behavior)
+- **IMPLEMENTATION**: Method calls, logic, calculations, control flow, assignments
+
+**Action required:**
+- If NO production files modified → Good, proceed to STOP #1
+- If any changes marked IMPLEMENTATION → remove them, re-run test, redo this analysis
+- Only proceed to STOP #1 when all changes are API-only
+
 ### Stop Condition
 
 **STOP #1 HERE.** Present the failing test output to the reviewer and **wait for explicit "go" command** to proceed to GREEN.
@@ -123,6 +144,8 @@ For reviewers: See `./review-guidelines.md` for RED phase review criteria.
 ### Common Mistakes to Avoid
 
 - ❌ Treating compilation errors as RED state
+- ❌ Adding implementation logic to production code during RED phase
+- ❌ Skipping the mandatory Pre-STOP #1 Self-Review
 - ❌ Proceeding to GREEN without stopping
 - ❌ Proceeding to GREEN without explicit "go" from reviewer
 - ❌ Treating reviewer feedback as approval to proceed
