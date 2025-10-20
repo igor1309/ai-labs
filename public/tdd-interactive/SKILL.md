@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.2.0"
+version: "2.3.0"
 author: Igor Malyarov
 ---
 
@@ -56,7 +56,10 @@ Return to Phase 1 for next test
 
 ## Getting Started
 
-**Announce:** "I'm using the TDD Interactive skill. I will stop at RED and REFACTOR for your approval (just 'go' me)."
+1. **Review the specification document** to understand requirements
+   - The specification can be a markdown file, issue tracker, or any format agreed with your reviewer
+   - Identify the list of tests to be implemented
+2. **Announce:** "I'm using the TDD Interactive skill. I will stop at RED and REFACTOR for your approval (just 'go' me)."
 
 ## Phase 1: RED (Write Failing Test)
 
@@ -65,91 +68,28 @@ Write a test that fails for the right reason, demonstrating what needs to be imp
 
 ### Actions to Take
 
-1. **Review the specification document** to understand requirements
-   - The specification can be a markdown file, issue tracker, or any format agreed with your reviewer
-2. **Identify the next uncompleted test** (no ✅) from specification
-   - If no uncompleted tests remain, ask what to do next
-3. **Mark that test as in_progress** in the TODO list
-4. **Write the test matching exactly what the test name promises**
-   - If test says "should fail", only verify it throws an error
-   - If test says "should increase balance", only verify balance increases
-   - Never over-assert beyond what the test name states
+1. **Identify the next uncompleted test** (no ✅) from specification
+2. **Mark that test as in_progress** in the TODO list
+3. **Write the test using Assert-First workflow**
+   - Start with assertion matching test name promise
+   - Work backwards to action, then setup
+   - See `./red-phase-guide.md` for detailed workflow and examples
+4. **Ensure test matches exactly what the test name promises**
+   - If test says "should fail" → only verify error thrown
+   - If test says "should increase" → only verify value increased
+   - Never over-assert beyond what test name states
 5. **Run the test and verify it FAILS for the RIGHT reason**
    - For language-specific test commands, see `./testing-guide.md`
-6. **If test passes immediately** - You over-implemented during RED
-   - This violates TDD - the test must fail first
-   - Review your production code changes and remove implementation logic
-   - Return to step 4 and ensure you're writing only the test
-7. **Confirm the failure message shows exactly what's missing**
-
-### Critical Requirement: Proper RED State
-
-A proper RED state requires:
-- ✅ Code compiles successfully
-- ✅ Test runs and fails
-- ✅ Test fails for the RIGHT reason (not some other error)
-
-**Compilation errors are NOT a proper RED state.** The code must compile before reaching RED.
-
-**Focus on WHAT, not HOW:**
-- ❌ Don't think about implementation details during RED
-- ❌ Don't create mocks for imaginary dependencies
-- ✅ Write simple setup, action, and assertion
-- ✅ Think like a user: what should happen?
-
-For detailed guidance on avoiding implementation thinking during RED, see `./escalation-protocol.md`.
-
-**Example of proper RED:**
-```
-Expectation failed: (updatedAccount.availableBalance → 100) == (initialBalance + amountToAdd → 150)
-```
-This clearly shows WHAT is missing (balance not increased).
-
-**Example of improper RED:**
-```
-error: cannot find 'Account' in scope
-```
-This is a compilation error, not a proper RED state.
-
-**For concrete examples of what's wrong and what's right**, see `./red-phase-examples.md`.
-
-### Pre-STOP #1 Self-Review (MANDATORY)
-
-**⚠️ CONTEXT SWITCH: You are now the RED Phase Critic, not the test implementer.**
-
-Your role has changed:
-- **Before:** Implementer trying to make the test work
-- **Now:** Critic finding violations of RED phase rules
-- **Objective:** Find what's wrong, not defend what you built
-
-Approach this review as if someone else wrote the code.
-
----
-
-**Change Analysis:**
-Review production code changes (use `git diff` to examine modifications).
-
-Example showing multiple changes - **list ALL your changes:**
-
-| File | Line(s) | Change Description | Category | Action |
-|------|---------|-------------------|----------|--------|
-| Example.swift | 23 | Added property declaration | API | Keep |
-| Example.swift | 45 | Added method call | IMPLEMENTATION | ❌ Remove |
-
-**Categories:**
-- **API**: Type declarations, method signatures, property declarations, parameters (no behavior)
-- **IMPLEMENTATION**: Method calls, logic, calculations, control flow, assignments
-
-**Action required:**
-- If NO production files modified → Good, critic review complete
-- If any changes marked IMPLEMENTATION → remove them, re-run test, redo this analysis
-- Only proceed when all changes are API-only
-
-**✅ CONTEXT SWITCH BACK: You are now the test implementer again.**
-
-If violations were found and fixed, re-run the test to verify proper RED state before proceeding to STOP #1.
-
----
+   - Proper RED: test compiles and fails with clear message
+   - See `./red-phase-guide.md` for RED state requirements
+6. **If test passes immediately** → You over-implemented
+   - Remove implementation logic, re-run test
+7. **Perform Pre-STOP #1 Self-Review**
+   - Switch to RED Phase Critic role
+   - Review production code changes (git diff)
+   - Categorize as API vs IMPLEMENTATION
+   - Remove any IMPLEMENTATION changes
+   - See `./red-phase-guide.md` for complete review process
 
 ### Stop Condition
 
@@ -167,16 +107,7 @@ The reviewer will either:
 
 For reviewers: See `./review-guidelines.md` for RED phase review criteria.
 
-### Common Mistakes to Avoid
-
-- ❌ Treating compilation errors as RED state
-- ❌ Adding implementation logic to production code during RED phase
-- ❌ Skipping the mandatory Pre-STOP #1 Self-Review
-- ❌ Proceeding to GREEN without stopping
-- ❌ Proceeding to GREEN without explicit "go" from reviewer
-- ❌ Treating reviewer feedback as approval to proceed
-- ❌ Writing test that passes immediately without verifying RED
-- ❌ Over-asserting (checking more than test name promises)
+**For detailed guidance, common mistakes, and examples**, see `./red-phase-guide.md`.
 
 ## Phase 2: GREEN (Make Test Pass)
 
