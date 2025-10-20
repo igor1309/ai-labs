@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.1.1"
+version: "2.1.2"
 author: Igor Malyarov
 ---
 
@@ -53,6 +53,10 @@ Return to Phase 1 for next test
 ```
 
 **If you encounter problems during any phase**, see `./escalation-protocol.md` for guidance on when and how to ask for help.
+
+## Getting Started
+
+**Announce:** "I'm using the TDD Interactive skill. I will stop at RED and REFACTOR for your approval (just 'go' me)."
 
 ## Phase 1: RED (Write Failing Test)
 
