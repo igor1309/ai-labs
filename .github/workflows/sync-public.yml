@@ -46,6 +46,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Sync from dev-skills" -m "${{ github.event.head_commit.message }}"
+            git commit -m "Sync from dev-skills"
             git push
           fi
