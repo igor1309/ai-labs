@@ -52,10 +52,13 @@ let account = Account(...)         // "What dependencies does Account need?"
 
 A proper RED state requires:
 - ✅ Code compiles successfully
-- ✅ Test runs and fails
-- ✅ Test fails for the RIGHT reason (not some other error)
+- ✅ Test runs and fails with **assertion failure**
 
-**Compilation errors are NOT a proper RED state.** The code must compile before reaching RED.
+**NOT proper RED state:**
+- ❌ Compilation errors
+- ❌ Fatal errors or crashes (fatalError, "Not implemented", exceptions)
+
+Code must compile and run to assertion.
 
 ### Focus on WHAT, not HOW
 
@@ -69,16 +72,18 @@ For detailed guidance on avoiding implementation thinking during RED, see `./esc
 ### Example of proper RED
 
 ```
-Expectation failed: (updatedAccount.availableBalance → 100) == (initialBalance + amountToAdd → 150)
+AssertionError: Expected 150, got 100
 ```
-This clearly shows WHAT is missing (balance not increased).
+Test reached assertion and failed. This is proper RED.
 
-### Example of improper RED
+### Examples of improper RED
 
 ```
-error: cannot find 'Account' in scope
+error: cannot find 'Account' in scope           // Compilation error
+Fatal error: Not implemented                     // Crash before assertion
 ```
-This is a compilation error, not a proper RED state.
+
+Both prevent test from reaching assertion. Not proper RED.
 
 **For concrete examples of what's wrong and what's right**, see `./red-phase-examples.md`.
 
@@ -167,6 +172,7 @@ If violations were found and fixed, re-run the test to verify proper RED state b
 ## Common Mistakes to Avoid
 
 - ❌ Treating compilation errors as RED state
+- ❌ Treating fatal errors / crashes as RED state
 - ❌ Adding implementation logic to production code during RED phase
 - ❌ Skipping the mandatory Pre-STOP #1 Self-Review
 - ❌ Proceeding to GREEN without stopping
