@@ -1,465 +1,531 @@
 # Jason Gorman Research Integration Plan
 
-## Overview
+## The Actual Problem
 
-Comprehensive research on Jason Gorman's "Proper RED" practices directly addresses the #1 problem in tdd-interactive: agent over-implementation during RED phase.
+**Where:** Phase 1 (RED), Pre-STOP #1 Self-Review (SKILL.md:87-92)
 
-**Sources:**
-- `docs/research/Jason Gorman/Jason Gorman's Actionable Guides_ Writing Proper F.md` (comprehensive with 68 citations)
-- `docs/research/Jason Gorman/Proper RED in TDD by JG.md` (concise NotebookLM summary with unique boundary testing & domain language guidance)
+**What's failing:** Agents create collaborators, dependencies, and types that the test doesn't observe, then justify them as "API changes."
 
-**Key Insight:** The research provides specific, actionable practices that align perfectly with observed agent failures (premature design decisions, unnecessary dependencies, implementation thinking).
+### Example: The Collaborator Cascade
 
----
+Test name: `test_reserve_shouldDecreaseBalance_whenSuccessful`
 
-## Why This Matters
-
-### Current Problem
-Agents consistently over-implement during RED phase despite existing guardrails:
-- Add unnecessary dependencies
-- Make implementation decisions disguised as "API-only"
-- Stay in execution mode even during self-review
-
-### How Research Helps
-- Provides concrete checkpoints: compilation error → assertion failure progression
-- Establishes "Golden Rule" framework agents can follow
-- Offers specific language for what "minimal" means
-- Defines clear failure types agents can recognize
-
----
-
-## Core Practices to Integrate
-
-### High Priority (Integrate First)
-
-#### 1. **The Golden Rule - Usage-Driven Design**
-- Don't write source code until test requires it
-- Reference in TEST first, let code not compile
-- Add minimal declarations to fix compilation
-- **Integration target:** RED phase Getting Started, Pre-STOP #1 checklist
-
-#### 2. **Assertion-First Workflow**
-- Write assertion FIRST (the question)
-- Work backwards to action → setup
-- Prevents wrong setup for the question
-- **Integration target:** RED phase guide, replace/strengthen existing assertion-first section
-
-#### 3. **Implement Just Enough to See Assertion Fail**
-- Distinguish compilation errors from assertion failures
-- Add stubs that return empty/default values (not null)
-- Run test until ASSERTION fails (not NullPointer)
-- **Integration target:** New section in red-phase-guide.md, Pre-STOP #1 checklist
-
-#### 4. **One Reason to Fail**
-- Each test asks ONE question
-- Prevents agents solving too much at once
-- Baby steps enforcement mechanism
-- **Integration target:** Review guidelines, escalation triggers
-
-### Medium Priority (Strengthen Existing)
-
-#### 5. **Triangulation**
-- Use when solution isn't obvious
-- Start with simplest test (can pass with literal)
-- Force generalization with second test
-- **Integration target:** Add decision tree to escalation protocol
-
-#### 6. **Baby Steps with Time Boundaries**
-- Get to GREEN within 1-2 minutes
-- Fast feedback loops
-- Everything worked recently, bug must be in last few lines
-- **Integration target:** Consider adding time guidance to phases
-
-#### 7. **Use Domain/Customer Language**
-- Name classes, methods, variables using customer/domain terms
-- Establishes shared understanding with stakeholders
-- Helps tests serve as living documentation
-- **Integration target:** Add to test naming section in red-phase-guide.md
-- **Source:** Proper RED in TDD by JG.md
-
-#### 8. **Choose Boundary Test Data**
-- Select test data that highlights boundaries in logic
-- Example: For credit limit of 100, test with 100.01 (just over boundary)
-- Makes business rules explicit and clear
-- **Integration target:** Add to red-phase-guide.md test construction section
-- **Source:** Proper RED in TDD by JG.md
-
-#### 9. **Fluent Assertions for Better Feedback**
-- Use assertion libraries (like Hamcrest) that provide detailed failure messages
-- Helps pinpoint exactly what failed in complex assertions
-- Consider this for multi-language examples
-- **Integration target:** Add to testing-guide.md tool recommendations
-- **Source:** Proper RED in TDD by JG.md
-
-### Lower Priority (Context & Advanced)
-
-#### 10. **Customer Tests as Entry Point**
-- TDD can start with failing customer test (executable specification)
-- Customer test defines acceptance criteria
-- Drive implementation with unit tests in RED-GREEN-REFACTOR
-- **Integration target:** Add context note to SKILL.md introduction
-- **Source:** Proper RED in TDD by JG.md
-
----
-
-## Specific Integration Tasks
-
-### Task 1: Update `red-phase-guide.md`
-
-**Add to top:**
-```markdown
-## Foundational Principle: Test Your Tests
-
-Always see your test fail for the RIGHT reason before making it pass.
-This ensures the test will actually catch bugs if implementation is wrong.
-```
-
-**Add progression section:**
-```markdown
-## The Three-Stage RED Progression
-
-1. **Won't Compile** - Test references non-existent code (Golden Rule in action)
-2. **Compiles but Runtime Error** - Stub added but returns null/throws
-3. **Assertion Fails** ✓ - Proper RED state, ready for GREEN
-
-Only stage 3 is proper RED. Stages 1-2 are setup to reach proper RED.
-```
-
-**Strengthen existing assertion-first:**
-- Add "the test is about the QUESTION" framing
-- Include "work backwards" explicit instruction
-- Add example showing assertion → action → setup order
-
-**Add minimal stub definition:**
-```markdown
-## What "Minimal Stub" Means
-
-- Return empty collections (not null)
-- Empty method bodies (not throwing NotImplemented)
-- Default/zero values for primitives
-- NO logic, NO decisions, NO implementation thinking
-
-Example:
+**Test code:**
 ```swift
-func getTitles() -> [String] {
-    return []  // Empty, not implementation
+let account = Account(balance: 100)
+try account.reserve(50)
+XCTAssertEqual(account.balance, 50)  // Only observes balance change
+```
+
+**What agent creates:**
+```swift
+// Production code - RED phase
+
+protocol Repository {
+    func save(_ record: ReservationRecord) throws
+}
+
+struct ReservationRecord {
+    let accountId: UUID
+    let amount: Money
+    let timestamp: Date
+    let status: ReservationStatus
+}
+
+enum ReservationStatus {
+    case pending, completed, failed
+}
+
+struct Account {
+    let balance: Int
+    private let repository: Repository  // Injected dependency
+
+    init(balance: Int, repository: Repository) {
+        self.balance = balance
+        self.repository = repository
+    }
+
+    func reserve(_ amount: Int) throws {
+        // Maybe even implementation logic
+    }
+}
+
+// Test code - RED phase
+
+class RepositorySpy: Repository {
+    var savedRecords: [ReservationRecord] = []
+
+    func save(_ record: ReservationRecord) throws {
+        savedRecords.append(record)
+    }
 }
 ```
+
+**Agent's justification at Pre-STOP #1:**
+- "These are just API changes"
+- "The test needs repository to verify behavior"
+- "I'm just setting up the structure"
+- "No implementation logic, just declarations"
+
+**What test actually observes:**
+- Balance decreased from 100 to 50
+- Nothing about Repository
+- Nothing about ReservationRecord
+- Nothing about persistence
+
+**Root cause:** Agent is thinking "HOW will reserve work internally?" instead of "WHAT does THIS test observe?"
+
+---
+
+## The Core Gorman Insight
+
+**Practice #3: The Golden Rule**
+> "Don't write source code until a test requires it."
+
+**Our application:**
+> "Don't write source code until THIS test OBSERVES it."
+
+**The question that fixes this:**
+
+For each production code change, ask:
+1. **"Does THIS test OBSERVE this code?"**
+   - Does the test assert on it?
+   - Does the test verify its behavior?
+   - Does the test check its state?
+
+2. If NO → **Delete it immediately**
+   - You invented it thinking about implementation
+   - Future tests will add it when needed
+
+3. If YES → **Keep it, but check each member**
+   - Does the interface match ONLY what test asserts?
+   - Are you adding extra methods/properties the test doesn't use?
+
+---
+
+## The Fix: Update Pre-STOP #1 Self-Review
+
+### Current Self-Review (SKILL.md:87-92)
+
+```
+7. Perform Pre-STOP #1 Self-Review
+   - Switch to RED Phase Critic role
+   - Review production code changes (git diff)
+   - Categorize as API vs IMPLEMENTATION
+   - Remove any IMPLEMENTATION changes
 ```
 
-**Add test naming and data selection guidance:**
+**Problem:** "API vs IMPLEMENTATION" is too vague. Agents classify collaborators as "API."
+
+### Enhanced Self-Review (for red-phase-guide.md)
+
 ```markdown
-## Test Style and Specification
+## Pre-STOP #1 Self-Review: RED Phase Critic
 
-### Use Domain Language
-- Name classes, methods, and variables using customer/domain terms
-- Tests should read like specifications in business language
-- Example: `customerExceedsCreditLimit` not `testLimit`
+Before presenting at STOP #1, switch roles and perform self-review.
 
-### Choose Boundary Test Data
-- Select test data that highlights boundaries in business logic
-- For credit limit of $100, test with $100.01 (just over limit)
-- For age requirement of 18, test with 17 (under) and 18 (at boundary)
-- Makes the rule explicit: "What exact value causes this behavior change?"
+### Role Switch: Implementer → Critic
 
-Example:
+**Announce the switch:**
+- "Switching to RED Phase Critic role for self-review"
+- Review with fresh perspective
+- "Self-review complete" or "Found issues, fixing..."
+
+### The Core Question
+
+**Quick examples to understand "observe":**
+
 ```swift
-func test_customerExceedsCreditLimit_whenPurchaseIs10001() {
-    // Credit limit is $100.00
-    let purchase = Money(dollars: 100, cents: 1)  // Boundary + 1 cent
-    XCTAssertTrue(customer.exceedsLimit(purchase))
+// Test code:
+let account = Account(balance: 100)
+try account.reserve(50)
+XCTAssertEqual(account.balance, 50)
+```
+
+**What test observes:**
+- `Account` type → YES (test creates it)
+- `balance` property → YES (test asserts on it)
+- `reserve()` method → YES (test calls it)
+- `Repository` protocol → NO (test doesn't mention it)
+- `RepositorySpy` → NO (test doesn't verify spy)
+
+---
+
+Run `git diff` and review each production code change.
+
+For EACH class, protocol, type, property, method, or parameter:
+
+**"Does THIS test OBSERVE this code?"**
+
+Observe means **test's assertions directly check it**:
+- ✓ Test asserts on it: `XCTAssertEqual(account.balance, 50)`
+- ✓ Test verifies it was called: `XCTAssertTrue(spy.wasCalled)`
+- ✓ Test creates it in setup: `Account(balance: 100)`
+
+Does NOT mean:
+- ❌ Test calls method that MIGHT use this internally
+- ❌ "reserve needs Repository to work" (that's implementation, not observation)
+- ❌ "The system will need this eventually"
+- ❌ "This makes the architecture better"
+- ❌ "Future tests might use this"
+
+**Remember:** "Test calls reserve" ≠ "Test observes Repository that reserve uses"
+
+### Decision Tree
+
+```
+Does THIS test observe this code?
+│
+├─ NO → Delete it immediately
+│   └─ Future tests will add it when needed
+│
+└─ YES → Keep it, but check each member
+
+    For each property/method/parameter in this type:
+    │
+    ├─ Does test reference it? → Keep
+    ├─ Does test assert on it? → Keep
+    ├─ Does test call it? → Keep
+    └─ Otherwise → Delete
+
+    Example:
+    struct Account {
+        var balance: Int        // Test asserts on it → Keep
+        var currency: String    // Test doesn't reference → Delete
+        func reserve(...) { }   // Test calls it → Keep
+    }
+```
+
+### Common Collaborator Cascade Pattern
+
+**Pattern: Invented Dependencies**
+
+Test observes: Balance decreased
+```swift
+XCTAssertEqual(account.balance, 50)
+```
+
+Agent adds:
+```swift
+protocol Repository { ... }  // ❌ Test doesn't observe Repository
+class RepositorySpy { ... }  // ❌ Test doesn't verify spy calls
+init(repository: Repository) // ❌ Test doesn't inject repository
+```
+
+**Question:** Does test observe Repository?
+- Test doesn't assert on repository calls
+- Test doesn't verify saved records
+- Test doesn't check repository state
+
+**Answer:** NO → Delete all Repository code
+
+**Correct RED:**
+```swift
+struct Account {
+    var balance: Int
+
+    func reserve(_ amount: Int) throws {
+        // Empty stub
+    }
 }
 ```
+
+**Common agent counter-argument:**
+> "But test calls reserve(50), and reserve needs Repository to persist the reservation!"
+
+**Response:**
+Does test ASSERT on Repository? Does test CHECK if anything was persisted?
+```swift
+XCTAssertEqual(account.balance, 50)  // Only checks balance
+// No assertion: XCTAssertEqual(spy.savedRecords.count, 1)
+// No assertion: XCTAssertTrue(repository.wasCalled)
 ```
 
-### Task 2: Update Pre-STOP #1 Checklist
+Test doesn't observe Repository → Delete it. What method internally needs is GREEN phase concern, not RED.
 
-**Add to `review-guidelines.md` RED phase checklist:**
+---
 
-```markdown
-### Before Requesting Approval (Pre-STOP #1)
+### The Minimal Stub Rule
 
-Agent Self-Review Checklist:
-- [ ] Test fails with ASSERTION error (not compilation/NullPointer)
-- [ ] I wrote assertion FIRST, worked backwards to setup
-- [ ] Test asks only ONE question (one reason to fail)
-- [ ] Test name clearly states WHAT should happen (not implementation detail)
-- [ ] I added ONLY declarations needed to make test compile
-- [ ] No implementation logic exists (only stubs with empty/default returns)
-- [ ] I can explain what rule/behavior this test verifies
+After deleting invented collaborators, what's left?
 
-Reviewer Checklist:
-[existing items...]
-- [ ] Test fails for right reason (assertion, not error)
-- [ ] Only minimal stubs exist, no logic
+**Only code the test directly references in assertions or setup:**
+- Test creates `Account(balance: 100)` → Need `balance` property and init
+- Test calls `account.reserve(50)` → Need `reserve()` method
+- Test asserts `account.balance` → Already have it
+
+**Stubs return empty/default:**
+- Methods that return values: `return 0`, `return []`, `return ""`
+- Methods that throw: Empty body (don't throw yet)
+- Methods that return objects: Defer until test requires it
+
+---
+
+### Before Deletion: Compilation Safety
+
+Before deleting any code, verify test doesn't directly reference it:
+
+**For each type/protocol/class you plan to delete:**
+1. `grep "TypeName" TestFile.swift`
+2. If found in test → Keep it (but check its members)
+3. If NOT found in test → Safe to delete
+
+**Example:**
+```bash
+grep "Repository" AccountTests.swift  # No results → Safe to delete
+grep "Account" AccountTests.swift     # Found → Keep (check members)
 ```
 
-### Task 3: Update `escalation-protocol.md`
+This prevents deletion trial-and-error loops.
 
-**Add new escalation trigger:**
+---
 
-```markdown
-## Trigger: Thinking About Implementation During RED
+### Safety Check: Did I Delete Too Much?
 
-**Symptoms:**
-- Finding yourself thinking about HOW to implement
-- Considering data structures or algorithms
-- Adding properties, parameters, or types beyond what test requires
-- Justifying code as "just API" when it makes decisions
+After deletions, test must still compile.
 
-**Immediate Actions:**
-1. STOP implementation thinking
-2. Review "The Golden Rule": Don't write source code until test requires it
-3. Review "Assertion-First": Did I write assertion first and work backwards?
-4. Delete any implementation logic
-5. Reset to minimal stubs (empty returns, default values)
+If compilation fails:
+- You deleted something test directly references
+- Restore ONLY what test directly uses
+- Don't restore extras
 
-**If stuck after reset:**
-- Escalate to reviewer
-- Ask: "What is the absolute minimum I need to add to see this assertion fail?"
+Run the test - verify it still fails with assertion error (not compile error).
+
+---
+
+### Self-Review Integrity Check
+
+Before completing review, ask yourself:
+
+**Did I find anything to delete?**
+
+If NO, run these concrete checks:
+
+**Step 1:** Search production code for collaborator patterns:
+```bash
+grep -E "protocol|class.*Spy|Repository|Manager|Service|Validator" ProductionFile.swift
 ```
 
-**Add triangulation guidance:**
-
-```markdown
-## When Solution Isn't Obvious
-
-If you're tempted to write complex logic immediately, use triangulation:
-
-1. Write simplest possible test (can pass with literal value)
-2. Make it pass with hardcoded value (yes, actually return 42!)
-3. Write ANOTHER test that forces generalization
-4. Refactor to general solution
-5. Repeat until no more tests needed
-
-Don't leap across the lake - use stepping stones.
+**Step 2:** For each match, search test file:
+```bash
+grep "MatchedName" TestFile.swift
 ```
 
-### Task 4: Create Quick Reference
+**Step 3:** If test doesn't contain that name → Delete it from production code
 
-**New file: `public/tdd-interactive/red-phase-quick-ref.md`**
+**Step 4:** If still nothing to delete after this check → OK to proceed
 
-Condensed (~50 lines) version with:
-- The 8 practices (bullet points only)
-- RED phase checklist
-- Common mistakes with fixes
-- Link to full research document
+**This check prevents rubber-stamping.**
 
-### Task 5: Add Multi-Language Examples
+Expect to find issues during self-review. If you find nothing, look harder before approving yourself.
 
-**Extend examples in red-phase-guide.md:**
+---
 
-Add Swift, TypeScript, Python equivalents of:
-- Empty collection returns
-- Minimal stub implementations
-- Assertion-first progression
+### Completing Self-Review
 
-### Task 6: Update `testing-guide.md` with Tool Recommendations
+Briefly announce what you found:
+- What test observes
+- What production code you kept
+- What you deleted (if anything)
 
-**Add fluent assertion libraries section:**
+Example (adapt to your situation):
 
-```markdown
-## Recommended Testing Tools
+```
+Self-review complete.
 
-### Assertion Libraries
+Test observes: account.balance decreased after reserve()
+Kept: Account struct, balance property, reserve() method
+Deleted: Repository protocol, RepositorySpy (test didn't assert on them)
 
-Using fluent assertion libraries provides better failure messages:
-
-**Swift:**
-- Nimble: `expect(value).to(equal(42))` provides detailed failure context
-- Built-in XCTest: Less verbose but adequate for simple cases
-
-**JavaScript/TypeScript:**
-- Jest: Built-in expect with good messages
-- Chai: `expect(value).to.equal(42)` fluent style
-
-**Python:**
-- pytest: Built-in assert with detailed introspection
-- Hamcrest: `assert_that(value, equal_to(42))` fluent style
-
-Why fluent assertions matter:
-- Pinpoint exactly which part of complex assertion failed
-- Provide helpful diff output for mismatches
-- Make test intent clearer
+Ready for STOP #1.
 ```
 
-### Task 7: Add Customer Test Context to SKILL.md
+Keep it concise. The content matters, not the format.
 
-**Add to introduction or "When to Use" section:**
+---
 
-```markdown
-## Test-Driven Development Levels
+### If Self-Review Finds Over-Implementation
 
-This skill focuses on **unit-test-driven development** (the inner TDD loop).
+1. Delete the code test doesn't observe
+2. Run test - verify it still fails (assertion error, not compile error)
+3. STOP at STOP #1 again
+4. Wait for reviewer approval
 
-**Broader context:**
-- Customer/Acceptance Tests: Define "what" the feature should do (outer loop)
-- Unit Tests: Drive "how" to implement it (inner loop, this skill)
-
-**Workflow:**
-1. Start with failing customer test (executable specification)
-2. Identify first unit of work needed
-3. Use this skill's RED-GREEN-REFACTOR cycle for implementation
-4. Return to customer test to verify progress
-5. Repeat until customer test passes
-
-**Note:** This skill doesn't cover customer test creation, but assumes you have clear acceptance criteria to work toward.
+Do NOT assume it's fixed. Present again at STOP #1.
 ```
 
 ---
 
-## Content Organization
+## Implementation Plan
 
-### What Goes Where
+### Task 1: Update red-phase-guide.md
 
-**`red-phase-guide.md`** - Main workflow guide
-- Three-stage progression
-- Assertion-first methodology
-- Golden Rule
-- Minimal stub definitions
-- Examples
+**Location:** Replace existing Pre-STOP #1 Self-Review section
 
-**`review-guidelines.md`** - Verification checklists
-- Pre-STOP #1 extended checklist
-- "Right reason to fail" verification
+**Content:** The enhanced self-review above (starting from "## Pre-STOP #1 Self-Review")
 
-**`escalation-protocol.md`** - When/how to get help
-- Implementation thinking trigger
-- Triangulation guidance
-- Reset procedures
+**Estimated tokens:** ~530 tokens (compared to current ~200)
 
-**`red-phase-quick-ref.md`** - New condensed reference
-- 8 practices summary
-- Checklist only
-- Fast lookup during execution
+**Trade-off:** Worth it - this is the critical decision point where over-implementation happens
 
-**`docs/` or `references/`** - Full research
-- Keep complete Gorman research document
-- Link from skill files
+**Key improvements:**
+- Examples-first approach (agents learn by example)
+- Concrete per-member checklist (not abstract "verify minimal")
+- Safety check for over-deletion
+- Integrity check to prevent rubber-stamping
+- Flexible output format (content over format)
 
----
+### Task 2: Update escalation-protocol.md
 
-## Potential Issues to Address
+**Location:** Add new escalation trigger
 
-### 1. Redundancy Check
-Before integration, audit existing content in:
-- `red-phase-guide.md`
-- `escalation-protocol.md`
-- `review-guidelines.md`
-- `SKILL.md`
+**Content:**
+```markdown
+## Escalation Trigger: "Test Needs This Dependency"
 
-Remove contradictions, consolidate overlaps.
+### Symptom
 
-### 2. Length Management
-Full Gorman research is 328 lines. Options:
-- ✓ Create condensed version for skill prompt
-- ✓ Keep full version as reference documentation
-- Link between them
+You're thinking:
+- "Test can't work without a Repository"
+- "I need to inject this collaborator for testing"
+- "The spy is necessary to verify behavior"
 
-### 3. Language-Specific Gaps
-Current examples are Java-heavy. Need:
-- Swift examples (for iOS projects)
-- TypeScript/JavaScript examples
-- Python examples
+But test doesn't have any assertions about the collaborator.
 
-### 4. Time Boundaries
-Research mentions "1-2 minutes" for baby steps. Consider:
-- Is this practical for agents?
-- Should we add time guidance to phases?
-- Or keep it conceptual?
+**Example:**
+```swift
+XCTAssertEqual(account.balance, 50)  // No assertion about Repository
+```
+
+Yet you're adding:
+```swift
+protocol Repository { }  // Test doesn't verify this
+```
+
+### Why This Is a Problem
+
+You're thinking about HOW the implementation will work (dependencies, architecture)
+instead of WHAT this test observes (assertions, observable behavior).
+
+### Immediate Action
+
+**Ask:** "Does THIS test assert on Repository behavior?"
+
+- Test asserts on it? → Keep
+- Test verifies calls to it? → Keep
+- Test checks its state? → Keep
+- Otherwise → Delete it
+
+**If NO to all → Delete it. Don't escalate. Just delete.**
+
+### When to Escalate
+
+If you genuinely can't tell whether test observes the code:
+- Escalate BEFORE STOP #1
+- Ask reviewer: "Does this test require X, or am I inventing it?"
+
+### When NOT to Escalate
+
+- Test clearly doesn't assert on collaborator → Just delete it
+- You think "but implementation needs it!" → That's GREEN phase, delete it
+- You feel uncertain → When in doubt, delete it. Reviewer will tell you if needed.
+
+### Edge Case: Test Injects Collaborator But Doesn't Assert On It
+
+**Scenario:**
+```swift
+let spy = RepositorySpy()
+let account = Account(balance: 100, repository: spy)
+try account.reserve(50)
+XCTAssertEqual(account.balance, 50)  // Doesn't check spy
+```
+
+**Question:** Is Repository observed?
+- Test creates spy but doesn't verify it
+- Test passes spy to Account but doesn't assert on spy behavior
+
+**Answer:** Keep the collaborator (test explicitly constructs and injects it), but note this is a test smell. The test setup suggests intent to verify Repository but assertion is missing. Don't delete, but mention in self-review output: "Note: Test injects Repository but doesn't assert on it - possible missing assertion."
+```
 
 ---
 
 ## Success Metrics
 
-How will we know if integration worked?
+### At STOP #1 (Primary Goal)
 
-### Observable Changes
-- [ ] Agents reference "Golden Rule" in self-reviews
-- [ ] Agents explicitly check: "Does test fail with assertion error?"
-- [ ] Agents catch themselves doing implementation thinking
-- [ ] Agents use triangulation language when stuck
-- [ ] Pre-STOP #1 rejections decrease (agents self-correct)
+**Improvement indicators:**
+- [ ] git diff shows NO protocols/types test doesn't observe
+- [ ] Agent self-review output lists what was deleted
+- [ ] No collaborators added unless test asserts on them
+- [ ] Self-review explicitly shows checking "Does THIS test OBSERVE this?"
 
-### Negative Indicators (Things to Monitor)
-- Agents become paralyzed by too many rules
-- Checklist becomes mechanical (box-ticking without understanding)
-- Integration contradicts existing skill guidance
+**Reduction in reviewer feedback:**
+- [ ] Fewer "test doesn't use this" comments
+- [ ] Fewer "you invented this dependency" rejections
+- [ ] Agents catch collaborator cascade before presenting
 
----
+### Warning Signs (Improvements Not Working)
 
-## Implementation Sequence
+**If agents delete too much:**
+- Test won't compile after deletions
+- Agent restores everything, back to square one
+- **Fix:** Emphasize safety check - "test must compile"
 
-### Phase 1: Foundation (Do First)
-1. Create quick reference document
-2. Update red-phase-guide.md with:
-   - Three-stage progression
-   - Minimal stub definitions
-   - Strengthen assertion-first
-   - Domain language guidance
-   - Boundary test data selection
+**If agents become paralyzed:**
+- Spend excessive time asking "does test observe X?" for every line
+- Can't make decisions
+- **Fix:** Simplify to "Does test assert on it?" - most basic version
 
-### Phase 2: Verification (Next)
-3. Update Pre-STOP #1 checklist in review-guidelines.md
-4. Add "right reason to fail" checks
-
-### Phase 3: Support (Then)
-5. Update escalation-protocol.md with:
-   - Implementation thinking trigger
-   - Triangulation guidance
-6. Add multi-language examples
-7. Update testing-guide.md with fluent assertion recommendations
-
-### Phase 4: Context & Documentation (Finally)
-8. Add customer test context to SKILL.md
-9. Update references paths (files now in docs/research/Jason Gorman/)
-10. Verify all links work
+**If agents mechanically comply:**
+- Produce format perfectly but don't delete anything
+- Self-review becomes rubber stamp
+- **Fix:** Integrity check should catch this - "Did you find anything to delete?"
 
 ---
 
 ## Open Questions
 
-1. **Should we version this as v2.4.0 or v3.0.0?**
-   - Significant enough change for major version?
-   - Or incremental improvement?
+1. **Should we add TypeScript/Python examples?**
+   - Current: Swift examples only
+   - Decision: Add if agents work in those languages, otherwise skip for now
 
-2. **How much detail in Pre-STOP #1 checklist?**
-   - Too detailed = mechanical
-   - Too vague = ineffective
-
-3. **Time boundaries - yes or no?**
-   - "Get to GREEN in 1-2 minutes"
-   - Helpful constraint or unrealistic for agents?
-
-4. **Triangulation - main workflow or escape hatch?**
-   - Should it be in main RED guide?
-   - Or only in escalation protocol?
+2. **Version bump?**
+   - Significant change to Pre-STOP #1
+   - Suggestion: v2.4.0
 
 ---
 
 ## Next Steps
 
-1. **Review this plan** - Adjust priorities/sequence as needed
-2. **Choose Phase 1 starting point** - Quick ref or red-phase-guide update?
-3. **Create test case** - Pick real agent session log to validate against
-4. **Implement incrementally** - One task at a time with testing
-5. **Update log** - Track what worked/didn't work
+1. **Implement Task 1** - Update red-phase-guide.md Pre-STOP #1 section
+2. **Test with real spec** - Use spec with tests that check simple state changes
+3. **Observe behavior** - Does agent delete invented collaborators?
+4. **Watch for failure modes:**
+   - Deletes too much (test won't compile)
+   - Analysis paralysis (can't decide)
+   - Mechanical compliance (produces format, doesn't think)
+5. **Adjust based on observations**
+6. **Implement Task 2** if needed
+7. **Update to v2.4.0**
+8. **Document results** in log
 
 ---
 
 ## References
 
 ### Source Research
-- `docs/research/Jason Gorman/Jason Gorman's Actionable Guides_ Writing Proper F.md` - Comprehensive guide with 68 citations
-- `docs/research/Jason Gorman/Proper RED in TDD by JG.md` - Concise NotebookLM summary with unique boundary testing & domain language guidance
+- `docs/research/Jason Gorman/Jason Gorman's Actionable Guides_ Writing Proper F.md`
+- `docs/research/Jason Gorman/Proper RED in TDD by JG.md`
+
+**Key insight used:** Practice #3 "The Golden Rule" - Don't write source code until a test requires it
+
+**Our adaptation:** Don't write source code until THIS test OBSERVES it
 
 ### Current Skill Files
-- `public/tdd-interactive/SKILL.md` - Main skill definition
-- `public/tdd-interactive/red-phase-guide.md` - RED phase workflow
-- `public/tdd-interactive/review-guidelines.md` - Verification checklists
-- `public/tdd-interactive/escalation-protocol.md` - When/how to escalate
-- `public/tdd-interactive/testing-guide.md` - Language-specific test runners
+- `public/tdd-interactive/SKILL.md` - v2.3.0
+- `public/tdd-interactive/red-phase-guide.md` - Target for Task 1
+- `public/tdd-interactive/escalation-protocol.md` - Target for Task 2
 
-### Problem Analysis
-- `TODO/tdd-practitioner.md` - Documented agent over-implementation issues
-- Session logs: (link to specific problematic sessions when available)
+### Critical Lines
+- SKILL.md:87-92 - Current Pre-STOP #1 self-review (too vague)
+- SKILL.md:259 - Cardinal Rule: "Nothing can exist unless a test is directly or indirectly using it"
