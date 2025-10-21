@@ -103,19 +103,30 @@ Review production code changes (use `git diff` to examine modifications).
 
 Example showing multiple changes - **list ALL your changes:**
 
-| File | Line(s) | Change Description | Category | Action |
-|------|---------|-------------------|----------|--------|
-| Example.swift | 23 | Added property declaration | API | Keep |
-| Example.swift | 45 | Added method call | IMPLEMENTATION | ❌ Remove |
+| File | Line(s) | Change Description | Test Observes? | Action |
+|------|---------|-------------------|----------------|--------|
+| Example.swift | 23 | Added `balance` property | YES (test asserts on it) | Keep |
+| Example.swift | 31 | Added `Repository` protocol | NO (test doesn't mention it) | ❌ Remove |
+| Example.swift | 45 | Added method call | NO (implementation logic) | ❌ Remove |
 
-**Categories:**
-- **API**: Type declarations, method signatures, property declarations, parameters (no behavior)
-- **IMPLEMENTATION**: Method calls, logic, calculations, control flow, assignments
+**Decision criteria: "Does THIS test OBSERVE this code?"**
+
+Test observes code when:
+- Test asserts on it: `assertEqual(account.balance, 50)`
+- Test verifies it: `assertTrue(spy.wasCalled)`
+- Test creates it: `Account(balance: 100)`
+
+Test does NOT observe:
+- Dependencies method might use internally (Repository, Validator, etc.)
+- Logic inside methods
+- Future needs or "better architecture"
+
+**Common mistake:** Agent creates Repository because "reserve needs Repository" → but test doesn't assert on Repository → Delete it
 
 **Action required:**
 - If NO production files modified → Good, critic review complete
-- If any changes marked IMPLEMENTATION → remove them, re-run test, redo this analysis
-- Only proceed when all changes are API-only
+- If any changes where "Test Observes = NO" → remove them, re-run test, redo this analysis
+- Only proceed when all changes have "Test Observes = YES"
 
 **✅ CONTEXT SWITCH BACK: You are now the test implementer again.**
 
