@@ -1,3 +1,7 @@
+---
+tool: Perplexity Research
+---
+
 ## Jason Gorman's Actionable Guides: Writing Proper Failing Tests ("Proper RED")
 
 Based on extensive research of Jason Gorman's work through his TDD training materials, blog posts, videos, and workshop attendee notes, here's a comprehensive guide on how to write failing tests properly and see them fail for the right reasons.

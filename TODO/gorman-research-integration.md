@@ -4,7 +4,9 @@
 
 Comprehensive research on Jason Gorman's "Proper RED" practices directly addresses the #1 problem in tdd-interactive: agent over-implementation during RED phase.
 
-**Source:** `docs/Jason Gorman's Actionable Guides_ Writing Proper F.md`
+**Sources:**
+- `docs/research/Jason Gorman/Jason Gorman's Actionable Guides_ Writing Proper F.md` (comprehensive with 68 citations)
+- `docs/research/Jason Gorman/Proper RED in TDD by JG.md` (concise NotebookLM summary with unique boundary testing & domain language guidance)
 
 **Key Insight:** The research provides specific, actionable practices that align perfectly with observed agent failures (premature design decisions, unnecessary dependencies, implementation thinking).
 
@@ -68,6 +70,36 @@ Agents consistently over-implement during RED phase despite existing guardrails:
 - Everything worked recently, bug must be in last few lines
 - **Integration target:** Consider adding time guidance to phases
 
+#### 7. **Use Domain/Customer Language**
+- Name classes, methods, variables using customer/domain terms
+- Establishes shared understanding with stakeholders
+- Helps tests serve as living documentation
+- **Integration target:** Add to test naming section in red-phase-guide.md
+- **Source:** Proper RED in TDD by JG.md
+
+#### 8. **Choose Boundary Test Data**
+- Select test data that highlights boundaries in logic
+- Example: For credit limit of 100, test with 100.01 (just over boundary)
+- Makes business rules explicit and clear
+- **Integration target:** Add to red-phase-guide.md test construction section
+- **Source:** Proper RED in TDD by JG.md
+
+#### 9. **Fluent Assertions for Better Feedback**
+- Use assertion libraries (like Hamcrest) that provide detailed failure messages
+- Helps pinpoint exactly what failed in complex assertions
+- Consider this for multi-language examples
+- **Integration target:** Add to testing-guide.md tool recommendations
+- **Source:** Proper RED in TDD by JG.md
+
+### Lower Priority (Context & Advanced)
+
+#### 10. **Customer Tests as Entry Point**
+- TDD can start with failing customer test (executable specification)
+- Customer test defines acceptance criteria
+- Drive implementation with unit tests in RED-GREEN-REFACTOR
+- **Integration target:** Add context note to SKILL.md introduction
+- **Source:** Proper RED in TDD by JG.md
+
 ---
 
 ## Specific Integration Tasks
@@ -111,6 +143,31 @@ Example:
 ```swift
 func getTitles() -> [String] {
     return []  // Empty, not implementation
+}
+```
+```
+
+**Add test naming and data selection guidance:**
+```markdown
+## Test Style and Specification
+
+### Use Domain Language
+- Name classes, methods, and variables using customer/domain terms
+- Tests should read like specifications in business language
+- Example: `customerExceedsCreditLimit` not `testLimit`
+
+### Choose Boundary Test Data
+- Select test data that highlights boundaries in business logic
+- For credit limit of $100, test with $100.01 (just over limit)
+- For age requirement of 18, test with 17 (under) and 18 (at boundary)
+- Makes the rule explicit: "What exact value causes this behavior change?"
+
+Example:
+```swift
+func test_customerExceedsCreditLimit_whenPurchaseIs10001() {
+    // Credit limit is $100.00
+    let purchase = Money(dollars: 100, cents: 1)  // Boundary + 1 cent
+    XCTAssertTrue(customer.exceedsLimit(purchase))
 }
 ```
 ```
@@ -196,6 +253,58 @@ Add Swift, TypeScript, Python equivalents of:
 - Empty collection returns
 - Minimal stub implementations
 - Assertion-first progression
+
+### Task 6: Update `testing-guide.md` with Tool Recommendations
+
+**Add fluent assertion libraries section:**
+
+```markdown
+## Recommended Testing Tools
+
+### Assertion Libraries
+
+Using fluent assertion libraries provides better failure messages:
+
+**Swift:**
+- Nimble: `expect(value).to(equal(42))` provides detailed failure context
+- Built-in XCTest: Less verbose but adequate for simple cases
+
+**JavaScript/TypeScript:**
+- Jest: Built-in expect with good messages
+- Chai: `expect(value).to.equal(42)` fluent style
+
+**Python:**
+- pytest: Built-in assert with detailed introspection
+- Hamcrest: `assert_that(value, equal_to(42))` fluent style
+
+Why fluent assertions matter:
+- Pinpoint exactly which part of complex assertion failed
+- Provide helpful diff output for mismatches
+- Make test intent clearer
+```
+
+### Task 7: Add Customer Test Context to SKILL.md
+
+**Add to introduction or "When to Use" section:**
+
+```markdown
+## Test-Driven Development Levels
+
+This skill focuses on **unit-test-driven development** (the inner TDD loop).
+
+**Broader context:**
+- Customer/Acceptance Tests: Define "what" the feature should do (outer loop)
+- Unit Tests: Drive "how" to implement it (inner loop, this skill)
+
+**Workflow:**
+1. Start with failing customer test (executable specification)
+2. Identify first unit of work needed
+3. Use this skill's RED-GREEN-REFACTOR cycle for implementation
+4. Return to customer test to verify progress
+5. Repeat until customer test passes
+
+**Note:** This skill doesn't cover customer test creation, but assumes you have clear acceptance criteria to work toward.
+```
 
 ---
 
@@ -287,6 +396,8 @@ How will we know if integration worked?
    - Three-stage progression
    - Minimal stub definitions
    - Strengthen assertion-first
+   - Domain language guidance
+   - Boundary test data selection
 
 ### Phase 2: Verification (Next)
 3. Update Pre-STOP #1 checklist in review-guidelines.md
@@ -297,11 +408,12 @@ How will we know if integration worked?
    - Implementation thinking trigger
    - Triangulation guidance
 6. Add multi-language examples
+7. Update testing-guide.md with fluent assertion recommendations
 
-### Phase 4: Documentation (Finally)
-7. Move full research to references/
-8. Update SKILL.md links
-9. Add to testing-guide.md if relevant
+### Phase 4: Context & Documentation (Finally)
+8. Add customer test context to SKILL.md
+9. Update references paths (files now in docs/research/Jason Gorman/)
+10. Verify all links work
 
 ---
 
@@ -337,7 +449,17 @@ How will we know if integration worked?
 
 ## References
 
-- Source research: `docs/Jason Gorman's Actionable Guides_ Writing Proper F.md`
-- Current skill: `public/tdd-interactive/SKILL.md`
-- Problem analysis: `TODO/tdd-practitioner.md`
+### Source Research
+- `docs/research/Jason Gorman/Jason Gorman's Actionable Guides_ Writing Proper F.md` - Comprehensive guide with 68 citations
+- `docs/research/Jason Gorman/Proper RED in TDD by JG.md` - Concise NotebookLM summary with unique boundary testing & domain language guidance
+
+### Current Skill Files
+- `public/tdd-interactive/SKILL.md` - Main skill definition
+- `public/tdd-interactive/red-phase-guide.md` - RED phase workflow
+- `public/tdd-interactive/review-guidelines.md` - Verification checklists
+- `public/tdd-interactive/escalation-protocol.md` - When/how to escalate
+- `public/tdd-interactive/testing-guide.md` - Language-specific test runners
+
+### Problem Analysis
+- `TODO/tdd-practitioner.md` - Documented agent over-implementation issues
 - Session logs: (link to specific problematic sessions when available)
