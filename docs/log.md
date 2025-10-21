@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2025-10-21
 
+### TDD Scaffold Review Skill
+Added tdd-scaffold-review skill (v0.0.1) for evaluating test name scaffolds as executable specifications. Determines if each test name provides enough clarity to write a failing RED test without inventing requirements. Uses 4-point decision criteria (preconditions, observable outcome, error handling, no invented behavior). Emphasizes "surgical" questions (precise + unambiguous + focused on one behavior) using domain terms from scaffold. Includes evaluation guidelines with clear/vague examples and common test name patterns. Prevents over-interpretation during specification review phase of TDD workflows.
+
 ### Pre-STOP #1 Observability Criteria
 Refined Pre-STOP #1 self-review with concrete decision criteria (v2.3.1): "Does THIS test observe this code?" replaces vague "API vs IMPLEMENTATION" categorization. Prevents collaborator cascade where agents add dependencies (Repository, Validator, Manager) that test doesn't assert on, justified as "API changes". Decision criteria explicitly lists what test observes (asserts, verifies, creates) vs what it doesn't (internal dependencies, implementation logic, future architecture). Common mistake example targets exact pattern. Based on Jason Gorman's TDD practice #3: "Don't write source code until a test requires it" → Applied as "until THIS test observes it".
 
