@@ -256,6 +256,8 @@ Create a git commit for refactoring changes, maintaining immutable git history.
 
 ## Cardinal Rules
 
+> "Nothing can exist unless a test is directly or indirectly using it."
+
 Apply these rules throughout the entire workflow:
 
 1. **NEVER skip RED** - Must see the test fail first
