@@ -6,6 +6,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2025-10-21
 
+### Job Search Strategy Skill
+Added comprehensive job-search-strategy skill to marketplace (v1.1.0): toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted competencies, and executing creative outreach strategies. Expands plugin scope beyond pure development workflows to career advancement tools. Updated plugin descriptions to reflect dual purpose: "Development workflows and career advancement tools for software engineers". Inspired by by Nate B Jones, developed with Claude Opus 4.1.
+
+## 2025-10-20
+
 ### Assert-First Workflow & Structure Refinement
 Added Assert-First methodology to RED phase (v2.3.0): write assertion matching test name, work backwards to action then setup. Prevents implementation thinking by focusing on outcome first. Extracted detailed RED phase guidance to red-phase-guide.md for better organization. Restructured workflow: moved specification review to Getting Started (happens once), Phase 1 now starts cycle-friendly with "identify next test". Clean loop from Phase 5 back to Phase 1.
 
