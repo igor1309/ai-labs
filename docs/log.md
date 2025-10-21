@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2025-10-21
 
+### Pre-STOP #1 Observability Criteria
+Refined Pre-STOP #1 self-review with concrete decision criteria (v2.3.1): "Does THIS test observe this code?" replaces vague "API vs IMPLEMENTATION" categorization. Prevents collaborator cascade where agents add dependencies (Repository, Validator, Manager) that test doesn't assert on, justified as "API changes". Decision criteria explicitly lists what test observes (asserts, verifies, creates) vs what it doesn't (internal dependencies, implementation logic, future architecture). Common mistake example targets exact pattern. Based on Jason Gorman's TDD practice #3: "Don't write source code until a test requires it" → Applied as "until THIS test observes it".
+
 ### Job Search Strategy Skill
 Added comprehensive job-search-strategy skill to marketplace (v1.1.0): toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted competencies, and executing creative outreach strategies. Expands plugin scope beyond pure development workflows to career advancement tools. Updated plugin descriptions to reflect dual purpose: "Development workflows and career advancement tools for software engineers". Inspired by by Nate B Jones, developed with Claude Opus 4.1.
 
