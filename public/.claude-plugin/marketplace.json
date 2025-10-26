@@ -17,6 +17,7 @@
       "skills": [
         "./tdd-interactive",
         "./job-search-strategy",
+        "./tdd-scaffold-review",
         "./swift-package-manifest"
       ]
     }
