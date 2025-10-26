@@ -23,7 +23,7 @@ Guidelines for reviewing work at the two verification gates in the TDD Interacti
 - [ ] Test is readable and clear
 - [ ] Setup → Action → Assertion structure is evident
 - [ ] No complex logic in the test itself
-- [ ] Follows standards in `../standards/quality-standards.md` (naming, structure, no inline AAA comments)
+- [ ] Follows standards in `./quality-standards.md` (naming, structure, no inline AAA comments)
 
 ### Common Rejection Reasons
 
@@ -56,7 +56,7 @@ Guidelines for reviewing work at the two verification gates in the TDD Interacti
 - [ ] Check for duplication (in tests AND production code)
 - [ ] Check for poor naming (variables, functions, classes)
 - [ ] Check for complex logic that could be simplified
-- [ ] Check for violations of coding standards (see `../standards/quality-standards.md`)
+- [ ] Check for violations of coding standards (see `./quality-standards.md`)
 - [ ] Check for "code smells"
 
 **2. Refactoring Execution**
