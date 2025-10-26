@@ -29,6 +29,8 @@ account.deposit(50)                  // Action
 assert(account.balance == 150)       // Assertion
 ```
 
+> **Note:** The inline comments above are for educational purposes only to illustrate the test structure. **Do not add these comments to production test code.** The structure should be self-evident from the code itself.
+
 ### Why this order prevents over-implementation
 
 - Assertion keeps you focused on WHAT should happen (balance increases to 150)
