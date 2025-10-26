@@ -1,11 +1,14 @@
 ---
 name: swift-package-manifest
 description: Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK. Use when creating new Package.swift files, refactoring existing ones, adding modules/targets to Swift packages, or organizing Swift Package Manager manifests for better maintainability.
+version: "1.0.1"
 ---
 
 # Swift Package Manifest
 
 Create and edit Package.swift files using the clean static property pattern that eliminates magic strings and improves maintainability.
+
+**Announce:** "I'm using the Swift Package Manifest skill to apply the static property pattern."
 
 ## Core Pattern
 

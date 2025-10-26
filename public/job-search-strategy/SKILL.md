@@ -1,6 +1,7 @@
 ---
 name: job-search-strategy
 description: Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies. Use when helping candidates strategize their job search, prepare tailored applications, or develop competitive advantages in their job hunt.
+version: "1.0.1"
 ---
 
 # Job Search Strategy Toolkit
@@ -8,6 +9,8 @@ description: Comprehensive job search strategy toolkit for analyzing job posting
 This skill provides comprehensive tools and strategies for strategic job searching, from deep job posting analysis to creative outreach methods that help candidates stand out.
 
 ## Quick Start
+
+**Announce:** "I'm using the Job Search Strategy Toolkit to analyze this opportunity and develop a targeted approach."
 
 When a user provides a job posting or asks for job search help, follow this workflow:
 

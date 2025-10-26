@@ -1,13 +1,15 @@
 ---
 name: tdd-scaffold-review
 description: "Evaluates test name scaffolds for TDD readiness by determining if each test name provides enough specification clarity to write a failing test. Use when reviewing test scaffolds, evaluating executable specifications, or assessing whether test names clearly define testable behavior without implementation ambiguity."
-version: "0.0.1"
+version: "0.0.2"
 author: Igor Malyarov
 ---
 
 # TDD Scaffold Review
 
 Evaluate whether test names serve as clear executable specifications for Test-Driven Development. **Approach this as a senior engineer writing failing tests**: can you write each RED test without inventing unspecified behavior?
+
+**Announce:** "I'm using the TDD Scaffold Review skill to evaluate test names for specification clarity."
 
 ## Core Evaluation Principle
 
