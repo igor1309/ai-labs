@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.3.1"
+version: "2.4.0"
 author: Igor Malyarov
 ---
 
@@ -12,6 +12,8 @@ author: Igor Malyarov
 This skill implements Test-Driven Development through an **interactive, reviewer-approved workflow** with two mandatory verification gates. A **reviewer** (human senior engineer or AI verifier) validates work at critical checkpoints, enabling **incremental, verified development**.
 
 This workflow requires test infrastructure and reviewer availability for verification gates.
+
+**In addition to this workflow, follow the code quality and testing standards in `./standards/quality-standards.md`.**
 
 **Workflow structure:**
 - **Executing agent**: Performs TDD implementation work
