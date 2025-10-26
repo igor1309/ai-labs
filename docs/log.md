@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2025-10-26
+
+### Swift Package Manifest Skill
+Converted Swift Package Manager guideline (developed in `swift-ledger` repo) into reusable skill (by Claude Opus 4.1) and published to marketplace. Skill provides templates for single-product and multi-module packages with comprehensive reference documentation. Published and registered in marketplace for public distribution.
+
 ## 2025-10-21
 
 ### TDD Scaffold Review Skill

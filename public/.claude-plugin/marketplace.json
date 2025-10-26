@@ -16,7 +16,8 @@
       "strict": false,
       "skills": [
         "./tdd-interactive",
-        "./job-search-strategy"
+        "./job-search-strategy",
+        "./swift-package-manifest"
       ]
     }
   ]
