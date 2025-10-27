@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.5.1"
+version: "2.5.2"
 author: Igor Malyarov
 ---
 
@@ -177,6 +177,7 @@ Improve code quality while maintaining all passing tests.
    - Poor naming
    - Complex logic that can be simplified
    - Violations of coding standards
+   - Invalid states that should be impossible (e.g., negative values that should be non-negative, boolean flags that should be enums, optionals that should never be nil)
 3. **Make refactoring changes if needed:**
    - Make one change at a time
    - Run ALL tests after each change to ensure they stay green

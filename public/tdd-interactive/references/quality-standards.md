@@ -3,7 +3,7 @@ title: TDD Quality Standards
 description: Code quality and testing standards that apply to all TDD workflows
 source: Adapted from /Users/igormalyarov/dev/ai-coder/guides/tdd-essentials.md
 applies-to: tdd-interactive and other TDD workflows
-version: 1.2.0
+version: 1.3.0
 ---
 
 # TDD Quality Standards
@@ -30,6 +30,7 @@ This document defines code quality and testing standards that complement TDD wor
 - Never document the obvious; document reasoning.
 - **Never provide default empty closures in public initializers** - require callers to explicitly provide closure implementations.
 - **Use tuple destructuring for related variable declarations** - Prefer `let (oldCountry, newCountry) = (makeCountry("old"), makeCountry("new"))` over separate `let` statements.
+- **Make impossible states impossible** - Use the type system to prevent invalid states from being representable. Prefer enums over boolean flags, validated types over primitives, non-optional types over optionals when nil should never occur.
 
 ---
 
