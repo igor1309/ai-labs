@@ -3,7 +3,7 @@ title: TDD Quality Standards
 description: Code quality and testing standards that apply to all TDD workflows
 source: Adapted from /Users/igormalyarov/dev/ai-coder/guides/tdd-essentials.md
 applies-to: tdd-interactive and other TDD workflows
-version: 1.0.0
+version: 1.1.0
 ---
 
 # TDD Quality Standards
@@ -28,6 +28,7 @@ This document defines code quality and testing standards that complement TDD wor
 - Inline comments only for **non-obvious design choices**.
 - Follow conventional commits; no emoji or shorthand.
 - Never document the obvious; document reasoning.
+- **Never provide default empty closures in public initializers** - require callers to explicitly provide closure implementations.
 
 ---
 
