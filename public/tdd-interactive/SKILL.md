@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.5.0"
+version: "2.5.1"
 author: Igor Malyarov
 ---
 
@@ -76,6 +76,7 @@ Write a test that fails for the right reason, demonstrating what needs to be imp
    - Start with assertion matching test name promise
    - Work backwards to action, then setup
    - See `./references/red-phase-guide.md` for detailed workflow and examples
+   - For parameterized tests, see `./references/parameterized-tests-guide.md`
 4. **Ensure test matches exactly what the test name promises**
    - If test says "should fail" → only verify error thrown
    - If test says "should increase" → only verify value increased
