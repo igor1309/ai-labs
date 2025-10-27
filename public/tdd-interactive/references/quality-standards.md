@@ -3,7 +3,7 @@ title: TDD Quality Standards
 description: Code quality and testing standards that apply to all TDD workflows
 source: Adapted from /Users/igormalyarov/dev/ai-coder/guides/tdd-essentials.md
 applies-to: tdd-interactive and other TDD workflows
-version: 1.4.0
+version: 1.5.0
 ---
 
 # TDD Quality Standards
@@ -44,7 +44,8 @@ This document defines code quality and testing standards that complement TDD wor
   - Java/Kotlin: `operation_shouldBehavior_whenCondition`
   - JS/TS (Jest): `it('operation should behavior when condition')`
 - Follow Arrange-Act-Assert pattern for test structure. **Never write inline comments like "Given/When/Then", "Setup/Action/Assert", or similar.**
-- **No conditional logic in tests** - Never use `guard`, `if let`, `if`, or other control flow in test bodies. Tests must be linear and unconditional. Use forced unwrapping (`!`) or assertion helpers instead.
+- **No conditional logic in tests** - Never use `guard`, `if let`, `if`, or other control flow in test bodies. Tests must be linear and unconditional. Use assertion helpers for unwrapping (e.g., `XCTUnwrap` in Swift, `assertIsNotNone` in Python).
+- **Never use forced unwrapping** - Never use `!` operator in any code (test or production). Use proper unwrapping mechanisms: `XCTUnwrap` (Swift XCTest), `expect().not.toBeNull()` (Jest), `assertIsNotNone` (Python), or similar framework-specific assertion helpers.
 
 ---
 
