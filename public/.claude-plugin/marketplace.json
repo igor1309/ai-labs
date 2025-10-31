@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "plugins": [
     {
@@ -15,10 +15,11 @@
       "source": "./",
       "strict": false,
       "skills": [
-        "./tdd-interactive",
+        "./arch-spec-review",
         "./job-search-strategy",
-        "./tdd-scaffold-review",
-        "./swift-package-manifest"
+        "./swift-package-manifest",
+        "./tdd-interactive",
+        "./tdd-scaffold-review"
       ]
     }
   ]
