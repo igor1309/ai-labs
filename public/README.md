@@ -4,6 +4,51 @@ Custom skills for Claude Code, focusing on interactive development workflows and
 
 ## Skills
 
+### Architecture Specification Review
+
+Review architecture specifications for completeness, appropriate abstraction level, and separation of concerns.
+
+**Key features:**
+- Evaluates boundaries, flows, constraints, and extension points
+- Ensures specs stay at the right abstraction level
+- Built-in self-evaluation checkpoint to prevent over-specification demands
+- Distinguishes between architectural concerns and implementation details
+- Respects explicitly deferred decisions
+
+**Use when:** Reviewing top-level, implementation-agnostic architecture documents that define system boundaries, responsibilities, flows, and constraints without prescribing implementation details.
+
+**Documentation:** See [arch-spec-review/SKILL.md](arch-spec-review/SKILL.md)
+
+### Job Search Strategy
+
+Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies.
+
+**Key features:**
+- Deep job posting analysis scripts
+- Candidate skill discovery through targeted interviews
+- Strategic research and outreach guides
+- Creative application formats and strategies
+- Skill gap identification and development plans
+
+**Use when:** Strategizing job searches, preparing tailored applications, developing competitive advantages, or coaching candidates through the job hunt process.
+
+**Documentation:** See [job-search-strategy/SKILL.md](job-search-strategy/SKILL.md)
+
+### Swift Package Manifest
+
+Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK.
+
+**Key features:**
+- Eliminates magic strings with static properties
+- Type-safe manifest organization
+- Clear extension-based structure
+- Alphabetical ordering for maintainability
+- Swift 6 compatibility
+
+**Use when:** Creating new Package.swift files, refactoring existing ones, adding modules/targets to Swift packages, or organizing Swift Package Manager manifests.
+
+**Documentation:** See [swift-package-manifest/SKILL.md](swift-package-manifest/SKILL.md)
+
 ### TDD Interactive
 
 Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression.
@@ -33,36 +78,6 @@ Evaluates test name scaffolds for TDD readiness by determining if each test name
 
 **Documentation:** See [tdd-scaffold-review/SKILL.md](tdd-scaffold-review/SKILL.md)
 
-### Swift Package Manifest
-
-Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK.
-
-**Key features:**
-- Eliminates magic strings with static properties
-- Type-safe manifest organization
-- Clear extension-based structure
-- Alphabetical ordering for maintainability
-- Swift 6 compatibility
-
-**Use when:** Creating new Package.swift files, refactoring existing ones, adding modules/targets to Swift packages, or organizing Swift Package Manager manifests.
-
-**Documentation:** See [swift-package-manifest/SKILL.md](swift-package-manifest/SKILL.md)
-
-### Job Search Strategy
-
-Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies.
-
-**Key features:**
-- Deep job posting analysis scripts
-- Candidate skill discovery through targeted interviews
-- Strategic research and outreach guides
-- Creative application formats and strategies
-- Skill gap identification and development plans
-
-**Use when:** Strategizing job searches, preparing tailored applications, developing competitive advantages, or coaching candidates through the job hunt process.
-
-**Documentation:** See [job-search-strategy/SKILL.md](job-search-strategy/SKILL.md)
-
 ## Installation
 
 ### Via Claude Code
@@ -76,10 +91,11 @@ Add this marketplace to Claude Code:
 Then install the skills you want:
 
 ```
+/plugin install arch-spec-review
+/plugin install job-search-strategy
+/plugin install swift-package-manifest
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
-/plugin install swift-package-manifest
-/plugin install job-search-strategy
 ```
 
 ### Manual Installation
@@ -88,18 +104,61 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 
 ```bash
 # Install individual skills
+cp -r arch-spec-review ~/.claude/skills/
+cp -r job-search-strategy ~/.claude/skills/
+cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
-cp -r swift-package-manifest ~/.claude/skills/
-cp -r job-search-strategy ~/.claude/skills/
 
 # Or install all skills at once
-cp -r tdd-interactive tdd-scaffold-review swift-package-manifest job-search-strategy ~/.claude/skills/
+cp -r arch-spec-review job-search-strategy swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
 
 Claude Code will automatically load skills from the skills directory.
+
+### Architecture Specification Review
+
+Invoke when reviewing architecture specifications to ensure they maintain appropriate abstraction levels.
+
+**Example prompt:**
+```
+Review this architecture specification for completeness and appropriate abstraction level.
+```
+
+Or:
+```
+Evaluate this architecture document to ensure it defines system boundaries without prescribing implementation details.
+```
+
+### Job Search Strategy
+
+Invoke when analyzing job postings or developing application strategies.
+
+**Example prompt:**
+```
+Analyze this job posting and help me develop a targeted application strategy.
+```
+
+Or:
+```
+Help me identify skill gaps and create a development plan for this role.
+```
+
+### Swift Package Manifest
+
+Invoke when creating or refactoring Package.swift files.
+
+**Example prompt:**
+```
+Create a Package.swift using the static property pattern for [package description].
+```
+
+Or:
+```
+Refactor this Package.swift to use the clean static property pattern.
+```
 
 ### TDD Interactive
 
@@ -123,34 +182,6 @@ Invoke when you have test names and need to verify they're ready for TDD impleme
 **Example prompt:**
 ```
 Review this test scaffold to determine if the test names are clear enough to write failing tests.
-```
-
-### Swift Package Manifest
-
-Invoke when creating or refactoring Package.swift files.
-
-**Example prompt:**
-```
-Create a Package.swift using the static property pattern for [package description].
-```
-
-Or:
-```
-Refactor this Package.swift to use the clean static property pattern.
-```
-
-### Job Search Strategy
-
-Invoke when analyzing job postings or developing application strategies.
-
-**Example prompt:**
-```
-Analyze this job posting and help me develop a targeted application strategy.
-```
-
-Or:
-```
-Help me identify skill gaps and create a development plan for this role.
 ```
 
 ## License

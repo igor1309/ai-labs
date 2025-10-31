@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2025-10-31
+
+### Architecture Specification Review Skill
+Added arch-spec-review skill (v1.0.0) for reviewing architecture specs at correct abstraction level. Self-evaluation checkpoint prevents over-specification demands (asking "how" when spec only defines "who/what"). Distinguishes architectural concerns (boundaries, flows, constraints) from implementation details (mechanisms, data structures). Respects explicitly deferred decisions. Marketplace v1.2.0, skills now alphabetically ordered.
+
 ## 2025-10-26
 
 ### Swift Package Manifest Skill
