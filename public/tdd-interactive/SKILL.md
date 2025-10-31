@@ -1,7 +1,7 @@
 ---
 name: tdd-interactive
 description: "Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression. Applies to any code development that follows test-first methodology: features, bug fixes, refactoring, or enhancements. Invoked when TDD discipline with step-by-step verification is required."
-version: "2.5.4"
+version: "2.6.0"
 author: Igor Malyarov
 ---
 
@@ -85,8 +85,15 @@ Write a test that fails for the right reason, demonstrating what needs to be imp
    - For language-specific test commands, see `./references/testing-guide.md`
    - Proper RED: test compiles and fails with clear message
    - See `./references/red-phase-guide.md` for RED state requirements
-6. **If test passes immediately** → You over-implemented
-   - Remove implementation logic, re-run test
+6. **If test passes immediately:**
+   - If you wrote implementation code → Remove it, re-run test
+   - If test passes without implementation changes → STOP and escalate to reviewer:
+     - Reviewer must approve one of:
+       - ✅ Legitimate: Pattern compliance, negative assertion, established codebase practice
+       - ✅ Legitimate: Part of executable specification (test names defined upfront)
+       - ❌ Invalid: Weak test that doesn't drive behavior
+     - If approved: document rationale in next commit message, proceed to STOP #1
+     - If rejected: rewrite test to ensure it fails first
 7. **Perform Pre-STOP #1 Self-Review**
    - Switch to RED Phase Critic role
    - Review production code changes (git diff)
