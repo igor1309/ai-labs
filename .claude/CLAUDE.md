@@ -1,5 +1,27 @@
 # Dev Skills Project - AI Agent Instructions
 
+## Working Directory
+
+**CRITICAL:** This repository is `/Users/igormalyarov/Developer/my-apps/dev-skills/` - the skills marketplace development repository.
+
+**NEVER modify `~/.codex/skills/`** - that is the user's personal installation directory, NOT this repository.
+
+When publishing skills:
+1. Move to `public/<skill-name>/` when ready to publish
+2. Update `public/.claude-plugin/marketplace.json`
+3. Update `public/README.md`
+4. Update `docs/log.md`
+5. Stop to commit.
+
+## Alphabetical Ordering
+
+**Skills MUST be listed in alphabetical order** in:
+- `public/.claude-plugin/marketplace.json` (skills array)
+- `public/README.md` (both Skills section and Usage section)
+- Installation commands in `public/README.md`
+
+This ensures consistency and makes it easy for users to find skills.
+
 ## Skill Versioning
 
 **CRITICAL:** When modifying any SKILL.md file OR its supporting documents (e.g., files in `references/` subdirectory), you MUST increment the version number in the SKILL.md front matter.
