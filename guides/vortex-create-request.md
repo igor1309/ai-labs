@@ -59,3 +59,38 @@ xcodebuild test \
 ```
 
 Do not add timeout parameter - timeout should not be set per-request.
+
+## Part II Only - Empty Body GET Requests
+
+When request has empty body and only needs serial parameter, skip Part I entirely.
+
+1. Add endpoint to `Services+Endpoint.swift` (same as above)
+
+2. Create request factory in `Vortex/Vortex/Services/Services/{Feature}/`:
+   - Import `RemoteServices` and `VortexTools`
+   - Use `RemoteServices.RequestFactory.createEmptyRequest` (NOT `Vortex.RequestFactory`)
+   - Use `url.appendingSerial(serial)` from `VortexTools`
+
+```swift
+import Foundation
+import RemoteServices
+import VortexTools
+
+extension RequestFactory {
+
+    static func create{Method}Request(
+        serial: String?
+    ) throws -> URLRequest {
+
+        let base = Config.serverAgentEnvironment.baseURL
+        let endpoint = Services.Endpoint.{endpoint}
+        let url = try endpoint.url(withBase: base).appendingSerial(serial)
+
+        return RemoteServices.RequestFactory.createEmptyRequest(.get, with: url)
+    }
+}
+```
+
+**Important**: `createEmptyRequest` lives in `RemoteServices.RequestFactory`, NOT in `Vortex.RequestFactory`. Always use fully qualified name.
+
+Reference: `RequestFactory+createGetTransferPaymentSystemListRequest.swift` in TransGran
