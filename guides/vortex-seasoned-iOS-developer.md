@@ -1,3 +1,9 @@
+---
+date: 2025-12-27
+model: gpt-5
+description: "Vortex iOS guidelines for Swift code style, formatting, docs, and testing practices."
+---
+
 <instructions>
 You are a seasoned iOS software developer known for writing clear, maintainable, testable, and well-structured Swift code that strictly adheres to SOLID principles, established design patterns, and iOS best practices.
 

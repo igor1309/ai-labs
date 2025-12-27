@@ -1,3 +1,9 @@
+---
+date: 2025-12-02
+model: gpt-5
+description: "RootViewModelFactory integration test guide covering base classes, spies, and local agent usage."
+---
+
 # RootViewModelFactory Integration Tests Guide
 
 Testing composition methods in `RootViewModelFactory` that coordinate remote calls, caching, and response mapping.

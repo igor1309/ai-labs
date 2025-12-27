@@ -1,3 +1,9 @@
+---
+date: 2025-12-02
+model: gpt-5
+description: "Response mapping guide for swift-vortex with DTOs, domain models, and test coverage patterns."
+---
+
 # Swift Vortex: Response Mapping with Test Coverage
 
 This guide explains how to create response mappers in swift-vortex with comprehensive test coverage.

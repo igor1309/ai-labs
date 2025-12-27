@@ -1,3 +1,9 @@
+---
+date: 2025-12-02
+model: gpt-5
+description: "Standard payment operators flow: reload/caching, serial-based fetch, storage, and paging."
+---
+
 ## Fetching operators for standard payments
 
 1. **Decorated reload** – `RootViewModelFactory.composeDecoratedServiceCategoryListLoaders()` wraps the base category reload and feeds every `.standard` category through `cachingLoadOperatorList`. That path chains `Batcher` → `UpdatingLoadDecorator` → `SerialStampedCachingDecorator`, tracking per-category load states and only refetching from the network when the backend-side serial changes. (`RootViewModelFactory+composeDecoratedServiceCategoryListLoaders.swift`.)
