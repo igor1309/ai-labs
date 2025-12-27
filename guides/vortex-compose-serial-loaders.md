@@ -1,4 +1,7 @@
 ---
+date: 2025-12-16
+model: codex
+description: "How to compose serial-based local/remote loaders with cache invalidation."
 context: Vortex project
 ---
 

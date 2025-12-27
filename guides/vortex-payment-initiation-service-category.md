@@ -1,6 +1,7 @@
 ---
 date: 2025-12-03
 model: Codex
+description: "Flow outline for initiating payment from a selected service category."
 ---
 
 ## How a selected service category starts payment

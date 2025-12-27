@@ -1,3 +1,9 @@
+---
+date: 2025-09-08
+model: gpt-5.1
+description: "Rx TDD essentials for reducer/effect handler development and migration to production."
+---
+
 # Rx TDD
 
 ## Development Approach

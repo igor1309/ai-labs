@@ -1,3 +1,9 @@
+---
+date: 2025-10-21
+model: codex
+description: "Working notes for executable specification scaffolding and responsibility-focused tests."
+---
+
 # Executable Specification Scaffolding — Working Notes
 
 ## Purpose

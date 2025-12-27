@@ -1,3 +1,9 @@
+---
+date: 2025-12-05
+model: codex
+description: "Steps and checks for adding a new feature flag in Vortex."
+---
+
 # Feature Flag Implementation Guide
 
 ## 1. Prerequisite

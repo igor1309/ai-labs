@@ -1,6 +1,7 @@
 ---
 date: 2025-12-03
 model: Codex
+description: "Flow outline for phone-based payment initiation via contacts picker."
 ---
 
 ## Phone payment initiation via contacts picker

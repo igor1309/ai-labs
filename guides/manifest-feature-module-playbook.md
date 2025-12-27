@@ -1,5 +1,7 @@
 ---
+date: 2025-10-24
 model: gpt-5-codex
+description: "Playbook for adding a new feature module to Package.swift using the static-extension manifest pattern."
 ---
 
 # Feature Module Playbook

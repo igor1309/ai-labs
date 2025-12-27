@@ -1,3 +1,9 @@
+---
+date: 2025-11-28
+model: codex
+description: "Guide to adding new modules to swift-vortex Package.swift using the static property pattern."
+---
+
 # Swift Vortex: Adding New Modules
 
 This guide explains how to add new modules to the swift-vortex Package.swift using the static property pattern.

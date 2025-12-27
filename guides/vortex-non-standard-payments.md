@@ -1,3 +1,9 @@
+---
+date: 2025-12-04
+model: codex
+description: "Overview of non-standard payment flows (mobile, tax, etc.) and their routing."
+---
+
 # Non-standard category payment flows
 
 ## Overview

@@ -1,7 +1,7 @@
 ---
 title: “Tactical Action Plan Guideline”
 version: “1.1.0”
-date: “2025-09-21”
+date: 2025-09-21
 description: “Guideline for AI agents to decompose a strategic review finding into a sequence of atomic, verifiable, and machine-executable steps.”
 status: “stable”
 maintainer: “ai-agent-team”

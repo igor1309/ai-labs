@@ -1,4 +1,6 @@
 ---
+date: 2025-10-27
+model: claude
 description: "Review a TDD executable specification for a component. This spec will guide the implementation of this component."
 input:
   - required: "specification document"

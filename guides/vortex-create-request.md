@@ -1,4 +1,7 @@
 ---
+date: 2025-12-16
+model: codex
+description: "Steps for creating backend request factories in swift-vortex and wiring them into the main app."
 context: Vortex project
 ---
 

@@ -1,3 +1,9 @@
+---
+date: 2025-10-27
+model: gpt-5.2
+description: "Vortex project build/test commands and testing scheduler guidance."
+---
+
 # Project `Vortex` (Fora iOS)
 
 Due to the size and complexity of the project it is essential to use `-quiet` with `xcodebuild` to reduce output.

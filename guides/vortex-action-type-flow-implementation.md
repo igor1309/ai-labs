@@ -1,3 +1,9 @@
+---
+date: 2025-12-04
+model: codex
+description: "Guide for implementing and extending ActionTypeFlow routing and tests."
+---
+
 # ActionTypeFlow Implementation Guide
 
 ## Overview
