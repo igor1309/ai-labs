@@ -29,10 +29,10 @@ Choose the appropriate response type based on API structure:
 
 ```
 swift-vortex/
-├── Sources/Feature/{ModuleName}/Backend/ResponseMapper/
+├── Sources/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/
 │   ├── ResponseMapper+map{ResponseName}Response.swift  # Mapper + DTOs
 │   └── {DomainModelName}.swift                         # Public domain model
-└── Tests/Feature/{ModuleName}/Backend/ResponseMapper/
+└── Tests/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/
     └── ResponseMapper+map{ResponseName}ResponseTests.swift
 ```
 
@@ -42,33 +42,30 @@ Create the public domain model first. Reference: `GetOpenProductListItem.swift`
 
 ### Key Rules
 
-1. **Nested under `ResponseMapper`** via extension
+1. **Top-level public type** (not nested under `ResponseMapper`)
 2. **Optionality based on requirements**, not JSON structure
 3. **Equatable conformance** for testing
 4. **Explicit public initializers** with all parameters
 
 ```swift
-import RemoteServices
+import Foundation
 
-extension ResponseMapper {
+public struct MyItem: Equatable {
 
-    public struct MyItem: Equatable {
+    public let requiredField: String    // Non-optional = required
+    public let optionalField: String?   // Optional = can be missing
 
-        public let requiredField: String    // Non-optional = required
-        public let optionalField: String?   // Optional = can be missing
-
-        public init(
-            requiredField: String,
-            optionalField: String?
-        ) {
-            self.requiredField = requiredField
-            self.optionalField = optionalField
-        }
+    public init(
+        requiredField: String,
+        optionalField: String?
+    ) {
+        self.requiredField = requiredField
+        self.optionalField = optionalField
     }
 }
 
 // Nested types for complex structures
-extension ResponseMapper.MyItem {
+extension MyItem {
 
     public struct NestedType: Equatable {
 
@@ -102,7 +99,7 @@ public extension ResponseMapper {
         _ httpURLResponse: HTTPURLResponse
     ) -> MappingResult<MyResponse> {
 
-        map(data, httpURLResponse, mapOrThrow: MyResponse.init)
+        map(data, httpURLResponse, mapOrThrow: MyResponse.init(data:))
     }
 }
 
@@ -110,68 +107,56 @@ public extension ResponseMapper {
 
 private extension ResponseMapper.MyResponse {
 
-    init(_ data: ResponseMapper._Data) throws {
+    init(data: DTO) throws {
 
         guard let serial = data.serial,
               let content = data.content
-        else { throw ResponseFailure() }
+        else { throw MissingRequiredField() }
 
         self.init(
-            list: content.compactMap { .init($0) },  // Invalid items silently dropped
+            list: content.compactMap { try? .init(data: $0) },  // Invalid items dropped
             serial: serial
         )
     }
-
-    struct ResponseFailure: Error {}
 }
 
 // MARK: - Item Mapping (private)
 
-private extension ResponseMapper.MyItem {
+private extension MyItem {
 
-    init?(_ item: ResponseMapper._Data._Item) {
+    init(data: DTO.Item) throws {
 
-        // Guard required fields - return nil if missing
-        guard let requiredField = item.requiredField
-        else { return nil }
+        guard let requiredField = data.requiredField
+        else { throw MissingRequiredField() }
 
-        // Handle complex optional fields that can fail
-        let nested: NestedType?
-        do {
-            nested = try item._nested
-        } catch {
-            return nil  // Invalid nested = invalid item
-        }
+        let nested = try data.nestedValue
 
         self.init(
             requiredField: requiredField,
-            optionalField: item.optionalField,
+            optionalField: data.optionalField,
             nested: nested
         )
     }
 }
 
-// MARK: - DTOs (private, ALL FIELDS OPTIONAL)
+// MARK: - DTOs (file-private, ALL FIELDS OPTIONAL)
 
-private extension ResponseMapper {
+private struct DTO: Decodable {
 
-    struct _Data: Decodable {
-
-        let serial: String?
-        let content: [_Item]?
-    }
+    let serial: String?
+    let content: [Item]?
 }
 
-private extension ResponseMapper._Data {
+private extension DTO {
 
-    struct _Item: Decodable {
+    struct Item: Decodable {
 
         let requiredField: String?   // OPTIONAL in DTO
         let optionalField: String?
-        let nested: _Nested?
+        let nested: Nested?
     }
 
-    struct _Nested: Decodable {
+    struct Nested: Decodable {
 
         let value: String?           // OPTIONAL in DTO
     }
@@ -179,22 +164,22 @@ private extension ResponseMapper._Data {
 
 // MARK: - DTO to Domain Helpers (private)
 
-private extension ResponseMapper._Data._Item {
+private extension DTO.Item {
 
     /// Throws if nested exists but is invalid
-    var _nested: ResponseMapper.MyItem.NestedType? {
+    var nestedValue: MyItem.NestedType? {
         get throws {
             guard let nested else { return nil }
 
             guard let value = nested.value
-            else { throw NestedDecodingFailure() }
+            else { throw MissingRequiredField() }
 
             return .init(value: value)
         }
     }
-
-    struct NestedDecodingFailure: Error {}
 }
+
+private struct MissingRequiredField: Error {}
 ```
 
 ### Alternative: Single Object Response (no SerialStamped)
@@ -222,20 +207,20 @@ public extension ResponseMapper {
 
 private extension ResponseMapper {
 
-    static func map(_ data: _DTO) throws -> MyObject {
+    static func map(_ data: DTO) throws -> MyObject {
         try data.response
-    }
-
-    struct _DTO: Decodable {
-
-        let requiredField: String?   // ALL OPTIONAL
-        let optionalField: String?
     }
 }
 
-private extension ResponseMapper._DTO {
+private struct DTO: Decodable {
 
-    var response: ResponseMapper.MyObject {
+    let requiredField: String?   // ALL OPTIONAL
+    let optionalField: String?
+}
+
+private extension DTO {
+
+    var response: MyObject {
         get throws {
             guard let requiredField else { throw MissingMandatoryFields() }
 
@@ -255,7 +240,7 @@ private extension ResponseMapper._DTO {
 #### Pattern 1: Required Field Missing = Item Dropped
 ```swift
 guard let requiredField = item.requiredField
-else { return nil }
+else { throw MissingRequiredField() }
 ```
 
 #### Pattern 2: Optional Field Missing = OK
@@ -267,22 +252,17 @@ self.init(
 
 #### Pattern 3: Optional Nested That Can Be Invalid
 ```swift
-var _nested: NestedType? {
+var nestedValue: NestedType? {
     get throws {
         guard let nested else { return nil }  // Missing = nil (OK)
         guard let value = nested.value
-        else { throw Failure() }              // Present but invalid = throw
+        else { throw MissingRequiredField() }  // Present but invalid = throw
         return .init(value: value)
     }
 }
 
 // Usage in init
-let nested: NestedType?
-do {
-    nested = try item._nested
-} catch {
-    return nil  // Invalid = drop item
-}
+let nested = try item.nestedValue
 ```
 
 #### Pattern 4: Validation (e.g., hex colors)
@@ -321,7 +301,7 @@ Reference: `ResponseMapper+mapGetOpenProductListResponseTests.swift`
 5. **Invalid nested data** (item should be dropped)
 6. **Non-200 HTTP responses**
 7. **Valid data mapping**
-8. **Live/production JSON** (real API response)
+8. **Optional (advised): Live/production JSON** (real API response)
 
 ### Test Structure
 
@@ -421,7 +401,7 @@ final class ResponseMapper_map{Name}ResponseTests: XCTestCase {
     private func assert(
         _ data: String,
         serial: String = "test-serial",
-        mapsTo list: ResponseMapper.MyItem...,
+        mapsTo list: MyItem...,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -468,14 +448,14 @@ final class ResponseMapper_map{Name}ResponseTests: XCTestCase {
 private extension ResponseMapper.MyResponse {
 
     static func validData(
-        list: [ResponseMapper.MyItem],
+        list: [MyItem],
         serial: String = "test-serial"
     ) -> Self {
         .init(list: list, serial: serial)
     }
 }
 
-private extension ResponseMapper.MyItem {
+private extension MyItem {
 
     static func validFirst(
         requiredField: String = "value1",
@@ -580,9 +560,9 @@ xcodebuild test -quiet \
 
 - [ ] Domain model with correct optionality based on requirements
 - [ ] All DTO fields are optional
-- [ ] Private DTOs nested under `ResponseMapper`
+- [ ] File-private DTOs (`DTO` + nested DTO types)
 - [ ] `compactMap` for list items to drop invalid entries
-- [ ] Failable initializer `init?` for items
+- [ ] Throwing `init(data:)` for items + `compactMap { try? }`
 - [ ] Throwing getters for optional nested types that can be invalid
 - [ ] Tests for empty/invalid/malformed data
 - [ ] Tests for server errors
@@ -590,5 +570,5 @@ xcodebuild test -quiet \
 - [ ] Tests for missing optional fields (item included)
 - [ ] Tests for non-200 HTTP status codes
 - [ ] Tests for valid data
-- [ ] Test with live/production JSON
+- [ ] Optional (advised): test with live/production JSON
 - [ ] `XCTAssertNoDiff` for better failure messages

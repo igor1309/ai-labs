@@ -1,5 +1,7 @@
 ---
+date: 2025-10-24
 model: Claude Sonnet 4.5
+description: "Implementation guide for swift-vortex backend response mappers."
 ---
 
 # Backend Response Mapper Implementation Guide
@@ -17,8 +19,8 @@ Retrieve:
 
 ## Path Structure
 
-- **Production**: `Sources/Feature/{ModuleName}/Backend/{MethodName}/`
-- **Tests**: `Tests/Feature/{ModuleName}/Backend/{MethodName}/`
+- **Production**: `Sources/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/`
+- **Tests**: `Tests/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/`
 - **Test Import**: `{ModuleName}Backend` module
 
 ## Architecture: Three-Layer Decoding
@@ -72,7 +74,7 @@ Retrieve:
 - List field varies: "list", "items", "countries", etc.
 
 ### File 1: Public Model
-**Path**: `Sources/Feature/{ModuleName}/Backend/{MethodName}/{MethodName}.swift`
+**Path**: `Sources/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/{MethodName}.swift`
 
 ```swift
 //
@@ -100,7 +102,7 @@ public struct {ItemType}: Equatable {
 ```
 
 ### File 2: Mapper
-**Path**: `Sources/Feature/{ModuleName}/Backend/{MethodName}/ResponseMapper+map{MethodName}Response.swift`
+**Path**: `Sources/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/ResponseMapper+map{MethodName}Response.swift`
 
 ```swift
 //
@@ -175,7 +177,7 @@ private struct MissingRequiredField: Error {}
 ```
 
 ### File 3: Tests
-**Path**: `Tests/Feature/{ModuleName}/Backend/{MethodName}/ResponseMapper_map{MethodName}ResponseTests.swift`
+**Path**: `Tests/Feature/{ModuleName}/Backend/ResponseMapper/{MethodName}/ResponseMapper_map{MethodName}ResponseTests.swift`
 
 ```swift
 //
@@ -496,22 +498,23 @@ private extension String {
 **Use when**: JSON structure is NOT `{ serial: "...", {listField}: [...] }`
 
 ```swift
+// File 1: Public Model
+public struct {MethodName}: Equatable {
+
+    public let {field1}: {Type1}
+    public let {field2}: {Type2}
+
+    public init(
+        {field1}: {Type1},
+        {field2}: {Type2}
+    ) {
+        self.{field1} = {field1}
+        self.{field2} = {field2}
+    }
+}
+
 // File 2: Mapper for custom struct
 public extension ResponseMapper {
-
-    struct {MethodName}: Equatable {
-
-        public let {field1}: {Type1}
-        public let {field2}: {Type2}
-
-        public init(
-            {field1}: {Type1},
-            {field2}: {Type2}
-        ) {
-            self.{field1} = {field1}
-            self.{field2} = {field2}
-        }
-    }
 
     static func map{MethodName}Response(
         _ data: Data,
@@ -522,7 +525,7 @@ public extension ResponseMapper {
     }
 }
 
-private extension ResponseMapper.{MethodName} {
+private extension {MethodName} {
 
     init(data: DTO) throws {
 
@@ -568,6 +571,7 @@ private struct MissingRequiredField: Error {}
 8. Missing Optional Fields (test maps to nil)
 9. Partial Failures (one test per required field - skip invalid items, keep valid ones)
 10. All Items Invalid (one test per required field - return empty list)
+11. Optional (advised): Live/production JSON regression test
 
 ## Validation Checklist
 
