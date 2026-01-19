@@ -52,5 +52,5 @@ git worktree add "/X/<repo>.worktrees/$name" "$branch_or_commit"
 ## Notes
 
 - The tool does not copy files. It creates symlinks so all worktrees share identical config contents.
-- The script skips obvious junk entries (`.DS_Store`, `Thumbs.db`) and git metadata (`.git`, `.gitignore`, `.gitattributes`, `.gitmodules`) at the shared-config root.
+- The script skips obvious junk entries (`.DS_Store`, `Thumbs.db`), git metadata (`.git`, `.gitignore`, `.gitattributes`, `.gitmodules`), and config docs like `README.md` at the shared-config root.
 - Safe to run multiple times; existing symlinks are updated in place.

@@ -77,7 +77,7 @@ mkdir -p "${SHARED}"
 should_skip_name() {
   local name="$1"
   case "${name}" in
-    .DS_Store|Thumbs.db|.git|.gitignore|.gitattributes|.gitmodules)
+    .DS_Store|Thumbs.db|.git|.gitignore|.gitattributes|.gitmodules|README.md)
       return 0
       ;;
   esac
