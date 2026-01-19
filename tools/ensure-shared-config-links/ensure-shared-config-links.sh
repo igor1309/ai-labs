@@ -15,6 +15,7 @@ set -euo pipefail
 #
 # - Refuses to overwrite any existing *non-symlink* in the worktree root.
 #   (Fail-fast to avoid clobbering tracked files or local data.)
+# - Skips git metadata entries at the shared-config root (e.g. .git*).
 #
 # Hardcoded conventions / expectations:
 # - Worktrees live under:  /X/<repo>.worktrees/<worktree-name>
@@ -72,10 +73,11 @@ esac
 mkdir -p "${SHARED}"
 
 # Items to skip (direct children names only). Keep this list short and obvious.
+# .git* are skipped to avoid colliding with the worktree's git metadata.
 should_skip_name() {
   local name="$1"
   case "${name}" in
-    .DS_Store|Thumbs.db)
+    .DS_Store|Thumbs.db|.git|.gitignore|.gitattributes|.gitmodules)
       return 0
       ;;
   esac
