@@ -101,6 +101,9 @@ Closed issues do **not** prevent new issue creation.
   ```
   where `<name>` is the direct child name under `sandbox/`.
 
+- **Labels**
+  - `sandbox`
+
 - **Body**
   - Includes a link to the repository path:
     ```
@@ -119,6 +122,9 @@ Closed issues do **not** prevent new issue creation.
   ```
   [todo] docs/guides/TODO.md
   ```
+
+- **Labels**
+  - `todo`
 
 - **Body**
   - Includes a link to the full repository-relative path of the `TODO.md` file.
