@@ -7,6 +7,16 @@ set -euo pipefail
 #   AFTER_SHA  - commit SHA after the push
 #   GH_TOKEN   - GitHub token for API access
 
+ensure_label_exists() {
+  local name="$1"
+  local color="$2"
+  local description="$3"
+  if ! gh label list --json name --jq ".[].name" | grep -qx "$name"; then
+    echo "Creating label: $name"
+    gh label create "$name" --color "$color" --description "$description"
+  fi
+}
+
 BEFORE="${BEFORE_SHA:-}"
 AFTER="${AFTER_SHA:-}"
 
@@ -79,6 +89,14 @@ TODO_FILES="${TODO_FILES#$'\n'}"
 echo ""
 echo "Detected sandbox entries: ${!SANDBOX_ENTRIES[*]:-none}"
 echo "Detected TODO.md files: ${TODO_FILES:-none}"
+
+# Ensure required labels exist
+if [[ ${#SANDBOX_ENTRIES[@]} -gt 0 ]]; then
+  ensure_label_exists "sandbox" "5319E7" "Experimental sandbox entries"
+fi
+if [[ -n "$TODO_FILES" ]]; then
+  ensure_label_exists "todo" "FBCA04" "TODO.md files requiring attention"
+fi
 
 # Create issues for sandbox entries
 for entry in "${!SANDBOX_ENTRIES[@]}"; do
