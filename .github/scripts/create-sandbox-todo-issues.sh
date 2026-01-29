@@ -44,7 +44,7 @@ echo "Diff output:"
 echo "$DIFF_OUTPUT"
 
 # Track sandbox entries and TODO.md files
-declare -A SANDBOX_ENTRIES=()
+SANDBOX_ENTRIES=()
 TODO_FILES=""
 
 while IFS=$'\t' read -r status path newpath; do
@@ -73,7 +73,7 @@ while IFS=$'\t' read -r status path newpath; do
   # Check for sandbox top-level entries
   if [[ "$path" =~ ^sandbox/([^/]+)(/.*)?$ ]]; then
     entry="${BASH_REMATCH[1]}"
-    SANDBOX_ENTRIES["$entry"]=1
+    SANDBOX_ENTRIES+=("$entry")
   fi
 
   # Check for TODO.md files
@@ -86,12 +86,22 @@ done <<< "$DIFF_OUTPUT"
 # Remove leading newline from TODO_FILES
 TODO_FILES="${TODO_FILES#$'\n'}"
 
+SANDBOX_ENTRIES_UNIQUE=""
+if [[ ${#SANDBOX_ENTRIES[@]} -gt 0 ]]; then
+  SANDBOX_ENTRIES_UNIQUE=$(printf '%s\n' "${SANDBOX_ENTRIES[@]}" | awk '!seen[$0]++')
+fi
+
+SANDBOX_ENTRIES_DISPLAY="none"
+if [[ -n "$SANDBOX_ENTRIES_UNIQUE" ]]; then
+  SANDBOX_ENTRIES_DISPLAY=$(printf '%s\n' "$SANDBOX_ENTRIES_UNIQUE" | paste -sd' ' -)
+fi
+
 echo ""
-echo "Detected sandbox entries: ${!SANDBOX_ENTRIES[*]:-none}"
+echo "Detected sandbox entries: $SANDBOX_ENTRIES_DISPLAY"
 echo "Detected TODO.md files: ${TODO_FILES:-none}"
 
 # Ensure required labels exist
-if [[ ${#SANDBOX_ENTRIES[@]} -gt 0 ]]; then
+if [[ -n "$SANDBOX_ENTRIES_UNIQUE" ]]; then
   ensure_label_exists "sandbox" "5319E7" "Experimental sandbox entries"
 fi
 if [[ -n "$TODO_FILES" ]]; then
@@ -99,24 +109,27 @@ if [[ -n "$TODO_FILES" ]]; then
 fi
 
 # Create issues for sandbox entries
-for entry in "${!SANDBOX_ENTRIES[@]}"; do
-  TITLE="[sandbox] $entry"
-  echo ""
-  echo "Processing sandbox entry: $entry"
+if [[ -n "$SANDBOX_ENTRIES_UNIQUE" ]]; then
+  while IFS= read -r entry; do
+    [[ -z "$entry" ]] && continue
+    TITLE="[sandbox] $entry"
+    echo ""
+    echo "Processing sandbox entry: $entry"
 
-  # Check if open issue with exact title exists
-  EXISTING=$(gh issue list --state open --search "in:title \"[sandbox] $entry\"" --json title --jq ".[] | select(.title == \"$TITLE\") | .title" 2>/dev/null || true)
+    # Check if open issue with exact title exists
+    EXISTING=$(gh issue list --state open --search "in:title \"[sandbox] $entry\"" --json title --jq ".[] | select(.title == \"$TITLE\") | .title" 2>/dev/null || true)
 
-  if [[ -n "$EXISTING" ]]; then
-    echo "Issue already exists: $TITLE"
-    continue
-  fi
+    if [[ -n "$EXISTING" ]]; then
+      echo "Issue already exists: $TITLE"
+      continue
+    fi
 
-  BODY="New sandbox entry detected."$'\n'$'\n'"Path: [sandbox/$entry](sandbox/$entry)"
+    BODY="New sandbox entry detected."$'\n'$'\n'"Path: [sandbox/$entry](sandbox/$entry)"
 
-  echo "Creating issue: $TITLE"
-  gh issue create --title "$TITLE" --label "sandbox" --body "$BODY"
-done
+    echo "Creating issue: $TITLE"
+    gh issue create --title "$TITLE" --label "sandbox" --body "$BODY"
+  done <<< "$SANDBOX_ENTRIES_UNIQUE"
+fi
 
 # Create issues for TODO.md files
 if [[ -n "$TODO_FILES" ]]; then
