@@ -19,6 +19,21 @@ Review architecture specifications for completeness, appropriate abstraction lev
 
 **Documentation:** See [arch-spec-review/SKILL.md](arch-spec-review/SKILL.md)
 
+### Documentation Drift Audit
+
+Verify that markdown documentation accurately describes the current codebase. Detects factual mismatches between docs and code — wrong names, signatures, paths, behaviors. Does not rewrite, reformat, or improve docs.
+
+**Key features:**
+- Strict protocol against over-editing — guardrails are the point
+- Parallel subagent audit for 3+ files, inline for 1–2
+- Read-only subagents with structured prompt template
+- Individual mismatch review before accepting findings
+- Minimal fixes only after user approval
+
+**Use when:** Auditing documentation accuracy, checking if docs match code after refactors, finding stale or drifted documentation.
+
+**Documentation:** See [doc-drift-audit/SKILL.md](doc-drift-audit/SKILL.md)
+
 ### Job Search Strategy
 
 Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies.
@@ -92,6 +107,7 @@ Then install the skills you want:
 
 ```
 /plugin install arch-spec-review
+/plugin install doc-drift-audit
 /plugin install job-search-strategy
 /plugin install swift-package-manifest
 /plugin install tdd-interactive
@@ -105,13 +121,14 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 ```bash
 # Install individual skills
 cp -r arch-spec-review ~/.claude/skills/
+cp -r doc-drift-audit ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review job-search-strategy swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review doc-drift-audit job-search-strategy swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -130,6 +147,20 @@ Review this architecture specification for completeness and appropriate abstract
 Or:
 ```
 Evaluate this architecture document to ensure it defines system boundaries without prescribing implementation details.
+```
+
+### Documentation Drift Audit
+
+Invoke after refactors or when you suspect docs have fallen out of sync with code.
+
+**Example prompt:**
+```
+Audit the documentation in this repo for drift — find where docs don't match the code.
+```
+
+Or:
+```
+Check if the README still accurately describes the current API.
 ```
 
 ### Job Search Strategy

@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-02-05
+
+### Documentation Drift Audit Skill
+Added doc-drift-audit skill (v1.0.0) for verifying markdown documentation accuracy against current codebase. Strict protocol detects factual mismatches (wrong names, signatures, paths, behaviors) without rewriting, reformatting, or improving docs. Uses parallel read-only subagents for 3+ files with structured prompt template. All fixes require user approval. Marketplace v1.3.0.
+
 ## 2025-10-31
 
 ### Architecture Specification Review Skill
