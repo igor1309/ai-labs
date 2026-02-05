@@ -58,7 +58,7 @@ Discard any finding that is formatting or style — it is not drift.
 **Adaptive strategy based on file count:**
 
 - **1–2 files**: Process inline — read each doc file and verify claims against code directly, without launching subagents.
-- **3+ files**: Launch one read-only subagent per doc file in parallel using the Task tool.
+- **3+ files**: Launch one subagent per doc file in parallel using the Task tool with `subagent_type: "Explore"`. Explore agents cannot Edit/Write — this enforces read-only structurally, not just by instruction.
 
 #### Subagent Rules
 
