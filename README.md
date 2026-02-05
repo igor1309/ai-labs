@@ -24,9 +24,13 @@ dev-skills/
 - Track work-in-progress in `TODO/`
 
 **Publishing:**
-- Push to `trunk` branch
-- GitHub Action automatically syncs `public/` → [igor1309/skills](https://github.com/igor1309/skills) (public)
-- Manual trigger available via workflow dispatch
+1. Move skill to `public/<skill-name>/` when ready
+2. Update `public/.claude-plugin/marketplace.json` — add skill entry, bump `version`, update `description` if needed
+3. Update `public/README.md`
+4. Update `docs/log.md`
+5. Commit and push to `trunk` branch
+6. GitHub Action automatically syncs `public/` → [igor1309/skills](https://github.com/igor1309/skills) (public)
+7. Manual trigger available via workflow dispatch
 
 ## Public Repository
 
