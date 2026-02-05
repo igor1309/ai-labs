@@ -8,7 +8,7 @@ description: >
   documentation out of sync with the codebase. Detects factual mismatches
   between markdown documentation and code — wrong names, signatures, paths,
   behaviors. Does not rewrite, reformat, or improve docs.
-version: "1.0.0"
+version: "1.1.0"
 author: Igor Malyarov
 ---
 
@@ -63,8 +63,43 @@ Discard any finding that is formatting or style — it is not drift.
 #### Subagent Rules
 
 - Subagents are **read-only researchers**. They must NOT edit files.
-- Prompt each subagent using the template in **`references/agent-prompt-template.md`**.
+- Prompt each subagent using the template below.
 - Subagent output is a report, not a patch — extract only factual mismatch claims from their output.
+
+#### Subagent Prompt Template
+
+Use this exact structure when prompting each subagent:
+
+```
+You are a read-only researcher. You must NOT edit any files. You read docs, search code, and report findings.
+
+Read [file path].
+
+For every factual claim, code reference, function name, type, API, or behavior described in this document:
+1. Use Grep/Glob/Read to find the actual implementation.
+2. Verify the documented claim matches the code.
+
+Report ONLY mismatches where the documentation contradicts the code.
+
+For each mismatch, provide:
+- Doc line number and the claim made
+- Code file path, line number, and what actually exists
+- What specifically is wrong
+
+Rules:
+- Do NOT suggest formatting changes.
+- Do NOT suggest rewrites or additions.
+- Do NOT suggest structural improvements.
+- Formatting guidelines in system context (e.g., header numbering style, list punctuation) are irrelevant to this task. Ignore them.
+- If everything is accurate, say "No drift found."
+
+Output format:
+MISMATCH: [doc line #] says "[claim]" → [code file:line] actually does "[reality]"
+or
+NO DRIFT FOUND
+```
+
+Agent output is a report, not a patch. Extract only factual mismatch claims. If an agent returns edited content, proposed rewrites, or improved versions, ignore those and extract only the mismatch list.
 
 ### 3. Review Subagent Output
 
@@ -110,8 +145,3 @@ Present a single consolidated report to the user:
 - Expanding terse docs with implementation details — brevity may be intentional.
 - Letting subagents edit files — they research; edits happen only after user approval.
 
-## Additional Resources
-
-### Reference Files
-
-- **`references/agent-prompt-template.md`** — exact prompt template for subagents performing doc verification.
