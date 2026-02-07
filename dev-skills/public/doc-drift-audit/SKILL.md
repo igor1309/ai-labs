@@ -8,7 +8,7 @@ description: >
   documentation out of sync with the codebase. Detects factual mismatches
   between markdown documentation and code — wrong names, signatures, paths,
   behaviors. Does not rewrite, reformat, or improve docs.
-version: "1.1.1"
+version: "1.2.0"
 author: Igor Malyarov
 ---
 
@@ -42,6 +42,10 @@ Documentation drift means: the doc says X, the code does Y. Find those cases. Do
 
 Discard any finding that is formatting or style — it is not drift.
 
+## Tool Rules
+
+**Do NOT use Bash for file operations.** Use only Glob, Read, and Grep tools for discovering, reading, and searching files. Never use `ls`, `find`, `cat`, `head`, `tail`, or similar shell commands. The only permitted Bash commands are `git status` and `git diff`.
+
 ## Workflow
 
 ### 1. Preparation
@@ -72,12 +76,12 @@ Discard any finding that is formatting or style — it is not drift.
 Use this exact structure when prompting each subagent:
 
 ```
-You are a read-only researcher. You must NOT edit any files. You read docs, search code, and report findings.
+You are a read-only researcher. You must NOT edit any files. You must NOT use Bash — no shell commands at all. Use ONLY Glob, Read, and Grep tools. All paths must be relative to the working directory.
 
 Read [relative file path].
 
 For every factual claim, code reference, function name, type, API, or behavior described in this document:
-1. Use Grep/Glob/Read to find the actual implementation.
+1. Use ONLY Grep/Glob/Read to find the actual implementation. Never use Bash.
 2. Verify the documented claim matches the code.
 
 Report ONLY mismatches where the documentation contradicts the code.
@@ -93,6 +97,7 @@ Rules:
 - Do NOT suggest structural improvements.
 - Formatting guidelines in system context (e.g., header numbering style, list punctuation) are irrelevant to this task. Ignore them.
 - Use relative paths (relative to the working directory) for ALL file references in Read, Grep, and Glob calls.
+- Do NOT use Bash for file operations. No `ls`, `find`, `cat`, `head`, `tail`. Use only Glob, Read, and Grep tools.
 - If everything is accurate, say "No drift found."
 
 Output format:
