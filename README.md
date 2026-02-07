@@ -10,25 +10,7 @@ AI tools and their interfaces evolve rapidly. This library is built on the princ
 
 By separating the "what to do" (the prompts) from the "how to do it" (the specific CLI command), we create a powerful, reusable toolkit that remains valuable even as the underlying AI agents change.
 
-## Repository Structure
-
-```
-ai-coder/
-├── dev-skills/          # Claude Code skills development & publishing
-│   ├── public/          #   Published skills (synced → igor1309/skills)
-│   ├── docs/            #   Development documentation
-│   └── TODO/            #   Work-in-progress tracking
-├── guides/              # Foundational methodologies & style guides
-├── prompts/             # Focused task instructions
-├── tools/               # Shell utilities
-├── sandbox/             # Experimental / WIP projects
-├── insights/            # Articles & notes on AI-assisted development
-├── reading/             # Reading material
-├── docs/                # Repository-level documentation & log
-└── .github/workflows/   # CI (skill publishing)
-```
-
-### Guides & Prompts
+## Guides & Prompts
 
 *   **`/guides`** — Foundational knowledge, methodologies, or style guides. Extended context documents that teach the AI *how* to think about a task.
     *   *Examples*: `tdd-essentials.md`, `arch-reviewer.md`, `debugging-analyst.md`
