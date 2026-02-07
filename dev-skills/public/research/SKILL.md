@@ -6,7 +6,7 @@ description: >
   Restates task understanding, explores relevant files and patterns,
   reports findings with risks and unknowns, asks clarifying questions.
   Does not suggest solutions or change code.
-version: "1.0.0"
+version: "1.2.0"
 author: Igor Malyarov
 ---
 
@@ -35,7 +35,12 @@ Restate the task in your own words. This catches misinterpretation early.
 
 ### Findings
 
-Factual observations from the codebase:
+Factual observations from the codebase.
+Start with two lead bullets:
+- `Scope:` what was searched, coverage boundaries, and exclusions. Include counts when relevant.
+- `Pattern evidence:` representative analogs or pattern families (or explicit `none found`).
+
+Then include:
 - Relevant files and modules (with paths)
 - Patterns and conventions used for similar functionality
 - Constraints or dependencies discovered
@@ -49,6 +54,17 @@ Factual observations from the codebase:
 ### Questions
 
 Clarifying questions about the task or approach, if any. Omit this section if there are none.
+
+### Large-Scope Mode
+
+Use this mode when detailed listing would exceed 12-15 evidence bullets or starts repeating the same pattern.
+
+- Keep the same top-level sections. Do not add extra top-level sections.
+- In `Findings`, include a compact coverage summary: files scanned, files deeply read, directories covered, search pattern count, and exclusions.
+- Group matches into pattern families with counts and 2-3 representative file paths per family.
+- Prioritize conflicts, deviations, and outliers. Do not enumerate repetitive matches.
+- Add this line in `Findings`: `Examples are representative; full match list omitted for brevity.`
+- If conflicting patterns are present, include a `Conflicts` block inside `Findings`.
 
 ## Constraints
 
