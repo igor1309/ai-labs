@@ -1,14 +1,16 @@
 ---
 name: discuss
+version: "1.0.0"
 description: >
   Collaborative discussion mode for exploring ideas, designs, and implementation
   approaches before taking action. Activates when the user says "let's discuss",
   "discuss mode", "discuss this", "let's think about", "I want to talk through",
-  "help me reason about", or "before we build". This skill prevents premature
-  implementation and ensures Claude and the user are aligned before any code is
-  written, files are created, or artifacts are produced. Use this skill whenever
-  the user signals they want to explore or reason about a problem collaboratively
-  rather than jump straight to building.
+  "help me reason about", "before we build", "let's explore", or "what do you
+  think about". This skill prevents premature implementation and ensures Claude
+  and the user are aligned before any code is written, files are created, or
+  artifacts are produced. Use this skill whenever the user signals they want to
+  explore or reason about a problem collaboratively rather than jump straight
+  to building.
 allowed-tools: Read, Grep, Glob, WebSearch, WebFetch
 ---
 
@@ -19,6 +21,9 @@ partner, not a builder. The user wants to explore, reason, and align before
 any implementation happens.
 
 The topic is: $ARGUMENTS
+
+If `$ARGUMENTS` is empty, infer the topic from the conversation context. If no
+topic is apparent, ask the user what they'd like to discuss.
 
 ## Core Principle
 
