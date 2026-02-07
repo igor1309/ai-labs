@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-07
 
+### Skill-local Private Workspace Exclusions
+Added publish exclusions for skill-local `sandbox/`, `research/`, and `archive/` folders under `dev-skills/public/**`. This keeps development context versioned in `ai-coder` while preventing those folders from syncing to the public `igor1309/skills` repository, with case-insensitive handling for mobile edits.
+
 ### `dev-skills` Repo Merged into `ai-coder`
 Consolidated dev-skills (77 commits, 7 published skills) into ai-coder via git subtree under `dev-skills/`. Full commit history preserved. Moved sync workflow to root `.github/workflows/`, archived `igor1309/dev-skills` on GitHub.
 

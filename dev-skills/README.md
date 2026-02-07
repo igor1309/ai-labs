@@ -22,6 +22,17 @@ dev-skills/
 - Work on skills in `public/` folder
 - Maintain development docs in `docs/`
 - Track work-in-progress in `TODO/`
+- Skill-local development folders may live next to `SKILL.md` as `sandbox/`, `research/`, and `archive/`
+
+### Publish Exclusions
+
+Local development folders under `public/` are intentionally not published to the public skills repository:
+
+- `sandbox/`
+- `research/`
+- `archive/`
+
+They are excluded by `public/.publishignore` and a case-insensitive cleanup step in `.github/workflows/sync-skills-public.yml`.
 
 **Publishing:**
 1. Move skill to `public/<skill-name>/` when ready
