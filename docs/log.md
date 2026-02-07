@@ -15,7 +15,7 @@ Added research skill (v1.0.0) — research phase for task execution. Agent resta
 ## 2026-02-05
 
 ### Documentation Drift Audit Skill
-Added doc-drift-audit skill (v1.0.0) for verifying markdown documentation accuracy against current codebase. Strict protocol detects factual mismatches (wrong names, signatures, paths, behaviors) without rewriting, reformatting, or improving docs. Uses parallel read-only subagents for 3+ files with structured prompt template. All fixes require user approval. Marketplace v1.3.0.
+Added doc-drift-audit skill (v1.1.0) for verifying markdown documentation accuracy against current codebase. Strict protocol detects factual mismatches (wrong names, signatures, paths, behaviors) without rewriting, reformatting, or improving docs. Uses parallel read-only subagents for 3+ files with structured prompt template. All fixes require user approval. Marketplace v1.3.0.
 
 ## 2025-12-27
 Add front-matter to markdown files.
