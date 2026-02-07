@@ -5,8 +5,7 @@
 - [`using-superpowers/SKILL.md`](https://github.com/obra/superpowers/blob/main/skills/using-superpowers/SKILL.md) should work with gemini-cli and codex
 
 [Amplifier: Supercharged AI Development Environment](https://github.com/microsoft/amplifier/) by Microsoft
-- [agents](https://github.com/microsoft/amplifier/tree/main/.claude/agents)
-- [commands](https://github.com/microsoft/amplifier/tree/main/.claude/commands)
+- [agents](https://github.com/microsoft/amplifier/tree/main/agents)
 
 [Jason Gorman (Codemanship)](https://codemanship.wordpress.com)
 - **TDD Under The Microscope**  
