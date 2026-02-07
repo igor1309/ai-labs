@@ -1,0 +1,51 @@
+name: Sync to Public Skills Repository
+
+on:
+  push:
+    branches:
+      - trunk
+    paths:
+      - 'public/**'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev-skills (private source)
+        uses: actions/checkout@v4
+        with:
+          path: dev-skills
+
+      - name: Checkout skills (public target)
+        uses: actions/checkout@v4
+        with:
+          repository: igor1309/skills
+          token: ${{ secrets.PUBLIC_REPO_PAT }}
+          path: skills-public
+
+      - name: Sync public folder to public repo
+        run: |
+          # Remove all content from public repo (except .git)
+          find skills-public -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # Copy entire public/ folder content to public repo root
+          cp -r dev-skills/public/* skills-public/
+          # Copy hidden files except .git
+          find dev-skills/public -mindepth 1 -maxdepth 1 -name '.*' ! -name '.git' -exec cp -r {} skills-public/ \;
+
+      - name: Commit and push to public repo
+        run: |
+          cd skills-public
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Sync from dev-skills"
+            git push
+          fi

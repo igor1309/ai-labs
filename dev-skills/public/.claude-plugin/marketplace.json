@@ -1,0 +1,28 @@
+{
+  "name": "dev-skills",
+  "owner": {
+    "name": "Igor Malyarov",
+    "email": "igor1309@gmail.com"
+  },
+  "metadata": {
+    "description": "Development workflows and career advancement tools for software engineers",
+    "version": "1.4.0"
+  },
+  "plugins": [
+    {
+      "name": "dev-skills",
+      "description": "Development workflows: codebase exploration, TDD, architecture review, documentation auditing, Swift packaging, and job search strategy",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./arch-spec-review",
+        "./doc-drift-audit",
+        "./job-search-strategy",
+        "./research",
+        "./swift-package-manifest",
+        "./tdd-interactive",
+        "./tdd-scaffold-review"
+      ]
+    }
+  ]
+}
