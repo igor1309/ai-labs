@@ -19,6 +19,22 @@ Review architecture specifications for completeness, appropriate abstraction lev
 
 **Documentation:** See [arch-spec-review/SKILL.md](arch-spec-review/SKILL.md)
 
+### Discuss
+
+Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
+
+**Key features:**
+- Read-only exploration — codebase and web research without any file changes
+- One-question-at-a-time approach to clarify high-impact unknowns
+- Structured options with contextual labels when discrete choices exist
+- Scaled playback — depth matches topic complexity
+- Clear guardrails: only the user can exit discuss mode
+- Named anti-patterns to avoid common discussion failures
+
+**Use when:** You want to explore, reason about, or align on a problem before building. Say "let's discuss", "let's think about", "before we build", or similar.
+
+**Documentation:** See [discuss/SKILL.md](discuss/SKILL.md)
+
 ### Documentation Drift Audit
 
 Verify that markdown documentation accurately describes the current codebase. Detects factual mismatches between docs and code — wrong names, signatures, paths, behaviors. Does not rewrite, reformat, or improve docs.
@@ -123,6 +139,7 @@ Then install the skills you want:
 
 ```
 /plugin install arch-spec-review
+/plugin install discuss
 /plugin install doc-drift-audit
 /plugin install job-search-strategy
 /plugin install rpi-research
@@ -138,6 +155,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 ```bash
 # Install individual skills
 cp -r arch-spec-review ~/.claude/skills/
+cp -r discuss ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
@@ -146,7 +164,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review doc-drift-audit job-search-strategy rpi-research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review discuss doc-drift-audit job-search-strategy rpi-research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -165,6 +183,20 @@ Review this architecture specification for completeness and appropriate abstract
 Or:
 ```
 Evaluate this architecture document to ensure it defines system boundaries without prescribing implementation details.
+```
+
+### Discuss
+
+Invoke when you want to explore an idea or align on an approach before building.
+
+**Example prompt:**
+```
+Let's discuss how to add caching to the API layer.
+```
+
+Or:
+```
+Before we build — I want to think through the authentication redesign.
 ```
 
 ### Documentation Drift Audit
