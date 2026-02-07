@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-07
 
+### `dev-skills` Repo Merged into `ai-coder`
+Consolidated dev-skills (77 commits, 7 published skills) into ai-coder via git subtree under `dev-skills/`. Full commit history preserved. Moved sync workflow to root `.github/workflows/`, archived `igor1309/dev-skills` on GitHub.
+
 ### Research Skill
 Added research skill (v1.0.0) — research phase for task execution. Agent restates task understanding, explores relevant files and patterns, reports findings with risks and unknowns, asks clarifying questions. Hard constraints: no code changes, no solution proposals. First piece of the RPI (Research, Plan, Implement) workflow. Marketplace v1.4.0.
 
