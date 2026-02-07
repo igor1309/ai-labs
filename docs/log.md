@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-02-07
+
+### Research Skill
+Added research skill (v1.0.0) — research phase for task execution. Agent restates task understanding, explores relevant files and patterns, reports findings with risks and unknowns, asks clarifying questions. Hard constraints: no code changes, no solution proposals. First piece of the RPI (Research, Plan, Implement) workflow. Marketplace v1.4.0.
+
 ## 2026-02-05
 
 ### Documentation Drift Audit Skill
