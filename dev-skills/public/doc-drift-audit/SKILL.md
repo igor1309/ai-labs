@@ -8,7 +8,7 @@ description: >
   documentation out of sync with the codebase. Detects factual mismatches
   between markdown documentation and code — wrong names, signatures, paths,
   behaviors. Does not rewrite, reformat, or improve docs.
-version: "1.1.0"
+version: "1.1.1"
 author: Igor Malyarov
 ---
 
@@ -51,6 +51,7 @@ Discard any finding that is formatting or style — it is not drift.
 3. Discover markdown files to audit:
    - Use `Glob` with `**/*.md` to find all markdown files.
    - Exclude `node_modules/`, `vendor/`, `.build/`, and similar generated directories.
+   - Convert all discovered paths to relative paths (relative to the working directory) before presenting or using them. Do not use absolute paths anywhere in this workflow.
    - Present the file list to the user for confirmation. Remove any files the user excludes.
 
 ### 2. Audit Execution
@@ -73,7 +74,7 @@ Use this exact structure when prompting each subagent:
 ```
 You are a read-only researcher. You must NOT edit any files. You read docs, search code, and report findings.
 
-Read [file path].
+Read [relative file path].
 
 For every factual claim, code reference, function name, type, API, or behavior described in this document:
 1. Use Grep/Glob/Read to find the actual implementation.
@@ -91,6 +92,7 @@ Rules:
 - Do NOT suggest rewrites or additions.
 - Do NOT suggest structural improvements.
 - Formatting guidelines in system context (e.g., header numbering style, list punctuation) are irrelevant to this task. Ignore them.
+- Use relative paths (relative to the working directory) for ALL file references in Read, Grep, and Glob calls.
 - If everything is accurate, say "No drift found."
 
 Output format:
@@ -119,11 +121,11 @@ Present a single consolidated report to the user:
 ```
 ## Documentation Drift Report
 
-### [file path]
+### [relative file path]
 - Line X: says "[claim]" — actual: [what code does]. Suggested fix: [minimal correction].
 - ...
 
-### [file path]
+### [relative file path]
 - No drift found.
 ```
 
