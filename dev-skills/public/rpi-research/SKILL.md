@@ -1,12 +1,12 @@
 ---
-name: research
+name: rpi-research
 description: >
   Research phase of task execution. Only invoke when the user explicitly
-  calls /research. Do not auto-trigger from natural language.
+  calls /rpi-research. Do not auto-trigger from natural language.
   Restates task understanding, explores relevant files and patterns,
   reports findings with risks and unknowns, asks clarifying questions.
   Does not suggest solutions or change code.
-version: "1.2.0"
+version: "2.0.0"
 author: Igor Malyarov
 ---
 
@@ -70,6 +70,6 @@ Use this mode when detailed listing would exceed 12-15 evidence bullets or start
 
 - **No code changes.** Do not modify, create, or delete any files.
 - **No suggestions.** Report what you observe, not what you would do. "The codebase uses protocol-based DI" is a finding. "We should use protocol-based DI" is a suggestion — save it for the planning phase.
-- **Suggestion requests during Research.** If the user asks for suggestions while in `/research`, do not provide them. Ask whether to switch to `/plan` and wait for confirmation.
+- **Suggestion requests during Research.** If the user asks for suggestions while in `/rpi-research`, do not provide them. Ask whether to switch to `/plan` and wait for confirmation.
 - **No implementation details.** Do not discuss how you would implement the task.
 - **Stop cleanly.** After delivering research output, ask whether to save findings to a file. Then wait for the next instruction.

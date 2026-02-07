@@ -49,7 +49,7 @@ Comprehensive job search strategy toolkit for analyzing job postings, discoverin
 
 **Documentation:** See [job-search-strategy/SKILL.md](job-search-strategy/SKILL.md)
 
-### Research
+### RPI Research
 
 Research phase for task execution. Investigate the codebase, build understanding, report findings without changing code or proposing solutions.
 
@@ -61,9 +61,9 @@ Research phase for task execution. Investigate the codebase, build understanding
 - Large-scope mode for broad investigations (grouped pattern families, coverage summaries)
 - Optional save-to-file for findings
 
-**Use when:** Starting any non-trivial task. Describe the task, then invoke `/research` to get research output before planning or implementing.
+**Use when:** Starting any non-trivial task. Describe the task, then invoke `/rpi-research` to get research output before planning or implementing.
 
-**Documentation:** See [research/SKILL.md](research/SKILL.md)
+**Documentation:** See [rpi-research/SKILL.md](rpi-research/SKILL.md)
 
 ### Swift Package Manifest
 
@@ -125,7 +125,7 @@ Then install the skills you want:
 /plugin install arch-spec-review
 /plugin install doc-drift-audit
 /plugin install job-search-strategy
-/plugin install research
+/plugin install rpi-research
 /plugin install swift-package-manifest
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
@@ -140,13 +140,13 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 cp -r arch-spec-review ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
-cp -r research ~/.claude/skills/
+cp -r rpi-research ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review doc-drift-audit job-search-strategy research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review doc-drift-audit job-search-strategy rpi-research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -195,20 +195,20 @@ Or:
 Help me identify skill gaps and create a development plan for this role.
 ```
 
-### Research
+### RPI Research
 
 Invoke after describing a task to get research output before planning or coding.
 
 **Example prompt:**
 ```
 Add caching to the API layer.
-/research
+/rpi-research
 ```
 
 Or:
 ```
 The login flow has a bug where session tokens expire too early.
-/research
+/rpi-research
 ```
 
 ### Swift Package Manifest
