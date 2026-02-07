@@ -2,7 +2,7 @@
 
 ## Working Directory
 
-**CRITICAL:** This repository is `/Users/igormalyarov/Developer/my-apps/dev-skills/` - the skills marketplace development repository.
+**CRITICAL:** This is the `dev-skills/` subdirectory within the `ai-coder` repository - the skills marketplace development area.
 
 **NEVER modify `~/.codex/skills/`** - that is the user's personal installation directory, NOT this repository.
 
