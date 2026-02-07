@@ -58,6 +58,7 @@ Research phase for task execution. Investigate the codebase, build understanding
 - Explores relevant files, patterns, and conventions
 - Reports findings, risks, and unknowns
 - Asks clarifying questions when needed
+- Large-scope mode for broad investigations (grouped pattern families, coverage summaries)
 - Optional save-to-file for findings
 
 **Use when:** Starting any non-trivial task. Describe the task, then invoke `/research` to get research output before planning or implementing.
