@@ -73,13 +73,12 @@ esac
 mkdir -p "${SHARED}"
 
 # Items to skip (direct children names only). Keep this list short and obvious.
-# .git* are skipped to avoid colliding with the worktree's git metadata.
+SKIP_NAMES=".DS_Store|Thumbs.db|.git|.github|.gitignore|.gitattributes|.gitmodules|README.md"
+
 should_skip_name() {
   local name="$1"
   case "${name}" in
-    .DS_Store|Thumbs.db|.git|.gitignore|.gitattributes|.gitmodules|README.md)
-      return 0
-      ;;
+    ${SKIP_NAMES}) return 0 ;;
   esac
   return 1
 }
