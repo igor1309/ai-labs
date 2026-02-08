@@ -73,24 +73,26 @@ esac
 mkdir -p "${SHARED}"
 
 # Items to skip (direct children names only). Keep this list short and obvious.
-SKIP_NAMES=".DS_Store|Thumbs.db|.git|.github|.gitignore|.gitattributes|.gitmodules|README.md"
+SKIP_NAMES=(.DS_Store Thumbs.db .git .github .gitignore .gitattributes .gitmodules README.md)
 
 should_skip_name() {
   local name="$1"
-  case "${name}" in
-    ${SKIP_NAMES}) return 0 ;;
-  esac
+  for skip in "${SKIP_NAMES[@]}"; do
+    [[ "${name}" == "${skip}" ]] && return 0
+  done
   return 1
 }
 
-link_or_refuse() {
+ERRORS=0
+
+link_or_warn() {
   local target="$1"
   local linkpath="$2"
 
-  # Refuse to overwrite a real file/dir.
   if [ -e "${linkpath}" ] && [ ! -L "${linkpath}" ]; then
-    echo "Refusing to replace existing non-symlink: ${linkpath}" >&2
-    exit 2
+    echo "WARNING: skipping existing non-symlink: ${linkpath}" >&2
+    ERRORS=$((ERRORS + 1))
+    return
   fi
 
   ln -sfn -- "${target}" "${linkpath}"
@@ -106,5 +108,10 @@ for src in "${SHARED}"/*; do
     continue
   fi
 
-  link_or_refuse "${src}" "${WT_ROOT}/${name}"
+  link_or_warn "${src}" "${WT_ROOT}/${name}"
 done
+
+if [ "${ERRORS}" -gt 0 ]; then
+  echo "${ERRORS} entry(s) skipped due to conflicts (see warnings above)." >&2
+  exit 2
+fi
