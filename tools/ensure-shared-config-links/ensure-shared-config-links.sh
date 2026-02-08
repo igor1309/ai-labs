@@ -13,8 +13,8 @@ set -euo pipefail
 #   ensures there is a symlink in the worktree root with the same name:
 #     <worktree>/<name> -> <shared>/<name>
 #
-# - Refuses to overwrite any existing *non-symlink* in the worktree root.
-#   (Fail-fast to avoid clobbering tracked files or local data.)
+# - Warns and skips any existing *non-symlink* in the worktree root
+#   (continues processing remaining entries).
 # - Skips git metadata entries at the shared-config root (e.g. .git*).
 #
 # Hardcoded conventions / expectations:
