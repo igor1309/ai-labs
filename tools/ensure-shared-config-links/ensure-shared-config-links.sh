@@ -83,19 +83,23 @@ should_skip_name() {
   return 1
 }
 
-ERRORS=0
+LINKED=0
+SKIPPED=0
 
 link_or_warn() {
   local target="$1"
   local linkpath="$2"
+  local name="$(basename "${linkpath}")"
 
   if [ -e "${linkpath}" ] && [ ! -L "${linkpath}" ]; then
-    echo "WARNING: skipping existing non-symlink: ${linkpath}" >&2
-    ERRORS=$((ERRORS + 1))
+    echo "WARNING: skipping existing non-symlink: ${name}" >&2
+    SKIPPED=$((SKIPPED + 1))
     return
   fi
 
   ln -sfn -- "${target}" "${linkpath}"
+  echo "Linked: ${name} -> ${target}"
+  LINKED=$((LINKED + 1))
 }
 
 # Link every direct child of SHARED into WT_ROOT
@@ -111,7 +115,8 @@ for src in "${SHARED}"/*; do
   link_or_warn "${src}" "${WT_ROOT}/${name}"
 done
 
-if [ "${ERRORS}" -gt 0 ]; then
-  echo "${ERRORS} entry(s) skipped due to conflicts (see warnings above)." >&2
+echo "Done: ${LINKED} linked, ${SKIPPED} skipped."
+
+if [ "${SKIPPED}" -gt 0 ]; then
   exit 2
 fi
