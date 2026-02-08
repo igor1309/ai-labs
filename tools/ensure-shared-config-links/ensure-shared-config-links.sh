@@ -97,6 +97,10 @@ link_or_warn() {
     return
   fi
 
+  if [ -L "${linkpath}" ] && [ "$(readlink "${linkpath}")" = "${target}" ]; then
+    return
+  fi
+
   ln -sfn -- "${target}" "${linkpath}"
   echo "Linked: ${name} -> ${target}"
   LINKED=$((LINKED + 1))
