@@ -1,8 +1,8 @@
 # AI Coder
 
-A central library of reusable prompts and guides for AI-assisted software development.
+A central repository for AI-assisted software development: reusable prompts, guides, Claude Code skills, and experimental tools.
 
-This repository contains a curated collection of instructions designed to be portable and effective across various AI coding agents, including (but not limited to) `Gemini CLI` and `Claude Code`.
+This repository contains a curated collection of instructions, skills, and tools designed to be portable and effective across various AI coding agents, including (but not limited to) `Gemini CLI` and `Claude Code`.
 
 ## Core Philosophy: Agent-Agnostic Instructions
 
@@ -10,32 +10,37 @@ AI tools and their interfaces evolve rapidly. This library is built on the princ
 
 By separating the "what to do" (the prompts) from the "how to do it" (the specific CLI command), we create a powerful, reusable toolkit that remains valuable even as the underlying AI agents change.
 
-## Repository Structure
+## Guides & Prompts
 
-The library is organized into two main categories:
+*   **`/guides`** — Foundational knowledge, methodologies, or style guides. Extended context documents that teach the AI *how* to think about a task.
+    *   *Examples*: `tdd-essentials.md`, `arch-reviewer.md`, `debugging-analyst.md`
 
-*   `/guides`: Contains foundational knowledge, methodologies, or style guides. These are extended context documents that set the stage for the AI, teaching it *how* to think about a task.
-    *   *Example*: `tdd-essentials.md`, `arch-reviewer.md`, `debugging-analyst.md`
-
-*   `/prompts`: Contains focused, concrete instructions for a specific task. These are the direct commands you give the AI.
+*   **`/prompts`** — Focused, concrete instructions for a specific task. Direct commands you give the AI.
     *   *Example*: `code-reviewer.txt`
 
-## How to Use This Library
+The general pattern is to combine a **guide** (foundational context) with a **prompt** (specific command) when interacting with your chosen AI agent.
 
-The general pattern for using these assets is to combine them when interacting with your chosen AI agent. You provide a **guide** as the foundational context and a **prompt** as the specific command.
+### Dev Skills (Claude Code)
 
-Think of it like this:
+The `dev-skills/` directory is the development workspace for Claude Code skills, merged into this repo via git subtree. Skills are developed here and automatically published to the public [igor1309/skills](https://github.com/igor1309/skills) repository via GitHub Actions.
 
-> **[A Guide]** teaches the AI the necessary principles.
->
-> **[A Prompt]** tells the AI what to do with those principles.
+**Published skills** (8 skills):
 
-**Conceptual Workflow:**
+| Skill | Purpose |
+|-------|---------|
+| `arch-spec-review` | Review architecture specs for completeness and abstraction level |
+| `discuss` | Collaborative discussion mode — explore ideas before coding |
+| `doc-drift-audit` | Detect where docs no longer match the code |
+| `job-search-strategy` | Job posting analysis and application strategy |
+| `rpi-research` | Research phase of RPI workflow — investigate before planning |
+| `swift-package-manifest` | Clean Package.swift creation using static property pattern |
+| `tdd-interactive` | Interactive TDD with RED-GREEN-REFACTOR verification gates |
+| `tdd-scaffold-review` | Evaluate test name scaffolds for TDD readiness |
 
-To have an AI review a piece of code according to your team's style guide, you would provide the agent with:
+**Install via Claude Code:**
 
-1.  **The Foundational Context:** The content of `guides/tdd-essentials.md`.
-2.  **The Specific Task:** The content of `prompts/code-reviewer.txt`.
-3.  **Your Target Code:** The content of your `my_file.py`.
+```
+/plugin marketplace add igor1309/skills
+```
 
-This modular approach allows you to mix and match guides and prompts to create highly specific and effective instructions for any development task.
+See [`dev-skills/public/README.md`](dev-skills/public/README.md) for full skill documentation and usage examples.
