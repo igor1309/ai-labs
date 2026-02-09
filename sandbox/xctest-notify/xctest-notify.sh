@@ -32,6 +32,9 @@ fi
 
 only_testing_args=()
 for t in "$@"; do
+  t="${t#"${t%%[![:space:]]*}"}"
+  t="${t%"${t##*[![:space:]]}"}"
+  [[ -z "$t" ]] && continue
   only_testing_args+=("-only-testing:${t}")
 done
 
