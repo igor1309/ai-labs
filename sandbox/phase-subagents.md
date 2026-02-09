@@ -1,7 +1,8 @@
 ---
 date: 2026-02-08
 model: opus-4.6
-prompt: "There is a phase doc creation requirements. What if Claude Code is instructed to run each step implementation with subagent? I’m not talking concurrent, only sequential for now. Would that bring any benefit? Explain"
+prompt: >
+  There is a phase doc creation requirements. What if Claude Code is instructed to run each step implementation with subagent? I’m not talking concurrent, only sequential for now. Would that bring any benefit? Explain
 ---
 
 Good question. Now that I understand the codebase and the phase doc protocol, here's the analysis.
