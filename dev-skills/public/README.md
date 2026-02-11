@@ -51,6 +51,22 @@ Verify that markdown documentation accurately describes the current codebase. De
 
 **Documentation:** See [doc-drift-audit/SKILL.md](doc-drift-audit/SKILL.md)
 
+### Intake
+
+Task intake for implementation assignments. The agent reads all referenced documents and explores the codebase, then demonstrates understanding before auto-transitioning to plan mode.
+
+**Key features:**
+- Mandatory exploration — agent reads docs and codebase before asking questions
+- Structured playback: What I'm Building, What I'm Touching, Key Constraints, Open Questions
+- Smart depth — primary doc thoroughly, references as needed, not exhaustive
+- Spec is authoritative — agent implements what the spec says, never silently deviates
+- Auto-transitions to plan mode when understanding is confirmed
+- Subagent exploration for large codebases
+
+**Use when:** You have a well-prepared task document (spec, plan, PR) and want the agent to understand it before planning. Say `/intake` followed by the task reference.
+
+**Documentation:** See [intake/SKILL.md](intake/SKILL.md)
+
 ### Job Search Strategy
 
 Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies.
@@ -142,6 +158,7 @@ Then install the skills you want:
 /plugin install arch-spec-review
 /plugin install discuss
 /plugin install doc-drift-audit
+/plugin install intake
 /plugin install job-search-strategy
 /plugin install rpi-research
 /plugin install swift-package-manifest
@@ -158,6 +175,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 cp -r arch-spec-review ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
+cp -r intake ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
@@ -165,7 +183,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review discuss doc-drift-audit job-search-strategy rpi-research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review discuss doc-drift-audit intake job-search-strategy rpi-research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -212,6 +230,21 @@ Audit the documentation in this repo for drift — find where docs don't match t
 Or:
 ```
 Check if the README still accurately describes the current API.
+```
+
+### Intake
+
+Invoke when you have a task assignment with referenced documents and want the agent to understand before planning.
+
+**Example prompt:**
+```
+/intake implement step 3 from docs/feature-spec.md, see also docs/api-contracts.md
+```
+
+Or:
+```
+Your task is to implement PR #42 from sandbox/feature-plan.md
+/intake
 ```
 
 ### Job Search Strategy

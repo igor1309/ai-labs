@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-11
 
+### Intake Skill v1.0.0
+Added intake skill for implementation task assignments. Agent reads referenced docs and explores codebase before demonstrating understanding via structured playback (What I'm Building / What I'm Touching / Key Constraints / Open Questions). Auto-transitions to plan mode when aligned. Hard rules: spec is authoritative, read before ask, no code, no guessing, no silent deviation. Marketplace v1.10.0.
+
 ### Discuss Skill v1.1.1 — Agent POV Mandate
 Rewired discuss skill so the agent takes positions instead of hiding behind neutral questions. Step 2 now requires the agent to contribute its own conclusions, Step 3 defaults to stating a lean on every question. Added "neutral facilitator" anti-pattern. Softened mandatory lean to default-to-lean after review feedback to avoid forcing premature opinions during early fact-finding. Marketplace v1.9.0.
 

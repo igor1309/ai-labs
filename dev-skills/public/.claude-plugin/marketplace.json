@@ -6,18 +6,19 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.9.0"
+    "version": "1.10.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, codebase exploration, TDD, architecture review, documentation auditing, Swift packaging, and job search strategy",
+      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, architecture review, documentation auditing, Swift packaging, and job search strategy",
       "source": "./",
       "strict": false,
       "skills": [
         "./arch-spec-review",
         "./discuss",
         "./doc-drift-audit",
+        "./intake",
         "./job-search-strategy",
         "./rpi-research",
         "./swift-package-manifest",
