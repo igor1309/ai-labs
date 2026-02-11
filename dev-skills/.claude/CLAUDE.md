@@ -8,9 +8,10 @@
 
 When publishing skills:
 1. Move to `public/<skill-name>/` when ready to publish
-2. Update `public/.claude-plugin/marketplace.json`
+2. Update `public/.claude-plugin/marketplace.json`: add/update the skill entry in the skills array, and bump `metadata.version`
 3. Update `public/README.md`
-4. Stop to commit.
+4. Update `docs/log.md` (concise entry, reverse chronological order; follow established style)
+5. Stop to commit.
 
 ## Alphabetical Ordering
 
