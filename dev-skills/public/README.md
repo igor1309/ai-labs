@@ -24,10 +24,11 @@ Review architecture specifications for completeness, appropriate abstraction lev
 Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
 
 **Key features:**
+- Agent takes positions — shares opinions, recommendations, and preferences instead of hiding behind neutral questions
 - Read-only exploration — codebase and web research without any file changes
+- Questions carry a lean — default to recommending, not just presenting menus
 - One-question-at-a-time approach to clarify high-impact unknowns
 - Structured options with contextual labels when discrete choices exist
-- Scaled playback — depth matches topic complexity
 - Clear guardrails: only the user can exit discuss mode
 - Named anti-patterns to avoid common discussion failures
 
