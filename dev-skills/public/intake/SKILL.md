@@ -1,6 +1,6 @@
 ---
 name: intake
-version: "1.0.0"
+version: "1.1.0"
 description: >
   Task intake for implementation assignments. Activates when the user says
   "/intake", "here's your task", "implement this", or provides a task
@@ -49,6 +49,23 @@ modules — follow them. Be smart about depth:
 
 Your goal is to resolve unknowns from the primary doc, not to catalog
 everything in the repository.
+
+### Check available skills for domain knowledge
+
+Skills loaded in the session may encode critical information about the
+codebase: wiring patterns, composition APIs, flow architecture, type
+conventions, and process constraints. This knowledge often exists nowhere
+else — not in code comments, not in a docs folder. The skills *are* the
+documentation.
+
+- Scan the skill descriptions visible in the system prompt.
+- For skills that seem relevant to the task's domain, read the full SKILL.md —
+  descriptions are summaries, the real value is in the body (composition rules,
+  flow outlines, code examples, gotchas).
+- Be selective. Don't read every skill. Read the ones whose domain overlaps
+  with the task.
+- Surface what you learn in the playback — relevant constraints in "Key
+  Constraints", relevant modules and patterns in "What I'm Touching."
 
 ### Explore the codebase
 

@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-11
 
+### Intake Skill v1.1.0 — Skill-Aware Intake
+Added domain knowledge discovery from available skills during homework phase. Agent now scans skill descriptions and reads relevant SKILL.md files for wiring patterns, composition APIs, flow architecture, and conventions that exist only in skills. Marketplace v1.11.0.
+
 ### Intake Skill v1.0.0
 Added intake skill for implementation task assignments. Agent reads referenced docs and explores codebase before demonstrating understanding via structured playback (What I'm Building / What I'm Touching / Key Constraints / Open Questions). Auto-transitions to plan mode when aligned. Hard rules: spec is authoritative, read before ask, no code, no guessing, no silent deviation. Marketplace v1.10.0.
 
