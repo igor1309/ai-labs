@@ -1,6 +1,6 @@
 ---
 name: intake
-version: "1.1.0"
+version: "1.2.0"
 description: >
   Task intake for implementation assignments. Activates when the user says
   "/intake", "here's your task", "implement this", or provides a task
@@ -122,6 +122,10 @@ Each question must be:
 - Genuine — you actually don't know, not fishing for confirmation.
 - One at a time — present the most important question first. Wait for the
   answer before asking the next.
+- Leaned — state your take and why. You've done the homework; you should have
+  a position. "A or B?" is passive — "I'd go with A because [reason], unless
+  you see something I'm missing" is useful. If you genuinely lack enough
+  context for a lean, say so explicitly — don't just go neutral.
 
 ## Phase 3: Alignment
 

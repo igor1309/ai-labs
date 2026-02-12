@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-02-12
+
+### Intake Skill v1.2.0 — Lean Mandate for Open Questions
+Added default-to-lean requirement for open questions during intake. Agent must state its take and reasoning, not ask passive "A or B?" questions. Mirrors the discuss skill's v1.1.1 lean mandate — applies even more strongly here since the agent has already completed full homework phase. Marketplace v1.12.0.
+
 ## 2026-02-11
 
 ### Intake Skill v1.1.0 — Skill-Aware Intake

@@ -59,6 +59,7 @@ Task intake for implementation assignments. The agent reads all referenced docum
 - Mandatory exploration — agent reads docs and codebase before asking questions
 - Skill-aware — scans available skills for domain knowledge (wiring patterns, composition APIs, flow architecture, conventions) that may not exist anywhere else
 - Structured playback: What I'm Building, What I'm Touching, Key Constraints, Open Questions
+- Open questions carry a lean — agent states its take, not passive "A or B?"
 - Smart depth — primary doc thoroughly, references as needed, not exhaustive
 - Spec is authoritative — agent implements what the spec says, never silently deviates
 - Auto-transitions to plan mode when understanding is confirmed
