@@ -62,6 +62,32 @@ Detect whether the parent ends with `.worktrees` or `-worktrees` and derive the 
 - Pros: maximum compatibility
 - Cons: more code, two conventions to document
 
+## Verified: symlinks work end-to-end with Claude Code
+
+Tested in `ios.worktrees/feature-DBSNEW-15276_TransGran` (Feb 2026, Claude Code v2.1.39).
+
+### What works through `.claude/` symlink
+
+- `@.claude/AGENTS.md` import in CLAUDE.md — loaded at startup as a memory file (2.1k tokens)
+- `.claude/skills/` auto-discovery — all 22 project skills loaded into context
+- `.claude/settings.local.json` — permissions and hooks applied
+
+### What was broken
+
+`@/.claude/AGENTS.md` (leading `/`) resolved to absolute path `/.claude/AGENTS.md` at filesystem root — silently failed. Fixed to `@.claude/AGENTS.md` (relative path, resolves from CLAUDE.md location).
+
+### SessionStart hook not needed
+
+Considered a hook to inject `.claude/AGENTS.md` conditionally ("if not loaded yet"). Rejected because:
+
+- No way for a hook to check what `@` imports already loaded
+- Would duplicate content in context window
+- The `@` import works reliably through the symlink — no fallback needed
+
+### Codex compatibility
+
+Codex does not support `@` imports. The `@.claude/AGENTS.md` line is plain text to Codex. The instructional text in AGENTS.md ("Use AGENTS.md") prompts the model to read the file via tool call during the session. This is by design — Codex loads instructions lazily.
+
 ## Steps
 
 1. Decide on convention (A, B, or C)
