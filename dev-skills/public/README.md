@@ -100,6 +100,36 @@ Research phase for task execution. Investigate the codebase, build understanding
 
 **Documentation:** See [rpi-research/SKILL.md](rpi-research/SKILL.md)
 
+### Simulator Settings
+
+Tweak iOS simulator settings via xcrun simctl — permissions, UI appearance, location simulation, and status bar overrides.
+
+**Key features:**
+- Grant, revoke, or reset app privacy permissions
+- Switch appearance (dark/light mode), adjust content size
+- Simulate GPS locations with coordinates or predefined scenarios
+- Override status bar for screenshot-ready displays
+- Boot, shutdown, launch, terminate, and open deep links
+
+**Use when:** Configuring iOS simulator settings — granting permissions, changing appearance, simulating location, or overriding the status bar.
+
+**Documentation:** See [simulator-settings/SKILL.md](simulator-settings/SKILL.md)
+
+### Skill Review
+
+Review and improve existing Claude Code skills for signal quality, description effectiveness, and practical impact.
+
+**Key features:**
+- Signal-to-noise evaluation with section-by-section audit
+- Description quality assessment (CSO — triggers on matching tasks)
+- Degrees-of-freedom calibration (high for judgment, low for fragile operations)
+- Preservation test — flags suspected domain knowledge as "ask user" instead of cutting
+- Per-skill verdicts: Keep as-is / Needs refinement / Needs rewrite / Consider retiring
+
+**Use when:** Evaluating skill quality, auditing skill collections, or maintaining a skill library.
+
+**Documentation:** See [skill-review/SKILL.md](skill-review/SKILL.md)
+
 ### Swift Package Manifest
 
 Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK.
@@ -163,6 +193,8 @@ Then install the skills you want:
 /plugin install intake
 /plugin install job-search-strategy
 /plugin install rpi-research
+/plugin install simulator-settings
+/plugin install skill-review
 /plugin install swift-package-manifest
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
@@ -180,12 +212,14 @@ cp -r doc-drift-audit ~/.claude/skills/
 cp -r intake ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
+cp -r simulator-settings ~/.claude/skills/
+cp -r skill-review ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review discuss doc-drift-audit intake job-search-strategy rpi-research swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -277,6 +311,34 @@ Or:
 ```
 The login flow has a bug where session tokens expire too early.
 /rpi-research
+```
+
+### Simulator Settings
+
+Invoke when configuring iOS simulator settings for development or screenshots.
+
+**Example prompt:**
+```
+Grant location permission to the app in the simulator.
+```
+
+Or:
+```
+Set dark mode and override the status bar for screenshots.
+```
+
+### Skill Review
+
+Invoke when evaluating skill quality or auditing a skill collection.
+
+**Example prompt:**
+```
+Review my skill and tell me what's signal vs noise.
+```
+
+Or:
+```
+Is this skill effective? What should I change?
 ```
 
 ### Swift Package Manifest

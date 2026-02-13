@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-02-13
+
+### Simulator Settings & Skill Review Skills Published
+Added two skills from ios.config. Simulator Settings (v1.0.0) — reference for xcrun simctl operations: privacy permissions, UI appearance, location simulation, status bar overrides. Skill Review (v1.0.0) — evaluates Claude Code skills for signal-to-noise ratio, description quality, degrees of freedom, and practical effectiveness with section-by-section audit format. Marketplace v1.13.0.
+
 ## 2026-02-12
 
 ### Intake Skill v1.2.0 — Lean Mandate for Open Questions
