@@ -124,6 +124,7 @@ Review and improve existing Claude Code skills for signal quality, description e
 - Description quality assessment (CSO — triggers on matching tasks)
 - Degrees-of-freedom calibration (high for judgment, low for fragile operations)
 - Preservation test — flags suspected domain knowledge as "ask user" instead of cutting
+- Admits failure — scopes review to what it can evaluate when domain context is insufficient
 - Per-skill verdicts: Keep as-is / Needs refinement / Needs rewrite / Consider retiring
 
 **Use when:** Evaluating skill quality, auditing skill collections, or maintaining a skill library.

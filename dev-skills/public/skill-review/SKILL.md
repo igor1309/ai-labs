@@ -1,5 +1,6 @@
 ---
 name: skill-review
+version: "1.1.0"
 description: Review and improve existing Claude Code skills. Use when evaluating skill quality, auditing skill collections, asking "review my skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -14,6 +15,10 @@ Modern agents (Opus 4.6, Sonnet 4.5) are highly capable reasoners. Skills should
 **The deletion test:** if you removed a sentence and the agent would still do the right thing, that sentence is noise.
 
 **The preservation test:** if a section contains specific values (country codes, error strings, exact enum cases, character pairs, file paths), assume it encodes a debugging discovery until proven otherwise. Domain knowledge looks like noise to outsiders — the author had a reason. Your job is to find it or ask, not assume it's absent.
+
+## Knowing When You Can't
+
+If you lack domain context to judge most of a skill's content, say so upfront. Scope the review to what you can evaluate — structure, description quality, staleness — and flag the rest as beyond your confidence. A partial honest review beats a complete fabricated one.
 
 ## Evaluation Axes
 
