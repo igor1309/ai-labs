@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-13
 
+### RPI Research Skill v2.1.0 — Differentiation & Document-Reading Guidance
+Refined rpi-research to differentiate from intake: removed redundant Workflow section, improved description (codebase reconnaissance, no spec required, no auto-transition), added "Before You Explore" document-reading guidance. README updated with intake-vs-rpi-research clarifying note. Marketplace v1.15.0.
+
 ### Simulator Settings & Skill Review Skills Published
 Added two skills from ios.config. Simulator Settings (v1.0.0) — reference for xcrun simctl operations: privacy permissions, UI appearance, location simulation, status bar overrides. Skill Review (v1.0.0) — evaluates Claude Code skills for signal-to-noise ratio, description quality, degrees of freedom, and practical effectiveness with section-by-section audit format. Marketplace v1.13.0.
 

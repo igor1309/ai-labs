@@ -1,12 +1,12 @@
 ---
 name: rpi-research
 description: >
-  Research phase of task execution. Only invoke when the user explicitly
-  calls /rpi-research. Do not auto-trigger from natural language.
-  Restates task understanding, explores relevant files and patterns,
-  reports findings with risks and unknowns, asks clarifying questions.
-  Does not suggest solutions or change code.
-version: "2.0.0"
+  Codebase investigation and findings report without solution proposals.
+  Only invoke when the user explicitly calls /rpi-research. Do not
+  auto-trigger from natural language. Use when exploring a problem space
+  before committing to an approach — no spec required, no auto-transition
+  to planning. Reports findings, risks, and unknowns, then stops.
+version: "2.1.0"
 author: Igor Malyarov
 ---
 
@@ -16,14 +16,9 @@ Research phase for task execution. Investigate the codebase, build understanding
 
 First phase of the RPI (Research → Plan → Implement) workflow.
 
-## Workflow
+## Before You Explore
 
-1. **Restate understanding** of the task in your own words.
-2. **Explore** relevant files and existing patterns.
-3. **Report** findings, risks, and unknowns.
-4. **Ask** clarifying questions if needed.
-
-Stop after research output. Ask if findings should be saved to a file.
+If the user referenced documents (specs, plans, PRs), read them before exploring the codebase. Most questions resolve themselves in the docs.
 
 ## Output Format
 

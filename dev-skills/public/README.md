@@ -86,9 +86,10 @@ Comprehensive job search strategy toolkit for analyzing job postings, discoverin
 
 ### RPI Research
 
-Research phase for task execution. Investigate the codebase, build understanding, report findings without changing code or proposing solutions.
+Codebase investigation and findings report without solution proposals. No spec required, no auto-transition to planning.
 
 **Key features:**
+- Reads referenced documents before exploring the codebase
 - Restates task understanding to catch misinterpretation early
 - Explores relevant files, patterns, and conventions
 - Reports findings, risks, and unknowns
@@ -96,9 +97,11 @@ Research phase for task execution. Investigate the codebase, build understanding
 - Large-scope mode for broad investigations (grouped pattern families, coverage summaries)
 - Optional save-to-file for findings
 
-**Use when:** Starting any non-trivial task. Describe the task, then invoke `/rpi-research` to get research output before planning or implementing.
+**Use when:** Exploring a problem space before committing to an approach. Describe the task, then invoke `/rpi-research` to get research output before planning or implementing.
 
 **Documentation:** See [rpi-research/SKILL.md](rpi-research/SKILL.md)
+
+> **Intake vs RPI Research:** `/intake` assumes a prepared spec and auto-transitions to planning after proving understanding. `/rpi-research` is open-ended codebase reconnaissance — no spec required, no auto-transition, findings only.
 
 ### Simulator Settings
 
