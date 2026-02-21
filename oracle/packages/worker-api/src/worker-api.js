@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto"
 
 export function createWorkerFetchHandler(dependencies = {}) {
-  const popularityCountersStore = requireDependency(dependencies.popularityCountersStore, "popularityCountersStore")
+  const popularityCountersStore = requireMethodDependency(
+    dependencies.popularityCountersStore,
+    "popularityCountersStore",
+    "increment"
+  )
   const professionOutlookService = resolveProfessionOutlookService(dependencies)
   const professionNormalizer = resolveProfessionNormalizer(dependencies)
   const requestIdGenerator = dependencies.requestIdGenerator ?? randomUUID
@@ -62,7 +66,7 @@ function requireDependency(value, name) {
 
 function resolveProfessionNormalizer(dependencies) {
   if (dependencies.professionNormalizer !== undefined) {
-    return requireDependency(dependencies.professionNormalizer, "professionNormalizer")
+    return requireMethodDependency(dependencies.professionNormalizer, "professionNormalizer", "normalize")
   }
 
   return makeComposedProfessionNormalizer({
@@ -73,7 +77,7 @@ function resolveProfessionNormalizer(dependencies) {
 
 function resolveProfessionOutlookService(dependencies) {
   if (dependencies.professionOutlookService !== undefined) {
-    return requireDependency(dependencies.professionOutlookService, "professionOutlookService")
+    return requireMethodDependency(dependencies.professionOutlookService, "professionOutlookService", "getOutlook")
   }
 
   return makeComposedProfessionOutlookService({
@@ -81,6 +85,16 @@ function resolveProfessionOutlookService(dependencies) {
     modelClient: requireDependency(dependencies.outlookModelClient, "outlookModelClient"),
     promptVersion: dependencies.promptVersion ?? "1"
   })
+}
+
+function requireMethodDependency(value, name, methodName) {
+  const dependency = requireDependency(value, name)
+
+  if (typeof dependency[methodName] !== "function") {
+    throw new Error(`Invalid dependency: ${name}.${methodName}`)
+  }
+
+  return dependency
 }
 
 function makeComposedProfessionNormalizer({ cache, modelClient }) {

@@ -21,6 +21,30 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onNullProf
   }), { message: "Missing required dependency: professionOutlookService" })
 })
 
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessionNormalizerWithoutNormalizeMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: {},
+    professionOutlookService: makeProfessionOutlookServiceSpy().service
+  }), { message: "Invalid dependency: professionNormalizer.normalize" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessionOutlookServiceWithoutGetOutlookMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
+    professionOutlookService: {}
+  }), { message: "Invalid dependency: professionOutlookService.getOutlook" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopularityCountersStoreWithoutIncrementMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityCountersStore: {},
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service
+  }), { message: "Invalid dependency: popularityCountersStore.increment" })
+})
+
 test("test_fetch_shouldCallProfessionNormalizerWithRequestPayload_onOutlookRequest", async () => {
   const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
 
