@@ -1,4 +1,9 @@
 export function createWorkerApiEntrypointRouter({ outlookHandler } = {}) {
+  const routeOutlookHandler = requireFunctionDependency(
+    outlookHandler,
+    "outlookHandler"
+  )
+
   return async function fetch(request) {
     const url = new URL(request.url)
 
@@ -7,7 +12,7 @@ export function createWorkerApiEntrypointRouter({ outlookHandler } = {}) {
     }
 
     if (request.method === "POST" && url.pathname === "/api/outlook") {
-      return outlookHandler(request)
+      return routeOutlookHandler(request)
     }
 
     return new Response("Not found", { status: 404 })

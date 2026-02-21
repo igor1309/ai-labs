@@ -4,6 +4,20 @@ import test from "node:test"
 import appEntrypoint from "../../../apps/am-i-done-api/src/index.js"
 import * as workerApiModule from "../src/worker-api.js"
 
+test("test_createWorkerApiEntrypointRouter_shouldThrowMissingDependencyError_onMissingOutlookHandler", () => {
+  assert.throws(() => workerApiModule.createWorkerApiEntrypointRouter(), {
+    message: "Missing required dependency: outlookHandler"
+  })
+})
+
+test("test_createWorkerApiEntrypointRouter_shouldThrowInvalidDependencyError_onNonFunctionOutlookHandler", () => {
+  assert.throws(() => workerApiModule.createWorkerApiEntrypointRouter({
+    outlookHandler: {}
+  }), {
+    message: "Invalid dependency: outlookHandler"
+  })
+})
+
 test("test_fetch_shouldReturnOk_onGetHealth", async () => {
   assert.equal(typeof workerApiModule.createWorkerApiEntrypointRouter, "function")
 
