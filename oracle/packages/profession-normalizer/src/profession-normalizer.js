@@ -26,6 +26,26 @@
  * @typedef {{ normalize(input: NormalizerInput): Promise<NormalizerResult> }} ProfessionNormalizer
  */
 
+let configuredProfessionNormalizer = null
+
+/** @type {ProfessionNormalizer} */
+export const professionNormalizer = {
+  async normalize(input) {
+    if (configuredProfessionNormalizer === null) {
+      throw new Error("professionNormalizer is not configured")
+    }
+
+    return configuredProfessionNormalizer.normalize(input)
+  }
+}
+
+/**
+ * @param {{ cache: NormalizerCache, modelClient: NormalizerModelClient }} dependencies
+ */
+export function configureProfessionNormalizer(dependencies = {}) {
+  configuredProfessionNormalizer = createProfessionNormalizer(dependencies)
+}
+
 /**
  * @param {{ cache: NormalizerCache, modelClient: NormalizerModelClient }} dependencies
  * @returns {ProfessionNormalizer}

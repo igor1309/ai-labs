@@ -2,6 +2,30 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { createProfessionNormalizer, normalizeProfession } from "../src/profession-normalizer.js"
+import * as professionNormalizerModule from "../src/profession-normalizer.js"
+
+test("test_moduleExports_shouldExposeProfessionNormalizerServiceWithNormalizeMethod_onImport", () => {
+  assert.equal(typeof professionNormalizerModule.professionNormalizer?.normalize, "function")
+})
+
+test("test_professionNormalizer_shouldDelegateNormalizeToConfiguredService_onConfiguredDependencies", async () => {
+  const cachedResult = makeCanonicalResult("configured profession")
+  const cacheSpy = makeCacheSpy(cachedResult)
+  const modelClientSpy = makeModelClientSpy(makeCanonicalResult("ignored"))
+  assert.equal(typeof professionNormalizerModule.configureProfessionNormalizer, "function")
+
+  professionNormalizerModule.configureProfessionNormalizer({
+    cache: cacheSpy.cache,
+    modelClient: modelClientSpy.client
+  })
+
+  const result = await professionNormalizerModule.professionNormalizer.normalize({
+    locale: "en-US",
+    profession: "  software   developer  "
+  })
+
+  assert.deepEqual(result, cachedResult)
+})
 
 test("test_createProfessionNormalizer_shouldThrowMissingDependencyError_onMissingCache", () => {
   assert.throws(() => createProfessionNormalizer({
