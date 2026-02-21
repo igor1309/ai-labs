@@ -69,9 +69,16 @@ function resolveProfessionNormalizer(dependencies) {
     return requireMethodDependency(dependencies.professionNormalizer, "professionNormalizer", "normalize")
   }
 
+  const normalizerCache = requireCacheDependency(dependencies.normalizerCache, "normalizerCache")
+  const normalizerModelClient = requireMethodDependency(
+    dependencies.normalizerModelClient,
+    "normalizerModelClient",
+    "normalize"
+  )
+
   return makeComposedProfessionNormalizer({
-    cache: requireDependency(dependencies.normalizerCache, "normalizerCache"),
-    modelClient: requireDependency(dependencies.normalizerModelClient, "normalizerModelClient")
+    cache: normalizerCache,
+    modelClient: normalizerModelClient
   })
 }
 
@@ -80,9 +87,16 @@ function resolveProfessionOutlookService(dependencies) {
     return requireMethodDependency(dependencies.professionOutlookService, "professionOutlookService", "getOutlook")
   }
 
+  const outlookCache = requireCacheDependency(dependencies.outlookCache, "outlookCache")
+  const outlookModelClient = requireMethodDependency(
+    dependencies.outlookModelClient,
+    "outlookModelClient",
+    "generate"
+  )
+
   return makeComposedProfessionOutlookService({
-    cache: requireDependency(dependencies.outlookCache, "outlookCache"),
-    modelClient: requireDependency(dependencies.outlookModelClient, "outlookModelClient"),
+    cache: outlookCache,
+    modelClient: outlookModelClient,
     promptVersion: dependencies.promptVersion ?? "1"
   })
 }
@@ -95,6 +109,14 @@ function requireMethodDependency(value, name, methodName) {
   }
 
   return dependency
+}
+
+function requireCacheDependency(value, name) {
+  const cache = requireMethodDependency(value, name, "read")
+
+  requireMethodDependency(cache, name, "write")
+
+  return cache
 }
 
 function makeComposedProfessionNormalizer({ cache, modelClient }) {

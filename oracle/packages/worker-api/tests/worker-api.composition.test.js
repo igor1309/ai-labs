@@ -45,6 +45,74 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopulari
   }), { message: "Invalid dependency: popularityCountersStore.increment" })
 })
 
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerCacheWithoutReadMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    normalizerCache: {
+      write() {}
+    },
+    normalizerModelClient: makeNormalizerModelClientSpy(makeNormalizedProfessionResult()).client,
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service
+  }), { message: "Invalid dependency: normalizerCache.read" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerCacheWithoutWriteMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    normalizerCache: {
+      read() {}
+    },
+    normalizerModelClient: makeNormalizerModelClientSpy(makeNormalizedProfessionResult()).client,
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service
+  }), { message: "Invalid dependency: normalizerCache.write" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerModelClientWithoutNormalizeMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    normalizerCache: {
+      read() {},
+      write() {}
+    },
+    normalizerModelClient: {},
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service
+  }), { message: "Invalid dependency: normalizerModelClient.normalize" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookCacheWithoutReadMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    outlookCache: {
+      write() {}
+    },
+    outlookModelClient: makeOutlookModelClientSpy(makeOutlookAnswerResult()).client,
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
+  }), { message: "Invalid dependency: outlookCache.read" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookCacheWithoutWriteMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    outlookCache: {
+      read() {}
+    },
+    outlookModelClient: makeOutlookModelClientSpy(makeOutlookAnswerResult()).client,
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
+  }), { message: "Invalid dependency: outlookCache.write" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookModelClientWithoutGenerateMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    outlookCache: {
+      read() {},
+      write() {}
+    },
+    outlookModelClient: {},
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
+  }), { message: "Invalid dependency: outlookModelClient.generate" })
+})
+
 test("test_fetch_shouldCallProfessionNormalizerWithRequestPayload_onOutlookRequest", async () => {
   const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
 
