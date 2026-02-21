@@ -53,6 +53,9 @@ Assembler and router must contain no domain/business logic: only adapter/decorat
    - Smoke check:
      - `GET /health` returns 200 `ok`
      - `POST /api/outlook` returns structured JSON (no 501)
+6. Close out
+   - Update `oracle/docs/log.md` (newest bullet first under the current date).
+   - Commit the change set (do not push unless explicitly requested).
 
 ## Guardrails
 - No cache key logic in assembler/router (module-owned).
@@ -63,4 +66,3 @@ Assembler and router must contain no domain/business logic: only adapter/decorat
 - Worker `/api/outlook` path is live and uses real module instances via assembler + wiring composer.
 - Tests cover assembler binding/config wiring and router delegation.
 - Deployment succeeds and smoke checks pass.
-

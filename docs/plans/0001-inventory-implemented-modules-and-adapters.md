@@ -36,7 +36,7 @@ Create a single inventory document that lists every implemented module/adapter, 
 5. Close out
    - Run `./scripts/run_silent.sh "tests" npm test`.
    - Update `oracle/docs/log.md` (newest bullet first under the current date).
-   - Commit and push the inventory change set.
+   - Commit the inventory change set (do not push unless explicitly requested).
 
 ## Done criteria
 - Inventory doc exists and is accurate enough to assemble without repo archaeology.
