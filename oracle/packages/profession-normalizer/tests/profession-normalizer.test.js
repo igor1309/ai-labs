@@ -8,6 +8,13 @@ test("test_moduleExports_shouldExposeProfessionNormalizerServiceWithNormalizeMet
   assert.equal(typeof professionNormalizerModule.professionNormalizer?.normalize, "function")
 })
 
+test("test_professionNormalizer_shouldThrowNotConfiguredError_onNormalizeBeforeConfiguration", async () => {
+  await assert.rejects(() => professionNormalizerModule.professionNormalizer.normalize({
+    locale: "en-US",
+    profession: "software developer"
+  }), { message: "professionNormalizer is not configured" })
+})
+
 test("test_professionNormalizer_shouldDelegateNormalizeToConfiguredService_onConfiguredDependencies", async () => {
   const cachedResult = makeCanonicalResult("configured profession")
   const cacheSpy = makeCacheSpy(cachedResult)
