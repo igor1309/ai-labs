@@ -100,6 +100,21 @@ test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () =>
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
+test("test_generate_shouldThrow_onNonJsonModelOutput", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseMessageContent: "not-json"
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
+})
+
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-outlook-model-client-adapter.js")
