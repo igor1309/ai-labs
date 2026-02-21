@@ -5,21 +5,17 @@ compatibility_date = "2026-02-21"
 [vars]
 PROMPT_VERSION = "1"
 
-# Bindings to fill after creation:
-#
-# KV (caches)
-# [[kv_namespaces]]
-# binding = "NORMALIZER_CACHE"
-# id = "..."
-# preview_id = "..."
-#
-# [[kv_namespaces]]
-# binding = "OUTLOOK_CACHE"
-# id = "..."
-# preview_id = "..."
-#
-# D1 (counters + synonym mappings)
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "am_i_done"
-# database_id = "..."
+[[kv_namespaces]]
+binding = "NORMALIZER_CACHE"
+id = "ce74f160059346fd826d7f58f1997c24"
+preview_id = "f33fcf26f6d04a078a69868fcf4c40f3"
+
+[[kv_namespaces]]
+binding = "OUTLOOK_CACHE"
+id = "cb53a35ddbd941f0b679faab6578539a"
+preview_id = "5f1d8ce351534522b8f6b6412cab0384"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "am_i_done"
+database_id = "76a6a8f5-12b7-4fc5-8a00-cbfa79493608"
