@@ -19,8 +19,9 @@ export function createPopularityTracker({ popularityCountersStore, rawInputCount
         throw new Error("rawProfession must not be empty")
       }
 
+      await validatedRawInputCountersStore.increment(normalizedRawProfession)
+
       if (needsClarification) {
-        await validatedRawInputCountersStore.increment(normalizedRawProfession)
         return
       }
 
@@ -32,7 +33,6 @@ export function createPopularityTracker({ popularityCountersStore, rawInputCount
         throw new Error("canonicalProfession must not be empty")
       }
 
-      await validatedRawInputCountersStore.increment(normalizedRawProfession)
       await validatedPopularityCountersStore.increment(canonicalProfession)
     }
   }

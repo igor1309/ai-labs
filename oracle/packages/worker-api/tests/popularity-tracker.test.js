@@ -123,7 +123,7 @@ test("test_track_shouldThrowError_onEmptyCanonicalProfessionAfterTrimming_onCano
   }), {
     message: "canonicalProfession must not be empty"
   })
-  assert.deepEqual(rawInputCountersStoreSpy.calls, [])
+  assert.deepEqual(rawInputCountersStoreSpy.calls, ["software developer"])
 })
 
 test("test_track_shouldPropagateError_onRawInputStoreFailure", async () => {
