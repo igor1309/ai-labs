@@ -30,6 +30,7 @@ test("test_fetch_shouldReturnOk_onGetHealth", async () => {
   }))
 
   assert.equal(response.status, 200)
+  assert.match(response.headers.get("content-type") ?? "", /^text\/plain\b/)
   assert.equal(await response.text(), "ok")
 })
 
