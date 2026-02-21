@@ -1,0 +1,25 @@
+name = "am-i-done-api"
+main = "src/index.js"
+compatibility_date = "2026-02-21"
+
+[vars]
+PROMPT_VERSION = "1"
+
+# Bindings to fill after creation:
+#
+# KV (caches)
+# [[kv_namespaces]]
+# binding = "NORMALIZER_CACHE"
+# id = "..."
+# preview_id = "..."
+#
+# [[kv_namespaces]]
+# binding = "OUTLOOK_CACHE"
+# id = "..."
+# preview_id = "..."
+#
+# D1 (counters + synonym mappings)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "am_i_done"
+# database_id = "..."

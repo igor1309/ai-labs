@@ -3,7 +3,12 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
+  "devDependencies": {
+    "wrangler": "4.67.0"
+  },
   "scripts": {
-    "test": "node --test oracle/packages/worker-api/tests/*.test.js"
+    "test": "node --test oracle/packages/worker-api/tests/*.test.js",
+    "worker:dev": "WRANGLER_LOG_PATH=.wrangler/logs wrangler dev --cwd oracle/apps/am-i-done-api",
+    "worker:deploy": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --cwd oracle/apps/am-i-done-api"
   }
 }
