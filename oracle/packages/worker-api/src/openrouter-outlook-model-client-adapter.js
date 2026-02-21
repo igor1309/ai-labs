@@ -11,7 +11,7 @@ export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, 
               role: "system"
             },
             {
-              content: "user prompt",
+              content: JSON.stringify(input),
               role: "user"
             }
           ],

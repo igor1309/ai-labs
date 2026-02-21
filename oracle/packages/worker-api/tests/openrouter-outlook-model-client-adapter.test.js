@@ -13,29 +13,39 @@ test("test_generate_shouldSendRequestWithAuthHeadersModelAndMessages_onGenerateC
 
   await modelClient?.generate(makeOutlookInput())
 
-  assert.deepEqual(httpClientSpy.calls, [{
-    init: {
-      body: {
-        messages: [
-          {
-            content: "system prompt",
-            role: "system"
-          },
-          {
-            content: "user prompt",
-            role: "user"
-          }
-        ],
-        model: "openrouter/model"
-      },
-      headers: {
-        authorization: "Bearer openrouter-api-key",
-        "content-type": "application/json"
-      },
-      method: "POST"
+  assert.deepEqual(httpClientSpy.calls, [makeOpenRouterRequestCall({
+    model: "openrouter/model",
+    userPromptContent: JSON.stringify(makeOutlookInput())
+  })])
+})
+
+test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAndHints_onUserPrompt", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.generate(makeOutlookInput({
+    hints: {
+      category: "knowledge-work",
+      categoryConfidence: 0.9
+    }
+  }))
+
+  assert.deepEqual(JSON.parse(httpClientSpy.calls[0]?.init?.body?.messages?.[1]?.content), {
+    canonicalProfession: "software engineer",
+    hints: {
+      category: "knowledge-work",
+      categoryConfidence: 0.9
     },
-    url: "https://openrouter.ai/api/v1/chat/completions"
-  }])
+    locale: "en-US",
+    promptVersion: "prompt-v1",
+    schemaVersion: "1"
+  })
 })
 
 async function loadAdapterModule() {
@@ -78,13 +88,19 @@ function makeHttpClientSpy() {
   }
 }
 
-function makeOutlookInput() {
-  return {
+function makeOutlookInput({ hints } = {}) {
+  const input = {
     canonicalProfession: "software engineer",
     locale: "en-US",
     promptVersion: "prompt-v1",
     schemaVersion: "1"
   }
+
+  if (hints !== undefined) {
+    input.hints = hints
+  }
+
+  return input
 }
 
 function makeOutlookAnswer() {
@@ -101,5 +117,31 @@ function makeOutlookAnswer() {
       label: "3-5 years"
     },
     whatToDoNext: ["strengthen systems thinking"]
+  }
+}
+
+function makeOpenRouterRequestCall({ model, userPromptContent }) {
+  return {
+    init: {
+      body: {
+        messages: [
+          {
+            content: "system prompt",
+            role: "system"
+          },
+          {
+            content: userPromptContent,
+            role: "user"
+          }
+        ],
+        model
+      },
+      headers: {
+        authorization: "Bearer openrouter-api-key",
+        "content-type": "application/json"
+      },
+      method: "POST"
+    },
+    url: "https://openrouter.ai/api/v1/chat/completions"
   }
 }
