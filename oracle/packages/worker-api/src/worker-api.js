@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto"
-
 export function createWorkerFetchHandler(dependencies = {}) {
   const popularityCountersStore = requireMethodDependency(
     dependencies.popularityCountersStore,
@@ -8,14 +6,28 @@ export function createWorkerFetchHandler(dependencies = {}) {
   )
   const professionOutlookService = resolveProfessionOutlookService(dependencies)
   const professionNormalizer = resolveProfessionNormalizer(dependencies)
-  const requestIdGenerator = dependencies.requestIdGenerator ?? randomUUID
+  const requestIdGenerator = resolveRequestIdGenerator(dependencies.requestIdGenerator)
 
   return async function fetch(request) {
     const requestBody = await request.json()
+    const guardResult = guardOutlookRequest(requestBody)
+
+    if (!guardResult.isValid) {
+      return Response.json({
+        answer: null,
+        canonicalProfession: null,
+        category: null,
+        categoryConfidence: null,
+        clarification: guardResult.clarification,
+        needsClarification: true,
+        requestId: requestIdGenerator(),
+        schemaVersion: guardResult.schemaVersion
+      })
+    }
 
     const normalizerResult = await professionNormalizer.normalize({
-      locale: requestBody.locale,
-      profession: requestBody.profession
+      locale: guardResult.value.locale,
+      profession: guardResult.value.profession
     })
 
     if (normalizerResult.needsClarification) {
@@ -27,7 +39,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
         clarification: normalizerResult.clarification,
         needsClarification: true,
         requestId: requestIdGenerator(),
-        schemaVersion: requestBody.schemaVersion
+        schemaVersion: guardResult.value.schemaVersion
       })
     }
 
@@ -39,8 +51,8 @@ export function createWorkerFetchHandler(dependencies = {}) {
         category: normalizerResult.category,
         categoryConfidence: normalizerResult.categoryConfidence
       },
-      locale: requestBody.locale,
-      schemaVersion: requestBody.schemaVersion
+      locale: guardResult.value.locale,
+      schemaVersion: guardResult.value.schemaVersion
     })
 
     return Response.json({
@@ -51,7 +63,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
       clarification: null,
       needsClarification: false,
       requestId: requestIdGenerator(),
-      schemaVersion: requestBody.schemaVersion
+      schemaVersion: guardResult.value.schemaVersion
     })
   }
 }
@@ -111,12 +123,72 @@ function requireMethodDependency(value, name, methodName) {
   return dependency
 }
 
+function resolveRequestIdGenerator(requestIdGenerator) {
+  if (requestIdGenerator !== undefined) {
+    return requireFunctionDependency(requestIdGenerator, "requestIdGenerator")
+  }
+
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return () => globalThis.crypto.randomUUID()
+  }
+
+  throw new Error("Missing required dependency: requestIdGenerator")
+}
+
+function requireFunctionDependency(value, name) {
+  const dependency = requireDependency(value, name)
+
+  if (typeof dependency !== "function") {
+    throw new Error(`Invalid dependency: ${name}`)
+  }
+
+  return dependency
+}
+
 function requireCacheDependency(value, name) {
   const cache = requireMethodDependency(value, name, "read")
 
   requireMethodDependency(cache, name, "write")
 
   return cache
+}
+
+function guardOutlookRequest(requestBody) {
+  if (!hasNonEmptyStringValue(requestBody?.profession) || !hasNonEmptyStringValue(requestBody?.locale)) {
+    return {
+      clarification: makeInvalidRequestClarification(),
+      isValid: false,
+      schemaVersion: resolveSchemaVersion(requestBody?.schemaVersion)
+    }
+  }
+
+  return {
+    isValid: true,
+    value: {
+      locale: requestBody.locale,
+      profession: requestBody.profession,
+      schemaVersion: resolveSchemaVersion(requestBody.schemaVersion)
+    }
+  }
+}
+
+function hasNonEmptyStringValue(value) {
+  return typeof value === "string" && value.trim() !== ""
+}
+
+function makeInvalidRequestClarification() {
+  return {
+    message: "Please provide a valid profession and locale.",
+    suggestions: []
+  }
+}
+
+function resolveSchemaVersion(schemaVersion) {
+  if (hasNonEmptyStringValue(schemaVersion)) {
+    return schemaVersion
+  }
+
+  return "1"
 }
 
 function makeComposedProfessionNormalizer({ cache, modelClient }) {

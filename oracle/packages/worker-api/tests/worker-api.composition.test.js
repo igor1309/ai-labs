@@ -45,6 +45,15 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopulari
   }), { message: "Invalid dependency: popularityCountersStore.increment" })
 })
 
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunctionRequestIdGenerator", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestIdGenerator: "invalid"
+  }), { message: "Invalid dependency: requestIdGenerator" })
+})
+
 test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerCacheWithoutReadMethod", () => {
   assert.throws(() => createWorkerFetchHandler({
     normalizerCache: {
@@ -111,6 +120,46 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookM
     popularityCountersStore: makePopularityCountersStoreSpy().store,
     professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
   }), { message: "Invalid dependency: outlookModelClient.generate" })
+})
+
+test("test_fetch_shouldNotCallProfessionNormalizer_onInvalidProfession", async () => {
+  const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
+
+  await performOutlookRequest(workerFetchHandler, {
+    requestBody: {
+      locale: "en-US",
+      profession: null,
+      schemaVersion: "1"
+    }
+  })
+
+  assert.deepEqual(professionNormalizerSpy.calls, [])
+})
+
+test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidProfession", async () => {
+  const { workerFetchHandler } = makeSUT()
+
+  const response = await performOutlookRequest(workerFetchHandler, {
+    requestBody: {
+      locale: "en-US",
+      profession: null,
+      schemaVersion: ""
+    }
+  })
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please provide a valid profession and locale.",
+      suggestions: []
+    },
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
 })
 
 test("test_fetch_shouldCallProfessionNormalizerWithRequestPayload_onOutlookRequest", async () => {
@@ -486,32 +535,15 @@ function makeProfessionOutlookServiceSpy() {
     service: {
       async getOutlook(input) {
         calls.push(input)
-        return {
-          assumptions: ["steady demand"],
-          confidence: {
-            label: "medium",
-            rationale: "Current trends"
-          },
-          headline: "Automation changes the role.",
-          keyRisks: ["tooling commoditization"],
-          timeHorizon: {
-            explanation: "Adoption is gradual.",
-            label: "3-5 years"
-          },
-          whatToDoNext: ["learn system design"]
-        }
+        return makeOutlookAnswerResult()
       }
     }
   }
 }
 
-async function performOutlookRequest(workerFetchHandler) {
+async function performOutlookRequest(workerFetchHandler, { requestBody = makeOutlookRequestBody() } = {}) {
   const response = await workerFetchHandler(new Request("https://example.test/api/outlook", {
-    body: JSON.stringify({
-      locale: "en-US",
-      profession: "  software   developer  ",
-      schemaVersion: "1"
-    }),
+    body: JSON.stringify(requestBody),
     headers: {
       "content-type": "application/json"
     },
@@ -521,5 +553,13 @@ async function performOutlookRequest(workerFetchHandler) {
   return {
     body: await response.json(),
     status: response.status
+  }
+}
+
+function makeOutlookRequestBody() {
+  return {
+    locale: "en-US",
+    profession: "  software   developer  ",
+    schemaVersion: "1"
   }
 }
