@@ -71,6 +71,23 @@ test("test_fetch_shouldCallOutlookModelClientWithCanonicalProfessionLocaleSchema
   assert.deepEqual(outlookModelClientSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", promptVersion: "1", schemaVersion: "1" }])
 })
 
+test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
+  const { workerFetchHandler } = makeSUT()
+
+  const response = await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(response.body, {
+    answer: makeOutlookAnswerResult(),
+    canonicalProfession: "software engineer",
+    category: "knowledge-work",
+    categoryConfidence: 0.9,
+    clarification: null,
+    needsClarification: false,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+})
+
 function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
   const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy()
@@ -94,17 +111,20 @@ function makeSUTWithComposedDependencies({ normalizerCacheReadResult = null, nor
   const normalizerModelClientSpy = makeNormalizerModelClientSpy(normalizerModelResult)
   const outlookCacheSpy = makeCacheSpy(outlookCacheReadResult)
   const outlookModelClientSpy = makeOutlookModelClientSpy(outlookModelResult)
+  const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
 
   return {
     normalizerCacheSpy,
     normalizerModelClientSpy,
     outlookCacheSpy,
     outlookModelClientSpy,
+    popularityCountersStoreSpy,
     workerFetchHandler: createWorkerFetchHandler({
       normalizerCache: normalizerCacheSpy.cache,
       normalizerModelClient: normalizerModelClientSpy.client,
       outlookCache: outlookCacheSpy.cache,
       outlookModelClient: outlookModelClientSpy.client,
+      popularityCountersStore: popularityCountersStoreSpy.store,
       requestIdGenerator: () => "request-id"
     })
   }
@@ -238,7 +258,7 @@ function makeProfessionOutlookServiceSpy() {
 }
 
 async function performOutlookRequest(workerFetchHandler) {
-  await workerFetchHandler(new Request("https://example.test/api/outlook", {
+  const response = await workerFetchHandler(new Request("https://example.test/api/outlook", {
     body: JSON.stringify({
       locale: "en-US",
       profession: "  software   developer  ",
@@ -249,4 +269,9 @@ async function performOutlookRequest(workerFetchHandler) {
     },
     method: "POST"
   }))
+
+  return {
+    body: await response.json(),
+    status: response.status
+  }
 }

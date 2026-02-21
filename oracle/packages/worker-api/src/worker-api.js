@@ -1,21 +1,9 @@
 import { randomUUID } from "node:crypto"
 
 export function createWorkerFetchHandler(dependencies = {}) {
-  const normalizerCache = dependencies.normalizerCache ?? makeNoopCache()
-  const normalizerModelClient = dependencies.normalizerModelClient ?? makeDefaultNormalizerModelClient()
-  const outlookCache = dependencies.outlookCache ?? makeNoopCache()
-  const outlookModelClient = dependencies.outlookModelClient ?? makeDefaultOutlookModelClient()
-  const promptVersion = dependencies.promptVersion ?? "1"
-  const popularityCountersStore = dependencies.popularityCountersStore ?? makeNoopPopularityCountersStore()
-  const professionOutlookService = dependencies.professionOutlookService ?? makeComposedProfessionOutlookService({
-    cache: outlookCache,
-    modelClient: outlookModelClient,
-    promptVersion
-  })
-  const professionNormalizer = dependencies.professionNormalizer ?? makeComposedProfessionNormalizer({
-    cache: normalizerCache,
-    modelClient: normalizerModelClient
-  })
+  const popularityCountersStore = requireDependency(dependencies.popularityCountersStore, "popularityCountersStore")
+  const professionOutlookService = resolveProfessionOutlookService(dependencies)
+  const professionNormalizer = resolveProfessionNormalizer(dependencies)
   const requestIdGenerator = dependencies.requestIdGenerator ?? randomUUID
 
   return async function fetch(request) {
@@ -41,7 +29,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
 
     await popularityCountersStore.increment(normalizerResult.canonicalProfession)
 
-    await professionOutlookService.getOutlook({
+    const answer = await professionOutlookService.getOutlook({
       canonicalProfession: normalizerResult.canonicalProfession,
       hints: {
         category: normalizerResult.category,
@@ -52,19 +40,47 @@ export function createWorkerFetchHandler(dependencies = {}) {
     })
 
     return Response.json({
-      answer: null,
-      canonicalProfession: null,
-      category: null,
-      categoryConfidence: null,
-      clarification: {
-        message: "not-implemented",
-        suggestions: []
-      },
-      needsClarification: true,
+      answer,
+      canonicalProfession: normalizerResult.canonicalProfession,
+      category: normalizerResult.category ?? null,
+      categoryConfidence: normalizerResult.categoryConfidence ?? null,
+      clarification: null,
+      needsClarification: false,
       requestId: requestIdGenerator(),
-      schemaVersion: "1"
+      schemaVersion: requestBody.schemaVersion
     })
   }
+}
+
+function requireDependency(value, name) {
+  if (value === undefined || value === null) {
+    throw new Error(`Missing required dependency: ${name}`)
+  }
+
+  return value
+}
+
+function resolveProfessionNormalizer(dependencies) {
+  if (dependencies.professionNormalizer !== undefined) {
+    return dependencies.professionNormalizer
+  }
+
+  return makeComposedProfessionNormalizer({
+    cache: requireDependency(dependencies.normalizerCache, "normalizerCache"),
+    modelClient: requireDependency(dependencies.normalizerModelClient, "normalizerModelClient")
+  })
+}
+
+function resolveProfessionOutlookService(dependencies) {
+  if (dependencies.professionOutlookService !== undefined) {
+    return dependencies.professionOutlookService
+  }
+
+  return makeComposedProfessionOutlookService({
+    cache: requireDependency(dependencies.outlookCache, "outlookCache"),
+    modelClient: requireDependency(dependencies.outlookModelClient, "outlookModelClient"),
+    promptVersion: dependencies.promptVersion ?? "1"
+  })
 }
 
 function makeComposedProfessionNormalizer({ cache, modelClient }) {
@@ -90,12 +106,6 @@ function makeComposedProfessionNormalizer({ cache, modelClient }) {
   }
 }
 
-function makeNoopProfessionOutlookService() {
-  return {
-    async getOutlook() {}
-  }
-}
-
 function makeComposedProfessionOutlookService({ cache, modelClient, promptVersion }) {
   return {
     async getOutlook({ canonicalProfession, hints, locale, schemaVersion }) {
@@ -118,56 +128,6 @@ function makeComposedProfessionOutlookService({ cache, modelClient, promptVersio
 
       return modelResult
     }
-  }
-}
-
-function makeDefaultNormalizerModelClient() {
-  return {
-    async normalize() {
-      return {
-        clarification: {
-          message: "Please provide a more specific profession.",
-          suggestions: []
-        },
-        needsClarification: true
-      }
-    }
-  }
-}
-
-function makeNoopCache() {
-  return {
-    async read() {
-      return null
-    },
-    async write() {}
-  }
-}
-
-function makeDefaultOutlookModelClient() {
-  return {
-    async generate() {
-      return {
-        assumptions: [],
-        confidence: {
-          label: "low",
-          rationale: ""
-        },
-        headline: "",
-        keyRisks: [],
-        timeHorizon: {
-          explanation: "",
-          label: ""
-        },
-        whatToDoNext: []
-      }
-    }
-  }
-}
-
-function makeNoopPopularityCountersStore() {
-  return {
-    async increment() {}
   }
 }
 
