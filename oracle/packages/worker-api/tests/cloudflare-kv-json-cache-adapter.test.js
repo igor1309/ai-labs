@@ -3,6 +3,28 @@ import test from "node:test"
 
 import { createCloudflareKvJsonCacheAdapter } from "../src/cloudflare-kv-json-cache-adapter.js"
 
+test("test_createCloudflareKvJsonCacheAdapter_shouldThrowMissingDependencyError_onMissingKv", () => {
+  assert.throws(() => createCloudflareKvJsonCacheAdapter(), { message: "Missing required dependency: kv" })
+})
+
+test("test_createCloudflareKvJsonCacheAdapter_shouldThrowInvalidDependencyError_onKvWithoutGetMethod", () => {
+  assert.throws(() => createCloudflareKvJsonCacheAdapter({
+    kv: {
+      async put() {}
+    }
+  }), { message: "Invalid dependency: kv.get" })
+})
+
+test("test_createCloudflareKvJsonCacheAdapter_shouldThrowInvalidDependencyError_onKvWithoutPutMethod", () => {
+  assert.throws(() => createCloudflareKvJsonCacheAdapter({
+    kv: {
+      async get() {
+        return null
+      }
+    }
+  }), { message: "Invalid dependency: kv.put" })
+})
+
 test("test_read_shouldReturnNull_onKvMiss", async () => {
   const cacheKey = "normalizer:en-US:software developer"
   const kvSpy = makeCloudflareKvNamespaceSpy({ getResult: null })

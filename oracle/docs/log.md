@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Add Cloudflare KV JSON cache adapter with fail-fast dependency validation (`kv`, `kv.get`, `kv.put`) and adapter tests for miss/hit/invalid-JSON/write behavior.
 - Add GitHub Actions CI workflow to run the full test suite on push and pull requests via `scripts/run_silent.sh`.
 Provision and deploy Cloudflare Worker service (`am-i-done-api`) with KV caches, D1 database, and initial migrations.
 Add Worker scaffold (`wrangler.toml`, `/health`, structured `/api/outlook` stub) and local `wrangler` tooling/scripts.
