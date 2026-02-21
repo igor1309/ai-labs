@@ -3,8 +3,15 @@ import { randomUUID } from "node:crypto"
 export function createWorkerFetchHandler(dependencies = {}) {
   const normalizerCache = dependencies.normalizerCache ?? makeNoopCache()
   const normalizerModelClient = dependencies.normalizerModelClient ?? makeDefaultNormalizerModelClient()
+  const outlookCache = dependencies.outlookCache ?? makeNoopCache()
+  const outlookModelClient = dependencies.outlookModelClient ?? makeDefaultOutlookModelClient()
+  const promptVersion = dependencies.promptVersion ?? "1"
   const popularityCountersStore = dependencies.popularityCountersStore ?? makeNoopPopularityCountersStore()
-  const professionOutlookService = dependencies.professionOutlookService ?? makeNoopProfessionOutlookService()
+  const professionOutlookService = dependencies.professionOutlookService ?? makeComposedProfessionOutlookService({
+    cache: outlookCache,
+    modelClient: outlookModelClient,
+    promptVersion
+  })
   const professionNormalizer = dependencies.professionNormalizer ?? makeComposedProfessionNormalizer({
     cache: normalizerCache,
     modelClient: normalizerModelClient
@@ -89,6 +96,31 @@ function makeNoopProfessionOutlookService() {
   }
 }
 
+function makeComposedProfessionOutlookService({ cache, modelClient, promptVersion }) {
+  return {
+    async getOutlook({ canonicalProfession, hints, locale, schemaVersion }) {
+      const cacheKey = `outlook:${canonicalProfession}:${locale}:${schemaVersion}:${promptVersion}`
+      const cacheHit = await cache.read(cacheKey)
+
+      if (cacheHit !== null) {
+        return cacheHit
+      }
+
+      const modelResult = await modelClient.generate({
+        canonicalProfession,
+        hints,
+        locale,
+        promptVersion,
+        schemaVersion
+      })
+
+      await cache.write(cacheKey, modelResult)
+
+      return modelResult
+    }
+  }
+}
+
 function makeDefaultNormalizerModelClient() {
   return {
     async normalize() {
@@ -109,6 +141,27 @@ function makeNoopCache() {
       return null
     },
     async write() {}
+  }
+}
+
+function makeDefaultOutlookModelClient() {
+  return {
+    async generate() {
+      return {
+        assumptions: [],
+        confidence: {
+          label: "low",
+          rationale: ""
+        },
+        headline: "",
+        keyRisks: [],
+        timeHorizon: {
+          explanation: "",
+          label: ""
+        },
+        whatToDoNext: []
+      }
+    }
   }
 }
 

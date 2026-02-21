@@ -60,6 +60,17 @@ test("test_fetch_shouldCallNormalizerModelClientWithNormalizedProfession_onNorma
   assert.deepEqual(normalizerModelClientSpy.calls, [{ locale: "en-US", profession: "software developer" }])
 })
 
+test("test_fetch_shouldCallOutlookModelClientWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookCacheMiss", async () => {
+  const { outlookModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult(),
+    outlookCacheReadResult: null
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(outlookModelClientSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", promptVersion: "1", schemaVersion: "1" }])
+})
+
 function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
   const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy()
@@ -78,16 +89,22 @@ function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
   }
 }
 
-function makeSUTWithComposedDependencies({ normalizerCacheReadResult = null, normalizerModelResult = makeNormalizedProfessionResult() } = {}) {
+function makeSUTWithComposedDependencies({ normalizerCacheReadResult = null, normalizerModelResult = makeNormalizedProfessionResult(), outlookCacheReadResult = null, outlookModelResult = makeOutlookAnswerResult() } = {}) {
   const normalizerCacheSpy = makeCacheSpy(normalizerCacheReadResult)
   const normalizerModelClientSpy = makeNormalizerModelClientSpy(normalizerModelResult)
+  const outlookCacheSpy = makeCacheSpy(outlookCacheReadResult)
+  const outlookModelClientSpy = makeOutlookModelClientSpy(outlookModelResult)
 
   return {
     normalizerCacheSpy,
     normalizerModelClientSpy,
+    outlookCacheSpy,
+    outlookModelClientSpy,
     workerFetchHandler: createWorkerFetchHandler({
       normalizerCache: normalizerCacheSpy.cache,
       normalizerModelClient: normalizerModelClientSpy.client,
+      outlookCache: outlookCacheSpy.cache,
+      outlookModelClient: outlookModelClientSpy.client,
       requestIdGenerator: () => "request-id"
     })
   }
@@ -123,6 +140,37 @@ function makeNormalizerModelClientSpy(result) {
     calls,
     client: {
       async normalize(input) {
+        calls.push(input)
+        return result
+      }
+    }
+  }
+}
+
+function makeOutlookAnswerResult() {
+  return {
+    assumptions: ["steady demand"],
+    confidence: {
+      label: "medium",
+      rationale: "Current trends"
+    },
+    headline: "Automation changes the role.",
+    keyRisks: ["tooling commoditization"],
+    timeHorizon: {
+      explanation: "Adoption is gradual.",
+      label: "3-5 years"
+    },
+    whatToDoNext: ["learn system design"]
+  }
+}
+
+function makeOutlookModelClientSpy(result) {
+  const calls = []
+
+  return {
+    calls,
+    client: {
+      async generate(input) {
         calls.push(input)
         return result
       }
