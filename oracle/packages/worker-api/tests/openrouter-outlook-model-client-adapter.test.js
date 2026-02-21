@@ -115,6 +115,26 @@ test("test_generate_shouldThrow_onNonJsonModelOutput", async () => {
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
+test("test_generate_shouldReturnParsedOutlookAnswer_onValidJsonModelOutput", async () => {
+  const expectedAnswer = makeOutlookAnswer({
+    headline: "AI copilots shift daily workflows."
+  })
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseMessageContent: JSON.stringify(expectedAnswer)
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  const actualAnswer = await modelClient?.generate(makeOutlookInput())
+
+  assert.deepEqual(actualAnswer, expectedAnswer)
+})
+
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-outlook-model-client-adapter.js")
@@ -170,14 +190,14 @@ function makeOutlookInput({ hints } = {}) {
   return input
 }
 
-function makeOutlookAnswer() {
+function makeOutlookAnswer({ headline = "Automation changes tasks, not demand." } = {}) {
   return {
     assumptions: ["steady demand"],
     confidence: {
       label: "medium",
       rationale: "current trend"
     },
-    headline: "Automation changes tasks, not demand.",
+    headline,
     keyRisks: ["skills mismatch"],
     timeHorizon: {
       explanation: "adoption curves remain uneven",
