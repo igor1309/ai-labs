@@ -62,7 +62,7 @@ function requireDependency(value, name) {
 
 function resolveProfessionNormalizer(dependencies) {
   if (dependencies.professionNormalizer !== undefined) {
-    return dependencies.professionNormalizer
+    return requireDependency(dependencies.professionNormalizer, "professionNormalizer")
   }
 
   return makeComposedProfessionNormalizer({
@@ -73,7 +73,7 @@ function resolveProfessionNormalizer(dependencies) {
 
 function resolveProfessionOutlookService(dependencies) {
   if (dependencies.professionOutlookService !== undefined) {
-    return dependencies.professionOutlookService
+    return requireDependency(dependencies.professionOutlookService, "professionOutlookService")
   }
 
   return makeComposedProfessionOutlookService({

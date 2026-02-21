@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec ./vendor/ci-shared/scripts/run_silent.sh "$@"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$script_dir/../vendor/ci-shared/scripts/run_silent.sh" "$@"

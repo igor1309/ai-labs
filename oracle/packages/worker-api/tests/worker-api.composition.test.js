@@ -5,6 +5,22 @@ import { createWorkerFetchHandler } from "../src/worker-api.js"
 
 const UNDEFINED_CACHE_READ = Symbol("UNDEFINED_CACHE_READ")
 
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onNullProfessionNormalizer", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: null,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service
+  }), { message: "Missing required dependency: professionNormalizer" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onNullProfessionOutlookService", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
+    professionOutlookService: null
+  }), { message: "Missing required dependency: professionOutlookService" })
+})
+
 test("test_fetch_shouldCallProfessionNormalizerWithRequestPayload_onOutlookRequest", async () => {
   const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
 
