@@ -213,10 +213,58 @@ test("test_normalize_shouldThrowError_onMissingClarificationMessageWithNeedsClar
   })
 })
 
+test("test_normalize_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy(undefined, {
+      responseBody: {
+        error: {
+          message: "Unauthorized"
+        }
+      },
+      responseOk: false,
+      responseStatus: 401
+    }).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "OpenRouter request failed (401): Unauthorized"
+  })
+})
+
+test("test_normalize_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy(undefined, {
+      responseBody: {
+        errors: ["bad request"]
+      },
+      responseOk: false,
+      responseStatus: 400
+    }).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "OpenRouter request failed (400)"
+  })
+})
+
 function makeHttpClientSpy(modelResponse = {
   canonicalProfession: "software engineer",
   needsClarification: false
-}) {
+}, { responseBody, responseOk = true, responseStatus = 200 } = {}) {
   const calls = []
 
   return {
@@ -233,7 +281,13 @@ function makeHttpClientSpy(modelResponse = {
       })
 
       return {
+        ok: responseOk,
+        status: responseStatus,
         async json() {
+          if (responseBody !== undefined) {
+            return responseBody
+          }
+
           return {
             choices: [
               {

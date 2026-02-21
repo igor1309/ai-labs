@@ -47,7 +47,12 @@ export function createOpenRouterNormalizerModelClient({ apiKey, baseUrl = "https
           signal,
           timeoutMs
         })
-        const payload = await response.json()
+        const payload = await readJsonResponse(response)
+
+        if (response?.ok === false) {
+          throw new Error(formatOpenRouterHttpError(response?.status, payload))
+        }
+
         const parsed = parseModelResponse(payload)
         validateResult(parsed)
         return parsed
@@ -95,6 +100,25 @@ function parseModelResponse(payload) {
   } catch {
     throw new Error("Invalid JSON response from OpenRouter")
   }
+}
+
+async function readJsonResponse(response) {
+  if (typeof response?.json !== "function") {
+    throw new Error("Invalid OpenRouter response")
+  }
+
+  try {
+    return await response.json()
+  } catch {
+    throw new Error("Invalid OpenRouter response")
+  }
+}
+
+function formatOpenRouterHttpError(status, payload) {
+  const details = typeof payload?.error?.message === "string" ? `: ${payload.error.message}` : ""
+  const statusText = Number.isFinite(status) ? `${status}` : "unknown status"
+
+  return `OpenRouter request failed (${statusText})${details}`
 }
 
 function validateResult(value) {
