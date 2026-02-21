@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto"
 
 export function createWorkerFetchHandler(dependencies = {}) {
+  const normalizerCache = dependencies.normalizerCache ?? makeNoopCache()
+  const normalizerModelClient = dependencies.normalizerModelClient ?? makeDefaultNormalizerModelClient()
   const popularityCountersStore = dependencies.popularityCountersStore ?? makeNoopPopularityCountersStore()
   const professionOutlookService = dependencies.professionOutlookService ?? makeNoopProfessionOutlookService()
-  const professionNormalizer = dependencies.professionNormalizer ?? makeNoopProfessionNormalizer()
+  const professionNormalizer = dependencies.professionNormalizer ?? makeComposedProfessionNormalizer({
+    cache: normalizerCache,
+    modelClient: normalizerModelClient
+  })
   const requestIdGenerator = dependencies.requestIdGenerator ?? randomUUID
 
   return async function fetch(request) {
@@ -55,9 +60,26 @@ export function createWorkerFetchHandler(dependencies = {}) {
   }
 }
 
-function makeNoopProfessionNormalizer() {
+function makeComposedProfessionNormalizer({ cache, modelClient }) {
   return {
-    async normalize() {}
+    async normalize({ locale, profession }) {
+      const normalizedProfession = normalizeProfessionInput(profession)
+      const cacheKey = `normalizer:${locale}:${normalizedProfession}`
+      const cacheHit = await cache.read(cacheKey)
+
+      if (cacheHit !== null) {
+        return cacheHit
+      }
+
+      const modelResult = await modelClient.normalize({
+        locale,
+        profession: normalizedProfession
+      })
+
+      await cache.write(cacheKey, modelResult)
+
+      return modelResult
+    }
   }
 }
 
@@ -67,8 +89,35 @@ function makeNoopProfessionOutlookService() {
   }
 }
 
+function makeDefaultNormalizerModelClient() {
+  return {
+    async normalize() {
+      return {
+        clarification: {
+          message: "Please provide a more specific profession.",
+          suggestions: []
+        },
+        needsClarification: true
+      }
+    }
+  }
+}
+
+function makeNoopCache() {
+  return {
+    async read() {
+      return null
+    },
+    async write() {}
+  }
+}
+
 function makeNoopPopularityCountersStore() {
   return {
     async increment() {}
   }
+}
+
+function normalizeProfessionInput(rawProfession) {
+  return rawProfession.trim().replace(/\s+/g, " ")
 }

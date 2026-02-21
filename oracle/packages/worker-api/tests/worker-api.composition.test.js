@@ -43,6 +43,23 @@ test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookFlow", async ()
   assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
 })
 
+test("test_fetch_shouldCallNormalizerModelClientWithNormalizedProfession_onNormalizerCacheMiss", async () => {
+  const { normalizerModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: null,
+    normalizerModelResult: {
+      clarification: {
+        message: "Please be more specific.",
+        suggestions: ["software engineer"]
+      },
+      needsClarification: true
+    }
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(normalizerModelClientSpy.calls, [{ locale: "en-US", profession: "software developer" }])
+})
+
 function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
   const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy()
@@ -56,6 +73,21 @@ function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
       popularityCountersStore: popularityCountersStoreSpy.store,
       professionOutlookService: professionOutlookServiceSpy.service,
       professionNormalizer: professionNormalizerSpy.service,
+      requestIdGenerator: () => "request-id"
+    })
+  }
+}
+
+function makeSUTWithComposedDependencies({ normalizerCacheReadResult = null, normalizerModelResult = makeNormalizedProfessionResult() } = {}) {
+  const normalizerCacheSpy = makeCacheSpy(normalizerCacheReadResult)
+  const normalizerModelClientSpy = makeNormalizerModelClientSpy(normalizerModelResult)
+
+  return {
+    normalizerCacheSpy,
+    normalizerModelClientSpy,
+    workerFetchHandler: createWorkerFetchHandler({
+      normalizerCache: normalizerCacheSpy.cache,
+      normalizerModelClient: normalizerModelClientSpy.client,
       requestIdGenerator: () => "request-id"
     })
   }
@@ -84,6 +116,20 @@ function makeProfessionNormalizerSpy(result) {
   }
 }
 
+function makeNormalizerModelClientSpy(result) {
+  const calls = []
+
+  return {
+    calls,
+    client: {
+      async normalize(input) {
+        calls.push(input)
+        return result
+      }
+    }
+  }
+}
+
 function makePopularityCountersStoreSpy() {
   const calls = []
 
@@ -92,6 +138,25 @@ function makePopularityCountersStoreSpy() {
     store: {
       async increment(canonicalProfession) {
         calls.push(canonicalProfession)
+      }
+    }
+  }
+}
+
+function makeCacheSpy(readResult = null) {
+  const reads = []
+  const writes = []
+
+  return {
+    reads,
+    writes,
+    cache: {
+      async read(key) {
+        reads.push(key)
+        return readResult
+      },
+      async write(key, value) {
+        writes.push({ key, value })
       }
     }
   }
