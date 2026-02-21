@@ -1,38 +1,46 @@
-function resolveSchemaVersion(requestBody) {
-  return typeof requestBody?.schemaVersion === "string" && requestBody.schemaVersion.trim() !== "" ? requestBody.schemaVersion : "1"
-}
+import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../../../packages/worker-api/src/worker-api.js"
 
-export default {
-  async fetch(request) {
-    const url = new URL(request.url)
-
-    if (url.pathname === "/health") {
-      return new Response("ok", { status: 200 })
-    }
-
-    if (url.pathname === "/api/outlook") {
-      let requestBody
-      try {
-        requestBody = await request.json()
-      } catch {
-        requestBody = null
-      }
-
-      return Response.json({
-        answer: null,
-        canonicalProfession: null,
-        category: null,
-        categoryConfidence: null,
+const outlookHandler = createWorkerFetchHandler({
+  popularityCountersStore: {
+    async increment() {}
+  },
+  professionNormalizer: {
+    async normalize() {
+      return {
         clarification: {
           message: "API not wired yet. Implement profession-normalizer and profession-outlook modules, then compose them here.",
           suggestions: []
         },
-        needsClarification: true,
-        requestId: globalThis.crypto?.randomUUID?.() ?? "request-id",
-        schemaVersion: resolveSchemaVersion(requestBody)
-      }, { status: 501 })
+        needsClarification: true
+      }
     }
+  },
+  professionOutlookService: {
+    async getOutlook() {
+      return {}
+    }
+  },
+  requestGuard: {
+    async validate() {
+      return {
+        clarification: {
+          message: "API not wired yet. Implement profession-normalizer and profession-outlook modules, then compose them here.",
+          suggestions: []
+        },
+        isValid: false,
+        schemaVersion: "1"
+      }
+    }
+  },
+  requestIdGenerator: () => globalThis.crypto?.randomUUID?.() ?? "request-id"
+})
 
-    return new Response("Not found", { status: 404 })
+const workerEntrypointFetch = createWorkerApiEntrypointRouter({
+  outlookHandler
+})
+
+export default {
+  async fetch(request) {
+    return workerEntrypointFetch(request)
   }
 }

@@ -1,3 +1,19 @@
+export function createWorkerApiEntrypointRouter({ outlookHandler } = {}) {
+  return async function fetch(request) {
+    const url = new URL(request.url)
+
+    if (request.method === "GET" && url.pathname === "/health") {
+      return new Response("ok", { status: 200 })
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/outlook") {
+      return outlookHandler(request)
+    }
+
+    return new Response("Not found", { status: 404 })
+  }
+}
+
 export function createWorkerFetchHandler(dependencies = {}) {
   const popularityCountersStore = requireMethodDependency(
     dependencies.popularityCountersStore,
