@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 export function createWorkerFetchHandler(dependencies = {}) {
+  const popularityCountersStore = dependencies.popularityCountersStore ?? makeNoopPopularityCountersStore()
   const professionOutlookService = dependencies.professionOutlookService ?? makeNoopProfessionOutlookService()
   const professionNormalizer = dependencies.professionNormalizer ?? makeNoopProfessionNormalizer()
   const requestIdGenerator = dependencies.requestIdGenerator ?? randomUUID
@@ -25,6 +26,8 @@ export function createWorkerFetchHandler(dependencies = {}) {
         schemaVersion: requestBody.schemaVersion
       })
     }
+
+    await popularityCountersStore.increment(normalizerResult.canonicalProfession)
 
     await professionOutlookService.getOutlook({
       canonicalProfession: normalizerResult.canonicalProfession,
@@ -61,5 +64,11 @@ function makeNoopProfessionNormalizer() {
 function makeNoopProfessionOutlookService() {
   return {
     async getOutlook() {}
+  }
+}
+
+function makeNoopPopularityCountersStore() {
+  return {
+    async increment() {}
   }
 }

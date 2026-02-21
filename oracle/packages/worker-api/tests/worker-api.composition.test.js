@@ -35,14 +35,25 @@ test("test_fetch_shouldNotCallProfessionOutlookService_onNeedsClarification", as
   assert.deepEqual(professionOutlookServiceSpy.calls, [])
 })
 
+test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookFlow", async () => {
+  const { popularityCountersStoreSpy, workerFetchHandler } = makeSUT()
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
+})
+
 function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
+  const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy()
   const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
 
   return {
+    popularityCountersStoreSpy,
     professionOutlookServiceSpy,
     professionNormalizerSpy,
     workerFetchHandler: createWorkerFetchHandler({
+      popularityCountersStore: popularityCountersStoreSpy.store,
       professionOutlookService: professionOutlookServiceSpy.service,
       professionNormalizer: professionNormalizerSpy.service,
       requestIdGenerator: () => "request-id"
@@ -68,6 +79,19 @@ function makeProfessionNormalizerSpy(result) {
       async normalize(input) {
         calls.push(input)
         return result
+      }
+    }
+  }
+}
+
+function makePopularityCountersStoreSpy() {
+  const calls = []
+
+  return {
+    calls,
+    store: {
+      async increment(canonicalProfession) {
+        calls.push(canonicalProfession)
       }
     }
   }
