@@ -5,7 +5,7 @@ import { createOpenRouterNormalizerModelClient } from "./openrouter-normalizer-m
 import { createOpenRouterOutlookModelClient } from "./openrouter-outlook-model-client-adapter.js"
 import { createPopularityCountersStore } from "./popularity-counters-store.js"
 import { requestGuard } from "./request-guard.js"
-import { createWorkerFetchHandler } from "./worker-api.js"
+import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "./worker-api.js"
 
 const DEFAULT_NORMALIZER_MODEL = "openai/gpt-4o-mini"
 const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai"
@@ -55,19 +55,9 @@ export function makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = 
     requestIdGenerator
   })
 
-  return async function fetch(request) {
-    const pathname = new URL(request.url).pathname
-
-    if (pathname === "/health") {
-      return new Response("ok", { status: 200 })
-    }
-
-    if (pathname === "/api/outlook" && request.method === "POST") {
-      return outlookFetch(request)
-    }
-
-    return new Response("Not found", { status: 404 })
-  }
+  return createWorkerApiEntrypointRouter({
+    outlookHandler: outlookFetch
+  })
 }
 
 function defaultRequestIdGenerator() {
