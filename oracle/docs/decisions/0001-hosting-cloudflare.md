@@ -19,7 +19,7 @@ We are building a toy app (“Am I done?”) where the user submits a profession
 ## Decision
 Use Cloudflare as the primary hosting platform:
 - Frontend: Cloudflare Pages (static site).
-- Backend: Cloudflare Workers (via Pages Functions) for `/api/*`.
+- Backend: separate Cloudflare Worker service for `/api/*` (independent deploy from the frontend).
 - Storage:
   - Workers KV for normalization/answer caches.
   - D1 for popularity counters and observed synonym mappings (raw → canonical).
@@ -36,6 +36,7 @@ This is expected to be “free-tier friendly” for a toy app; the main variable
 ## Consequences
 - Counters and mappings live in D1; cache TTL/eviction does not affect analytics.
 - API code must be Workers-compatible (runtime constraints vs. a full Node server).
+- Frontend and backend can be deployed/versioned independently.
 - We should add basic rate limiting and request logging early (to protect OpenRouter spend).
 
 ## Alternatives considered
