@@ -72,6 +72,25 @@ test("test_validate_shouldReturnValidResultWithTypedValue_onValidPayloadWithExtr
   })
 })
 
+test("test_validate_shouldReturnTrimmedValueFields_onValidPayloadWithWhitespacePadding", async () => {
+  const module = await loadRequestGuardModule()
+
+  const result = await module?.requestGuard?.validate?.({
+    locale: "  en-US  ",
+    profession: "  software engineer  ",
+    schemaVersion: "2"
+  })
+
+  assert.deepEqual(result, {
+    isValid: true,
+    value: {
+      locale: "en-US",
+      profession: "software engineer",
+      schemaVersion: "2"
+    }
+  })
+})
+
 test("test_validate_shouldDefaultSchemaVersionTo1_onMissingOrInvalidSchemaVersion", async () => {
   const module = await loadRequestGuardModule()
   const results = await Promise.all([

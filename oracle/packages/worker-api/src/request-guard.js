@@ -16,11 +16,14 @@ export const requestGuard = {
       return makeInvalidResult(schemaVersion)
     }
 
+    const trimmedProfession = profession.trim()
+    const trimmedLocale = locale.trim()
+
     return {
       isValid: true,
       value: {
-        locale,
-        profession,
+        locale: trimmedLocale,
+        profession: trimmedProfession,
         schemaVersion
       }
     }
