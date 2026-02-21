@@ -2,6 +2,9 @@
 
 ## Collaboration preferences
 
+- Latest direct user instruction is the highest-priority source of truth for current scope.
+- If the user narrows scope or corrects direction, immediately stop the previous plan and follow the new scope.
+- Before making changes, restate the requested scope in one sentence and execute only that scope.
 - Follow the written plan/docs as the source of truth; do not invent steps or rename phases.
 - Make small, reviewable changes and stop after each step for review.
 - Add tests alongside changes, not later.
@@ -17,6 +20,37 @@
 - If `docs/log.md` is grouped by date sections, add new bullets at the top of the current date section.
 - Tests must cover reasonable edge cases for new or changed behavior.
 - Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
+
+## Strict TDD mode
+
+Trigger strict TDD mode when the user explicitly asks for TDD, RED/GREEN, or equivalent.
+
+- One test at a time.
+- RED first: add or update one test, run tests, and get a failing assertion for the missing behavior.
+- Compilation errors are not RED.
+- During RED, production code changes are forbidden.
+- Stop after RED and wait for explicit user approval to continue to GREEN, unless the user explicitly asks to auto-continue.
+- GREEN means minimum production code only for the current failing test.
+- Do not add extra behavior, scaffolding, defaults, or refactors in GREEN unless required by the failing test.
+- Run tests via `./scripts/run_silent.sh "tests" npm test`.
+
+## No-Junk Scope Lock
+
+Do not add anything not required by current scope or the current failing test.
+
+- No new modules or packages unless explicitly requested.
+- No default or fallback dependencies unless explicitly requested.
+- No placeholder behavior that is not demanded by tests.
+- No side docs or log updates for micro-steps.
+- If a change does not directly turn current RED into GREEN, do not add it.
+
+## Pre-Commit Scope Check
+
+Before each commit:
+
+1. Verify every changed file is directly tied to the current step.
+2. Verify no out-of-scope files were added.
+3. Run `./scripts/run_silent.sh "tests" npm test`.
 
 ## Step closeout protocol
 
