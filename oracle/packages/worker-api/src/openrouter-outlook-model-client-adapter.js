@@ -34,8 +34,30 @@ export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, 
       if (!["low", "medium", "high"].includes(parsedAnswer.confidence?.label)) {
         throw new Error("Invalid outlook answer schema")
       }
+      if (typeof parsedAnswer.confidence?.rationale !== "string") {
+        throw new Error("Invalid outlook answer schema")
+      }
+      if (typeof parsedAnswer.timeHorizon?.label !== "string") {
+        throw new Error("Invalid outlook answer schema")
+      }
+      if (typeof parsedAnswer.timeHorizon?.explanation !== "string") {
+        throw new Error("Invalid outlook answer schema")
+      }
+      if (!isStringArray(parsedAnswer.keyRisks)) {
+        throw new Error("Invalid outlook answer schema")
+      }
+      if (!isStringArray(parsedAnswer.whatToDoNext)) {
+        throw new Error("Invalid outlook answer schema")
+      }
+      if (!isStringArray(parsedAnswer.assumptions)) {
+        throw new Error("Invalid outlook answer schema")
+      }
 
       return parsedAnswer
     }
   }
+}
+
+function isStringArray(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
 }

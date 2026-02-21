@@ -156,6 +156,30 @@ test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () =>
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
+test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseMessageContent: JSON.stringify({
+      ...makeOutlookAnswer(),
+      assumptions: ["steady demand", 1],
+      keyRisks: ["skills mismatch", 1],
+      timeHorizon: {
+        explanation: 1,
+        label: "3-5 years"
+      },
+      whatToDoNext: ["strengthen systems thinking", 1]
+    })
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
+})
+
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-outlook-model-client-adapter.js")
