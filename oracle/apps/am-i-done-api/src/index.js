@@ -1,4 +1,4 @@
-import { makeWorkerFetch } from "../../../packages/worker-api/src/worker-api-assembler.js"
+import { makeWorkerFetch } from "./worker-fetch-assembler.js"
 
 export default {
   fetch(request, env) {

@@ -167,7 +167,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 ### Assembler and app entrypoint
 
 #### `makeWorkerFetch` (assembler)
-- Source: `oracle/packages/worker-api/src/worker-api-assembler.js`
+- Source: `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js`
 - Public API:
 - `makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = defaultRequestIdGenerator } = {}) -> fetch(request)`
 - Responsibilities implemented:
