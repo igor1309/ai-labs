@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Am I done?</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <h1>Am I done?</h1>
+      <p>Enter a profession to get a structured AI outlook.</p>
+      <form data-testid="outlook-form" class="form">
+        <label for="profession-input">Profession</label>
+        <input id="profession-input" data-testid="profession-input" type="text" required />
+        <button data-testid="submit-button" type="submit">Get outlook</button>
+      </form>
+
+      <p data-testid="loading" class="state" hidden>Loading...</p>
+      <p data-testid="transport-error" class="state error" hidden>Request failed. Please try again.</p>
+
+      <section data-testid="clarification" hidden>
+        <h2>Need clarification</h2>
+        <p data-testid="clarification-message"></p>
+        <ul data-testid="clarification-suggestions"></ul>
+      </section>
+
+      <section data-testid="answer" hidden>
+        <h2 data-testid="answer-headline"></h2>
+
+        <article>
+          <h3>Time horizon</h3>
+          <p data-testid="answer-time-horizon-label"></p>
+          <p data-testid="answer-time-horizon-explanation"></p>
+        </article>
+
+        <article>
+          <h3>Confidence</h3>
+          <p data-testid="answer-confidence-label"></p>
+          <p data-testid="answer-confidence-rationale"></p>
+        </article>
+
+        <article>
+          <h3>Risks</h3>
+          <ul data-testid="answer-key-risks"></ul>
+        </article>
+
+        <article>
+          <h3>What to do next</h3>
+          <ul data-testid="answer-what-to-do-next"></ul>
+        </article>
+
+        <article>
+          <h3>Assumptions</h3>
+          <ul data-testid="answer-assumptions"></ul>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

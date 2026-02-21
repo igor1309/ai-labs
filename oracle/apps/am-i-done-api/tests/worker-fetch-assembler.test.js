@@ -33,6 +33,33 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOpenRouterApi
   })
 })
 
+test("test_makeWorkerFetch_shouldUseStubModelModeWithoutOpenRouterApiKey_onStubModeEnabled", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const env = makeEnv({
+    MODEL_PROVIDER_MODE: "stub"
+  })
+  delete env.OPENROUTER_API_KEY
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  const body = await response?.json()
+
+  assert.equal(body?.needsClarification, false)
+  assert.equal(body?.canonicalProfession, "software engineer")
+  assert.equal(body?.answer?.headline, "Software Engineer remains viable with evolving workflows.")
+})
+
 test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlookRequest", async () => {
   const assemblerModule = await loadAssemblerModule()
   const httpClientSpy = makeOpenRouterHttpClientSpy()

@@ -1,0 +1,51 @@
+:root {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+body {
+  background: linear-gradient(180deg, #faf6ef 0%, #f4f0e6 100%);
+  color: #1f1d1a;
+  margin: 0;
+}
+
+.page {
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 48px 20px;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+input,
+button {
+  border: 1px solid #8e836f;
+  border-radius: 10px;
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+button {
+  background: #1f1d1a;
+  color: #fefaf1;
+  cursor: pointer;
+}
+
+.state {
+  margin-top: 18px;
+}
+
+.error {
+  color: #8d1f1f;
+}
+
+section {
+  background: #fff9ec;
+  border: 1px solid #d8ccb5;
+  border-radius: 12px;
+  margin-top: 18px;
+  padding: 16px;
+}
