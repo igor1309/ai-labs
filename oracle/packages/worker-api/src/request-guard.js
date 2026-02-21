@@ -4,12 +4,14 @@ export const requestGuard = {
       return makeInvalidResult(resolveSchemaVersion(input))
     }
 
+    const schemaVersion = resolveSchemaVersion(input)
+
     if (!isNonEmptyString(input.profession)) {
-      return makeInvalidResult(resolveSchemaVersion(input))
+      return makeInvalidResult(schemaVersion)
     }
 
     if (!isNonEmptyString(input.locale)) {
-      return makeInvalidResult(resolveSchemaVersion(input))
+      return makeInvalidResult(schemaVersion)
     }
 
     return {
@@ -17,7 +19,7 @@ export const requestGuard = {
       value: {
         locale: input.locale,
         profession: input.profession,
-        schemaVersion: resolveSchemaVersion(input)
+        schemaVersion
       }
     }
   }
