@@ -21,6 +21,19 @@ We’re deploying the backend as a separate Cloudflare Worker service.
 ### Composition Root location
 The composition root is anchored at Worker entrypoints (`fetch(request, env, ctx)`), because this is the only module that must know about Cloudflare `env` bindings, secrets, and lifecycle hooks. Cloudflare specifics must not leak into core modules.
 
+### Composition layering
+Composition code is split into two distinct kinds of components:
+
+1. Wiring composers
+- Functions that connect abstractions (interfaces) to abstractions (interfaces).
+- They perform payload/response mapping and call ordering only.
+- Their parameters are interfaces (abstract-factory style).
+
+2. Assemblers
+- Functions that take concrete module instances and provider bindings (e.g., Worker `env`) and produce adapters/decorators that fit client-owned interfaces.
+- Assemblers plug concrete adapters into wiring composers to create a deployable entrypoint.
+- Assemblers may be layered/cascaded (assembler builds adapters → wiring composer builds handler → final assembler returns Worker `fetch`).
+
 ### Module boundaries
 Minimum core modules:
 - `profession-normalizer` module: owns normalization behavior and its protocols (e.g. model client, cache).
@@ -40,8 +53,8 @@ The Worker composition maps normalizer output into outlook input.
 - Hints are optional and must not create compile-time dependency between core modules.
 
 ## Tests
-### Unit tests for composition wiring (primary in v1)
-Tests live in `worker-api` and validate end-to-end wiring through composition without real infra:
+### Wiring composer tests (primary in v1)
+Tests live in `worker-api` and validate payload/response chaining without real infrastructure:
 - Use spies (not Map-backed stores) for:
   - request guard (captures request body → returns guard result)
   - normalizer (captures payload → returns normalizer result)
@@ -54,23 +67,28 @@ Tests live in `worker-api` and validate end-to-end wiring through composition wi
   - required side effects (popularity counters)
   - dependency validation failures (missing/invalid collaborator shapes)
 
-Note:
-- Caching logic (keys, hit/miss policy, read/write behavior) is not composition. It is tested inside the owning client modules once implemented.
+### Assembler tests
+Assemblers are tested separately from wiring composers:
+- Verify concrete adapter assembly and binding correctness (KV/D1/OpenRouter config, binding names, prompt version selection).
+- Use spies at the adapter boundaries to validate the assembled graph, but do not re-test wiring composer behavior here.
 
-### E2E tests (smoke)
-Defer real E2E behavior tests until `profession-normalizer` and `profession-outlook` exist and can produce real domain outcomes.
+### Module tests
+Each module owns and tests its own behavior (including any caching keys/policy inside module-owned cache decorators) and does not rely on composition tests for correctness.
 
-If needed before that, only add deployment smoke checks (for example `/health` and “returns structured JSON”) since composition alone cannot validate business behavior.
+### E2E tests
+E2E tests are required once core behavior exists:
+- Validate web ↔ worker integration and user-visible flows end-to-end.
+- Before core modules exist, only deployment smoke checks are meaningful (for example `/health` and “returns structured JSON”).
 
 ## Consequences
 - Backend API contract is locked by `worker-api` acceptance tests, not by shared types.
 - Composition code is the only place that can “see everything”; core modules remain portable and testable.
 
 ## Implementation status
-- [x] Interface-only Worker wiring in `worker-api`
-- [x] Spies-based wiring tests proving payload/response chaining
+- [x] Wiring composer: interface-only Worker wiring in `worker-api`
+- [x] Wiring composer tests: spies-based payload/response chaining
 - [x] Cloudflare Worker service scaffold deployed (separate backend service)
+- [ ] Assemblers: concrete adapters (OpenRouter, KV, D1) and final Worker `fetch` assembly
 - [ ] Implement `profession-normalizer` module (client-owned protocols + behavior + tests)
 - [ ] Implement `profession-outlook` module (client-owned protocols + behavior + tests)
-- [ ] Compose real adapters (OpenRouter, KV, D1) in the Worker composition root
 - [ ] Add E2E tests once behavior exists
