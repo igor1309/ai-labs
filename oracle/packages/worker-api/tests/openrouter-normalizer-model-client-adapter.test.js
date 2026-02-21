@@ -92,3 +92,44 @@ async function loadAdapterModule() {
     return null
   }
 }
+
+test("test_normalize_shouldAbortRequestAndThrowTimeoutError_onHttpClientTimeout", async () => {
+  const adapterModule = await loadAdapterModule()
+  const hangingHttpClientSpy = makeHangingHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: hangingHttpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "OpenRouter request timed out"
+  })
+  assert.equal(hangingHttpClientSpy.calls.length, 1)
+  assert.equal(typeof hangingHttpClientSpy.calls[0].signal?.addEventListener, "function")
+  assert.equal(hangingHttpClientSpy.calls[0].signal?.aborted, true)
+})
+
+function makeHangingHttpClientSpy() {
+  const calls = []
+
+  return {
+    calls,
+    httpClient: async (_, init) => {
+      calls.push({ signal: init.signal })
+
+      return await new Promise((_, reject) => {
+        if (init.signal === undefined) {
+          reject(new Error("Missing abort signal"))
+          return
+        }
+
+        init.signal.addEventListener("abort", () => reject(new Error("Aborted")))
+      })
+    }
+  }
+}

@@ -18,6 +18,7 @@ export function makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = 
   requireBinding(env, "OUTLOOK_CACHE")
   requireBinding(env, "DB")
   requireBinding(env, "OPENROUTER_API_KEY")
+  requireNonEmptyStringBinding(env, "OPENROUTER_API_KEY")
 
   const config = resolveConfig(env)
   const normalizerCache = createCloudflareKvJsonCacheAdapter({ kv: env.NORMALIZER_CACHE })
@@ -61,7 +62,7 @@ export function makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = 
       return new Response("ok", { status: 200 })
     }
 
-    if (pathname === "/api/outlook") {
+    if (pathname === "/api/outlook" && request.method === "POST") {
       return outlookFetch(request)
     }
 
@@ -96,5 +97,11 @@ function resolveConfig(env) {
     outlookModel: env.OUTLOOK_MODEL ?? DEFAULT_OUTLOOK_MODEL,
     promptVersion: typeof env.PROMPT_VERSION === "string" && env.PROMPT_VERSION.trim() !== "" ? env.PROMPT_VERSION : DEFAULT_PROMPT_VERSION,
     timeoutMs: parseTimeout(env.OPENROUTER_TIMEOUT_MS)
+  }
+}
+
+function requireNonEmptyStringBinding(env, bindingName) {
+  if (typeof env?.[bindingName] !== "string" || env[bindingName].trim() === "") {
+    throw new Error(`Invalid binding: ${bindingName}`)
   }
 }

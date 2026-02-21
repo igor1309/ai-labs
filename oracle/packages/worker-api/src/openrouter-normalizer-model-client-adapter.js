@@ -3,38 +3,70 @@ const SYSTEM_PROMPT = "Return only JSON matching the NormalizerResult schema. Do
 export function createOpenRouterNormalizerModelClient({ apiKey, baseUrl = "https://openrouter.ai", httpClient = fetch, model, timeoutMs } = {}) {
   return {
     async normalize(input) {
-      const response = await httpClient(`${baseUrl}/api/v1/chat/completions`, {
-        body: JSON.stringify({
-          messages: [
-            {
-              content: SYSTEM_PROMPT,
-              role: "system"
-            },
-            {
-              content: JSON.stringify({
-                locale: input.locale,
-                profession: input.profession
-              }),
-              role: "user"
+      const { cancelTimeout, signal } = createTimeoutSignal(timeoutMs)
+
+      try {
+        const response = await httpClient(`${baseUrl}/api/v1/chat/completions`, {
+          body: JSON.stringify({
+            messages: [
+              {
+                content: SYSTEM_PROMPT,
+                role: "system"
+              },
+              {
+                content: JSON.stringify({
+                  locale: input.locale,
+                  profession: input.profession
+                }),
+                role: "user"
+              }
+            ],
+            model,
+            response_format: {
+              type: "json_object"
             }
-          ],
-          model,
-          response_format: {
-            type: "json_object"
-          }
-        }),
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          "content-type": "application/json"
-        },
-        method: "POST",
-        timeoutMs
-      })
-      const payload = await response.json()
-      const parsed = parseModelResponse(payload)
-      validateResult(parsed)
-      return parsed
+          }),
+          headers: {
+            authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json"
+          },
+          method: "POST",
+          signal,
+          timeoutMs
+        })
+        const payload = await response.json()
+        const parsed = parseModelResponse(payload)
+        validateResult(parsed)
+        return parsed
+      } catch (error) {
+        if (signal?.aborted) {
+          throw new Error("OpenRouter request timed out")
+        }
+
+        throw error
+      } finally {
+        cancelTimeout()
+      }
     }
+  }
+}
+
+function createTimeoutSignal(timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return {
+      cancelTimeout() {},
+      signal: undefined
+    }
+  }
+
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
+
+  return {
+    cancelTimeout() {
+      clearTimeout(timeoutId)
+    },
+    signal: timeoutController.signal
   }
 }
 

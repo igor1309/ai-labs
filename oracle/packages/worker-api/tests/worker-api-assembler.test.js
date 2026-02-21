@@ -258,3 +258,29 @@ async function loadAssemblerModule() {
     return null
   }
 }
+
+test("test_fetch_shouldReturnNotFound_onOutlookPathWithNonPostMethod", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(makeEnv())
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    method: "GET"
+  }))
+
+  assert.equal(response?.status, 404)
+})
+
+test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onEmptyOrWhitespaceOpenRouterApiKey", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
+    OPENROUTER_API_KEY: ""
+  })), {
+    message: "Invalid binding: OPENROUTER_API_KEY"
+  })
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
+    OPENROUTER_API_KEY: "   "
+  })), {
+    message: "Invalid binding: OPENROUTER_API_KEY"
+  })
+})
