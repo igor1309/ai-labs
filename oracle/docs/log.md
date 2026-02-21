@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Make popularity tracking fail-open in worker composition so D1 counter write errors (including missing `raw_input_counters` migration) do not break `/api/outlook` responses.
 - Implement `PopularityTracker` in `worker-api` and wire it in the assembler so counters are tracked on every guard-valid request (canonical and clarification paths), independent of outlook cache hit/miss.
 - Add `raw_input_counters` D1 migration and `createRawInputCountersStore` adapter/tests for request-level raw profession counting.
 - Move final Worker `makeWorkerFetch(env)` assembly from `worker-api` package into `am-i-done-api` app source so env-to-adapter wiring is anchored at the Worker entrypoint while `worker-api` stays wiring/router focused.

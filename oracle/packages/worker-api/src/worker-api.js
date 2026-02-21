@@ -86,10 +86,14 @@ export function createWorkerFetchHandler(dependencies = {}) {
       profession: guardResult.value.profession
     })
 
-    await popularityTracker.track({
-      normalizerResult,
-      rawProfession: guardResult.value.profession
-    })
+    try {
+      await popularityTracker.track({
+        normalizerResult,
+        rawProfession: guardResult.value.profession
+      })
+    } catch {
+      // Counter writes are best-effort and must not block API responses.
+    }
 
     if (normalizerResult.needsClarification) {
       return Response.json({

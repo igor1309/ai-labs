@@ -202,6 +202,54 @@ test("test_fetch_shouldCallPopularityTrackerWithRawProfessionAndClarificationRes
   }])
 })
 
+test("test_fetch_shouldReturnOutlookResponse_onPopularityTrackerFailure", async () => {
+  const { workerFetchHandler } = makeSUT({
+    popularityTrackerError: new Error("tracking failed")
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(response.body, {
+    answer: makeOutlookAnswerResult(),
+    canonicalProfession: "software engineer",
+    category: "knowledge-work",
+    categoryConfidence: 0.9,
+    clarification: null,
+    needsClarification: false,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+})
+
+test("test_fetch_shouldReturnNeedsClarificationResponse_onPopularityTrackerFailureInClarificationFlow", async () => {
+  const { workerFetchHandler } = makeSUT({
+    normalizerResult: {
+      clarification: {
+        message: "Please be more specific.",
+        suggestions: ["software engineer"]
+      },
+      needsClarification: true
+    },
+    popularityTrackerError: new Error("tracking failed")
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please be more specific.",
+      suggestions: ["software engineer"]
+    },
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+})
+
 test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookFlow", async () => {
   const { professionOutlookServiceSpy, workerFetchHandler } = makeSUT()
 
@@ -227,8 +275,8 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
   })
 })
 
-function makeSUT({ guardResult = makeValidGuardResult(), normalizerResult = makeNormalizedProfessionResult(), outlookAnswer = makeOutlookAnswerResult() } = {}) {
-  const popularityTrackerSpy = makePopularityTrackerSpy()
+function makeSUT({ guardResult = makeValidGuardResult(), normalizerResult = makeNormalizedProfessionResult(), outlookAnswer = makeOutlookAnswerResult(), popularityTrackerError } = {}) {
+  const popularityTrackerSpy = makePopularityTrackerSpy(popularityTrackerError)
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy(outlookAnswer)
   const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
   const requestGuardSpy = makeRequestGuardSpy(guardResult)
@@ -274,13 +322,17 @@ function makeOutlookAnswerResult() {
   }
 }
 
-function makePopularityTrackerSpy() {
+function makePopularityTrackerSpy(error) {
   const calls = []
 
   return {
     calls,
     tracker: {
       async track(input) {
+        if (error) {
+          throw error
+        }
+
         calls.push(input)
       }
     }
