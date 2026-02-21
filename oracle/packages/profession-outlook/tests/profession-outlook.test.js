@@ -3,6 +3,56 @@ import test from "node:test"
 
 import { createProfessionOutlookService } from "../src/profession-outlook.js"
 
+test("test_createProfessionOutlookService_shouldThrowMissingDependencyError_onMissingCache", () => {
+  assert.throws(() => createProfessionOutlookService({
+    modelClient: makeOutlookModelClientSpy().modelClient,
+    promptVersion: "prompt-v1"
+  }), { message: "Missing required dependency: cache" })
+})
+
+test("test_createProfessionOutlookService_shouldThrowInvalidDependencyError_onCacheWithoutReadMethod", () => {
+  assert.throws(() => createProfessionOutlookService({
+    cache: {
+      async write() {}
+    },
+    modelClient: makeOutlookModelClientSpy().modelClient,
+    promptVersion: "prompt-v1"
+  }), { message: "Invalid dependency: cache.read" })
+})
+
+test("test_createProfessionOutlookService_shouldThrowInvalidDependencyError_onCacheWithoutWriteMethod", () => {
+  assert.throws(() => createProfessionOutlookService({
+    cache: {
+      async read() {}
+    },
+    modelClient: makeOutlookModelClientSpy().modelClient,
+    promptVersion: "prompt-v1"
+  }), { message: "Invalid dependency: cache.write" })
+})
+
+test("test_createProfessionOutlookService_shouldThrowMissingDependencyError_onMissingModelClient", () => {
+  assert.throws(() => createProfessionOutlookService({
+    cache: makeOutlookCacheSpy().cache,
+    promptVersion: "prompt-v1"
+  }), { message: "Missing required dependency: modelClient" })
+})
+
+test("test_createProfessionOutlookService_shouldThrowInvalidDependencyError_onModelClientWithoutGenerateMethod", () => {
+  assert.throws(() => createProfessionOutlookService({
+    cache: makeOutlookCacheSpy().cache,
+    modelClient: {},
+    promptVersion: "prompt-v1"
+  }), { message: "Invalid dependency: modelClient.generate" })
+})
+
+test("test_createProfessionOutlookService_shouldThrowInvalidDependencyError_onInvalidPromptVersion", () => {
+  assert.throws(() => createProfessionOutlookService({
+    cache: makeOutlookCacheSpy().cache,
+    modelClient: makeOutlookModelClientSpy().modelClient,
+    promptVersion: "   "
+  }), { message: "Invalid dependency: promptVersion" })
+})
+
 test("test_getOutlook_shouldReturnCachedAnswer_onCacheHit", async () => {
   const cachedAnswer = makeOutlookAnswer()
   const { professionOutlookService } = makeSUT({ cacheReadResult: cachedAnswer })

@@ -50,10 +50,17 @@
  * }} dependencies
  */
 export function createProfessionOutlookService({ cache, modelClient, promptVersion } = {}) {
+  const validatedCache = requireDependency(cache, "cache")
+  const validatedModelClient = requireDependency(modelClient, "modelClient")
+  requireMethodDependency(validatedCache, "cache", "read")
+  requireMethodDependency(validatedCache, "cache", "write")
+  requireMethodDependency(validatedModelClient, "modelClient", "generate")
+  requireNonEmptyString(promptVersion, "promptVersion")
+
   return {
     async getOutlook(input) {
       const key = `outlook:${input.canonicalProfession}:${input.locale}:${input.schemaVersion}:${promptVersion}`
-      const cachedAnswer = await cache.read(key)
+      const cachedAnswer = await validatedCache.read(key)
 
       if (cachedAnswer !== null && cachedAnswer !== undefined) {
         return cachedAnswer
@@ -70,11 +77,31 @@ export function createProfessionOutlookService({ cache, modelClient, promptVersi
         modelInput.hints = input.hints
       }
 
-      const modelAnswer = await modelClient.generate(modelInput)
+      const modelAnswer = await validatedModelClient.generate(modelInput)
 
-      await cache.write(key, modelAnswer)
+      await validatedCache.write(key, modelAnswer)
 
       return modelAnswer
     }
+  }
+}
+
+function requireDependency(value, name) {
+  if (value === undefined || value === null) {
+    throw new Error(`Missing required dependency: ${name}`)
+  }
+
+  return value
+}
+
+function requireMethodDependency(value, name, methodName) {
+  if (typeof value[methodName] !== "function") {
+    throw new Error(`Invalid dependency: ${name}.${methodName}`)
+  }
+}
+
+function requireNonEmptyString(value, name) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`Invalid dependency: ${name}`)
   }
 }
