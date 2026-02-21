@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Add assembler-level `makeWorkerFetch` contract tests for router delegation (`/health`, unknown path, `/api/outlook`) plus default OpenRouter config propagation (blank model bindings and invalid timeout fallback).
 - Harden popularity tracker error tagging for frozen/non-extensible thrown values and keep composition fail-open behavior restricted to tagged counter-write failures with reporter/no-reporter coverage.
 - Make popularity tracking fail-open in worker composition so D1 counter write errors (including missing `raw_input_counters` migration) do not break `/api/outlook` responses.
 - Implement `PopularityTracker` in `worker-api` and wire it in the assembler so counters are tracked on every guard-valid request (canonical and clarification paths), independent of outlook cache hit/miss.

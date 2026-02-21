@@ -166,7 +166,7 @@ test("test_makeWorkerFetch_shouldUseDefaults_onBlankOptionalModelAndBaseUrlBindi
   const env = makeEnv({
     NORMALIZER_MODEL: "   ",
     OPENROUTER_BASE_URL: "",
-    OUTLOOK_MODEL: "openrouter/outlook-model"
+    OUTLOOK_MODEL: "   "
   })
   const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
     httpClient: async (url, init) => {
@@ -227,10 +227,39 @@ test("test_makeWorkerFetch_shouldUseDefaults_onBlankOptionalModelAndBaseUrlBindi
       url: "https://openrouter.ai/api/v1/chat/completions"
     },
     {
-      model: "openrouter/outlook-model",
+      model: "openai/gpt-4o-mini",
       url: "https://openrouter.ai/api/v1/chat/completions"
     }
   ])
+})
+
+test("test_makeWorkerFetch_shouldUseDefaultTimeout_onInvalidOpenRouterTimeoutBinding", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const env = makeEnv({
+    NORMALIZER_MODEL: "openrouter/normalizer-model",
+    OPENROUTER_TIMEOUT_MS: "0",
+    OUTLOOK_MODEL: "openrouter/outlook-model"
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  const body = await response?.json()
+
+  assert.equal(body?.needsClarification, false)
+  assert.deepEqual(httpClientSpy.calls.map((call) => call.init.timeoutMs), [10000, 10000])
 })
 
 test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onInvalidOpenRouterBaseUrl", async () => {
@@ -416,6 +445,18 @@ function makeOutlookAnswer() {
   }
 }
 
+function makeRequestIdGeneratorSpy() {
+  const calls = []
+
+  return {
+    calls,
+    generate: () => {
+      calls.push(undefined)
+      return "request-id"
+    }
+  }
+}
+
 function normalizeWhitespace(value) {
   return value.trim().replace(/\s+/g, " ")
 }
@@ -437,6 +478,48 @@ test("test_fetch_shouldReturnNotFound_onOutlookPathWithNonPostMethod", async () 
   }))
 
   assert.equal(response?.status, 404)
+})
+
+test("test_fetch_shouldReturnOk_onGetHealth", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(makeEnv())
+
+  const response = await workerFetch?.(new Request("https://worker.example/health", {
+    method: "GET"
+  }))
+
+  assert.equal(response?.status, 200)
+  assert.equal(await response?.text(), "ok")
+})
+
+test("test_fetch_shouldReturnNotFound_onUnknownPath", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(makeEnv())
+
+  const response = await workerFetch?.(new Request("https://worker.example/unknown", {
+    method: "GET"
+  }))
+
+  assert.equal(response?.status, 404)
+  assert.equal(await response?.text(), "Not found")
+})
+
+test("test_fetch_shouldDelegateToAssembledOutlookHandler_onPostApiOutlook", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const requestIdGeneratorSpy = makeRequestIdGeneratorSpy()
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(makeEnv(), {
+    requestIdGenerator: requestIdGeneratorSpy.generate
+  })
+
+  await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: "{",
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+
+  assert.equal(requestIdGeneratorSpy.calls.length, 1)
 })
 
 test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onEmptyOrWhitespaceOpenRouterApiKey", async () => {
