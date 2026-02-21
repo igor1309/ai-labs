@@ -16,7 +16,10 @@ export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, 
               role: "user"
             }
           ],
-          model
+          model,
+          response_format: {
+            type: "json_object"
+          }
         }),
         headers: {
           authorization: `Bearer ${apiKey}`,

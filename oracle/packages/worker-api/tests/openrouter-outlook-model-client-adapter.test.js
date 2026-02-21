@@ -180,6 +180,23 @@ test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async ()
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
+test("test_generate_shouldRequestJsonObjectResponseFormat_onOpenRouterRequest", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.generate(makeOutlookInput())
+
+  assert.deepEqual(httpClientSpy.calls[0]?.init?.body?.response_format, {
+    type: "json_object"
+  })
+})
+
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-outlook-model-client-adapter.js")
@@ -266,7 +283,10 @@ function makeOpenRouterRequestCall({ model, userPromptContent }) {
             role: "user"
           }
         ],
-        model
+        model,
+        response_format: {
+          type: "json_object"
+        }
       },
       headers: {
         authorization: "Bearer openrouter-api-key",
