@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 export function createWorkerFetchHandler(dependencies = {}) {
+  const professionOutlookService = dependencies.professionOutlookService ?? makeNoopProfessionOutlookService()
   const professionNormalizer = dependencies.professionNormalizer ?? makeNoopProfessionNormalizer()
   const requestIdGenerator = dependencies.requestIdGenerator ?? randomUUID
 
@@ -10,6 +11,16 @@ export function createWorkerFetchHandler(dependencies = {}) {
     await professionNormalizer.normalize({
       locale: requestBody.locale,
       profession: requestBody.profession
+    })
+
+    await professionOutlookService.getOutlook({
+      canonicalProfession: "software engineer",
+      hints: {
+        category: "knowledge-work",
+        categoryConfidence: 0.9
+      },
+      locale: requestBody.locale,
+      schemaVersion: requestBody.schemaVersion
     })
 
     return Response.json({
@@ -31,5 +42,11 @@ export function createWorkerFetchHandler(dependencies = {}) {
 function makeNoopProfessionNormalizer() {
   return {
     async normalize() {}
+  }
+}
+
+function makeNoopProfessionOutlookService() {
+  return {
+    async getOutlook() {}
   }
 }
