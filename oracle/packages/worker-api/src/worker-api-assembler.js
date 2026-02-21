@@ -65,7 +65,7 @@ function defaultRequestIdGenerator() {
     return globalThis.crypto.randomUUID()
   }
 
-  return "request-id"
+  return `request-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 function parseTimeout(value) {
@@ -81,10 +81,25 @@ function requireBinding(env, bindingName) {
 }
 
 function resolveConfig(env) {
+  const openRouterBaseUrl = resolveOptionalStringBinding(
+    env,
+    "OPENROUTER_BASE_URL",
+    DEFAULT_OPENROUTER_BASE_URL
+  )
+  validateAbsoluteUrlBinding(openRouterBaseUrl, "OPENROUTER_BASE_URL")
+
   return {
-    normalizerModel: env.NORMALIZER_MODEL ?? DEFAULT_NORMALIZER_MODEL,
-    openRouterBaseUrl: env.OPENROUTER_BASE_URL ?? DEFAULT_OPENROUTER_BASE_URL,
-    outlookModel: env.OUTLOOK_MODEL ?? DEFAULT_OUTLOOK_MODEL,
+    normalizerModel: resolveOptionalStringBinding(
+      env,
+      "NORMALIZER_MODEL",
+      DEFAULT_NORMALIZER_MODEL
+    ),
+    openRouterBaseUrl,
+    outlookModel: resolveOptionalStringBinding(
+      env,
+      "OUTLOOK_MODEL",
+      DEFAULT_OUTLOOK_MODEL
+    ),
     promptVersion: typeof env.PROMPT_VERSION === "string" && env.PROMPT_VERSION.trim() !== "" ? env.PROMPT_VERSION : DEFAULT_PROMPT_VERSION,
     timeoutMs: parseTimeout(env.OPENROUTER_TIMEOUT_MS)
   }
@@ -92,6 +107,34 @@ function resolveConfig(env) {
 
 function requireNonEmptyStringBinding(env, bindingName) {
   if (typeof env?.[bindingName] !== "string" || env[bindingName].trim() === "") {
+    throw new Error(`Invalid binding: ${bindingName}`)
+  }
+}
+
+function resolveOptionalStringBinding(env, bindingName, defaultValue) {
+  const bindingValue = env?.[bindingName]
+
+  if (bindingValue === undefined || bindingValue === null) {
+    return defaultValue
+  }
+
+  if (typeof bindingValue !== "string") {
+    throw new Error(`Invalid binding: ${bindingName}`)
+  }
+
+  const trimmedBindingValue = bindingValue.trim()
+
+  return trimmedBindingValue === "" ? defaultValue : trimmedBindingValue
+}
+
+function validateAbsoluteUrlBinding(value, bindingName) {
+  try {
+    const parsedUrl = new URL(value)
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new Error()
+    }
+  } catch {
     throw new Error(`Invalid binding: ${bindingName}`)
   }
 }

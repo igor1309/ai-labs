@@ -4,11 +4,17 @@ export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://
   if (apiKey === undefined || apiKey === null) {
     throw new Error("Missing required dependency: apiKey")
   }
+  if (!isNonEmptyString(apiKey)) {
+    throw new Error("Invalid dependency: apiKey")
+  }
   if (typeof httpClient !== "function") {
     throw new Error("Invalid dependency: httpClient")
   }
   if (model === undefined || model === null) {
     throw new Error("Missing required dependency: model")
+  }
+  if (!isNonEmptyString(model)) {
+    throw new Error("Invalid dependency: model")
   }
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("Invalid dependency: timeoutMs")
@@ -44,7 +50,12 @@ export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://
           signal,
           timeoutMs
         })
-        const payload = await response.json()
+        const payload = await readJsonResponse(response)
+
+        if (response?.ok === false) {
+          throw new Error(formatOpenRouterHttpError(response?.status, payload))
+        }
+
         const parsed = parseModelResponse(payload)
         validateOutlookAnswer(parsed)
 
@@ -88,6 +99,25 @@ function parseModelResponse(payload) {
   }
 }
 
+async function readJsonResponse(response) {
+  if (typeof response?.json !== "function") {
+    throw new Error("Invalid OpenRouter response")
+  }
+
+  try {
+    return await response.json()
+  } catch {
+    throw new Error("Invalid OpenRouter response")
+  }
+}
+
+function formatOpenRouterHttpError(status, payload) {
+  const details = typeof payload?.error?.message === "string" ? `: ${payload.error.message}` : ""
+  const statusText = Number.isFinite(status) ? `${status}` : "unknown status"
+
+  return `OpenRouter request failed (${statusText})${details}`
+}
+
 function validateOutlookAnswer(answer) {
   if (typeof answer?.headline !== "string") {
     throw new Error("Invalid outlook answer: headline")
@@ -105,4 +135,8 @@ function validateOutlookAnswer(answer) {
 
 function areAllStrings(values) {
   return Array.isArray(values) && values.every((value) => typeof value === "string")
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim() !== ""
 }

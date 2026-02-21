@@ -1,6 +1,22 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+test("test_createPopularityCountersStore_shouldThrowMissingDependencyError_onMissingDb", async () => {
+  const module = await loadStoreModule()
+
+  assert.throws(() => module?.createPopularityCountersStore?.(), {
+    message: "Missing required dependency: db"
+  })
+})
+
+test("test_createPopularityCountersStore_shouldThrowInvalidDependencyError_onDbWithoutPrepareMethod", async () => {
+  const module = await loadStoreModule()
+
+  assert.throws(() => module?.createPopularityCountersStore?.({ db: {} }), {
+    message: "Invalid dependency: db.prepare"
+  })
+})
+
 test("test_increment_shouldUseUpsertStatement_onIncrement", async () => {
   const module = await loadStoreModule()
   const dbSpy = makeD1DatabaseSpy()

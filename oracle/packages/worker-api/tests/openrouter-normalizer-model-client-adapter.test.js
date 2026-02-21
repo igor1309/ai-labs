@@ -1,6 +1,48 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+test("test_createOpenRouterNormalizerModelClient_shouldThrowMissingDependencyError_onMissingApiKey", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterNormalizerModelClient?.({
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  }), { message: "Missing required dependency: apiKey" })
+})
+
+test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyError_onInvalidHttpClient", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: {},
+    model: "openrouter/model",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: httpClient" })
+})
+
+test("test_createOpenRouterNormalizerModelClient_shouldThrowMissingDependencyError_onMissingModel", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    timeoutMs: 1000
+  }), { message: "Missing required dependency: model" })
+})
+
+test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyError_onInvalidTimeoutMs", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model",
+    timeoutMs: "1000"
+  }), { message: "Invalid dependency: timeoutMs" })
+})
+
 test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNormalizeCall", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
@@ -49,6 +91,83 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
   }])
 })
 
+test("test_normalize_shouldReturnParsedNormalizerResult_onValidJsonModelOutput", async () => {
+  const expectedResult = {
+    canonicalProfession: "software engineer",
+    needsClarification: false
+  }
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy(expectedResult).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  const result = await modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  })
+
+  assert.deepEqual(result, expectedResult)
+})
+
+test("test_normalize_shouldThrowError_onNonJsonModelOutput", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy("not-json").httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "Invalid JSON response from OpenRouter"
+  })
+})
+
+test("test_normalize_shouldThrowError_onMissingCanonicalProfessionWithNeedsClarificationFalse", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy({
+      needsClarification: false
+    }).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "Invalid normalizer canonical result"
+  })
+})
+
+test("test_normalize_shouldThrowError_onNonBooleanNeedsClarification", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy({
+      canonicalProfession: "software engineer",
+      needsClarification: "false"
+    }).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "Invalid normalizer result: needsClarification"
+  })
+})
+
 test("test_normalize_shouldThrowError_onClarificationSuggestionsWithNonStringEntry", async () => {
   const adapterModule = await loadAdapterModule()
   const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
@@ -57,6 +176,28 @@ test("test_normalize_shouldThrowError_onClarificationSuggestionsWithNonStringEnt
       clarification: {
         message: "Please clarify",
         suggestions: ["software engineer", 1]
+      },
+      needsClarification: true
+    }).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "Invalid normalizer clarification result"
+  })
+})
+
+test("test_normalize_shouldThrowError_onMissingClarificationMessageWithNeedsClarificationTrue", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy({
+      clarification: {
+        suggestions: ["software engineer"]
       },
       needsClarification: true
     }).httpClient,

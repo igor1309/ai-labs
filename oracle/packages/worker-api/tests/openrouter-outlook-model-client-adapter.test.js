@@ -32,6 +32,28 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_
   }), { message: "Missing required dependency: apiKey" })
 })
 
+test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onEmptyApiKey", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "   ",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: apiKey" })
+})
+
+test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onNonStringApiKey", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: 1234,
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: apiKey" })
+})
+
 test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidHttpClient", async () => {
   const adapterModule = await loadAdapterModule()
 
@@ -51,6 +73,28 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_
     httpClient: makeHttpClientSpy().httpClient,
     timeoutMs: 1000
   }), { message: "Missing required dependency: model" })
+})
+
+test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onEmptyModel", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "   ",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: model" })
+})
+
+test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onNonStringModel", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: {},
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: model" })
 })
 
 test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidTimeoutMs", async () => {
@@ -224,6 +268,50 @@ test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async ()
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
+test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseBody: {
+      error: {
+        message: "Unauthorized"
+      }
+    },
+    responseOk: false,
+    responseStatus: 401
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()), {
+    message: "OpenRouter request failed (401): Unauthorized"
+  })
+})
+
+test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseBody: {
+      errors: ["bad request"]
+    },
+    responseOk: false,
+    responseStatus: 400
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()), {
+    message: "OpenRouter request failed (400)"
+  })
+})
+
 test("test_generate_shouldRequestJsonObjectResponseFormat_onOpenRouterRequest", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
@@ -267,7 +355,7 @@ async function loadAdapterModule() {
   }
 }
 
-function makeHttpClientSpy({ responseBody = makeOpenRouterSuccessPayload() } = {}) {
+function makeHttpClientSpy({ responseBody = makeOpenRouterSuccessPayload(), responseOk = true, responseStatus = 200 } = {}) {
   const calls = []
 
   return {
@@ -282,6 +370,8 @@ function makeHttpClientSpy({ responseBody = makeOpenRouterSuccessPayload() } = {
       })
 
       return {
+        ok: responseOk,
+        status: responseStatus,
         async json() {
           return responseBody
         }

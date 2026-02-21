@@ -1,6 +1,19 @@
 const SYSTEM_PROMPT = "Return only JSON with no extra keys and no non-JSON text. Output schema: needsClarification (boolean). If needsClarification=false requires canonicalProfession (string). If needsClarification=true requires clarification.message (string) and clarification.suggestions (string[]). If input is not a profession or is too vague, return needsClarification=true."
 
 export function createOpenRouterNormalizerModelClient({ apiKey, baseUrl = "https://openrouter.ai", httpClient = fetch, model, timeoutMs } = {}) {
+  if (apiKey === undefined || apiKey === null) {
+    throw new Error("Missing required dependency: apiKey")
+  }
+  if (typeof httpClient !== "function") {
+    throw new Error("Invalid dependency: httpClient")
+  }
+  if (model === undefined || model === null) {
+    throw new Error("Missing required dependency: model")
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("Invalid dependency: timeoutMs")
+  }
+
   return {
     async normalize(input) {
       const { cancelTimeout, signal } = createTimeoutSignal(timeoutMs)
@@ -85,6 +98,10 @@ function parseModelResponse(payload) {
 }
 
 function validateResult(value) {
+  if (typeof value?.needsClarification !== "boolean") {
+    throw new Error("Invalid normalizer result: needsClarification")
+  }
+
   if (value?.needsClarification === true) {
     if (
       typeof value?.clarification?.message !== "string" ||

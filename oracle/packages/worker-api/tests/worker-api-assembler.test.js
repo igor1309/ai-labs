@@ -109,6 +109,124 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlo
   ])
 })
 
+test("test_makeWorkerFetch_shouldUseDefaults_onBlankOptionalModelAndBaseUrlBindings", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const calls = []
+  const env = makeEnv({
+    NORMALIZER_MODEL: "   ",
+    OPENROUTER_BASE_URL: "",
+    OUTLOOK_MODEL: "openrouter/outlook-model"
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: async (url, init) => {
+      calls.push({
+        model: JSON.parse(init.body).model,
+        url
+      })
+
+      if (calls.length === 1) {
+        return {
+          async json() {
+            return {
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify(makeNormalizerResult())
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+
+      return {
+        async json() {
+          return {
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(makeOutlookAnswer())
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  const body = await response?.json()
+
+  assert.equal(body?.needsClarification, false)
+  assert.deepEqual(calls, [
+    {
+      model: "openai/gpt-4o-mini",
+      url: "https://openrouter.ai/api/v1/chat/completions"
+    },
+    {
+      model: "openrouter/outlook-model",
+      url: "https://openrouter.ai/api/v1/chat/completions"
+    }
+  ])
+})
+
+test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onInvalidOpenRouterBaseUrl", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
+    OPENROUTER_BASE_URL: "not-a-valid-url"
+  })), {
+    message: "Invalid binding: OPENROUTER_BASE_URL"
+  })
+})
+
+test("test_fetch_shouldReturnGeneratedRequestId_onMissingCryptoRandomUuid", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const originalCryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto")
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: {}
+  })
+
+  try {
+    const workerFetch = assemblerModule?.makeWorkerFetch?.(makeEnv())
+    const firstResponse = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+      body: "{",
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    }))
+    const secondResponse = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+      body: "{",
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    }))
+    const firstBody = await firstResponse?.json()
+    const secondBody = await secondResponse?.json()
+
+    assert.notEqual(firstBody?.requestId, secondBody?.requestId)
+  } finally {
+    if (originalCryptoDescriptor) {
+      Object.defineProperty(globalThis, "crypto", originalCryptoDescriptor)
+    }
+  }
+})
+
 function makeD1DatabaseSpy() {
   const bindCalls = []
   const prepareCalls = []
