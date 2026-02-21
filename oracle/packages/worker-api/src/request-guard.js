@@ -32,7 +32,6 @@ function isObject(value) {
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== ""
 }
-
 function makeInvalidResult(schemaVersion) {
   return {
     clarification: {
