@@ -3,6 +3,8 @@ import test from "node:test"
 
 import { createWorkerFetchHandler } from "../src/worker-api.js"
 
+const UNDEFINED_CACHE_READ = Symbol("UNDEFINED_CACHE_READ")
+
 test("test_fetch_shouldCallProfessionNormalizerWithRequestPayload_onOutlookRequest", async () => {
   const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
 
@@ -135,6 +137,36 @@ test("test_fetch_shouldReadAndWriteNormalizerCacheWithExpectedKey_onNormalizerCa
   assert.deepEqual(normalizerCacheSpy.writes, [{ key: "normalizer:en-US:software developer", value: normalizerModelResult }])
 })
 
+test("test_fetch_shouldCallNormalizerModelClientAndWriteCache_onUndefinedNormalizerCacheReadResult", async () => {
+  const normalizerModelResult = {
+    clarification: {
+      message: "Please be more specific.",
+      suggestions: ["software engineer"]
+    },
+    needsClarification: true
+  }
+  const { normalizerCacheSpy, normalizerModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: UNDEFINED_CACHE_READ,
+    normalizerModelResult
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(normalizerModelClientSpy.calls, [{ locale: "en-US", profession: "software developer" }])
+  assert.deepEqual(normalizerCacheSpy.writes, [{ key: "normalizer:en-US:software developer", value: normalizerModelResult }])
+})
+
+test("test_fetch_shouldNotCallNormalizerModelClientAndShouldNotWriteCache_onNormalizerCacheHit", async () => {
+  const { normalizerCacheSpy, normalizerModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult()
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(normalizerModelClientSpy.calls, [])
+  assert.deepEqual(normalizerCacheSpy.writes, [])
+})
+
 test("test_fetch_shouldReadAndWriteOutlookCacheWithExpectedKey_onOutlookCacheMiss", async () => {
   const { outlookCacheSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
     normalizerCacheReadResult: makeNormalizedProfessionResult(),
@@ -145,6 +177,30 @@ test("test_fetch_shouldReadAndWriteOutlookCacheWithExpectedKey_onOutlookCacheMis
 
   assert.deepEqual(outlookCacheSpy.reads, ["outlook:software engineer:en-US:1:1"])
   assert.deepEqual(outlookCacheSpy.writes, [{ key: "outlook:software engineer:en-US:1:1", value: makeOutlookAnswerResult() }])
+})
+
+test("test_fetch_shouldCallOutlookModelClientAndWriteCache_onUndefinedOutlookCacheReadResult", async () => {
+  const { outlookCacheSpy, outlookModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult(),
+    outlookCacheReadResult: UNDEFINED_CACHE_READ
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(outlookModelClientSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", promptVersion: "1", schemaVersion: "1" }])
+  assert.deepEqual(outlookCacheSpy.writes, [{ key: "outlook:software engineer:en-US:1:1", value: makeOutlookAnswerResult() }])
+})
+
+test("test_fetch_shouldNotCallOutlookModelClientAndShouldNotWriteCache_onOutlookCacheHit", async () => {
+  const { outlookCacheSpy, outlookModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult(),
+    outlookCacheReadResult: makeOutlookAnswerResult()
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(outlookModelClientSpy.calls, [])
+  assert.deepEqual(outlookCacheSpy.writes, [])
 })
 
 test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookCacheHit", async () => {
@@ -302,6 +358,9 @@ function makeCacheSpy(readResult = null) {
     cache: {
       async read(key) {
         reads.push(key)
+        if (readResult === UNDEFINED_CACHE_READ) {
+          return undefined
+        }
         return readResult
       },
       async write(key, value) {

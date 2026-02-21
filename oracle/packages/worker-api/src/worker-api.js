@@ -90,7 +90,7 @@ function makeComposedProfessionNormalizer({ cache, modelClient }) {
       const cacheKey = `normalizer:${locale}:${normalizedProfession}`
       const cacheHit = await cache.read(cacheKey)
 
-      if (cacheHit !== null) {
+      if (cacheHit !== null && cacheHit !== undefined) {
         return cacheHit
       }
 
@@ -112,7 +112,7 @@ function makeComposedProfessionOutlookService({ cache, modelClient, promptVersio
       const cacheKey = `outlook:${canonicalProfession}:${locale}:${schemaVersion}:${promptVersion}`
       const cacheHit = await cache.read(cacheKey)
 
-      if (cacheHit !== null) {
+      if (cacheHit !== null && cacheHit !== undefined) {
         return cacheHit
       }
 
