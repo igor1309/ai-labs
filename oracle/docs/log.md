@@ -1,7 +1,7 @@
 # Log
 
 ## 2026-02-21
-- Validate release readiness by running the full test suite (`./scripts/run_silent.sh "tests" npm test`), then attempt Worker deployment and record the current deployment blocker (`CLOUDFLARE_API_TOKEN` missing and proxy host resolution failure) before running post-deploy smoke-check prep.
+- Complete deploy verification for `am-i-done-api`: run full tests, deploy Worker successfully, and pass smoke checks (`GET /health` returns `200 ok`; `POST /api/outlook` returns structured JSON for valid input and clarification payload for invalid input) after correcting the `OPENROUTER_API_KEY` secret binding name.
 - Add assembler-level `makeWorkerFetch` contract tests for router delegation (`/health`, unknown path, `/api/outlook`) plus default OpenRouter config propagation (blank model bindings and invalid timeout fallback).
 - Harden popularity tracker error tagging for frozen/non-extensible thrown values and keep composition fail-open behavior restricted to tagged counter-write failures with reporter/no-reporter coverage.
 - Make popularity tracking fail-open in worker composition so D1 counter write errors (including missing `raw_input_counters` migration) do not break `/api/outlook` responses.
