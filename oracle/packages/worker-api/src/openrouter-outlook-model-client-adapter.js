@@ -1,6 +1,19 @@
-const SYSTEM_PROMPT = "Return only JSON matching the OutlookAnswer schema. Do not add extra keys or text outside JSON."
+const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
 
 export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://openrouter.ai", httpClient = fetch, model, timeoutMs } = {}) {
+  if (apiKey === undefined || apiKey === null) {
+    throw new Error("Missing required dependency: apiKey")
+  }
+  if (typeof httpClient !== "function") {
+    throw new Error("Invalid dependency: httpClient")
+  }
+  if (model === undefined || model === null) {
+    throw new Error("Missing required dependency: model")
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("Invalid dependency: timeoutMs")
+  }
+
   return {
     async generate(input) {
       const { cancelTimeout, signal } = createTimeoutSignal(timeoutMs)
@@ -34,6 +47,7 @@ export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://
         const payload = await response.json()
         const parsed = parseModelResponse(payload)
         validateOutlookAnswer(parsed)
+
         return parsed
       } catch (error) {
         if (signal?.aborted) {
@@ -49,13 +63,6 @@ export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://
 }
 
 function createTimeoutSignal(timeoutMs) {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return {
-      cancelTimeout() {},
-      signal: undefined
-    }
-  }
-
   const timeoutController = new AbortController()
   const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
 
@@ -85,15 +92,12 @@ function validateOutlookAnswer(answer) {
   if (typeof answer?.headline !== "string") {
     throw new Error("Invalid outlook answer: headline")
   }
-
   if (typeof answer?.timeHorizon?.label !== "string" || typeof answer?.timeHorizon?.explanation !== "string") {
     throw new Error("Invalid outlook answer: timeHorizon")
   }
-
   if (!["low", "medium", "high"].includes(answer?.confidence?.label) || typeof answer?.confidence?.rationale !== "string") {
     throw new Error("Invalid outlook answer: confidence")
   }
-
   if (!areAllStrings(answer?.keyRisks) || !areAllStrings(answer?.whatToDoNext) || !areAllStrings(answer?.assumptions)) {
     throw new Error("Invalid outlook answer: array fields")
   }
