@@ -5,20 +5,22 @@ export const requestGuard = {
     }
 
     const schemaVersion = resolveSchemaVersion(input)
+    const profession = readProperty(input, "profession")
+    const locale = readProperty(input, "locale")
 
-    if (!isNonEmptyString(input.profession)) {
+    if (!isNonEmptyString(profession)) {
       return makeInvalidResult(schemaVersion)
     }
 
-    if (!isNonEmptyString(input.locale)) {
+    if (!isNonEmptyString(locale)) {
       return makeInvalidResult(schemaVersion)
     }
 
     return {
       isValid: true,
       value: {
-        locale: input.locale,
-        profession: input.profession,
+        locale,
+        profession,
         schemaVersion
       }
     }
@@ -44,5 +46,15 @@ function makeInvalidResult(schemaVersion) {
 }
 
 function resolveSchemaVersion(input) {
-  return isNonEmptyString(input?.schemaVersion) ? input.schemaVersion : "1"
+  const schemaVersion = readProperty(input, "schemaVersion")
+
+  return isNonEmptyString(schemaVersion) ? schemaVersion : "1"
+}
+
+function readProperty(input, key) {
+  try {
+    return input?.[key]
+  } catch {
+    return undefined
+  }
 }

@@ -113,6 +113,17 @@ test("test_validate_shouldNotThrow_onAnyInputShape", async () => {
   assert.deepEqual(results.map(($0) => $0.status), ["fulfilled", "fulfilled", "fulfilled", "fulfilled", "fulfilled", "fulfilled", "fulfilled", "fulfilled", "fulfilled"])
 })
 
+test("test_validate_shouldNotThrow_onObjectWithThrowingGetters", async () => {
+  const module = await loadRequestGuardModule()
+  const results = await Promise.allSettled([
+    makeThrowingGetterObject("schemaVersion"),
+    makeThrowingGetterObject("profession"),
+    makeThrowingGetterObject("locale")
+  ].map(($0) => module?.requestGuard?.validate?.($0)))
+
+  assert.deepEqual(results.map(($0) => $0.status), ["fulfilled", "fulfilled", "fulfilled"])
+})
+
 function makeInvalidResult() {
   return {
     clarification: {
@@ -130,4 +141,18 @@ async function loadRequestGuardModule() {
   } catch {
     return null
   }
+}
+
+function makeThrowingGetterObject(field) {
+  const input = {}
+
+  Object.defineProperty(input, field, {
+    configurable: true,
+    enumerable: true,
+    get() {
+      throw new Error("getter exploded")
+    }
+  })
+
+  return input
 }

@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Harden `worker-api` request guard property reads to handle hostile getter-based inputs without throwing, with explicit non-throwing tests for throwing getters.
 - Implement `worker-api` request guard with strict validation for `profession`, `locale`, and `schemaVersion` resolution plus non-throwing behavior tests.
 - Add explicit popularity counters adapter test for trimmed-empty profession rejection while preserving upsert and bound-parameter checks.
 - Route assembled Worker fetch through `createWorkerApiEntrypointRouter` so entrypoint routing is owned by `worker-api` while preserving assembler wiring.
