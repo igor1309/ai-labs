@@ -71,7 +71,9 @@ test("test_write_shouldCallPutWithJsonString_onWrite", async () => {
   await cacheAdapter.write(cacheKey, cacheValue)
 
   assert.deepEqual(kvSpy.putCalls, [{
+    argsCount: 2,
     key: cacheKey,
+    options: undefined,
     value: JSON.stringify(cacheValue)
   }])
 })
@@ -86,7 +88,12 @@ function makeCloudflareKvNamespaceSpy({ getResult }) {
         return getResult
       },
       async put(key, value) {
-        putCalls.push({ key, value })
+        putCalls.push({
+          argsCount: arguments.length,
+          key,
+          options: arguments[2],
+          value
+        })
       }
     }
   }
