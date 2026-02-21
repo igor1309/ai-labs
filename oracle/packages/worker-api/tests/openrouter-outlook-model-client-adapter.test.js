@@ -135,6 +135,27 @@ test("test_generate_shouldReturnParsedOutlookAnswer_onValidJsonModelOutput", asy
   assert.deepEqual(actualAnswer, expectedAnswer)
 })
 
+test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseMessageContent: JSON.stringify({
+      ...makeOutlookAnswer(),
+      confidence: {
+        label: "certain",
+        rationale: "unsupported confidence scale"
+      }
+    })
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
+})
+
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-outlook-model-client-adapter.js")

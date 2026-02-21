@@ -31,6 +31,9 @@ export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, 
       if (typeof parsedAnswer.headline !== "string") {
         throw new Error("Invalid outlook answer schema")
       }
+      if (!["low", "medium", "high"].includes(parsedAnswer.confidence?.label)) {
+        throw new Error("Invalid outlook answer schema")
+      }
 
       return parsedAnswer
     }
