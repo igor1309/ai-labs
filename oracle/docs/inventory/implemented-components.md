@@ -212,7 +212,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `OPENROUTER_TIMEOUT_MS`: `10000`
 - `PROMPT_VERSION`: `"1"`
 - Tests:
-- `oracle/packages/worker-api/tests/worker-api-assembler.test.js`
+- `oracle/apps/am-i-done-api/tests/worker-fetch-assembler.test.js`
 - Asserts missing/invalid binding failures, config defaulting, routing for method/path, OpenRouter/KV/D1 wiring behavior, fallback request-id generation.
 
 #### Cloudflare Worker app entrypoint

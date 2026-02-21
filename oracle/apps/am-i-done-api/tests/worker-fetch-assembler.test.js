@@ -422,7 +422,7 @@ function normalizeWhitespace(value) {
 
 async function loadAssemblerModule() {
   try {
-    return await import("../../../apps/am-i-done-api/src/worker-fetch-assembler.js")
+    return await import("../src/worker-fetch-assembler.js")
   } catch {
     return null
   }
