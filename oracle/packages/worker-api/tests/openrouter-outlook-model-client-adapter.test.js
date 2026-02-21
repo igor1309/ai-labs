@@ -3,20 +3,21 @@ import test from "node:test"
 
 const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
 
-test("test_generate_shouldSendRequestWithAuthHeadersModelAndMessages_onGenerateCall", async () => {
+test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterRequest", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
-    timeoutMs: 1000
+    model: "openrouter/model-id",
+    timeoutMs: 4500
   })
 
   await modelClient?.generate(makeOutlookInput())
 
   assert.deepEqual(httpClientSpy.calls, [makeOpenRouterRequestCall({
-    model: "openrouter/model",
+    model: "openrouter/model-id",
+    timeoutMs: 4500,
     userPromptContent: JSON.stringify(makeOutlookInput())
   })])
 })
@@ -26,7 +27,7 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_
 
   assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
     httpClient: makeHttpClientSpy().httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   }), { message: "Missing required dependency: apiKey" })
 })
@@ -37,7 +38,7 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: {},
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   }), { message: "Invalid dependency: httpClient" })
 })
@@ -58,7 +59,7 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: makeHttpClientSpy().httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: "1000"
   }), { message: "Invalid dependency: timeoutMs" })
 })
@@ -69,7 +70,7 @@ test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAnd
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
@@ -80,7 +81,7 @@ test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAnd
     }
   }))
 
-  assert.deepEqual(JSON.parse(httpClientSpy.calls[0]?.init?.body?.messages?.[1]?.content), {
+  assert.deepEqual(JSON.parse(httpClientSpy.calls[0]?.body?.messages?.[1]?.content), {
     canonicalProfession: "software engineer",
     hints: {
       category: "knowledge-work",
@@ -98,28 +99,28 @@ test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPr
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
   await modelClient?.generate(makeOutlookInput())
 
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /json/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /extra keys/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /non-json text/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /headline/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /timeHorizon/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /confidence/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /low\|medium\|high/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /keyRisks/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /whatToDoNext/i)
-  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /assumptions/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /json/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /extra keys/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /non-json text/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /headline/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /timeHorizon/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /confidence/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /low\|medium\|high/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /keyRisks/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /whatToDoNext/i)
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /assumptions/i)
 })
 
 test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseMessageContent: JSON.stringify({
+    responseBody: makeOpenRouterSuccessPayload({
       assumptions: ["steady demand"],
       confidence: {
         label: "medium",
@@ -136,7 +137,7 @@ test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () =>
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
@@ -146,12 +147,12 @@ test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () =>
 test("test_generate_shouldThrow_onNonJsonModelOutput", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseMessageContent: "not-json"
+    responseBody: makeOpenRouterRawPayload("not-json")
   })
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
@@ -164,12 +165,12 @@ test("test_generate_shouldReturnParsedOutlookAnswer_onValidJsonModelOutput", asy
   })
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseMessageContent: JSON.stringify(expectedAnswer)
+    responseBody: makeOpenRouterSuccessPayload(expectedAnswer)
   })
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
@@ -181,7 +182,7 @@ test("test_generate_shouldReturnParsedOutlookAnswer_onValidJsonModelOutput", asy
 test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseMessageContent: JSON.stringify({
+    responseBody: makeOpenRouterSuccessPayload({
       ...makeOutlookAnswer(),
       confidence: {
         label: "certain",
@@ -192,7 +193,7 @@ test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () =>
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
@@ -202,7 +203,7 @@ test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () =>
 test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseMessageContent: JSON.stringify({
+    responseBody: makeOpenRouterSuccessPayload({
       ...makeOutlookAnswer(),
       assumptions: ["steady demand", 1],
       keyRisks: ["skills mismatch", 1],
@@ -216,7 +217,7 @@ test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async ()
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
@@ -229,15 +230,33 @@ test("test_generate_shouldRequestJsonObjectResponseFormat_onOpenRouterRequest", 
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
-    model: "openrouter/model",
+    model: "openrouter/model-id",
     timeoutMs: 1000
   })
 
   await modelClient?.generate(makeOutlookInput())
 
-  assert.deepEqual(httpClientSpy.calls[0]?.init?.body?.response_format, {
+  assert.deepEqual(httpClientSpy.calls[0]?.body?.response_format, {
     type: "json_object"
   })
+})
+
+test("test_generate_shouldAbortRequestAndThrowTimeoutError_onHttpClientTimeout", async () => {
+  const adapterModule = await loadAdapterModule()
+  const hangingHttpClientSpy = makeHangingHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: hangingHttpClientSpy.httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()), {
+    message: "OpenRouter request timed out"
+  })
+  assert.equal(hangingHttpClientSpy.calls.length, 1)
+  assert.equal(typeof hangingHttpClientSpy.calls[0].signal?.addEventListener, "function")
+  assert.equal(hangingHttpClientSpy.calls[0].signal?.aborted, true)
 })
 
 async function loadAdapterModule() {
@@ -248,34 +267,45 @@ async function loadAdapterModule() {
   }
 }
 
-function makeHttpClientSpy({ responseMessageContent = JSON.stringify(makeOutlookAnswer()) } = {}) {
+function makeHttpClientSpy({ responseBody = makeOpenRouterSuccessPayload() } = {}) {
   const calls = []
 
   return {
     calls,
-    httpClient: async (url, init) => {
+    httpClient: async (url, request) => {
       calls.push({
-        init: {
-          body: JSON.parse(init.body),
-          headers: init.headers,
-          method: init.method
-        },
+        body: JSON.parse(request.body),
+        headers: request.headers,
+        method: request.method,
+        timeoutMs: request.timeoutMs,
         url
       })
 
       return {
         async json() {
-          return {
-            choices: [
-              {
-                message: {
-                  content: responseMessageContent
-                }
-              }
-            ]
-          }
+          return responseBody
         }
       }
+    }
+  }
+}
+
+function makeHangingHttpClientSpy() {
+  const calls = []
+
+  return {
+    calls,
+    httpClient: async (_, init) => {
+      calls.push({ signal: init.signal })
+
+      return await new Promise((_, reject) => {
+        if (init.signal === undefined) {
+          reject(new Error("Missing abort signal"))
+          return
+        }
+
+        init.signal.addEventListener("abort", () => reject(new Error("Aborted")))
+      })
     }
   }
 }
@@ -295,48 +325,57 @@ function makeOutlookInput({ hints } = {}) {
   return input
 }
 
-function makeOutlookAnswer({ headline = "Automation changes tasks, not demand." } = {}) {
+function makeOutlookAnswer({ headline = "Outlook remains resilient." } = {}) {
   return {
     assumptions: ["steady demand"],
     confidence: {
       label: "medium",
-      rationale: "current trend"
+      rationale: "current trajectory"
     },
     headline,
-    keyRisks: ["skills mismatch"],
+    keyRisks: ["tool commoditization"],
     timeHorizon: {
-      explanation: "adoption curves remain uneven",
+      explanation: "adoption curves are gradual",
       label: "3-5 years"
     },
-    whatToDoNext: ["strengthen systems thinking"]
+    whatToDoNext: ["build AI-assisted workflow skills"]
   }
 }
 
-function makeOpenRouterRequestCall({ model, userPromptContent }) {
+function makeOpenRouterSuccessPayload(answer = makeOutlookAnswer()) {
+  return makeOpenRouterRawPayload(JSON.stringify(answer))
+}
+
+function makeOpenRouterRawPayload(content) {
   return {
-    init: {
-      body: {
-        messages: [
-          {
-            content: SYSTEM_PROMPT,
-            role: "system"
-          },
-          {
-            content: userPromptContent,
-            role: "user"
-          }
-        ],
-        model,
-        response_format: {
-          type: "json_object"
+    choices: [
+      {
+        message: {
+          content
         }
-      },
-      headers: {
-        authorization: "Bearer openrouter-api-key",
-        "content-type": "application/json"
-      },
-      method: "POST"
+      }
+    ]
+  }
+}
+
+function makeOpenRouterRequestCall({ model, timeoutMs, userPromptContent }) {
+  return {
+    body: {
+      messages: [
+        { content: SYSTEM_PROMPT, role: "system" },
+        { content: userPromptContent, role: "user" }
+      ],
+      model,
+      response_format: {
+        type: "json_object"
+      }
     },
+    headers: {
+      authorization: "Bearer openrouter-api-key",
+      "content-type": "application/json"
+    },
+    method: "POST",
+    timeoutMs,
     url: "https://openrouter.ai/api/v1/chat/completions"
   }
 }
