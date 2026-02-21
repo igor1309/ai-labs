@@ -30,6 +30,30 @@ test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async 
   assert.deepEqual(requestGuardSpy.calls, [makeOutlookRequestBody()])
 })
 
+test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidJsonRequestBody", async () => {
+  const { popularityCountersStoreSpy, professionNormalizerSpy, professionOutlookServiceSpy, requestGuardSpy, workerFetchHandler } = makeSUT()
+
+  const response = await performInvalidJsonOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please provide a valid request body.",
+      suggestions: []
+    },
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+  assert.deepEqual(requestGuardSpy.calls, [])
+  assert.deepEqual(professionNormalizerSpy.calls, [])
+  assert.deepEqual(professionOutlookServiceSpy.calls, [])
+  assert.deepEqual(popularityCountersStoreSpy.calls, [])
+})
+
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", async () => {
   const { workerFetchHandler } = makeSUT({
     guardResult: {
@@ -285,6 +309,21 @@ function makeOutlookRequestBody() {
 async function performOutlookRequest(workerFetchHandler, { requestBody = makeOutlookRequestBody() } = {}) {
   const response = await workerFetchHandler(new Request("https://example.test/api/outlook", {
     body: JSON.stringify(requestBody),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+
+  return {
+    body: await response.json(),
+    status: response.status
+  }
+}
+
+async function performInvalidJsonOutlookRequest(workerFetchHandler) {
+  const response = await workerFetchHandler(new Request("https://example.test/api/outlook", {
+    body: "{",
     headers: {
       "content-type": "application/json"
     },

@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- handle invalid JSON request bodies with structured clarification response in worker wiring
 - define composition root addendum for interface-only wiring, layered assembly, and wiring test rules
 - make worker composition runtime-safe and add request guard with structured clarification response
 - validate composed dependency contracts at composition time

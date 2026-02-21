@@ -25,7 +25,26 @@ export function createWorkerFetchHandler(dependencies = {}) {
   )
 
   return async function fetch(request) {
-    const requestBody = await request.json()
+    let requestBody
+
+    try {
+      requestBody = await request.json()
+    } catch {
+      return Response.json({
+        answer: null,
+        canonicalProfession: null,
+        category: null,
+        categoryConfidence: null,
+        clarification: {
+          message: "Please provide a valid request body.",
+          suggestions: []
+        },
+        needsClarification: true,
+        requestId: requestIdGenerator(),
+        schemaVersion: "1"
+      })
+    }
+
     const guardResult = await requestGuard.validate(requestBody)
 
     if (!guardResult.isValid) {
