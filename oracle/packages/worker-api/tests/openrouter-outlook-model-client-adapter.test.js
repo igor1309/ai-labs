@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-const SYSTEM_PROMPT = "Return only JSON. Do not include non-JSON text. Do not include extra keys. Use stable section names and include headline, timeHorizon, confidence, keyRisks, whatToDoNext, assumptions."
+const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
 
 test("test_generate_shouldSendRequestWithAuthHeadersModelAndMessages_onGenerateCall", async () => {
   const adapterModule = await loadAdapterModule()
@@ -68,6 +68,7 @@ test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPr
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /headline/i)
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /timeHorizon/i)
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /confidence/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /low\|medium\|high/i)
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /keyRisks/i)
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /whatToDoNext/i)
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /assumptions/i)
