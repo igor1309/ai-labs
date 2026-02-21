@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Correct the implementation inventory to explicitly flag missing `PopularityTracker` architecture behavior (counters on every request) and mark the assemble checklist accordingly.
 - Add an implementation inventory for worker assembly covering module/adapter contracts, wiring points, binding requirements, test coverage, and spec drift notes in one operator-facing reference.
 - Harden `worker-api` request guard property reads to handle hostile getter-based inputs without throwing, with explicit non-throwing tests for throwing getters.
 - Implement `worker-api` request guard with strict validation for `profession`, `locale`, and `schemaVersion` resolution plus non-throwing behavior tests.
