@@ -8,16 +8,29 @@ export function createWorkerFetchHandler(dependencies = {}) {
   return async function fetch(request) {
     const requestBody = await request.json()
 
-    await professionNormalizer.normalize({
+    const normalizerResult = await professionNormalizer.normalize({
       locale: requestBody.locale,
       profession: requestBody.profession
     })
 
+    if (normalizerResult.needsClarification) {
+      return Response.json({
+        answer: null,
+        canonicalProfession: null,
+        category: null,
+        categoryConfidence: null,
+        clarification: normalizerResult.clarification,
+        needsClarification: true,
+        requestId: requestIdGenerator(),
+        schemaVersion: requestBody.schemaVersion
+      })
+    }
+
     await professionOutlookService.getOutlook({
-      canonicalProfession: "software engineer",
+      canonicalProfession: normalizerResult.canonicalProfession,
       hints: {
-        category: "knowledge-work",
-        categoryConfidence: 0.9
+        category: normalizerResult.category,
+        categoryConfidence: normalizerResult.categoryConfidence
       },
       locale: requestBody.locale,
       schemaVersion: requestBody.schemaVersion

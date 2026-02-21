@@ -19,9 +19,25 @@ test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocale
   assert.deepEqual(professionOutlookServiceSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", schemaVersion: "1" }])
 })
 
-function makeSUT() {
+test("test_fetch_shouldNotCallProfessionOutlookService_onNeedsClarification", async () => {
+  const { professionOutlookServiceSpy, workerFetchHandler } = makeSUT({
+    normalizerResult: {
+      clarification: {
+        message: "Please be more specific.",
+        suggestions: ["software engineer"]
+      },
+      needsClarification: true
+    }
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(professionOutlookServiceSpy.calls, [])
+})
+
+function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy()
-  const professionNormalizerSpy = makeProfessionNormalizerSpy()
+  const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
 
   return {
     professionOutlookServiceSpy,
@@ -34,7 +50,16 @@ function makeSUT() {
   }
 }
 
-function makeProfessionNormalizerSpy() {
+function makeNormalizedProfessionResult() {
+  return {
+    canonicalProfession: "software engineer",
+    category: "knowledge-work",
+    categoryConfidence: 0.9,
+    needsClarification: false
+  }
+}
+
+function makeProfessionNormalizerSpy(result) {
   const calls = []
 
   return {
@@ -42,12 +67,7 @@ function makeProfessionNormalizerSpy() {
     service: {
       async normalize(input) {
         calls.push(input)
-        return {
-          canonicalProfession: "software engineer",
-          category: "knowledge-work",
-          categoryConfidence: 0.9,
-          needsClarification: false
-        }
+        return result
       }
     }
   }
