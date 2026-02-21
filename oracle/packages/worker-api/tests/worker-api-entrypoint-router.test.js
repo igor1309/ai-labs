@@ -69,7 +69,7 @@ test("test_appFetch_shouldReturnComposedInvalidJsonClarification_onPostApiOutloo
       "content-type": "application/json"
     },
     method: "POST"
-  }))
+  }), makeAppEnv())
   const responseBody = await response.json()
 
   assert.equal(responseBody.clarification.message, "Please provide a valid request body.")
@@ -83,6 +83,35 @@ function makeOutlookHandlerSpy() {
     handler: async (request) => {
       calls.push(request)
       return Response.json({})
+    }
+  }
+}
+
+function makeAppEnv() {
+  return {
+    DB: {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async run() {}
+            }
+          }
+        }
+      }
+    },
+    NORMALIZER_CACHE: {
+      async get() {
+        return null
+      },
+      async put() {}
+    },
+    OPENROUTER_API_KEY: "openrouter-api-key",
+    OUTLOOK_CACHE: {
+      async get() {
+        return null
+      },
+      async put() {}
     }
   }
 }
