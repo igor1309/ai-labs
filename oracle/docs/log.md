@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Add explicit popularity counters adapter test for trimmed-empty profession rejection while preserving upsert and bound-parameter checks.
 - Route assembled Worker fetch through `createWorkerApiEntrypointRouter` so entrypoint routing is owned by `worker-api` while preserving assembler wiring.
 - Fail fast in `worker-api` router wiring when `outlookHandler` is missing or not a function, and cover it with dedicated router dependency-validation tests.
 - Implement worker entrypoint router in `worker-api` (`GET /health`, `POST /api/outlook`, default `404`) and wire Worker `fetch` to delegate `/api/outlook` through composed `createWorkerFetchHandler`.

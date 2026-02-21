@@ -17,6 +17,19 @@ test("test_increment_shouldUseUpsertStatement_onIncrement", async () => {
   assert.deepEqual(dbSpy.bindCalls, [["software engineer", "2026-02-21T00:00:00.000Z"]])
 })
 
+test("test_increment_shouldThrowError_onEmptyCanonicalProfessionAfterTrimming", async () => {
+  const module = await loadStoreModule()
+  const dbSpy = makeD1DatabaseSpy()
+  const popularityCountersStore = module?.createPopularityCountersStore?.({
+    db: dbSpy.db,
+    now: () => "2026-02-21T00:00:00.000Z"
+  })
+
+  await assert.rejects(() => popularityCountersStore?.increment("   "), {
+    message: "canonicalProfession must not be empty"
+  })
+})
+
 function makeD1DatabaseSpy() {
   const bindCalls = []
   const prepareCalls = []
