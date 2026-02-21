@@ -14,12 +14,17 @@
 - Commit only when tests are passing for the current branch state.
 - Protocols are owned by their client and MUST live in the same module. A protocol without its client is a violation.
 - Keep scope minimal and explicit; avoid scope creep.
-- Log entries are in reverse chronological order (newest first).
-- Update `docs/log.md` for each meaningful change set before pushing.
-- Keep `docs/log.md` entries concise and outcome-focused; don’t copy commit messages verbatim.
-- If `docs/log.md` is grouped by date sections, add new bullets at the top of the current date section.
 - Tests must cover reasonable edge cases for new or changed behavior.
 - Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
+
+## Log
+
+- Log entries are in reverse chronological order (newest first).
+- Update the relevant log for each meaningful change set before pushing:
+  - repo-level changes: `docs/log.md`
+  - project-level changes: `<project>/docs/log.md` (for example, `oracle/docs/log.md`)
+  - if both scopes are changed, update both logs
+- Keep log entries concise and outcome-focused; don’t copy commit messages verbatim.
 
 ## Strict TDD mode
 
@@ -70,7 +75,7 @@ Release policy is outcome-based. Commands are implementation detail; these invar
 
 - **Start state**: release from `trunk`.
 - **SemVer decision**: choose release bump per SemVer 2.0 from the delta since the previous tag (or full history on first release).
-- **Release notes**: add exactly one new top entry in `docs/log.md` for this release (at the top of the current date section, if present), scoped to that reviewed delta.
+- **Release notes**: add exactly one new top entry in the release-scope log (`docs/log.md` for repo-level releases, `<project>/docs/log.md` for project releases) at the top of the current date section, if present, scoped to that reviewed delta.
 - **Version consistency**: `package.json` version, `package-lock.json` version, and release tag `vX.Y.Z` must match.
 - **Push safety**: push only `trunk` and the explicit release tag; never `git push --tags`.
 - **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging. `tsx` (test runner) ignores unused imports; `tsc` (CI build) does not.
