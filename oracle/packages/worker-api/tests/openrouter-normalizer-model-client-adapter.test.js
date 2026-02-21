@@ -22,7 +22,7 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
       body: {
         messages: [
           {
-            content: "Return only JSON matching the NormalizerResult schema. Do not add extra keys or text outside JSON. If input is not a profession or is too vague, return needsClarification=true with clarification.message and clarification.suggestions.",
+            content: "Return only JSON with no extra keys and no non-JSON text. Output schema: needsClarification (boolean). If needsClarification=false requires canonicalProfession (string). If needsClarification=true requires clarification.message (string) and clarification.suggestions (string[]). If input is not a profession or is too vague, return needsClarification=true.",
             role: "system"
           },
           {
@@ -49,7 +49,33 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
   }])
 })
 
-function makeHttpClientSpy() {
+test("test_normalize_shouldThrowError_onClarificationSuggestionsWithNonStringEntry", async () => {
+  const adapterModule = await loadAdapterModule()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy({
+      clarification: {
+        message: "Please clarify",
+        suggestions: ["software engineer", 1]
+      },
+      needsClarification: true
+    }).httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.normalize?.({
+    locale: "en-US",
+    profession: "software developer"
+  }), {
+    message: "Invalid normalizer clarification result"
+  })
+})
+
+function makeHttpClientSpy(modelResponse = {
+  canonicalProfession: "software engineer",
+  needsClarification: false
+}) {
   const calls = []
 
   return {
@@ -71,10 +97,7 @@ function makeHttpClientSpy() {
             choices: [
               {
                 message: {
-                  content: JSON.stringify({
-                    canonicalProfession: "software engineer",
-                    needsClarification: false
-                  })
+                  content: typeof modelResponse === "string" ? modelResponse : JSON.stringify(modelResponse)
                 }
               }
             ]

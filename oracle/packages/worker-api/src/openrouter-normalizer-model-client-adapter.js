@@ -1,4 +1,4 @@
-const SYSTEM_PROMPT = "Return only JSON matching the NormalizerResult schema. Do not add extra keys or text outside JSON. If input is not a profession or is too vague, return needsClarification=true with clarification.message and clarification.suggestions."
+const SYSTEM_PROMPT = "Return only JSON with no extra keys and no non-JSON text. Output schema: needsClarification (boolean). If needsClarification=false requires canonicalProfession (string). If needsClarification=true requires clarification.message (string) and clarification.suggestions (string[]). If input is not a profession or is too vague, return needsClarification=true."
 
 export function createOpenRouterNormalizerModelClient({ apiKey, baseUrl = "https://openrouter.ai", httpClient = fetch, model, timeoutMs } = {}) {
   return {
@@ -86,7 +86,11 @@ function parseModelResponse(payload) {
 
 function validateResult(value) {
   if (value?.needsClarification === true) {
-    if (typeof value?.clarification?.message !== "string" || !Array.isArray(value?.clarification?.suggestions)) {
+    if (
+      typeof value?.clarification?.message !== "string" ||
+      !Array.isArray(value?.clarification?.suggestions) ||
+      !value.clarification.suggestions.every((suggestion) => typeof suggestion === "string")
+    ) {
       throw new Error("Invalid normalizer clarification result")
     }
 
