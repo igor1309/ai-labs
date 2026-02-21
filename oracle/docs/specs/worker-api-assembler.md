@@ -1,0 +1,73 @@
+---
+date: 2026-02-21
+model: gpt-5.2
+description: "Spec: worker-api assemblers (Cloudflare env bindings -> adapters -> wiring composer -> fetch handler)"
+---
+
+# Spec: Worker API Assemblers (v1)
+
+## Goal
+Assemble a deployable Cloudflare Worker `fetch` handler by:
+1) creating concrete adapters from Cloudflare `env` bindings and config,
+2) plugging those adapters into wiring composers (interface-only),
+3) returning the final entrypoint.
+
+Assemblers are allowed to know all modules and providers. They must not contain business logic.
+
+## Inputs
+### Cloudflare `env` bindings
+Required:
+- `env.NORMALIZER_CACHE`: KV namespace for normalizer cache
+- `env.OUTLOOK_CACHE`: KV namespace for outlook cache
+- `env.DB`: D1 database binding
+- `env.OPENROUTER_API_KEY`: secret (string)
+- `env.PROMPT_VERSION`: string (default `"1"` in config)
+
+Optional (v1 defaults may be provided by the assembler):
+- `env.NORMALIZER_MODEL`: OpenRouter model id
+- `env.OUTLOOK_MODEL`: OpenRouter model id
+- `env.OPENROUTER_BASE_URL`: override base URL
+- `env.OPENROUTER_TIMEOUT_MS`: number as string
+
+### Wiring composer entrypoint
+The assembler uses the `worker-api` wiring composer (interface-only) with dependency shape:
+- `requestGuard.validate(input) -> guardResult`
+- `professionNormalizer.normalize(input) -> normalizerResult`
+- `professionOutlookService.getOutlook(input) -> answer`
+- `popularityCountersStore.increment(canonicalProfession) -> void`
+- `requestIdGenerator() -> string`
+
+## Assembly outputs
+- `fetch(request)` handler suitable for Worker runtime.
+
+## Assembly responsibilities
+The assembler must:
+- Provide a concrete `requestGuard` implementation (pure validation, no throws).
+- Provide a concrete `requestIdGenerator` (prefer `globalThis.crypto.randomUUID`).
+- Create a KV JSON cache adapter for each cache dependency required by client modules.
+- Create OpenRouter model client adapters for:
+  - `profession-normalizer` model client protocol
+  - `profession-outlook` model client protocol
+- Create a D1 popularity counters store adapter.
+- Instantiate client modules (`profession-normalizer`, `profession-outlook`) using their module-owned protocols and config (e.g., `promptVersion`).
+- Plug everything into the wiring composer to produce the final handler.
+
+## Non-responsibilities
+The assembler must not:
+- define cache keys or caching policy (module-owned)
+- normalize profession strings (module-owned)
+- implement domain decisions (module-owned)
+
+## Tests (required)
+Assembler tests validate concrete binding and adapter wiring (not business behavior):
+- Given a fake `env` with KV/D1 spies and a fake `fetch` spy for OpenRouter calls:
+  - Assembled handler routes `/api/outlook` through wiring composer with correct dependency shapes.
+  - Assembled adapters call KV/D1 with expected methods.
+  - OpenRouter adapters receive the configured model ids, timeouts, and base URL.
+- Verify missing required bindings fail fast with clear errors at assembly time.
+
+## Done criteria
+- A documented assembler entrypoint exists (e.g., `makeWorkerFetch(env)`).
+- Assembly uses only adapters/decorators/wiring composers, no domain logic.
+- Assembler tests cover binding presence, adapter wiring, and config propagation.
+
