@@ -87,10 +87,12 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlo
     key: "outlook:software engineer:en-US:1:prompt-v7",
     value: JSON.stringify(makeOutlookAnswer())
   }])
-  assert.equal(d1DatabaseSpy.prepareCalls.length, 1)
-  assert.match(normalizeWhitespace(d1DatabaseSpy.prepareCalls[0]), /insert into profession_counters/i)
-  assert.deepEqual(d1DatabaseSpy.bindCalls.length, 1)
-  assert.deepEqual(d1DatabaseSpy.bindCalls[0][0], "software engineer")
+  assert.equal(d1DatabaseSpy.prepareCalls.length, 2)
+  assert.match(normalizeWhitespace(d1DatabaseSpy.prepareCalls[0]), /insert into raw_input_counters/i)
+  assert.match(normalizeWhitespace(d1DatabaseSpy.prepareCalls[1]), /insert into profession_counters/i)
+  assert.deepEqual(d1DatabaseSpy.bindCalls.length, 2)
+  assert.deepEqual(d1DatabaseSpy.bindCalls[0][0], "software developer")
+  assert.deepEqual(d1DatabaseSpy.bindCalls[1][0], "software engineer")
   assert.deepEqual(httpClientSpy.calls.map((call) => ({
     model: call.init.body.model,
     timeoutMs: call.init.timeoutMs,
@@ -107,6 +109,55 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlo
       url: "https://openrouter.custom/api/v1/chat/completions"
     }
   ])
+})
+
+test("test_fetch_shouldIncrementRawAndCanonicalCounters_onOutlookCacheHit", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeNormalizerResult()) })
+  const outlookCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeOutlookAnswer()) })
+  const d1DatabaseSpy = makeD1DatabaseSpy()
+  const env = makeEnv({
+    DB: d1DatabaseSpy.db,
+    NORMALIZER_CACHE: normalizerCacheSpy.kv,
+    OUTLOOK_CACHE: outlookCacheSpy.kv
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "  software   developer "
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+
+  const body = await response?.json()
+
+  assert.deepEqual(body, {
+    answer: makeOutlookAnswer(),
+    canonicalProfession: "software engineer",
+    category: "knowledge-work",
+    categoryConfidence: 0.9,
+    clarification: null,
+    needsClarification: false,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+  assert.deepEqual(normalizerCacheSpy.putCalls, [])
+  assert.deepEqual(outlookCacheSpy.putCalls, [])
+  assert.deepEqual(httpClientSpy.calls, [])
+  assert.equal(d1DatabaseSpy.prepareCalls.length, 2)
+  assert.match(normalizeWhitespace(d1DatabaseSpy.prepareCalls[0]), /insert into raw_input_counters/i)
+  assert.match(normalizeWhitespace(d1DatabaseSpy.prepareCalls[1]), /insert into profession_counters/i)
+  assert.deepEqual(d1DatabaseSpy.bindCalls[0][0], "software developer")
+  assert.deepEqual(d1DatabaseSpy.bindCalls[1][0], "software engineer")
 })
 
 test("test_makeWorkerFetch_shouldUseDefaults_onBlankOptionalModelAndBaseUrlBindings", async () => {

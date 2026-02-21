@@ -34,7 +34,7 @@ The assembler uses the `worker-api` wiring composer (interface-only) with depend
 - `requestGuard.validate(input) -> guardResult`
 - `professionNormalizer.normalize(input) -> normalizerResult`
 - `professionOutlookService.getOutlook(input) -> answer`
-- `popularityCountersStore.increment(canonicalProfession) -> void`
+- `popularityTracker.track({ rawProfession, normalizerResult }) -> void`
 - `requestIdGenerator() -> string`
 
 ## Assembly outputs
@@ -48,7 +48,8 @@ The assembler must:
 - Create OpenRouter model client adapters for:
   - `profession-normalizer` model client protocol
   - `profession-outlook` model client protocol
-- Create a D1 popularity counters store adapter.
+- Create D1 counter store adapters for canonical and raw-input counters.
+- Compose a `popularityTracker` decorator from these stores.
 - Instantiate client modules (`profession-normalizer`, `profession-outlook`) using their module-owned protocols and config (e.g., `promptVersion`).
 - Plug everything into the wiring composer to produce the final handler.
 
@@ -70,4 +71,3 @@ Assembler tests validate concrete binding and adapter wiring (not business behav
 - A documented assembler entrypoint exists (e.g., `makeWorkerFetch(env)`).
 - Assembly uses only adapters/decorators/wiring composers, no domain logic.
 - Assembler tests cover binding presence, adapter wiring, and config propagation.
-

@@ -13,7 +13,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Domain modules:
 - `oracle/packages/profession-normalizer/src/profession-normalizer.js`
 - `oracle/packages/profession-outlook/src/profession-outlook.js`
-- Migration for D1 counters/synonyms tables: `oracle/apps/am-i-done-api/migrations/0001_init.sql`
+- Migrations for D1 counters/synonyms tables: `oracle/apps/am-i-done-api/migrations/0001_init.sql`, `oracle/apps/am-i-done-api/migrations/0002_raw_input_counters.sql`
 - Test command: `./scripts/run_silent.sh "tests" npm test`
 
 ## Implemented components
@@ -73,16 +73,32 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 #### `createWorkerFetchHandler` (composition wiring)
 - Source: `oracle/packages/worker-api/src/worker-api.js`
 - Public API:
-- `createWorkerFetchHandler({ requestGuard, professionNormalizer, professionOutlookService, popularityCountersStore, requestIdGenerator }) -> fetch(request)`
+- `createWorkerFetchHandler({ requestGuard, professionNormalizer, professionOutlookService, popularityTracker, requestIdGenerator }) -> fetch(request)`
 - Contract:
 - Parses request JSON for `/api/outlook`.
 - Returns structured clarification response on JSON parse failure or guard/normalizer clarification.
-- On canonical flow: increments counters, queries outlook service, returns structured answer response.
+- Calls `popularityTracker.track(...)` on every guard-valid request after normalization (canonical and clarification paths).
+- On canonical flow: queries outlook service and returns structured answer response.
 - Wiring point:
 - Assembled by `makeWorkerFetch(...)`, then wrapped by entrypoint router.
 - Tests:
 - `oracle/packages/worker-api/tests/worker-api.composition.test.js`
-- Asserts dependency validation, call ordering, invalid JSON behavior, guard invalid behavior, normalizer clarification behavior, increment call, final response shape.
+- Asserts dependency validation, call ordering, invalid JSON behavior, guard invalid behavior, normalizer clarification behavior, tracker call behavior, final response shape.
+
+#### `createPopularityTracker` (worker-api decorator)
+- Source: `oracle/packages/worker-api/src/popularity-tracker.js`
+- Public API:
+- `createPopularityTracker({ popularityCountersStore, rawInputCountersStore }) -> { track(input) }`
+- Contract:
+- Validates and normalizes `rawProfession` key via trim + internal-whitespace collapse.
+- Increments raw-input counters for every guard-valid request.
+- Increments canonical counters only when `normalizerResult.needsClarification === false`.
+- Propagates counter-store errors unchanged.
+- Wiring point:
+- Assembled in `makeWorkerFetch(...)` and injected into `createWorkerFetchHandler(...)`.
+- Tests:
+- `oracle/packages/worker-api/tests/popularity-tracker.test.js`
+- Asserts dependency validation, canonical/clarification counter behavior, input validation, and error propagation.
 
 #### `createWorkerApiEntrypointRouter` (HTTP entrypoint router)
 - Source: `oracle/packages/worker-api/src/worker-api.js`
@@ -164,6 +180,21 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `oracle/packages/worker-api/tests/popularity-counters-store.test.js`
 - Asserts dependency validation, upsert statement usage, bound parameters, empty profession rejection.
 
+#### `createRawInputCountersStore` (D1 adapter)
+- Source: `oracle/packages/worker-api/src/raw-input-counters-store.js`
+- Public API:
+- `createRawInputCountersStore({ db, now? }) -> { increment(rawProfessionKey) }`
+- Cloudflare dependency:
+- D1 `db.prepare(...).bind(...).run()`
+- Behavior:
+- Validates non-empty trimmed raw-profession key.
+- Performs atomic upsert into `raw_input_counters`.
+- Wiring point:
+- Instantiated by assembler from `env.DB`.
+- Tests:
+- `oracle/packages/worker-api/tests/raw-input-counters-store.test.js`
+- Asserts dependency validation, upsert statement usage, bound parameters, empty key rejection.
+
 ### Assembler and app entrypoint
 
 #### `makeWorkerFetch` (assembler)
@@ -199,7 +230,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 | --- | --- | --- | --- |
 | `NORMALIZER_CACHE` | Yes | `createCloudflareKvJsonCacheAdapter` for normalizer | Normalizer cache storage |
 | `OUTLOOK_CACHE` | Yes | `createCloudflareKvJsonCacheAdapter` for outlook | Outlook answer cache storage |
-| `DB` | Yes | `createPopularityCountersStore` | D1 counters persistence |
+| `DB` | Yes | `createPopularityCountersStore`, `createRawInputCountersStore` | D1 canonical/raw counters persistence |
 | `OPENROUTER_API_KEY` | Yes | Both OpenRouter adapters | Auth for model calls |
 | `PROMPT_VERSION` | No (defaults to `"1"`) | `createProfessionOutlookService` via assembler config | Cache/prompt versioning |
 | `NORMALIZER_MODEL` | No | OpenRouter normalizer adapter | Model selection |
@@ -212,23 +243,22 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Coverage by component:
 - Modules: `profession-normalizer`, `profession-outlook`
 - Worker-owned router/composition/guard: `worker-api.js`, `request-guard.js`
-- Adapters: KV JSON cache, OpenRouter normalizer, OpenRouter outlook, D1 counters store
+- Adapters: KV JSON cache, OpenRouter normalizer, OpenRouter outlook, D1 canonical/raw counters stores
 - Assembler: env binding validation, config propagation, runtime wiring
 - Entrypoint behavior: composed routing and invalid JSON response flow
 
 ## Spec drift notes
 - `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"1"` behavior; implementation treats it as optional and defaults to `"1"` when missing/blank.
 - Implemented adapters include stricter runtime checks than minimum specs (empty API key/model, invalid timeout, non-OK OpenRouter status formatting, timeout abort), which is additive hardening.
-- Architecture drift: `PopularityTracker` decorator behavior is not implemented. The architecture doc requires incrementing counters on every request (cache hit or miss), while current composition increments only on canonical (non-clarification) flow.
 
 ## Ready-to-assemble checklist
 - [x] Module-owned protocols are defined in their owning modules (`profession-normalizer`, `profession-outlook`).
 - [x] Worker-owned components (`requestGuard`, composition handler, entrypoint router) are implemented and tested.
 - [x] Cloudflare adapters (KV, D1, OpenRouter) are implemented and assembler-wired.
 - [x] App entrypoint delegates to assembler-generated fetch.
-- [ ] `PopularityTracker` behavior from architecture is not yet implemented (increment counters on every request, including clarification/cache-hit paths).
+- [x] `PopularityTracker` behavior from architecture is implemented (increment counters on every request, including clarification/cache-hit paths).
 - [ ] Cloudflare secret `OPENROUTER_API_KEY` must be provisioned in target environment.
-- [ ] D1 migration `oracle/apps/am-i-done-api/migrations/0001_init.sql` must be applied in target environment.
+- [ ] D1 migrations (`oracle/apps/am-i-done-api/migrations/0001_init.sql`, `oracle/apps/am-i-done-api/migrations/0002_raw_input_counters.sql`) must be applied in target environment.
 - [ ] Optional runtime overrides (`NORMALIZER_MODEL`, `OUTLOOK_MODEL`, `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`, `PROMPT_VERSION`) should be explicitly set per deployment policy.
 
 ## References
@@ -239,5 +269,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `oracle/docs/specs/implemented/openrouter-normalizer-model-client-adapter.md`
 - `oracle/docs/specs/implemented/openrouter-outlook-model-client-adapter.md`
 - `oracle/docs/specs/implemented/popularity-counters-store.md`
+- `oracle/docs/specs/implemented/raw-input-counters-store.md`
+- `oracle/docs/specs/popularity-tracker.md`
 - `oracle/docs/specs/implemented/worker-api-entrypoint-router.md`
 - `oracle/docs/specs/implemented/worker-api-assembler.md`

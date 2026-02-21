@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-02-21
+- Implement `PopularityTracker` in `worker-api` and wire it in the assembler so counters are tracked on every guard-valid request (canonical and clarification paths), independent of outlook cache hit/miss.
+- Add `raw_input_counters` D1 migration and `createRawInputCountersStore` adapter/tests for request-level raw profession counting.
 - Move final Worker `makeWorkerFetch(env)` assembly from `worker-api` package into `am-i-done-api` app source so env-to-adapter wiring is anchored at the Worker entrypoint while `worker-api` stays wiring/router focused.
 - Correct the implementation inventory to explicitly flag missing `PopularityTracker` architecture behavior (counters on every request) and mark the assemble checklist accordingly.
 - Add an implementation inventory for worker assembly covering module/adapter contracts, wiring points, binding requirements, test coverage, and spec drift notes in one operator-facing reference.

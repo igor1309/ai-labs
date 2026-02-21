@@ -4,6 +4,8 @@ import { createCloudflareKvJsonCacheAdapter } from "../../../packages/worker-api
 import { createOpenRouterNormalizerModelClient } from "../../../packages/worker-api/src/openrouter-normalizer-model-client-adapter.js"
 import { createOpenRouterOutlookModelClient } from "../../../packages/worker-api/src/openrouter-outlook-model-client-adapter.js"
 import { createPopularityCountersStore } from "../../../packages/worker-api/src/popularity-counters-store.js"
+import { createPopularityTracker } from "../../../packages/worker-api/src/popularity-tracker.js"
+import { createRawInputCountersStore } from "../../../packages/worker-api/src/raw-input-counters-store.js"
 import { requestGuard } from "../../../packages/worker-api/src/request-guard.js"
 import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../../../packages/worker-api/src/worker-api.js"
 
@@ -38,6 +40,11 @@ export function makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = 
     timeoutMs: config.timeoutMs
   })
   const popularityCountersStore = createPopularityCountersStore({ db: env.DB })
+  const rawInputCountersStore = createRawInputCountersStore({ db: env.DB })
+  const popularityTracker = createPopularityTracker({
+    popularityCountersStore,
+    rawInputCountersStore
+  })
   const professionNormalizer = createProfessionNormalizer({
     cache: normalizerCache,
     modelClient: normalizerModelClient
@@ -48,7 +55,7 @@ export function makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = 
     promptVersion: config.promptVersion
   })
   const outlookFetch = createWorkerFetchHandler({
-    popularityCountersStore,
+    popularityTracker,
     professionNormalizer,
     professionOutlookService,
     requestGuard,

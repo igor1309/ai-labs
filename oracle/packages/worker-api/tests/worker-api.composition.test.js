@@ -3,9 +3,28 @@ import test from "node:test"
 
 import { createWorkerFetchHandler } from "../src/worker-api.js"
 
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingPopularityTracker", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Missing required dependency: popularityTracker" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopularityTrackerWithoutTrackMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: {},
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Invalid dependency: popularityTracker.track" })
+})
+
 test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingRequestGuard", () => {
   assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    popularityTracker: makePopularityTrackerSpy().tracker,
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestIdGenerator: () => "request-id"
@@ -14,7 +33,7 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingR
 
 test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onRequestGuardWithoutValidateMethod", () => {
   assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    popularityTracker: makePopularityTrackerSpy().tracker,
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: {},
@@ -31,7 +50,7 @@ test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async 
 })
 
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidJsonRequestBody", async () => {
-  const { popularityCountersStoreSpy, professionNormalizerSpy, professionOutlookServiceSpy, requestGuardSpy, workerFetchHandler } = makeSUT()
+  const { popularityTrackerSpy, professionNormalizerSpy, professionOutlookServiceSpy, requestGuardSpy, workerFetchHandler } = makeSUT()
 
   const response = await performInvalidJsonOutlookRequest(workerFetchHandler)
 
@@ -51,7 +70,7 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidJsonRequestBody
   assert.deepEqual(requestGuardSpy.calls, [])
   assert.deepEqual(professionNormalizerSpy.calls, [])
   assert.deepEqual(professionOutlookServiceSpy.calls, [])
-  assert.deepEqual(popularityCountersStoreSpy.calls, [])
+  assert.deepEqual(popularityTrackerSpy.calls, [])
 })
 
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", async () => {
@@ -152,12 +171,35 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onNeedsClarification", a
   })
 })
 
-test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookFlow", async () => {
-  const { popularityCountersStoreSpy, workerFetchHandler } = makeSUT()
+test("test_fetch_shouldCallPopularityTrackerWithRawProfessionAndCanonicalResult_onOutlookFlow", async () => {
+  const { popularityTrackerSpy, workerFetchHandler } = makeSUT()
 
   await performOutlookRequest(workerFetchHandler)
 
-  assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
+  assert.deepEqual(popularityTrackerSpy.calls, [{
+    normalizerResult: makeNormalizedProfessionResult(),
+    rawProfession: "  software   developer  "
+  }])
+})
+
+test("test_fetch_shouldCallPopularityTrackerWithRawProfessionAndClarificationResult_onNeedsClarification", async () => {
+  const clarificationResult = {
+    clarification: {
+      message: "Please be more specific.",
+      suggestions: ["software engineer"]
+    },
+    needsClarification: true
+  }
+  const { popularityTrackerSpy, workerFetchHandler } = makeSUT({
+    normalizerResult: clarificationResult
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(popularityTrackerSpy.calls, [{
+    normalizerResult: clarificationResult,
+    rawProfession: "  software   developer  "
+  }])
 })
 
 test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookFlow", async () => {
@@ -186,18 +228,18 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
 })
 
 function makeSUT({ guardResult = makeValidGuardResult(), normalizerResult = makeNormalizedProfessionResult(), outlookAnswer = makeOutlookAnswerResult() } = {}) {
-  const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
+  const popularityTrackerSpy = makePopularityTrackerSpy()
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy(outlookAnswer)
   const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
   const requestGuardSpy = makeRequestGuardSpy(guardResult)
 
   return {
-    popularityCountersStoreSpy,
+    popularityTrackerSpy,
     professionOutlookServiceSpy,
     professionNormalizerSpy,
     requestGuardSpy,
     workerFetchHandler: createWorkerFetchHandler({
-      popularityCountersStore: popularityCountersStoreSpy.store,
+      popularityTracker: popularityTrackerSpy.tracker,
       professionOutlookService: professionOutlookServiceSpy.service,
       professionNormalizer: professionNormalizerSpy.service,
       requestGuard: requestGuardSpy.guard,
@@ -232,14 +274,14 @@ function makeOutlookAnswerResult() {
   }
 }
 
-function makePopularityCountersStoreSpy() {
+function makePopularityTrackerSpy() {
   const calls = []
 
   return {
     calls,
-    store: {
-      async increment(canonicalProfession) {
-        calls.push(canonicalProfession)
+    tracker: {
+      async track(input) {
+        calls.push(input)
       }
     }
   }

@@ -20,10 +20,10 @@ export function createWorkerApiEntrypointRouter({ outlookHandler } = {}) {
 }
 
 export function createWorkerFetchHandler(dependencies = {}) {
-  const popularityCountersStore = requireMethodDependency(
-    dependencies.popularityCountersStore,
-    "popularityCountersStore",
-    "increment"
+  const popularityTracker = requireMethodDependency(
+    dependencies.popularityTracker,
+    "popularityTracker",
+    "track"
   )
   const professionNormalizer = requireMethodDependency(
     dependencies.professionNormalizer,
@@ -86,6 +86,11 @@ export function createWorkerFetchHandler(dependencies = {}) {
       profession: guardResult.value.profession
     })
 
+    await popularityTracker.track({
+      normalizerResult,
+      rawProfession: guardResult.value.profession
+    })
+
     if (normalizerResult.needsClarification) {
       return Response.json({
         answer: null,
@@ -98,8 +103,6 @@ export function createWorkerFetchHandler(dependencies = {}) {
         schemaVersion: guardResult.value.schemaVersion
       })
     }
-
-    await popularityCountersStore.increment(normalizerResult.canonicalProfession)
 
     const answer = await professionOutlookService.getOutlook({
       canonicalProfession: normalizerResult.canonicalProfession,
