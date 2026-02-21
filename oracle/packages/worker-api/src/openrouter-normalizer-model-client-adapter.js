@@ -4,11 +4,17 @@ export function createOpenRouterNormalizerModelClient({ apiKey, baseUrl = "https
   if (apiKey === undefined || apiKey === null) {
     throw new Error("Missing required dependency: apiKey")
   }
+  if (!isNonEmptyString(apiKey)) {
+    throw new Error("Invalid dependency: apiKey")
+  }
   if (typeof httpClient !== "function") {
     throw new Error("Invalid dependency: httpClient")
   }
   if (model === undefined || model === null) {
     throw new Error("Missing required dependency: model")
+  }
+  if (!isNonEmptyString(model)) {
+    throw new Error("Invalid dependency: model")
   }
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("Invalid dependency: timeoutMs")
@@ -141,4 +147,8 @@ function validateResult(value) {
   if (typeof value?.canonicalProfession !== "string") {
     throw new Error("Invalid normalizer canonical result")
   }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim() !== ""
 }

@@ -11,6 +11,17 @@ test("test_createOpenRouterNormalizerModelClient_shouldThrowMissingDependencyErr
   }), { message: "Missing required dependency: apiKey" })
 })
 
+test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyError_onEmptyApiKey", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "   ",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: apiKey" })
+})
+
 test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyError_onInvalidHttpClient", async () => {
   const adapterModule = await loadAdapterModule()
 
@@ -30,6 +41,17 @@ test("test_createOpenRouterNormalizerModelClient_shouldThrowMissingDependencyErr
     httpClient: makeHttpClientSpy().httpClient,
     timeoutMs: 1000
   }), { message: "Missing required dependency: model" })
+})
+
+test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyError_onEmptyModel", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "   ",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: model" })
 })
 
 test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyError_onInvalidTimeoutMs", async () => {
