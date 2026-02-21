@@ -39,6 +39,12 @@ This is expected to be “free-tier friendly” for a toy app; the main variable
 - Frontend and backend can be deployed/versioned independently.
 - We should add basic rate limiting and request logging early (to protect OpenRouter spend).
 
+## Implementation status
+- [x] Separate Worker service created and deployed
+- [x] KV namespaces provisioned for caches
+- [x] D1 database provisioned and migrated
+- [x] OpenRouter API key stored as Worker secret
+
 ## Alternatives considered
 - Vercel: great DX, but would require an external store for caches/counters.
 - Fly/Render (single VM/container): simple mental model, but more ops and persistence decisions (Redis/Postgres) earlier than needed.

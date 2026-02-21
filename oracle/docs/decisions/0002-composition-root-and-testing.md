@@ -43,21 +43,34 @@ The Worker composition maps normalizer output into outlook input.
 ### Unit tests for composition wiring (primary in v1)
 Tests live in `worker-api` and validate end-to-end wiring through composition without real infra:
 - Use spies (not Map-backed stores) for:
-  - model clients (capture payload, return stubbed output)
-  - caches (capture keys/puts, return stubbed hits/misses)
-  - counters store (capture increments)
+  - request guard (captures request body → returns guard result)
+  - normalizer (captures payload → returns normalizer result)
+  - outlook service (captures payload → returns answer)
+  - popularity counters store (captures increments)
+  - request id generator (returns deterministic id)
 - Assert:
-  - correct payloads to model clients
-  - correct cache keys and read/write behavior
-  - popularity counters increment on cache hit and miss
-  - `needsClarification` is a successful response path (no outlook call)
+  - payload/response chaining across interfaces (payload → response → payload → response)
+  - short-circuit paths (`needsClarification` and invalid requests)
+  - required side effects (popularity counters)
+  - dependency validation failures (missing/invalid collaborator shapes)
+
+Note:
+- Caching logic (keys, hit/miss policy, read/write behavior) is not composition. It is tested inside the owning client modules once implemented.
 
 ### E2E tests (smoke)
-Keep a small set of Playwright tests to validate web ↔ worker integration:
-- happy path answer
-- clarification path
-- transport error rendering
+Defer real E2E behavior tests until `profession-normalizer` and `profession-outlook` exist and can produce real domain outcomes.
+
+If needed before that, only add deployment smoke checks (for example `/health` and “returns structured JSON”) since composition alone cannot validate business behavior.
 
 ## Consequences
 - Backend API contract is locked by `worker-api` acceptance tests, not by shared types.
 - Composition code is the only place that can “see everything”; core modules remain portable and testable.
+
+## Implementation status
+- [x] Interface-only Worker wiring in `worker-api`
+- [x] Spies-based wiring tests proving payload/response chaining
+- [x] Cloudflare Worker service scaffold deployed (separate backend service)
+- [ ] Implement `profession-normalizer` module (client-owned protocols + behavior + tests)
+- [ ] Implement `profession-outlook` module (client-owned protocols + behavior + tests)
+- [ ] Compose real adapters (OpenRouter, KV, D1) in the Worker composition root
+- [ ] Add E2E tests once behavior exists
