@@ -219,13 +219,14 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 ## Spec drift notes
 - `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"1"` behavior; implementation treats it as optional and defaults to `"1"` when missing/blank.
 - Implemented adapters include stricter runtime checks than minimum specs (empty API key/model, invalid timeout, non-OK OpenRouter status formatting, timeout abort), which is additive hardening.
-- No blocking drift found between implemented component specs in `oracle/docs/specs/implemented/` and current source contracts.
+- Architecture drift: `PopularityTracker` decorator behavior is not implemented. The architecture doc requires incrementing counters on every request (cache hit or miss), while current composition increments only on canonical (non-clarification) flow.
 
 ## Ready-to-assemble checklist
 - [x] Module-owned protocols are defined in their owning modules (`profession-normalizer`, `profession-outlook`).
 - [x] Worker-owned components (`requestGuard`, composition handler, entrypoint router) are implemented and tested.
 - [x] Cloudflare adapters (KV, D1, OpenRouter) are implemented and assembler-wired.
 - [x] App entrypoint delegates to assembler-generated fetch.
+- [ ] `PopularityTracker` behavior from architecture is not yet implemented (increment counters on every request, including clarification/cache-hit paths).
 - [ ] Cloudflare secret `OPENROUTER_API_KEY` must be provisioned in target environment.
 - [ ] D1 migration `oracle/apps/am-i-done-api/migrations/0001_init.sql` must be applied in target environment.
 - [ ] Optional runtime overrides (`NORMALIZER_MODEL`, `OUTLOOK_MODEL`, `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`, `PROMPT_VERSION`) should be explicitly set per deployment policy.
