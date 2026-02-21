@@ -3,149 +3,46 @@ import test from "node:test"
 
 import { createWorkerFetchHandler } from "../src/worker-api.js"
 
-const UNDEFINED_CACHE_READ = Symbol("UNDEFINED_CACHE_READ")
-
-test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onNullProfessionNormalizer", () => {
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingRequestGuard", () => {
   assert.throws(() => createWorkerFetchHandler({
     popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: null,
-    professionOutlookService: makeProfessionOutlookServiceSpy().service
-  }), { message: "Missing required dependency: professionNormalizer" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onNullProfessionOutlookService", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
-    professionOutlookService: null
-  }), { message: "Missing required dependency: professionOutlookService" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessionNormalizerWithoutNormalizeMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: {},
-    professionOutlookService: makeProfessionOutlookServiceSpy().service
-  }), { message: "Invalid dependency: professionNormalizer.normalize" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessionOutlookServiceWithoutGetOutlookMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
-    professionOutlookService: {}
-  }), { message: "Invalid dependency: professionOutlookService.getOutlook" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopularityCountersStoreWithoutIncrementMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: {},
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
-    professionOutlookService: makeProfessionOutlookServiceSpy().service
-  }), { message: "Invalid dependency: popularityCountersStore.increment" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunctionRequestIdGenerator", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
-    requestIdGenerator: "invalid"
-  }), { message: "Invalid dependency: requestIdGenerator" })
+    requestIdGenerator: () => "request-id"
+  }), { message: "Missing required dependency: requestGuard" })
 })
 
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerCacheWithoutReadMethod", () => {
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onRequestGuardWithoutValidateMethod", () => {
   assert.throws(() => createWorkerFetchHandler({
-    normalizerCache: {
-      write() {}
-    },
-    normalizerModelClient: makeNormalizerModelClientSpy(makeNormalizedProfessionResult()).client,
     popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionOutlookService: makeProfessionOutlookServiceSpy().service
-  }), { message: "Invalid dependency: normalizerCache.read" })
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: {},
+    requestIdGenerator: () => "request-id"
+  }), { message: "Invalid dependency: requestGuard.validate" })
 })
 
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerCacheWithoutWriteMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    normalizerCache: {
-      read() {}
-    },
-    normalizerModelClient: makeNormalizerModelClientSpy(makeNormalizedProfessionResult()).client,
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionOutlookService: makeProfessionOutlookServiceSpy().service
-  }), { message: "Invalid dependency: normalizerCache.write" })
+test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async () => {
+  const { requestGuardSpy, workerFetchHandler } = makeSUT()
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(requestGuardSpy.calls, [makeOutlookRequestBody()])
 })
 
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNormalizerModelClientWithoutNormalizeMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    normalizerCache: {
-      read() {},
-      write() {}
-    },
-    normalizerModelClient: {},
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionOutlookService: makeProfessionOutlookServiceSpy().service
-  }), { message: "Invalid dependency: normalizerModelClient.normalize" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookCacheWithoutReadMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    outlookCache: {
-      write() {}
-    },
-    outlookModelClient: makeOutlookModelClientSpy(makeOutlookAnswerResult()).client,
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
-  }), { message: "Invalid dependency: outlookCache.read" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookCacheWithoutWriteMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    outlookCache: {
-      read() {}
-    },
-    outlookModelClient: makeOutlookModelClientSpy(makeOutlookAnswerResult()).client,
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
-  }), { message: "Invalid dependency: outlookCache.write" })
-})
-
-test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onOutlookModelClientWithoutGenerateMethod", () => {
-  assert.throws(() => createWorkerFetchHandler({
-    outlookCache: {
-      read() {},
-      write() {}
-    },
-    outlookModelClient: {},
-    popularityCountersStore: makePopularityCountersStoreSpy().store,
-    professionNormalizer: makeProfessionNormalizerSpy(makeNormalizedProfessionResult()).service
-  }), { message: "Invalid dependency: outlookModelClient.generate" })
-})
-
-test("test_fetch_shouldNotCallProfessionNormalizer_onInvalidProfession", async () => {
-  const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
-
-  await performOutlookRequest(workerFetchHandler, {
-    requestBody: {
-      locale: "en-US",
-      profession: null,
+test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", async () => {
+  const { workerFetchHandler } = makeSUT({
+    guardResult: {
+      clarification: {
+        message: "Please provide a valid profession and locale.",
+        suggestions: []
+      },
+      isValid: false,
       schemaVersion: "1"
     }
   })
 
-  assert.deepEqual(professionNormalizerSpy.calls, [])
-})
-
-test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidProfession", async () => {
-  const { workerFetchHandler } = makeSUT()
-
-  const response = await performOutlookRequest(workerFetchHandler, {
-    requestBody: {
-      locale: "en-US",
-      profession: null,
-      schemaVersion: ""
-    }
-  })
+  const response = await performOutlookRequest(workerFetchHandler)
 
   assert.deepEqual(response.body, {
     answer: null,
@@ -162,20 +59,29 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidProfession", as
   })
 })
 
-test("test_fetch_shouldCallProfessionNormalizerWithRequestPayload_onOutlookRequest", async () => {
+test("test_fetch_shouldNotCallProfessionNormalizer_onInvalidGuardResult", async () => {
+  const { professionNormalizerSpy, workerFetchHandler } = makeSUT({
+    guardResult: {
+      clarification: {
+        message: "Please provide a valid profession and locale.",
+        suggestions: []
+      },
+      isValid: false,
+      schemaVersion: "1"
+    }
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(professionNormalizerSpy.calls, [])
+})
+
+test("test_fetch_shouldCallProfessionNormalizerWithValidatedPayload_onValidGuardResult", async () => {
   const { professionNormalizerSpy, workerFetchHandler } = makeSUT()
 
   await performOutlookRequest(workerFetchHandler)
 
   assert.deepEqual(professionNormalizerSpy.calls, [{ locale: "en-US", profession: "  software   developer  " }])
-})
-
-test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookFlow", async () => {
-  const { professionOutlookServiceSpy, workerFetchHandler } = makeSUT()
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(professionOutlookServiceSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", schemaVersion: "1" }])
 })
 
 test("test_fetch_shouldNotCallProfessionOutlookService_onNeedsClarification", async () => {
@@ -230,32 +136,12 @@ test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookFlow", async ()
   assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
 })
 
-test("test_fetch_shouldCallNormalizerModelClientWithNormalizedProfession_onNormalizerCacheMiss", async () => {
-  const { normalizerModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: null,
-    normalizerModelResult: {
-      clarification: {
-        message: "Please be more specific.",
-        suggestions: ["software engineer"]
-      },
-      needsClarification: true
-    }
-  })
+test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookFlow", async () => {
+  const { professionOutlookServiceSpy, workerFetchHandler } = makeSUT()
 
   await performOutlookRequest(workerFetchHandler)
 
-  assert.deepEqual(normalizerModelClientSpy.calls, [{ locale: "en-US", profession: "software developer" }])
-})
-
-test("test_fetch_shouldCallOutlookModelClientWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookCacheMiss", async () => {
-  const { outlookModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult(),
-    outlookCacheReadResult: null
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(outlookModelClientSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", promptVersion: "1", schemaVersion: "1" }])
+  assert.deepEqual(professionOutlookServiceSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", schemaVersion: "1" }])
 })
 
 test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
@@ -275,150 +161,22 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
   })
 })
 
-test("test_fetch_shouldReadAndWriteNormalizerCacheWithExpectedKey_onNormalizerCacheMiss", async () => {
-  const normalizerModelResult = {
-    clarification: {
-      message: "Please be more specific.",
-      suggestions: ["software engineer"]
-    },
-    needsClarification: true
-  }
-  const { normalizerCacheSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: null,
-    normalizerModelResult
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(normalizerCacheSpy.reads, ["normalizer:en-US:software developer"])
-  assert.deepEqual(normalizerCacheSpy.writes, [{ key: "normalizer:en-US:software developer", value: normalizerModelResult }])
-})
-
-test("test_fetch_shouldCallNormalizerModelClientAndWriteCache_onUndefinedNormalizerCacheReadResult", async () => {
-  const normalizerModelResult = {
-    clarification: {
-      message: "Please be more specific.",
-      suggestions: ["software engineer"]
-    },
-    needsClarification: true
-  }
-  const { normalizerCacheSpy, normalizerModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: UNDEFINED_CACHE_READ,
-    normalizerModelResult
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(normalizerModelClientSpy.calls, [{ locale: "en-US", profession: "software developer" }])
-  assert.deepEqual(normalizerCacheSpy.writes, [{ key: "normalizer:en-US:software developer", value: normalizerModelResult }])
-})
-
-test("test_fetch_shouldNotCallNormalizerModelClientAndShouldNotWriteCache_onNormalizerCacheHit", async () => {
-  const { normalizerCacheSpy, normalizerModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult()
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(normalizerModelClientSpy.calls, [])
-  assert.deepEqual(normalizerCacheSpy.writes, [])
-})
-
-test("test_fetch_shouldReadAndWriteOutlookCacheWithExpectedKey_onOutlookCacheMiss", async () => {
-  const { outlookCacheSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult(),
-    outlookCacheReadResult: null
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(outlookCacheSpy.reads, ["outlook:software engineer:en-US:1:1"])
-  assert.deepEqual(outlookCacheSpy.writes, [{ key: "outlook:software engineer:en-US:1:1", value: makeOutlookAnswerResult() }])
-})
-
-test("test_fetch_shouldCallOutlookModelClientAndWriteCache_onUndefinedOutlookCacheReadResult", async () => {
-  const { outlookCacheSpy, outlookModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult(),
-    outlookCacheReadResult: UNDEFINED_CACHE_READ
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(outlookModelClientSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", promptVersion: "1", schemaVersion: "1" }])
-  assert.deepEqual(outlookCacheSpy.writes, [{ key: "outlook:software engineer:en-US:1:1", value: makeOutlookAnswerResult() }])
-})
-
-test("test_fetch_shouldNotCallOutlookModelClientAndShouldNotWriteCache_onOutlookCacheHit", async () => {
-  const { outlookCacheSpy, outlookModelClientSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult(),
-    outlookCacheReadResult: makeOutlookAnswerResult()
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(outlookModelClientSpy.calls, [])
-  assert.deepEqual(outlookCacheSpy.writes, [])
-})
-
-test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookCacheHit", async () => {
-  const { popularityCountersStoreSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult(),
-    outlookCacheReadResult: makeOutlookAnswerResult()
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
-})
-
-test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookCacheMiss", async () => {
-  const { popularityCountersStoreSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
-    normalizerCacheReadResult: makeNormalizedProfessionResult(),
-    outlookCacheReadResult: null
-  })
-
-  await performOutlookRequest(workerFetchHandler)
-
-  assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
-})
-
-function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
+function makeSUT({ guardResult = makeValidGuardResult(), normalizerResult = makeNormalizedProfessionResult(), outlookAnswer = makeOutlookAnswerResult() } = {}) {
   const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
-  const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy()
+  const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy(outlookAnswer)
   const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
+  const requestGuardSpy = makeRequestGuardSpy(guardResult)
 
   return {
     popularityCountersStoreSpy,
     professionOutlookServiceSpy,
     professionNormalizerSpy,
+    requestGuardSpy,
     workerFetchHandler: createWorkerFetchHandler({
       popularityCountersStore: popularityCountersStoreSpy.store,
       professionOutlookService: professionOutlookServiceSpy.service,
       professionNormalizer: professionNormalizerSpy.service,
-      requestIdGenerator: () => "request-id"
-    })
-  }
-}
-
-function makeSUTWithComposedDependencies({ normalizerCacheReadResult = null, normalizerModelResult = makeNormalizedProfessionResult(), outlookCacheReadResult = null, outlookModelResult = makeOutlookAnswerResult() } = {}) {
-  const normalizerCacheSpy = makeCacheSpy(normalizerCacheReadResult)
-  const normalizerModelClientSpy = makeNormalizerModelClientSpy(normalizerModelResult)
-  const outlookCacheSpy = makeCacheSpy(outlookCacheReadResult)
-  const outlookModelClientSpy = makeOutlookModelClientSpy(outlookModelResult)
-  const popularityCountersStoreSpy = makePopularityCountersStoreSpy()
-
-  return {
-    normalizerCacheSpy,
-    normalizerModelClientSpy,
-    outlookCacheSpy,
-    outlookModelClientSpy,
-    popularityCountersStoreSpy,
-    workerFetchHandler: createWorkerFetchHandler({
-      normalizerCache: normalizerCacheSpy.cache,
-      normalizerModelClient: normalizerModelClientSpy.client,
-      outlookCache: outlookCacheSpy.cache,
-      outlookModelClient: outlookModelClientSpy.client,
-      popularityCountersStore: popularityCountersStoreSpy.store,
+      requestGuard: requestGuardSpy.guard,
       requestIdGenerator: () => "request-id"
     })
   }
@@ -430,34 +188,6 @@ function makeNormalizedProfessionResult() {
     category: "knowledge-work",
     categoryConfidence: 0.9,
     needsClarification: false
-  }
-}
-
-function makeProfessionNormalizerSpy(result) {
-  const calls = []
-
-  return {
-    calls,
-    service: {
-      async normalize(input) {
-        calls.push(input)
-        return result
-      }
-    }
-  }
-}
-
-function makeNormalizerModelClientSpy(result) {
-  const calls = []
-
-  return {
-    calls,
-    client: {
-      async normalize(input) {
-        calls.push(input)
-        return result
-      }
-    }
   }
 }
 
@@ -478,20 +208,6 @@ function makeOutlookAnswerResult() {
   }
 }
 
-function makeOutlookModelClientSpy(result) {
-  const calls = []
-
-  return {
-    calls,
-    client: {
-      async generate(input) {
-        calls.push(input)
-        return result
-      }
-    }
-  }
-}
-
 function makePopularityCountersStoreSpy() {
   const calls = []
 
@@ -505,29 +221,21 @@ function makePopularityCountersStoreSpy() {
   }
 }
 
-function makeCacheSpy(readResult = null) {
-  const reads = []
-  const writes = []
+function makeProfessionNormalizerSpy(result = makeNormalizedProfessionResult()) {
+  const calls = []
 
   return {
-    reads,
-    writes,
-    cache: {
-      async read(key) {
-        reads.push(key)
-        if (readResult === UNDEFINED_CACHE_READ) {
-          return undefined
-        }
-        return readResult
-      },
-      async write(key, value) {
-        writes.push({ key, value })
+    calls,
+    service: {
+      async normalize(input) {
+        calls.push(input)
+        return result
       }
     }
   }
 }
 
-function makeProfessionOutlookServiceSpy() {
+function makeProfessionOutlookServiceSpy(answer = makeOutlookAnswerResult()) {
   const calls = []
 
   return {
@@ -535,9 +243,42 @@ function makeProfessionOutlookServiceSpy() {
     service: {
       async getOutlook(input) {
         calls.push(input)
-        return makeOutlookAnswerResult()
+        return answer
       }
     }
+  }
+}
+
+function makeRequestGuardSpy(result = makeValidGuardResult()) {
+  const calls = []
+
+  return {
+    calls,
+    guard: {
+      async validate(input) {
+        calls.push(input)
+        return result
+      }
+    }
+  }
+}
+
+function makeValidGuardResult() {
+  return {
+    isValid: true,
+    value: {
+      locale: "en-US",
+      profession: "  software   developer  ",
+      schemaVersion: "1"
+    }
+  }
+}
+
+function makeOutlookRequestBody() {
+  return {
+    locale: "en-US",
+    profession: "  software   developer  ",
+    schemaVersion: "1"
   }
 }
 
@@ -553,13 +294,5 @@ async function performOutlookRequest(workerFetchHandler, { requestBody = makeOut
   return {
     body: await response.json(),
     status: response.status
-  }
-}
-
-function makeOutlookRequestBody() {
-  return {
-    locale: "en-US",
-    profession: "  software   developer  ",
-    schemaVersion: "1"
   }
 }
