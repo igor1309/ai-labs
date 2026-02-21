@@ -35,6 +35,34 @@ test("test_fetch_shouldNotCallProfessionOutlookService_onNeedsClarification", as
   assert.deepEqual(professionOutlookServiceSpy.calls, [])
 })
 
+test("test_fetch_shouldReturnNeedsClarificationResponse_onNeedsClarification", async () => {
+  const { workerFetchHandler } = makeSUT({
+    normalizerResult: {
+      clarification: {
+        message: "Please be more specific.",
+        suggestions: ["software engineer"]
+      },
+      needsClarification: true
+    }
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please be more specific.",
+      suggestions: ["software engineer"]
+    },
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+})
+
 test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookFlow", async () => {
   const { popularityCountersStoreSpy, workerFetchHandler } = makeSUT()
 
@@ -86,6 +114,59 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
     requestId: "request-id",
     schemaVersion: "1"
   })
+})
+
+test("test_fetch_shouldReadAndWriteNormalizerCacheWithExpectedKey_onNormalizerCacheMiss", async () => {
+  const normalizerModelResult = {
+    clarification: {
+      message: "Please be more specific.",
+      suggestions: ["software engineer"]
+    },
+    needsClarification: true
+  }
+  const { normalizerCacheSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: null,
+    normalizerModelResult
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(normalizerCacheSpy.reads, ["normalizer:en-US:software developer"])
+  assert.deepEqual(normalizerCacheSpy.writes, [{ key: "normalizer:en-US:software developer", value: normalizerModelResult }])
+})
+
+test("test_fetch_shouldReadAndWriteOutlookCacheWithExpectedKey_onOutlookCacheMiss", async () => {
+  const { outlookCacheSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult(),
+    outlookCacheReadResult: null
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(outlookCacheSpy.reads, ["outlook:software engineer:en-US:1:1"])
+  assert.deepEqual(outlookCacheSpy.writes, [{ key: "outlook:software engineer:en-US:1:1", value: makeOutlookAnswerResult() }])
+})
+
+test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookCacheHit", async () => {
+  const { popularityCountersStoreSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult(),
+    outlookCacheReadResult: makeOutlookAnswerResult()
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
+})
+
+test("test_fetch_shouldIncrementPopularityCountersStore_onOutlookCacheMiss", async () => {
+  const { popularityCountersStoreSpy, workerFetchHandler } = makeSUTWithComposedDependencies({
+    normalizerCacheReadResult: makeNormalizedProfessionResult(),
+    outlookCacheReadResult: null
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(popularityCountersStoreSpy.calls, ["software engineer"])
 })
 
 function makeSUT({ normalizerResult = makeNormalizedProfessionResult() } = {}) {
