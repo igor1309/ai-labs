@@ -141,6 +141,7 @@ test("test_track_shouldPropagateError_onRawInputStoreFailure", async () => {
     },
     rawProfession: "software developer"
   }), expectedError)
+  assert.equal(expectedError.counterWriteFailed, true)
 })
 
 test("test_track_shouldPropagateError_onPopularityStoreFailure", async () => {
@@ -158,6 +159,24 @@ test("test_track_shouldPropagateError_onPopularityStoreFailure", async () => {
     },
     rawProfession: "software developer"
   }), expectedError)
+  assert.equal(expectedError.counterWriteFailed, true)
+})
+
+test("test_track_shouldWrapErrorWithCounterWriteFailure_onFrozenStoreError", async () => {
+  const module = await loadTrackerModule()
+  const frozenError = Object.freeze(new Error("frozen raw counter failed"))
+  const tracker = module?.createPopularityTracker?.({
+    popularityCountersStore: makePopularityCountersStoreSpy().store,
+    rawInputCountersStore: makeRawInputCountersStoreSpy(frozenError).store
+  })
+
+  await assert.rejects(() => tracker?.track?.({
+    normalizerResult: {
+      canonicalProfession: "software engineer",
+      needsClarification: false
+    },
+    rawProfession: "software developer"
+  }), (error) => error?.counterWriteFailed === true && error?.cause === frozenError)
 })
 
 function makePopularityCountersStoreSpy(error) {

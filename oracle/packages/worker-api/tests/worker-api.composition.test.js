@@ -22,6 +22,17 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopulari
   }), { message: "Invalid dependency: popularityTracker.track" })
 })
 
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunctionPopularityTrackerErrorReporter", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    onPopularityTrackerError: {},
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Invalid dependency: onPopularityTrackerError" })
+})
+
 test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingRequestGuard", () => {
   assert.throws(() => createWorkerFetchHandler({
     popularityTracker: makePopularityTrackerSpy().tracker,
@@ -204,7 +215,38 @@ test("test_fetch_shouldCallPopularityTrackerWithRawProfessionAndClarificationRes
 
 test("test_fetch_shouldReturnOutlookResponse_onPopularityTrackerFailure", async () => {
   const { workerFetchHandler } = makeSUT({
-    popularityTrackerError: new Error("tracking failed")
+    popularityTrackerError: makeCounterWriteFailure()
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(response.body, {
+    answer: makeOutlookAnswerResult(),
+    canonicalProfession: "software engineer",
+    category: "knowledge-work",
+    categoryConfidence: 0.9,
+    clarification: null,
+    needsClarification: false,
+    requestId: "request-id",
+    schemaVersion: "1"
+  })
+})
+
+test("test_fetch_shouldCallPopularityTrackerErrorReporter_onPopularityTrackerFailure", async () => {
+  const popularityTrackerError = makeCounterWriteFailure()
+  const { popularityTrackerErrorReporterSpy, workerFetchHandler } = makeSUT({
+    popularityTrackerError
+  })
+
+  await performOutlookRequest(workerFetchHandler)
+
+  assert.deepEqual(popularityTrackerErrorReporterSpy.calls, [popularityTrackerError])
+})
+
+test("test_fetch_shouldReturnOutlookResponse_onPopularityTrackerFailureWithoutErrorReporter", async () => {
+  const { workerFetchHandler } = makeSUT({
+    includePopularityTrackerErrorReporter: false,
+    popularityTrackerError: makeCounterWriteFailure()
   })
 
   const response = await performOutlookRequest(workerFetchHandler)
@@ -230,7 +272,7 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onPopularityTrackerFailu
       },
       needsClarification: true
     },
-    popularityTrackerError: new Error("tracking failed")
+    popularityTrackerError: makeCounterWriteFailure()
   })
 
   const response = await performOutlookRequest(workerFetchHandler)
@@ -248,6 +290,15 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onPopularityTrackerFailu
     requestId: "request-id",
     schemaVersion: "1"
   })
+})
+
+test("test_fetch_shouldThrowError_onNonCounterWritePopularityTrackerFailure", async () => {
+  const expectedError = new Error("tracking failed")
+  const { workerFetchHandler } = makeSUT({
+    popularityTrackerError: expectedError
+  })
+
+  await assert.rejects(() => performOutlookRequest(workerFetchHandler), expectedError)
 })
 
 test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookFlow", async () => {
@@ -275,18 +326,29 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
   })
 })
 
-function makeSUT({ guardResult = makeValidGuardResult(), normalizerResult = makeNormalizedProfessionResult(), outlookAnswer = makeOutlookAnswerResult(), popularityTrackerError } = {}) {
+function makeSUT({
+  guardResult = makeValidGuardResult(),
+  includePopularityTrackerErrorReporter = true,
+  normalizerResult = makeNormalizedProfessionResult(),
+  outlookAnswer = makeOutlookAnswerResult(),
+  popularityTrackerError
+} = {}) {
+  const popularityTrackerErrorReporterSpy = makePopularityTrackerErrorReporterSpy()
   const popularityTrackerSpy = makePopularityTrackerSpy(popularityTrackerError)
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy(outlookAnswer)
   const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
   const requestGuardSpy = makeRequestGuardSpy(guardResult)
 
   return {
+    popularityTrackerErrorReporterSpy,
     popularityTrackerSpy,
     professionOutlookServiceSpy,
     professionNormalizerSpy,
     requestGuardSpy,
     workerFetchHandler: createWorkerFetchHandler({
+      ...(includePopularityTrackerErrorReporter ? {
+        onPopularityTrackerError: popularityTrackerErrorReporterSpy.report
+      } : {}),
       popularityTracker: popularityTrackerSpy.tracker,
       professionOutlookService: professionOutlookServiceSpy.service,
       professionNormalizer: professionNormalizerSpy.service,
@@ -335,6 +397,23 @@ function makePopularityTrackerSpy(error) {
 
         calls.push(input)
       }
+    }
+  }
+}
+
+function makeCounterWriteFailure() {
+  const error = new Error("counter write failed")
+  error.counterWriteFailed = true
+  return error
+}
+
+function makePopularityTrackerErrorReporterSpy() {
+  const calls = []
+
+  return {
+    calls,
+    report: (error) => {
+      calls.push(error)
     }
   }
 }

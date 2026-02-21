@@ -44,6 +44,10 @@ export function createWorkerFetchHandler(dependencies = {}) {
     dependencies.requestIdGenerator,
     "requestIdGenerator"
   )
+  const onPopularityTrackerError = resolveOptionalFunctionDependency(
+    dependencies.onPopularityTrackerError,
+    "onPopularityTrackerError"
+  )
 
   return async function fetch(request) {
     let requestBody
@@ -91,8 +95,16 @@ export function createWorkerFetchHandler(dependencies = {}) {
         normalizerResult,
         rawProfession: guardResult.value.profession
       })
-    } catch {
+    } catch (error) {
+      if (!isCounterWriteFailure(error)) {
+        throw error
+      }
+
       // Counter writes are best-effort and must not block API responses.
+      reportPopularityTrackerError({
+        error,
+        onPopularityTrackerError
+      })
     }
 
     if (normalizerResult.needsClarification) {
@@ -131,6 +143,24 @@ export function createWorkerFetchHandler(dependencies = {}) {
   }
 }
 
+function reportPopularityTrackerError({ error, onPopularityTrackerError }) {
+  if (onPopularityTrackerError === null) {
+    return
+  }
+
+  try {
+    const maybePromise = onPopularityTrackerError(error)
+
+    if (typeof maybePromise?.catch === "function") {
+      maybePromise.catch(() => {})
+    }
+  } catch {}
+}
+
+function isCounterWriteFailure(error) {
+  return error?.counterWriteFailed === true
+}
+
 function requireDependency(value, name) {
   if (value === undefined || value === null) {
     throw new Error(`Missing required dependency: ${name}`)
@@ -147,6 +177,14 @@ function requireFunctionDependency(value, name) {
   }
 
   return dependency
+}
+
+function resolveOptionalFunctionDependency(value, name) {
+  if (value === undefined || value === null) {
+    return null
+  }
+
+  return requireFunctionDependency(value, name)
 }
 
 function requireMethodDependency(value, name, methodName) {

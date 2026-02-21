@@ -19,7 +19,11 @@ export function createPopularityTracker({ popularityCountersStore, rawInputCount
         throw new Error("rawProfession must not be empty")
       }
 
-      await validatedRawInputCountersStore.increment(normalizedRawProfession)
+      try {
+        await validatedRawInputCountersStore.increment(normalizedRawProfession)
+      } catch (error) {
+        throw markCounterWriteFailure(error)
+      }
 
       if (needsClarification) {
         return
@@ -33,8 +37,38 @@ export function createPopularityTracker({ popularityCountersStore, rawInputCount
         throw new Error("canonicalProfession must not be empty")
       }
 
-      await validatedPopularityCountersStore.increment(canonicalProfession)
+      try {
+        await validatedPopularityCountersStore.increment(canonicalProfession)
+      } catch (error) {
+        throw markCounterWriteFailure(error)
+      }
     }
+  }
+}
+
+function markCounterWriteFailure(error) {
+  if (isTaggableError(error)) {
+    if (trySetCounterWriteFailed(error)) {
+      return error
+    }
+  }
+
+  const wrappedError = new Error("Counter write failed")
+  wrappedError.counterWriteFailed = true
+  wrappedError.cause = error
+  return wrappedError
+}
+
+function isTaggableError(value) {
+  return (typeof value === "object" && value !== null) || typeof value === "function"
+}
+
+function trySetCounterWriteFailed(error) {
+  try {
+    error.counterWriteFailed = true
+    return true
+  } catch {
+    return false
   }
 }
 
