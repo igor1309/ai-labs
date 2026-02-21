@@ -2,6 +2,19 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
 
 export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, timeoutMs } = {}) {
+  if (apiKey === undefined || apiKey === null) {
+    throw new Error("Missing required dependency: apiKey")
+  }
+  if (typeof httpClient !== "function") {
+    throw new Error("Invalid dependency: httpClient")
+  }
+  if (model === undefined || model === null) {
+    throw new Error("Missing required dependency: model")
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("Invalid dependency: timeoutMs")
+  }
+
   return {
     async generate(input) {
       const response = await httpClient(OPENROUTER_URL, {

@@ -21,6 +21,48 @@ test("test_generate_shouldSendRequestWithAuthHeadersModelAndMessages_onGenerateC
   })])
 })
 
+test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_onMissingApiKey", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  }), { message: "Missing required dependency: apiKey" })
+})
+
+test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidHttpClient", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: {},
+    model: "openrouter/model",
+    timeoutMs: 1000
+  }), { message: "Invalid dependency: httpClient" })
+})
+
+test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_onMissingModel", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    timeoutMs: 1000
+  }), { message: "Missing required dependency: model" })
+})
+
+test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidTimeoutMs", async () => {
+  const adapterModule = await loadAdapterModule()
+
+  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: makeHttpClientSpy().httpClient,
+    model: "openrouter/model",
+    timeoutMs: "1000"
+  }), { message: "Invalid dependency: timeoutMs" })
+})
+
 test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAndHints_onUserPrompt", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
