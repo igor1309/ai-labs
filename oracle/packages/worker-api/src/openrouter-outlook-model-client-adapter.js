@@ -1,4 +1,5 @@
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+const SYSTEM_PROMPT = "Return only JSON. Do not include non-JSON text. Do not include extra keys. Use stable section names and include headline, timeHorizon, confidence, keyRisks, whatToDoNext, assumptions."
 
 export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, timeoutMs } = {}) {
   return {
@@ -7,7 +8,7 @@ export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, 
         body: JSON.stringify({
           messages: [
             {
-              content: "system prompt",
+              content: SYSTEM_PROMPT,
               role: "system"
             },
             {

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+const SYSTEM_PROMPT = "Return only JSON. Do not include non-JSON text. Do not include extra keys. Use stable section names and include headline, timeHorizon, confidence, keyRisks, whatToDoNext, assumptions."
+
 test("test_generate_shouldSendRequestWithAuthHeadersModelAndMessages_onGenerateCall", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
@@ -46,6 +48,29 @@ test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAnd
     promptVersion: "prompt-v1",
     schemaVersion: "1"
   })
+})
+
+test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPrompt", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.generate(makeOutlookInput())
+
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /json/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /extra keys/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /non-json text/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /headline/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /timeHorizon/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /confidence/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /keyRisks/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /whatToDoNext/i)
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /assumptions/i)
 })
 
 async function loadAdapterModule() {
@@ -126,7 +151,7 @@ function makeOpenRouterRequestCall({ model, userPromptContent }) {
       body: {
         messages: [
           {
-            content: "system prompt",
+            content: SYSTEM_PROMPT,
             role: "system"
           },
           {
