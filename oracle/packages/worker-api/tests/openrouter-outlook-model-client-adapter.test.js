@@ -73,6 +73,33 @@ test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPr
   assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /assumptions/i)
 })
 
+test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseMessageContent: JSON.stringify({
+      assumptions: ["steady demand"],
+      confidence: {
+        label: "medium",
+        rationale: "current trend"
+      },
+      keyRisks: ["skills mismatch"],
+      timeHorizon: {
+        explanation: "adoption curves remain uneven",
+        label: "3-5 years"
+      },
+      whatToDoNext: ["strengthen systems thinking"]
+    })
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
+})
+
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-outlook-model-client-adapter.js")
@@ -81,7 +108,7 @@ async function loadAdapterModule() {
   }
 }
 
-function makeHttpClientSpy() {
+function makeHttpClientSpy({ responseMessageContent = JSON.stringify(makeOutlookAnswer()) } = {}) {
   const calls = []
 
   return {
@@ -102,7 +129,7 @@ function makeHttpClientSpy() {
             choices: [
               {
                 message: {
-                  content: JSON.stringify(makeOutlookAnswer())
+                  content: responseMessageContent
                 }
               }
             ]

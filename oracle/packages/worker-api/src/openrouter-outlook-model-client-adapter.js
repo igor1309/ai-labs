@@ -26,8 +26,13 @@ export function createOpenRouterOutlookModelClient({ apiKey, httpClient, model, 
         signal: AbortSignal.timeout(timeoutMs)
       })
       const responsePayload = await response.json()
+      const parsedAnswer = JSON.parse(responsePayload.choices[0].message.content)
 
-      return JSON.parse(responsePayload.choices[0].message.content)
+      if (typeof parsedAnswer.headline !== "string") {
+        throw new Error("Invalid outlook answer schema")
+      }
+
+      return parsedAnswer
     }
   }
 }
