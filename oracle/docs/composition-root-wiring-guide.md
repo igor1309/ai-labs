@@ -1,7 +1,7 @@
 ---
-date: 2026-02-21
-model: gpt-5.2
-description: "Composition root rules for interface-only wiring, layered assembly, and wiring tests"
+date: 2026-02-22
+model: gpt-5
+description: "Composition root rules for interface-only wiring, layered assembly, environment wiring, and wiring tests"
 ---
 
 # Composition Root Wiring Guide
@@ -32,6 +32,8 @@ If behavior is more than payload/response mapping between interfaces, it is not 
 - Normalization/derivation algorithms.
 - Transport/provider-specific implementation details.
 - Default placeholder implementations that hide missing wiring.
+- Inline stub/fake behavior inside wiring composers or assemblers.
+- Any fallback to in-memory/demo behavior in production mode.
 
 ## Interfaces First
 Composition should declare required collaborators by interface shape.
@@ -61,6 +63,22 @@ Plugs adapters into wiring composer and returns deployable entrypoint.
 
 If another composition layer is needed (for example cached service wrapper), create another wiring composer that still consumes and exposes interfaces.
 
+## Environment-Specific Adapter Policy
+Environment-specific behavior (for example test/dev/demo providers) is allowed only when it is intentionally separated and explicitly composed.
+
+Rules:
+- Alternate providers must live in dedicated adapter modules, not inline in assembler or wiring files.
+- Final assembler may select between adapters by explicit environment/config mode.
+- Mode selection must be fail-closed for production (no implicit fallback to stubs).
+- Production and non-production wiring choices must be documented in spec/inventory docs.
+- Wiring tests assert only interface contracts; adapter behavior tests live with the adapter.
+
+## Stub/Fake Prohibitions (Hard)
+- Do not embed deterministic fake business outputs in `make*Fetch`, router wiring, or other composition functions.
+- Do not mix adapter creation and fake domain behavior in one function.
+- Do not use stubs as silent defaults when required production dependencies are missing.
+- Do not let test-only providers leak into production code paths without explicit mode gating.
+
 ## Testing Composition Wiring
 Wiring tests use spies only, not concrete infrastructure.
 
@@ -71,6 +89,11 @@ Verify chain correctness:
 4. short-circuit paths,
 5. required side effects (for example counters),
 6. dependency validation failures.
+
+Dependency-validation expectations:
+- Validate missing dependency failures for every required collaborator.
+- Validate invalid shape failures for every required collaborator (method/function contract).
+- Verify optional collaborators are optional only when explicitly declared optional.
 
 Prefer tests shaped as payload/response flow assertions:
 - input payload -> guard call payload
@@ -88,6 +111,8 @@ When TDD is requested:
 - Composition contains no domain logic.
 - All collaborators are interfaces with explicit shape checks.
 - No hidden default implementations.
+- No inline fake/stub business behavior in assemblers/wiring.
+- Environment-specific providers are explicitly separated and mode-gated.
 - Tests prove payload/response chaining with spies.
 - Tests cover short-circuit and error/validation paths.
 - Final assembler wires adapters outside wiring tests.
