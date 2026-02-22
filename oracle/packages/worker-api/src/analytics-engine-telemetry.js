@@ -6,7 +6,9 @@ const VALID_API_ROUTES = new Set(["api_outlook", "health", "not_found"])
 const FORBIDDEN_TEXT_KEYS = new Set([
   "answer",
   "canonicalProfession",
+  "clarification",
   "completion",
+  "hints",
   "messages",
   "profession",
   "prompt",
@@ -88,6 +90,9 @@ export function makeApiRequestTelemetryDataPointV1({
   rejectIfForbiddenTextKeysPresent(arguments[0])
 
   const telemetryRoute = requireLowCardinalityApiRoute(route)
+  const telemetryLocale = sanitizeLocale(locale)
+  const telemetrySchemaVersion = sanitizeSchemaVersion(schemaVersion)
+  const telemetryMethod = sanitizeMethod(method)
 
   return {
     blobs: [encodeUtf8Blob(requireString(requestId, "requestId"))],
@@ -103,9 +108,9 @@ export function makeApiRequestTelemetryDataPointV1({
       EVENT_SCHEMA_VERSION,
       requireEnvironment(environment),
       telemetryRoute,
-      requireString(method, "method"),
-      requireString(schemaVersion, "schemaVersion"),
-      requireString(locale, "locale"),
+      telemetryMethod,
+      telemetrySchemaVersion,
+      telemetryLocale,
       requireString(result, "result"),
       requireString(llmTotalsCompleteness, "llmTotalsCompleteness")
     ]
@@ -133,6 +138,9 @@ export function makeLlmCallTelemetryDataPointV1({
 }) {
   rejectIfForbiddenTextKeysPresent(arguments[0])
 
+  const telemetryLocale = sanitizeLocale(locale)
+  const telemetrySchemaVersion = sanitizeSchemaVersion(schemaVersion)
+
   return {
     blobs: [encodeUtf8Blob(requireString(requestId, "requestId"))],
     doubles: [
@@ -150,8 +158,8 @@ export function makeLlmCallTelemetryDataPointV1({
       requireString(client, "client"),
       requireString(model, "model"),
       requireOptionalString(promptVersion),
-      requireString(schemaVersion, "schemaVersion"),
-      requireString(locale, "locale"),
+      telemetrySchemaVersion,
+      telemetryLocale,
       requireString(status, "status"),
       requireOptionalString(errorType),
       requireString(usageSource, "usageSource"),
@@ -248,6 +256,60 @@ function requireLowCardinalityApiRoute(route) {
   return value
 }
 
+function sanitizeLocale(value) {
+  if (typeof value !== "string") {
+    return "unknown"
+  }
+
+  const trimmed = value.trim()
+
+  if (trimmed === "" || trimmed.length > 16) {
+    return "unknown"
+  }
+
+  if (!/^[A-Za-z0-9-]+$/.test(trimmed)) {
+    return "unknown"
+  }
+
+  return trimmed
+}
+
+function sanitizeSchemaVersion(value) {
+  if (typeof value !== "string") {
+    return "unknown"
+  }
+
+  const trimmed = value.trim()
+
+  if (trimmed === "" || trimmed.length > 8) {
+    return "unknown"
+  }
+
+  if (!/^[0-9]+$/.test(trimmed)) {
+    return "unknown"
+  }
+
+  return trimmed
+}
+
+function sanitizeMethod(value) {
+  if (typeof value !== "string") {
+    return "UNKNOWN"
+  }
+
+  const trimmed = value.trim()
+
+  if (trimmed === "" || trimmed.length > 16) {
+    return "UNKNOWN"
+  }
+
+  if (!/^[A-Z]+$/.test(trimmed)) {
+    return "UNKNOWN"
+  }
+
+  return trimmed
+}
+
 function requireDependency(value, name) {
   if (value === undefined || value === null) {
     throw new Error(`Missing required dependency: ${name}`)
@@ -265,4 +327,3 @@ function requireMethodDependency(value, name, methodName) {
 
   return dependency
 }
-
