@@ -107,12 +107,14 @@ function makeAppEnv() {
       },
       async put() {}
     },
+    NORMALIZER_MODEL: "openai/gpt-5-nano",
     OPENROUTER_API_KEY: "openrouter-api-key",
     OUTLOOK_CACHE: {
       async get() {
         return null
       },
       async put() {}
-    }
+    },
+    OUTLOOK_MODEL: "openai/gpt-5-nano"
   }
 }

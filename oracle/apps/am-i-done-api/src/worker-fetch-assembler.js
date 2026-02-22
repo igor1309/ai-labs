@@ -10,10 +10,8 @@ import { requestGuard } from "../../../packages/worker-api/src/request-guard.js"
 import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../../../packages/worker-api/src/worker-api.js"
 
 const CLARIFICATION_SUGGESTIONS = ["software engineer", "registered nurse", "electrician"]
-const DEFAULT_NORMALIZER_MODEL = "openai/gpt-4o-mini"
 const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai"
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 10000
-const DEFAULT_OUTLOOK_MODEL = "openai/gpt-4o-mini"
 const DEFAULT_PROMPT_VERSION = "1"
 const DEFAULT_STUB_DELAY_MS = 0
 
@@ -105,17 +103,9 @@ function resolveConfig(env) {
       env,
       useStubModel
     }),
-    normalizerModel: resolveOptionalStringBinding(
-      env,
-      "NORMALIZER_MODEL",
-      DEFAULT_NORMALIZER_MODEL
-    ),
+    normalizerModel: resolveRequiredStringBinding(env, "NORMALIZER_MODEL"),
     openRouterBaseUrl,
-    outlookModel: resolveOptionalStringBinding(
-      env,
-      "OUTLOOK_MODEL",
-      DEFAULT_OUTLOOK_MODEL
-    ),
+    outlookModel: resolveRequiredStringBinding(env, "OUTLOOK_MODEL"),
     promptVersion: typeof env.PROMPT_VERSION === "string" && env.PROMPT_VERSION.trim() !== "" ? env.PROMPT_VERSION : DEFAULT_PROMPT_VERSION,
     stubDelayMs: parseStubDelayMs(env.MODEL_STUB_DELAY_MS),
     useStubModel,
@@ -141,6 +131,12 @@ function requireNonEmptyStringBinding(env, bindingName) {
   if (typeof env?.[bindingName] !== "string" || env[bindingName].trim() === "") {
     throw new Error(`Invalid binding: ${bindingName}`)
   }
+}
+
+function resolveRequiredStringBinding(env, bindingName) {
+  requireBinding(env, bindingName)
+  requireNonEmptyStringBinding(env, bindingName)
+  return env[bindingName].trim()
 }
 
 function resolveOptionalStringBinding(env, bindingName, defaultValue) {
