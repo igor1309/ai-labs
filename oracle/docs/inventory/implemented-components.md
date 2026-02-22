@@ -279,6 +279,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Web E2E (stub mode): `oracle/apps/am-i-done-web/tests/web-e2e.test.js`
 - Web real-provider smoke (manual/opt-in): `oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js`
 - Web proxy unit tests: `oracle/apps/am-i-done-web/tests/pages-api-proxy.test.js`
+- Web app unit tests (state transitions and request contract): `oracle/apps/am-i-done-web/tests/web-app.test.js`
 
 ## Spec drift notes
 - `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"1"` behavior; implementation treats it as optional and defaults to `"1"` when missing/blank.
