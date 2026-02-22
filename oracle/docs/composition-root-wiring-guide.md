@@ -10,30 +10,37 @@ description: "Composition root rules for interface-only wiring, layered assembly
 Define how composition root code is created, assembled, and tested in this repo.
 
 ## Definition
-Composition root is the place that knows all collaborating pieces and connects them.
+Composition root is an architectural concept: the place(s) where the app is assembled from collaborating parts.
+
+It is not required to be a single function, type, or module. It may be layered and cascaded across multiple composition files.
 
 Composition root is not business logic.
 
 ## Core Rule
-Composition wiring must only connect interfaces and map payload/response shapes between interfaces.
+Composition wiring may:
+- connect interfaces,
+- map payload/response shapes between interfaces,
+- choose implementations at assembly time (for example by environment/config),
+- short-circuit on technical failures (validation/dependency/transport).
 
-If behavior is more than payload/response mapping between interfaces, it is not composition wiring.
+Composition wiring must not implement business decisions at runtime from domain payload semantics.
 
 ## What Is Allowed in Composition
 - Dependency presence and shape validation.
-- Call ordering across interfaces.
+- Call ordering across interfaces when it is mechanical orchestration.
 - Payload adaptation from one interface to another.
 - Response adaptation from one interface to another.
-- Wiring-layer decorators by interface composition (for example cache wrappers) when the layer still exposes interfaces.
+- Technical short-circuiting (validation/dependency/transport failures).
+- Environment/config-based implementation selection in final assembly.
+- Colocated adapters as composition implementation details (can be private).
 
 ## What Is Not Allowed in Composition
-- Domain/business decisions.
-- Concrete caching logic (keys, hit/miss policy, cache reads/writes).
-- Normalization/derivation algorithms.
-- Transport/provider-specific implementation details.
+- Domain/business decisions based on runtime domain payload semantics.
+- Concrete caching policy logic (keys, hit/miss policy, cache reads/writes) unless delegated to a collaborator.
+- Normalization/derivation algorithms as composition behavior.
 - Default placeholder implementations that hide missing wiring.
 - Inline stub/fake behavior inside wiring composers or assemblers.
-- Any fallback to in-memory/demo behavior in production mode.
+- Any implicit fallback to in-memory/demo behavior in production mode.
 
 ## Interfaces First
 Composition should declare required collaborators by interface shape.
@@ -50,44 +57,46 @@ These shapes serve two purposes:
 2. Drive wiring tests using spies.
 
 ## Layered Assembly
-Use assembly in layers:
+Use layered assembly as needed:
 
 1. Wiring composer:
 Creates a composed piece from interface dependencies.
 
-2. Adapter assembler:
-Builds concrete adapters for modules/providers and maps concrete types to interface shapes.
+2. Composition adapter layer (colocated):
+Implements provider/module-to-interface mapping needed by the composer.
+These are composition implementation details, not standalone adapter modules by default.
 
 3. Final assembler:
-Plugs adapters into wiring composer and returns deployable entrypoint.
+Builds concrete instances, applies environment/config selection, plugs them into composers, and returns deployable entrypoints.
 
-If another composition layer is needed (for example cached service wrapper), create another wiring composer that still consumes and exposes interfaces.
+Extract standalone adapter modules only when they are generic and highly reusable.
 
-## Environment-Specific Adapter Policy
-Environment-specific behavior (for example test/dev/demo providers) is allowed only when it is intentionally separated and explicitly composed.
+## Environment-Specific Instance Policy
+Environment-specific instances are allowed when explicitly separated and intentionally composed.
 
 Rules:
-- Alternate providers must live in dedicated adapter modules, not inline in assembler or wiring files.
-- Final assembler may select between adapters by explicit environment/config mode.
-- Mode selection must be fail-closed for production (no implicit fallback to stubs).
-- Production and non-production wiring choices must be documented in spec/inventory docs.
-- Wiring tests assert only interface contracts; adapter behavior tests live with the adapter.
+- Environment-specific instances are concrete implementations of the same interface contract.
+- They are not stubs/fakes.
+- Final assembler may select instances by explicit mode/config.
+- Production selection must be fail-closed (no implicit fallback).
+- Production and non-production selections must be documented.
+- Wiring tests assert interface contracts and orchestration, not provider internals.
 
 ## Stub/Fake Prohibitions (Hard)
-- Do not embed deterministic fake business outputs in `make*Fetch`, router wiring, or other composition functions.
-- Do not mix adapter creation and fake domain behavior in one function.
-- Do not use stubs as silent defaults when required production dependencies are missing.
-- Do not let test-only providers leak into production code paths without explicit mode gating.
+- Do not embed deterministic fake business outputs in composition wiring.
+- Do not use stubs/fakes as silent defaults for missing production dependencies.
+- Do not allow test-only providers in production paths without explicit mode gating.
+- Any component returning canned business outcomes in place of real collaborator behavior is treated as a stub/fake.
 
 ## Testing Composition Wiring
-Wiring tests use spies only, not concrete infrastructure.
+Use interface substitutions (spies/stubs/mocks) in wiring tests; avoid concrete infrastructure in composer tests.
 
-Verify chain correctness:
+Verify:
 1. payload into first interface,
 2. mapped payload into next interface,
 3. mapped response out,
-4. short-circuit paths,
-5. required side effects (for example counters),
+4. technical short-circuit paths,
+5. required side effects,
 6. dependency validation failures.
 
 Dependency-validation expectations:
@@ -101,6 +110,13 @@ Prefer tests shaped as payload/response flow assertions:
 - normalizer result -> outlook call payload
 - composed output -> API response payload
 
+Adapter testing rule:
+- If adapter logic is private, test it indirectly through the composed public seam.
+- If direct unit tests are required, keep adapter logic non-private (module-internal/test-visible) while still colocated in composition.
+
+Final assembler testing rule:
+- Add minimal integration/smoke tests for environment/config selection and fail-closed production wiring.
+
 ## TDD for Composition
 When TDD is requested:
 1. RED: add one wiring test for one flow edge.
@@ -108,11 +124,11 @@ When TDD is requested:
 3. No concrete implementation added in composition during GREEN.
 
 ## Review Checklist
-- Composition contains no domain logic.
-- All collaborators are interfaces with explicit shape checks.
+- Composition contains no runtime business decision logic.
+- Runtime branching in composition is only technical (validation/dependency/env/error plumbing).
+- Collaborators are wired by interface contracts with explicit validation where required.
 - No hidden default implementations.
 - No inline fake/stub business behavior in assemblers/wiring.
-- Environment-specific providers are explicitly separated and mode-gated.
-- Tests prove payload/response chaining with spies.
-- Tests cover short-circuit and error/validation paths.
-- Final assembler wires adapters outside wiring tests.
+- Environment-specific instances are explicit, mode-gated, and documented.
+- Wiring tests prove payload/response chaining and technical short-circuits.
+- Production wiring fails closed when required dependencies are missing.
