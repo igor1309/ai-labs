@@ -141,6 +141,19 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onTelemetr
   }), { message: "Invalid dependency: telemetry.emitApiRequest" })
 })
 
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onTelemetryWithoutEmitLlmCallMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    makeProfessionNormalizer: () => makeProfessionNormalizerSpy().service,
+    makeProfessionOutlookService: () => makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id",
+    telemetry: {
+      emitApiRequest() {}
+    }
+  }), { message: "Invalid dependency: telemetry.emitLlmCall" })
+})
+
 test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async () => {
   const { requestGuardSpy, workerFetchHandler } = makeSUT()
 
