@@ -10,6 +10,8 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - App entrypoint: `oracle/apps/am-i-done-api/src/index.js`
 - Worker runtime config: `oracle/apps/am-i-done-api/wrangler.toml`
 - Web app UI: `oracle/apps/am-i-done-web/src/*`
+- Web runtime config: `oracle/apps/am-i-done-web/wrangler.toml`
+- Web same-origin API proxy: `oracle/apps/am-i-done-web/functions/api/[[path]].js`
 - Worker assembly/composition package: `oracle/packages/worker-api/src/*.js`
 - Domain modules:
 - `oracle/packages/profession-normalizer/src/profession-normalizer.js`
@@ -227,6 +229,27 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Runtime config:
 - `oracle/apps/am-i-done-api/wrangler.toml`
 
+### Web app entrypoint and API proxy
+
+#### Cloudflare Pages web app
+- Source: `oracle/apps/am-i-done-web/src/index.html`, `oracle/apps/am-i-done-web/src/app.js`, `oracle/apps/am-i-done-web/src/styles.css`
+- Runtime config:
+- `oracle/apps/am-i-done-web/wrangler.toml`
+- Deploy script:
+- `npm run web:deploy`
+
+#### `onRequest` `/api/*` proxy (Pages Function)
+- Source: `oracle/apps/am-i-done-web/functions/api/[[path]].js`
+- Public API:
+- `onRequest(context) -> Promise<Response>`
+- Contract:
+- Requires `API_BASE_URL` in Pages runtime environment.
+- Forwards same-origin `/api/*` request path/query/method/body to Worker API base URL.
+- Preserves frontend same-origin calling model without browser CORS coupling.
+- Tests:
+- `oracle/apps/am-i-done-web/tests/pages-api-proxy.test.js`
+- Asserts config validation, upstream URL rewriting, and fetch delegation.
+
 ## Cloudflare bindings map
 
 | Binding | Required | Used by | Purpose |
@@ -253,6 +276,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Entrypoint behavior: composed routing and invalid JSON response flow
 - Web E2E (stub mode): `oracle/apps/am-i-done-web/tests/web-e2e.test.js`
 - Web real-provider smoke (manual/opt-in): `oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js`
+- Web proxy unit tests: `oracle/apps/am-i-done-web/tests/pages-api-proxy.test.js`
 
 ## Spec drift notes
 - `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"1"` behavior; implementation treats it as optional and defaults to `"1"` when missing/blank.

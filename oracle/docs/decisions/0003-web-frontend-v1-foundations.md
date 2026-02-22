@@ -26,6 +26,7 @@ Use same-origin API routing for `POST /api/outlook`.
 Reasoning:
 - Avoid browser CORS complexity for the primary path.
 - Keep frontend calls simple (`/api/outlook`) while backend remains an independently deployed Worker service.
+- Use Cloudflare Pages Functions proxying for `/api/*` to the Worker base URL configured by `API_BASE_URL`.
 
 ### Locale policy
 v1:
@@ -38,4 +39,5 @@ v2:
 ## Consequences
 - Frontend implementation can start without framework selection overhead.
 - Deployment/config must ensure same-origin routing from web host to Worker API for `/api/outlook`.
+- Pages deployment must set `API_BASE_URL` (for example via `wrangler pages secret put` or dashboard vars) for the `/api/*` proxy.
 - Locale handling remains deterministic in v1 and can expand safely in v2.
