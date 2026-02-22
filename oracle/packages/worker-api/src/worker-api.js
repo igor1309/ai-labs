@@ -44,102 +44,157 @@ export function createWorkerFetchHandler(dependencies = {}) {
     dependencies.requestIdGenerator,
     "requestIdGenerator"
   )
+  const telemetry = requireMethodDependency(
+    dependencies.telemetry,
+    "telemetry",
+    "emitApiRequest"
+  )
+  requireMethodDependency(telemetry, "telemetry", "emitLlmCall")
   const onPopularityTrackerError = resolveOptionalFunctionDependency(
     dependencies.onPopularityTrackerError,
     "onPopularityTrackerError"
   )
 
   return async function fetch(request) {
+    const requestId = requestIdGenerator()
+    const startTimeMs = Date.now()
+
     let requestBody
+    let result = "error"
+    let response
+    let schemaVersion = "1"
+    let locale = ""
 
     try {
-      requestBody = await request.json()
-    } catch {
-      return Response.json({
-        answer: null,
-        canonicalProfession: null,
-        category: null,
-        categoryConfidence: null,
-        clarification: {
-          message: "Please provide a valid request body.",
-          suggestions: []
-        },
-        needsClarification: true,
-        requestId: requestIdGenerator(),
-        schemaVersion: "1"
-      })
-    }
+      try {
+        requestBody = await request.json()
+      } catch {
+        result = "invalid_body"
 
-    const guardResult = await requestGuard.validate(requestBody)
+        response = Response.json({
+          answer: null,
+          canonicalProfession: null,
+          category: null,
+          categoryConfidence: null,
+          clarification: {
+            message: "Please provide a valid request body.",
+            suggestions: []
+          },
+          needsClarification: true,
+          requestId,
+          schemaVersion: "1"
+        })
 
-    if (!guardResult.isValid) {
-      return Response.json({
-        answer: null,
-        canonicalProfession: null,
-        category: null,
-        categoryConfidence: null,
-        clarification: guardResult.clarification,
-        needsClarification: true,
-        requestId: requestIdGenerator(),
-        schemaVersion: guardResult.schemaVersion
-      })
-    }
-
-    const normalizerResult = await professionNormalizer.normalize({
-      locale: guardResult.value.locale,
-      profession: guardResult.value.profession
-    })
-
-    try {
-      await popularityTracker.track({
-        normalizerResult,
-        rawProfession: guardResult.value.profession
-      })
-    } catch (error) {
-      if (!isCounterWriteFailure(error)) {
-        throw error
+        return response
       }
 
-      // Counter writes are best-effort and must not block API responses.
-      reportPopularityTrackerError({
-        error,
-        onPopularityTrackerError
-      })
-    }
+      const guardResult = await requestGuard.validate(requestBody)
 
-    if (normalizerResult.needsClarification) {
-      return Response.json({
-        answer: null,
-        canonicalProfession: null,
-        category: null,
-        categoryConfidence: null,
-        clarification: normalizerResult.clarification,
-        needsClarification: true,
-        requestId: requestIdGenerator(),
+      if (!guardResult.isValid) {
+        result = "guard_reject"
+        schemaVersion = guardResult.schemaVersion
+
+        response = Response.json({
+          answer: null,
+          canonicalProfession: null,
+          category: null,
+          categoryConfidence: null,
+          clarification: guardResult.clarification,
+          needsClarification: true,
+          requestId,
+          schemaVersion: guardResult.schemaVersion
+        })
+
+        return response
+      }
+
+      const normalizerResult = await professionNormalizer.normalize({
+        locale: guardResult.value.locale,
+        profession: guardResult.value.profession
+      })
+
+      schemaVersion = guardResult.value.schemaVersion
+      locale = guardResult.value.locale
+
+      try {
+        await popularityTracker.track({
+          normalizerResult,
+          rawProfession: guardResult.value.profession
+        })
+      } catch (error) {
+        if (!isCounterWriteFailure(error)) {
+          throw error
+        }
+
+        // Counter writes are best-effort and must not block API responses.
+        reportPopularityTrackerError({
+          error,
+          onPopularityTrackerError
+        })
+      }
+
+      if (normalizerResult.needsClarification) {
+        result = "clarify"
+
+        response = Response.json({
+          answer: null,
+          canonicalProfession: null,
+          category: null,
+          categoryConfidence: null,
+          clarification: normalizerResult.clarification,
+          needsClarification: true,
+          requestId,
+          schemaVersion: guardResult.value.schemaVersion
+        })
+
+        return response
+      }
+
+      const answer = await professionOutlookService.getOutlook({
+        canonicalProfession: normalizerResult.canonicalProfession,
+        hints: {
+          category: normalizerResult.category,
+          categoryConfidence: normalizerResult.categoryConfidence
+        },
+        locale: guardResult.value.locale,
         schemaVersion: guardResult.value.schemaVersion
       })
+
+      result = "answered"
+
+      response = Response.json({
+        answer,
+        canonicalProfession: normalizerResult.canonicalProfession,
+        category: normalizerResult.category ?? null,
+        categoryConfidence: normalizerResult.categoryConfidence ?? null,
+        clarification: null,
+        needsClarification: false,
+        requestId,
+        schemaVersion: guardResult.value.schemaVersion
+      })
+
+      return response
+    } catch (error) {
+      result = "error"
+      throw error
+    } finally {
+      try {
+        telemetry.emitApiRequest({
+          durationMs: Date.now() - startTimeMs,
+          llmCalls: 0,
+          llmCostMicrosUsd: 0,
+          llmTotalTokens: 0,
+          llmTotalsCompleteness: "missing",
+          locale: typeof locale === "string" ? locale : "",
+          method: request.method,
+          requestId,
+          result,
+          route: "api_outlook",
+          schemaVersion,
+          statusCode: response?.status ?? 500
+        })
+      } catch {}
     }
-
-    const answer = await professionOutlookService.getOutlook({
-      canonicalProfession: normalizerResult.canonicalProfession,
-      hints: {
-        category: normalizerResult.category,
-        categoryConfidence: normalizerResult.categoryConfidence
-      },
-      locale: guardResult.value.locale,
-      schemaVersion: guardResult.value.schemaVersion
-    })
-
-    return Response.json({
-      answer,
-      canonicalProfession: normalizerResult.canonicalProfession,
-      category: normalizerResult.category ?? null,
-      categoryConfidence: normalizerResult.categoryConfidence ?? null,
-      clarification: null,
-      needsClarification: false,
-      requestId: requestIdGenerator(),
-      schemaVersion: guardResult.value.schemaVersion
-    })
   }
 }
 

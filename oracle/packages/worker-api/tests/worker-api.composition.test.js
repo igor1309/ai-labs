@@ -8,7 +8,8 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingP
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Missing required dependency: popularityTracker" })
 })
 
@@ -18,7 +19,8 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopulari
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Invalid dependency: popularityTracker.track" })
 })
 
@@ -27,7 +29,8 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingP
     popularityTracker: makePopularityTrackerSpy().tracker,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Missing required dependency: professionNormalizer" })
 })
 
@@ -37,7 +40,8 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessi
     professionNormalizer: {},
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Invalid dependency: professionNormalizer.normalize" })
 })
 
@@ -46,7 +50,8 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingP
     popularityTracker: makePopularityTrackerSpy().tracker,
     professionNormalizer: makeProfessionNormalizerSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Missing required dependency: professionOutlookService" })
 })
 
@@ -56,7 +61,8 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessi
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: {},
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Invalid dependency: professionOutlookService.getOutlook" })
 })
 
@@ -67,7 +73,8 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunct
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Invalid dependency: onPopularityTrackerError" })
 })
 
@@ -76,7 +83,8 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingR
     popularityTracker: makePopularityTrackerSpy().tracker,
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Missing required dependency: requestGuard" })
 })
 
@@ -86,7 +94,8 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onRequestG
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: {},
-    requestIdGenerator: () => "request-id"
+    requestIdGenerator: () => "request-id",
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Invalid dependency: requestGuard.validate" })
 })
 
@@ -95,7 +104,8 @@ test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingR
     popularityTracker: makePopularityTrackerSpy().tracker,
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
-    requestGuard: makeRequestGuardSpy().guard
+    requestGuard: makeRequestGuardSpy().guard,
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Missing required dependency: requestIdGenerator" })
 })
 
@@ -105,8 +115,30 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunct
     professionNormalizer: makeProfessionNormalizerSpy().service,
     professionOutlookService: makeProfessionOutlookServiceSpy().service,
     requestGuard: makeRequestGuardSpy().guard,
-    requestIdGenerator: {}
+    requestIdGenerator: {},
+    telemetry: makeTelemetrySpy().telemetry
   }), { message: "Invalid dependency: requestIdGenerator" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingTelemetry", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Missing required dependency: telemetry" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onTelemetryWithoutEmitApiRequestMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id",
+    telemetry: {}
+  }), { message: "Invalid dependency: telemetry.emitApiRequest" })
 })
 
 test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async () => {
@@ -118,7 +150,7 @@ test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async 
 })
 
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidJsonRequestBody", async () => {
-  const { popularityTrackerSpy, professionNormalizerSpy, professionOutlookServiceSpy, requestGuardSpy, workerFetchHandler } = makeSUT()
+  const { popularityTrackerSpy, professionNormalizerSpy, professionOutlookServiceSpy, requestGuardSpy, requestIdGeneratorSpy, telemetrySpy, workerFetchHandler } = makeSUT()
 
   const response = await performInvalidJsonOutlookRequest(workerFetchHandler)
 
@@ -139,10 +171,13 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidJsonRequestBody
   assert.deepEqual(professionNormalizerSpy.calls, [])
   assert.deepEqual(professionOutlookServiceSpy.calls, [])
   assert.deepEqual(popularityTrackerSpy.calls, [])
+  assert.equal(requestIdGeneratorSpy.calls.length, 1)
+  assert.equal(telemetrySpy.apiRequestCalls.length, 1)
+  assert.equal(telemetrySpy.apiRequestCalls[0].result, "invalid_body")
 })
 
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", async () => {
-  const { workerFetchHandler } = makeSUT({
+  const { telemetrySpy, workerFetchHandler } = makeSUT({
     guardResult: {
       clarification: {
         message: "Please provide a valid profession and locale.",
@@ -168,6 +203,8 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", a
     requestId: "request-id",
     schemaVersion: "1"
   })
+  assert.equal(telemetrySpy.apiRequestCalls.length, 1)
+  assert.equal(telemetrySpy.apiRequestCalls[0].result, "guard_reject")
 })
 
 test("test_fetch_shouldNotCallProfessionNormalizer_onInvalidGuardResult", async () => {
@@ -212,7 +249,7 @@ test("test_fetch_shouldNotCallProfessionOutlookService_onNeedsClarification", as
 })
 
 test("test_fetch_shouldReturnNeedsClarificationResponse_onNeedsClarification", async () => {
-  const { workerFetchHandler } = makeSUT({
+  const { telemetrySpy, workerFetchHandler } = makeSUT({
     normalizerResult: {
       clarification: {
         message: "Please be more specific.",
@@ -237,6 +274,8 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onNeedsClarification", a
     requestId: "request-id",
     schemaVersion: "1"
   })
+  assert.equal(telemetrySpy.apiRequestCalls.length, 1)
+  assert.equal(telemetrySpy.apiRequestCalls[0].result, "clarify")
 })
 
 test("test_fetch_shouldCallPopularityTrackerWithRawProfessionAndCanonicalResult_onOutlookFlow", async () => {
@@ -351,11 +390,13 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onPopularityTrackerFailu
 
 test("test_fetch_shouldThrowError_onNonCounterWritePopularityTrackerFailure", async () => {
   const expectedError = new Error("tracking failed")
-  const { workerFetchHandler } = makeSUT({
+  const { telemetrySpy, workerFetchHandler } = makeSUT({
     popularityTrackerError: expectedError
   })
 
   await assert.rejects(() => performOutlookRequest(workerFetchHandler), expectedError)
+  assert.equal(telemetrySpy.apiRequestCalls.length, 1)
+  assert.equal(telemetrySpy.apiRequestCalls[0].result, "error")
 })
 
 test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocaleSchemaVersionAndHints_onOutlookFlow", async () => {
@@ -367,7 +408,7 @@ test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocale
 })
 
 test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
-  const { workerFetchHandler } = makeSUT()
+  const { telemetrySpy, workerFetchHandler } = makeSUT()
 
   const response = await performOutlookRequest(workerFetchHandler)
 
@@ -381,6 +422,19 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
     requestId: "request-id",
     schemaVersion: "1"
   })
+  assert.equal(telemetrySpy.apiRequestCalls.length, 1)
+  assert.equal(telemetrySpy.apiRequestCalls[0].result, "answered")
+})
+
+test("test_fetch_shouldNotFailResponse_onTelemetryFailure", async () => {
+  const { workerFetchHandler } = makeSUT({
+    telemetryThrows: true
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler)
+
+  assert.equal(response.status, 200)
+  assert.equal(response.body.needsClarification, false)
 })
 
 function makeSUT({
@@ -388,13 +442,18 @@ function makeSUT({
   includePopularityTrackerErrorReporter = true,
   normalizerResult = makeNormalizedProfessionResult(),
   outlookAnswer = makeOutlookAnswerResult(),
-  popularityTrackerError
+  popularityTrackerError,
+  telemetryThrows = false
 } = {}) {
   const popularityTrackerErrorReporterSpy = makePopularityTrackerErrorReporterSpy()
   const popularityTrackerSpy = makePopularityTrackerSpy(popularityTrackerError)
   const professionOutlookServiceSpy = makeProfessionOutlookServiceSpy(outlookAnswer)
   const professionNormalizerSpy = makeProfessionNormalizerSpy(normalizerResult)
   const requestGuardSpy = makeRequestGuardSpy(guardResult)
+  const requestIdGeneratorSpy = makeRequestIdGeneratorSpy()
+  const telemetrySpy = makeTelemetrySpy({
+    emitApiRequestThrows: telemetryThrows
+  })
 
   return {
     popularityTrackerErrorReporterSpy,
@@ -402,6 +461,8 @@ function makeSUT({
     professionOutlookServiceSpy,
     professionNormalizerSpy,
     requestGuardSpy,
+    requestIdGeneratorSpy,
+    telemetrySpy,
     workerFetchHandler: createWorkerFetchHandler({
       ...(includePopularityTrackerErrorReporter ? {
         onPopularityTrackerError: popularityTrackerErrorReporterSpy.report
@@ -410,7 +471,8 @@ function makeSUT({
       professionOutlookService: professionOutlookServiceSpy.service,
       professionNormalizer: professionNormalizerSpy.service,
       requestGuard: requestGuardSpy.guard,
-      requestIdGenerator: () => "request-id"
+      requestIdGenerator: requestIdGeneratorSpy.generate,
+      telemetry: telemetrySpy.telemetry
     })
   }
 }
@@ -533,6 +595,40 @@ function makeOutlookRequestBody() {
     locale: "en-US",
     profession: "  software   developer  ",
     schemaVersion: "1"
+  }
+}
+
+function makeRequestIdGeneratorSpy({ value = "request-id" } = {}) {
+  const calls = []
+
+  return {
+    calls,
+    generate: () => {
+      calls.push({})
+      return value
+    }
+  }
+}
+
+function makeTelemetrySpy({ emitApiRequestThrows = false } = {}) {
+  const apiRequestCalls = []
+  const llmCallCalls = []
+
+  return {
+    apiRequestCalls,
+    llmCallCalls,
+    telemetry: {
+      emitApiRequest(event) {
+        apiRequestCalls.push(event)
+
+        if (emitApiRequestThrows) {
+          throw new Error("telemetry failed")
+        }
+      },
+      emitLlmCall(event) {
+        llmCallCalls.push(event)
+      }
+    }
   }
 }
 
