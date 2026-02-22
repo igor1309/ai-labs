@@ -114,7 +114,7 @@ When creating implementation plans (especially from review findings), the plan m
 9. Mark implemented step status in the plan and commit the plan status update.
 10. Repeat the same process for each next step.
 11. At completion, run final gates: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
-12. Move completed plan from `docs/plans/` to `docs/plans/implemented/`, commit the move, and create a PR.
+12. Move completed plan from `docs/plans/` to `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/` for project-scoped plans), commit the move, and create a PR.
 
 ## Release Process
 
@@ -127,6 +127,7 @@ Release policy is outcome-based. Commands are implementation detail; these invar
 - **Push safety**: push only `trunk` and the explicit release tag; never `git push --tags`.
 - **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging. `tsx` (test runner) ignores unused imports; `tsc` (CI build) does not.
 - **Deployment gate**: releases deploy via CI on tag push after tests pass.
+- **CI trigger**: `.github/workflows/release.yml` runs on `v*` tag push and gates deploy via core → web-e2e → deploy (worker/pages).
 
 ## "protocol owned by client" rule
 

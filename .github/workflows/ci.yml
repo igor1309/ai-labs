@@ -10,22 +10,7 @@ permissions:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: ./scripts/run_silent.sh "tests" npm test
+    uses: ./.github/workflows/core.yml
 
   real-provider-smoke:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
@@ -57,6 +42,9 @@ jobs:
     needs: [tests, real-provider-smoke]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Send Telegram notification
         env:
           CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
@@ -75,7 +63,4 @@ jobs:
           branch: ${{ github.ref_name }}
           commit: ${{ github.sha }}
           run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -s -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${CI_CHAT_ID}" \
-            -d parse_mode=HTML \
-            -d text="${text}"
+          ./scripts/ci/notify_telegram_failure.sh "${text}"
