@@ -23,6 +23,7 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
   })
   const workerFetch = makeWorkerFetch({
     DB: makeD1DatabaseSpy(),
+    ENVIRONMENT: "dev",
     NORMALIZER_CACHE: makeKvNamespaceSpy(),
     NORMALIZER_MODEL: normalizerModel,
     OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL,
