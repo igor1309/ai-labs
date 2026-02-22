@@ -25,7 +25,7 @@ before(async () => {
   try {
     browser = await chromium.launch(resolveBrowserLaunchOptions())
   } catch (error) {
-    browserSkipReason = `Unable to launch browser: ${error.message}`
+    throw new Error(`Unable to launch browser for RUN_WEB_E2E=1: ${error.message}`)
   }
 })
 
