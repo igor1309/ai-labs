@@ -214,8 +214,6 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `OPENROUTER_BASE_URL`: `https://openrouter.ai`
 - `OPENROUTER_TIMEOUT_MS`: `10000`
 - `PROMPT_VERSION`: `"1"`
-- `MODEL_PROVIDER_MODE`: non-stub mode by default (`"stub"` enables deterministic model stubs)
-- `MODEL_STUB_DELAY_MS`: `0`
 - Tests:
 - `oracle/apps/am-i-done-api/tests/worker-fetch-assembler.test.js`
 - Asserts missing/invalid binding failures, config defaulting, routing for method/path, OpenRouter/KV/D1 wiring behavior, fallback request-id generation.
@@ -259,14 +257,12 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 | `NORMALIZER_CACHE` | Yes | `createCloudflareKvJsonCacheAdapter` for normalizer | Normalizer cache storage |
 | `OUTLOOK_CACHE` | Yes | `createCloudflareKvJsonCacheAdapter` for outlook | Outlook answer cache storage |
 | `DB` | Yes | `createPopularityCountersStore`, `createRawInputCountersStore` | D1 canonical/raw counters persistence |
-| `OPENROUTER_API_KEY` | Conditionally required | Both OpenRouter adapters | Auth for model calls; required unless `MODEL_PROVIDER_MODE=stub` |
+| `OPENROUTER_API_KEY` | Yes | Both OpenRouter adapters | Auth for model calls |
 | `PROMPT_VERSION` | No (defaults to `"1"`) | `createProfessionOutlookService` via assembler config | Cache/prompt versioning |
 | `NORMALIZER_MODEL` | No | OpenRouter normalizer adapter | Model selection |
 | `OUTLOOK_MODEL` | No | OpenRouter outlook adapter | Model selection |
 | `OPENROUTER_BASE_URL` | No | Both OpenRouter adapters | Endpoint override |
 | `OPENROUTER_TIMEOUT_MS` | No | Both OpenRouter adapters | Timeout tuning |
-| `MODEL_PROVIDER_MODE` | No | Assembler | `"stub"` switches normalizer/outlook model clients to deterministic stubs |
-| `MODEL_STUB_DELAY_MS` | No (defaults to `0`) | Stub model clients | Optional delay to exercise timeout/transport-failure flows |
 
 ## Test inventory and execution
 - Full suite command: `./scripts/run_silent.sh "tests" npm test`
@@ -276,14 +272,13 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Adapters: KV JSON cache, OpenRouter normalizer, OpenRouter outlook, D1 canonical/raw counters stores
 - Assembler: env binding validation, config propagation, runtime wiring
 - Entrypoint behavior: composed routing and invalid JSON response flow
-- Web E2E (stub mode): `oracle/apps/am-i-done-web/tests/web-e2e.test.js`
+- Web E2E (deterministic test harness): `oracle/apps/am-i-done-web/tests/web-e2e.test.js`, `oracle/apps/am-i-done-web/tests/support/deterministic-worker-fetch.js`
 - Web real-provider smoke (manual/opt-in): `oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js`
 - Web proxy unit tests: `oracle/apps/am-i-done-web/tests/pages-api-proxy.test.js`
 - Web app unit tests (state transitions and request contract): `oracle/apps/am-i-done-web/tests/web-app.test.js`
 
 ## Spec drift notes
 - `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"1"` behavior; implementation treats it as optional and defaults to `"1"` when missing/blank.
-- `OPENROUTER_API_KEY` is conditionally required in implementation: required in normal mode, not required when `MODEL_PROVIDER_MODE=stub`.
 - Implemented adapters include stricter runtime checks than minimum specs (empty API key/model, invalid timeout, non-OK OpenRouter status formatting, timeout abort), which is additive hardening.
 
 ## Ready-to-assemble checklist

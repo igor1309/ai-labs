@@ -20,7 +20,7 @@ Required:
 - `env.NORMALIZER_CACHE`: KV namespace for normalizer cache
 - `env.OUTLOOK_CACHE`: KV namespace for outlook cache
 - `env.DB`: D1 database binding
-- `env.OPENROUTER_API_KEY`: secret (string), unless `env.MODEL_PROVIDER_MODE="stub"`
+- `env.OPENROUTER_API_KEY`: secret (string)
 
 Optional (v1 defaults may be provided by the assembler):
 - `env.PROMPT_VERSION`: string (default `"1"` in config)

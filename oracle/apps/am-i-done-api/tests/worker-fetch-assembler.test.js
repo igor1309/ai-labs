@@ -33,31 +33,20 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOpenRouterApi
   })
 })
 
-test("test_makeWorkerFetch_shouldUseStubModelModeWithoutOpenRouterApiKey_onStubModeEnabled", async () => {
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingNormalizerModelBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
-  const env = makeEnv({
-    MODEL_PROVIDER_MODE: "stub"
-  })
-  delete env.OPENROUTER_API_KEY
-  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
-    requestIdGenerator: () => "request-id"
-  })
 
-  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
-    body: JSON.stringify({
-      locale: "en-US",
-      profession: "software developer"
-    }),
-    headers: {
-      "content-type": "application/json"
-    },
-    method: "POST"
-  }))
-  const body = await response?.json()
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("NORMALIZER_MODEL")), {
+    message: "Missing required binding: NORMALIZER_MODEL"
+  })
+})
 
-  assert.equal(body?.needsClarification, false)
-  assert.equal(body?.canonicalProfession, "software engineer")
-  assert.equal(body?.answer?.headline, "Software Engineer remains viable with evolving workflows.")
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOutlookModelBinding", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("OUTLOOK_MODEL")), {
+    message: "Missing required binding: OUTLOOK_MODEL"
+  })
 })
 
 test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlookRequest", async () => {
@@ -187,13 +176,11 @@ test("test_fetch_shouldIncrementRawAndCanonicalCounters_onOutlookCacheHit", asyn
   assert.deepEqual(d1DatabaseSpy.bindCalls[1][0], "software engineer")
 })
 
-test("test_makeWorkerFetch_shouldUseDefaults_onBlankOptionalModelAndBaseUrlBindings", async () => {
+test("test_makeWorkerFetch_shouldUseDefaultBaseUrlAndConfiguredModels_onBlankOptionalBaseUrlBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
   const calls = []
   const env = makeEnv({
-    NORMALIZER_MODEL: "   ",
-    OPENROUTER_BASE_URL: "",
-    OUTLOOK_MODEL: "   "
+    OPENROUTER_BASE_URL: ""
   })
   const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
     httpClient: async (url, init) => {
@@ -250,11 +237,11 @@ test("test_makeWorkerFetch_shouldUseDefaults_onBlankOptionalModelAndBaseUrlBindi
   assert.equal(body?.needsClarification, false)
   assert.deepEqual(calls, [
     {
-      model: "openai/gpt-4o-mini",
+      model: "openai/gpt-5-nano",
       url: "https://openrouter.ai/api/v1/chat/completions"
     },
     {
-      model: "openai/gpt-4o-mini",
+      model: "openai/gpt-5-nano",
       url: "https://openrouter.ai/api/v1/chat/completions"
     }
   ])
@@ -363,8 +350,10 @@ function makeEnv(overrides = {}) {
   return {
     DB: makeD1DatabaseSpy().db,
     NORMALIZER_CACHE: makeKvNamespaceSpy().kv,
+    NORMALIZER_MODEL: "openai/gpt-5-nano",
     OPENROUTER_API_KEY: "openrouter-api-key",
     OUTLOOK_CACHE: makeKvNamespaceSpy().kv,
+    OUTLOOK_MODEL: "openai/gpt-5-nano",
     PROMPT_VERSION: "1",
     ...overrides
   }

@@ -4,7 +4,7 @@ const APP_STATES = {
   RECEIVED: "received",
   SUBMITTING: "submitting"
 }
-export const DEFAULT_REQUEST_TIMEOUT_MS = 4000
+export const DEFAULT_REQUEST_TIMEOUT_MS = 12000
 export const OUTLOOK_ENDPOINT_PATH = "/api/outlook"
 
 if (canBootstrapInBrowser()) {
