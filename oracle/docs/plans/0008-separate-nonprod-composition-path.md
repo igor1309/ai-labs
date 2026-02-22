@@ -1,21 +1,21 @@
 ---
 date: 2026-02-22
 model: gpt-5
-description: "Implementation plan to separate non-production composition wiring and complete dependency-validation coverage"
+description: "Implementation plan to move deterministic E2E wiring into test-owned SUT harness and complete dependency-validation coverage"
 ---
 
-# Separate Non-Prod Composition Path Plan
+# Deterministic Test Harness Separation Plan
 
 ## Full Review (Source of Truth)
 ### Finding 1
 - Verdict: fail
-- Problem: deterministic stub behavior is embedded in the production assembler path, which violates composition-root rules that prohibit inline fake/stub business behavior in assemblers and require deterministic non-production doubles to be wired through a separate non-production composition entrypoint/harness.
+- Problem: deterministic stub behavior is embedded in the production assembler path, which violates composition-root rules that prohibit inline fake/stub business behavior in assemblers. Deterministic doubles for browser E2E are test-owned SUT wiring and must live in tests, not in app composition.
 - Locations:
 - `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js:26`
 - `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js:32`
 - `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js:190`
 - `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js:219`
-- Required fix: keep production assembler real-provider only and move deterministic doubles to a separate non-production composition entrypoint/harness.
+- Required fix: keep production assembler real-provider only and move deterministic doubles to a test-owned SUT harness under tests.
 
 ### Finding 2
 - Verdict: warning
@@ -55,15 +55,20 @@ description: "Implementation plan to separate non-production composition wiring 
 - [ ] Plan moved to `implemented/`
 - [ ] PR created
 
-## Step 1: Separate Non-Production Composition Wiring (Finding 1)
+## Step 1: Move Deterministic Wiring to Test-Owned SUT Harness (Finding 1)
 ### Changes
 - Make production assembler path real-provider only:
 - remove deterministic stub-provider construction and selection from `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js`.
-- add a separate non-production composition harness/entrypoint for deterministic doubles:
-- create non-production wiring file(s) under `oracle/apps/am-i-done-api/src/` (for example `worker-fetch-nonprod-harness.js` and `index.nonprod.js`).
-- keep deterministic doubles private to non-production wiring and out of production assembler path.
-- route CI/local deterministic runs that currently rely on `MODEL_PROVIDER_MODE=stub` to the non-production harness path.
-- update docs/config references that describe wiring selection so production and non-production paths are explicit.
+- add deterministic test SUT wiring under tests (not app composition files):
+- create test harness file(s) under test-owned location (for example `oracle/apps/am-i-done-web/tests/support/`).
+- keep deterministic doubles private to test harness wiring and out of production assembler path.
+- route CI/local deterministic runs that currently rely on `MODEL_PROVIDER_MODE=stub` to the test harness path.
+- update docs/config references that describe wiring selection so production path and test-owned SUT harness path are explicit.
+- update `oracle/README.md`:
+- remove runtime/deploy guidance that implies `MODEL_PROVIDER_MODE=stub` in production composition.
+- document deterministic E2E/local usage through the test-owned harness path.
+- update `oracle/apps/am-i-done-api/.dev.vars.example`:
+- remove or reword stub-mode guidance if it implies production runtime selection inside app composition.
 
 ### Verification
 - Targeted:
@@ -73,7 +78,7 @@ description: "Implementation plan to separate non-production composition wiring 
 - `./scripts/run_silent.sh "tests" npm test`
 
 ### Commit
-- `separate nonprod composition wiring`
+- `move deterministic wiring to test harness`
 - then update this plan tracker (`Step 1 complete`) and commit the tracker change.
 
 ## Step 2: Complete Wiring Dependency-Validation Coverage (Finding 2)
