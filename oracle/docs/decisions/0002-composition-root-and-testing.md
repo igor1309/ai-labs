@@ -87,8 +87,8 @@ E2E tests are required once core behavior exists:
 ## Implementation status
 - [x] Wiring composer: interface-only Worker wiring in `worker-api`
 - [x] Wiring composer tests: spies-based payload/response chaining
-- [x] Cloudflare Worker service scaffold deployed (separate backend service)
-- [ ] Assemblers: concrete adapters (OpenRouter, KV, D1) and final Worker `fetch` assembly
-- [ ] Implement `profession-normalizer` module (client-owned protocols + behavior + tests)
-- [ ] Implement `profession-outlook` module (client-owned protocols + behavior + tests)
-- [ ] Add E2E tests once behavior exists
+- [x] Cloudflare Worker service scaffold committed (separate backend service)
+- [x] Assemblers: concrete adapters (OpenRouter, KV, D1) and final Worker `fetch` assembly
+- [x] Implement `profession-normalizer` module (client-owned protocols + behavior + tests)
+- [x] Implement `profession-outlook` module (client-owned protocols + behavior + tests)
+- [x] Add E2E tests (gated by env in `oracle/apps/am-i-done-web/tests`)
