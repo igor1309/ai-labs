@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-22
+- Add implementation plan `0007-web-frontend-v1-implementation.md` with explicit architecture conformance checks and step-by-step delivery gates for polished web UI and same-origin Pages routing.
+
 ## 2026-02-21
 - Add Cloudflare Pages deployment wiring for `am-i-done-web`: add Pages `wrangler.toml`, same-origin `/api/*` Pages Function proxy via `API_BASE_URL`, deploy/dev npm scripts, and proxy unit tests.
 - Lock frontend v1 foundation decisions in docs: vanilla TypeScript UI, same-origin `/api/outlook` routing, and locale policy (`en-US` for v1, auto-detect with `en-US` fallback planned for v2).
