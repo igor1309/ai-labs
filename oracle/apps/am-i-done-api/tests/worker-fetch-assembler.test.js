@@ -25,6 +25,14 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingDbBinding", a
   })
 })
 
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingEnvironmentBinding", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("ENVIRONMENT")), {
+    message: "Missing required binding: ENVIRONMENT"
+  })
+})
+
 test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOpenRouterApiKeyBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
 
@@ -46,6 +54,16 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOutlookModelB
 
   assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("OUTLOOK_MODEL")), {
     message: "Missing required binding: OUTLOOK_MODEL"
+  })
+})
+
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingTelemetryDatasetBindingInProd", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
+    ENVIRONMENT: "prod"
+  })), {
+    message: "Missing required binding: TELEMETRY_DATASET"
   })
 })
 
@@ -174,6 +192,230 @@ test("test_fetch_shouldIncrementRawAndCanonicalCounters_onOutlookCacheHit", asyn
   assert.match(normalizeWhitespace(d1DatabaseSpy.prepareCalls[1]), /insert into profession_counters/i)
   assert.deepEqual(d1DatabaseSpy.bindCalls[0][0], "software developer")
   assert.deepEqual(d1DatabaseSpy.bindCalls[1][0], "software engineer")
+})
+
+test("test_fetch_shouldEmitZeroLlmCalls_onOutlookCacheHitInProd", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const datasetSpy = makeAnalyticsEngineDatasetSpy()
+  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeNormalizerResult()) })
+  const outlookCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeOutlookAnswer()) })
+  const d1DatabaseSpy = makeD1DatabaseSpy()
+  const env = makeEnv({
+    DB: d1DatabaseSpy.db,
+    ENVIRONMENT: "prod",
+    NORMALIZER_CACHE: normalizerCacheSpy.kv,
+    NORMALIZER_MODEL: "openrouter/normalizer-model",
+    OUTLOOK_CACHE: outlookCacheSpy.kv,
+    OUTLOOK_MODEL: "openrouter/outlook-model",
+    TELEMETRY_DATASET: datasetSpy.dataset
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  await response?.json()
+
+  const llmCalls = datasetSpy.calls.filter((dataPoint) => dataPoint?.indexes?.[0] === "llm_call")
+  const apiRequests = datasetSpy.calls.filter((dataPoint) => dataPoint?.indexes?.[0] === "api_request")
+
+  assert.equal(llmCalls.length, 0)
+  assert.equal(apiRequests.length, 1)
+  assert.equal(apiRequests[0].doubles?.[2], 0)
+  assert.equal(apiRequests[0].indexes?.[8], "missing")
+})
+
+test("test_fetch_shouldEmitTwoLlmCallsAndCompleteTotals_onFullCacheMissWithProviderMetadata", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const datasetSpy = makeAnalyticsEngineDatasetSpy()
+  const httpClientSpy = makeOpenRouterHttpClientSpy({
+    normalizerUsage: {
+      completion_tokens: 20,
+      cost: 0.000123,
+      prompt_tokens: 10,
+      total_tokens: 30
+    },
+    outlookUsage: {
+      completion_tokens: 20,
+      cost: 0.000123,
+      prompt_tokens: 10,
+      total_tokens: 30
+    }
+  })
+  const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const d1DatabaseSpy = makeD1DatabaseSpy()
+  const env = makeEnv({
+    DB: d1DatabaseSpy.db,
+    ENVIRONMENT: "prod",
+    NORMALIZER_CACHE: normalizerCacheSpy.kv,
+    NORMALIZER_MODEL: "openrouter/normalizer-model",
+    OUTLOOK_CACHE: outlookCacheSpy.kv,
+    OUTLOOK_MODEL: "openrouter/outlook-model",
+    TELEMETRY_DATASET: datasetSpy.dataset
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  await response?.json()
+
+  const llmCalls = datasetSpy.calls.filter((dataPoint) => dataPoint?.indexes?.[0] === "llm_call")
+  const apiRequests = datasetSpy.calls.filter((dataPoint) => dataPoint?.indexes?.[0] === "api_request")
+
+  assert.equal(llmCalls.length, 2)
+  assert.equal(apiRequests.length, 1)
+  assert.equal(apiRequests[0].doubles?.[2], 2)
+  assert.equal(apiRequests[0].doubles?.[3], 60)
+  assert.equal(apiRequests[0].doubles?.[4], 246)
+  assert.equal(apiRequests[0].indexes?.[8], "complete")
+})
+
+test("test_fetch_shouldMarkTotalsPartial_onProviderUsageWithoutCost", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const datasetSpy = makeAnalyticsEngineDatasetSpy()
+  const httpClientSpy = makeOpenRouterHttpClientSpy({
+    normalizerUsage: {
+      completion_tokens: 20,
+      prompt_tokens: 10,
+      total_tokens: 30
+    },
+    outlookUsage: {
+      completion_tokens: 20,
+      prompt_tokens: 10,
+      total_tokens: 30
+    }
+  })
+  const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const env = makeEnv({
+    ENVIRONMENT: "prod",
+    NORMALIZER_CACHE: normalizerCacheSpy.kv,
+    NORMALIZER_MODEL: "openrouter/normalizer-model",
+    OUTLOOK_CACHE: outlookCacheSpy.kv,
+    OUTLOOK_MODEL: "openrouter/outlook-model",
+    TELEMETRY_DATASET: datasetSpy.dataset
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  await response?.json()
+
+  const apiRequests = datasetSpy.calls.filter((dataPoint) => dataPoint?.indexes?.[0] === "api_request")
+
+  assert.equal(apiRequests.length, 1)
+  assert.equal(apiRequests[0].doubles?.[2], 2)
+  assert.equal(apiRequests[0].doubles?.[3], 60)
+  assert.equal(apiRequests[0].doubles?.[4], 0)
+  assert.equal(apiRequests[0].indexes?.[8], "partial")
+})
+
+test("test_fetch_shouldMarkTotalsMissing_onMissingProviderMetadata", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const datasetSpy = makeAnalyticsEngineDatasetSpy()
+  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const env = makeEnv({
+    ENVIRONMENT: "prod",
+    NORMALIZER_CACHE: normalizerCacheSpy.kv,
+    NORMALIZER_MODEL: "openrouter/normalizer-model",
+    OUTLOOK_CACHE: outlookCacheSpy.kv,
+    OUTLOOK_MODEL: "openrouter/outlook-model",
+    TELEMETRY_DATASET: datasetSpy.dataset
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  await response?.json()
+
+  const apiRequests = datasetSpy.calls.filter((dataPoint) => dataPoint?.indexes?.[0] === "api_request")
+
+  assert.equal(apiRequests.length, 1)
+  assert.equal(apiRequests[0].doubles?.[2], 2)
+  assert.equal(apiRequests[0].doubles?.[3], 0)
+  assert.equal(apiRequests[0].doubles?.[4], 0)
+  assert.equal(apiRequests[0].indexes?.[8], "missing")
+})
+
+test("test_fetch_shouldNotFailResponse_onTelemetryDatasetThrowing", async () => {
+  const assemblerModule = await loadAssemblerModule()
+  const datasetSpy = makeAnalyticsEngineDatasetSpy({ shouldThrow: true })
+  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
+  const env = makeEnv({
+    ENVIRONMENT: "prod",
+    NORMALIZER_CACHE: normalizerCacheSpy.kv,
+    NORMALIZER_MODEL: "openrouter/normalizer-model",
+    OUTLOOK_CACHE: outlookCacheSpy.kv,
+    OUTLOOK_MODEL: "openrouter/outlook-model",
+    TELEMETRY_DATASET: datasetSpy.dataset
+  })
+  const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
+    httpClient: httpClientSpy.httpClient,
+    requestIdGenerator: () => "request-id"
+  })
+
+  const response = await workerFetch?.(new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+  const body = await response?.json()
+
+  assert.equal(body?.needsClarification, false)
 })
 
 test("test_makeWorkerFetch_shouldUseDefaultBaseUrlAndConfiguredModels_onBlankOptionalBaseUrlBinding", async () => {
@@ -349,6 +591,7 @@ function makeD1DatabaseSpy() {
 function makeEnv(overrides = {}) {
   return {
     DB: makeD1DatabaseSpy().db,
+    ENVIRONMENT: "dev",
     NORMALIZER_CACHE: makeKvNamespaceSpy().kv,
     NORMALIZER_MODEL: "openai/gpt-5-nano",
     OPENROUTER_API_KEY: "openrouter-api-key",
@@ -393,7 +636,7 @@ function makeNormalizerResult() {
   }
 }
 
-function makeOpenRouterHttpClientSpy() {
+function makeOpenRouterHttpClientSpy({ normalizerUsage, outlookUsage } = {}) {
   const calls = []
 
   return {
@@ -413,6 +656,8 @@ function makeOpenRouterHttpClientSpy() {
 
       if (requestBody.model.includes("normalizer")) {
         return {
+          ok: true,
+          status: 200,
           async json() {
             return {
               choices: [
@@ -421,13 +666,16 @@ function makeOpenRouterHttpClientSpy() {
                     content: JSON.stringify(makeNormalizerResult())
                   }
                 }
-              ]
+              ],
+              usage: normalizerUsage
             }
           }
         }
       }
 
       return {
+        ok: true,
+        status: 200,
         async json() {
           return {
             choices: [
@@ -436,7 +684,8 @@ function makeOpenRouterHttpClientSpy() {
                   content: JSON.stringify(makeOutlookAnswer())
                 }
               }
-            ]
+            ],
+            usage: outlookUsage
           }
         }
       }
@@ -475,6 +724,23 @@ function makeRequestIdGeneratorSpy() {
 
 function normalizeWhitespace(value) {
   return value.trim().replace(/\s+/g, " ")
+}
+
+function makeAnalyticsEngineDatasetSpy({ shouldThrow = false } = {}) {
+  const calls = []
+
+  return {
+    calls,
+    dataset: {
+      writeDataPoint(dataPoint) {
+        calls.push(dataPoint)
+
+        if (shouldThrow) {
+          throw new Error("dataset write failed")
+        }
+      }
+    }
+  }
 }
 
 async function loadAssemblerModule() {

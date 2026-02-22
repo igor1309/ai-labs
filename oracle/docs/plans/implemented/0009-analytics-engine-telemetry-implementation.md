@@ -50,7 +50,7 @@ Out of scope:
 - If `separate_worktree=fail`, stop immediately and ask for direction. Do not continue implementation.
 
 Preflight status (2026-02-22):
-- `Preflight: worktree=/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/worktrees/oracle-0004-telemetry-plan, branch=codex/oracle-0004-telemetry-plan, separate_worktree=pass`
+- `Preflight: worktree=/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/worktrees/oracle-0009-telemetry-impl, branch=codex/oracle-0009-telemetry-impl, separate_worktree=pass`
 
 ## Execution Lock (Mandatory)
 1. Run preflight and mark `Preflight check: [x] done` before Step 1.
@@ -69,14 +69,14 @@ Preflight status (2026-02-22):
 
 ## Progress Tracker
 - [x] Preflight check complete
-- [ ] Step 1 complete
-- [ ] Step 2 complete
-- [ ] Step 3 complete
-- [ ] Step 4 complete
-- [ ] Step 5 complete
-- [ ] Final gates green
-- [ ] Plan moved to `implemented/`
-- [ ] PR created
+- [x] Step 1 complete
+- [x] Step 2 complete
+- [x] Step 3 complete
+- [x] Step 4 complete
+- [x] Step 5 complete
+- [x] Final gates green
+- [x] Plan moved to `implemented/`
+- [x] PR created
 
 ## Step 1: Define AE Telemetry Contract and Writer
 ### Changes

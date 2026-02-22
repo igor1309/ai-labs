@@ -101,6 +101,7 @@ function makeAppEnv() {
         }
       }
     },
+    ENVIRONMENT: "dev",
     NORMALIZER_CACHE: {
       async get() {
         return null

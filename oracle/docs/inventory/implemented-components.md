@@ -1,7 +1,7 @@
 ---
-date: 2026-02-21
-model: gpt-5
-description: "Inventory of implemented modules, adapters, wiring points, tests, and Cloudflare bindings"
+date: 2026-02-22
+model: gpt-5.2
+description: "Inventory of implemented modules, adapters, wiring points, tests, and Cloudflare bindings (including prod-only Analytics Engine telemetry)"
 ---
 
 # Inventory: Implemented Modules and Adapters
@@ -36,7 +36,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Cache key policy:
 - `normalizer:${locale}:${normalizedProfession}`
 - Wiring point:
-- Created in assembler via `createProfessionNormalizer({...})` inside `makeWorkerFetch(...)`.
+- Created per request in assembler via `createProfessionNormalizer({...})` inside `makeWorkerFetch(...)`.
 - Tests:
 - `oracle/packages/profession-normalizer/tests/profession-normalizer.test.js`
 - Asserts dependency validation, configured singleton delegation, cache hit/miss behavior, cache keying, normalization helper behavior, clarification-result passthrough.
@@ -52,7 +52,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Cache key policy:
 - `outlook:${canonicalProfession}:${locale}:${schemaVersion}:${promptVersion}`
 - Wiring point:
-- Created in assembler via `createProfessionOutlookService({...})` inside `makeWorkerFetch(...)`.
+- Created per request in assembler via `createProfessionOutlookService({...})` inside `makeWorkerFetch(...)`.
 - Tests:
 - `oracle/packages/profession-outlook/tests/profession-outlook.test.js`
 - Asserts dependency validation, cache hit/miss behavior, key composition, promptVersion + hints propagation, unknown field filtering, null/undefined miss handling.
@@ -76,17 +76,35 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 #### `createWorkerFetchHandler` (composition wiring)
 - Source: `oracle/packages/worker-api/src/worker-api.js`
 - Public API:
-- `createWorkerFetchHandler({ requestGuard, professionNormalizer, professionOutlookService, popularityTracker, requestIdGenerator }) -> fetch(request)`
+- `createWorkerFetchHandler({ requestGuard, makeProfessionNormalizer, makeProfessionOutlookService, popularityTracker, requestIdGenerator, telemetry }) -> fetch(request)`
 - Contract:
 - Parses request JSON for `/api/outlook`.
 - Returns structured clarification response on JSON parse failure or guard/normalizer clarification.
 - Calls `popularityTracker.track(...)` on every guard-valid request after normalization (canonical and clarification paths).
 - On canonical flow: queries outlook service and returns structured answer response.
+- Generates `requestId` once per request and reuses it in response + telemetry.
+- Emits best-effort, prod-only Analytics Engine telemetry:
+  - `api_request`: exactly 1 per `/api/outlook` request,
+  - `llm_call`: 0-2 per `/api/outlook` request (only on attempted OpenRouter calls).
 - Wiring point:
 - Assembled by `makeWorkerFetch(...)`, then wrapped by entrypoint router.
 - Tests:
 - `oracle/packages/worker-api/tests/worker-api.composition.test.js`
 - Asserts dependency validation, call ordering, invalid JSON behavior, guard invalid behavior, normalizer clarification behavior, tracker call behavior, final response shape.
+
+#### `analytics-engine-telemetry` (worker-api component)
+- Source: `oracle/packages/worker-api/src/analytics-engine-telemetry.js`
+- Public API:
+- `createAnalyticsEngineTelemetry({ dataset, environment, waitUntil? }) -> { emitApiRequest(...), emitLlmCall(...) }`
+- `createNoopAnalyticsEngineTelemetry() -> { emitApiRequest(), emitLlmCall() }`
+- Contract:
+- Stable column mapping with `eventSchemaVersion=1`.
+- Text-free by design; correlation `requestId` is stored as a blob (not indexed).
+- Best-effort emission: never blocks responses and swallows dataset write failures.
+- Wiring point:
+- Assembled in `makeWorkerFetch(...)` from `env.ENVIRONMENT`, `env.TELEMETRY_DATASET` (prod-only), and `ctx.waitUntil`.
+- Tests:
+- `oracle/packages/worker-api/tests/analytics-engine-telemetry.test.js`
 
 #### `createPopularityTracker` (worker-api decorator)
 - Source: `oracle/packages/worker-api/src/popularity-tracker.js`
@@ -137,7 +155,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 #### `createOpenRouterNormalizerModelClient`
 - Source: `oracle/packages/worker-api/src/openrouter-normalizer-model-client-adapter.js`
 - Public API:
-- `createOpenRouterNormalizerModelClient({ apiKey, baseUrl, httpClient, model, timeoutMs }) -> { normalize(input) }`
+- `createOpenRouterNormalizerModelClient({ apiKey, baseUrl, httpClient, model, timeoutMs, telemetry?, requestId?, schemaVersion?, llmCallAccumulator? }) -> { normalize(input) }`
 - External dependency:
 - OpenRouter HTTP endpoint `/api/v1/chat/completions`.
 - Behavior:
@@ -154,7 +172,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 #### `createOpenRouterOutlookModelClient`
 - Source: `oracle/packages/worker-api/src/openrouter-outlook-model-client-adapter.js`
 - Public API:
-- `createOpenRouterOutlookModelClient({ apiKey, baseUrl, httpClient, model, timeoutMs }) -> { generate(input) }`
+- `createOpenRouterOutlookModelClient({ apiKey, baseUrl, httpClient, model, timeoutMs, telemetry?, requestId?, llmCallAccumulator? }) -> { generate(input) }`
 - External dependency:
 - OpenRouter HTTP endpoint `/api/v1/chat/completions`.
 - Behavior:
