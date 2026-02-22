@@ -10,7 +10,7 @@
   "scripts": {
     "test": "node --test oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js",
     "web:deploy": "WRANGLER_LOG_PATH=.wrangler/logs wrangler pages deploy src --project-name am-i-done-web --cwd oracle/apps/am-i-done-web",
-    "web:dev": "WRANGLER_LOG_PATH=.wrangler/logs wrangler pages dev src --cwd oracle/apps/am-i-done-web",
+    "web:dev": "WRANGLER_LOG_PATH=.wrangler/logs wrangler pages dev src --cwd oracle/apps/am-i-done-web --binding API_BASE_URL=${API_BASE_URL:-http://localhost:8787}",
     "worker:dev": "WRANGLER_LOG_PATH=.wrangler/logs wrangler dev --cwd oracle/apps/am-i-done-api",
     "worker:deploy": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --cwd oracle/apps/am-i-done-api"
   }
