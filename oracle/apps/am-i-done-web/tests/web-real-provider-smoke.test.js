@@ -4,7 +4,6 @@ import test from "node:test"
 import { makeWorkerFetch } from "../../am-i-done-api/src/worker-fetch-assembler.js"
 
 const runRealProviderSmoke = process.env.RUN_REAL_PROVIDER_SMOKE === "1"
-const DEFAULT_OPENROUTER_MODEL = "openai/gpt-5-nano"
 
 test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession", async (testContext) => {
   if (!runRealProviderSmoke) {
@@ -13,14 +12,8 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
   }
 
   const openRouterApiKey = resolveOpenRouterApiKey(process.env.OPENROUTER_API_KEY)
-  const normalizerModel = resolveModel(process.env.NORMALIZER_MODEL, {
-    defaultValue: DEFAULT_OPENROUTER_MODEL,
-    name: "NORMALIZER_MODEL"
-  })
-  const outlookModel = resolveModel(process.env.OUTLOOK_MODEL, {
-    defaultValue: DEFAULT_OPENROUTER_MODEL,
-    name: "OUTLOOK_MODEL"
-  })
+  const normalizerModel = resolveRequiredModel(process.env.NORMALIZER_MODEL, "NORMALIZER_MODEL")
+  const outlookModel = resolveRequiredModel(process.env.OUTLOOK_MODEL, "OUTLOOK_MODEL")
   const workerFetch = makeWorkerFetch({
     DB: makeD1DatabaseSpy(),
     ENVIRONMENT: "dev",
@@ -58,6 +51,18 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
   assert.ok(body.requestId.length > 0)
 })
 
+test("test_resolveRequiredModel_shouldThrowError_onMissingBinding", () => {
+  assert.throws(() => resolveRequiredModel(undefined, "NORMALIZER_MODEL"), {
+    message: "Missing required NORMALIZER_MODEL for real-provider smoke checks."
+  })
+})
+
+test("test_resolveRequiredModel_shouldReturnTrimmedBinding_onValidBinding", () => {
+  const model = resolveRequiredModel("  z-ai/glm-4.5-air:free  ", "OUTLOOK_MODEL")
+
+  assert.equal(model, "z-ai/glm-4.5-air:free")
+})
+
 function makeD1DatabaseSpy() {
   return {
     prepare() {
@@ -93,16 +98,10 @@ function resolveOpenRouterApiKey(bindingValue) {
   return bindingValue
 }
 
-function resolveModel(bindingValue, { defaultValue, name }) {
-  if (bindingValue === undefined || bindingValue === null) {
-    return defaultValue
+function resolveRequiredModel(bindingValue, name) {
+  if (typeof bindingValue !== "string" || bindingValue.trim() === "") {
+    throw new Error(`Missing required ${name} for real-provider smoke checks.`)
   }
 
-  if (typeof bindingValue !== "string") {
-    throw new Error(`Invalid ${name} for real-provider smoke checks.`)
-  }
-
-  const trimmedBindingValue = bindingValue.trim()
-
-  return trimmedBindingValue === "" ? defaultValue : trimmedBindingValue
+  return bindingValue.trim()
 }
