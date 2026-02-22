@@ -117,12 +117,6 @@ Adapter testing rule:
 Final assembler testing rule:
 - Add minimal integration/smoke tests for environment/config selection and fail-closed production wiring.
 
-## TDD for Composition
-When TDD is requested:
-1. RED: add one wiring test for one flow edge.
-2. GREEN: minimal wiring/mapping change for that edge.
-3. No concrete implementation added in composition during GREEN.
-
 ## Review Checklist
 - Composition contains no runtime business decision logic.
 - Runtime branching in composition is only technical (validation/dependency/env/error plumbing).
