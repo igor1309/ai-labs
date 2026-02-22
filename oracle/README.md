@@ -81,3 +81,10 @@ Run all commands from repo root.
 - Trigger: push a tag matching `v*` (for example `v0.1.0`).
 - Guard: tag must equal root `package.json` version.
 - Pipeline: core → web-e2e → deploy worker/pages.
+
+### Required GitHub configuration
+- Secrets:
+  - `CLOUDFLARE_API_TOKEN` (deploy Worker/Pages)
+  - `CLOUDFLARE_ACCOUNT_ID` (deploy Worker/Pages; required for some Cloudflare setups)
+  - `CI_BOT_TOKEN` (Telegram notifications)
+  - `CI_CHAT_ID` (Telegram notifications)

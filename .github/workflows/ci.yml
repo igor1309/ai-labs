@@ -38,7 +38,7 @@ jobs:
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
 
   notify:
-    if: ${{ !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') }}
+    if: ${{ always() && !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') }}
     needs: [tests, real-provider-smoke]
     runs-on: ubuntu-latest
     steps:

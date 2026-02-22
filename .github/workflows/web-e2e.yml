@@ -11,7 +11,7 @@ jobs:
     uses: ./.github/workflows/core-web-e2e.yml
 
   notify:
-    if: ${{ !cancelled() && needs.web-e2e.result == 'failure' }}
+    if: ${{ always() && !cancelled() && needs.web-e2e.result == 'failure' }}
     needs: [web-e2e]
     runs-on: ubuntu-latest
     steps:

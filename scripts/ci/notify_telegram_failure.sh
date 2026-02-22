@@ -11,4 +11,4 @@ fi
 : "${CI_BOT_TOKEN:?CI_BOT_TOKEN is required}"
 : "${CI_CHAT_ID:?CI_CHAT_ID is required}"
 
-curl -fsS -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=${message}"
+curl -fsS -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" --data-urlencode "text=${message}"

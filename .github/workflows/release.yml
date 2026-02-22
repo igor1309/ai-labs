@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -73,7 +73,7 @@ jobs:
         run: npm run web:deploy
 
   notify:
-    if: ${{ !cancelled() && failure() }}
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure') }}
     needs: [verify, core, web-e2e, deploy]
     runs-on: ubuntu-latest
     steps:
