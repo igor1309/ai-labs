@@ -69,6 +69,21 @@ Mandatory after each implementation step:
 6. Push the branch to `origin` unless explicitly instructed not to push.
 7. Stop and wait for review approval before starting the next step.
 
+## Plan Creation Lock
+
+When creating implementation plans (especially from review findings), the plan must include an explicit execution lock:
+
+1. Start from a new separate git worktree with a dedicated branch.
+2. Execute one step at a time with a green gate per step.
+3. For each step, run required targeted tests and full suite `./scripts/run_silent.sh "tests" npm test`.
+4. Proceed only if green; if tests fail, fix first and re-run until green.
+5. Commit step changes only after green.
+6. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
+7. Mark implemented step status in the plan and commit the plan status update.
+8. Repeat the same process for each next step.
+9. At completion, run final gates: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
+10. Move completed plan from `docs/plans/` to `docs/plans/implemented/`, commit the move, and create a PR.
+
 ## Release Process
 
 Release policy is outcome-based. Commands are implementation detail; these invariants are mandatory:

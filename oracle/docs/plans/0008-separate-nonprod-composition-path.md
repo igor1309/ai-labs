@@ -29,6 +29,32 @@ description: "Implementation plan to separate non-production composition wiring 
 - Keep business behavior unchanged.
 - Keep changes surgical to composition wiring, composition tests, and required docs/config references.
 
+## Execution Lock (Mandatory)
+1. Start in a new, separate git worktree for this plan and use a dedicated branch.
+2. Execute one plan step at a time; do not overlap step scopes.
+3. For each step, reach green before proceeding:
+   - run required targeted tests for the step,
+   - run full suite `./scripts/run_silent.sh "tests" npm test`,
+   - proceed only if green.
+4. When a step is green, create a step commit for implementation changes.
+5. Self-review immediately after the step commit.
+6. If self-review finds fail/warning issues, fix immediately, re-run tests to green, and commit fixes.
+7. Mark the implemented step as done in this plan and commit the plan status update.
+8. Repeat the same process for the next step.
+9. After all steps are done, run final gates:
+   - `./scripts/run_silent.sh "build" npx tsc --noEmit`
+   - `./scripts/run_silent.sh "tests" npm test`
+   - if tests/build fail, fix first and re-run until green.
+10. Move this plan file to `oracle/docs/plans/implemented/`, commit the move, then create a PR.
+
+## Progress Tracker
+- [ ] Step 1 complete
+- [ ] Step 2 complete
+- [ ] Step 3 complete
+- [ ] Final gates green
+- [ ] Plan moved to `implemented/`
+- [ ] PR created
+
 ## Step 1: Separate Non-Production Composition Wiring (Finding 1)
 ### Changes
 - Make production assembler path real-provider only:
@@ -48,6 +74,7 @@ description: "Implementation plan to separate non-production composition wiring 
 
 ### Commit
 - `separate nonprod composition wiring`
+- then update this plan tracker (`Step 1 complete`) and commit the tracker change.
 
 ## Step 2: Complete Wiring Dependency-Validation Coverage (Finding 2)
 ### Changes
@@ -65,6 +92,7 @@ description: "Implementation plan to separate non-production composition wiring 
 
 ### Commit
 - `cover composition dependency validation gaps`
+- then update this plan tracker (`Step 2 complete`) and commit the tracker change.
 
 ## Step 3: Final Closeout
 ### Changes
@@ -79,4 +107,6 @@ description: "Implementation plan to separate non-production composition wiring 
 - `./scripts/run_silent.sh "tests" npm test`
 
 ### Commit
-- no extra commit unless Step 1 or Step 2 fixes are required by closeout review.
+- update this plan tracker (`Step 3 complete` and `Final gates green`) and commit the tracker change.
+- move this plan to `oracle/docs/plans/implemented/`, commit the move.
+- create PR with the full change set from this plan branch/worktree.
