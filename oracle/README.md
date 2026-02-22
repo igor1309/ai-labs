@@ -20,10 +20,11 @@ description: "Deploy runbook for Am I done frontend (Pages) and backend (Workers
    - `NORMALIZER_CACHE` (KV namespace)
    - `OUTLOOK_CACHE` (KV namespace)
    - `DB` (D1 database)
-4. Set required backend secret:
+4. For local Worker development, copy `oracle/apps/am-i-done-api/.dev.vars.example` to `oracle/apps/am-i-done-api/.dev.vars` and set local values.
+5. Set required backend secret:
    - `npx wrangler secret put OPENROUTER_API_KEY --cwd oracle/apps/am-i-done-api`
-5. Prepare a custom domain/zone for same-origin API routing (for example `am-i-done.example.com`) so `/api/*` can be routed to the Worker service.
-6. Run tests before deployment:
+6. Prepare a custom domain/zone for same-origin API routing (for example `am-i-done.example.com`) so `/api/*` can be routed to the Worker service.
+7. Run tests before deployment:
    - `./scripts/run_silent.sh "tests" npm test`
 
 ## Deploy backend (Worker)

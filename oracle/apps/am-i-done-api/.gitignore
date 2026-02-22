@@ -1,0 +1,6 @@
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+!.env.example
+!.dev.vars.example
