@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-22
+- Add `oracle/README.md` deployment runbook documenting Cloudflare Worker (`am-i-done-api`) deployment, Cloudflare Pages frontend deployment, and same-origin `/api/*` route wiring required by the web app.
+
 ## 2026-02-21
 - Lock frontend v1 foundation decisions in docs: vanilla TypeScript UI, same-origin `/api/outlook` routing, and locale policy (`en-US` for v1, auto-detect with `en-US` fallback planned for v2).
 - Implement web E2E coverage: add `am-i-done-web` UI (happy/clarification/transport-failure states), deterministic Worker model-stub mode for CI-safe browser tests, and move plan `0006-add-web-e2e-once-ui-exists.md` to implemented.
