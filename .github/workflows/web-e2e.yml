@@ -8,6 +8,9 @@ permissions:
 
 jobs:
   web-e2e:
+    permissions:
+      actions: write
+      contents: read
     uses: ./.github/workflows/core-web-e2e.yml
 
   notify:

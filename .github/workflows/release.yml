@@ -49,6 +49,9 @@ jobs:
 
   web-e2e:
     needs: [core]
+    permissions:
+      actions: write
+      contents: read
     uses: ./.github/workflows/core-web-e2e.yml
 
   deploy:
