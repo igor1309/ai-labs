@@ -21,11 +21,28 @@ description: "Deploy runbook for Am I done frontend (Pages) and backend (Workers
    - `OUTLOOK_CACHE` (KV namespace)
    - `DB` (D1 database)
 4. For local Worker development, copy `oracle/apps/am-i-done-api/.dev.vars.example` to `oracle/apps/am-i-done-api/.dev.vars` and set local values.
+   - Required local values include:
+     - `OPENROUTER_API_KEY`
+     - `NORMALIZER_MODEL` (default example: `openai/gpt-5-nano`)
+     - `OUTLOOK_MODEL` (default example: `openai/gpt-5-nano`)
+   - Runtime defaults in `oracle/apps/am-i-done-api/wrangler.toml` are:
+     - `NORMALIZER_MODEL="openai/gpt-5-nano"`
+     - `OUTLOOK_MODEL="openai/gpt-5-nano"`
 5. Set required backend secret:
    - `npx wrangler secret put OPENROUTER_API_KEY --cwd oracle/apps/am-i-done-api`
 6. Prepare a custom domain/zone for same-origin API routing (for example `am-i-done.example.com`) so `/api/*` can be routed to the Worker service.
 7. Run tests before deployment:
    - `./scripts/run_silent.sh "tests" npm test`
+
+## Local development (web + worker)
+1. Start Worker API:
+   - `npm run worker:dev`
+2. Start frontend:
+   - `npm run web:dev`
+3. Open local web app:
+   - `http://localhost:8788`
+
+`web:dev` automatically binds `API_BASE_URL` to `http://localhost:8787` by default, so same-origin `/api/*` requests proxy to the local Worker without extra flags.
 
 ## Deploy backend (Worker)
 1. Confirm Worker config exists:

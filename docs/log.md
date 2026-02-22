@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-22
+Document Oracle local-dev automation: `npm run web:dev` now auto-binds `API_BASE_URL` to local worker by default, and worker model defaults are configured via vars (`openai/gpt-5-nano`) instead of assembler hardcoded values.
 Add repo-wide `.env`/`.dev.vars` gitignore protection so local secret files stay untracked by default.
 
 ## 2026-02-21
