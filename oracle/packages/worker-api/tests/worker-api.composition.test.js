@@ -22,6 +22,44 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onPopulari
   }), { message: "Invalid dependency: popularityTracker.track" })
 })
 
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingProfessionNormalizer", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Missing required dependency: professionNormalizer" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessionNormalizerWithoutNormalizeMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: {},
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Invalid dependency: professionNormalizer.normalize" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingProfessionOutlookService", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Missing required dependency: professionOutlookService" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onProfessionOutlookServiceWithoutGetOutlookMethod", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: {},
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: () => "request-id"
+  }), { message: "Invalid dependency: professionOutlookService.getOutlook" })
+})
+
 test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunctionPopularityTrackerErrorReporter", () => {
   assert.throws(() => createWorkerFetchHandler({
     onPopularityTrackerError: {},
@@ -50,6 +88,25 @@ test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onRequestG
     requestGuard: {},
     requestIdGenerator: () => "request-id"
   }), { message: "Invalid dependency: requestGuard.validate" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowMissingDependencyError_onMissingRequestIdGenerator", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard
+  }), { message: "Missing required dependency: requestIdGenerator" })
+})
+
+test("test_createWorkerFetchHandler_shouldThrowInvalidDependencyError_onNonFunctionRequestIdGenerator", () => {
+  assert.throws(() => createWorkerFetchHandler({
+    popularityTracker: makePopularityTrackerSpy().tracker,
+    professionNormalizer: makeProfessionNormalizerSpy().service,
+    professionOutlookService: makeProfessionOutlookServiceSpy().service,
+    requestGuard: makeRequestGuardSpy().guard,
+    requestIdGenerator: {}
+  }), { message: "Invalid dependency: requestIdGenerator" })
 })
 
 test("test_fetch_shouldCallRequestGuardWithRequestBody_onOutlookRequest", async () => {

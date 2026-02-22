@@ -48,12 +48,13 @@ description: "Implementation plan to move deterministic E2E wiring into test-own
 10. Move this plan file to `oracle/docs/plans/implemented/`, commit the move, then create a PR.
 
 ## Progress Tracker
-- [ ] Step 1 complete
-- [ ] Step 2 complete
+- [x] Step 1 complete
+- [x] Step 2 complete
 - [ ] Step 3 complete
 - [ ] Final gates green
 - [ ] Plan moved to `implemented/`
 - [ ] PR created
+- Build gate currently blocked in this environment: `./scripts/run_silent.sh "build" npx tsc --noEmit` fails because `npx` cannot reach npm registry (`ENOTFOUND proxy.enoa.ai`) and no local `tsc` binary is installed.
 
 ## Step 1: Move Deterministic Wiring to Test-Owned SUT Harness (Finding 1)
 ### Changes

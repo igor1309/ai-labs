@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 
 import { chromium } from "@playwright/test"
 
-import { makeWorkerFetch } from "../../am-i-done-api/src/worker-fetch-assembler.js"
+import { makeDeterministicWorkerFetch } from "./support/deterministic-worker-fetch.js"
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 const webSourceDirectory = path.resolve(currentDirectory, "../src")
@@ -109,7 +109,7 @@ test("test_webE2E_shouldRenderTransportFailureState_onWorkerTimeout", async (tes
   }
 
   const workerServer = await startWorkerServer({
-    modelStubDelayMs: "120"
+    modelDelayMs: "120"
   })
   const webServer = await startWebServer({
     workerBaseUrl: workerServer.origin
@@ -162,33 +162,6 @@ function createServerHandle(server) {
       })
     },
     origin: `http://127.0.0.1:${server.address().port}`
-  }
-}
-
-function makeD1DatabaseSpy() {
-  return {
-    prepare() {
-      return {
-        bind() {
-          return {
-            async run() {}
-          }
-        }
-      }
-    }
-  }
-}
-
-function makeKvNamespaceSpy() {
-  const map = new Map()
-
-  return {
-    async get(key) {
-      return map.has(key) ? map.get(key) : null
-    },
-    async put(key, value) {
-      map.set(key, value)
-    }
   }
 }
 
@@ -279,14 +252,9 @@ async function startWebServer({ workerBaseUrl }) {
   return createServerHandle(server)
 }
 
-async function startWorkerServer({ modelStubDelayMs = "0" } = {}) {
-  const workerFetch = makeWorkerFetch({
-    DB: makeD1DatabaseSpy(),
-    MODEL_PROVIDER_MODE: "stub",
-    MODEL_STUB_DELAY_MS: modelStubDelayMs,
-    NORMALIZER_CACHE: makeKvNamespaceSpy(),
-    OUTLOOK_CACHE: makeKvNamespaceSpy(),
-    PROMPT_VERSION: "1"
+async function startWorkerServer({ modelDelayMs = "0" } = {}) {
+  const workerFetch = makeDeterministicWorkerFetch({
+    delayMs: Number.parseInt(modelDelayMs, 10)
   })
 
   const server = createServer(async (request, response) => {
