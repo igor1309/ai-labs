@@ -14,7 +14,7 @@ The backend Worker is already implemented and the web UI is the next layer. We n
 
 ## Decisions
 ### UI stack (v1)
-Use vanilla TypeScript for the initial web app flow.
+Use vanilla JavaScript for the initial web app flow.
 
 Reasoning:
 - The v1 flow is a single submit action and a small state machine (`idle`, `submitting`, `received`, `failed`).

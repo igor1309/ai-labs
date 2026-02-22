@@ -20,10 +20,10 @@ Required:
 - `env.NORMALIZER_CACHE`: KV namespace for normalizer cache
 - `env.OUTLOOK_CACHE`: KV namespace for outlook cache
 - `env.DB`: D1 database binding
-- `env.OPENROUTER_API_KEY`: secret (string)
-- `env.PROMPT_VERSION`: string (default `"1"` in config)
+- `env.OPENROUTER_API_KEY`: secret (string), unless `env.MODEL_PROVIDER_MODE="stub"`
 
 Optional (v1 defaults may be provided by the assembler):
+- `env.PROMPT_VERSION`: string (default `"1"` in config)
 - `env.NORMALIZER_MODEL`: OpenRouter model id
 - `env.OUTLOOK_MODEL`: OpenRouter model id
 - `env.OPENROUTER_BASE_URL`: override base URL

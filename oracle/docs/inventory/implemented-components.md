@@ -278,6 +278,6 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `oracle/docs/specs/implemented/openrouter-outlook-model-client-adapter.md`
 - `oracle/docs/specs/implemented/popularity-counters-store.md`
 - `oracle/docs/specs/implemented/raw-input-counters-store.md`
-- `oracle/docs/specs/popularity-tracker.md`
+- `oracle/docs/specs/implemented/popularity-tracker.md`
 - `oracle/docs/specs/implemented/worker-api-entrypoint-router.md`
 - `oracle/docs/specs/implemented/worker-api-assembler.md`
