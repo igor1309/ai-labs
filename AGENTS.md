@@ -79,7 +79,8 @@ Before any implementation action (editing files, running implementation tests, o
 3. Capture current worktree path and branch.
 4. Emit a preflight status line:
    - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
-5. If separate worktree is required and preflight is `fail`, stop immediately and ask for direction. Do not implement until this is resolved.
+   - `separate_worktree=pass` means the current worktree is a newly created, non-root worktree (typically under `worktrees/<slug>`) and the branch is the dedicated work branch (typically `codex/<slug>`).
+5. If separate worktree is required and preflight is `fail`, create a new separate worktree and rerun preflight until it is `pass` (do not implement from the root worktree). Example: `git worktree add -b codex/<slug> worktrees/<slug> trunk`
 6. If any preflight item fails, no file edits are allowed.
 
 ## Process Discipline Hard Gates
