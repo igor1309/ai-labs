@@ -66,18 +66,33 @@ Mandatory after each implementation step:
 3. Run the full test suite and fix failures until it passes.
 4. Summarize what changed and why.
 5. Commit only files related to the current step.
-6. Push the branch to `origin` unless explicitly instructed not to push.
-7. Stop and wait for review approval before starting the next step.
+6. Update plan tracker checkboxes only for gates with verified evidence (successful command/check output).
+7. Push the branch to `origin` unless explicitly instructed not to push.
+8. Stop and wait for review approval before starting the next step.
 
 ## Implementation Preflight Gate (Blocking)
 
 Before any implementation action (editing files, running implementation tests, or committing), run and report preflight:
 
-1. Confirm whether the active plan requires a separate worktree.
-2. Capture current worktree path and branch.
-3. Emit a preflight status line:
+1. Confirm whether the active plan requires a separate worktree/branch.
+2. Verify with git commands (minimum): `git worktree list --porcelain` and `git branch --show-current`.
+3. Capture current worktree path and branch.
+4. Emit a preflight status line:
    - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
-4. If separate worktree is required and preflight is `fail`, stop immediately and ask for direction. Do not implement until this is resolved.
+5. If separate worktree is required and preflight is `fail`, stop immediately and ask for direction. Do not implement until this is resolved.
+6. If any preflight item fails, no file edits are allowed.
+
+## Process Discipline Hard Gates
+
+- Execution lock is mandatory, never advisory.
+- If a plan requires a separate worktree/branch, no edits may start before preflight passes.
+- User scope changes do not implicitly waive plan locks.
+- If a requested action would violate a plan lock, ask one explicit override question first and proceed only after confirmation.
+- Commit is forbidden while any mandatory plan gate is incomplete, unless the user explicitly approves overriding that gate.
+- Immediately before commit, list gate status (`passed` or `not passed`) for required preflight, tests, build, step closeout, and plan-tracker updates.
+- Do not claim completion ("done", "in full", "completed") unless all mandatory gates have passed.
+- If blocked by environment (tooling, network, permissions), report blocked status and list exact unmet gates.
+- If the agent detects it already violated a lock, report that violation immediately before any further action.
 
 ## Plan Creation Lock
 
