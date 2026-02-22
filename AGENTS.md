@@ -127,6 +127,7 @@ Release policy is outcome-based. Commands are implementation detail; these invar
 - **Push safety**: push only `trunk` and the explicit release tag; never `git push --tags`.
 - **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging. `tsx` (test runner) ignores unused imports; `tsc` (CI build) does not.
 - **Deployment gate**: releases deploy via CI on tag push after tests pass.
+- **CI trigger**: `.github/workflows/release.yml` runs on `v*` tag push and gates deploy via core → web-e2e → deploy (worker/pages).
 
 ## "protocol owned by client" rule
 
