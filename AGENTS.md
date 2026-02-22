@@ -114,7 +114,7 @@ When creating implementation plans (especially from review findings), the plan m
 9. Mark implemented step status in the plan and commit the plan status update.
 10. Repeat the same process for each next step.
 11. At completion, run final gates: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
-12. Move completed plan from `docs/plans/` to `docs/plans/implemented/`, commit the move, and create a PR.
+12. Move completed plan from `docs/plans/` to `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/` for project-scoped plans), commit the move, and create a PR.
 
 ## Release Process
 
