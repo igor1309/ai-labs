@@ -44,10 +44,13 @@ Out of scope:
 - Worktree required: yes
 - Expected worktree: separate worktree for this plan (not main `ai-labs` worktree)
 - Expected branch: `codex/*`
-- Preflight check: [ ] done
+- Preflight check: [x] done (2026-02-22)
 - Required preflight status line before Step 1:
 - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
 - If `separate_worktree=fail`, stop immediately and ask for direction. Do not continue implementation.
+
+Preflight status (2026-02-22):
+- `Preflight: worktree=/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/worktrees/oracle-0004-telemetry-plan, branch=codex/oracle-0004-telemetry-plan, separate_worktree=pass`
 
 ## Execution Lock (Mandatory)
 1. Run preflight and mark `Preflight check: [x] done` before Step 1.
