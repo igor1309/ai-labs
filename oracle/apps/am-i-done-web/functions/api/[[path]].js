@@ -13,7 +13,15 @@ export function resolveApiBaseUrl(value) {
     throw new Error("Missing required API_BASE_URL for Pages API proxy.")
   }
 
-  return value.trim()
+  const trimmedValue = value.trim()
+
+  try {
+    new URL(trimmedValue)
+  } catch {
+    throw new Error("Missing required API_BASE_URL for Pages API proxy.")
+  }
+
+  return trimmedValue
 }
 
 export function createUpstreamRequest({ apiBaseUrl, request }) {

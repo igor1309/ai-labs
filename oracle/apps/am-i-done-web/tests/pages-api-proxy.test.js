@@ -15,6 +15,12 @@ test("test_resolveApiBaseUrl_shouldReturnTrimmedBaseUrl_onStringValue", () => {
   assert.equal(value, "https://am-i-done-api.example.workers.dev")
 })
 
+test("test_resolveApiBaseUrl_shouldThrow_onInvalidUrlValue", () => {
+  assert.throws(() => resolveApiBaseUrl("not-a-url"), {
+    message: "Missing required API_BASE_URL for Pages API proxy."
+  })
+})
+
 test("test_createUpstreamRequest_shouldPreserveMethodPathAndQuery_onProxyRequest", () => {
   const upstreamRequest = createUpstreamRequest({
     apiBaseUrl: "https://am-i-done-api.example.workers.dev",
