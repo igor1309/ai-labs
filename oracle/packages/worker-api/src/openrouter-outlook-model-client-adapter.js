@@ -1,6 +1,15 @@
 const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
 
-export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://openrouter.ai", httpClient = fetch, model, timeoutMs } = {}) {
+export function createOpenRouterOutlookModelClient({
+  apiKey,
+  baseUrl = "https://openrouter.ai",
+  httpClient = fetch,
+  llmCallAccumulator,
+  model,
+  requestId,
+  telemetry,
+  timeoutMs
+} = {}) {
   if (apiKey === undefined || apiKey === null) {
     throw new Error("Missing required dependency: apiKey")
   }
@@ -22,6 +31,20 @@ export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://
 
   return {
     async generate(input) {
+      const startTimeMs = Date.now()
+      const locale = typeof input?.locale === "string" ? input.locale : ""
+      const schemaVersion = typeof input?.schemaVersion === "string" ? input.schemaVersion : ""
+      const promptVersion = typeof input?.promptVersion === "string" ? input.promptVersion : ""
+      let httpStatus = 0
+      let errorType = ""
+      let status = "error"
+      let usageSource = "missing"
+      let costSource = "missing"
+      let promptTokens = 0
+      let completionTokens = 0
+      let totalTokens = 0
+      let costMicrosUsd = 0
+
       const { cancelTimeout, signal } = createTimeoutSignal(timeoutMs)
 
       try {
@@ -51,23 +74,70 @@ export function createOpenRouterOutlookModelClient({ apiKey, baseUrl = "https://
           timeoutMs
         })
         const payload = await readJsonResponse(response)
+        httpStatus = toHttpStatus(response?.status)
+
+        ;({
+          completionTokens,
+          promptTokens,
+          totalTokens,
+          usageSource
+        } = extractUsage(payload))
+        ;({
+          costMicrosUsd,
+          costSource
+        } = extractCostMicrosUsd(payload))
 
         if (response?.ok === false) {
+          errorType = "http_error"
           throw new Error(formatOpenRouterHttpError(response?.status, payload))
         }
 
         const parsed = parseModelResponse(payload)
         validateOutlookAnswer(parsed)
 
+        status = "ok"
         return parsed
       } catch (error) {
         if (signal?.aborted) {
+          errorType = "timeout"
           throw new Error("OpenRouter request timed out")
+        }
+
+        if (errorType === "") {
+          errorType = classifyOpenRouterErrorType(error)
         }
 
         throw error
       } finally {
         cancelTimeout()
+
+        emitLlmCallTelemetry({
+          client: "outlook",
+          completionTokens,
+          costMicrosUsd,
+          costSource,
+          durationMs: Date.now() - startTimeMs,
+          errorType: status === "ok" ? "" : errorType,
+          httpStatus,
+          locale,
+          model,
+          promptTokens,
+          promptVersion,
+          requestId,
+          schemaVersion,
+          status,
+          telemetry,
+          totalTokens,
+          usageSource
+        })
+
+        recordAccumulatorCall({
+          costMicrosUsd,
+          costSource,
+          llmCallAccumulator,
+          totalTokens,
+          usageSource
+        })
       }
     }
   }
@@ -140,3 +210,176 @@ function areAllStrings(values) {
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== ""
 }
+
+function toHttpStatus(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function extractUsage(payload) {
+  const usage = payload?.usage
+
+  if (usage === undefined || usage === null) {
+    return {
+      completionTokens: 0,
+      promptTokens: 0,
+      totalTokens: 0,
+      usageSource: "missing"
+    }
+  }
+
+  const promptTokens = toNonNegativeInteger(usage?.prompt_tokens)
+  const completionTokens = toNonNegativeInteger(usage?.completion_tokens)
+  const totalTokens = toNonNegativeInteger(usage?.total_tokens)
+
+  if (promptTokens === null || completionTokens === null || totalTokens === null) {
+    return {
+      completionTokens: 0,
+      promptTokens: 0,
+      totalTokens: 0,
+      usageSource: "missing"
+    }
+  }
+
+  return {
+    completionTokens,
+    promptTokens,
+    totalTokens,
+    usageSource: "provider"
+  }
+}
+
+function extractCostMicrosUsd(payload) {
+  const usage = payload?.usage
+
+  const candidateFields = [
+    usage !== undefined && usage !== null && Object.prototype.hasOwnProperty.call(usage, "cost") ? usage.cost : undefined,
+    usage !== undefined && usage !== null && Object.prototype.hasOwnProperty.call(usage, "total_cost") ? usage.total_cost : undefined,
+    usage !== undefined && usage !== null && Object.prototype.hasOwnProperty.call(usage, "cost_usd") ? usage.cost_usd : undefined,
+    Object.prototype.hasOwnProperty.call(payload ?? {}, "cost") ? payload.cost : undefined
+  ]
+
+  for (const fieldValue of candidateFields) {
+    const costUsd = toNumber(fieldValue)
+
+    if (costUsd === null) {
+      continue
+    }
+
+    return {
+      costMicrosUsd: Math.round(costUsd * 1_000_000),
+      costSource: "provider"
+    }
+  }
+
+  return {
+    costMicrosUsd: 0,
+    costSource: "missing"
+  }
+}
+
+function toNumber(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function toNonNegativeInteger(value) {
+  const parsed = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : NaN
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null
+  }
+
+  return Math.floor(parsed)
+}
+
+function classifyOpenRouterErrorType(error) {
+  const message = typeof error?.message === "string" ? error.message : ""
+
+  if (message.includes("OpenRouter request failed")) {
+    return "http_error"
+  }
+
+  if (message === "Invalid JSON response from OpenRouter") {
+    return "invalid_json"
+  }
+
+  if (message.startsWith("Invalid outlook answer:")) {
+    return "invalid_schema"
+  }
+
+  if (message === "Invalid OpenRouter response") {
+    return "invalid_response"
+  }
+
+  return "http_error"
+}
+
+function emitLlmCallTelemetry({
+  client,
+  completionTokens,
+  costMicrosUsd,
+  costSource,
+  durationMs,
+  errorType,
+  httpStatus,
+  locale,
+  model,
+  promptTokens,
+  promptVersion,
+  requestId,
+  schemaVersion,
+  status,
+  telemetry,
+  totalTokens,
+  usageSource
+}) {
+  if (telemetry === undefined || telemetry === null || typeof telemetry.emitLlmCall !== "function") {
+    return
+  }
+
+  try {
+    telemetry.emitLlmCall({
+      client,
+      completionTokens,
+      costMicrosUsd,
+      costSource,
+      durationMs,
+      errorType,
+      httpStatus,
+      locale,
+      model,
+      promptTokens,
+      promptVersion,
+      requestId,
+      schemaVersion,
+      status,
+      totalTokens,
+      usageSource
+    })
+  } catch {}
+}
+
+function recordAccumulatorCall({ costMicrosUsd, costSource, llmCallAccumulator, totalTokens, usageSource }) {
+  if (llmCallAccumulator === undefined || llmCallAccumulator === null || typeof llmCallAccumulator.recordCall !== "function") {
+    return
+  }
+
+  try {
+    llmCallAccumulator.recordCall({
+      costMicrosUsd,
+      costSource,
+      totalTokens,
+      usageSource
+    })
+  } catch {}
+}
+

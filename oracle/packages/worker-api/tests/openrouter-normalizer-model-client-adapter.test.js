@@ -72,6 +72,11 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
     apiKey: "openrouter-api-key",
     baseUrl: "https://custom-openrouter.example",
     httpClient: httpClientSpy.httpClient,
+    requestId: "request-id",
+    schemaVersion: "1",
+    telemetry: {
+      emitLlmCall() {}
+    },
     model: "openrouter/model",
     timeoutMs: 1000
   })

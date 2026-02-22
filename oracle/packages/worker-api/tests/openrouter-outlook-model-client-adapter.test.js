@@ -9,6 +9,10 @@ test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterReq
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
+    requestId: "request-id",
+    telemetry: {
+      emitLlmCall() {}
+    },
     model: "openrouter/model-id",
     timeoutMs: 4500
   })

@@ -32,33 +32,36 @@ export function makeWorkerFetch(env, {
   })
   const normalizerCache = createCloudflareKvJsonCacheAdapter({ kv: env.NORMALIZER_CACHE })
   const outlookCache = createCloudflareKvJsonCacheAdapter({ kv: env.OUTLOOK_CACHE })
-  const normalizerModelClient = createConfiguredOpenRouterNormalizerModelClient({
-    config,
-    httpClient
-  })
-  const outlookModelClient = createConfiguredOpenRouterOutlookModelClient({
-    config,
-    httpClient
-  })
   const popularityCountersStore = createPopularityCountersStore({ db: env.DB })
   const rawInputCountersStore = createRawInputCountersStore({ db: env.DB })
   const popularityTracker = createPopularityTracker({
     popularityCountersStore,
     rawInputCountersStore
   })
-  const professionNormalizer = createProfessionNormalizer({
-    cache: normalizerCache,
-    modelClient: normalizerModelClient
-  })
-  const professionOutlookService = createProfessionOutlookService({
-    cache: outlookCache,
-    modelClient: outlookModelClient,
-    promptVersion: config.promptVersion
-  })
   const outlookFetch = createWorkerFetchHandler({
     popularityTracker,
-    professionNormalizer,
-    professionOutlookService,
+    makeProfessionNormalizer: ({ llmCallAccumulator, requestId, schemaVersion }) => createProfessionNormalizer({
+      cache: normalizerCache,
+      modelClient: createConfiguredOpenRouterNormalizerModelClient({
+        config,
+        httpClient,
+        llmCallAccumulator,
+        requestId,
+        schemaVersion,
+        telemetry
+      })
+    }),
+    makeProfessionOutlookService: ({ llmCallAccumulator, requestId }) => createProfessionOutlookService({
+      cache: outlookCache,
+      modelClient: createConfiguredOpenRouterOutlookModelClient({
+        config,
+        httpClient,
+        llmCallAccumulator,
+        requestId,
+        telemetry
+      }),
+      promptVersion: config.promptVersion
+    }),
     requestGuard,
     requestIdGenerator,
     telemetry
@@ -178,22 +181,36 @@ function resolveTelemetry({ env, environment, waitUntil }) {
   })
 }
 
-function createConfiguredOpenRouterNormalizerModelClient({ config, httpClient }) {
+function createConfiguredOpenRouterNormalizerModelClient({
+  config,
+  httpClient,
+  llmCallAccumulator,
+  requestId,
+  schemaVersion,
+  telemetry
+}) {
   return createOpenRouterNormalizerModelClient({
     apiKey: config.openRouterApiKey,
     baseUrl: config.openRouterBaseUrl,
     httpClient,
+    llmCallAccumulator,
     model: config.normalizerModel,
+    requestId,
+    schemaVersion,
+    telemetry,
     timeoutMs: config.timeoutMs
   })
 }
 
-function createConfiguredOpenRouterOutlookModelClient({ config, httpClient }) {
+function createConfiguredOpenRouterOutlookModelClient({ config, httpClient, llmCallAccumulator, requestId, telemetry }) {
   return createOpenRouterOutlookModelClient({
     apiKey: config.openRouterApiKey,
     baseUrl: config.openRouterBaseUrl,
     httpClient,
+    llmCallAccumulator,
     model: config.outlookModel,
+    requestId,
+    telemetry,
     timeoutMs: config.timeoutMs
   })
 }

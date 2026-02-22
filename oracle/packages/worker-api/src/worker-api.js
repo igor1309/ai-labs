@@ -25,15 +25,13 @@ export function createWorkerFetchHandler(dependencies = {}) {
     "popularityTracker",
     "track"
   )
-  const professionNormalizer = requireMethodDependency(
-    dependencies.professionNormalizer,
-    "professionNormalizer",
-    "normalize"
+  const makeProfessionNormalizer = requireFunctionDependency(
+    dependencies.makeProfessionNormalizer,
+    "makeProfessionNormalizer"
   )
-  const professionOutlookService = requireMethodDependency(
-    dependencies.professionOutlookService,
-    "professionOutlookService",
-    "getOutlook"
+  const makeProfessionOutlookService = requireFunctionDependency(
+    dependencies.makeProfessionOutlookService,
+    "makeProfessionOutlookService"
   )
   const requestGuard = requireMethodDependency(
     dependencies.requestGuard,
@@ -58,6 +56,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
   return async function fetch(request) {
     const requestId = requestIdGenerator()
     const startTimeMs = Date.now()
+    const llmCallAccumulator = createLlmCallAccumulator()
 
     let requestBody
     let result = "error"
@@ -93,6 +92,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
       if (!guardResult.isValid) {
         result = "guard_reject"
         schemaVersion = guardResult.schemaVersion
+        locale = typeof requestBody?.locale === "string" ? requestBody.locale : ""
 
         response = Response.json({
           answer: null,
@@ -108,13 +108,31 @@ export function createWorkerFetchHandler(dependencies = {}) {
         return response
       }
 
+      schemaVersion = guardResult.value.schemaVersion
+      locale = guardResult.value.locale
+
+      const requestContext = {
+        llmCallAccumulator,
+        locale,
+        requestId,
+        schemaVersion
+      }
+
+      const professionNormalizer = requireMethodDependency(
+        makeProfessionNormalizer(requestContext),
+        "professionNormalizer",
+        "normalize"
+      )
+      const professionOutlookService = requireMethodDependency(
+        makeProfessionOutlookService(requestContext),
+        "professionOutlookService",
+        "getOutlook"
+      )
+
       const normalizerResult = await professionNormalizer.normalize({
         locale: guardResult.value.locale,
         profession: guardResult.value.profession
       })
-
-      schemaVersion = guardResult.value.schemaVersion
-      locale = guardResult.value.locale
 
       try {
         await popularityTracker.track({
@@ -179,12 +197,14 @@ export function createWorkerFetchHandler(dependencies = {}) {
       throw error
     } finally {
       try {
+        const llmTotals = llmCallAccumulator.toApiRequestTotals()
+
         telemetry.emitApiRequest({
           durationMs: Date.now() - startTimeMs,
-          llmCalls: 0,
-          llmCostMicrosUsd: 0,
-          llmTotalTokens: 0,
-          llmTotalsCompleteness: "missing",
+          llmCalls: llmTotals.llmCalls,
+          llmCostMicrosUsd: llmTotals.llmCostMicrosUsd,
+          llmTotalTokens: llmTotals.llmTotalTokens,
+          llmTotalsCompleteness: llmTotals.llmTotalsCompleteness,
           locale: typeof locale === "string" ? locale : "",
           method: request.method,
           requestId,
@@ -240,6 +260,46 @@ function resolveOptionalFunctionDependency(value, name) {
   }
 
   return requireFunctionDependency(value, name)
+}
+
+function createLlmCallAccumulator() {
+  const calls = []
+
+  return {
+    recordCall(call) {
+      calls.push({
+        costMicrosUsd: typeof call?.costMicrosUsd === "number" ? call.costMicrosUsd : 0,
+        costSource: typeof call?.costSource === "string" ? call.costSource : "missing",
+        totalTokens: typeof call?.totalTokens === "number" ? call.totalTokens : 0,
+        usageSource: typeof call?.usageSource === "string" ? call.usageSource : "missing"
+      })
+    },
+    toApiRequestTotals() {
+      const llmCalls = calls.length
+
+      if (llmCalls === 0) {
+        return {
+          llmCalls,
+          llmCostMicrosUsd: 0,
+          llmTotalTokens: 0,
+          llmTotalsCompleteness: "missing"
+        }
+      }
+
+      const llmTotalTokens = calls.reduce((sum, call) => sum + (Number.isFinite(call.totalTokens) ? call.totalTokens : 0), 0)
+      const llmCostMicrosUsd = calls.reduce((sum, call) => sum + (Number.isFinite(call.costMicrosUsd) ? call.costMicrosUsd : 0), 0)
+
+      const hasAnyProviderMetadata = calls.some((call) => call.usageSource === "provider" || call.costSource === "provider")
+      const isComplete = calls.every((call) => call.usageSource === "provider" && call.costSource === "provider")
+
+      return {
+        llmCalls,
+        llmCostMicrosUsd,
+        llmTotalTokens,
+        llmTotalsCompleteness: isComplete ? "complete" : hasAnyProviderMetadata ? "partial" : "missing"
+      }
+    }
+  }
 }
 
 function requireMethodDependency(value, name, methodName) {
