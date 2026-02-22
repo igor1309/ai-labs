@@ -3,6 +3,30 @@ const EVENT_SCHEMA_VERSION = "1"
 const VALID_ENVIRONMENTS = new Set(["prod", "preview", "dev"])
 const VALID_API_ROUTES = new Set(["api_outlook", "health", "not_found"])
 
+const VALID_API_REQUEST_RESULTS = new Set([
+  "answered",
+  "clarify",
+  "error",
+  "guard_reject",
+  "invalid_body",
+  "unknown"
+])
+const VALID_LLM_TOTALS_COMPLETENESS = new Set(["complete", "missing", "partial", "unknown"])
+
+const VALID_LLM_CLIENTS = new Set(["normalizer", "outlook", "unknown"])
+const VALID_LLM_STATUSES = new Set(["error", "ok", "unknown"])
+const VALID_LLM_ERROR_TYPES = new Set([
+  "",
+  "http_error",
+  "invalid_json",
+  "invalid_response",
+  "invalid_schema",
+  "timeout",
+  "unknown"
+])
+const VALID_LLM_USAGE_SOURCES = new Set(["missing", "provider", "unknown"])
+const VALID_LLM_COST_SOURCES = new Set(["missing", "provider", "unknown"])
+
 const FORBIDDEN_TEXT_KEYS = new Set([
   "answer",
   "canonicalProfession",
@@ -93,6 +117,8 @@ export function makeApiRequestTelemetryDataPointV1({
   const telemetryLocale = sanitizeLocale(locale)
   const telemetrySchemaVersion = sanitizeSchemaVersion(schemaVersion)
   const telemetryMethod = sanitizeMethod(method)
+  const telemetryResult = sanitizeApiRequestResult(result)
+  const telemetryLlmTotalsCompleteness = sanitizeApiRequestLlmTotalsCompleteness(llmTotalsCompleteness)
 
   return {
     blobs: [encodeUtf8Blob(requireString(requestId, "requestId"))],
@@ -111,8 +137,8 @@ export function makeApiRequestTelemetryDataPointV1({
       telemetryMethod,
       telemetrySchemaVersion,
       telemetryLocale,
-      requireString(result, "result"),
-      requireString(llmTotalsCompleteness, "llmTotalsCompleteness")
+      telemetryResult,
+      telemetryLlmTotalsCompleteness
     ]
   }
 }
@@ -140,6 +166,12 @@ export function makeLlmCallTelemetryDataPointV1({
 
   const telemetryLocale = sanitizeLocale(locale)
   const telemetrySchemaVersion = sanitizeSchemaVersion(schemaVersion)
+  const telemetryClient = sanitizeLlmCallClient(client)
+  const telemetryModel = requireString(model, "model")
+  const telemetryStatus = sanitizeLlmCallStatus(status)
+  const telemetryErrorType = sanitizeOptionalLlmCallErrorType(errorType)
+  const telemetryUsageSource = sanitizeLlmCallUsageSource(usageSource)
+  const telemetryCostSource = sanitizeLlmCallCostSource(costSource)
 
   return {
     blobs: [encodeUtf8Blob(requireString(requestId, "requestId"))],
@@ -155,15 +187,15 @@ export function makeLlmCallTelemetryDataPointV1({
       "llm_call",
       EVENT_SCHEMA_VERSION,
       requireEnvironment(environment),
-      requireString(client, "client"),
-      requireString(model, "model"),
+      telemetryClient,
+      telemetryModel,
       requireOptionalString(promptVersion),
       telemetrySchemaVersion,
       telemetryLocale,
-      requireString(status, "status"),
-      requireOptionalString(errorType),
-      requireString(usageSource, "usageSource"),
-      requireString(costSource, "costSource")
+      telemetryStatus,
+      telemetryErrorType,
+      telemetryUsageSource,
+      telemetryCostSource
     ]
   }
 }
@@ -308,6 +340,48 @@ function sanitizeMethod(value) {
   }
 
   return trimmed
+}
+
+function sanitizeApiRequestResult(value) {
+  return sanitizeIndexEnum(value, VALID_API_REQUEST_RESULTS, "unknown")
+}
+
+function sanitizeApiRequestLlmTotalsCompleteness(value) {
+  return sanitizeIndexEnum(value, VALID_LLM_TOTALS_COMPLETENESS, "unknown")
+}
+
+function sanitizeLlmCallClient(value) {
+  return sanitizeIndexEnum(value, VALID_LLM_CLIENTS, "unknown")
+}
+
+function sanitizeLlmCallStatus(value) {
+  return sanitizeIndexEnum(value, VALID_LLM_STATUSES, "unknown")
+}
+
+function sanitizeOptionalLlmCallErrorType(value) {
+  if (value === undefined || value === null) {
+    return ""
+  }
+
+  return sanitizeIndexEnum(value, VALID_LLM_ERROR_TYPES, "unknown")
+}
+
+function sanitizeLlmCallUsageSource(value) {
+  return sanitizeIndexEnum(value, VALID_LLM_USAGE_SOURCES, "unknown")
+}
+
+function sanitizeLlmCallCostSource(value) {
+  return sanitizeIndexEnum(value, VALID_LLM_COST_SOURCES, "unknown")
+}
+
+function sanitizeIndexEnum(value, allowed, fallback) {
+  if (typeof value !== "string") {
+    return fallback
+  }
+
+  const trimmed = value.trim()
+
+  return allowed.has(trimmed) ? trimmed : fallback
 }
 
 function requireDependency(value, name) {

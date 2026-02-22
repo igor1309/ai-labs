@@ -221,14 +221,13 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 #### `makeWorkerFetch` (assembler)
 - Source: `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js`
 - Public API:
-- `makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = defaultRequestIdGenerator } = {}) -> fetch(request)`
+- `makeWorkerFetch(env, { httpClient = fetch, requestIdGenerator = defaultRequestIdGenerator, waitUntil } = {}) -> fetch(request)`
 - Responsibilities implemented:
 - Validates required bindings.
 - Resolves optional config defaults.
+- Resolves prod-only Analytics Engine telemetry (no-op in non-prod).
 - Builds adapters and modules, wires composition handler, wraps with entrypoint router.
 - Default config:
-- `NORMALIZER_MODEL`: `openai/gpt-4o-mini`
-- `OUTLOOK_MODEL`: `openai/gpt-4o-mini`
 - `OPENROUTER_BASE_URL`: `https://openrouter.ai`
 - `OPENROUTER_TIMEOUT_MS`: `10000`
 - `PROMPT_VERSION`: `"1"`
@@ -239,9 +238,9 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 #### Cloudflare Worker app entrypoint
 - Source: `oracle/apps/am-i-done-api/src/index.js`
 - Public API:
-- default export `{ fetch(request, env) }`
+- default export `{ fetch(request, env, ctx) }`
 - Behavior:
-- Delegates to `makeWorkerFetch(env)` and executes returned fetch.
+- Delegates to `makeWorkerFetch(env, { waitUntil })` and executes returned fetch.
 - Runtime config:
 - `oracle/apps/am-i-done-api/wrangler.toml`
 
@@ -275,10 +274,12 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 | `NORMALIZER_CACHE` | Yes | `createCloudflareKvJsonCacheAdapter` for normalizer | Normalizer cache storage |
 | `OUTLOOK_CACHE` | Yes | `createCloudflareKvJsonCacheAdapter` for outlook | Outlook answer cache storage |
 | `DB` | Yes | `createPopularityCountersStore`, `createRawInputCountersStore` | D1 canonical/raw counters persistence |
+| `ENVIRONMENT` | Yes | Assembler + telemetry wiring | Enables prod-only telemetry (`prod|preview|dev`) |
+| `TELEMETRY_DATASET` | Yes (prod-only) | `createAnalyticsEngineTelemetry` | Workers Analytics Engine dataset binding |
 | `OPENROUTER_API_KEY` | Yes | Both OpenRouter adapters | Auth for model calls |
 | `PROMPT_VERSION` | No (defaults to `"1"`) | `createProfessionOutlookService` via assembler config | Cache/prompt versioning |
-| `NORMALIZER_MODEL` | No | OpenRouter normalizer adapter | Model selection |
-| `OUTLOOK_MODEL` | No | OpenRouter outlook adapter | Model selection |
+| `NORMALIZER_MODEL` | Yes | OpenRouter normalizer adapter | Model selection |
+| `OUTLOOK_MODEL` | Yes | OpenRouter outlook adapter | Model selection |
 | `OPENROUTER_BASE_URL` | No | Both OpenRouter adapters | Endpoint override |
 | `OPENROUTER_TIMEOUT_MS` | No | Both OpenRouter adapters | Timeout tuning |
 
@@ -307,7 +308,9 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - [x] `PopularityTracker` behavior from architecture is implemented (increment counters on every request, including clarification/cache-hit paths).
 - [ ] Cloudflare secret `OPENROUTER_API_KEY` must be provisioned in target environment.
 - [ ] D1 migrations (`oracle/apps/am-i-done-api/migrations/0001_init.sql`, `oracle/apps/am-i-done-api/migrations/0002_raw_input_counters.sql`) must be applied in target environment.
-- [ ] Optional runtime overrides (`NORMALIZER_MODEL`, `OUTLOOK_MODEL`, `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`, `PROMPT_VERSION`) should be explicitly set per deployment policy.
+- [ ] Required runtime vars (`ENVIRONMENT`, `NORMALIZER_MODEL`, `OUTLOOK_MODEL`) must be set in target environment.
+- [ ] Optional runtime overrides (`OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`, `PROMPT_VERSION`) should be explicitly set per deployment policy.
+- [ ] Telemetry (prod-only): Analytics Engine dataset `TELEMETRY_DATASET` must be bound and provisioned in production.
 
 ## References
 - `oracle/docs/specs/implemented/profession-normalizer.md`

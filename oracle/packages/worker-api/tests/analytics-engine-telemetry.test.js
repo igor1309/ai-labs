@@ -52,6 +52,27 @@ test("test_makeApiRequestTelemetryDataPointV1_shouldProduceStableColumnMapping_o
   assert.deepEqual(Array.from(dataPoint.blobs[0]), Array.from(new TextEncoder().encode("request-1")))
 })
 
+test("test_makeApiRequestTelemetryDataPointV1_shouldSanitizeUnknownEnums_onUnexpectedValues", () => {
+  const dataPoint = makeApiRequestTelemetryDataPointV1({
+    requestId: "request-1",
+    environment: "prod",
+    route: "api_outlook",
+    method: "POST",
+    schemaVersion: "1",
+    locale: "en-US",
+    result: "some-new-result",
+    llmTotalsCompleteness: "maybe",
+    statusCode: 200,
+    durationMs: 123,
+    llmCalls: 1,
+    llmTotalTokens: 10,
+    llmCostMicrosUsd: 99
+  })
+
+  assert.equal(dataPoint.indexes[7], "unknown")
+  assert.equal(dataPoint.indexes[8], "unknown")
+})
+
 test("test_makeLlmCallTelemetryDataPointV1_shouldProduceStableColumnMapping_onValidEvent", () => {
   const dataPoint = makeLlmCallTelemetryDataPointV1({
     requestId: "request-1",
@@ -91,6 +112,34 @@ test("test_makeLlmCallTelemetryDataPointV1_shouldProduceStableColumnMapping_onVa
   assert.deepEqual(Array.from(dataPoint.blobs[0]), Array.from(new TextEncoder().encode("request-1")))
 })
 
+test("test_makeLlmCallTelemetryDataPointV1_shouldSanitizeUnknownEnums_onUnexpectedValues", () => {
+  const dataPoint = makeLlmCallTelemetryDataPointV1({
+    requestId: "request-1",
+    environment: "prod",
+    client: "some-new-client",
+    model: "some-model",
+    promptVersion: "",
+    schemaVersion: "1",
+    locale: "en-US",
+    status: "maybe",
+    errorType: "some-new-error",
+    usageSource: "sometimes",
+    costSource: "sometimes",
+    durationMs: 123,
+    httpStatus: 200,
+    promptTokens: 10,
+    completionTokens: 20,
+    totalTokens: 30,
+    costMicrosUsd: 99
+  })
+
+  assert.equal(dataPoint.indexes[3], "unknown")
+  assert.equal(dataPoint.indexes[8], "unknown")
+  assert.equal(dataPoint.indexes[9], "unknown")
+  assert.equal(dataPoint.indexes[10], "unknown")
+  assert.equal(dataPoint.indexes[11], "unknown")
+})
+
 test("test_emitApiRequest_shouldSwallowDatasetWriteFailure_onThrowingDataset", () => {
   const telemetry = createAnalyticsEngineTelemetry({
     dataset: {
@@ -118,4 +167,3 @@ test("test_emitApiRequest_shouldSwallowDatasetWriteFailure_onThrowingDataset", (
     })
   })
 })
-
