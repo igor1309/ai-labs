@@ -33,11 +33,13 @@ Composition wiring must not implement business decisions at runtime from domain 
 - Technical short-circuiting (validation/dependency/transport failures).
 - Environment/config-based implementation selection in final assembly.
 - Colocated adapters as composition implementation details (can be private).
+- Provider configuration data needed to instantiate an adapter (for example model IDs, prompt templates/system prompts, response schema enforcement rules, timeouts).
 
 ## What Is Not Allowed in Composition
 - Domain/business decisions based on runtime domain payload semantics.
 - Concrete caching policy logic (keys, hit/miss policy, cache reads/writes) unless delegated to a collaborator.
 - Normalization/derivation algorithms as composition behavior.
+- Prompt selection logic based on runtime domain payload semantics (prompt selection must be config/version based, not request-content based).
 - Default placeholder implementations that hide missing wiring.
 - Inline stub/fake behavior inside wiring composers or assemblers.
 - Any implicit fallback to in-memory/demo behavior in production mode.
