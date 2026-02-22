@@ -73,7 +73,7 @@ Preflight status (2026-02-22):
 - [x] Step 2 complete
 - [x] Step 3 complete
 - [x] Step 4 complete
-- [ ] Step 5 complete
+- [x] Step 5 complete
 - [ ] Final gates green
 - [ ] Plan moved to `implemented/`
 - [ ] PR created
