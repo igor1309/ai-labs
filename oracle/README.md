@@ -16,17 +16,22 @@ description: "Deploy runbook for Am I done frontend (Pages) and backend (Workers
    - `npm install`
 2. Verify Wrangler auth:
    - `npx wrangler whoami`
-3. Run tests before deployment:
+3. Provision required backend bindings in your Cloudflare account and set matching IDs in `oracle/apps/am-i-done-api/wrangler.toml`:
+   - `NORMALIZER_CACHE` (KV namespace)
+   - `OUTLOOK_CACHE` (KV namespace)
+   - `DB` (D1 database)
+4. Set required backend secret:
+   - `npx wrangler secret put OPENROUTER_API_KEY --cwd oracle/apps/am-i-done-api`
+5. Prepare a custom domain/zone for same-origin API routing (for example `am-i-done.example.com`) so `/api/*` can be routed to the Worker service.
+6. Run tests before deployment:
    - `./scripts/run_silent.sh "tests" npm test`
 
 ## Deploy backend (Worker)
 1. Confirm Worker config exists:
    - `oracle/apps/am-i-done-api/wrangler.toml`
-2. Set required secret:
-   - `npx wrangler secret put OPENROUTER_API_KEY --cwd oracle/apps/am-i-done-api`
-3. Deploy Worker:
+2. Deploy Worker:
    - `npm run worker:deploy`
-4. Smoke check Worker:
+3. Smoke check Worker:
    - `curl https://am-i-done-api.<your-subdomain>.workers.dev/health`
    - `curl -X POST https://am-i-done-api.<your-subdomain>.workers.dev/api/outlook -H "content-type: application/json" -d '{"profession":"software developer","locale":"en-US","schemaVersion":"1"}'`
 
