@@ -4,17 +4,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
-      run_real_provider_smoke:
-        description: Run real-provider Worker smoke check (uses OPENROUTER_API_KEY secret)
-        required: false
-        default: false
-        type: boolean
-      openrouter_ci_model:
-        description: Override model for this run (defaults to OPENROUTER_CI_MODEL repo variable)
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: read
@@ -42,13 +31,7 @@ jobs:
         run: PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers RUN_WEB_E2E=1 ./scripts/run_silent.sh "tests" npm test
 
   real-provider-smoke:
-    if: |
-      secrets.OPENROUTER_API_KEY != '' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) &&
-      (
-        (github.event_name == 'workflow_dispatch' && inputs.run_real_provider_smoke == true && (inputs.openrouter_ci_model != '' || vars.OPENROUTER_CI_MODEL != '')) ||
-        (github.event_name != 'workflow_dispatch' && vars.OPENROUTER_CI_MODEL != '')
-      )
+    if: secrets.OPENROUTER_API_KEY != '' && vars.OPENROUTER_CI_MODEL != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,7 +49,7 @@ jobs:
       - name: Run real-provider smoke
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NORMALIZER_MODEL: ${{ inputs.openrouter_ci_model != '' && inputs.openrouter_ci_model || vars.OPENROUTER_CI_MODEL }}
-          OUTLOOK_MODEL: ${{ inputs.openrouter_ci_model != '' && inputs.openrouter_ci_model || vars.OPENROUTER_CI_MODEL }}
+          NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
