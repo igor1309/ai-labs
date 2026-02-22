@@ -25,7 +25,9 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     DB: makeD1DatabaseSpy(),
     NORMALIZER_CACHE: makeKvNamespaceSpy(),
     NORMALIZER_MODEL: normalizerModel,
+    OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL,
     OPENROUTER_API_KEY: openRouterApiKey,
+    OPENROUTER_TIMEOUT_MS: process.env.OPENROUTER_TIMEOUT_MS,
     OUTLOOK_CACHE: makeKvNamespaceSpy(),
     OUTLOOK_MODEL: outlookModel,
     PROMPT_VERSION: "1"
