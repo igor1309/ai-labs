@@ -28,8 +28,11 @@ jobs:
         run: ./scripts/run_silent.sh "tests" npm test
 
   real-provider-smoke:
-    if: secrets.OPENROUTER_API_KEY != '' && vars.OPENROUTER_CI_MODEL != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,13 +47,18 @@ jobs:
         run: npm ci
 
       - name: Run real-provider smoke
+        if: env.OPENROUTER_API_KEY != '' && env.OPENROUTER_CI_MODEL != ''
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          OPENROUTER_API_KEY: ${{ env.OPENROUTER_API_KEY }}
+          NORMALIZER_MODEL: ${{ env.OPENROUTER_CI_MODEL }}
           OPENROUTER_TIMEOUT_MS: "30000"
-          OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          OUTLOOK_MODEL: ${{ env.OPENROUTER_CI_MODEL }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
+
+      - name: Skip real-provider smoke when model or key is missing
+        if: env.OPENROUTER_API_KEY == '' || env.OPENROUTER_CI_MODEL == ''
+        run: echo "Skipping real-provider smoke: OPENROUTER_API_KEY or OPENROUTER_CI_MODEL is not configured."
 
   notify:
     if: ${{ !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') }}
