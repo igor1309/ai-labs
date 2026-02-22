@@ -47,7 +47,7 @@ Out of scope (unless required by a step):
 Worktree required: yes  
 Expected worktree: `worktrees/<slug>` (example: `worktrees/oracle-release-workflow-refactor`)  
 Expected branch: `codex/<slug>` (example: `codex/oracle-release-workflow-refactor`)  
-Preflight check: [ ] done
+Preflight check: [x] done
 
 Note: this plan document is drafted/committed on `trunk` by request. Actual implementation must happen in a separate worktree/branch per the lock above.
 
