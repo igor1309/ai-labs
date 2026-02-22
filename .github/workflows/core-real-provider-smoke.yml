@@ -1,0 +1,47 @@
+name: Core Real Provider Smoke
+
+on:
+  workflow_call:
+    inputs:
+      openrouter_model:
+        description: "OpenRouter model ID used for both NORMALIZER_MODEL and OUTLOOK_MODEL."
+        required: true
+        type: string
+      openrouter_timeout_ms:
+        description: "Timeout for real-provider smoke calls."
+        required: false
+        default: "90000"
+        type: string
+    secrets:
+      OPENROUTER_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-provider-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run real-provider smoke
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NORMALIZER_MODEL: ${{ inputs.openrouter_model }}
+          OPENROUTER_TIMEOUT_MS: ${{ inputs.openrouter_timeout_ms }}
+          OUTLOOK_MODEL: ${{ inputs.openrouter_model }}
+          RUN_REAL_PROVIDER_SMOKE: "1"
+        run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
+
