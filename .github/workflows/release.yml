@@ -55,6 +55,9 @@ jobs:
 
   real-provider-smoke:
     needs: [core]
+    # Requires:
+    # - vars.OPENROUTER_CI_MODEL (cheap model for the smoke gate)
+    # - secrets.OPENROUTER_API_KEY
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
       openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
