@@ -3,6 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-02-21"
 
 [vars]
+ENVIRONMENT = "dev"
 NORMALIZER_MODEL = "openai/gpt-5-nano"
 OUTLOOK_MODEL = "openai/gpt-5-nano"
 PROMPT_VERSION = "1"
@@ -21,3 +22,7 @@ preview_id = "5f1d8ce351534522b8f6b6412cab0384"
 binding = "DB"
 database_name = "am_i_done"
 database_id = "76a6a8f5-12b7-4fc5-8a00-cbfa79493608"
+
+[[analytics_engine_datasets]]
+binding = "TELEMETRY_DATASET"
+dataset = "am_i_done_telemetry"

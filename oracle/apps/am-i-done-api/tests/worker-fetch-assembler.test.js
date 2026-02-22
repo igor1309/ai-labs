@@ -25,6 +25,14 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingDbBinding", a
   })
 })
 
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingEnvironmentBinding", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("ENVIRONMENT")), {
+    message: "Missing required binding: ENVIRONMENT"
+  })
+})
+
 test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOpenRouterApiKeyBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
 
@@ -46,6 +54,16 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOutlookModelB
 
   assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("OUTLOOK_MODEL")), {
     message: "Missing required binding: OUTLOOK_MODEL"
+  })
+})
+
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingTelemetryDatasetBindingInProd", async () => {
+  const assemblerModule = await loadAssemblerModule()
+
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
+    ENVIRONMENT: "prod"
+  })), {
+    message: "Missing required binding: TELEMETRY_DATASET"
   })
 })
 
@@ -349,6 +367,7 @@ function makeD1DatabaseSpy() {
 function makeEnv(overrides = {}) {
   return {
     DB: makeD1DatabaseSpy().db,
+    ENVIRONMENT: "dev",
     NORMALIZER_CACHE: makeKvNamespaceSpy().kv,
     NORMALIZER_MODEL: "openai/gpt-5-nano",
     OPENROUTER_API_KEY: "openrouter-api-key",
