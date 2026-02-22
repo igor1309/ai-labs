@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify tag matches package.json version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p 'JSON.parse(require("fs").readFileSync("package.json","utf8")).version')"
+          expected="v${version}"
+          if [ "${TAG}" != "${expected}" ]; then
+            echo "release tag must match package.json version: tag=${TAG} expected=${expected}" >&2
+            exit 1
+          fi
+
+  core:
+    needs: [verify]
+    uses: ./.github/workflows/core.yml
+
+  web-e2e:
+    needs: [core]
+    uses: ./.github/workflows/core-web-e2e.yml
+
+  deploy:
+    needs: [core, web-e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Required Cloudflare credentials for wrangler:
+      # - CLOUDFLARE_API_TOKEN (recommended)
+      # - CLOUDFLARE_ACCOUNT_ID (if needed by your Cloudflare setup)
+      - name: Deploy worker
+        run: npm run worker:deploy
+
+      - name: Deploy web
+        run: npm run web:deploy
+
+  notify:
+    if: ${{ !cancelled() && failure() }}
+    needs: [verify, core, web-e2e, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Send Telegram notification
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+        run: |
+          failed_jobs=""
+          if [ "${{ needs.verify.result }}" = "failure" ]; then
+            failed_jobs="verify"
+          fi
+          if [ "${{ needs.core.result }}" = "failure" ]; then
+            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
+            failed_jobs="${failed_jobs}core"
+          fi
+          if [ "${{ needs.web-e2e.result }}" = "failure" ]; then
+            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
+            failed_jobs="${failed_jobs}web-e2e"
+          fi
+          if [ "${{ needs.deploy.result }}" = "failure" ]; then
+            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
+            failed_jobs="${failed_jobs}deploy"
+          fi
+          text="❌ Release failed: ${failed_jobs}
+          repo: ${{ github.repository }}
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ./scripts/ci/notify_telegram_failure.sh "${text}"

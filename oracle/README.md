@@ -76,3 +76,8 @@ Run all commands from repo root.
 - `CI` (`.github/workflows/ci.yml`) delegates baseline checks to reusable `.github/workflows/core.yml`.
 - `Web E2E` (`.github/workflows/web-e2e.yml`) delegates to reusable `.github/workflows/core-web-e2e.yml` and stays manual (`workflow_dispatch`).
 - Telegram failure notifications are sent via `scripts/ci/notify_telegram_failure.sh`.
+
+## Release workflow
+- Trigger: push a tag matching `v*` (for example `v0.1.0`).
+- Guard: tag must equal root `package.json` version.
+- Pipeline: core → web-e2e → deploy worker/pages.

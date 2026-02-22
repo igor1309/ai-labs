@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-22
+- Add tag-driven GitHub Actions release workflow with strict gates (core → web-e2e → deploy worker/pages) and version-tag guard.
 - Refactor GitHub Actions workflows: CI/Web E2E now delegate to reusable core workflows and share a Telegram failure notification script.
 - Create Cloudflare Pages project `am-i-done-web`, set Pages `API_BASE_URL` secret to Worker origin (`am-i-done-api.igor1309.workers.dev`), deploy web frontend, and pass deployed smoke checks (`GET /` and `POST /api/outlook` return `200`).
 - Implement prod-only, text-free Workers Analytics Engine telemetry (v1 `api_request` + `llm_call`) with per-request `requestId` correlation (blob, not indexed), best-effort `ctx.waitUntil` emission, and coverage/docs updates.
