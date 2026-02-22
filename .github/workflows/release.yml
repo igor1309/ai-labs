@@ -53,6 +53,32 @@ jobs:
     needs: [verify]
     uses: ./.github/workflows/core.yml
 
+  real-provider-smoke:
+    needs: [core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run real-provider smoke
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          OPENROUTER_TIMEOUT_MS: "90000"
+          OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          RUN_REAL_PROVIDER_SMOKE: "1"
+        run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
+
   web-e2e:
     needs: [core]
     permissions:
@@ -61,7 +87,7 @@ jobs:
     uses: ./.github/workflows/core-web-e2e.yml
 
   deploy:
-    needs: [core, web-e2e]
+    needs: [core, real-provider-smoke, web-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -90,8 +116,8 @@ jobs:
         run: npm run web:deploy
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure') }}
-    needs: [verify, core, web-e2e, deploy]
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure') }}
+    needs: [verify, core, real-provider-smoke, web-e2e, deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -110,6 +136,10 @@ jobs:
           if [ "${{ needs.core.result }}" = "failure" ]; then
             [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
             failed_jobs="${failed_jobs}core"
+          fi
+          if [ "${{ needs.real-provider-smoke.result }}" = "failure" ]; then
+            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
+            failed_jobs="${failed_jobs}real-provider-smoke"
           fi
           if [ "${{ needs.web-e2e.result }}" = "failure" ]; then
             [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "

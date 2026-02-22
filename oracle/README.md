@@ -80,7 +80,7 @@ Run all commands from repo root.
 ## Release workflow
 - Trigger: push a tag matching `v*` (for example `v0.1.0`).
 - Guard: tag must equal root `package.json` version.
-- Pipeline: core → web-e2e → deploy worker/pages.
+- Pipeline: core → real-provider-smoke → web-e2e → deploy worker/pages.
 - Required GitHub Secrets:
   - `CLOUDFLARE_API_TOKEN` (Wrangler deploy auth)
   - `CLOUDFLARE_ACCOUNT_ID` (Cloudflare account targeting, if required by your setup)
