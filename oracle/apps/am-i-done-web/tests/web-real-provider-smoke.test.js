@@ -95,9 +95,11 @@ function resolveModel(bindingValue, { defaultValue, name }) {
     return defaultValue
   }
 
-  if (typeof bindingValue !== "string" || bindingValue.trim() === "") {
+  if (typeof bindingValue !== "string") {
     throw new Error(`Invalid ${name} for real-provider smoke checks.`)
   }
 
-  return bindingValue.trim()
+  const trimmedBindingValue = bindingValue.trim()
+
+  return trimmedBindingValue === "" ? defaultValue : trimmedBindingValue
 }

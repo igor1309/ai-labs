@@ -28,7 +28,7 @@ jobs:
         run: ./scripts/run_silent.sh "tests" npm test
 
   real-provider-smoke:
-    if: secrets.OPENROUTER_API_KEY != '' && vars.OPENROUTER_CI_MODEL != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    if: secrets.OPENROUTER_API_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,7 +46,7 @@ jobs:
       - name: Run real-provider smoke
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
-          OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          NORMALIZER_MODEL: ${{ secrets.OPENROUTER_CI_MODEL }}
+          OUTLOOK_MODEL: ${{ secrets.OPENROUTER_CI_MODEL }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
