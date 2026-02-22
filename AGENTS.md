@@ -69,20 +69,36 @@ Mandatory after each implementation step:
 6. Push the branch to `origin` unless explicitly instructed not to push.
 7. Stop and wait for review approval before starting the next step.
 
+## Implementation Preflight Gate (Blocking)
+
+Before any implementation action (editing files, running implementation tests, or committing), run and report preflight:
+
+1. Confirm whether the active plan requires a separate worktree.
+2. Capture current worktree path and branch.
+3. Emit a preflight status line:
+   - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
+4. If separate worktree is required and preflight is `fail`, stop immediately and ask for direction. Do not implement until this is resolved.
+
 ## Plan Creation Lock
 
 When creating implementation plans (especially from review findings), the plan must include an explicit execution lock:
 
-1. Start from a new separate git worktree with a dedicated branch.
-2. Execute one step at a time with a green gate per step.
-3. For each step, run required targeted tests and full suite `./scripts/run_silent.sh "tests" npm test`.
-4. Proceed only if green; if tests fail, fix first and re-run until green.
-5. Commit step changes only after green.
-6. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
-7. Mark implemented step status in the plan and commit the plan status update.
-8. Repeat the same process for each next step.
-9. At completion, run final gates: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
-10. Move completed plan from `docs/plans/` to `docs/plans/implemented/`, commit the move, and create a PR.
+1. Include explicit preflight fields:
+   - `Worktree required: yes/no`
+   - `Expected worktree: <path or pattern>`
+   - `Expected branch: <name or pattern>`
+   - `Preflight check: [ ] done`
+2. Start from a new separate git worktree with a dedicated branch when required by the plan.
+3. Require preflight verification before Step 1; if preflight fails, halt immediately.
+4. Execute one step at a time with a green gate per step.
+5. For each step, run required targeted tests and full suite `./scripts/run_silent.sh "tests" npm test`.
+6. Proceed only if green; if tests fail, fix first and re-run until green.
+7. Commit step changes only after green.
+8. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
+9. Mark implemented step status in the plan and commit the plan status update.
+10. Repeat the same process for each next step.
+11. At completion, run final gates: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
+12. Move completed plan from `docs/plans/` to `docs/plans/implemented/`, commit the move, and create a PR.
 
 ## Release Process
 

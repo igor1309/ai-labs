@@ -29,25 +29,36 @@ description: "Implementation plan to move deterministic E2E wiring into test-own
 - Keep business behavior unchanged.
 - Keep changes surgical to composition wiring, composition tests, and required docs/config references.
 
+## Preflight Requirements (Blocking)
+- Worktree required: yes
+- Expected worktree: separate worktree for this plan (not main `ai-labs` worktree)
+- Expected branch: dedicated feature branch for this plan
+- Preflight check: [ ] done
+- Required preflight status line before Step 1:
+- `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
+- If `separate_worktree=fail`, stop immediately and ask for direction. Do not continue implementation.
+
 ## Execution Lock (Mandatory)
-1. Start in a new, separate git worktree for this plan and use a dedicated branch.
-2. Execute one plan step at a time; do not overlap step scopes.
-3. For each step, reach green before proceeding:
+1. Run preflight and mark `Preflight check: [x] done` before Step 1.
+2. Start in a new, separate git worktree for this plan and use a dedicated branch.
+3. Execute one plan step at a time; do not overlap step scopes.
+4. For each step, reach green before proceeding:
    - run required targeted tests for the step,
    - run full suite `./scripts/run_silent.sh "tests" npm test`,
    - proceed only if green.
-4. When a step is green, create a step commit for implementation changes.
-5. Self-review immediately after the step commit.
-6. If self-review finds fail/warning issues, fix immediately, re-run tests to green, and commit fixes.
-7. Mark the implemented step as done in this plan and commit the plan status update.
-8. Repeat the same process for the next step.
-9. After all steps are done, run final gates:
+5. When a step is green, create a step commit for implementation changes.
+6. Self-review immediately after the step commit.
+7. If self-review finds fail/warning issues, fix immediately, re-run tests to green, and commit fixes.
+8. Mark the implemented step as done in this plan and commit the plan status update.
+9. Repeat the same process for the next step.
+10. After all steps are done, run final gates:
    - `./scripts/run_silent.sh "build" npx tsc --noEmit`
    - `./scripts/run_silent.sh "tests" npm test`
    - if tests/build fail, fix first and re-run until green.
-10. Move this plan file to `oracle/docs/plans/implemented/`, commit the move, then create a PR.
+11. Move this plan file to `oracle/docs/plans/implemented/`, commit the move, then create a PR.
 
 ## Progress Tracker
+- [ ] Preflight check complete
 - [x] Step 1 complete
 - [x] Step 2 complete
 - [ ] Step 3 complete
