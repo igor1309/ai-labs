@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,6 +37,11 @@ jobs:
             echo "release tag must match package.json version: tag=${TAG} expected=${expected}" >&2
             exit 1
           fi
+
+      - name: Verify tag commit is on trunk
+        run: |
+          git fetch origin trunk:refs/remotes/origin/trunk
+          git merge-base --is-ancestor "${GITHUB_SHA}" "origin/trunk"
 
   core:
     needs: [verify]
