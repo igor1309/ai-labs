@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-21
+- Add Cloudflare Pages deployment wiring for `am-i-done-web`: add Pages `wrangler.toml`, same-origin `/api/*` Pages Function proxy via `API_BASE_URL`, deploy/dev npm scripts, and proxy unit tests.
 - Lock frontend v1 foundation decisions in docs: vanilla TypeScript UI, same-origin `/api/outlook` routing, and locale policy (`en-US` for v1, auto-detect with `en-US` fallback planned for v2).
 - Implement web E2E coverage: add `am-i-done-web` UI (happy/clarification/transport-failure states), deterministic Worker model-stub mode for CI-safe browser tests, and move plan `0006-add-web-e2e-once-ui-exists.md` to implemented.
 - Complete deploy verification for `am-i-done-api`: run full tests, deploy Worker successfully, and pass smoke checks (`GET /health` returns `200 ok`; `POST /api/outlook` returns structured JSON for valid input and clarification payload for invalid input) after correcting the `OPENROUTER_API_KEY` secret binding name.
