@@ -64,7 +64,7 @@ description: "Implementation plan to move deterministic E2E wiring into test-own
 - [x] Step 3 complete
 - [x] Final gates green
 - [x] Plan moved to `implemented/`
-- [ ] PR created
+- [x] PR created
 
 ## Step 1: Move Deterministic Wiring to Test-Owned SUT Harness (Finding 1)
 ### Changes
