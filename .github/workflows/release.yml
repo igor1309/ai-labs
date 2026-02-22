@@ -47,6 +47,9 @@ jobs:
   deploy:
     needs: [core, web-e2e]
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,8 +64,8 @@ jobs:
         run: npm ci
 
       # Required Cloudflare credentials for wrangler:
-      # - CLOUDFLARE_API_TOKEN (recommended)
-      # - CLOUDFLARE_ACCOUNT_ID (if needed by your Cloudflare setup)
+      # - secrets.CLOUDFLARE_API_TOKEN
+      # - secrets.CLOUDFLARE_ACCOUNT_ID (if needed by your Cloudflare setup)
       - name: Deploy worker
         run: npm run worker:deploy
 
