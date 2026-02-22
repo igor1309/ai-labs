@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-22
+- Create Cloudflare Pages project `am-i-done-web`, set Pages `API_BASE_URL` secret to Worker origin (`am-i-done-api.igor1309.workers.dev`), deploy web frontend, and pass deployed smoke checks (`GET /` and `POST /api/outlook` return `200`).
 - Implement prod-only, text-free Workers Analytics Engine telemetry (v1 `api_request` + `llm_call`) with per-request `requestId` correlation (blob, not indexed), best-effort `ctx.waitUntil` emission, and coverage/docs updates.
 - Automate local web-to-worker wiring and configuration defaults: `npm run web:dev` now binds `API_BASE_URL` to local worker by default, frontend request timeout default is increased to `12000ms` with explicit tests, and worker model selection moved to required vars (`NORMALIZER_MODEL`, `OUTLOOK_MODEL`) configured to `openai/gpt-5-nano`.
 - Implement web frontend v1 plan `0007`: refactor app state/effect/render units, add frontend request-contract tests, polish web UI presentation, and add Pages deployment runbook with required `API_BASE_URL` and worker-before-web ordering.
