@@ -47,7 +47,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
-          OPENROUTER_TIMEOUT_MS: "30000"
+          OPENROUTER_TIMEOUT_MS: "90000"
           OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
