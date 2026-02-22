@@ -2,6 +2,9 @@
 
 ## 2026-02-22
 - Add implementation plan `0007-web-frontend-v1-implementation.md` with explicit architecture conformance checks and step-by-step delivery gates for polished web UI and same-origin Pages routing.
+- Add `oracle/README.md` deployment runbook documenting Cloudflare Worker (`am-i-done-api`) deployment, Cloudflare Pages frontend deployment, explicit prerequisites for required Worker bindings/secrets, and same-origin `/api/*` route wiring required by the web app.
+- Add local secret-file hygiene for Worker development: `oracle/apps/am-i-done-api/.dev.vars.example` template plus app-local `.gitignore` rules for `.dev.vars`/`.env` files.
+- Add repo-level `.gitignore` protection for `.env`/`.dev.vars` files so local secrets remain untracked across all projects.
 
 ## 2026-02-21
 - Add Cloudflare Pages deployment wiring for `am-i-done-web`: add Pages `wrangler.toml`, same-origin `/api/*` Pages Function proxy via `API_BASE_URL`, deploy/dev npm scripts, and proxy unit tests.
