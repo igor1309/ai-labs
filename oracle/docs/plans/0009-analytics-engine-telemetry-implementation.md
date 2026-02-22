@@ -68,7 +68,7 @@ Preflight status (2026-02-22):
 8. Move this plan file to `oracle/docs/plans/implemented/`, commit the move, then create a PR.
 
 ## Progress Tracker
-- [ ] Preflight check complete
+- [x] Preflight check complete
 - [ ] Step 1 complete
 - [ ] Step 2 complete
 - [ ] Step 3 complete
@@ -122,7 +122,7 @@ Shared fields:
 `llm_call` fields:
 - `indexes[3]`: `client` (`normalizer|outlook`)
 - `indexes[4]`: `model`
-- `indexes[5]`: `promptVersion` (`""` for normalizer)
+- `indexes[5]`: `promptVersion` (`""` represents null for normalizer)
 - `indexes[6]`: `schemaVersion` (API schema version string, e.g. `"1"`)
 - `indexes[7]`: `locale` (e.g. `en-US`)
 - `indexes[8]`: `status` (`ok|error`)
@@ -188,6 +188,7 @@ Shared fields:
   - clarification success (`result=clarify`),
   - answered success (`result=answered`),
   - unexpected internal error (`result=error`, statusCode assumed `500` when no response is produced).
+- Implementation note: wrap the whole handler body in `try/catch/finally` so `api_request` emission runs even when the handler throws; on throw, emit `result=error` + `statusCode=500` and then rethrow.
 - Ensure emission is best-effort and cannot affect API responses (writer errors swallowed; `waitUntil` scheduling used when available).
 - Extend composition tests in `oracle/packages/worker-api/tests/worker-api.composition.test.js` to assert:
   - `requestIdGenerator` is called once per request (not once per return path),
@@ -219,7 +220,8 @@ Shared fields:
 - Hard rule: telemetry correlation must not leak into model prompts.
   - The OpenRouter user message JSON must remain domain input only (no `requestId`, no telemetry fields).
   - Add/extend adapter tests to assert the request body does not include `requestId` (or any telemetry-only keys).
-- Extend OpenRouter model client adapters to expose telemetry-relevant metadata (composition-only) without changing their client-facing outputs:
+- Extend OpenRouter model client adapters to extract telemetry-relevant metadata for emission (composition-only) without changing their client-facing outputs:
+  - `normalize()` and `generate()` must still resolve to the same domain objects they do today (no extra fields/tuples/metadata in return values).
   - classify errors into `timeout|http_error|invalid_json|invalid_schema|invalid_response`,
   - record `httpStatus` when the provider returns it,
   - extract provider usage where available (`promptTokens`, `completionTokens`, `totalTokens`) from the OpenRouter payload,
