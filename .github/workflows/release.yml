@@ -15,9 +15,12 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,11 +33,21 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           version="$(node -p 'JSON.parse(require("fs").readFileSync("package.json","utf8")).version')"
+          lock_version="$(node -p 'JSON.parse(require("fs").readFileSync("package-lock.json","utf8")).version')"
           expected="v${version}"
+          if [ "${lock_version}" != "${version}" ]; then
+            echo "package-lock.json version must match package.json version: lock=${lock_version} package=${version}" >&2
+            exit 1
+          fi
           if [ "${TAG}" != "${expected}" ]; then
             echo "release tag must match package.json version: tag=${TAG} expected=${expected}" >&2
             exit 1
           fi
+
+      - name: Verify tag commit is on trunk
+        run: |
+          git fetch origin trunk:refs/remotes/origin/trunk
+          git merge-base --is-ancestor "${GITHUB_SHA}" "origin/trunk"
 
   core:
     needs: [verify]
@@ -42,11 +55,15 @@ jobs:
 
   web-e2e:
     needs: [core]
+    permissions:
+      actions: write
+      contents: read
     uses: ./.github/workflows/core-web-e2e.yml
 
   deploy:
     needs: [core, web-e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -76,6 +93,7 @@ jobs:
     if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure') }}
     needs: [verify, core, web-e2e, deploy]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4

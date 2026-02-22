@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    tags-ignore:
+      - "v*"
   pull_request:
   workflow_dispatch:
 
@@ -15,6 +17,7 @@ jobs:
   real-provider-smoke:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,9 +41,10 @@ jobs:
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') }}
+    if: ${{ always() && !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
     needs: [tests, real-provider-smoke]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4

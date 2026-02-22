@@ -8,12 +8,16 @@ permissions:
 
 jobs:
   web-e2e:
+    permissions:
+      actions: write
+      contents: read
     uses: ./.github/workflows/core-web-e2e.yml
 
   notify:
     if: ${{ always() && !cancelled() && needs.web-e2e.result == 'failure' }}
     needs: [web-e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
