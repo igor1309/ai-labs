@@ -3,12 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - trunk
+      - "**"
     tags-ignore:
       - "v*"
   pull_request:
-    branches:
-      - trunk
   workflow_dispatch:
 
 permissions:
