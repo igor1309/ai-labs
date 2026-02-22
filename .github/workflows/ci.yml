@@ -51,3 +51,31 @@ jobs:
           OUTLOOK_MODEL: ${{ secrets.OPENROUTER_CI_MODEL }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
+
+  notify:
+    if: ${{ !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') }}
+    needs: [tests, real-provider-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+        run: |
+          failed_jobs=""
+          if [ "${{ needs.tests.result }}" = "failure" ]; then
+            failed_jobs="tests"
+          fi
+          if [ "${{ needs.real-provider-smoke.result }}" = "failure" ]; then
+            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
+            failed_jobs="${failed_jobs}real-provider-smoke"
+          fi
+          text="❌ CI failed: ${failed_jobs}
+          repo: ${{ github.repository }}
+          branch: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CI_CHAT_ID}" \
+            -d parse_mode=HTML \
+            -d text="${text}"
