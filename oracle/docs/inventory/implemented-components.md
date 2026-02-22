@@ -237,6 +237,8 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `oracle/apps/am-i-done-web/wrangler.toml`
 - Deploy script:
 - `npm run web:deploy`
+- Deployment runbook:
+- `oracle/docs/web-pages-deployment-runbook.md`
 
 #### `onRequest` `/api/*` proxy (Pages Function)
 - Source: `oracle/apps/am-i-done-web/functions/api/[[path]].js`

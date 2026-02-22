@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-22
+- Implement web frontend v1 plan `0007`: refactor app state/effect/render units, add frontend request-contract tests, polish web UI presentation, and add Pages deployment runbook with required `API_BASE_URL` and worker-before-web ordering.
 - Add implementation plan `0007-web-frontend-v1-implementation.md` with explicit architecture conformance checks and step-by-step delivery gates for polished web UI and same-origin Pages routing.
 - Add `oracle/README.md` deployment runbook documenting Cloudflare Worker (`am-i-done-api`) deployment, Cloudflare Pages frontend deployment, explicit prerequisites for required Worker bindings/secrets, and same-origin `/api/*` route wiring required by the web app.
 - Add local secret-file hygiene for Worker development: `oracle/apps/am-i-done-api/.dev.vars.example` template plus app-local `.gitignore` rules for `.dev.vars`/`.env` files.
