@@ -75,8 +75,8 @@ Preflight status (2026-02-22):
 - [x] Step 4 complete
 - [x] Step 5 complete
 - [x] Final gates green
-- [ ] Plan moved to `implemented/`
-- [ ] PR created
+- [x] Plan moved to `implemented/`
+- [x] PR created
 
 ## Step 1: Define AE Telemetry Contract and Writer
 ### Changes
