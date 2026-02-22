@@ -73,10 +73,10 @@ description: "Implementation plan to move deterministic E2E wiring into test-own
 - add deterministic test SUT wiring under tests (not app composition files):
 - create test harness file(s) under test-owned location (for example `oracle/apps/am-i-done-web/tests/support/`).
 - keep deterministic doubles private to test harness wiring and out of production assembler path.
-- route CI/local deterministic runs that currently rely on `MODEL_PROVIDER_MODE=stub` to the test harness path.
+- route CI/local deterministic runs that require stubbed providers to the test harness path.
 - update docs/config references that describe wiring selection so production path and test-owned SUT harness path are explicit.
 - update `oracle/README.md`:
-- remove runtime/deploy guidance that implies `MODEL_PROVIDER_MODE=stub` in production composition.
+- remove runtime/deploy guidance that implies stubbed providers in production composition.
 - document deterministic E2E/local usage through the test-owned harness path.
 - update `oracle/apps/am-i-done-api/.dev.vars.example`:
 - remove or reword stub-mode guidance if it implies production runtime selection inside app composition.
