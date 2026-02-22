@@ -64,12 +64,13 @@ Creates a composed piece from interface dependencies.
 
 2. Composition adapter layer (colocated):
 Implements provider/module-to-interface mapping needed by the composer.
+Adapters exist to connect mismatched collaborator contracts/types so the assembler can plug concrete instances into composer interfaces.
 These are composition implementation details, not standalone adapter modules by default.
 
 3. Final assembler:
 Builds concrete instances, applies environment/config selection, plugs them into composers, and returns deployable entrypoints.
 
-Extract standalone adapter modules only when they are generic and highly reusable.
+Extract standalone adapter code only for generic, abstract, reusable composition machinery shared by multiple composers/assemblers; otherwise keep adapters colocated as composition implementation details.
 
 ## Environment-Specific Instance Policy
 Environment-specific instances are allowed when explicitly separated and intentionally composed.
@@ -81,15 +82,18 @@ Rules:
 - Production selection must be fail-closed (no implicit fallback).
 - Production and non-production selections must be documented.
 - Wiring tests assert interface contracts and orchestration, not provider internals.
+- Deterministic non-production doubles must be wired through a separate non-production composition entrypoint/harness, not through the production assembler path.
 
 ## Stub/Fake Prohibitions (Hard)
 - Do not embed deterministic fake business outputs in composition wiring.
 - Do not use stubs/fakes as silent defaults for missing production dependencies.
 - Do not allow test-only providers in production paths without explicit mode gating.
 - Any component returning canned business outcomes in place of real collaborator behavior is treated as a stub/fake.
+- Production assemblers must not instantiate deterministic fake providers that return canned business outcomes.
 
 ## Testing Composition Wiring
 Use interface substitutions (spies/stubs/mocks) in wiring tests; avoid concrete infrastructure in composer tests.
+These test substitutions are test-only and are not runtime composition implementations.
 
 Verify:
 1. payload into first interface,
