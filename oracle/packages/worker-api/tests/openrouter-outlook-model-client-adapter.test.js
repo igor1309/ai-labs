@@ -248,6 +248,29 @@ test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () =>
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
+test("test_generate_shouldNormalizeConfidenceLabel_onCaseVariantLabel", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy({
+    responseBody: makeOpenRouterSuccessPayload({
+      ...makeOutlookAnswer(),
+      confidence: {
+        label: "Medium",
+        rationale: "current trajectory"
+      }
+    })
+  })
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  })
+
+  const actualAnswer = await modelClient?.generate(makeOutlookInput())
+
+  assert.deepEqual(actualAnswer, makeOutlookAnswer())
+})
+
 test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({

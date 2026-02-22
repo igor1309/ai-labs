@@ -92,7 +92,7 @@ export function createOpenRouterOutlookModelClient({
           throw new Error(formatOpenRouterHttpError(response?.status, payload))
         }
 
-        const parsed = parseModelResponse(payload)
+        const parsed = normalizeOutlookAnswer(parseModelResponse(payload))
         validateOutlookAnswer(parsed)
 
         status = "ok"
@@ -201,6 +201,46 @@ function validateOutlookAnswer(answer) {
   if (!areAllStrings(answer?.keyRisks) || !areAllStrings(answer?.whatToDoNext) || !areAllStrings(answer?.assumptions)) {
     throw new Error("Invalid outlook answer: array fields")
   }
+}
+
+function normalizeOutlookAnswer(answer) {
+  if (answer === null || typeof answer !== "object") {
+    return answer
+  }
+
+  const confidence = answer.confidence
+  if (confidence === null || typeof confidence !== "object") {
+    return answer
+  }
+
+  const normalizedConfidenceLabel = normalizeConfidenceLabel(confidence.label)
+  if (normalizedConfidenceLabel === null) {
+    return answer
+  }
+
+  return {
+    ...answer,
+    confidence: {
+      ...confidence,
+      label: normalizedConfidenceLabel
+    }
+  }
+}
+
+function normalizeConfidenceLabel(label) {
+  if (typeof label !== "string") {
+    return null
+  }
+
+  const normalized = label.trim().toLowerCase()
+  if (normalized === "low" || normalized === "medium" || normalized === "high") {
+    return normalized
+  }
+  if (normalized === "moderate") {
+    return "medium"
+  }
+
+  return null
 }
 
 function areAllStrings(values) {
@@ -382,4 +422,3 @@ function recordAccumulatorCall({ costMicrosUsd, costSource, llmCallAccumulator, 
     })
   } catch {}
 }
-
