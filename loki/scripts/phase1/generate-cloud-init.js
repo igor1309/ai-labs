@@ -34,11 +34,17 @@ export function renderCloudInit({ adminUser, deployEnv, sshAuthorizedKeys }) {
     "    content: |",
     "      [Manager]",
     `      DefaultEnvironment=DEPLOY_ENV=${deployEnv}`,
+    "  - path: /etc/ssh/sshd_config.d/99-loki-stack.conf",
+    "    permissions: \"0644\"",
+    "    content: |",
+    "      PasswordAuthentication no",
+    "      PermitRootLogin no",
     "runcmd:",
     "  - [\"ufw\", \"default\", \"deny\", \"incoming\"]",
     "  - [\"ufw\", \"default\", \"allow\", \"outgoing\"]",
     "  - [\"ufw\", \"allow\", \"OpenSSH\"]",
     "  - [\"ufw\", \"--force\", \"enable\"]",
+    "  - [\"systemctl\", \"restart\", \"ssh\"]",
     ""
   ].join("\n")
 }

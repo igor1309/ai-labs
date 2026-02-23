@@ -42,11 +42,17 @@ test("test_generateCloudInitCli_shouldPrintCloudInit_onValidArgs", () => {
         "    content: |",
         "      [Manager]",
         "      DefaultEnvironment=DEPLOY_ENV=prod",
+        "  - path: /etc/ssh/sshd_config.d/99-loki-stack.conf",
+        "    permissions: \"0644\"",
+        "    content: |",
+        "      PasswordAuthentication no",
+        "      PermitRootLogin no",
         "runcmd:",
         "  - [\"ufw\", \"default\", \"deny\", \"incoming\"]",
         "  - [\"ufw\", \"default\", \"allow\", \"outgoing\"]",
         "  - [\"ufw\", \"allow\", \"OpenSSH\"]",
         "  - [\"ufw\", \"--force\", \"enable\"]",
+        "  - [\"systemctl\", \"restart\", \"ssh\"]",
         ""
       ].join("\n"),
       stderr: ""
@@ -61,4 +67,3 @@ function generateCloudInitCliPath() {
 function testDir() {
   return dirname(fileURLToPath(import.meta.url))
 }
-
