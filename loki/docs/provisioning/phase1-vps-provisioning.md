@@ -51,6 +51,12 @@ Replace this with a real dedicated data volume before production retention growt
 - Final Phase 1 completion requires replacing loopback storage with a dedicated attached block volume mounted at `/var/lib/loki`.
 - Keep this status explicit in operational notes/logs until dedicated-volume cutover is complete.
 
+### Current blocker example (real host status)
+- Host: `95.164.53.144`
+- Requested provider action: attach a separate raw/unformatted `20G` block volume.
+- Current blocker: provider expanded the primary/root disk instead of attaching a separate volume.
+- Phase 1 remains **provisionally passed** until separate-volume attachment succeeds and loopback cutover is completed.
+
 ## Manual hardening path for existing hosts
 If the host was already created without cloud-init:
 1. Create a non-root admin user (for example `loki`) with SSH public key auth.
