@@ -2,6 +2,14 @@ name = "am-i-done-api"
 main = "src/index.js"
 compatibility_date = "2026-02-21"
 
+[observability]
+enabled = true
+head_sampling_rate = 1.0
+
+[observability.logs]
+enabled = true
+invocation_logs = false
+
 [vars]
 ENVIRONMENT = "dev"
 NORMALIZER_MODEL = "openai/gpt-5-nano"
