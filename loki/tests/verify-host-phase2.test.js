@@ -28,6 +28,18 @@ test("test_verifyHostPhase2_shouldExitNonZero_onHostWithNonJournaldDockerLogging
   assert.equal(result.status, 1)
 })
 
+test("test_verifyHostPhase2_shouldExitNonZero_onHostWithoutPersistentJournald", () => {
+  const result = spawnSync("bash", [verifyHostScriptPath()], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PHASE2_FIXTURES_DIR: fixturesDir("bad-journald-dir")
+    }
+  })
+
+  assert.equal(result.status, 1)
+})
+
 function verifyHostScriptPath() {
   return join(testDir(), "../scripts/phase2/verify-host.sh")
 }

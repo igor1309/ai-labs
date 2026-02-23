@@ -17,7 +17,7 @@ read_output() {
   "$@"
 }
 
-var_log_journal_exists="$(read_output "var-log-journal-exists.txt" test -d /var/log/journal && echo yes || echo no)"
+var_log_journal_exists="$(read_output "var-log-journal-exists.txt" bash -c 'test -d /var/log/journal && echo yes || echo no')"
 if ! grep -q "^yes$" <<<"$var_log_journal_exists"; then
   issues+=("journald persistent storage is not enabled (expected /var/log/journal)")
 fi
@@ -60,4 +60,3 @@ for issue in "${issues[@]}"; do
 done
 
 exit 1
-
