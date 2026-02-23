@@ -144,6 +144,7 @@ jobs:
     needs: [verify, core, real-provider-smoke, web-e2e, deploy, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
+      ref: ${{ env.RELEASE_TAG }}
       title: "Release"
       ref_label: "tag"
       ref_value: ${{ env.RELEASE_TAG }}
