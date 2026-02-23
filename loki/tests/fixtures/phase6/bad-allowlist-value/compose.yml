@@ -1,0 +1,6 @@
+services:
+  api:
+    image: alpine:3.20
+    labels:
+      - com.logging.project=trend-scout
+      - com.logging.service=worker

@@ -1,0 +1,54 @@
+{
+  "projects": [
+    "loki",
+    "oracle",
+    "trend-scout"
+  ],
+  "services": {
+    "loki": [
+      "grafana",
+      "loki"
+    ],
+    "oracle": [
+      "api",
+      "web"
+    ],
+    "trend-scout": [
+      "api",
+      "worker"
+    ]
+  },
+  "models": {
+    "oracle": [
+      "gpt-4.1-mini",
+      "gpt-4o",
+      "o3-mini"
+    ],
+    "trend-scout": [
+      "gpt-4.1",
+      "gpt-4o"
+    ]
+  },
+  "functions": {
+    "oracle": {
+      "api": [
+        "normalize-profession",
+        "render-outlook"
+      ]
+    },
+    "trend-scout": {
+      "api": [
+        "answer",
+        "classify",
+        "plan",
+        "summarize"
+      ],
+      "worker": [
+        "answer",
+        "classify",
+        "plan",
+        "summarize"
+      ]
+    }
+  }
+}

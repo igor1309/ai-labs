@@ -1,0 +1,10 @@
+{
+  "projects": [
+    "trend-scout"
+  ],
+  "services": {
+    "trend-scout": [
+      "api"
+    ]
+  }
+}
