@@ -1,0 +1,2 @@
+/var/lib/loki /dev/sdb1 ext4 rw,relatime
+
