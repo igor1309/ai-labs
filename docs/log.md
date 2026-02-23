@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+Extract Oracle core CI into `oracle-core`, dispatch by changed project paths, and gate `real-provider-smoke` on Oracle/shared changes.
 Oracle: implement locale v2 (backend + frontend). See `oracle/docs/log.md`.
 Add Loki logging stack decision + implementation plan docs (single-host Loki+Grafana, host Alloy journald-first ingestion, 14-day retention, Cloudflare Tunnel + Access).
 Release `v0.1.4`.
