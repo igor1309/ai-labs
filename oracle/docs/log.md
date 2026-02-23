@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+- Stop uploading custom GitHub Release assets (GitHub always includes source archives).
 - Create minimal GitHub Releases for successful `v*` tag-driven deployments.
 
 ## 2026-02-22
