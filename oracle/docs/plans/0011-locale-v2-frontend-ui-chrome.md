@@ -90,11 +90,14 @@ Also localize enum-like renderings owned by UI:
   - `src/i18n/strings_en.json`
   - `src/i18n/strings_ru.json`
 - Add generator:
-  - `scripts/generate_web_strings.mjs` (or similar) that produces `src/generated/strings.generated.js`
+  - `oracle/apps/am-i-done-web/scripts/generate_web_strings.mjs` (or similar) that produces `src/generated/strings.generated.js`
 - Add tests that enforce:
   - English JSON exists and has all required keys.
   - Russian JSON exists and has the same key set as English (no missing keys).
   - Generated module exports both locales and matches the JSON source values.
+- Ensure local dev and deploy runs the generator before starting Pages:
+  - `npm run web:dev` runs the generator before `wrangler pages dev`.
+  - `npm run web:deploy` runs the generator before `wrangler pages deploy`.
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `add web strings for en and ru`
 
