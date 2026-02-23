@@ -50,7 +50,6 @@ jobs:
           REF_LABEL: ${{ inputs.ref_label }}
           REF_VALUE: ${{ inputs.ref_value }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TITLE: ${{ inputs.title }}
         run: |
@@ -65,5 +64,6 @@ jobs:
             fi
           done <<< "${JOB_RESULTS}"
 
-          text="$(printf "❌ %s failed: %s\nrepo: %s\n%s: %s\ncommit: %s\nrun: %s" "${TITLE}" "${failed_jobs}" "${REPO}" "${REF_LABEL}" "${REF_VALUE}" "${SHA}" "${RUN_URL}")"
+          commit="$(git rev-parse HEAD)"
+          text="$(printf "❌ %s failed: %s\nrepo: %s\n%s: %s\ncommit: %s\nrun: %s" "${TITLE}" "${failed_jobs}" "${REPO}" "${REF_LABEL}" "${REF_VALUE}" "${commit}" "${RUN_URL}")"
           ./scripts/ci/notify_telegram_failure.sh "${text}"
