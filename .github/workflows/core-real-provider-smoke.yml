@@ -10,7 +10,7 @@ on:
       openrouter_timeout_ms:
         description: "Timeout for real-provider smoke calls."
         required: false
-        default: "90000"
+        default: "180000"
         type: string
     secrets:
       OPENROUTER_API_KEY:
