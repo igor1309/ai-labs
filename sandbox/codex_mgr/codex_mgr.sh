@@ -176,7 +176,8 @@ case "${1:-}" in
             echo "No profiles found."
             exit 1
         fi
-        mapfile -t profiles < <(get_profile_dirs)
+        profiles=()
+        while IFS= read -r line; do profiles+=("$line"); done < <(get_profile_dirs)
         if [[ ${#profiles[@]} -eq 0 ]]; then
             echo "No profiles saved yet."
             exit 1
