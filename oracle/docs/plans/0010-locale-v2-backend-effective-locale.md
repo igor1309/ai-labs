@@ -185,9 +185,9 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 - Commit: `partition normalizer cache by schemaVersion`
 
 ## Step 6: Deployment/config follow-ups (backend only)
-- Update `oracle/apps/am-i-done-api/wrangler.toml` defaults as needed for local dev (keep prod behavior gated by `schemaVersion` so local dev remains safe).
-- Document required config changes for deploy:
-  - bump Worker `PROMPT_VERSION` when localized prompts ship (recommended next value: `"2"`).
+- ✅ Update `oracle/apps/am-i-done-api/wrangler.toml` defaults as needed for local dev (keep prod behavior gated by `schemaVersion` so local dev remains safe).
+- ✅ Document required config changes for deploy:
+  - ✅ bump Worker `PROMPT_VERSION` when localized prompts ship (next value: `"2"`).
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `document locale v2 deploy settings`
 

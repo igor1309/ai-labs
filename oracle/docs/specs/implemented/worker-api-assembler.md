@@ -27,7 +27,7 @@ Prod-only required:
 - `env.TELEMETRY_DATASET`: Analytics Engine dataset binding used for best-effort per-request telemetry
 
 Optional (v1 defaults may be provided by the assembler):
-- `env.PROMPT_VERSION`: string (default `"1"` in config)
+- `env.PROMPT_VERSION`: string (default `"2"` in config)
 - `env.NORMALIZER_MODEL`: OpenRouter model id
 - `env.OUTLOOK_MODEL`: OpenRouter model id
 - `env.OPENROUTER_BASE_URL`: override base URL

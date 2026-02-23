@@ -230,7 +230,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Default config:
 - `OPENROUTER_BASE_URL`: `https://openrouter.ai`
 - `OPENROUTER_TIMEOUT_MS`: `10000`
-- `PROMPT_VERSION`: `"1"`
+- `PROMPT_VERSION`: `"2"`
 - Tests:
 - `oracle/apps/am-i-done-api/tests/worker-fetch-assembler.test.js`
 - Asserts missing/invalid binding failures, config defaulting, routing for method/path, OpenRouter/KV/D1 wiring behavior, fallback request-id generation.
@@ -277,7 +277,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 | `ENVIRONMENT` | Yes | Assembler + telemetry wiring | Enables prod-only telemetry (`prod|preview|dev`) |
 | `TELEMETRY_DATASET` | Yes (prod-only) | `createAnalyticsEngineTelemetry` | Workers Analytics Engine dataset binding |
 | `OPENROUTER_API_KEY` | Yes | Both OpenRouter adapters | Auth for model calls |
-| `PROMPT_VERSION` | No (defaults to `"1"`) | `createProfessionOutlookService` via assembler config | Cache/prompt versioning |
+| `PROMPT_VERSION` | No (defaults to `"2"`) | `createProfessionOutlookService` via assembler config | Cache/prompt versioning |
 | `NORMALIZER_MODEL` | Yes | OpenRouter normalizer adapter | Model selection |
 | `OUTLOOK_MODEL` | Yes | OpenRouter outlook adapter | Model selection |
 | `OPENROUTER_BASE_URL` | No | Both OpenRouter adapters | Endpoint override |
@@ -297,7 +297,7 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Web app unit tests (state transitions and request contract): `oracle/apps/am-i-done-web/tests/web-app.test.js`
 
 ## Spec drift notes
-- `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"1"` behavior; implementation treats it as optional and defaults to `"1"` when missing/blank.
+- `worker-api-assembler` spec marks `env.PROMPT_VERSION` under required inputs while also documenting default `"2"` behavior; implementation treats it as optional and defaults to `"2"` when missing/blank.
 - Implemented adapters include stricter runtime checks than minimum specs (empty API key/model, invalid timeout, non-OK OpenRouter status formatting, timeout abort), which is additive hardening.
 
 ## Ready-to-assemble checklist
