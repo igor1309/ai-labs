@@ -3,6 +3,10 @@ name: Core Real Provider Smoke
 on:
   workflow_call:
     inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
       openrouter_model:
         description: "OpenRouter model ID used for both NORMALIZER_MODEL and OUTLOOK_MODEL."
         required: true
@@ -26,6 +30,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -44,4 +50,3 @@ jobs:
           OUTLOOK_MODEL: ${{ inputs.openrouter_model }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
-

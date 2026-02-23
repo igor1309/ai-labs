@@ -65,6 +65,8 @@ jobs:
   core:
     needs: [verify]
     uses: ./.github/workflows/core.yml
+    with:
+      ref: ${{ env.RELEASE_TAG }}
 
   real-provider-smoke:
     needs: [core]
@@ -73,6 +75,7 @@ jobs:
     # - secrets.OPENROUTER_API_KEY
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
+      ref: ${{ env.RELEASE_TAG }}
       openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
     secrets:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -83,6 +86,8 @@ jobs:
       actions: write
       contents: read
     uses: ./.github/workflows/core-web-e2e.yml
+    with:
+      ref: ${{ env.RELEASE_TAG }}
 
   deploy:
     needs: [core, real-provider-smoke, web-e2e]
