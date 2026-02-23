@@ -23,6 +23,7 @@ test("test_professionNormalizer_shouldDelegateNormalizeToConfiguredService_onCon
 
   professionNormalizerModule.configureProfessionNormalizer({
     cache: cacheSpy.cache,
+    cacheVersion: "1",
     modelClient: modelClientSpy.client
   })
 
@@ -36,6 +37,7 @@ test("test_professionNormalizer_shouldDelegateNormalizeToConfiguredService_onCon
 
 test("test_createProfessionNormalizer_shouldThrowMissingDependencyError_onMissingCache", () => {
   assert.throws(() => createProfessionNormalizer({
+    cacheVersion: "1",
     modelClient: makeModelClientSpy(makeCanonicalResult("software engineer")).client
   }), { message: "Missing required dependency: cache" })
 })
@@ -43,6 +45,7 @@ test("test_createProfessionNormalizer_shouldThrowMissingDependencyError_onMissin
 test("test_createProfessionNormalizer_shouldThrowInvalidDependencyError_onCacheWithoutReadMethod", () => {
   assert.throws(() => createProfessionNormalizer({
     cache: {},
+    cacheVersion: "1",
     modelClient: makeModelClientSpy(makeCanonicalResult("software engineer")).client
   }), { message: "Invalid dependency: cache.read" })
 })
@@ -52,19 +55,29 @@ test("test_createProfessionNormalizer_shouldThrowInvalidDependencyError_onCacheW
     cache: {
       async read() {}
     },
+    cacheVersion: "1",
     modelClient: makeModelClientSpy(makeCanonicalResult("software engineer")).client
   }), { message: "Invalid dependency: cache.write" })
 })
 
 test("test_createProfessionNormalizer_shouldThrowMissingDependencyError_onMissingModelClient", () => {
   assert.throws(() => createProfessionNormalizer({
-    cache: makeCacheSpy(null).cache
+    cache: makeCacheSpy(null).cache,
+    cacheVersion: "1"
   }), { message: "Missing required dependency: modelClient" })
+})
+
+test("test_createProfessionNormalizer_shouldThrowMissingDependencyError_onMissingCacheVersion", () => {
+  assert.throws(() => createProfessionNormalizer({
+    cache: makeCacheSpy(null).cache,
+    modelClient: makeModelClientSpy(makeCanonicalResult("software engineer")).client
+  }), { message: "Missing required dependency: cacheVersion" })
 })
 
 test("test_createProfessionNormalizer_shouldThrowInvalidDependencyError_onModelClientWithoutNormalizeMethod", () => {
   assert.throws(() => createProfessionNormalizer({
     cache: makeCacheSpy(null).cache,
+    cacheVersion: "1",
     modelClient: {}
   }), { message: "Invalid dependency: modelClient.normalize" })
 })
@@ -75,6 +88,7 @@ test("test_normalize_shouldReturnCachedResultWithoutCallingModelClient_onCacheHi
   const modelClientSpy = makeModelClientSpy(makeCanonicalResult("model profession"))
   const professionNormalizer = createProfessionNormalizer({
     cache: cacheSpy.cache,
+    cacheVersion: "1",
     modelClient: modelClientSpy.client
   })
 
@@ -90,6 +104,7 @@ test("test_normalize_shouldCallModelClientWithNormalizedProfessionWriteCacheAndR
   const modelClientSpy = makeModelClientSpy(modelResult)
   const professionNormalizer = createProfessionNormalizer({
     cache: cacheSpy.cache,
+    cacheVersion: "1",
     modelClient: modelClientSpy.client
   })
 
@@ -98,7 +113,7 @@ test("test_normalize_shouldCallModelClientWithNormalizedProfessionWriteCacheAndR
   assert.deepEqual(result, modelResult)
   assert.deepEqual(modelClientSpy.calls, [{ locale: "en-US", profession: "software developer" }])
   assert.deepEqual(cacheSpy.writeCalls, [{
-    key: "normalizer:en-US:software developer",
+    key: "normalizer:1:en-US:software developer",
     value: modelResult
   }])
 })
@@ -109,6 +124,7 @@ test("test_normalize_shouldTreatUndefinedCacheReadAsMiss_onCacheReadReturnsUndef
   const modelClientSpy = makeModelClientSpy(modelResult)
   const professionNormalizer = createProfessionNormalizer({
     cache: cacheSpy.cache,
+    cacheVersion: "1",
     modelClient: modelClientSpy.client
   })
 
@@ -123,12 +139,33 @@ test("test_normalize_shouldUseLocaleAndNormalizedProfessionInCacheKey_onNormaliz
   const cacheSpy = makeCacheSpy(cachedResult)
   const professionNormalizer = createProfessionNormalizer({
     cache: cacheSpy.cache,
+    cacheVersion: "1",
     modelClient: makeModelClientSpy(makeCanonicalResult("ignored")).client
   })
 
   await professionNormalizer.normalize({ locale: "en-US", profession: "  software   developer " })
 
-  assert.deepEqual(cacheSpy.readCalls, ["normalizer:en-US:software developer"])
+  assert.deepEqual(cacheSpy.readCalls, ["normalizer:1:en-US:software developer"])
+})
+
+test("test_normalize_shouldPartitionCacheKey_onDifferentCacheVersion", async () => {
+  const cacheSpy = makeCacheSpy(null)
+  const modelClientSpy = makeModelClientSpy(makeCanonicalResult("software engineer"))
+  const v1Normalizer = createProfessionNormalizer({
+    cache: cacheSpy.cache,
+    cacheVersion: "1",
+    modelClient: modelClientSpy.client
+  })
+  const v2Normalizer = createProfessionNormalizer({
+    cache: cacheSpy.cache,
+    cacheVersion: "2",
+    modelClient: modelClientSpy.client
+  })
+
+  await v1Normalizer.normalize({ locale: "en", profession: "software developer" })
+  await v2Normalizer.normalize({ locale: "en", profession: "software developer" })
+
+  assert.deepEqual(cacheSpy.readCalls, ["normalizer:1:en:software developer", "normalizer:2:en:software developer"])
 })
 
 test("test_normalizeProfession_shouldTrimAndCollapseInternalWhitespace_onInputWithPaddingAndMultipleSpaces", () => {
@@ -149,6 +186,7 @@ test("test_normalize_shouldReturnAndCacheClarificationResultAsIs_onCacheMissWith
   const modelClientSpy = makeModelClientSpy(modelResult)
   const professionNormalizer = createProfessionNormalizer({
     cache: cacheSpy.cache,
+    cacheVersion: "1",
     modelClient: modelClientSpy.client
   })
 
@@ -156,7 +194,7 @@ test("test_normalize_shouldReturnAndCacheClarificationResultAsIs_onCacheMissWith
 
   assert.deepEqual(result, modelResult)
   assert.deepEqual(cacheSpy.writeCalls, [{
-    key: "normalizer:en-US:software developer",
+    key: "normalizer:1:en-US:software developer",
     value: modelResult
   }])
 })

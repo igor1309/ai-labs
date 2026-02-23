@@ -25,7 +25,7 @@ description: "Plan: backend-only locale v2 (ru support + effectiveLocale + promp
 - Worktree required: yes
 - Expected worktree: `worktrees/oracle-0010-locale-v2-backend-plan`
 - Expected branch: `codex/oracle-0010-locale-v2-backend-plan`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## v2 contract changes
 ### Request (v2)
@@ -124,70 +124,70 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 ## Step 1: Add v2 locale resolution utility
 - Add `resolveEffectiveLocale({ rawLocale, schemaVersion })` in `oracle/packages/worker-api/src`.
 - Add unit tests covering:
-  - `ru`, `ru-RU`, `ru_UA` → `"ru"` when `schemaVersion="2"`.
-  - `en-US`, `fr-FR`, empty/invalid → `"en"` when `schemaVersion="2"`.
-  - v1 behavior remains unchanged (utility returns raw/trimmed locale or is not used for v1 paths; choose and codify one).
+  - ✅ `ru`, `ru-RU`, `ru_UA` → `"ru"` when `schemaVersion="2"`.
+  - ✅ `en-US`, `fr-FR`, empty/invalid → `"en"` when `schemaVersion="2"`.
+  - ✅ v1 behavior remains unchanged (utility returns raw/trimmed locale or is not used for v1 paths; choose and codify one).
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `add effectiveLocale resolver for v2`
 
 ## Step 2: Thread effectiveLocale through request handling and v2 responses
-- Update request guard to return both:
-  - `requestedLocale` (trimmed raw)
-  - `effectiveLocale` (computed for v2, `"en"` fallback)
-  - Keep the existing `locale` field only if needed for v1 compatibility; otherwise migrate call sites to the new naming.
-- Update `createWorkerFetchHandler`:
-  - Use `effectiveLocale` for all downstream calls (normalizer/outlook) when `schemaVersion="2"`.
-  - Add `effectiveLocale` to v2 responses for:
-    - answered
-    - clarify
-    - guard_reject
-    - invalid_body (use `"en"` if locale is unavailable)
-  - Ensure v1 responses remain byte-for-byte compatible (no new fields).
-- Add/adjust composition tests to cover:
-  - v2 adds `effectiveLocale`
-  - v1 has no `effectiveLocale`
+- ✅ Update request guard to return both:
+  - ✅ `requestedLocale` (trimmed raw)
+  - ✅ `effectiveLocale` (computed for v2, `"en"` fallback)
+  - ✅ Keep the existing `locale` field only if needed for v1 compatibility; otherwise migrate call sites to the new naming.
+- ✅ Update `createWorkerFetchHandler`:
+  - ✅ Use `effectiveLocale` for all downstream calls (normalizer/outlook) when `schemaVersion="2"`.
+  - ✅ Add `effectiveLocale` to v2 responses for:
+    - ✅ answered
+    - ✅ clarify
+    - ✅ guard_reject
+    - ✅ invalid_body (use `"en"` if locale is unavailable)
+  - ✅ Ensure v1 responses remain byte-for-byte compatible (no new fields).
+- ✅ Add/adjust composition tests to cover:
+  - ✅ v2 adds `effectiveLocale`
+  - ✅ v1 has no `effectiveLocale`
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `include effectiveLocale in schemaVersion 2 responses`
 
 ## Step 3: Localize backend-owned copy for v2
-- Add backend message resources (`messages_en.json`, `messages_ru.json`) and embed them (generator output module is acceptable in this step or the next).
-- Localize these backend-generated strings for v2:
-  - invalid request body message
-  - guard invalid message
-- Update tests expecting these messages:
-  - v2 with `effectiveLocale="ru"` returns Russian strings
-  - v2 fallback returns English strings
-  - v1 remains English as today
+- ✅ Add backend message resources (`messages_en.json`, `messages_ru.json`) and embed them (generator output module is acceptable in this step or the next).
+- ✅ Localize these backend-generated strings for v2:
+  - ✅ invalid request body message
+  - ✅ guard invalid message
+- ✅ Update tests expecting these messages:
+  - ✅ v2 with `effectiveLocale="ru"` returns Russian strings
+  - ✅ v2 fallback returns English strings
+  - ✅ v1 remains English as today
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `localize backend clarification copy for v2`
 
 ## Step 4: Embed localized prompts and select them in OpenRouter adapters
-- Add localized prompt source files for normalizer and outlook.
-- Add generator script + generated module (or extend the generator from Step 3) to embed prompt text.
-- Update OpenRouter adapters to pick system prompt content based on `effectiveLocale`.
-- Update adapter tests to validate:
-  - system prompt selection changes for `effectiveLocale="ru"` vs `"en"`.
-  - the user prompt payload includes `locale` matching `effectiveLocale` (not raw).
+- ✅ Add localized prompt source files for normalizer and outlook.
+- ✅ Add generator script + generated module (or extend the generator from Step 3) to embed prompt text.
+- ✅ Update OpenRouter adapters to pick system prompt content based on `effectiveLocale`.
+- ✅ Update adapter tests to validate:
+  - ✅ system prompt selection changes for `effectiveLocale="ru"` vs `"en"`.
+  - ✅ the user prompt payload includes `locale` matching `effectiveLocale` (not raw).
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `select localized system prompts for v2`
 
 ## Step 5: Partition normalizer cache for v2
-- Update profession normalizer cache keying to prevent mixing v1 and v2 localized outputs.
-- Preferred approach:
-  - Add `cacheVersion` dependency to `createProfessionNormalizer`.
-  - Include `cacheVersion` in the cache key.
-  - Wire `cacheVersion` from the Worker assembler:
-    - `"1"` for `schemaVersion="1"`
-    - `"2"` for `schemaVersion="2"`
-- Add tests proving:
-  - v2 writes/reads different keys than v1 for the same profession + effectiveLocale.
+- ✅ Update profession normalizer cache keying to prevent mixing v1 and v2 localized outputs.
+- ✅ Preferred approach:
+  - ✅ Add `cacheVersion` dependency to `createProfessionNormalizer`.
+  - ✅ Include `cacheVersion` in the cache key.
+  - ✅ Wire `cacheVersion` from the Worker assembler:
+    - ✅ `"1"` for `schemaVersion="1"`
+    - ✅ `"2"` for `schemaVersion="2"`
+- ✅ Add tests proving:
+  - ✅ v2 writes/reads different keys than v1 for the same profession + effectiveLocale.
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `partition normalizer cache by schemaVersion`
 
 ## Step 6: Deployment/config follow-ups (backend only)
-- Update `oracle/apps/am-i-done-api/wrangler.toml` defaults as needed for local dev (keep prod behavior gated by `schemaVersion` so local dev remains safe).
-- Document required config changes for deploy:
-  - bump Worker `PROMPT_VERSION` when localized prompts ship (recommended next value: `"2"`).
+- ✅ Update `oracle/apps/am-i-done-api/wrangler.toml` defaults as needed for local dev (keep prod behavior gated by `schemaVersion` so local dev remains safe).
+- ✅ Document required config changes for deploy:
+  - ✅ bump Worker `PROMPT_VERSION` when localized prompts ship (next value: `"2"`).
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `document locale v2 deploy settings`
 

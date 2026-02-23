@@ -24,7 +24,7 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     OPENROUTER_TIMEOUT_MS: process.env.OPENROUTER_TIMEOUT_MS,
     OUTLOOK_CACHE: makeKvNamespaceSpy(),
     OUTLOOK_MODEL: outlookModel,
-    PROMPT_VERSION: "1"
+    PROMPT_VERSION: "2"
   })
 
   const response = await workerFetch(new Request("https://worker.example/api/outlook", {

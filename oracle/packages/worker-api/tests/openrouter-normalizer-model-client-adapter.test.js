@@ -67,6 +67,7 @@ test("test_createOpenRouterNormalizerModelClient_shouldThrowInvalidDependencyErr
 
 test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNormalizeCall", async () => {
   const adapterModule = await loadAdapterModule()
+  const resourcesModule = await loadResourcesModule()
   const httpClientSpy = makeHttpClientSpy()
   const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
     apiKey: "openrouter-api-key",
@@ -91,7 +92,7 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
       body: {
         messages: [
           {
-            content: "Return only JSON with no extra keys and no non-JSON text. Output schema: needsClarification (boolean). If needsClarification=false requires canonicalProfession (string). If needsClarification=true requires clarification.message (string) and clarification.suggestions (string[]). If input is not a profession or is too vague, return needsClarification=true.",
+            content: resourcesModule?.systemPrompts?.normalizer?.en,
             role: "system"
           },
           {
@@ -116,6 +117,42 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
     },
     url: "https://custom-openrouter.example/api/v1/chat/completions"
   }])
+})
+
+test("test_normalize_shouldSelectRussianSystemPrompt_onLocaleRu", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.normalize?.({
+    locale: "ru",
+    profession: "software developer"
+  })
+
+  assert.match(httpClientSpy.calls[0]?.init?.body?.messages?.[0]?.content, /верни только json/i)
+})
+
+test("test_normalize_shouldIncludeLocaleInUserPrompt_onLocaleRu", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterNormalizerModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.normalize?.({
+    locale: "ru",
+    profession: "software developer"
+  })
+
+  assert.equal(JSON.parse(httpClientSpy.calls[0]?.init?.body?.messages?.[1]?.content)?.locale, "ru")
 })
 
 test("test_normalize_shouldReturnParsedNormalizerResult_onValidJsonModelOutput", async () => {
@@ -333,6 +370,14 @@ function makeHttpClientSpy(modelResponse = {
 async function loadAdapterModule() {
   try {
     return await import("../src/openrouter-normalizer-model-client-adapter.js")
+  } catch {
+    return null
+  }
+}
+
+async function loadResourcesModule() {
+  try {
+    return await import("../src/generated/localized-resources.generated.js")
   } catch {
     return null
   }

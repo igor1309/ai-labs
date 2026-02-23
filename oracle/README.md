@@ -46,7 +46,7 @@ Run all commands from repo root.
 3. Ensure Worker vars in `oracle/apps/am-i-done-api/wrangler.toml`:
    - `NORMALIZER_MODEL="openai/gpt-5-nano"`
    - `OUTLOOK_MODEL="openai/gpt-5-nano"`
-   - `PROMPT_VERSION="1"`
+   - `PROMPT_VERSION="2"`
 4. Ensure Worker secret exists:
    - `npx wrangler secret put OPENROUTER_API_KEY --cwd oracle/apps/am-i-done-api`
 5. Run tests:

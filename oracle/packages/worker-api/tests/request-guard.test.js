@@ -65,8 +65,10 @@ test("test_validate_shouldReturnValidResultWithTypedValue_onValidPayloadWithExtr
   assert.deepEqual(result, {
     isValid: true,
     value: {
+      effectiveLocale: "en",
       locale: "en-US",
       profession: "software engineer",
+      requestedLocale: "en-US",
       schemaVersion: "2"
     }
   })
@@ -84,8 +86,10 @@ test("test_validate_shouldReturnTrimmedValueFields_onValidPayloadWithWhitespaceP
   assert.deepEqual(result, {
     isValid: true,
     value: {
+      effectiveLocale: "en",
       locale: "en-US",
       profession: "software engineer",
+      requestedLocale: "en-US",
       schemaVersion: "2"
     }
   })
@@ -113,6 +117,63 @@ test("test_validate_shouldUseProvidedSchemaVersion_onInvalidPayloadWithNonEmptyS
   })
 
   assert.equal(result?.schemaVersion, "2")
+})
+
+test("test_validate_shouldReturnRussianMessage_onInvalidPayloadWithSchemaVersion2AndRuLocale", async () => {
+  const module = await loadRequestGuardModule()
+
+  const result = await module?.requestGuard?.validate?.({
+    locale: "ru-RU",
+    profession: "   ",
+    schemaVersion: "2"
+  })
+
+  assert.deepEqual(result, {
+    clarification: {
+      message: "Пожалуйста, укажите корректные профессию и локаль.",
+      suggestions: []
+    },
+    isValid: false,
+    schemaVersion: "2"
+  })
+})
+
+test("test_validate_shouldReturnEnglishMessage_onInvalidPayloadWithSchemaVersion2AndUnsupportedLocale", async () => {
+  const module = await loadRequestGuardModule()
+
+  const result = await module?.requestGuard?.validate?.({
+    locale: "fr-FR",
+    profession: "   ",
+    schemaVersion: "2"
+  })
+
+  assert.deepEqual(result, {
+    clarification: {
+      message: "Please provide a valid profession and locale.",
+      suggestions: []
+    },
+    isValid: false,
+    schemaVersion: "2"
+  })
+})
+
+test("test_validate_shouldReturnEnglishMessage_onInvalidPayloadWithSchemaVersion1AndRuLocale", async () => {
+  const module = await loadRequestGuardModule()
+
+  const result = await module?.requestGuard?.validate?.({
+    locale: "ru-RU",
+    profession: "   ",
+    schemaVersion: "1"
+  })
+
+  assert.deepEqual(result, {
+    clarification: {
+      message: "Please provide a valid profession and locale.",
+      suggestions: []
+    },
+    isValid: false,
+    schemaVersion: "1"
+  })
 })
 
 test("test_validate_shouldNotThrow_onAnyInputShape", async () => {

@@ -1,4 +1,4 @@
-const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
+import { systemPrompts } from "./generated/localized-resources.generated.js"
 
 export function createOpenRouterOutlookModelClient({
   apiKey,
@@ -52,7 +52,7 @@ export function createOpenRouterOutlookModelClient({
           body: JSON.stringify({
             messages: [
               {
-                content: SYSTEM_PROMPT,
+                content: resolveSystemPrompt(locale),
                 role: "system"
               },
               {
@@ -141,6 +141,10 @@ export function createOpenRouterOutlookModelClient({
       }
     }
   }
+}
+
+function resolveSystemPrompt(locale) {
+  return locale === "ru" ? systemPrompts.outlook.ru : systemPrompts.outlook.en
 }
 
 function createTimeoutSignal(timeoutMs) {

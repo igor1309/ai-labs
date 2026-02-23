@@ -12,7 +12,7 @@ import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../..
 
 const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai"
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 10000
-const DEFAULT_PROMPT_VERSION = "1"
+const DEFAULT_PROMPT_VERSION = "2"
 const VALID_ENVIRONMENTS = new Set(["prod", "preview", "dev"])
 
 export function makeWorkerFetch(env, {
@@ -42,6 +42,7 @@ export function makeWorkerFetch(env, {
     popularityTracker,
     makeProfessionNormalizer: ({ llmCallAccumulator, requestId, schemaVersion }) => createProfessionNormalizer({
       cache: normalizerCache,
+      cacheVersion: schemaVersion === "2" ? "2" : "1",
       modelClient: createConfiguredOpenRouterNormalizerModelClient({
         config,
         httpClient,

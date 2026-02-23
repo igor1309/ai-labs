@@ -1,7 +1,13 @@
+import { resolveEffectiveLocale } from "./effective-locale.js"
+import { backendMessages } from "./generated/localized-resources.generated.js"
+
 export const requestGuard = {
   async validate(input) {
     if (!isObject(input)) {
-      return makeInvalidResult(resolveSchemaVersion(input))
+      return makeInvalidResult({
+        rawLocale: "",
+        schemaVersion: resolveSchemaVersion(input)
+      })
     }
 
     const schemaVersion = resolveSchemaVersion(input)
@@ -9,21 +15,33 @@ export const requestGuard = {
     const locale = readProperty(input, "locale")
 
     if (!isNonEmptyString(profession)) {
-      return makeInvalidResult(schemaVersion)
+      return makeInvalidResult({
+        rawLocale: locale,
+        schemaVersion
+      })
     }
 
     if (!isNonEmptyString(locale)) {
-      return makeInvalidResult(schemaVersion)
+      return makeInvalidResult({
+        rawLocale: locale,
+        schemaVersion
+      })
     }
 
     const trimmedProfession = profession.trim()
     const trimmedLocale = locale.trim()
+    const effectiveLocale = resolveEffectiveLocale({
+      rawLocale: trimmedLocale,
+      schemaVersion
+    })
 
     return {
       isValid: true,
       value: {
+        effectiveLocale,
         locale: trimmedLocale,
         profession: trimmedProfession,
+        requestedLocale: trimmedLocale,
         schemaVersion
       }
     }
@@ -37,10 +55,14 @@ function isObject(value) {
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== ""
 }
-function makeInvalidResult(schemaVersion) {
+function makeInvalidResult({ rawLocale, schemaVersion }) {
+  const effectiveLocale = resolveEffectiveLocale({ rawLocale, schemaVersion })
+  const messageLocale = schemaVersion === "2" ? effectiveLocale : "en"
+  const messages = backendMessages[messageLocale] ?? backendMessages.en
+
   return {
     clarification: {
-      message: "Please provide a valid profession and locale.",
+      message: messages.invalid_profession_or_locale,
       suggestions: []
     },
     isValid: false,

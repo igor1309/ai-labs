@@ -1,4 +1,4 @@
-const SYSTEM_PROMPT = "Return only JSON with no extra keys and no non-JSON text. Output schema: needsClarification (boolean). If needsClarification=false requires canonicalProfession (string). If needsClarification=true requires clarification.message (string) and clarification.suggestions (string[]). If input is not a profession or is too vague, return needsClarification=true."
+import { systemPrompts } from "./generated/localized-resources.generated.js"
 
 export function createOpenRouterNormalizerModelClient({
   apiKey,
@@ -52,7 +52,7 @@ export function createOpenRouterNormalizerModelClient({
           body: JSON.stringify({
             messages: [
               {
-                content: SYSTEM_PROMPT,
+                content: resolveSystemPrompt(locale),
                 role: "system"
               },
               {
@@ -144,6 +144,10 @@ export function createOpenRouterNormalizerModelClient({
       }
     }
   }
+}
+
+function resolveSystemPrompt(locale) {
+  return locale === "ru" ? systemPrompts.normalizer.ru : systemPrompts.normalizer.en
 }
 
 function createTimeoutSignal(timeoutMs) {
@@ -395,4 +399,3 @@ function recordAccumulatorCall({ costMicrosUsd, costSource, llmCallAccumulator, 
     })
   } catch {}
 }
-

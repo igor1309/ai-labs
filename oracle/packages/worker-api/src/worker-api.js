@@ -1,3 +1,6 @@
+import { resolveEffectiveLocale } from "./effective-locale.js"
+import { backendMessages } from "./generated/localized-resources.generated.js"
+
 export function createWorkerApiEntrypointRouter({ outlookHandler } = {}) {
   const routeOutlookHandler = requireFunctionDependency(
     outlookHandler,
@@ -63,12 +66,22 @@ export function createWorkerFetchHandler(dependencies = {}) {
     let response
     let schemaVersion = "1"
     let locale = ""
+    let rawRequestBody = ""
 
     try {
       try {
-        requestBody = await request.json()
+        rawRequestBody = await request.text()
+        requestBody = JSON.parse(rawRequestBody)
       } catch {
         result = "invalid_body"
+        schemaVersion = resolveSchemaVersionFromInvalidJson(rawRequestBody)
+        const rawLocale = resolveLocaleFromInvalidJson(rawRequestBody)
+        const effectiveLocale = schemaVersion === "2"
+          ? resolveEffectiveLocale({ rawLocale, schemaVersion })
+          : rawLocale
+        const messageLocale = schemaVersion === "2" ? effectiveLocale : "en"
+        const messages = backendMessages[messageLocale] ?? backendMessages.en
+        locale = schemaVersion === "2" ? effectiveLocale : rawLocale
 
         response = Response.json({
           answer: null,
@@ -76,12 +89,15 @@ export function createWorkerFetchHandler(dependencies = {}) {
           category: null,
           categoryConfidence: null,
           clarification: {
-            message: "Please provide a valid request body.",
+            message: messages.invalid_request_body,
             suggestions: []
           },
+          ...(schemaVersion === "2" ? {
+            effectiveLocale
+          } : {}),
           needsClarification: true,
           requestId,
-          schemaVersion: "1"
+          schemaVersion
         })
 
         return response
@@ -92,7 +108,11 @@ export function createWorkerFetchHandler(dependencies = {}) {
       if (!guardResult.isValid) {
         result = "guard_reject"
         schemaVersion = guardResult.schemaVersion
-        locale = typeof requestBody?.locale === "string" ? requestBody.locale : ""
+        const rawLocale = typeof requestBody?.locale === "string" ? requestBody.locale : ""
+        const effectiveLocale = schemaVersion === "2"
+          ? resolveEffectiveLocale({ rawLocale, schemaVersion })
+          : rawLocale
+        locale = schemaVersion === "2" ? effectiveLocale : rawLocale
 
         response = Response.json({
           answer: null,
@@ -100,6 +120,9 @@ export function createWorkerFetchHandler(dependencies = {}) {
           category: null,
           categoryConfidence: null,
           clarification: guardResult.clarification,
+          ...(schemaVersion === "2" ? {
+            effectiveLocale
+          } : {}),
           needsClarification: true,
           requestId,
           schemaVersion: guardResult.schemaVersion
@@ -109,7 +132,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
       }
 
       schemaVersion = guardResult.value.schemaVersion
-      locale = guardResult.value.locale
+      locale = guardResult.value.effectiveLocale
 
       const requestContext = {
         llmCallAccumulator,
@@ -130,7 +153,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
       )
 
       const normalizerResult = await professionNormalizer.normalize({
-        locale: guardResult.value.locale,
+        locale: guardResult.value.effectiveLocale,
         profession: guardResult.value.profession
       })
 
@@ -160,6 +183,9 @@ export function createWorkerFetchHandler(dependencies = {}) {
           category: null,
           categoryConfidence: null,
           clarification: normalizerResult.clarification,
+          ...(guardResult.value.schemaVersion === "2" ? {
+            effectiveLocale: guardResult.value.effectiveLocale
+          } : {}),
           needsClarification: true,
           requestId,
           schemaVersion: guardResult.value.schemaVersion
@@ -174,7 +200,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
           category: normalizerResult.category,
           categoryConfidence: normalizerResult.categoryConfidence
         },
-        locale: guardResult.value.locale,
+        locale: guardResult.value.effectiveLocale,
         schemaVersion: guardResult.value.schemaVersion
       })
 
@@ -186,6 +212,9 @@ export function createWorkerFetchHandler(dependencies = {}) {
         category: normalizerResult.category ?? null,
         categoryConfidence: normalizerResult.categoryConfidence ?? null,
         clarification: null,
+        ...(guardResult.value.schemaVersion === "2" ? {
+          effectiveLocale: guardResult.value.effectiveLocale
+        } : {}),
         needsClarification: false,
         requestId,
         schemaVersion: guardResult.value.schemaVersion
@@ -310,4 +339,26 @@ function requireMethodDependency(value, name, methodName) {
   }
 
   return dependency
+}
+
+function resolveSchemaVersionFromInvalidJson(rawRequestBody) {
+  const match = getInvalidJsonScanText(rawRequestBody).match(/"schemaVersion"\s*:\s*"([^"]+)"/)
+  const schemaVersion = typeof match?.[1] === "string" ? match[1].trim() : ""
+
+  return schemaVersion === "2" ? "2" : "1"
+}
+
+function resolveLocaleFromInvalidJson(rawRequestBody) {
+  const match = getInvalidJsonScanText(rawRequestBody).match(/"locale"\s*:\s*"([^"]+)"/)
+
+  return typeof match?.[1] === "string" ? match[1] : ""
+}
+
+function getInvalidJsonScanText(rawRequestBody) {
+  if (typeof rawRequestBody !== "string") {
+    return ""
+  }
+
+  // Best-effort parsing: scan only a short prefix to avoid false positives and reduce work on large bodies.
+  return rawRequestBody.slice(0, 2048)
 }
