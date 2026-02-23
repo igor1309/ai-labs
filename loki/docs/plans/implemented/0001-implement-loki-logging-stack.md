@@ -72,7 +72,7 @@ These labels are optional and may only be derived centrally by Alloy (never by â
 - Worktree required: yes
 - Expected worktree: `worktrees/loki-logging-stack`
 - Expected branch: `codex/loki-logging-stack`
-- Preflight check: [ ] done (`git worktree list --porcelain` and `git branch --show-current`)
+- Preflight check: [x] done (`git worktree list --porcelain` and `git branch --show-current`)
 
 ## Repo artifacts (tracked in git)
 When executed, this plan adds repo-tracked artifacts under `loki/`:

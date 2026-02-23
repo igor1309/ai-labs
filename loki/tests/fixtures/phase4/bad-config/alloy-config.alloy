@@ -1,0 +1,5 @@
+deploy_env = sys.env("DEPLOY_ENV")
+
+loki.source.journal "systemd_units" {
+  max_age = "24h"
+}

@@ -1,0 +1,1 @@
+{"status":"success","data":{"result":[{"stream":"{env=\"prod\", project=\"trend-scout\", service=\"api\"}","values":[["1","{\"message\":\"phase4-override-attempt\",\"project\":\"evil-project\",\"service\":\"evil-service\"}"]]}]}}

@@ -1,0 +1,7 @@
+tunnel: loki-grafana
+credentials-file: /etc/cloudflared/loki-grafana.json
+
+ingress:
+  - hostname: grafana.example.com
+    service: http://127.0.0.1:3000
+  - service: http_status:404

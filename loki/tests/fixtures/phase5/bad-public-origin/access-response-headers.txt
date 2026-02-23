@@ -1,0 +1,5 @@
+HTTP/2 302 
+date: Mon, 23 Feb 2026 20:11:22 GMT
+content-type: text/html; charset=UTF-8
+location: https://grafana.example.com/cdn-cgi/access/login/loki?redirect_url=%2Flogin
+server: cloudflare
