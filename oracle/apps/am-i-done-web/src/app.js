@@ -1,3 +1,5 @@
+import { stringsByLocale } from "./generated/strings.generated.js"
+
 const APP_STATES = {
   FAILED: "failed",
   IDLE: "idle",
@@ -8,6 +10,15 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 12000
 export const OUTLOOK_ENDPOINT_PATH = "/api/outlook"
 
 if (canBootstrapInBrowser()) {
+  const rawLocale = readBrowserLocale()
+  const effectiveLocale = resolveEffectiveLocale(rawLocale)
+  const strings = stringsByLocale[effectiveLocale] ?? stringsByLocale.en
+
+  applyStrings({
+    document,
+    strings
+  })
+
   startApp({
     elements: resolveViewElements(document),
     fetchImplementation: window.fetch.bind(window),
@@ -31,6 +42,33 @@ export function resolveEffectiveLocale(rawLocale) {
     : ""
 
   return normalized === "ru" || normalized.startsWith("ru-") ? "ru" : "en"
+}
+
+export function applyStrings({ document, strings }) {
+  if (document === undefined || document === null || strings === undefined || strings === null) {
+    return
+  }
+
+  document.title = strings.documentTitle ?? ""
+
+  if (document.documentElement) {
+    document.documentElement.lang = resolveEffectiveLocale(readBrowserLocale())
+  }
+
+  setText(document.querySelector("[data-testid='hero-eyebrow']"), strings.hero?.eyebrow ?? "")
+  setText(document.querySelector("[data-testid='hero-title']"), strings.hero?.title ?? "")
+  setText(document.querySelector("[data-testid='hero-intro']"), strings.hero?.intro ?? "")
+  setText(document.querySelector("[data-testid='profession-label']"), strings.form?.professionLabel ?? "")
+  setInputPlaceholder(document.querySelector("[data-testid='profession-input']"), strings.form?.professionPlaceholder ?? "")
+  setText(document.querySelector("[data-testid='submit-button']"), strings.form?.submitButton ?? "")
+  setText(document.querySelector("[data-testid='loading']"), strings.states?.loading ?? "")
+  setText(document.querySelector("[data-testid='transport-error']"), strings.states?.transportError ?? "")
+  setText(document.querySelector("[data-testid='clarification-title']"), strings.sections?.clarification ?? "")
+  setText(document.querySelector("[data-testid='time-horizon-title']"), strings.sections?.timeHorizon ?? "")
+  setText(document.querySelector("[data-testid='confidence-title']"), strings.sections?.confidence ?? "")
+  setText(document.querySelector("[data-testid='risks-title']"), strings.sections?.risks ?? "")
+  setText(document.querySelector("[data-testid='what-to-do-next-title']"), strings.sections?.whatToDoNext ?? "")
+  setText(document.querySelector("[data-testid='assumptions-title']"), strings.sections?.assumptions ?? "")
 }
 
 export function startApp({ elements, fetchImplementation, location }) {
@@ -193,6 +231,14 @@ function setText(element, value) {
   }
 
   element.textContent = value
+}
+
+function setInputPlaceholder(element, value) {
+  if (element === null) {
+    return
+  }
+
+  element.placeholder = value
 }
 
 function renderList(listElement, values) {
