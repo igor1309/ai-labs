@@ -1,5 +1,7 @@
 import { stringsByLocale } from "./generated/strings.generated.js"
 
+let activeStrings = stringsByLocale.en
+
 const APP_STATES = {
   FAILED: "failed",
   IDLE: "idle",
@@ -14,6 +16,7 @@ if (canBootstrapInBrowser()) {
   const effectiveLocale = resolveEffectiveLocale(rawLocale)
   const strings = stringsByLocale[effectiveLocale] ?? stringsByLocale.en
 
+  activeStrings = strings
   applyStrings({
     document,
     strings
@@ -69,6 +72,26 @@ export function applyStrings({ document, strings }) {
   setText(document.querySelector("[data-testid='risks-title']"), strings.sections?.risks ?? "")
   setText(document.querySelector("[data-testid='what-to-do-next-title']"), strings.sections?.whatToDoNext ?? "")
   setText(document.querySelector("[data-testid='assumptions-title']"), strings.sections?.assumptions ?? "")
+}
+
+export function localizeConfidenceLabel({ label, strings }) {
+  const rawLabel = typeof label === "string" ? label : ""
+
+  if (rawLabel === "") {
+    return ""
+  }
+
+  const confidenceLabels = typeof strings?.confidenceLabels === "object" && strings.confidenceLabels !== null
+    ? strings.confidenceLabels
+    : null
+
+  if (confidenceLabels === null) {
+    return rawLabel
+  }
+
+  return Object.prototype.hasOwnProperty.call(confidenceLabels, rawLabel)
+    ? confidenceLabels[rawLabel]
+    : rawLabel
 }
 
 export function startApp({ elements, fetchImplementation, location }) {
@@ -218,7 +241,10 @@ function renderAnswer(elements, answer) {
   setText(elements.answerHeadlineElement, answer?.headline ?? "")
   setText(elements.answerTimeHorizonLabelElement, answer?.timeHorizon?.label ?? "")
   setText(elements.answerTimeHorizonExplanationElement, answer?.timeHorizon?.explanation ?? "")
-  setText(elements.answerConfidenceLabelElement, answer?.confidence?.label ?? "")
+  setText(elements.answerConfidenceLabelElement, localizeConfidenceLabel({
+    label: answer?.confidence?.label,
+    strings: activeStrings
+  }))
   setText(elements.answerConfidenceRationaleElement, answer?.confidence?.rationale ?? "")
   renderList(elements.answerKeyRisksElement, answer?.keyRisks ?? [])
   renderList(elements.answerWhatToDoNextElement, answer?.whatToDoNext ?? [])
