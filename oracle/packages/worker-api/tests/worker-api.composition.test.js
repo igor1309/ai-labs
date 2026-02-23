@@ -210,6 +210,27 @@ test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2InvalidJsonRequest
   })
 })
 
+test("test_fetch_shouldIncludeEffectiveLocaleEn_onSchemaVersion2InvalidJsonRequestBodyWithoutLocale", async () => {
+  const { workerFetchHandler } = makeSUT()
+
+  const response = await performInvalidJsonOutlookRequestWithBody(workerFetchHandler, "{\"schemaVersion\":\"2\",")
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please provide a valid request body.",
+      suggestions: []
+    },
+    effectiveLocale: "en",
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "2"
+  })
+})
+
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", async () => {
   const { telemetrySpy, workerFetchHandler } = makeSUT({
     guardResult: {

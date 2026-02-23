@@ -1,5 +1,5 @@
-import { backendMessages } from "./generated/localized-resources.generated.js"
 import { resolveEffectiveLocale } from "./effective-locale.js"
+import { backendMessages } from "./generated/localized-resources.generated.js"
 
 export const requestGuard = {
   async validate(input) {

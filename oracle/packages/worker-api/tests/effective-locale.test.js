@@ -17,6 +17,14 @@ test("test_resolveEffectiveLocale_shouldReturnRu_onSchemaVersion2AndRawLocaleRuR
   assert.equal(result, "ru")
 })
 
+test("test_resolveEffectiveLocale_shouldReturnRu_onSchemaVersion2AndRawLocaleUppercaseRuRu", async () => {
+  const module = await loadEffectiveLocaleModule()
+
+  const result = module?.resolveEffectiveLocale?.({ rawLocale: "RU-RU", schemaVersion: "2" })
+
+  assert.equal(result, "ru")
+})
+
 test("test_resolveEffectiveLocale_shouldReturnRu_onSchemaVersion2AndRawLocaleRuUaWithUnderscore", async () => {
   const module = await loadEffectiveLocaleModule()
 
