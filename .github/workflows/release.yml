@@ -51,9 +51,13 @@ jobs:
           fi
 
       - name: Verify tag commit is on trunk
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
         run: |
+          git fetch --force --tags origin
           git fetch origin trunk:refs/remotes/origin/trunk
-          git merge-base --is-ancestor "${GITHUB_SHA}" "origin/trunk"
+          tag_sha="$(git rev-list -n1 "${TAG}")"
+          git merge-base --is-ancestor "${tag_sha}" "origin/trunk"
 
   core:
     needs: [verify]
