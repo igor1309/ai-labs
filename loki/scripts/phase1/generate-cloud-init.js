@@ -1,4 +1,20 @@
 export function renderCloudInit({ adminUser, deployEnv, sshAuthorizedKeys }) {
+  if (!isNonEmptyString(adminUser)) {
+    throw new Error("adminUser must be a non-empty string")
+  }
+
+  if (!["dev", "stage", "prod"].includes(deployEnv)) {
+    throw new Error("deployEnv must be one of: dev, stage, prod")
+  }
+
+  if (!Array.isArray(sshAuthorizedKeys) || sshAuthorizedKeys.length === 0) {
+    throw new Error("sshAuthorizedKeys must be a non-empty array")
+  }
+
+  if (!sshAuthorizedKeys.every(($0) => isNonEmptyString($0))) {
+    throw new Error("sshAuthorizedKeys must contain only non-empty strings")
+  }
+
   return [
     "#cloud-config",
     "users:",
@@ -25,4 +41,8 @@ export function renderCloudInit({ adminUser, deployEnv, sshAuthorizedKeys }) {
     "  - [\"ufw\", \"--force\", \"enable\"]",
     ""
   ].join("\n")
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0
 }

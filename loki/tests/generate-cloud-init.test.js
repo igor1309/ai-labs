@@ -47,6 +47,18 @@ test("test_renderCloudInit_shouldRenderPhase1CloudInit_onValidInputs", async () 
   )
 })
 
+test("test_renderCloudInit_shouldThrow_onInvalidDeployEnv", async () => {
+  const module = await loadGenerateCloudInitModule()
+
+  assert.throws(() => {
+    module?.renderCloudInit?.({
+      adminUser: "loki-admin",
+      deployEnv: "production",
+      sshAuthorizedKeys: ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTests loki-admin@laptop"]
+    })
+  })
+})
+
 async function loadGenerateCloudInitModule() {
   try {
     return await import("../scripts/phase1/generate-cloud-init.js")
