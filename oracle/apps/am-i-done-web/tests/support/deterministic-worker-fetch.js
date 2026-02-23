@@ -2,23 +2,30 @@ import { requestGuard } from "../../../../packages/worker-api/src/request-guard.
 import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../../../../packages/worker-api/src/worker-api.js"
 
 const CLARIFICATION_SUGGESTIONS = ["software engineer", "registered nurse", "electrician"]
+export const DETERMINISTIC_RU_OUTLOOK_HEADLINE = "Инженер-программист остаётся востребованным, но меняются инструменты."
 
 export function makeDeterministicWorkerFetch({ delayMs = 0 } = {}) {
   const outlookHandler = createWorkerFetchHandler({
     popularityTracker: {
       async track() {}
     },
-    makeProfessionNormalizer() {
+    makeProfessionNormalizer(requestContext) {
       return {
         async normalize({ profession }) {
           await wait(delayMs)
 
           const normalizedProfession = normalizeProfession(profession)
+          const shouldUseRussianText = shouldUseRussianLocaleChrome({
+            locale: requestContext.locale,
+            schemaVersion: requestContext.schemaVersion
+          })
 
           if (isAmbiguousProfession(normalizedProfession)) {
             return {
               clarification: {
-                message: "Please clarify the profession so I can provide a useful outlook.",
+                message: shouldUseRussianText
+                  ? "Пожалуйста, уточните профессию, чтобы я мог дать полезный прогноз."
+                  : "Please clarify the profession so I can provide a useful outlook.",
                 suggestions: CLARIFICATION_SUGGESTIONS
               },
               needsClarification: true
@@ -36,8 +43,28 @@ export function makeDeterministicWorkerFetch({ delayMs = 0 } = {}) {
     },
     makeProfessionOutlookService() {
       return {
-        async getOutlook({ canonicalProfession }) {
+        async getOutlook({ canonicalProfession, locale, schemaVersion }) {
           await wait(delayMs)
+
+          if (shouldUseRussianLocaleChrome({
+            locale,
+            schemaVersion
+          })) {
+            return {
+              assumptions: ["ИИ продолжит внедряться текущими темпами."],
+              confidence: {
+                label: "medium",
+                rationale: "Детерминированный ответ для RU E2E покрытия."
+              },
+              headline: DETERMINISTIC_RU_OUTLOOK_HEADLINE,
+              keyRisks: ["Рутинные задачи всё чаще автоматизируются."],
+              timeHorizon: {
+                explanation: "Автоматизация ускоряется, но роль эволюционирует.",
+                label: "2-4 года"
+              },
+              whatToDoNext: ["Углубляйте доменную экспертизу.", "Развивайте навыки работы с ИИ-инструментами."]
+            }
+          }
 
           return {
             assumptions: ["AI adoption continues at the current pace."],
@@ -62,6 +89,16 @@ export function makeDeterministicWorkerFetch({ delayMs = 0 } = {}) {
   })
 
   return createWorkerApiEntrypointRouter({ outlookHandler })
+}
+
+function shouldUseRussianLocaleChrome({ locale, schemaVersion }) {
+  if (schemaVersion !== "2" || typeof locale !== "string") {
+    return false
+  }
+
+  const normalized = locale.trim().toLowerCase().split("_").join("-")
+
+  return normalized === "ru" || normalized.startsWith("ru-")
 }
 
 function makeTelemetrySpy() {
