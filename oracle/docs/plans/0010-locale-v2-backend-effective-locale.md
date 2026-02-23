@@ -25,7 +25,7 @@ description: "Plan: backend-only locale v2 (ru support + effectiveLocale + promp
 - Worktree required: yes
 - Expected worktree: `worktrees/oracle-0010-locale-v2-backend-plan`
 - Expected branch: `codex/oracle-0010-locale-v2-backend-plan`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## v2 contract changes
 ### Request (v2)
@@ -124,9 +124,9 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 ## Step 1: Add v2 locale resolution utility
 - Add `resolveEffectiveLocale({ rawLocale, schemaVersion })` in `oracle/packages/worker-api/src`.
 - Add unit tests covering:
-  - `ru`, `ru-RU`, `ru_UA` → `"ru"` when `schemaVersion="2"`.
-  - `en-US`, `fr-FR`, empty/invalid → `"en"` when `schemaVersion="2"`.
-  - v1 behavior remains unchanged (utility returns raw/trimmed locale or is not used for v1 paths; choose and codify one).
+  - ✅ `ru`, `ru-RU`, `ru_UA` → `"ru"` when `schemaVersion="2"`.
+  - ✅ `en-US`, `fr-FR`, empty/invalid → `"en"` when `schemaVersion="2"`.
+  - ✅ v1 behavior remains unchanged (utility returns raw/trimmed locale or is not used for v1 paths; choose and codify one).
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `add effectiveLocale resolver for v2`
 
