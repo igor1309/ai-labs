@@ -84,7 +84,7 @@ jobs:
       ref: ${{ needs['resolve-tag'].outputs.release_tag }}
 
   real-provider-smoke:
-    needs: [core]
+    needs: [resolve-tag, core]
     # Requires:
     # - vars.OPENROUTER_CI_MODEL (cheap model for the smoke gate)
     # - secrets.OPENROUTER_API_KEY
@@ -96,7 +96,7 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   web-e2e:
-    needs: [core]
+    needs: [resolve-tag, core]
     permissions:
       actions: write
       contents: read
@@ -137,7 +137,7 @@ jobs:
         run: npm run web:deploy
 
   github-release:
-    needs: [deploy]
+    needs: [resolve-tag, deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
