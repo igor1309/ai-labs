@@ -1,7 +1,5 @@
 import { stringsByLocale } from "./generated/strings.generated.js"
 
-let activeStrings = stringsByLocale.en
-
 const APP_STATES = {
   FAILED: "failed",
   IDLE: "idle",
@@ -16,7 +14,6 @@ if (canBootstrapInBrowser()) {
   const effectiveLocale = resolveEffectiveLocale(rawLocale)
   const strings = stringsByLocale[effectiveLocale] ?? stringsByLocale.en
 
-  activeStrings = strings
   applyStrings({
     document,
     strings
@@ -25,7 +22,8 @@ if (canBootstrapInBrowser()) {
   startApp({
     elements: resolveViewElements(document),
     fetchImplementation: window.fetch.bind(window),
-    location: window.location
+    location: window.location,
+    strings
   })
 }
 
@@ -94,18 +92,20 @@ export function localizeConfidenceLabel({ label, strings }) {
     : rawLabel
 }
 
-export function startApp({ elements, fetchImplementation, location }) {
+export function startApp({ elements, fetchImplementation, location, strings = stringsByLocale.en }) {
   if (elements === undefined || elements.formElement === null || elements.professionInputElement === null) {
     return
   }
 
+  const chromeStrings = strings ?? stringsByLocale.en
   const appConfig = resolveAppConfig(location)
   const requestFetcher = fetchImplementation ?? fetch
   let state = createIdleState()
 
   renderState({
     elements,
-    state
+    state,
+    strings: chromeStrings
   })
 
   elements.formElement.addEventListener("submit", async (event) => {
@@ -120,7 +120,8 @@ export function startApp({ elements, fetchImplementation, location }) {
     state = createSubmittingState()
     renderState({
       elements,
-      state
+      state,
+      strings: chromeStrings
     })
 
     try {
@@ -137,7 +138,8 @@ export function startApp({ elements, fetchImplementation, location }) {
 
     renderState({
       elements,
-      state
+      state,
+      strings: chromeStrings
     })
   })
 }
@@ -202,7 +204,7 @@ function resolveViewElements(documentNode) {
   }
 }
 
-function renderState({ elements, state }) {
+function renderState({ elements, state, strings }) {
   setHidden(elements.loadingElement, state.status !== APP_STATES.SUBMITTING)
   setHidden(elements.transportErrorElement, state.status !== APP_STATES.FAILED)
 
@@ -214,7 +216,7 @@ function renderState({ elements, state }) {
   }
 
   if (state.status === APP_STATES.RECEIVED) {
-    renderAnswer(elements, state.response?.answer)
+    renderAnswer(elements, state.response?.answer, strings)
     setHidden(elements.clarificationElement, true)
     setHidden(elements.answerElement, false)
     return
@@ -237,13 +239,13 @@ function renderClarification(elements, clarification) {
   renderList(elements.clarificationSuggestionsElement, clarification?.suggestions ?? [])
 }
 
-function renderAnswer(elements, answer) {
+function renderAnswer(elements, answer, strings) {
   setText(elements.answerHeadlineElement, answer?.headline ?? "")
   setText(elements.answerTimeHorizonLabelElement, answer?.timeHorizon?.label ?? "")
   setText(elements.answerTimeHorizonExplanationElement, answer?.timeHorizon?.explanation ?? "")
   setText(elements.answerConfidenceLabelElement, localizeConfidenceLabel({
     label: answer?.confidence?.label,
-    strings: activeStrings
+    strings
   }))
   setText(elements.answerConfidenceRationaleElement, answer?.confidence?.rationale ?? "")
   renderList(elements.answerKeyRisksElement, answer?.keyRisks ?? [])
