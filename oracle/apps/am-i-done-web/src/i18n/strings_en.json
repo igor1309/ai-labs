@@ -1,0 +1,31 @@
+{
+  "documentTitle": "Am I done?",
+  "hero": {
+    "eyebrow": "Career Outlook",
+    "intro": "Enter a profession and get a structured outlook in one response.",
+    "title": "Am I done?"
+  },
+  "form": {
+    "professionLabel": "Profession",
+    "professionPlaceholder": "e.g. software developer",
+    "submitButton": "Get outlook"
+  },
+  "states": {
+    "loading": "Analyzing your profession...",
+    "transportError": "Request failed. Please try again."
+  },
+  "sections": {
+    "assumptions": "Assumptions",
+    "clarification": "Need clarification",
+    "confidence": "Confidence",
+    "risks": "Risks",
+    "timeHorizon": "Time horizon",
+    "whatToDoNext": "What to do next"
+  },
+  "confidenceLabels": {
+    "high": "high",
+    "low": "low",
+    "medium": "medium"
+  }
+}
+

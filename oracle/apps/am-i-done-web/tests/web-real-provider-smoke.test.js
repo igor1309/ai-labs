@@ -31,7 +31,7 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     body: JSON.stringify({
       locale: "en-US",
       profession: "software developer",
-      schemaVersion: "1"
+      schemaVersion: "2"
     }),
     headers: {
       "content-type": "application/json"
@@ -46,7 +46,7 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
   assert.ok(body.canonicalProfession.length > 0)
   assert.equal(typeof body?.answer?.headline, "string")
   assert.ok(body.answer.headline.length > 0)
-  assert.equal(body?.schemaVersion, "1")
+  assert.equal(body?.schemaVersion, "2")
   assert.equal(typeof body?.requestId, "string")
   assert.ok(body.requestId.length > 0)
 })

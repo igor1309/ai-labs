@@ -28,7 +28,7 @@ description: "Plan: web frontend locale v2 (UI chrome i18n + raw locale + schema
 - Worktree required: yes
 - Expected worktree: `worktrees/oracle-0011-locale-v2-frontend-plan`
 - Expected branch: `codex/oracle-0011-locale-v2-frontend-plan`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Locale policy (frontend)
 - Read raw locale from the browser (`navigator.language`), for example `ru-RU`.
@@ -156,3 +156,4 @@ Implementation note:
 ## Completion gates
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `./scripts/run_silent.sh "tests" npm test`
+

@@ -1,3 +1,5 @@
+import { stringsByLocale } from "./generated/strings.generated.js"
+
 const APP_STATES = {
   FAILED: "failed",
   IDLE: "idle",
@@ -8,10 +10,20 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 12000
 export const OUTLOOK_ENDPOINT_PATH = "/api/outlook"
 
 if (canBootstrapInBrowser()) {
+  const rawLocale = readBrowserLocale()
+  const effectiveLocale = resolveEffectiveLocale(rawLocale)
+  const strings = stringsByLocale[effectiveLocale] ?? stringsByLocale.en
+
+  applyStrings({
+    document,
+    strings
+  })
+
   startApp({
     elements: resolveViewElements(document),
     fetchImplementation: window.fetch.bind(window),
-    location: window.location
+    location: window.location,
+    strings
   })
 }
 
@@ -19,18 +31,81 @@ function canBootstrapInBrowser() {
   return typeof document !== "undefined" && typeof window !== "undefined"
 }
 
-export function startApp({ elements, fetchImplementation, location }) {
+export function readBrowserLocale() {
+  const language = globalThis.navigator?.language
+
+  return typeof language === "string" ? language : ""
+}
+
+export function resolveEffectiveLocale(rawLocale) {
+  const normalized = typeof rawLocale === "string"
+    ? rawLocale.trim().toLowerCase().split("_").join("-")
+    : ""
+
+  return normalized === "ru" || normalized.startsWith("ru-") ? "ru" : "en"
+}
+
+export function applyStrings({ document, strings }) {
+  if (document === undefined || document === null || strings === undefined || strings === null) {
+    return
+  }
+
+  document.title = strings.documentTitle ?? ""
+
+  if (document.documentElement) {
+    document.documentElement.lang = resolveEffectiveLocale(readBrowserLocale())
+  }
+
+  setText(document.querySelector("[data-testid='hero-eyebrow']"), strings.hero?.eyebrow ?? "")
+  setText(document.querySelector("[data-testid='hero-title']"), strings.hero?.title ?? "")
+  setText(document.querySelector("[data-testid='hero-intro']"), strings.hero?.intro ?? "")
+  setText(document.querySelector("[data-testid='profession-label']"), strings.form?.professionLabel ?? "")
+  setInputPlaceholder(document.querySelector("[data-testid='profession-input']"), strings.form?.professionPlaceholder ?? "")
+  setText(document.querySelector("[data-testid='submit-button']"), strings.form?.submitButton ?? "")
+  setText(document.querySelector("[data-testid='loading']"), strings.states?.loading ?? "")
+  setText(document.querySelector("[data-testid='transport-error']"), strings.states?.transportError ?? "")
+  setText(document.querySelector("[data-testid='clarification-title']"), strings.sections?.clarification ?? "")
+  setText(document.querySelector("[data-testid='time-horizon-title']"), strings.sections?.timeHorizon ?? "")
+  setText(document.querySelector("[data-testid='confidence-title']"), strings.sections?.confidence ?? "")
+  setText(document.querySelector("[data-testid='risks-title']"), strings.sections?.risks ?? "")
+  setText(document.querySelector("[data-testid='what-to-do-next-title']"), strings.sections?.whatToDoNext ?? "")
+  setText(document.querySelector("[data-testid='assumptions-title']"), strings.sections?.assumptions ?? "")
+}
+
+export function localizeConfidenceLabel({ label, strings }) {
+  const rawLabel = typeof label === "string" ? label : ""
+
+  if (rawLabel === "") {
+    return ""
+  }
+
+  const confidenceLabels = typeof strings?.confidenceLabels === "object" && strings.confidenceLabels !== null
+    ? strings.confidenceLabels
+    : null
+
+  if (confidenceLabels === null) {
+    return rawLabel
+  }
+
+  return Object.prototype.hasOwnProperty.call(confidenceLabels, rawLabel)
+    ? confidenceLabels[rawLabel]
+    : rawLabel
+}
+
+export function startApp({ elements, fetchImplementation, location, strings = stringsByLocale.en }) {
   if (elements === undefined || elements.formElement === null || elements.professionInputElement === null) {
     return
   }
 
+  const chromeStrings = strings ?? stringsByLocale.en
   const appConfig = resolveAppConfig(location)
   const requestFetcher = fetchImplementation ?? fetch
   let state = createIdleState()
 
   renderState({
     elements,
-    state
+    state,
+    strings: chromeStrings
   })
 
   elements.formElement.addEventListener("submit", async (event) => {
@@ -45,7 +120,8 @@ export function startApp({ elements, fetchImplementation, location }) {
     state = createSubmittingState()
     renderState({
       elements,
-      state
+      state,
+      strings: chromeStrings
     })
 
     try {
@@ -62,7 +138,8 @@ export function startApp({ elements, fetchImplementation, location }) {
 
     renderState({
       elements,
-      state
+      state,
+      strings: chromeStrings
     })
   })
 }
@@ -127,7 +204,7 @@ function resolveViewElements(documentNode) {
   }
 }
 
-function renderState({ elements, state }) {
+function renderState({ elements, state, strings }) {
   setHidden(elements.loadingElement, state.status !== APP_STATES.SUBMITTING)
   setHidden(elements.transportErrorElement, state.status !== APP_STATES.FAILED)
 
@@ -139,7 +216,7 @@ function renderState({ elements, state }) {
   }
 
   if (state.status === APP_STATES.RECEIVED) {
-    renderAnswer(elements, state.response?.answer)
+    renderAnswer(elements, state.response?.answer, strings)
     setHidden(elements.clarificationElement, true)
     setHidden(elements.answerElement, false)
     return
@@ -162,11 +239,14 @@ function renderClarification(elements, clarification) {
   renderList(elements.clarificationSuggestionsElement, clarification?.suggestions ?? [])
 }
 
-function renderAnswer(elements, answer) {
+function renderAnswer(elements, answer, strings) {
   setText(elements.answerHeadlineElement, answer?.headline ?? "")
   setText(elements.answerTimeHorizonLabelElement, answer?.timeHorizon?.label ?? "")
   setText(elements.answerTimeHorizonExplanationElement, answer?.timeHorizon?.explanation ?? "")
-  setText(elements.answerConfidenceLabelElement, answer?.confidence?.label ?? "")
+  setText(elements.answerConfidenceLabelElement, localizeConfidenceLabel({
+    label: answer?.confidence?.label,
+    strings
+  }))
   setText(elements.answerConfidenceRationaleElement, answer?.confidence?.rationale ?? "")
   renderList(elements.answerKeyRisksElement, answer?.keyRisks ?? [])
   renderList(elements.answerWhatToDoNextElement, answer?.whatToDoNext ?? [])
@@ -179,6 +259,14 @@ function setText(element, value) {
   }
 
   element.textContent = value
+}
+
+function setInputPlaceholder(element, value) {
+  if (element === null) {
+    return
+  }
+
+  element.placeholder = value
 }
 
 function renderList(listElement, values) {
@@ -208,9 +296,9 @@ export async function requestOutlook({
   try {
     const response = await fetchImplementation(OUTLOOK_ENDPOINT_PATH, {
       body: JSON.stringify({
-        locale: "en-US",
+        locale: readBrowserLocale(),
         profession,
-        schemaVersion: "1"
+        schemaVersion: "2"
       }),
       headers: {
         "content-type": "application/json"

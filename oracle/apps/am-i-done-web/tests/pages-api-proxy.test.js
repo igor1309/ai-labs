@@ -28,7 +28,7 @@ test("test_createUpstreamRequest_shouldPreserveMethodPathAndQuery_onProxyRequest
       body: JSON.stringify({
         locale: "en-US",
         profession: "software developer",
-        schemaVersion: "1"
+        schemaVersion: "2"
       }),
       headers: {
         "content-type": "application/json"

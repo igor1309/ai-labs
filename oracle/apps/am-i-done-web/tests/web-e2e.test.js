@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url"
 
 import { chromium } from "@playwright/test"
 
-import { makeDeterministicWorkerFetch } from "./support/deterministic-worker-fetch.js"
+import { stringsByLocale } from "../src/generated/strings.generated.js"
+import { DETERMINISTIC_RU_OUTLOOK_HEADLINE, makeDeterministicWorkerFetch } from "./support/deterministic-worker-fetch.js"
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 const webSourceDirectory = path.resolve(currentDirectory, "../src")
@@ -133,8 +134,51 @@ test("test_webE2E_shouldRenderTransportFailureState_onWorkerTimeout", async (tes
   assert.equal(errorMessage, "Request failed. Please try again.")
 })
 
-async function createPage() {
-  const browserContext = await browser.newContext()
+test("test_webE2E_shouldRenderRussianChrome_onRuLocaleHappyPath", async (testContext) => {
+  if (skipWhenBrowserUnavailable(testContext)) {
+    return
+  }
+
+  const workerServer = await startWorkerServer()
+  const webServer = await startWebServer({
+    workerBaseUrl: workerServer.origin
+  })
+  testContext.after(async () => {
+    await webServer.close()
+    await workerServer.close()
+  })
+
+  const page = await createPage({
+    locale: "ru-RU"
+  })
+  testContext.after(async () => {
+    await page.context().close()
+  })
+  await page.goto(`${webServer.origin}/`)
+
+  assert.deepEqual({
+    heroEyebrow: await page.textContent("[data-testid='hero-eyebrow']"),
+    professionLabel: await page.textContent("[data-testid='profession-label']"),
+    submitButton: await page.textContent("[data-testid='submit-button']")
+  }, {
+    heroEyebrow: stringsByLocale.ru.hero.eyebrow,
+    professionLabel: stringsByLocale.ru.form.professionLabel,
+    submitButton: stringsByLocale.ru.form.submitButton
+  })
+
+  await page.fill("[data-testid='profession-input']", "software developer")
+  await page.click("[data-testid='submit-button']")
+  await page.waitForSelector("[data-testid='answer']:not([hidden])")
+
+  const answerHeadline = await page.textContent("[data-testid='answer-headline']")
+  const confidenceLabel = await page.textContent("[data-testid='answer-confidence-label']")
+
+  assert.equal(answerHeadline, DETERMINISTIC_RU_OUTLOOK_HEADLINE)
+  assert.equal(confidenceLabel, stringsByLocale.ru.confidenceLabels.medium)
+})
+
+async function createPage({ locale } = {}) {
+  const browserContext = await browser.newContext(locale ? { locale } : {})
   return browserContext.newPage()
 }
 

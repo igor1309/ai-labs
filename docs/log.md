@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+Implement locale v2 web frontend (EN/RU chrome i18n + schemaVersion 2 + RU deterministic/E2E coverage).
 Release `v0.1.4`.
 Stop uploading custom GitHub Release assets (GitHub always includes source archives).
 Release `v0.1.3`.

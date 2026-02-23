@@ -83,16 +83,18 @@ test("test_requestOutlook_shouldSendExpectedPayload_onValidInput", async () => {
     })
   }
 
-  await requestOutlook({
-    fetchImplementation: fetchSpy,
-    profession: "software developer",
-    timeoutMs: 100
+  await withNavigatorLanguage("ru-RU", async () => {
+    await requestOutlook({
+      fetchImplementation: fetchSpy,
+      profession: "software developer",
+      timeoutMs: 100
+    })
   })
 
   assert.deepEqual(JSON.parse(calls[0].options.body), {
-    locale: "en-US",
+    locale: "ru-RU",
     profession: "software developer",
-    schemaVersion: "1"
+    schemaVersion: "2"
   })
 })
 
@@ -368,5 +370,24 @@ function readVisibilityState(elements) {
     clarificationHidden: elements.clarificationElement.hidden,
     loadingHidden: elements.loadingElement.hidden,
     transportErrorHidden: elements.transportErrorElement.hidden
+  }
+}
+
+async function withNavigatorLanguage(language, body) {
+  const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator")
+
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    enumerable: true,
+    value: {
+      language
+    },
+    writable: true
+  })
+
+  try {
+    await body()
+  } finally {
+    Object.defineProperty(globalThis, "navigator", originalDescriptor)
   }
 }
