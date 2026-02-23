@@ -2,6 +2,7 @@
 
 ## 2026-02-23
 Release `v0.1.3`.
+Attach `release-tag.txt` as the only uploaded GitHub Release asset (tag content).
 Create minimal GitHub Releases for successful `v*` tag-driven deployments.
 Switch CI real-provider smoke model to `openai/gpt-5-nano` via Actions variable `OPENROUTER_CI_MODEL`.
 

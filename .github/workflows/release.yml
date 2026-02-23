@@ -113,11 +113,18 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Create release tag asset
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+        run: echo "${TAG}" > release-tag.txt
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
           name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          artifacts: release-tag.txt
+          artifactContentType: text/plain
           generateReleaseNotes: false
           draft: false
           prerelease: false
