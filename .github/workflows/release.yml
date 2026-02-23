@@ -142,34 +142,18 @@ jobs:
   notify:
     if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure' || needs.github-release.result == 'failure') }}
     needs: [verify, core, real-provider-smoke, web-e2e, deploy, github-release]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Send Telegram notification
-        env:
-          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
-          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
-          VERIFY_RESULT: ${{ needs.verify.result }}
-          CORE_RESULT: ${{ needs.core.result }}
-          REAL_PROVIDER_SMOKE_RESULT: ${{ needs.real-provider-smoke.result }}
-          WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
-          DEPLOY_RESULT: ${{ needs.deploy.result }}
-          GITHUB_RELEASE_RESULT: ${{ needs.github-release.result }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          failed_jobs=""
-          for entry in "verify:${VERIFY_RESULT}" "core:${CORE_RESULT}" "real-provider-smoke:${REAL_PROVIDER_SMOKE_RESULT}" "web-e2e:${WEB_E2E_RESULT}" "deploy:${DEPLOY_RESULT}" "github-release:${GITHUB_RELEASE_RESULT}"; do
-            job="${entry%%:*}"
-            result="${entry#*:}"
-            if [ "${result}" = "failure" ]; then
-              [ -n "${failed_jobs}" ] && failed_jobs="${failed_jobs}, "
-              failed_jobs="${failed_jobs}${job}"
-            fi
-          done
-          text="$(printf "❌ Release failed: %s\nrepo: %s\ntag: %s\ncommit: %s\nrun: %s" "${failed_jobs}" "${REPO}" "${RELEASE_TAG}" "${SHA}" "${RUN_URL}")"
-          ./scripts/ci/notify_telegram_failure.sh "${text}"
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Release"
+      ref_label: "tag"
+      ref_value: ${{ env.RELEASE_TAG }}
+      job_results: |
+        verify=${{ needs.verify.result }}
+        core=${{ needs.core.result }}
+        real-provider-smoke=${{ needs.real-provider-smoke.result }}
+        web-e2e=${{ needs.web-e2e.result }}
+        deploy=${{ needs.deploy.result }}
+        github-release=${{ needs.github-release.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
