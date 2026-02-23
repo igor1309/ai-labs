@@ -342,18 +342,23 @@ function requireMethodDependency(value, name, methodName) {
 }
 
 function resolveSchemaVersionFromInvalidJson(rawRequestBody) {
-  const match = typeof rawRequestBody === "string"
-    ? rawRequestBody.match(/"schemaVersion"\s*:\s*"([^"]+)"/)
-    : null
+  const match = getInvalidJsonScanText(rawRequestBody).match(/"schemaVersion"\s*:\s*"([^"]+)"/)
   const schemaVersion = typeof match?.[1] === "string" ? match[1].trim() : ""
 
   return schemaVersion === "2" ? "2" : "1"
 }
 
 function resolveLocaleFromInvalidJson(rawRequestBody) {
-  const match = typeof rawRequestBody === "string"
-    ? rawRequestBody.match(/"locale"\s*:\s*"([^"]+)"/)
-    : null
+  const match = getInvalidJsonScanText(rawRequestBody).match(/"locale"\s*:\s*"([^"]+)"/)
 
   return typeof match?.[1] === "string" ? match[1] : ""
+}
+
+function getInvalidJsonScanText(rawRequestBody) {
+  if (typeof rawRequestBody !== "string") {
+    return ""
+  }
+
+  // Best-effort parsing: scan only a short prefix to avoid false positives and reduce work on large bodies.
+  return rawRequestBody.slice(0, 2048)
 }
