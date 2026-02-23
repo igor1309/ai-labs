@@ -1,4 +1,5 @@
 import { resolveEffectiveLocale } from "./effective-locale.js"
+import { backendMessages } from "./generated/localized-resources.generated.js"
 
 export function createWorkerApiEntrypointRouter({ outlookHandler } = {}) {
   const routeOutlookHandler = requireFunctionDependency(
@@ -78,6 +79,8 @@ export function createWorkerFetchHandler(dependencies = {}) {
         const effectiveLocale = schemaVersion === "2"
           ? resolveEffectiveLocale({ rawLocale, schemaVersion })
           : rawLocale
+        const messageLocale = schemaVersion === "2" ? effectiveLocale : "en"
+        const messages = backendMessages[messageLocale] ?? backendMessages.en
         locale = schemaVersion === "2" ? effectiveLocale : rawLocale
 
         response = Response.json({
@@ -86,7 +89,7 @@ export function createWorkerFetchHandler(dependencies = {}) {
           category: null,
           categoryConfidence: null,
           clarification: {
-            message: "Please provide a valid request body.",
+            message: messages.invalid_request_body,
             suggestions: []
           },
           ...(schemaVersion === "2" ? {

@@ -200,7 +200,7 @@ test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2InvalidJsonRequest
     category: null,
     categoryConfidence: null,
     clarification: {
-      message: "Please provide a valid request body.",
+      message: "Пожалуйста, отправьте корректное тело запроса.",
       suggestions: []
     },
     effectiveLocale: "ru",
@@ -245,7 +245,7 @@ test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2GuardReject", asyn
   const { workerFetchHandler } = makeSUT({
     guardResult: {
       clarification: {
-        message: "Please provide a valid profession and locale.",
+        message: "Пожалуйста, укажите корректные профессию и локаль.",
         suggestions: []
       },
       isValid: false,
@@ -267,7 +267,7 @@ test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2GuardReject", asyn
     category: null,
     categoryConfidence: null,
     clarification: {
-      message: "Please provide a valid profession and locale.",
+      message: "Пожалуйста, укажите корректные профессию и локаль.",
       suggestions: []
     },
     effectiveLocale: "ru",

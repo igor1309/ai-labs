@@ -150,14 +150,14 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 - Commit: `include effectiveLocale in schemaVersion 2 responses`
 
 ## Step 3: Localize backend-owned copy for v2
-- Add backend message resources (`messages_en.json`, `messages_ru.json`) and embed them (generator output module is acceptable in this step or the next).
-- Localize these backend-generated strings for v2:
-  - invalid request body message
-  - guard invalid message
-- Update tests expecting these messages:
-  - v2 with `effectiveLocale="ru"` returns Russian strings
-  - v2 fallback returns English strings
-  - v1 remains English as today
+- ✅ Add backend message resources (`messages_en.json`, `messages_ru.json`) and embed them (generator output module is acceptable in this step or the next).
+- ✅ Localize these backend-generated strings for v2:
+  - ✅ invalid request body message
+  - ✅ guard invalid message
+- ✅ Update tests expecting these messages:
+  - ✅ v2 with `effectiveLocale="ru"` returns Russian strings
+  - ✅ v2 fallback returns English strings
+  - ✅ v1 remains English as today
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `localize backend clarification copy for v2`
 
