@@ -1,0 +1,23 @@
+services:
+  loki:
+    image: grafana/loki:2.9.7
+    command: -config.file=/etc/loki/loki-config.yml
+    restart: unless-stopped
+    volumes:
+      - /var/lib/loki:/var/lib/loki
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+    ports:
+      - "127.0.0.1:3100:3100"
+
+  grafana:
+    image: grafana/grafana:10.4.5
+    restart: unless-stopped
+    user: "472"
+    env_file:
+      - /etc/loki-stack/grafana.env
+    volumes:
+      - /var/lib/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+
