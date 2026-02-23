@@ -1,0 +1,50 @@
+deploy_env = sys.env("DEPLOY_ENV")
+model_allowlist_regex = "^(gpt-4o)$"
+function_allowlist_regex = "^(answer)$"
+
+loki.source.journal "systemd_units" {
+  max_age = "24h"
+  relabel_rules = loki.relabel.systemd_core_labels.rules
+  forward_to = [loki.process.label_policy.receiver]
+}
+
+loki.source.journal "docker_containers" {
+  max_age = "24h"
+  relabel_rules = loki.relabel.docker_base_labels.rules
+  forward_to = [loki.enrich.docker_metadata.receiver]
+}
+
+loki.relabel "systemd_core_labels" {
+  forward_to = []
+
+  rule {
+    action = "keep"
+    source_labels = ["__journal__systemd_unit"]
+    regex = "^([a-z0-9-]+)__([a-z0-9-]+)@[^.]+\\.service$"
+  }
+
+  rule {
+    action = "replace"
+    target_label = "env"
+    replacement = deploy_env
+  }
+}
+
+loki.relabel "docker_base_labels" {
+  forward_to = []
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal_container_id_full"]
+    target_label = "container_id"
+  }
+}
+
+loki.enrich "docker_metadata" {
+  labels_source = "target"
+  labels_to_copy = ["project", "service"]
+  logs_match_label = "container_id"
+  target_match_label = "container_id"
+  targets = discovery.relabel.docker_logging_targets.output
+  forward_to = [loki.relabel.docker_require_core_labels.receiver]
+}

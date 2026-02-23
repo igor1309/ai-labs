@@ -1,0 +1,283 @@
+deploy_env = sys.env("DEPLOY_ENV")
+model_allowlist_regex = "^(gpt-4o|gpt-4\\.1|gpt-4\\.1-mini|o3-mini)$"
+function_allowlist_regex = "^(answer|classify|plan|summarize)$"
+
+loki.write "local" {
+  endpoint {
+    url = "http://127.0.0.1:3100/loki/api/v1/push"
+  }
+}
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_logging_targets" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    action = "replace"
+    source_labels = ["__meta_docker_container_id"]
+    target_label = "container_id"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__meta_docker_container_label_com_logging_project"]
+    target_label = "project"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__meta_docker_container_label_com_logging_service"]
+    target_label = "service"
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["project"]
+    regex = "^[a-z0-9-]+$"
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["service"]
+    regex = "^[a-z0-9-]+$"
+  }
+
+  rule {
+    action = "labelkeep"
+    regex = "^(container_id|project|service)$"
+  }
+}
+
+loki.relabel "systemd_core_labels" {
+  forward_to = []
+
+  rule {
+    action = "labeldrop"
+    regex = "^(project|service|env|request_id|trace_id|span_id|user_id|device_id|session_id)$"
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["__journal__systemd_unit"]
+    regex = "^([a-z0-9-]+)__([a-z0-9-]+)@[^.]+\\.service$"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal__systemd_unit"]
+    target_label = "project"
+    regex = "^([a-z0-9-]+)__([a-z0-9-]+)@[^.]+\\.service$"
+    replacement = "$1"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal__systemd_unit"]
+    target_label = "service"
+    regex = "^([a-z0-9-]+)__([a-z0-9-]+)@[^.]+\\.service$"
+    replacement = "$2"
+  }
+
+  rule {
+    action = "replace"
+    target_label = "env"
+    replacement = deploy_env
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["env"]
+    regex = "^(dev|stage|prod)$"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal_priority"]
+    target_label = "journal_priority"
+  }
+}
+
+loki.relabel "docker_base_labels" {
+  forward_to = []
+
+  rule {
+    action = "labeldrop"
+    regex = "^(project|service|env|request_id|trace_id|span_id|user_id|device_id|session_id)$"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal_container_id"]
+    target_label = "container_id"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal_container_id_full"]
+    target_label = "container_id"
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["container_id"]
+    regex = "^[a-f0-9]{12,64}$"
+  }
+
+  rule {
+    action = "replace"
+    target_label = "env"
+    replacement = deploy_env
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["env"]
+    regex = "^(dev|stage|prod)$"
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["__journal_priority"]
+    target_label = "journal_priority"
+  }
+}
+
+loki.relabel "docker_require_core_labels" {
+  forward_to = [loki.process.label_policy.receiver]
+
+  rule {
+    action = "keep"
+    source_labels = ["project"]
+    regex = "^[a-z0-9-]+$"
+  }
+
+  rule {
+    action = "keep"
+    source_labels = ["service"]
+    regex = "^[a-z0-9-]+$"
+  }
+
+  rule {
+    action = "labeldrop"
+    regex = "^container_id$"
+  }
+}
+
+loki.enrich "docker_metadata" {
+  labels_source = "target"
+  labels_to_copy = ["project", "service"]
+  logs_match_label = "container_id"
+  target_match_label = "container_id"
+  targets = discovery.relabel.docker_logging_targets.output
+  forward_to = [loki.relabel.docker_require_core_labels.receiver]
+}
+
+loki.process "label_policy" {
+  forward_to = [loki.relabel.enforce_allowlists.receiver]
+
+  stage.json {
+    expressions = {
+      function_candidate = "function",
+      model_candidate = "model",
+      payload_level = "level",
+      payload_severity = "severity",
+    }
+  }
+
+  stage.template {
+    source = "level_source_value"
+    template = "{{ if .payload_level }}{{ .payload_level }}{{ else }}{{ .payload_severity }}{{ end }}"
+  }
+
+  stage.template {
+    source = "level_from_payload"
+    template = "{{ $value := ToLower .level_source_value }}{{ if or (eq $value \"error\") (eq $value \"err\") (eq $value \"critical\") (eq $value \"crit\") (eq $value \"fatal\") }}error{{ else if or (eq $value \"warn\") (eq $value \"warning\") }}warn{{ else if or (eq $value \"info\") (eq $value \"notice\") }}info{{ else if eq $value \"debug\" }}debug{{ end }}"
+  }
+
+  stage.match {
+    selector = "{journal_priority=~\"[0-3]\"}"
+
+    stage.template {
+      source = "level_from_priority"
+      template = "error"
+    }
+  }
+
+  stage.match {
+    selector = "{journal_priority=\"4\"}"
+
+    stage.template {
+      source = "level_from_priority"
+      template = "warn"
+    }
+  }
+
+  stage.match {
+    selector = "{journal_priority=~\"[56]\"}"
+
+    stage.template {
+      source = "level_from_priority"
+      template = "info"
+    }
+  }
+
+  stage.match {
+    selector = "{journal_priority=\"7\"}"
+
+    stage.template {
+      source = "level_from_priority"
+      template = "debug"
+    }
+  }
+
+  stage.template {
+    source = "level_final"
+    template = "{{ if .level_from_payload }}{{ .level_from_payload }}{{ else }}{{ .level_from_priority }}{{ end }}"
+  }
+
+  stage.labels {
+    values = {
+      function_candidate = "",
+      level = "level_final",
+      model_candidate = "",
+    }
+  }
+}
+
+loki.relabel "enforce_allowlists" {
+  forward_to = [loki.write.local.receiver]
+
+  rule {
+    action = "replace"
+    source_labels = ["model_candidate"]
+    target_label = "model"
+    regex = model_allowlist_regex
+  }
+
+  rule {
+    action = "replace"
+    source_labels = ["function_candidate"]
+    target_label = "function"
+    regex = function_allowlist_regex
+  }
+
+  rule {
+    action = "labeldrop"
+    regex = "^(model_candidate|function_candidate|journal_priority)$"
+  }
+}
+
+loki.source.journal "systemd_units" {
+  max_age = "24h"
+  relabel_rules = loki.relabel.systemd_core_labels.rules
+  forward_to = [loki.process.label_policy.receiver]
+}
+
+loki.source.journal "docker_containers" {
+  max_age = "24h"
+  relabel_rules = loki.relabel.docker_base_labels.rules
+  forward_to = [loki.enrich.docker_metadata.receiver]
+}
