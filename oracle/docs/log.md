@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-23
+- Create minimal GitHub Releases for successful `v*` tag-driven deployments.
+
 ## 2026-02-22
 - Add tag-driven GitHub Actions release workflow with strict gates (core → real-provider-smoke → web-e2e → deploy worker/pages) and version-tag guard.
 - Refactor GitHub Actions workflows: CI/Web E2E now delegate to reusable core workflows and share a Telegram failure notification script.

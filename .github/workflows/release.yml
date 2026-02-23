@@ -106,9 +106,27 @@ jobs:
       - name: Deploy web
         run: npm run web:deploy
 
+  github-release:
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          generateReleaseNotes: false
+          draft: false
+          prerelease: false
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   notify:
-    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure') }}
-    needs: [verify, core, real-provider-smoke, web-e2e, deploy]
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure' || needs.github-release.result == 'failure') }}
+    needs: [verify, core, real-provider-smoke, web-e2e, deploy, github-release]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -139,6 +157,10 @@ jobs:
           if [ "${{ needs.deploy.result }}" = "failure" ]; then
             [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
             failed_jobs="${failed_jobs}deploy"
+          fi
+          if [ "${{ needs.github-release.result }}" = "failure" ]; then
+            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
+            failed_jobs="${failed_jobs}github-release"
           fi
           text="❌ Release failed: ${failed_jobs}
           repo: ${{ github.repository }}
