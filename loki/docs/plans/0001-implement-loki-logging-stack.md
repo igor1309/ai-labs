@@ -66,7 +66,7 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
 ### Verification
 - Grafana can query Loki locally on the host.
 - Logs are queryable in Explore by time slice.
-- Retention is enforced (policy config reviewed and validated with a short TTL test in a non-prod environment).
+- Retention is enforced (validate retention behavior in a disposable/local Loki instance, e.g. via OrbStack on macOS, or in a non-prod environment by temporarily setting a short retention, observing expiry, then configuring 14 days for the live stack; do not change retention on the live stack for validation).
 
 ## Phase 4: Install and configure Alloy (host systemd)
 ### Deliverables
@@ -77,12 +77,13 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
   - forbidden labels remain in log body
 - Deterministic mappings implemented for:
   - systemd units using `_SYSTEMD_UNIT` naming: `<project>__<service>@<instance>.service`
-  - Docker containers using container labels: `com.logging.project`, `com.logging.service`
+  - Docker containers using container labels: `com.logging.project`, `com.logging.service` (enriched via Docker discovery, joined to journald entries via container ID)
 
 ### Verification
 - For a systemd test service named `trend-scout__api@1.service`, logs appear in Loki with:
   - `project=trend-scout`, `service=api`, `env=<DEPLOY_ENV>`
 - For a Docker test container labeled with `com.logging.project` and `com.logging.service`, logs appear with the same labels.
+- Docker label enrichment mechanism is verified explicitly (document which journald field contains the container identity used for the join, and confirm label injection is not coming from log payload).
 - Attempts to self-assign `project/service/env` from application log payload do not override injected labels.
 
 ## Phase 5: Secure access via Cloudflare Tunnel + Access
@@ -99,16 +100,24 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
 
 ## Phase 6: Project onboarding rules and CI enforcement
 ### Deliverables
-- A minimal “label compliance” check that fails when required Docker labels are missing:
+- A minimal “label compliance” check (CI) that scans Docker Compose service definitions in all `docker-compose*.yml` files in the repo (and is extended to any other container manifests added later) and fails when required Docker labels are missing:
   - `com.logging.project`
   - `com.logging.service`
 - A documented onboarding checklist for new services:
   - systemd unit naming rule (when applicable)
   - Docker container label rule (when applicable)
-  - bounds for `project/service/model/function/level`
+  - bounds (to keep cardinality predictable):
+    - `project`: allowlist only
+    - `service`: allowlist only (scoped to `project`)
+    - `level`: bounded set (e.g. `debug|info|warn|error`)
+    - `model`: allowlist only (bounded set)
+    - `function`: bounded per service (target O(10–50))
+  - allowlist for known `project` and `service` values (and the PR/change process to extend it)
+  - rule: CI rejects `com.logging.project` / `com.logging.service` values that are not in the allowlist (to keep cardinality bounded)
 
 ### Verification
 - A sample project/container definition missing labels fails the compliance check.
+- A sample project/container definition with `com.logging.project` / `com.logging.service` not in the allowlist fails the compliance check.
 - At least one real project is onboarded end-to-end and queries correctly by `project` and `service`.
 
 ## Phase 7: Operations (backups, upgrades, and capacity)
