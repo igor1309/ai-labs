@@ -42,6 +42,7 @@ export function makeWorkerFetch(env, {
     popularityTracker,
     makeProfessionNormalizer: ({ llmCallAccumulator, requestId, schemaVersion }) => createProfessionNormalizer({
       cache: normalizerCache,
+      cacheVersion: schemaVersion === "2" ? "2" : "1",
       modelClient: createConfiguredOpenRouterNormalizerModelClient({
         config,
         httpClient,

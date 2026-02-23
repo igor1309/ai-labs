@@ -111,9 +111,9 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlo
     requestId: "request-id",
     schemaVersion: "1"
   })
-  assert.deepEqual(normalizerCacheSpy.getCalls, ["normalizer:en-US:software developer"])
+  assert.deepEqual(normalizerCacheSpy.getCalls, ["normalizer:1:en-US:software developer"])
   assert.deepEqual(normalizerCacheSpy.putCalls, [{
-    key: "normalizer:en-US:software developer",
+    key: "normalizer:1:en-US:software developer",
     value: JSON.stringify(makeNormalizerResult())
   }])
   assert.deepEqual(outlookCacheSpy.getCalls, ["outlook:software engineer:en-US:1:prompt-v7"])

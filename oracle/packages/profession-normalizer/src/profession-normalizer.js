@@ -40,27 +40,29 @@ export const professionNormalizer = {
 }
 
 /**
- * @param {{ cache: NormalizerCache, modelClient: NormalizerModelClient }} dependencies
+ * @param {{ cache: NormalizerCache, cacheVersion: string, modelClient: NormalizerModelClient }} dependencies
  */
 export function configureProfessionNormalizer(dependencies = {}) {
   configuredProfessionNormalizer = createProfessionNormalizer(dependencies)
 }
 
 /**
- * @param {{ cache: NormalizerCache, modelClient: NormalizerModelClient }} dependencies
+ * @param {{ cache: NormalizerCache, cacheVersion: string, modelClient: NormalizerModelClient }} dependencies
  * @returns {ProfessionNormalizer}
  */
-export function createProfessionNormalizer({ cache, modelClient } = {}) {
+export function createProfessionNormalizer({ cache, cacheVersion, modelClient } = {}) {
   const validatedCache = requireDependency(cache, "cache")
+  const validatedCacheVersion = requireDependency(cacheVersion, "cacheVersion")
   const validatedModelClient = requireDependency(modelClient, "modelClient")
   requireMethodDependency(validatedCache, "cache", "read")
   requireMethodDependency(validatedCache, "cache", "write")
   requireMethodDependency(validatedModelClient, "modelClient", "normalize")
+  requireNonEmptyString(validatedCacheVersion, "cacheVersion")
 
   return {
     async normalize(input) {
       const normalizedProfession = normalizeProfession(input.profession)
-      const cacheKey = createCacheKey(input.locale, normalizedProfession)
+      const cacheKey = createCacheKey(validatedCacheVersion, input.locale, normalizedProfession)
       const cachedResult = await validatedCache.read(cacheKey)
 
       if (cachedResult !== null && cachedResult !== undefined) {
@@ -93,8 +95,14 @@ function requireMethodDependency(value, name, methodName) {
   }
 }
 
-function createCacheKey(locale, profession) {
-  return `normalizer:${locale}:${profession}`
+function requireNonEmptyString(value, name) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`Invalid dependency: ${name}`)
+  }
+}
+
+function createCacheKey(cacheVersion, locale, profession) {
+  return `normalizer:${cacheVersion}:${locale}:${profession}`
 }
 
 export function normalizeProfession(profession) {

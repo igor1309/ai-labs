@@ -172,15 +172,15 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 - Commit: `select localized system prompts for v2`
 
 ## Step 5: Partition normalizer cache for v2
-- Update profession normalizer cache keying to prevent mixing v1 and v2 localized outputs.
-- Preferred approach:
-  - Add `cacheVersion` dependency to `createProfessionNormalizer`.
-  - Include `cacheVersion` in the cache key.
-  - Wire `cacheVersion` from the Worker assembler:
-    - `"1"` for `schemaVersion="1"`
-    - `"2"` for `schemaVersion="2"`
-- Add tests proving:
-  - v2 writes/reads different keys than v1 for the same profession + effectiveLocale.
+- ✅ Update profession normalizer cache keying to prevent mixing v1 and v2 localized outputs.
+- ✅ Preferred approach:
+  - ✅ Add `cacheVersion` dependency to `createProfessionNormalizer`.
+  - ✅ Include `cacheVersion` in the cache key.
+  - ✅ Wire `cacheVersion` from the Worker assembler:
+    - ✅ `"1"` for `schemaVersion="1"`
+    - ✅ `"2"` for `schemaVersion="2"`
+- ✅ Add tests proving:
+  - ✅ v2 writes/reads different keys than v1 for the same profession + effectiveLocale.
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `partition normalizer cache by schemaVersion`
 
