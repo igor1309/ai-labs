@@ -27,28 +27,14 @@ jobs:
   notify:
     if: ${{ always() && !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
     needs: [tests, real-provider-smoke]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Send Telegram notification
-        env:
-          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
-          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
-        run: |
-          failed_jobs=""
-          if [ "${{ needs.tests.result }}" = "failure" ]; then
-            failed_jobs="tests"
-          fi
-          if [ "${{ needs.real-provider-smoke.result }}" = "failure" ]; then
-            [ -n "$failed_jobs" ] && failed_jobs="$failed_jobs, "
-            failed_jobs="${failed_jobs}real-provider-smoke"
-          fi
-          text="❌ CI failed: ${failed_jobs}
-          repo: ${{ github.repository }}
-          branch: ${{ github.ref_name }}
-          commit: ${{ github.sha }}
-          run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          ./scripts/ci/notify_telegram_failure.sh "${text}"
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "CI"
+      ref_label: "branch"
+      ref_value: ${{ github.ref_name }}
+      job_results: |
+        tests=${{ needs.tests.result }}
+        real-provider-smoke=${{ needs.real-provider-smoke.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
