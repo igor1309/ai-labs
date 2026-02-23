@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+- Implement locale v2 web frontend: EN/RU UI chrome i18n, schemaVersion 2 requests with raw browser locale, and RU deterministic/E2E coverage.
 - Stop uploading custom GitHub Release assets (GitHub always includes source archives).
 - Create minimal GitHub Releases for successful `v*` tag-driven deployments.
 
