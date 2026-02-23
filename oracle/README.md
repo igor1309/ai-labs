@@ -67,6 +67,20 @@ Run all commands from repo root.
 3. Same-origin API through Pages/custom domain:
    - `curl -X POST https://<your-pages-or-custom-domain>/api/outlook -H "content-type: application/json" -d '{"profession":"software developer","locale":"en-US","schemaVersion":"1"}'`
 
+## Worker logs (tail)
+Run from repo root.
+
+1. Start live tail:
+   - `npx wrangler tail --cwd oracle/apps/am-i-done-api --format pretty`
+2. Filter to outlook route traffic:
+   - `npx wrangler tail --cwd oracle/apps/am-i-done-api --format pretty --search "/api/outlook"`
+3. Structured output mode:
+   - `npx wrangler tail --cwd oracle/apps/am-i-done-api --format json`
+
+Notes:
+- If no requests hit the Worker, tail shows no new lines.
+- With `invocation_logs = false`, tail mostly shows runtime errors and explicit `console.*` app logs.
+
 ## Deployment order
 1. Deploy Worker first.
 2. Set/update Pages `API_BASE_URL`.
