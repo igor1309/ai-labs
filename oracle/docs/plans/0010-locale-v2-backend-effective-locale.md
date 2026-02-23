@@ -23,8 +23,8 @@ description: "Plan: backend-only locale v2 (ru support + effectiveLocale + promp
 
 ## Execution lock
 - Worktree required: yes
-- Expected worktree: `worktrees/oracle-0010-locale-v2-backend`
-- Expected branch: `codex/oracle-0010-locale-v2-backend`
+- Expected worktree: `worktrees/oracle-0010-locale-v2-backend-plan`
+- Expected branch: `codex/oracle-0010-locale-v2-backend-plan`
 - Preflight check: [ ] done
 
 ## v2 contract changes
