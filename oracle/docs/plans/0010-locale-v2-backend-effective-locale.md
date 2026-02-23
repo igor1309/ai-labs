@@ -162,12 +162,12 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 - Commit: `localize backend clarification copy for v2`
 
 ## Step 4: Embed localized prompts and select them in OpenRouter adapters
-- Add localized prompt source files for normalizer and outlook.
-- Add generator script + generated module (or extend the generator from Step 3) to embed prompt text.
-- Update OpenRouter adapters to pick system prompt content based on `effectiveLocale`.
-- Update adapter tests to validate:
-  - system prompt selection changes for `effectiveLocale="ru"` vs `"en"`.
-  - the user prompt payload includes `locale` matching `effectiveLocale` (not raw).
+- ✅ Add localized prompt source files for normalizer and outlook.
+- ✅ Add generator script + generated module (or extend the generator from Step 3) to embed prompt text.
+- ✅ Update OpenRouter adapters to pick system prompt content based on `effectiveLocale`.
+- ✅ Update adapter tests to validate:
+  - ✅ system prompt selection changes for `effectiveLocale="ru"` vs `"en"`.
+  - ✅ the user prompt payload includes `locale` matching `effectiveLocale` (not raw).
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `select localized system prompts for v2`
 

@@ -1,10 +1,9 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-const SYSTEM_PROMPT = "Return only a JSON object with exactly these keys: headline (string), timeHorizon (object with label string and explanation string), confidence (object with label one of low|medium|high and rationale string), keyRisks (array of strings), whatToDoNext (array of strings), assumptions (array of strings). Do not include non-JSON text. Do not include extra keys. Keep these section names stable for caching and UI rendering."
-
 test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterRequest", async () => {
   const adapterModule = await loadAdapterModule()
+  const resourcesModule = await loadResourcesModule()
   const httpClientSpy = makeHttpClientSpy()
   const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
     apiKey: "openrouter-api-key",
@@ -21,6 +20,7 @@ test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterReq
 
   assert.deepEqual(httpClientSpy.calls, [makeOpenRouterRequestCall({
     model: "openrouter/model-id",
+    systemPrompt: resourcesModule?.systemPrompts?.outlook?.en,
     timeoutMs: 4500,
     userPromptContent: JSON.stringify(makeOutlookInput())
   })])
@@ -139,6 +139,46 @@ test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAnd
     promptVersion: "prompt-v1",
     schemaVersion: "1"
   })
+})
+
+test("test_generate_shouldSelectRussianSystemPrompt_onLocaleRu", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.generate({
+    canonicalProfession: "software engineer",
+    locale: "ru",
+    promptVersion: "prompt-v1",
+    schemaVersion: "2"
+  })
+
+  assert.match(httpClientSpy.calls[0]?.body?.messages?.[0]?.content, /верни только json/i)
+})
+
+test("test_generate_shouldIncludeLocaleInUserPrompt_onLocaleRu", async () => {
+  const adapterModule = await loadAdapterModule()
+  const httpClientSpy = makeHttpClientSpy()
+  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+    apiKey: "openrouter-api-key",
+    httpClient: httpClientSpy.httpClient,
+    model: "openrouter/model-id",
+    timeoutMs: 1000
+  })
+
+  await modelClient?.generate({
+    canonicalProfession: "software engineer",
+    locale: "ru",
+    promptVersion: "prompt-v1",
+    schemaVersion: "2"
+  })
+
+  assert.equal(JSON.parse(httpClientSpy.calls[0]?.body?.messages?.[1]?.content)?.locale, "ru")
 })
 
 test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPrompt", async () => {
@@ -382,6 +422,14 @@ async function loadAdapterModule() {
   }
 }
 
+async function loadResourcesModule() {
+  try {
+    return await import("../src/generated/localized-resources.generated.js")
+  } catch {
+    return null
+  }
+}
+
 function makeHttpClientSpy({ responseBody = makeOpenRouterSuccessPayload(), responseOk = true, responseStatus = 200 } = {}) {
   const calls = []
 
@@ -475,11 +523,11 @@ function makeOpenRouterRawPayload(content) {
   }
 }
 
-function makeOpenRouterRequestCall({ model, timeoutMs, userPromptContent }) {
+function makeOpenRouterRequestCall({ model, systemPrompt, timeoutMs, userPromptContent }) {
   return {
     body: {
       messages: [
-        { content: SYSTEM_PROMPT, role: "system" },
+        { content: systemPrompt, role: "system" },
         { content: userPromptContent, role: "user" }
       ],
       model,
