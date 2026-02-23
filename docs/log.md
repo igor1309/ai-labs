@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+Fix `Release` workflow startup failures by using bracket notation for hyphenated `needs` job IDs.
 Release `v0.1.5`.
 Put Loki rollout on hold for Oracle observability and keep Oracle on Workers-native logging/telemetry for the current phase.
 Extract Oracle core CI into `oracle-core`, dispatch by changed project paths, and gate `real-provider-smoke` on Oracle/shared changes.
