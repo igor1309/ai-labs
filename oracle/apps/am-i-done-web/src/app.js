@@ -19,6 +19,20 @@ function canBootstrapInBrowser() {
   return typeof document !== "undefined" && typeof window !== "undefined"
 }
 
+export function readBrowserLocale() {
+  const language = globalThis.navigator?.language
+
+  return typeof language === "string" ? language : ""
+}
+
+export function resolveEffectiveLocale(rawLocale) {
+  const normalized = typeof rawLocale === "string"
+    ? rawLocale.trim().toLowerCase().split("_").join("-")
+    : ""
+
+  return normalized === "ru" || normalized.startsWith("ru-") ? "ru" : "en"
+}
+
 export function startApp({ elements, fetchImplementation, location }) {
   if (elements === undefined || elements.formElement === null || elements.professionInputElement === null) {
     return
