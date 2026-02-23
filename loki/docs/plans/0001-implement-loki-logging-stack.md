@@ -18,7 +18,7 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
 ## Assumptions
 - Target host: existing VPS at `95.164.53.144` running Ubuntu `24.04`.
 - A Cloudflare-managed domain is available and Cloudflare Access can be configured.
-- We can enumerate the initial set of `project` and `service` values to keep them bounded.
+- We will document an initial allowlist of `project` and `service` values to keep them bounded (and update it via PR when onboarding changes).
 
 ## Closed decisions (from open questions)
 - VPS: use the existing host `95.164.53.144` (Ubuntu `24.04`).
@@ -28,6 +28,32 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
   - host disk usage
   - Loki/Grafana/Alloy service health
   - “no logs received” (ingestion stalled)
+
+## Label policy (source of truth: decision 0001)
+This plan implements (and must not contradict) `loki/docs/decisions/0001-loki-logging-stack.md`.
+
+### Label schema
+Allowed labels (bounded cardinality; part of stream identity):
+- `project` (mandatory)
+- `env`
+- `service`
+- `level`
+- `model`
+- `function`
+
+Forbidden as labels (must remain in log body):
+- `request_id`, `trace_id`, `span_id`
+- `user_id`, `device_id`, `session_id`
+- any unique per-event IDs
+
+### Core label derivation rules
+- Alloy injects `project`, `service`, `env`. Applications must not self-assign or override them.
+- `env` is sourced exclusively from host environment variable `DEPLOY_ENV ∈ {dev, stage, prod}` (for the single host in this plan, it will be set to one value, typically `prod`).
+- systemd unit naming reserves `__` as a delimiter; it must not appear inside `<project>` or `<service>`.
+
+### Bounds and change control
+- Maintain an explicit allowlist of `project` and `service` values as part of Phase 6 onboarding docs.
+- Treat onboarding a new `project`/`service` value as a deliberate change: update docs and CI checks in the same PR as the onboarding change.
 
 ## Execution lock (for when this plan is executed)
 - Worktree required: yes
@@ -51,7 +77,10 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
 ### Deliverables
 - journald configured for persistent storage and bounded disk usage.
 - Docker installed and configured to use the journald logging driver for containers.
-- A standard place for stack configuration and secrets (permissions locked down).
+- A standard place for stack configuration and secrets (permissions locked down):
+  - configs under `/etc/loki-stack/` (root-owned, not world-readable)
+  - data under a dedicated mounted host path (not inside the repo)
+  - secrets provided via root-only systemd `EnvironmentFile=` and Docker Compose `env_file:` (never committed)
 
 ### Verification
 - Container stdout/stderr appears in journald.
