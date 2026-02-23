@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+- Execute Phase 1 provisioning on VPS `95.164.53.144`: create non-root admin `loki`, enforce SSH key-only access (`PermitRootLogin no`, `PasswordAuthentication no`), set `DEPLOY_ENV=prod`, enable UFW with OpenSSH-only inbound, and mount temporary loopback Loki data storage at `/var/lib/loki`; mark Phase 1 as provisionally passed pending dedicated-volume cutover.
 - Add Phase 7 artifacts: operations runbook, backup/restore scripts, and a host verifier with fixtures-backed tests for backup readiness, capacity checks, and Telegram alerting presence.
 - Add Phase 6 artifacts: Compose label compliance checker with allowlist enforcement, onboarding checklist + allowlist source-of-truth docs, Compose service labels, and CI trigger coverage for `loki/**` changes.
 - Add Phase 5 artifacts: cloudflared tunnel config template, Phase 5 host verifier script with fixtures-backed tests, and Cloudflare Tunnel + Access provisioning docs.
