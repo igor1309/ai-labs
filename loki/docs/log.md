@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+- Add Phase 3 artifacts: Loki+Grafana Docker Compose stack, Loki retention config (14 days), Grafana datasource provisioning, and Phase 3 deploy docs.
 - Add Phase 2 artifacts: host runtime config templates (journald + Docker), a Phase 2 host verifier script with tests, and Phase 2 provisioning docs.
 - Add Phase 1 tooling: cloud-init generator (library + CLI) and a host verifier script with fixtures-backed tests.
 - Document Phase 1 VPS provisioning and hardening checklist.
