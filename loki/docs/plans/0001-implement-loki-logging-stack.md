@@ -51,6 +51,19 @@ Forbidden as labels (must remain in log body):
 - `env` is sourced exclusively from host environment variable `DEPLOY_ENV ∈ {dev, stage, prod}` (for the single host in this plan, it will be set to one value, typically `prod`).
 - systemd unit naming reserves `__` as a delimiter; it must not appear inside `<project>` or `<service>`.
 
+### Non-core label derivation rules (`level`, `model`, `function`)
+These labels are optional and may only be derived centrally by Alloy (never by “trusting” arbitrary application-provided label sets).
+
+- `level` derivation (deterministic):
+  - If the log payload is structured JSON and contains a level field (`level` or `severity`) whose value maps into `debug|info|warn|error`, Alloy sets `level` from that mapped value.
+  - Otherwise, Alloy derives `level` from journald priority (`PRIORITY`) using a documented mapping (e.g. `0–3 → error`, `4 → warn`, `5–6 → info`, `7 → debug`).
+- `model` derivation:
+  - Alloy extracts `model` only from structured JSON payload field `model`.
+  - Alloy sets `model` as a label only when the value is in the repo-defined allowlist for that `project` (see Phase 6). Otherwise the value remains in the log body (not a label).
+- `function` derivation:
+  - Alloy extracts `function` only from structured JSON payload field `function`.
+  - Alloy sets `function` as a label only when the value is in the repo-defined allowlist for that `project/service` (see Phase 6). Otherwise the value remains in the log body (not a label).
+
 ### Bounds and change control
 - Maintain an explicit allowlist of `project` and `service` values as part of Phase 6 onboarding docs.
 - Treat onboarding a new `project`/`service` value as a deliberate change: update docs and CI checks in the same PR as the onboarding change.
@@ -60,6 +73,13 @@ Forbidden as labels (must remain in log body):
 - Expected worktree: `worktrees/loki-logging-stack`
 - Expected branch: `codex/loki-logging-stack`
 - Preflight check: [ ] done (`git worktree list --porcelain` and `git branch --show-current`)
+
+## Repo artifacts (tracked in git)
+When executed, this plan adds repo-tracked artifacts under `loki/`:
+
+- `loki/stack/`: Docker Compose stack and provisioning files for Loki + Grafana (no secrets committed).
+- `loki/scripts/`: CI checks and local helper scripts (label compliance, allowlists).
+- `loki/docs/onboarding/`: onboarding checklist, and the allowlists that bound label values per project/service.
 
 ## Phase 1: VPS provisioning and hardening
 ### Deliverables
@@ -75,7 +95,11 @@ Forbidden as labels (must remain in log body):
 
 ## Phase 2: Host runtime prerequisites (journald + Docker)
 ### Deliverables
-- journald configured for persistent storage and bounded disk usage.
+- journald configured for persistent storage and bounded disk usage:
+  - Persistent journals enabled (under `/var/log/journal`).
+  - A dedicated journald drop-in (e.g. `/etc/systemd/journald.conf.d/loki-stack.conf`) defines caps (example starting point; tune after observing volume):
+    - `SystemMaxUse=2G`
+    - `SystemKeepFree=5G`
 - Docker installed and configured to use the journald logging driver for containers.
 - A standard place for stack configuration and secrets (permissions locked down):
   - configs under `/etc/loki-stack/` (root-owned, not world-readable)
@@ -84,7 +108,9 @@ Forbidden as labels (must remain in log body):
 
 ### Verification
 - Container stdout/stderr appears in journald.
-- journald retention/size limits are effective (disk usage stays bounded under load testing).
+- journald size limits are effective:
+  - `journalctl --disk-usage` stays under `SystemMaxUse` after generating sustained container logs for a fixed interval (e.g. 10 minutes).
+  - journald does not consume the reserved free space implied by `SystemKeepFree`.
 
 ## Phase 3: Deploy Loki + Grafana (Docker Compose)
 ### Deliverables
@@ -104,9 +130,13 @@ Forbidden as labels (must remain in log body):
   - `project`, `service` derived centrally (never overridden by apps)
   - `env` derived only from `DEPLOY_ENV`
   - forbidden labels remain in log body
-- Deterministic mappings implemented for:
-  - systemd units using `_SYSTEMD_UNIT` naming: `<project>__<service>@<instance>.service`
-  - Docker containers using container labels: `com.logging.project`, `com.logging.service` (enriched via Docker discovery, joined to journald entries via container ID)
+  - Deterministic mappings implemented for:
+    - systemd units using `_SYSTEMD_UNIT` naming: `<project>__<service>@<instance>.service`
+      - The `@<instance>` suffix is mandatory, even for single-instance services.
+    - Docker containers using container labels: `com.logging.project`, `com.logging.service` (enriched via Docker discovery, joined to journald entries via container ID)
+  - Extraction and enforcement for non-core labels per “Non-core label derivation rules”:
+    - `level` derived deterministically (payload-first when mappable, else journald priority mapping)
+    - `model` / `function` labels only when values are allowlisted; otherwise remain in the log body
 
 ### Verification
 - For a systemd test service named `trend-scout__api@1.service`, logs appear in Loki with:
@@ -129,9 +159,12 @@ Forbidden as labels (must remain in log body):
 
 ## Phase 6: Project onboarding rules and CI enforcement
 ### Deliverables
-- A minimal “label compliance” check (CI) that scans Docker Compose service definitions in all `docker-compose*.yml` files in the repo (and is extended to any other container manifests added later) and fails when required Docker labels are missing:
+- A minimal “label compliance” check (CI) that scans Docker Compose service definitions in all Compose manifests in the repo and fails when required Docker labels are missing:
+  - `docker-compose*.yml`, `docker-compose*.yaml`
+  - `compose*.yml`, `compose*.yaml`
   - `com.logging.project`
   - `com.logging.service`
+  - Note: iteration 1 is scoped to Docker Compose only; any new non-Compose container manifests must extend this check in the same PR.
 - A documented onboarding checklist for new services:
   - systemd unit naming rule (when applicable)
   - Docker container label rule (when applicable)
@@ -143,6 +176,11 @@ Forbidden as labels (must remain in log body):
     - `function`: bounded per service (target O(10–50))
   - allowlist for known `project` and `service` values (and the PR/change process to extend it)
   - rule: CI rejects `com.logging.project` / `com.logging.service` values that are not in the allowlist (to keep cardinality bounded)
+  - allowlists for non-core label values:
+    - `model`: allowlist per `project`
+    - `function`: allowlist per `project/service` (target O(10–50))
+  - repo location for allowlists (single source of truth):
+    - `loki/docs/onboarding/label-allowlists.yml`
 
 ### Verification
 - A sample project/container definition missing labels fails the compliance check.
