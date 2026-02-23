@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+Release `v0.1.4`.
 Stop uploading custom GitHub Release assets (GitHub always includes source archives).
 Release `v0.1.3`.
 Create minimal GitHub Releases for successful `v*` tag-driven deployments.
