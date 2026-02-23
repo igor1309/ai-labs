@@ -65,8 +65,10 @@ test("test_validate_shouldReturnValidResultWithTypedValue_onValidPayloadWithExtr
   assert.deepEqual(result, {
     isValid: true,
     value: {
+      effectiveLocale: "en",
       locale: "en-US",
       profession: "software engineer",
+      requestedLocale: "en-US",
       schemaVersion: "2"
     }
   })
@@ -84,8 +86,10 @@ test("test_validate_shouldReturnTrimmedValueFields_onValidPayloadWithWhitespaceP
   assert.deepEqual(result, {
     isValid: true,
     value: {
+      effectiveLocale: "en",
       locale: "en-US",
       profession: "software engineer",
+      requestedLocale: "en-US",
       schemaVersion: "2"
     }
   })

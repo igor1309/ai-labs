@@ -189,6 +189,27 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidJsonRequestBody
   assert.equal(telemetrySpy.apiRequestCalls[0].result, "invalid_body")
 })
 
+test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2InvalidJsonRequestBody", async () => {
+  const { workerFetchHandler } = makeSUT()
+
+  const response = await performInvalidJsonOutlookRequestWithBody(workerFetchHandler, "{\"locale\":\"ru-RU\",\"schemaVersion\":\"2\",")
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please provide a valid request body.",
+      suggestions: []
+    },
+    effectiveLocale: "ru",
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "2"
+  })
+})
+
 test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", async () => {
   const { telemetrySpy, workerFetchHandler } = makeSUT({
     guardResult: {
@@ -218,6 +239,42 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onInvalidGuardResult", a
   })
   assert.equal(telemetrySpy.apiRequestCalls.length, 1)
   assert.equal(telemetrySpy.apiRequestCalls[0].result, "guard_reject")
+})
+
+test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2GuardReject", async () => {
+  const { workerFetchHandler } = makeSUT({
+    guardResult: {
+      clarification: {
+        message: "Please provide a valid profession and locale.",
+        suggestions: []
+      },
+      isValid: false,
+      schemaVersion: "2"
+    }
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler, {
+    requestBody: {
+      locale: "ru-RU",
+      profession: "   ",
+      schemaVersion: "2"
+    }
+  })
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please provide a valid profession and locale.",
+      suggestions: []
+    },
+    effectiveLocale: "ru",
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "2"
+  })
 })
 
 test("test_fetch_shouldNotCallProfessionNormalizer_onInvalidGuardResult", async () => {
@@ -289,6 +346,42 @@ test("test_fetch_shouldReturnNeedsClarificationResponse_onNeedsClarification", a
   })
   assert.equal(telemetrySpy.apiRequestCalls.length, 1)
   assert.equal(telemetrySpy.apiRequestCalls[0].result, "clarify")
+})
+
+test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2NeedsClarificationFlow", async () => {
+  const { workerFetchHandler } = makeSUT({
+    guardResult: makeValidGuardResultSchemaVersion2RuRu(),
+    normalizerResult: {
+      clarification: {
+        message: "Please be more specific.",
+        suggestions: ["software engineer"]
+      },
+      needsClarification: true
+    }
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler, {
+    requestBody: {
+      locale: "ru-RU",
+      profession: "software engineer",
+      schemaVersion: "2"
+    }
+  })
+
+  assert.deepEqual(response.body, {
+    answer: null,
+    canonicalProfession: null,
+    category: null,
+    categoryConfidence: null,
+    clarification: {
+      message: "Please be more specific.",
+      suggestions: ["software engineer"]
+    },
+    effectiveLocale: "ru",
+    needsClarification: true,
+    requestId: "request-id",
+    schemaVersion: "2"
+  })
 })
 
 test("test_fetch_shouldCallPopularityTrackerWithRawProfessionAndCanonicalResult_onOutlookFlow", async () => {
@@ -420,6 +513,22 @@ test("test_fetch_shouldCallProfessionOutlookServiceWithCanonicalProfessionLocale
   assert.deepEqual(professionOutlookServiceSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "en-US", schemaVersion: "1" }])
 })
 
+test("test_fetch_shouldCallProfessionOutlookServiceWithEffectiveLocale_onSchemaVersion2", async () => {
+  const { professionOutlookServiceSpy, workerFetchHandler } = makeSUT({
+    guardResult: makeValidGuardResultSchemaVersion2RuRu()
+  })
+
+  await performOutlookRequest(workerFetchHandler, {
+    requestBody: {
+      locale: "ru-RU",
+      profession: "software engineer",
+      schemaVersion: "2"
+    }
+  })
+
+  assert.deepEqual(professionOutlookServiceSpy.calls, [{ canonicalProfession: "software engineer", hints: { category: "knowledge-work", categoryConfidence: 0.9 }, locale: "ru", schemaVersion: "2" }])
+})
+
 test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
   const { telemetrySpy, workerFetchHandler } = makeSUT()
 
@@ -437,6 +546,32 @@ test("test_fetch_shouldReturnOutlookResponse_onOutlookFlow", async () => {
   })
   assert.equal(telemetrySpy.apiRequestCalls.length, 1)
   assert.equal(telemetrySpy.apiRequestCalls[0].result, "answered")
+})
+
+test("test_fetch_shouldIncludeEffectiveLocale_onSchemaVersion2OutlookFlow", async () => {
+  const { workerFetchHandler } = makeSUT({
+    guardResult: makeValidGuardResultSchemaVersion2RuRu()
+  })
+
+  const response = await performOutlookRequest(workerFetchHandler, {
+    requestBody: {
+      locale: "ru-RU",
+      profession: "software engineer",
+      schemaVersion: "2"
+    }
+  })
+
+  assert.deepEqual(response.body, {
+    answer: makeOutlookAnswerResult(),
+    canonicalProfession: "software engineer",
+    category: "knowledge-work",
+    categoryConfidence: 0.9,
+    clarification: null,
+    effectiveLocale: "ru",
+    needsClarification: false,
+    requestId: "request-id",
+    schemaVersion: "2"
+  })
 })
 
 test("test_fetch_shouldNotFailResponse_onTelemetryFailure", async () => {
@@ -600,9 +735,24 @@ function makeValidGuardResult() {
   return {
     isValid: true,
     value: {
+      effectiveLocale: "en-US",
       locale: "en-US",
       profession: "  software   developer  ",
+      requestedLocale: "en-US",
       schemaVersion: "1"
+    }
+  }
+}
+
+function makeValidGuardResultSchemaVersion2RuRu() {
+  return {
+    isValid: true,
+    value: {
+      effectiveLocale: "ru",
+      locale: "ru-RU",
+      profession: "software engineer",
+      requestedLocale: "ru-RU",
+      schemaVersion: "2"
     }
   }
 }
@@ -691,6 +841,21 @@ async function performOutlookRequest(workerFetchHandler, { requestBody = makeOut
 async function performInvalidJsonOutlookRequest(workerFetchHandler) {
   const response = await workerFetchHandler(new Request("https://example.test/api/outlook", {
     body: "{",
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  }))
+
+  return {
+    body: await response.json(),
+    status: response.status
+  }
+}
+
+async function performInvalidJsonOutlookRequestWithBody(workerFetchHandler, body) {
+  const response = await workerFetchHandler(new Request("https://example.test/api/outlook", {
+    body,
     headers: {
       "content-type": "application/json"
     },

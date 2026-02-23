@@ -131,21 +131,21 @@ Currently keyed by `locale` + `profession` and has no schema/prompt version dime
 - Commit: `add effectiveLocale resolver for v2`
 
 ## Step 2: Thread effectiveLocale through request handling and v2 responses
-- Update request guard to return both:
-  - `requestedLocale` (trimmed raw)
-  - `effectiveLocale` (computed for v2, `"en"` fallback)
-  - Keep the existing `locale` field only if needed for v1 compatibility; otherwise migrate call sites to the new naming.
-- Update `createWorkerFetchHandler`:
-  - Use `effectiveLocale` for all downstream calls (normalizer/outlook) when `schemaVersion="2"`.
-  - Add `effectiveLocale` to v2 responses for:
-    - answered
-    - clarify
-    - guard_reject
-    - invalid_body (use `"en"` if locale is unavailable)
-  - Ensure v1 responses remain byte-for-byte compatible (no new fields).
-- Add/adjust composition tests to cover:
-  - v2 adds `effectiveLocale`
-  - v1 has no `effectiveLocale`
+- ✅ Update request guard to return both:
+  - ✅ `requestedLocale` (trimmed raw)
+  - ✅ `effectiveLocale` (computed for v2, `"en"` fallback)
+  - ✅ Keep the existing `locale` field only if needed for v1 compatibility; otherwise migrate call sites to the new naming.
+- ✅ Update `createWorkerFetchHandler`:
+  - ✅ Use `effectiveLocale` for all downstream calls (normalizer/outlook) when `schemaVersion="2"`.
+  - ✅ Add `effectiveLocale` to v2 responses for:
+    - ✅ answered
+    - ✅ clarify
+    - ✅ guard_reject
+    - ✅ invalid_body (use `"en"` if locale is unavailable)
+  - ✅ Ensure v1 responses remain byte-for-byte compatible (no new fields).
+- ✅ Add/adjust composition tests to cover:
+  - ✅ v2 adds `effectiveLocale`
+  - ✅ v1 has no `effectiveLocale`
 - Run: `./scripts/run_silent.sh "tests" npm test`
 - Commit: `include effectiveLocale in schemaVersion 2 responses`
 

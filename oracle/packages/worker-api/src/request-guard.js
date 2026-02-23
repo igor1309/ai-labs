@@ -1,3 +1,5 @@
+import { resolveEffectiveLocale } from "./effective-locale.js"
+
 export const requestGuard = {
   async validate(input) {
     if (!isObject(input)) {
@@ -18,12 +20,18 @@ export const requestGuard = {
 
     const trimmedProfession = profession.trim()
     const trimmedLocale = locale.trim()
+    const effectiveLocale = resolveEffectiveLocale({
+      rawLocale: trimmedLocale,
+      schemaVersion
+    })
 
     return {
       isValid: true,
       value: {
+        effectiveLocale,
         locale: trimmedLocale,
         profession: trimmedProfession,
+        requestedLocale: trimmedLocale,
         schemaVersion
       }
     }
