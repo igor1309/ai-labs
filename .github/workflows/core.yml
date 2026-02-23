@@ -12,26 +12,48 @@ permissions:
   contents: read
 
 jobs:
-  core:
+  changes:
+    if: ${{ inputs.ref == '' && (github.event_name == 'pull_request' || github.event_name == 'push') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      oracle: ${{ steps.filter.outputs.oracle }}
+      shared: ${{ steps.filter.outputs.shared }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Detect changed projects
+        uses: dorny/paths-filter@v3
+        id: filter
         with:
-          node-version-file: .node-version
-          cache: npm
+          filters: |
+            shared:
+              - ".github/workflows/**"
+              - ".node-version"
+              - "package-lock.json"
+              - "package.json"
+              - "scripts/**"
+              - "tsconfig.json"
+              - "vendor/**"
+            oracle:
+              - "oracle/**"
 
-      - name: Install dependencies
-        run: npm ci
+  oracle-on-ref:
+    if: ${{ inputs.ref != '' }}
+    uses: ./.github/workflows/oracle-core.yml
+    with:
+      ref: ${{ inputs.ref }}
 
-      - name: Typecheck
-        run: ./scripts/run_silent.sh "build" npx tsc --noEmit
+  oracle-on-dispatch:
+    if: ${{ inputs.ref == '' && github.event_name == 'workflow_dispatch' }}
+    uses: ./.github/workflows/oracle-core.yml
 
-      - name: Run tests
-        run: ./scripts/run_silent.sh "tests" npm test
+  oracle-on-changes:
+    needs: [changes]
+    if: ${{ inputs.ref == '' && (needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') }}
+    uses: ./.github/workflows/oracle-core.yml
