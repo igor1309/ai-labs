@@ -1,0 +1,2 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       120G   28G   92G  24% /var/lib/grafana
