@@ -1,0 +1,16 @@
+**Local (developer loop)**
+- Baseline (always): `./scripts/run_silent.sh "build" npx tsc --noEmit` + `./scripts/run_silent.sh "tests" npm test`
+- Optional tiers (explicit): `RUN_WEB_E2E=1` for browser E2E; `RUN_REAL_PROVIDER_SMOKE=1` for real-provider smoke (mirrors current Oracle tests).
+
+**CI (PR gate, deterministic, no secrets)**
+- Keep current PR gate exactly as today: typecheck + `npm test` via `.github/workflows/core.yml`.
+- Add a separate “Loki: core checks” job/workflow that runs only **static + deterministic** validations (config files parse, `docker compose config`-style validation if you want Docker in CI, “required files exist”, etc.), triggered only when `loki/**` changes (`paths:` filter). No VPS, no Cloudflare, no secrets.
+
+**CI integration (heavier, Docker, still no secrets)**
+- A separate workflow “Loki: stack integration” (manual or path-filtered) that brings up the Loki/Grafana compose stack in Actions and runs a minimal smoke: “services start + readiness endpoints respond + basic query endpoint responds”. This is the Loki analogue of “Web E2E” being separated today.
+
+**E2E / prod smoke (real environment, secrets allowed)**
+- A separate workflow “Loki: prod smoke” (manual at first; later scheduled) that hits the deployed endpoints (Grafana/Loki health/query) using whatever auth you choose (e.g., Cloudflare Access service token secrets). This is the Loki analogue of `.github/workflows/core-real-provider-smoke.yml`.
+
+**Workflow naming (your note)**
+- Agreed: rename existing workflow display names to reflect Oracle ownership (e.g., “Oracle: core”, “Oracle: web e2e”, “Oracle: real-provider smoke”), so Loki can add its own without “Core” ambiguity.
