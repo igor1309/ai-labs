@@ -25,11 +25,11 @@ if (globalThis.document === undefined) {
 test("test_resolveAppConfig_shouldReturnDefaultTimeout_onMissingQueryValue", () => {
   const config = resolveAppConfig(new URL("https://am-i-done-web.pages.dev/"))
 
-  assert.equal(config.requestTimeoutMs, 12000)
+  assert.equal(config.requestTimeoutMs, 60000)
 })
 
-test("test_defaultRequestTimeout_shouldBe12000_onCurrentConfiguration", () => {
-  assert.equal(DEFAULT_REQUEST_TIMEOUT_MS, 12000)
+test("test_defaultRequestTimeout_shouldBe60000_onCurrentConfiguration", () => {
+  assert.equal(DEFAULT_REQUEST_TIMEOUT_MS, 60000)
 })
 
 test("test_resolveAppConfig_shouldReturnQueryTimeout_onPositiveNumericValue", () => {

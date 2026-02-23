@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-23
+- Increase web app default request timeout to `60000ms` to align browser-side abort behavior with Worker OpenRouter timeout.
 - Increase Worker OpenRouter timeout to `60000ms` in `wrangler.toml` after observed request cancellations/timeouts during live tailing.
 - Keep Oracle observability on Cloudflare Workers logging/telemetry for now and defer direct Loki integration until a concrete cross-platform gap appears.
 - Implement locale v2 frontend plan `0011`: EN/RU UI chrome i18n, schemaVersion 2 requests with raw browser locale, and RU deterministic/E2E coverage.
