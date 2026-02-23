@@ -19,31 +19,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  resolve-tag:
-    runs-on: ubuntu-latest
-    outputs:
-      release_tag: ${{ steps.resolve.outputs.release_tag }}
-    steps:
-      - name: Resolve release tag
-        id: resolve
-        env:
-          WORKFLOW_TAG: ${{ inputs.tag }}
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            echo "release_tag=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
-          else
-            echo "release_tag=${WORKFLOW_TAG}" >> "${GITHUB_OUTPUT}"
-          fi
-
   verify:
-    needs: [resolve-tag]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.resolve-tag.outputs.release_tag }}
+          ref: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -54,7 +37,7 @@ jobs:
 
       - name: Verify tag matches package.json version
         env:
-          TAG: ${{ needs.resolve-tag.outputs.release_tag }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
         run: |
           version="$(node -p 'JSON.parse(require("fs").readFileSync("package.json","utf8")).version')"
           lock_version="$(node -p 'JSON.parse(require("fs").readFileSync("package-lock.json","utf8")).version')"
@@ -70,7 +53,7 @@ jobs:
 
       - name: Verify tag commit is on trunk
         env:
-          TAG: ${{ needs.resolve-tag.outputs.release_tag }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
         run: |
           git fetch --force --tags origin
           git fetch origin trunk:refs/remotes/origin/trunk
@@ -78,38 +61,38 @@ jobs:
           git merge-base --is-ancestor "${tag_sha}" "origin/trunk"
 
   core:
-    needs: [resolve-tag, verify]
+    needs: [verify]
     uses: ./.github/workflows/core.yml
     with:
-      ref: ${{ needs.resolve-tag.outputs.release_tag }}
+      ref: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
 
   real-provider-smoke:
-    needs: [resolve-tag, core]
+    needs: [core]
     # Requires:
     # - vars.OPENROUTER_CI_MODEL (cheap model for the smoke gate)
     # - secrets.OPENROUTER_API_KEY
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
-      ref: ${{ needs.resolve-tag.outputs.release_tag }}
+      ref: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
       openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
     secrets:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   web-e2e:
-    needs: [resolve-tag, core]
+    needs: [core]
     permissions:
       actions: write
       contents: read
     uses: ./.github/workflows/core-web-e2e.yml
     with:
-      ref: ${{ needs.resolve-tag.outputs.release_tag }}
+      ref: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
 
   deploy:
-    needs: [resolve-tag, core, real-provider-smoke, web-e2e]
+    needs: [core, real-provider-smoke, web-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      RELEASE_TAG: ${{ needs.resolve-tag.outputs.release_tag }}
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -137,13 +120,13 @@ jobs:
         run: npm run web:deploy
 
   github-release:
-    needs: [resolve-tag, deploy]
+    needs: [deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: write
     env:
-      RELEASE_TAG: ${{ needs.resolve-tag.outputs.release_tag }}
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
     steps:
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
@@ -158,13 +141,13 @@ jobs:
 
   notify:
     if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure' || needs.github-release.result == 'failure') }}
-    needs: [resolve-tag, verify, core, real-provider-smoke, web-e2e, deploy, github-release]
+    needs: [verify, core, real-provider-smoke, web-e2e, deploy, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
-      ref: ${{ needs.resolve-tag.outputs.release_tag }}
+      ref: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
       title: "Release"
       ref_label: "tag"
-      ref_value: ${{ needs.resolve-tag.outputs.release_tag }}
+      ref_value: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
       job_results: |
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
