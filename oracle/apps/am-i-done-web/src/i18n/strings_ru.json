@@ -1,0 +1,31 @@
+{
+  "documentTitle": "Я всё?",
+  "hero": {
+    "eyebrow": "Карьерный прогноз",
+    "intro": "Введите профессию и получите структурированный прогноз одним ответом.",
+    "title": "Я всё?"
+  },
+  "form": {
+    "professionLabel": "Профессия",
+    "professionPlaceholder": "например, разработчик ПО",
+    "submitButton": "Получить прогноз"
+  },
+  "states": {
+    "loading": "Анализируем вашу профессию...",
+    "transportError": "Запрос не удался. Попробуйте еще раз."
+  },
+  "sections": {
+    "assumptions": "Предпосылки",
+    "clarification": "Нужно уточнение",
+    "confidence": "Уверенность",
+    "risks": "Риски",
+    "timeHorizon": "Горизонт",
+    "whatToDoNext": "Что делать дальше"
+  },
+  "confidenceLabels": {
+    "high": "высокая",
+    "low": "низкая",
+    "medium": "средняя"
+  }
+}
+
