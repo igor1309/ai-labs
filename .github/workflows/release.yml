@@ -56,30 +56,96 @@ jobs:
 
   core:
     needs: [verify]
-    uses: ./.github/workflows/core.yml
-    with:
-      ref: ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: ./scripts/run_silent.sh "build" npx tsc --noEmit
+
+      - name: Run tests
+        run: ./scripts/run_silent.sh "tests" npm test
 
   real-provider-smoke:
     needs: [core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Requires:
     # - vars.OPENROUTER_CI_MODEL (cheap model for the smoke gate)
     # - secrets.OPENROUTER_API_KEY
-    uses: ./.github/workflows/core-real-provider-smoke.yml
-    with:
-      ref: ${{ github.ref_name }}
-      openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
-    secrets:
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run real-provider smoke
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          OPENROUTER_TIMEOUT_MS: "180000"
+          OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+          RUN_REAL_PROVIDER_SMOKE: "1"
+        run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js
 
   web-e2e:
     needs: [core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       actions: write
       contents: read
-    uses: ./.github/workflows/core-web-e2e.yml
-    with:
-      ref: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: .playwright-browsers
+          key: ${{ runner.os }}-playwright-browsers-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser
+        run: PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers npx playwright install --with-deps chromium
+
+      - name: Run web E2E tests
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: .playwright-browsers
+          RUN_WEB_E2E: "1"
+        run: ./scripts/run_silent.sh "web-e2e" node --test oracle/apps/am-i-done-web/tests/web-e2e.test.js
 
   deploy:
     needs: [core, real-provider-smoke, web-e2e]
@@ -136,19 +202,46 @@ jobs:
   notify:
     if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure' || needs.github-release.result == 'failure') }}
     needs: [verify, core, real-provider-smoke, web-e2e, deploy, github-release]
-    uses: ./.github/workflows/notify-telegram-failure.yml
-    with:
-      ref: ${{ github.ref_name }}
-      title: "Release"
-      ref_label: "tag"
-      ref_value: ${{ github.ref_name }}
-      job_results: |
-        verify=${{ needs.verify.result }}
-        core=${{ needs.core.result }}
-        real-provider-smoke=${{ needs.real-provider-smoke.result }}
-        web-e2e=${{ needs.web-e2e.result }}
-        deploy=${{ needs.deploy.result }}
-        github-release=${{ needs.github-release.result }}
-    secrets:
-      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
-      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Send Telegram notification
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+        run: |
+          failed_jobs=""
+          if [ "${{ needs.verify.result }}" = "failure" ]; then
+            failed_jobs="verify"
+          fi
+          if [ "${{ needs.core.result }}" = "failure" ]; then
+            [ -n "${failed_jobs}" ] && failed_jobs="${failed_jobs}, "
+            failed_jobs="${failed_jobs}core"
+          fi
+          if [ "${{ needs.real-provider-smoke.result }}" = "failure" ]; then
+            [ -n "${failed_jobs}" ] && failed_jobs="${failed_jobs}, "
+            failed_jobs="${failed_jobs}real-provider-smoke"
+          fi
+          if [ "${{ needs.web-e2e.result }}" = "failure" ]; then
+            [ -n "${failed_jobs}" ] && failed_jobs="${failed_jobs}, "
+            failed_jobs="${failed_jobs}web-e2e"
+          fi
+          if [ "${{ needs.deploy.result }}" = "failure" ]; then
+            [ -n "${failed_jobs}" ] && failed_jobs="${failed_jobs}, "
+            failed_jobs="${failed_jobs}deploy"
+          fi
+          if [ "${{ needs.github-release.result }}" = "failure" ]; then
+            [ -n "${failed_jobs}" ] && failed_jobs="${failed_jobs}, "
+            failed_jobs="${failed_jobs}github-release"
+          fi
+          text="❌ Release failed: ${failed_jobs}
+          repo: ${{ github.repository }}
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ./scripts/ci/notify_telegram_failure.sh "${text}"
