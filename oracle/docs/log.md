@@ -1,7 +1,8 @@
 # Log
 
 ## 2026-02-23
-- Implement locale v2 web frontend: EN/RU UI chrome i18n, schemaVersion 2 requests with raw browser locale, and RU deterministic/E2E coverage.
+- Implement locale v2 frontend plan `0011`: EN/RU UI chrome i18n, schemaVersion 2 requests with raw browser locale, and RU deterministic/E2E coverage.
+- Implement locale v2 backend plan `0010`: effectiveLocale in schemaVersion 2 responses, localized EN/RU prompts + backend copy, schemaVersion-partitioned normalizer cache, and invalid-JSON/schemaVersion parsing hardening (with deploy/prompt-version notes).
 - Stop uploading custom GitHub Release assets (GitHub always includes source archives).
 - Create minimal GitHub Releases for successful `v*` tag-driven deployments.
 
