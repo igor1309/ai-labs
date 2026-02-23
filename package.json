@@ -2,7 +2,7 @@
   "name": "ai-labs",
   "private": true,
   "type": "module",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "typescript": "^5.9.3",
