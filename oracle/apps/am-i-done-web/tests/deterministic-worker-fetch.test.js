@@ -10,7 +10,7 @@ test("test_makeDeterministicWorkerFetch_shouldReturnStructuredResponse_onValidPr
     body: JSON.stringify({
       locale: "en-US",
       profession: "software developer",
-      schemaVersion: "1"
+      schemaVersion: "2"
     }),
     headers: {
       "content-type": "application/json"
@@ -21,10 +21,9 @@ test("test_makeDeterministicWorkerFetch_shouldReturnStructuredResponse_onValidPr
 
   assert.equal(response.status, 200)
   assert.equal(body?.needsClarification, false)
-  assert.equal(body?.schemaVersion, "1")
+  assert.equal(body?.schemaVersion, "2")
   assert.equal(body?.requestId, "request-id")
   assert.equal(body?.canonicalProfession, "software engineer")
   assert.equal(typeof body?.answer?.headline, "string")
   assert.ok(body.answer.headline.length > 0)
 })
-

@@ -268,9 +268,9 @@ export async function requestOutlook({
   try {
     const response = await fetchImplementation(OUTLOOK_ENDPOINT_PATH, {
       body: JSON.stringify({
-        locale: "en-US",
+        locale: readBrowserLocale(),
         profession,
-        schemaVersion: "1"
+        schemaVersion: "2"
       }),
       headers: {
         "content-type": "application/json"
