@@ -274,6 +274,15 @@ async function startWebServer({ workerBaseUrl }) {
       return
     }
 
+    if (requestUrl.pathname === "/generated/strings.generated.js") {
+      await writeStaticFileResponse({
+        nodeResponse: response,
+        filePath: path.join(webSourceDirectory, "generated/strings.generated.js"),
+        contentType: "application/javascript; charset=utf-8"
+      })
+      return
+    }
+
     if (requestUrl.pathname === "/styles.css") {
       await writeStaticFileResponse({
         nodeResponse: response,
