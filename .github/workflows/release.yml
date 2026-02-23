@@ -18,18 +18,32 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-env:
-  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-
 jobs:
+  resolve-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+    steps:
+      - name: Resolve release tag
+        id: resolve
+        env:
+          WORKFLOW_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "release_tag=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "release_tag=${WORKFLOW_TAG}" >> "${GITHUB_OUTPUT}"
+          fi
+
   verify:
+    needs: [resolve-tag]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ needs.resolve-tag.outputs.release_tag }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -40,7 +54,7 @@ jobs:
 
       - name: Verify tag matches package.json version
         env:
-          TAG: ${{ env.RELEASE_TAG }}
+          TAG: ${{ needs.resolve-tag.outputs.release_tag }}
         run: |
           version="$(node -p 'JSON.parse(require("fs").readFileSync("package.json","utf8")).version')"
           lock_version="$(node -p 'JSON.parse(require("fs").readFileSync("package-lock.json","utf8")).version')"
@@ -56,7 +70,7 @@ jobs:
 
       - name: Verify tag commit is on trunk
         env:
-          TAG: ${{ env.RELEASE_TAG }}
+          TAG: ${{ needs.resolve-tag.outputs.release_tag }}
         run: |
           git fetch --force --tags origin
           git fetch origin trunk:refs/remotes/origin/trunk
@@ -64,10 +78,10 @@ jobs:
           git merge-base --is-ancestor "${tag_sha}" "origin/trunk"
 
   core:
-    needs: [verify]
+    needs: [resolve-tag, verify]
     uses: ./.github/workflows/core.yml
     with:
-      ref: ${{ env.RELEASE_TAG }}
+      ref: ${{ needs.resolve-tag.outputs.release_tag }}
 
   real-provider-smoke:
     needs: [core]
@@ -76,7 +90,7 @@ jobs:
     # - secrets.OPENROUTER_API_KEY
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
-      ref: ${{ env.RELEASE_TAG }}
+      ref: ${{ needs.resolve-tag.outputs.release_tag }}
       openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
     secrets:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -88,13 +102,14 @@ jobs:
       contents: read
     uses: ./.github/workflows/core-web-e2e.yml
     with:
-      ref: ${{ env.RELEASE_TAG }}
+      ref: ${{ needs.resolve-tag.outputs.release_tag }}
 
   deploy:
-    needs: [core, real-provider-smoke, web-e2e]
+    needs: [resolve-tag, core, real-provider-smoke, web-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      RELEASE_TAG: ${{ needs.resolve-tag.outputs.release_tag }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -127,6 +142,8 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ needs.resolve-tag.outputs.release_tag }}
     steps:
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
@@ -141,13 +158,13 @@ jobs:
 
   notify:
     if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.web-e2e.result == 'failure' || needs.deploy.result == 'failure' || needs.github-release.result == 'failure') }}
-    needs: [verify, core, real-provider-smoke, web-e2e, deploy, github-release]
+    needs: [resolve-tag, verify, core, real-provider-smoke, web-e2e, deploy, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
-      ref: ${{ env.RELEASE_TAG }}
+      ref: ${{ needs.resolve-tag.outputs.release_tag }}
       title: "Release"
       ref_label: "tag"
-      ref_value: ${{ env.RELEASE_TAG }}
+      ref_value: ${{ needs.resolve-tag.outputs.release_tag }}
       job_results: |
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
