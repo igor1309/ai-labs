@@ -17,6 +17,12 @@ Provision and harden the single VPS host so later phases (Docker Loki+Grafana an
 ## Generate cloud-init (recommended for new hosts)
 This repo includes a Phase 1 cloud-init generator.
 
+It configures:
+- a non-root admin user with SSH key auth
+- `DEPLOY_ENV` for systemd via `DefaultEnvironment=...`
+- UFW with inbound SSH only
+- SSH hardening (`PasswordAuthentication no`, `PermitRootLogin no`)
+
 1. From the repo root, generate a cloud-init file:
    - `node loki/scripts/phase1/generate-cloud-init-cli.js --admin-user <user> --deploy-env <dev|stage|prod> --ssh-authorized-key "<ssh-public-key>"`
 2. Paste the output into your provider’s cloud-init / user-data UI for the VPS, then provision the host.
@@ -38,4 +44,3 @@ Copy the verifier script to the VPS and run it as root:
    - `LOKI_DATA_MOUNTPOINT=/var/lib/loki bash /root/verify-loki-phase1.sh`
 
 The script exits `0` on success and prints human-readable failures to stderr on mismatch.
-
