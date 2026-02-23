@@ -14,11 +14,41 @@ permissions:
   pull-requests: read
 
 jobs:
-  tests:
-    uses: ./.github/workflows/core.yml
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      oracle: ${{ steps.filter.outputs.oracle }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed projects
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - ".github/workflows/**"
+              - ".node-version"
+              - "package-lock.json"
+              - "package.json"
+              - "scripts/**"
+              - "tsconfig.json"
+              - "vendor/**"
+            oracle:
+              - "oracle/**"
+
+  oracle-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/oracle-core.yml
 
   real-provider-smoke:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    needs: [changes, oracle-core]
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
       openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
@@ -26,15 +56,16 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.tests.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [tests, real-provider-smoke]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.oracle-core.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, oracle-core, real-provider-smoke]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
       ref_label: "branch"
       ref_value: ${{ github.ref_name }}
       job_results: |
-        tests=${{ needs.tests.result }}
+        changes=${{ needs.changes.result }}
+        oracle-core=${{ needs.oracle-core.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
