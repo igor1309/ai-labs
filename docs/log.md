@@ -7,7 +7,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 ## 2026-02-25
 
 ### Skills Repo Release Workflow
-Designed automated release flow for `igor1309/skills`: a GitHub Actions workflow that triggers on push, reads marketplace.json version, and creates a git tag + GitHub Release if the version is new. Lives in the skills repo (synced via `dev-skills/public/.github/workflows/`), uses its own GITHUB_TOKEN — no extra PAT needed.
+Designed automated release flow for `igor1309/skills`: a GitHub Actions workflow that triggers on push, reads marketplace.json version, and creates a git tag + GitHub Release if the version is new. Lives in the skills repo (synced via `dev-skills/public/.github/workflows/`), uses its own GITHUB_TOKEN — no extra PAT needed. Improved sync workflow commit messages to include marketplace version and triggering commit subject (e.g. `v1.16.0: intake v1.3.0: bug-fix support`) — feeds into auto-generated release notes.
 
 ### Intake Skill v1.3.0 — Bug-Fix Support
 Extended intake to cover bug-fix tasks: added trigger phrases ("fix this bug", "there's a bug"), Reproduction section in Phase 2 playback for proposing a failing test that proves the broken behavior. Marketplace v1.16.0.
