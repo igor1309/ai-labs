@@ -54,6 +54,8 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Sync from ai-coder/dev-skills"
+            VERSION=$(jq -r '.metadata.version' .claude-plugin/marketplace.json)
+            SUBJECT=$(cd "$GITHUB_WORKSPACE" && git log -1 --format=%s)
+            git commit -m "v${VERSION}: ${SUBJECT}"
             git push
           fi
