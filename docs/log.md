@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-02-25
+
+### Intake Skill v1.3.0 — Bug-Fix Support
+Extended intake to cover bug-fix tasks: added trigger phrases ("fix this bug", "there's a bug"), Reproduction section in Phase 2 playback for proposing a failing test that proves the broken behavior. Marketplace v1.16.0.
+
 ## 2026-02-13
 
 ### RPI Research Skill v2.1.0 — Differentiation & Document-Reading Guidance

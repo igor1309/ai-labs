@@ -53,19 +53,20 @@ Verify that markdown documentation accurately describes the current codebase. De
 
 ### Intake
 
-Task intake for implementation assignments. The agent reads all referenced documents and explores the codebase, then demonstrates understanding before auto-transitioning to plan mode.
+Task intake for implementation and bug-fix assignments. The agent reads all referenced documents and explores the codebase, then demonstrates understanding before auto-transitioning to plan mode.
 
 **Key features:**
 - Mandatory exploration — agent reads docs and codebase before asking questions
 - Skill-aware — scans available skills for domain knowledge (wiring patterns, composition APIs, flow architecture, conventions) that may not exist anywhere else
-- Structured playback: What I'm Building, What I'm Touching, Key Constraints, Open Questions
+- Structured playback: What I'm Building, What I'm Touching, Key Constraints, Reproduction (bug fixes), Open Questions
+- Bug-fix reproduction — for bug tasks, proposes a failing test (name, assertion, rationale) proving the broken behavior
 - Open questions carry a lean — agent states its take, not passive "A or B?"
 - Smart depth — primary doc thoroughly, references as needed, not exhaustive
 - Spec is authoritative — agent implements what the spec says, never silently deviates
 - Auto-transitions to plan mode when understanding is confirmed
 - Subagent exploration for large codebases
 
-**Use when:** You have a well-prepared task document (spec, plan, PR) and want the agent to understand it before planning. Say `/intake` followed by the task reference.
+**Use when:** You have a task document (spec, plan, PR, bug report) and want the agent to understand it before planning. Say `/intake` followed by the task reference.
 
 **Documentation:** See [intake/SKILL.md](intake/SKILL.md)
 

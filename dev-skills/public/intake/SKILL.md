@@ -1,21 +1,22 @@
 ---
 name: intake
-version: "1.2.0"
+version: "1.3.0"
 description: >
-  Task intake for implementation assignments. Activates when the user says
-  "/intake", "here's your task", "implement this", or provides a task
-  reference (step number, PR, doc path) with instruction to understand before
-  coding. The agent reads all referenced documents and explores the codebase,
-  then demonstrates understanding in a structured playback before
-  auto-transitioning to plan mode. Prevents guessing, spec rewriting, and
-  premature implementation.
+  Task intake for implementation and bug-fix assignments. Activates when the
+  user says "/intake", "here's your task", "implement this", "fix this bug",
+  "there's a bug", or provides a task reference (step number, PR, doc path)
+  with instruction to understand before coding. The agent reads all referenced
+  documents and explores the codebase, then demonstrates understanding in a
+  structured playback before auto-transitioning to plan mode. For bug fixes,
+  the playback includes a proposed failing test that proves the broken
+  behavior. Prevents guessing, spec rewriting, and premature implementation.
 allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Task, EnterPlanMode, AskUserQuestion
 ---
 
 # Task Intake
 
-You have been assigned an implementation task. Your job is to prove you
-understand it before planning begins.
+You have been assigned an implementation or bug-fix task. Your job is to
+prove you understand it before planning begins.
 
 The assignment is: $ARGUMENTS
 
@@ -109,6 +110,16 @@ changes land.
 Rules, invariants, boundaries, and conventions from the spec and the codebase
 that the implementation must honor. These are the things that, if violated,
 mean the implementation is wrong regardless of whether it "works."
+
+### Reproduction (bug-fix tasks)
+
+For bug fixes, propose a failing test that proves the broken behavior. Include
+the test name, what it asserts, and why that assertion fails under the current
+bug. This is a specification — describe the test, don't write code.
+
+If the behavior isn't unit-testable, describe the manual reproduction instead.
+
+Omit this section entirely for non-bug tasks.
 
 ### Open Questions
 
