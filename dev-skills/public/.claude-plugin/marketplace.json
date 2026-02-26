@@ -14,7 +14,6 @@
       "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, architecture review, documentation auditing, domain availability checking, Swift packaging, simulator settings, skill review, and job search strategy",
       "source": "./",
       "strict": false,
-      "agents": "./agents/",
       "skills": [
         "./arch-spec-review",
         "./check-domain",
