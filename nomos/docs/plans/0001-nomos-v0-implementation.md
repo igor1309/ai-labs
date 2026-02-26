@@ -42,11 +42,11 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 These are not a phase — they are invariants that every phase must satisfy.
 
-- **Local dev**: `npm test` runs fast in-process tests. `docker compose up` runs the full local stack (Nomos + Caddy). Both must work on every commit.
-- **Unit/integration tests**: every phase ships tests alongside code. No feature merges without test coverage for the new behavior.
-- **CI pipeline**: runs `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` on every push. Gate is mandatory — red CI blocks merge.
-- **E2E tests**: Phase 1 establishes the first e2e smoke test (health check through Docker/Caddy). Each subsequent phase extends the e2e suite to cover its feature (e.g., Phase 4 adds an e2e streaming test through the full stack).
-- **Phase exit rule**: a phase is not done until unit tests, CI, and relevant e2e tests are green.
+- **Local dev**: `npm test` runs fast in-process unit/integration tests. `docker compose up` runs the full local stack (Nomos + Caddy) for manual verification. Both must work on every commit.
+- **Unit/integration tests**: every phase ships tests alongside code. No feature merges without test coverage for the new behavior. These run fast, in-process, no Docker required.
+- **CI pipeline (every push)**: runs `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`. Gate is mandatory — red CI blocks merge.
+- **E2E tests (release pipeline only)**: E2E tests run against the Docker/Caddy stack and are expensive. They run in the release pipeline, not on every push. Phase 1 establishes the first e2e smoke test (health check). Each subsequent phase extends the e2e suite.
+- **Phase exit rule**: a phase is not done until unit/integration tests and CI are green. E2E suite is validated before release.
 
 ---
 
@@ -65,11 +65,11 @@ These are not a phase — they are invariants that every phase must satisfy.
 - [ ] Env-based configuration (`.env` template with all config knobs)
 - [ ] CI pipeline: tests + typecheck on every push, merge blocked on red
 - [ ] Unit tests: health endpoint responds, app starts/stops cleanly
-- [ ] E2E smoke test: Docker Compose up → Caddy → health check green
+- [ ] E2E smoke test (release pipeline): Docker Compose up → Caddy → health check green
 
 **Key constraint**: The skeleton must be deployable, testable locally, and CI-gated before any feature work begins. This phase establishes the dev experience that all subsequent phases inherit.
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes. CI green. Docker Compose up + e2e health check succeeds.
+**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes. CI green.
 
 ---
 
@@ -115,9 +115,9 @@ These are not a phase — they are invariants that every phase must satisfy.
 - [ ] Runner dispatch by namespace: `/v1/*` → LiveRunner, `/stub/v1/*` → StubRunner
 - [ ] Stub API gated by `NOMOS_STUB_ENABLED` config (disabled in prod → 404)
 - [ ] Tests: request parsing, SSE framing, runner routing, stub toggle, configurable endpoints
-- [ ] End-to-end SSE streaming validation through Caddy
+- [ ] E2E test (release pipeline): SSE streaming validation through Docker/Caddy stack
 
-**Key constraint**: Streaming is a day-0 requirement. Caddy must not buffer SSE (validated here against the Phase 1 infra).
+**Key constraint**: Streaming is a day-0 requirement. Caddy must not buffer SSE (validated via e2e in release pipeline).
 
 **Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
 
@@ -160,6 +160,5 @@ These are not a phase — they are invariants that every phase must satisfy.
 - [ ] Full unit/integration test suite green
 - [ ] TypeScript check passes (noEmit)
 - [ ] CI pipeline green on all checks
-- [ ] Full e2e suite green: stub request through Docker/Caddy stack (auth → budget check → safeguards → StubRunner → SSE response)
-- [ ] Docker Compose up + health check + streaming smoke test
+- [ ] Release pipeline: full e2e suite green (stub request through Docker/Caddy stack: auth → budget check → safeguards → StubRunner → SSE response)
 - [ ] Move this plan to `nomos/docs/plans/implemented/`
