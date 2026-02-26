@@ -67,3 +67,19 @@ All resolved.
 | 1 | `runner-selection.md:8` | Heading starts at h2; other docs use h1 |
 | 2 | `ops-runbook-v0.md:226` | Cron backup example silences failures (`>/dev/null 2>&1`) — worth fixing if adopted as-is |
 | 3 | Various | Implementation-level naming differences across docs (`LiveRunner`/`HttpRunner`, `SQLite/Postgres`/`SQLite`) are fine for seed docs but should be resolved when implementation starts |
+
+---
+
+## Semantic Review: Readiness for Dev Planning
+
+No blockers. The following decisions were confirmed during review and should
+be recorded in the appropriate docs during dev planning:
+
+- **API shape**: OpenAI-compatible proxy. Nomos wraps governance (auth, budget,
+  logging, routing) around an OpenAI-compatible API surface.
+- **Tech stack / language**: to be determined during dev planning.
+- **First consumer**: Oracle. Part of Oracle's current provider layer will be
+  extracted as the Nomos base.
+- **Loki**: on hold, not a near-term consumer.
+
+**Verdict**: docs cover enough ground to start dev planning.
