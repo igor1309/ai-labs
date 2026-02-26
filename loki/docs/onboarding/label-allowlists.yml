@@ -1,6 +1,7 @@
 {
   "projects": [
     "loki",
+    "nomos",
     "oracle",
     "trend-scout"
   ],
@@ -8,6 +9,10 @@
     "loki": [
       "grafana",
       "loki"
+    ],
+    "nomos": [
+      "api",
+      "caddy"
     ],
     "oracle": [
       "api",

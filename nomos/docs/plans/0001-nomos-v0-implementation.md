@@ -55,19 +55,19 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: Establish package structure, Express app, local dev workflow, test infra, CI pipeline, and deployment infra. First commit is a deployable, testable, CI-gated service.
 
-- [ ] Create `nomos/` package structure: `src/`, `tests/`, `package.json`
-- [ ] Wire into monorepo test script in root `package.json`
-- [ ] Express app entry point with health endpoint (`GET /health`)
-- [ ] Structured JSON logging to stdout
-- [ ] Local dev workflow: `npm test` for fast unit tests, `docker compose up` for full local stack
-- [ ] Dockerfile (Node.js + Express, non-root user, health check)
-- [ ] `docker-compose.yml` (nomos + caddy services, restart: unless-stopped, data volume)
-- [ ] Caddyfile (SSE-aware reverse proxy, no buffering; local dev uses plain HTTP, prod uses TLS)
-- [ ] SQLite base infrastructure: dependency, empty DB, WAL pragma, data volume mount (schemas added in later phases)
-- [ ] Env-based configuration (`.env` template with all config knobs)
-- [ ] CI pipeline: tests + typecheck on every push, merge blocked on red
-- [ ] Unit tests: health endpoint responds, app starts/stops cleanly
-- [ ] E2E smoke test (release pipeline): Docker Compose up → Caddy → health check green
+- [x] Create `nomos/` package structure: `src/`, `tests/`, `package.json`
+- [x] Wire into monorepo test script in root `package.json`
+- [x] Express app entry point with health endpoint (`GET /health`)
+- [x] Structured JSON logging to stdout
+- [x] Local dev workflow: `npm test` for fast unit tests, `docker compose up` for full local stack
+- [x] Dockerfile (Node.js + Express, non-root user, health check)
+- [x] `docker-compose.yml` (nomos + caddy services, restart: unless-stopped, data volume)
+- [x] Caddyfile (SSE-aware reverse proxy, no buffering; local dev uses plain HTTP, prod uses TLS)
+- [x] SQLite base infrastructure: dependency, empty DB, WAL pragma, data volume mount (schemas added in later phases)
+- [x] Env-based configuration (`.env` template with all config knobs)
+- [x] CI pipeline: tests + typecheck on every push, merge blocked on red
+- [x] Unit tests: health endpoint responds, app starts/stops cleanly
+- [x] E2E smoke test (release pipeline): Docker Compose up → Caddy → health check green
 
 **Key constraint**: The skeleton must be deployable, testable locally, and CI-gated before any feature work begins. This phase establishes the dev experience that all subsequent phases inherit.
 

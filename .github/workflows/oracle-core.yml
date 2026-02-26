@@ -34,5 +34,5 @@ jobs:
         run: ./scripts/run_silent.sh "build" npx tsc --noEmit
 
       - name: Run tests
-        run: ./scripts/run_silent.sh "tests" npm test
+        run: ./scripts/run_silent.sh "tests" node --test oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js
 

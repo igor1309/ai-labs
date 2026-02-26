@@ -17,6 +17,8 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
+      loki: ${{ steps.filter.outputs.loki }}
+      nomos: ${{ steps.filter.outputs.nomos }}
       oracle: ${{ steps.filter.outputs.oracle }}
       shared: ${{ steps.filter.outputs.shared }}
     steps:
@@ -32,15 +34,28 @@ jobs:
           filters: |
             shared:
               - ".github/workflows/**"
-              - "loki/**"
               - ".node-version"
               - "package-lock.json"
               - "package.json"
               - "scripts/**"
               - "tsconfig.json"
               - "vendor/**"
+            loki:
+              - "loki/**"
+            nomos:
+              - "nomos/**"
             oracle:
               - "oracle/**"
+
+  loki-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.loki == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/loki-core.yml
+
+  nomos-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.nomos == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/nomos-core.yml
 
   oracle-core:
     needs: [changes]
@@ -57,8 +72,8 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.oracle-core.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, oracle-core, real-provider-smoke]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.loki-core.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, loki-core, nomos-core, oracle-core, real-provider-smoke]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -66,6 +81,8 @@ jobs:
       ref_value: ${{ github.ref_name }}
       job_results: |
         changes=${{ needs.changes.result }}
+        loki-core=${{ needs.loki-core.result }}
+        nomos-core=${{ needs.nomos-core.result }}
         oracle-core=${{ needs.oracle-core.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
     secrets:

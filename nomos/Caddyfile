@@ -1,0 +1,7 @@
+# Local development: plain HTTP on :80
+# Production: replace :80 with your domain (e.g. nomos.example.com) for automatic TLS
+:80 {
+	reverse_proxy nomos:8080 {
+		flush_interval -1
+	}
+}
