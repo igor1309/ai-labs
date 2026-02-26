@@ -1,7 +1,7 @@
 ---
 date: 2026-02-26
 status: proposed
-scope: Nomos V0 (Phase 1)
+scope: Nomos V0
 runtime: Express (Node.js)
 oracle-migration: out of scope (standalone first)
 worktree required: yes
@@ -62,7 +62,8 @@ These are not a phase — they are invariants that every phase must satisfy.
 - [ ] Local dev workflow: `npm test` for fast unit tests, `docker compose up` for full local stack
 - [ ] Dockerfile (Node.js + Express, non-root user, health check)
 - [ ] `docker-compose.yml` (nomos + caddy services, restart: unless-stopped, data volume)
-- [ ] Caddyfile (TLS termination, SSE-aware reverse proxy, no buffering)
+- [ ] Caddyfile (SSE-aware reverse proxy, no buffering; local dev uses plain HTTP, prod uses TLS)
+- [ ] SQLite base infrastructure: dependency, empty DB, WAL pragma, data volume mount (schemas added in later phases)
 - [ ] Env-based configuration (`.env` template with all config knobs)
 - [ ] CI pipeline: tests + typecheck on every push, merge blocked on red
 - [ ] Unit tests: health endpoint responds, app starts/stops cleanly
