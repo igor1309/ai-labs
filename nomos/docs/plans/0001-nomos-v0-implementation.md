@@ -110,14 +110,14 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: OpenAI-compatible HTTP surface with streaming and runner dispatch.
 
-- [ ] Define Runner protocol owned by the route handler (execute request, return response, support streaming)
-- [ ] OpenAI-compatible routes (`POST /v1/chat/completions`)
-- [ ] SSE streaming passthrough (vendor stream → client stream, minimal transformation)
-- [ ] LiveRunner implementation: real vendor HTTP calls with configurable `base_url`, `timeout_ms`, optional `headers`
-- [ ] Runner dispatch by namespace: `/v1/*` → LiveRunner, `/stub/v1/*` → StubRunner
-- [ ] Stub API gated by `NOMOS_STUB_ENABLED` config (disabled in prod → 404)
-- [ ] Tests: request parsing, SSE framing, runner routing, stub toggle, configurable endpoints
-- [ ] E2E test (release pipeline): SSE streaming validation through Docker/Caddy stack
+- [x] Define Runner protocol owned by the route handler (execute request, return response, support streaming)
+- [x] OpenAI-compatible routes (`POST /v1/chat/completions`)
+- [x] SSE streaming passthrough (vendor stream → client stream, minimal transformation)
+- [x] LiveRunner implementation: real vendor HTTP calls with configurable `base_url`, `timeout_ms`, optional `headers`
+- [x] Runner dispatch by namespace: `/v1/*` → LiveRunner, `/stub/v1/*` → StubRunner
+- [x] Stub API gated by `NOMOS_STUB_ENABLED` config (disabled in prod → 404)
+- [x] Tests: request parsing, SSE framing, runner routing, stub toggle, configurable endpoints
+- [x] E2E test (release pipeline): SSE streaming validation through Docker/Caddy stack
 
 **Key constraint**: Streaming is a day-0 requirement. Caddy must not buffer SSE (validated via e2e in release pipeline).
 
