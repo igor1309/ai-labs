@@ -30,12 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install nomos dependencies
-        run: cd nomos && npm ci
-
       - name: Typecheck
         run: ./scripts/run_silent.sh "build" npx tsc --noEmit
 
       - name: Run tests
-        run: ./scripts/run_silent.sh "tests" npm test
+        run: ./scripts/run_silent.sh "tests" node --test loki/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js
 
