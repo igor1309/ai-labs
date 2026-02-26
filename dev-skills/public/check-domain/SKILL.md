@@ -1,6 +1,6 @@
 ---
 name: check-domain
-version: "0.2.0"
+version: "0.2.1"
 description: >
   Check domain name availability and find alternatives.
 argument-hint: [domain]
@@ -8,6 +8,9 @@ model: haiku
 disable-model-invocation: true
 context: fork
 agent: check-domain
+allowed-tools:
+  - "mcp__plugin_dev-skills_instant-domain-search__*"
+  - "mcp__instant-domain-search__*"
 ---
 
 **Announce:** "I'm using the check-domain skill to check domain availability."
