@@ -79,13 +79,12 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: Core testability foundation — the runner boundary and StubRunner.
 
-- [ ] Define Runner protocol (execute request, return response, support streaming)
-- [ ] Implement StubRunner with deterministic JSON fixtures
-- [ ] Implement StubRunner scripted SSE streams (chunk, error, end events)
-- [ ] Fixture loading from filesystem (read-only in V0)
-- [ ] Tests: assert fixture loading, event ordering, stream termination
+- [x] Implement StubRunner with deterministic JSON fixtures
+- [x] Implement StubRunner scripted SSE streams (chunk, error, end events)
+- [x] Fixture loading from filesystem (read-only in V0)
+- [x] Tests: assert fixture loading, event ordering, stream termination
 
-**Key constraint**: Runner protocol is owned by its client (per repo architecture rules). StubRunner and LiveRunner implement the same protocol.
+**Key constraint**: Runner protocol is owned by its client (per repo architecture rules). The protocol does not exist until the client (route handler) exists in Phase 4. Phase 2 delivers StubRunner as a concrete implementation; the protocol will be extracted when the client defines what it needs.
 
 **Exit gate**: CI green. Release pipeline green (e2e suite).
 
@@ -111,6 +110,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: OpenAI-compatible HTTP surface with streaming and runner dispatch.
 
+- [ ] Define Runner protocol owned by the route handler (execute request, return response, support streaming)
 - [ ] OpenAI-compatible routes (`POST /v1/chat/completions`)
 - [ ] SSE streaming passthrough (vendor stream → client stream, minimal transformation)
 - [ ] LiveRunner implementation: real vendor HTTP calls with configurable `base_url`, `timeout_ms`, optional `headers`
