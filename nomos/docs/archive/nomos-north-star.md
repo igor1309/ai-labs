@@ -1,7 +1,9 @@
 ---
 date: 2026-02-26
 model: gpt-5.2
-source: https://chatgpt.com/share/69a04dee-78a4-8003-8d39-553a25372c4f
+source:
+  - https://chatgpt.com/share/69a04dee-78a4-8003-8d39-553a25372c4f
+  - https://www.uber.com/en-LT/blog/genai-gateway/
 ---
 
 # Project Nomos  
