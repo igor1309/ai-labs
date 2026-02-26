@@ -1,5 +1,8 @@
 {
-  "instant-domain-search": {
-    "url": "https://instantdomainsearch.com/mcp/streamable-http"
+  "mcpServers": {
+    "instant-domain-search": {
+      "type": "url",
+      "url": "https://instantdomainsearch.com/mcp/streamable-http"
+    }
   }
 }

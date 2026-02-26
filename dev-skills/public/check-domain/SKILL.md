@@ -4,6 +4,7 @@ version: "0.2.0"
 description: >
   Check domain name availability and find alternatives.
 argument-hint: [domain]
+model: haiku
 disable-model-invocation: true
 context: fork
 agent: check-domain

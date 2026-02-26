@@ -27,7 +27,9 @@ Check domain name availability and find alternatives. Runs on a fast, cheap mode
 - Bulk availability check across common TLDs
 - Semantic domain name variations when first choice is taken
 - Definitive verification against authoritative registries
-- Fallback to whois/web search if MCP not available
+- Bundled: skill + subagent (Haiku) + Instant Domain Search MCP
+
+**Note:** The Instant Domain Search MCP server is plugin-level (always-on when plugin is installed). If context cost becomes a concern, the skill can be moved to a separate plugin or switched to direct API calls.
 
 **Use when:** You want to check if a domain name is available. Type `/check-domain example.com`.
 
