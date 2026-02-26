@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-26
 
+### Check Domain v0.3.0 — MCP Fix & Output Format
+Fixed MCP connection (`type: url` → `type: http`), added `allowed-tools` to pre-allow MCP tools (eliminates permission prompts), added output format rules (domain names only, no raw URLs, unified table). Verified Haiku execution via debug logs. Marketplace v1.20.0.
+
 ### Skill Review v1.1.1 — Verdict-First Output Template
 Moved verdict before section name in the section-by-section audit template (`- [signal]: [section name]` instead of `- [section name] — signal`). Left-aligns verdicts for faster scanning. Marketplace v1.18.1.
 
