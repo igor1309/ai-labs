@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-02-26
+
+### Check Domain Skill v0.1.0 — Skill + Subagent Pair
+First skill+subagent pair in the plugin. Skill contains domain-checking knowledge (Instant Domain Search MCP workflow, fallback to whois/web search). Agent runs on Haiku for cheap execution. Skill uses `context: fork` + `agent: check-domain` so `/check-domain example.com` bypasses Opus entirely. Added `agents/` directory to plugin structure. Marketplace v1.17.0.
+
 ## 2026-02-25
 
 ### Skills Repo Release Workflow

@@ -19,6 +19,20 @@ Review architecture specifications for completeness, appropriate abstraction lev
 
 **Documentation:** See [arch-spec-review/SKILL.md](arch-spec-review/SKILL.md)
 
+### Check Domain
+
+Check domain name availability and find alternatives. Runs on a fast, cheap model (Haiku) via a dedicated subagent — no Opus turns spent on straightforward lookups.
+
+**Key features:**
+- Bulk availability check across common TLDs
+- Semantic domain name variations when first choice is taken
+- Definitive verification against authoritative registries
+- Fallback to whois/web search if MCP not available
+
+**Use when:** You want to check if a domain name is available. Type `/check-domain example.com`.
+
+**Documentation:** See [check-domain/SKILL.md](check-domain/SKILL.md)
+
 ### Discuss
 
 Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
@@ -193,6 +207,7 @@ Then install the skills you want:
 
 ```
 /plugin install arch-spec-review
+/plugin install check-domain
 /plugin install discuss
 /plugin install doc-drift-audit
 /plugin install intake
@@ -212,6 +227,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 ```bash
 # Install individual skills
 cp -r arch-spec-review ~/.claude/skills/
+cp -r check-domain ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r intake ~/.claude/skills/
@@ -224,7 +240,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review check-domain discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -243,6 +259,20 @@ Review this architecture specification for completeness and appropriate abstract
 Or:
 ```
 Evaluate this architecture document to ensure it defines system boundaries without prescribing implementation details.
+```
+
+### Check Domain
+
+Invoke to check domain availability. Runs on Haiku for fast, cheap lookups.
+
+**Example prompt:**
+```
+/check-domain example.com
+```
+
+Or:
+```
+/check-domain coolstartup
 ```
 
 ### Discuss
