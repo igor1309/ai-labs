@@ -1,49 +1,58 @@
 ---
 name: check-domain
-version: "0.1.0"
+version: "0.2.0"
 description: >
-  Check domain name availability. Use when the user asks to check if a domain
-  is available, find alternative domain names, or verify domain registration
-  status. Triggers on "check domain", "is domain available", "domain availability",
-  "find domain name", "/check-domain".
+  Check domain name availability and find alternatives.
 argument-hint: [domain]
+disable-model-invocation: true
 context: fork
 agent: check-domain
 ---
+
+**Announce:** "I'm using the check-domain skill to check domain availability."
 
 # Check Domain Availability
 
 Check whether a domain name is available for registration and suggest
 alternatives if it's taken.
 
+## Required: Instant Domain Search MCP
+
+This skill requires the `instant-domain-search` MCP server. If the MCP tools
+(`mcp__instant-domain-search__*`) are not available, **stop immediately** and
+tell the user:
+
+> Instant Domain Search MCP is not configured. Install it from
+> https://instantdomainsearch.com/mcp and add it to your MCP settings.
+
+Do not fall back to whois, web search, or any other method.
+
+## Available Tools
+
+Three MCP tools are available from the `instant-domain-search` server:
+
+- **`mcp__instant-domain-search__search_domains`** — Bulk availability
+  check across chosen TLDs. Start here for any domain query.
+- **`mcp__instant-domain-search__generate_domain_variations`** —
+  Semantic name alternatives when first choice is taken (prefixes,
+  suffixes, brandable modifications — not random strings).
+- **`mcp__instant-domain-search__check_domain_availability`** —
+  Definitive yes/no verification against authoritative registries.
+
 ## Workflow
 
-1. **Bulk availability check** — use `mcp__instant-domain-search__search_domains`
-   to check the requested domain across common TLDs (.com, .io, .dev, .app,
-   .co, .net, .org). Start here for any domain query.
+1. Use `search_domains` with the user's name and desired TLDs
+2. Present results as a table: domain, available (yes/no), notes
+3. If primary choice is taken, automatically call
+   `generate_domain_variations` and present alternatives
+4. Verify with `check_domain_availability` before telling
+   the user a domain is definitively available
 
-2. **If taken — generate alternatives** — use
-   `mcp__instant-domain-search__generate_domain_variations` for semantic
-   variations (prefixes, suffixes, brandable modifications — not random strings).
+## Guidelines
 
-3. **Definitive verification** — use
-   `mcp__instant-domain-search__check_domain_availability` to confirm
-   availability against authoritative registries before the user acts on results.
-
-## Presenting Results
-
-- Lead with a clear available/taken verdict for the primary domain
-- Group results by TLD in a table: domain, status, price if known
-- For alternatives, present only the top 5-10 most relevant suggestions
-- Flag premium or high-price domains explicitly
-- End with the definitive verification result if the user picks a domain
-
-## Fallback
-
-If Instant Domain Search MCP is not available:
-- Use `whois` command via Bash to check domain registration
-- Use web search to find availability and pricing
-- Note that results may be less comprehensive
+- Present results in tables for easy scanning.
+- Queries go to authoritative registries — no front-running risk.
+  Mention this to the user if they express concern about privacy.
 
 ## Input
 
