@@ -12,6 +12,8 @@ When publishing skills:
 3. Update `public/README.md`
 4. Update repo-root `docs/log.md` (concise entry, reverse chronological order; follow established style)
 5. Stop to commit.
+6. Push to trunk.
+7. After ~1 min, verify the release appeared: `gh release list --repo igor1309/skills --limit 1`
 
 ## Alphabetical Ordering
 
