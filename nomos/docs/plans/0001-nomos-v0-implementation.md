@@ -129,12 +129,12 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: Token usage tracking and per-project budget limits with hard stop.
 
-- [ ] SQLite schema: usage_log (project_id, model, prompt_tokens, completion_tokens, timestamp)
-- [ ] SQLite schema: budgets (project_id, limit_tokens, period, current_usage)
-- [ ] Post-completion hook: log token usage from vendor response
-- [ ] Pre-request check: reject if project budget exceeded (hard stop)
-- [ ] Simple usage report endpoint (`GET /v1/usage?project=...`)
-- [ ] Tests: usage logging, budget enforcement, hard stop, budget reset per period
+- [x] SQLite schema: usage_log (project_id, model, prompt_tokens, completion_tokens, timestamp)
+- [x] SQLite schema: budgets (project_id, limit_tokens, period, current_usage)
+- [x] Post-completion hook: log token usage from vendor response
+- [x] Pre-request check: reject if project budget exceeded (hard stop)
+- [x] Simple usage report endpoint (`GET /v1/usage?project=...`)
+- [x] Tests: usage logging, budget enforcement, hard stop, budget reset per period
 
 **Exit gate**: CI green. Release pipeline green (e2e suite).
 

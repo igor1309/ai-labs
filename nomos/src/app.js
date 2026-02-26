@@ -2,7 +2,7 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
-export function createApp({ logger, db, liveRunner = null, stubRunner = null, stubEnabled = false }) {
+export function createApp({ logger, db, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null }) {
   const app = express();
 
   app.get("/health", (_req, res) => {
@@ -13,14 +13,27 @@ export function createApp({ logger, db, liveRunner = null, stubRunner = null, st
 
   // Live API: /v1/*
   app.use("/v1", createAuthMiddleware({ db, logger, allowedScope: "live" }));
+
+  // Usage report endpoint
+  if (budgetService) {
+    app.get("/v1/usage", (req, res) => {
+      const projectId = req.project?.id;
+      if (!projectId) {
+        return res.status(400).json({ error: "project not identified" });
+      }
+      const report = budgetService.getUsageReport(projectId);
+      res.json(report);
+    });
+  }
+
   if (liveRunner) {
-    app.post("/v1/chat/completions", createChatCompletionsHandler({ runner: liveRunner, logger }));
+    app.post("/v1/chat/completions", createChatCompletionsHandler({ runner: liveRunner, logger, budgetService }));
   }
 
   // Stub API: /stub/v1/* (gated by config)
   if (stubEnabled && stubRunner) {
     app.use("/stub/v1", createAuthMiddleware({ db, logger, allowedScope: "stub" }));
-    app.post("/stub/v1/chat/completions", createChatCompletionsHandler({ runner: stubRunner, logger }));
+    app.post("/stub/v1/chat/completions", createChatCompletionsHandler({ runner: stubRunner, logger, budgetService }));
   } else {
     app.use("/stub", (_req, res) => {
       res.status(404).json({ error: "not found" });

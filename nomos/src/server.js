@@ -5,6 +5,7 @@ import { initSchema } from "./schema.js";
 import { createApp } from "./app.js";
 import { createLiveRunner } from "./live-runner.js";
 import { createStubRunner } from "./stub-runner.js";
+import { createBudgetService } from "./budget.js";
 
 const config = loadConfig();
 const logger = createLogger();
@@ -25,12 +26,15 @@ const stubRunner = config.stubEnabled
   ? createStubRunner({ fixturesDir: config.fixturesDir })
   : null;
 
+const budgetService = createBudgetService(db);
+
 const app = createApp({
   logger,
   db,
   liveRunner,
   stubRunner,
   stubEnabled: config.stubEnabled,
+  budgetService,
 });
 
 const server = app.listen(config.port, config.host, () => {
