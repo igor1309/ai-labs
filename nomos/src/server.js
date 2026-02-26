@@ -1,11 +1,13 @@
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { openDb } from "./db.js";
+import { initSchema } from "./schema.js";
 import { createApp } from "./app.js";
 
 const config = loadConfig();
 const logger = createLogger();
 const db = openDb(config.dbPath);
+initSchema(db);
 const app = createApp({ logger, db });
 
 const server = app.listen(config.port, config.host, () => {

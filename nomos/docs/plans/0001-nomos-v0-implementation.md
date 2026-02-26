@@ -94,11 +94,11 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: Static bearer token validation and scope enforcement.
 
-- [ ] SQLite schema: projects table (id, name, token_hash, scope, active)
-- [ ] Token validation middleware: extract bearer token, hash-compare, resolve project
-- [ ] Scope enforcement: `scope=live` allows `/v1/*`, `scope=stub` allows `/stub/v1/*`
-- [ ] Redaction: never log raw tokens, log only hashed/partial form
-- [ ] Tests: valid token, invalid token, wrong scope, expired/inactive project
+- [x] SQLite schema: projects table (id, name, token_hash, scope, active)
+- [x] Token validation middleware: extract bearer token, hash-compare, resolve project
+- [x] Scope enforcement: `scope=live` allows `/v1/*`, `scope=stub` allows `/stub/v1/*`
+- [x] Redaction: never log raw tokens, log only hashed/partial form
+- [x] Tests: valid token, invalid token, wrong scope, expired/inactive project
 
 **Key constraint**: Tokens are static per project in V0. Token rotation is an operational procedure (not an API).
 

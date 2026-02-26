@@ -7,7 +7,7 @@ function stubLogger() {
 }
 
 function stubDb() {
-  return { close() {} };
+  return { close() {}, prepare() { return { get() {} }; } };
 }
 
 test("app starts and stops cleanly", async () => {
