@@ -7,11 +7,17 @@
  *   checkBudget(projectId, now?)  → { allowed, remaining, limit, usage }
  *   logUsage({ projectId, model, promptTokens, completionTokens }, now?)
  *
+ * Safeguards protocol (owned by this route handler):
+ *   scanMessages(messages)       → { safe, findings, sanitized }
+ *   reinforceMessages(messages)  → messages
+ *   .enabled       → boolean
+ *   .blockOnDetect → boolean
+ *
  * request = { model, messages, ...rest }
  * event   = { type: "chunk"|"error"|"end", data?: object }
  */
 
-export function createChatCompletionsHandler({ runner, logger, budgetService }) {
+export function createChatCompletionsHandler({ runner, logger, budgetService, safeguards }) {
   return async (req, res) => {
     const { model, messages, stream, ...rest } = req.body || {};
 
@@ -47,7 +53,32 @@ export function createChatCompletionsHandler({ runner, logger, budgetService }) 
       }
     }
 
-    const request = { model, messages, ...rest };
+    // Prompt safeguards (best-effort)
+    let processedMessages = messages;
+    if (safeguards) {
+      const scan = safeguards.scanMessages(messages);
+      processedMessages = scan.sanitized;
+
+      if (!scan.safe) {
+        logger.warn("injection detected", {
+          project_id: req.project?.id,
+          findings: scan.findings,
+        });
+
+        if (safeguards.blockOnDetect) {
+          return res.status(400).json({
+            error: {
+              message: "request blocked: suspicious content detected",
+              type: "safeguard_blocked",
+            },
+          });
+        }
+      }
+
+      processedMessages = safeguards.reinforceMessages(processedMessages);
+    }
+
+    const request = { model, messages: processedMessages, ...rest };
 
     if (stream) {
       return handleStream({ runner, logger, budgetService, request, projectId: req.project?.id, res });

@@ -144,12 +144,12 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: Best-effort input sanitization and injection detection.
 
-- [ ] Input sanitization: strip/escape known dangerous patterns
-- [ ] Basic injection pattern detection (regex-based, configurable patterns)
-- [ ] Optional system prompt reinforcement (prepend/append safety instructions)
-- [ ] Suspicious payload logging (redacted) for audit
-- [ ] Configuration: enable/disable per safeguard, pattern list
-- [ ] Tests: known injection patterns detected, clean input passes, redaction works
+- [x] Input sanitization: strip/escape known dangerous patterns
+- [x] Basic injection pattern detection (regex-based, configurable patterns)
+- [x] Optional system prompt reinforcement (prepend/append safety instructions)
+- [x] Suspicious payload logging (redacted) for audit
+- [x] Configuration: enable/disable per safeguard, pattern list
+- [x] Tests: known injection patterns detected, clean input passes, redaction works
 
 **Key constraint**: No illusion of perfect safety. Best-effort only.
 

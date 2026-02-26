@@ -6,6 +6,7 @@ import { createApp } from "./app.js";
 import { createLiveRunner } from "./live-runner.js";
 import { createStubRunner } from "./stub-runner.js";
 import { createBudgetService } from "./budget.js";
+import { createSafeguards } from "./safeguards.js";
 
 const config = loadConfig();
 const logger = createLogger();
@@ -27,6 +28,7 @@ const stubRunner = config.stubEnabled
   : null;
 
 const budgetService = createBudgetService(db);
+const safeguards = createSafeguards({ config, logger });
 
 const app = createApp({
   logger,
@@ -35,6 +37,7 @@ const app = createApp({
   stubRunner,
   stubEnabled: config.stubEnabled,
   budgetService,
+  safeguards,
 });
 
 const server = app.listen(config.port, config.host, () => {
