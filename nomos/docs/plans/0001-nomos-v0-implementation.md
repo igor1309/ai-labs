@@ -45,8 +45,9 @@ These are not a phase — they are invariants that every phase must satisfy.
 - **Local dev**: `npm test` runs fast in-process unit/integration tests. `docker compose up` runs the full local stack (Nomos + Caddy) for manual verification. Both must work on every commit.
 - **Unit/integration tests**: every phase ships tests alongside code. No feature merges without test coverage for the new behavior. These run fast, in-process, no Docker required.
 - **CI pipeline (every push)**: runs `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`. Gate is mandatory — red CI blocks merge.
-- **E2E tests (release pipeline only)**: E2E tests run against the Docker/Caddy stack and are expensive. They run in the release pipeline, not on every push. Phase 1 establishes the first e2e smoke test (health check). Each subsequent phase extends the e2e suite.
-- **Phase exit rule**: a phase is not done until unit/integration tests and CI are green. E2E suite is validated before release.
+- **E2E tests (release pipeline)**: E2E tests run against the Docker/Caddy stack and are expensive. They run in the release pipeline, not on every push. Phase 1 establishes the first e2e smoke test (health check). Each subsequent phase extends the e2e suite.
+- **Release cadence**: each phase culminates in a release. The release pipeline runs the full e2e suite, so every phase exit validates all accumulated e2e tests.
+- **Phase exit rule**: a phase is not done until unit/integration tests, CI, and the release pipeline (including e2e) are green.
 
 ---
 
@@ -69,7 +70,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Key constraint**: The skeleton must be deployable, testable locally, and CI-gated before any feature work begins. This phase establishes the dev experience that all subsequent phases inherit.
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes. CI green.
+**Exit gate**: CI green (tests + typecheck). Release pipeline green (e2e health check).
 
 ---
 
@@ -85,7 +86,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Key constraint**: Runner protocol is owned by its client (per repo architecture rules). StubRunner and LiveRunner implement the same protocol.
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
+**Exit gate**: CI green. Release pipeline green (e2e suite).
 
 ---
 
@@ -101,7 +102,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Key constraint**: Tokens are static per project in V0. Token rotation is an operational procedure (not an API).
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
+**Exit gate**: CI green. Release pipeline green (e2e suite).
 
 ---
 
@@ -119,7 +120,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Key constraint**: Streaming is a day-0 requirement. Caddy must not buffer SSE (validated via e2e in release pipeline).
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
+**Exit gate**: CI green. Release pipeline green (e2e suite incl. SSE streaming through Caddy).
 
 ---
 
@@ -134,7 +135,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 - [ ] Simple usage report endpoint (`GET /v1/usage?project=...`)
 - [ ] Tests: usage logging, budget enforcement, hard stop, budget reset per period
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
+**Exit gate**: CI green. Release pipeline green (e2e suite).
 
 ---
 
@@ -151,7 +152,7 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Key constraint**: No illusion of perfect safety. Best-effort only.
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
+**Exit gate**: CI green. Release pipeline green (e2e suite).
 
 ---
 
