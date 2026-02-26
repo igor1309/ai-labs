@@ -138,6 +138,15 @@ Release policy is outcome-based. Commands are implementation detail; these invar
 - Composition layer(s) adapts concrete implementations to client-owned protocols.
 - Modules MUST NOT know about CLI or each other.
 
+## Per-Project CI Isolation
+
+When adding a new project with its own dependencies, create a dedicated `<project>-core.yml` CI workflow. Do not modify another project's workflow to install cross-project deps or run cross-project tests.
+
+- Each `<project>-core.yml` installs only its own deps and runs only its own test glob.
+- `ci.yml` dispatches to per-project workflows based on path-filter change detection.
+- The release pipeline (`release.yml`) is the only place that installs all deps and runs the full `npm test` suite.
+- When a new project causes failures in repo-wide tests (e.g. label compliance scanning all compose files), the fix is legitimate but must be called out explicitly as a cross-project integration concern — not silently bundled into the project's commit.
+
 ## Context-Efficient Commands
 
 Use `scripts/run_silent.sh` to run tests and builds. It suppresses output on success (one-line summary) and only dumps full output on failure. This keeps the context window clean.
