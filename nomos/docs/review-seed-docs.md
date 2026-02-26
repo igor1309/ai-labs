@@ -19,10 +19,10 @@ At the seed-doc level, directional ambiguity is acceptable. Runner names,
 persistence options, and token scope details are implementation concerns
 that don't need resolution yet.
 
-### 2. Clarity: `fail`
+### 2. Clarity: `pass`
 
-- **nomos.md is fully duplicated**: Lines 1–100 and 102–190 are identical content. YAML frontmatter (lines 1–8) is malformed — two merged frontmatter blocks. This is the project's primary definition doc and it's broken.
-- **Relationship between nomos.md and nomos-north-star.md is unstated**: `nomos.md` scopes Phase 0–2 with 5 capabilities. `nomos-north-star.md` describes a broader vision with 6 objectives. Neither doc states which is authoritative for current work nor how they relate (e.g., "north-star is the long-term vision; nomos.md is the current phase scope").
+- ~~**nomos.md is fully duplicated**~~ — Fixed: removed duplicate content and malformed frontmatter.
+- ~~**Relationship between nomos.md and nomos-north-star.md is unstated**~~ — Resolved: `nomos-north-star.md` archived to `docs/archive/` as an early draft based on the Uber GenAI Gateway article; `nomos.md` is the sole authoritative project definition.
 
 ### 3. Consistency: `pass`
 
@@ -30,12 +30,12 @@ No structural contradictions at the directional level. Implementation-level
 naming differences (`LiveRunner` vs `HttpRunner`, `SQLite/Postgres` vs
 `SQLite`) are expected in seed docs generated as illustrative examples.
 
-### 4. Readability: `warn`
+### 4. Readability: `pass`
 
 - Most docs are well-structured with numbered sections, clear headings, and concise bullets.
 - `nomos-name.md` and `adr-0001.md` follow good patterns.
-- Duplicated `nomos.md` significantly hurts readability.
-- `runner-selection.md` starts at h2 instead of h1, breaking convention with other docs.
+- ~~Duplicated `nomos.md`~~ — Fixed.
+- `runner-selection.md` starts at h2 instead of h1 (minor; see observations).
 
 ### 5. Best Practices: `pass`
 
@@ -53,10 +53,12 @@ naming differences (`LiveRunner` vs `HttpRunner`, `SQLite/Postgres` vs
 
 ## Required Fixes
 
-| # | Severity | Location | Issue | Fix |
-|---|----------|----------|-------|-----|
-| 1 | `fail` | `nomos.md:1-190` | Entire document duplicated; malformed frontmatter | Remove duplicate (lines 102–190); fix frontmatter to single valid block |
-| 2 | `fail` | `nomos.md` + `nomos-north-star.md` | Undefined relationship | Add a one-line relationship statement to each doc |
+All resolved.
+
+| # | Severity | Location | Issue | Resolution |
+|---|----------|----------|-------|------------|
+| 1 | ~~`fail`~~ | `nomos.md` | Duplicated content; malformed frontmatter | Fixed in `a646a08` |
+| 2 | ~~`fail`~~ | `nomos-north-star.md` | Undefined relationship with `nomos.md` | Archived to `docs/archive/` with Uber source link in `a646a08` |
 
 ## Observations (non-blocking)
 
