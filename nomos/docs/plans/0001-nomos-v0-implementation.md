@@ -38,15 +38,35 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 ---
 
-## Phase 1: Project Scaffold + Runner Abstraction
+## Phase 1: Project Scaffold + Deployable Skeleton
 
-**Goal**: Establish package structure, core types, and testability foundation.
+**Goal**: Establish package structure, Express app, deployment infra, and CI. First commit is a deployable service.
 
 - [ ] Create `nomos/` package structure: `src/`, `tests/`, `package.json`
 - [ ] Wire into monorepo test script in root `package.json`
+- [ ] Express app entry point with health endpoint (`GET /health`)
+- [ ] Structured JSON logging to stdout
+- [ ] Dockerfile (Node.js + Express, non-root user, health check)
+- [ ] `docker-compose.yml` (nomos + caddy services, restart: unless-stopped, data volume)
+- [ ] Caddyfile (TLS termination, SSE-aware reverse proxy, no buffering)
+- [ ] Env-based configuration (`.env` template with all config knobs)
+- [ ] CI pipeline wiring
+- [ ] Tests: health endpoint responds, app starts/stops cleanly
+
+**Key constraint**: The skeleton must be deployable end-to-end (Docker Compose up → Caddy → health check green) before any feature work begins.
+
+**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes. Docker Compose up + health check succeeds.
+
+---
+
+## Phase 2: Runner Abstraction
+
+**Goal**: Core testability foundation — the runner boundary and StubRunner.
+
 - [ ] Define Runner protocol (execute request, return response, support streaming)
 - [ ] Implement StubRunner with deterministic JSON fixtures
 - [ ] Implement StubRunner scripted SSE streams (chunk, error, end events)
+- [ ] Fixture loading from filesystem (read-only in V0)
 - [ ] Tests: assert fixture loading, event ordering, stream termination
 
 **Key constraint**: Runner protocol is owned by its client (per repo architecture rules). StubRunner and LiveRunner implement the same protocol.
@@ -55,7 +75,7 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 ---
 
-## Phase 2: Auth & Project Identity
+## Phase 3: Auth & Project Identity
 
 **Goal**: Static bearer token validation and scope enforcement.
 
@@ -71,25 +91,25 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 ---
 
-## Phase 3: Unified API Proxy + SSE Streaming
+## Phase 4: Unified API Proxy + SSE Streaming
 
 **Goal**: OpenAI-compatible HTTP surface with streaming and runner dispatch.
 
-- [ ] Express app with OpenAI-compatible routes (`POST /v1/chat/completions`)
+- [ ] OpenAI-compatible routes (`POST /v1/chat/completions`)
 - [ ] SSE streaming passthrough (vendor stream → client stream, minimal transformation)
 - [ ] LiveRunner implementation: real vendor HTTP calls with configurable `base_url`, `timeout_ms`, optional `headers`
 - [ ] Runner dispatch by namespace: `/v1/*` → LiveRunner, `/stub/v1/*` → StubRunner
 - [ ] Stub API gated by `NOMOS_STUB_ENABLED` config (disabled in prod → 404)
-- [ ] Health endpoint (`GET /health`)
 - [ ] Tests: request parsing, SSE framing, runner routing, stub toggle, configurable endpoints
+- [ ] End-to-end SSE streaming validation through Caddy
 
-**Key constraint**: Streaming is a day-0 requirement. Caddy must not buffer SSE (validated in Phase 6).
+**Key constraint**: Streaming is a day-0 requirement. Caddy must not buffer SSE (validated here against the Phase 1 infra).
 
 **Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
 
 ---
 
-## Phase 4: Cost Control & Budget Enforcement
+## Phase 5: Cost Control & Budget Enforcement
 
 **Goal**: Token usage tracking and per-project budget limits with hard stop.
 
@@ -104,7 +124,7 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 ---
 
-## Phase 5: Prompt Safeguards
+## Phase 6: Prompt Safeguards
 
 **Goal**: Best-effort input sanitization and injection detection.
 
@@ -118,23 +138,6 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 **Key constraint**: No illusion of perfect safety. Best-effort only.
 
 **Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes.
-
----
-
-## Phase 6: VPS Deployment & Operational Readiness
-
-**Goal**: Production-ready container packaging and ops tooling.
-
-- [ ] Dockerfile (Node.js + Express, non-root user, health check)
-- [ ] `docker-compose.yml` (nomos + caddy services, restart: unless-stopped, data volume)
-- [ ] Caddyfile (TLS termination, SSE-aware reverse proxy, no buffering)
-- [ ] SQLite WAL configuration and data directory mount
-- [ ] Env-based configuration (`.env` template with all config knobs)
-- [ ] Structured JSON logging to stdout
-- [ ] End-to-end SSE streaming validation through Caddy
-- [ ] Validate against ops-runbook-v0.md checklist
-
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes + `./scripts/run_silent.sh "build" npx tsc --noEmit` passes.
 
 ---
 
