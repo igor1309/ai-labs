@@ -1,19 +1,3 @@
-/**
- * StubRunner — deterministic runner implementation for testing.
- *
- * Runner protocol (owned by its client, the route handler):
- *   execute(request)       → Promise<object>          (non-streaming response)
- *   executeStream(request) → AsyncGenerator<object>    (streaming SSE events)
- *
- * request shape:  { model: string, messages: array, stream?: boolean, ...options }
- * execute return: complete response object (OpenAI chat.completion shape)
- * executeStream yields: { type: 'chunk'|'error'|'end', data?: object }
- *
- * Fixtures are loaded from the filesystem (read-only in V0).
- * Non-streaming fixture:  {fixturesDir}/{model}.json
- * Streaming fixture:      {fixturesDir}/{model}.stream.json
- */
-
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
