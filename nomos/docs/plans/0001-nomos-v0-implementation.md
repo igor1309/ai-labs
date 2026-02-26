@@ -79,11 +79,11 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 **Goal**: Core testability foundation — the runner boundary and StubRunner.
 
-- [ ] Define Runner protocol (execute request, return response, support streaming)
-- [ ] Implement StubRunner with deterministic JSON fixtures
-- [ ] Implement StubRunner scripted SSE streams (chunk, error, end events)
-- [ ] Fixture loading from filesystem (read-only in V0)
-- [ ] Tests: assert fixture loading, event ordering, stream termination
+- [x] Define Runner protocol (execute request, return response, support streaming)
+- [x] Implement StubRunner with deterministic JSON fixtures
+- [x] Implement StubRunner scripted SSE streams (chunk, error, end events)
+- [x] Fixture loading from filesystem (read-only in V0)
+- [x] Tests: assert fixture loading, event ordering, stream termination
 
 **Key constraint**: Runner protocol is owned by its client (per repo architecture rules). StubRunner and LiveRunner implement the same protocol.
 
