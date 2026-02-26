@@ -1,0 +1,35 @@
+services:
+  nomos:
+    build: .
+    container_name: nomos
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - nomos-data:/app/data
+    expose:
+      - "8080"
+    labels:
+      com.logging.project: nomos
+      com.logging.service: api
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: nomos-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - nomos
+    labels:
+      com.logging.project: nomos
+      com.logging.service: caddy
+
+volumes:
+  nomos-data:
+  caddy-data:
+  caddy-config:

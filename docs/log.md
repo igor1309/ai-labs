@@ -1,5 +1,9 @@
 # Log
 
+## 2026-02-26
+Release `v0.2.0`.
+Nomos: implement Phase 1 scaffold — Express + SQLite + Caddy skeleton with health endpoint, unit tests, e2e smoke test, Docker deployment files, and CI pipeline wiring. See `nomos/docs/log.md`.
+
 ## 2026-02-23
 Fix `Release` workflow startup failures by simplifying tag resolution and reusable-workflow wiring.
 Release `v0.1.5`.

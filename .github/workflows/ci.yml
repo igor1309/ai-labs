@@ -17,6 +17,7 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
+      nomos: ${{ steps.filter.outputs.nomos }}
       oracle: ${{ steps.filter.outputs.oracle }}
       shared: ${{ steps.filter.outputs.shared }}
     steps:
@@ -39,12 +40,14 @@ jobs:
               - "scripts/**"
               - "tsconfig.json"
               - "vendor/**"
+            nomos:
+              - "nomos/**"
             oracle:
               - "oracle/**"
 
   oracle-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.nomos == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/oracle-core.yml
 
   real-provider-smoke:
