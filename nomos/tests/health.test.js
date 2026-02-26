@@ -7,7 +7,7 @@ function stubLogger() {
 }
 
 function stubDb() {
-  return { close() {} };
+  return { close() {}, prepare() { return { get() {} }; } };
 }
 
 test("GET /health returns 200 with status ok", async () => {
