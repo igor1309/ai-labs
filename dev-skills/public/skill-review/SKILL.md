@@ -1,6 +1,6 @@
 ---
 name: skill-review
-version: "1.1.0"
+version: "1.1.1"
 description: Review and improve existing Claude Code skills. Use when evaluating skill quality, auditing skill collections, asking "review my skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -73,7 +73,7 @@ Per skill:
 **Verdict:** Keep as-is / Needs refinement / Needs rewrite / Consider retiring
 
 **Section-by-section** (every section must appear):
-- [section name] — signal / noise / ask user
+- [signal / noise / ask user]: [section name]
   Reason: [specific: duplicates AGENTS.md §X / general knowledge / encodes gotcha / ...]
 
 **Strengths:**

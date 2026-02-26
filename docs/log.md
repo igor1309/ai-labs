@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-02-26
 
+### Skill Review v1.1.1 — Verdict-First Output Template
+Moved verdict before section name in the section-by-section audit template (`- [signal]: [section name]` instead of `- [section name] — signal`). Left-aligns verdicts for faster scanning. Marketplace v1.18.1.
+
 ### Check Domain Skill v0.1.0 — Skill + Subagent Pair
 First skill+subagent pair in the plugin. Skill contains domain-checking knowledge (Instant Domain Search MCP workflow). Agent runs on Haiku for cheap execution. Skill uses `context: fork` + `agent: check-domain` + `disable-model-invocation: true` so `/check-domain example.com` bypasses Opus entirely. Added `agents/` directory, `.mcp.json` with Instant Domain Search streamable HTTP server. Marketplace v1.18.0.
 
