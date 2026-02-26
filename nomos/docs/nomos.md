@@ -39,10 +39,10 @@ Nomos v0 focuses on five capabilities:
 - Simple usage reports
 
 ### 3. Unified API
-- Stable internal endpoint
+- OpenAI-compatible proxy surface
+- Governance (auth, budget, logging, routing) wraps the compatible API
 - Versioned contract
-- Minimal surface area
-- JSON over HTTP
+- JSON over HTTP + SSE streaming
 
 ### 4. Best-Effort Prompt Safeguards
 - Input sanitization
@@ -74,7 +74,14 @@ Those are future concerns.
 
 ---
 
-## 4. Operating Model
+## 4. Origin
+
+Nomos extracts and generalizes the provider layer from Oracle.
+Oracle is the first consumer.
+
+---
+
+## 5. Operating Model
 
 - Solo-maintained
 - Incremental release train
@@ -84,7 +91,7 @@ Those are future concerns.
 
 ---
 
-## 5. Strategic Intent
+## 6. Strategic Intent
 
 Nomos ensures:
 
