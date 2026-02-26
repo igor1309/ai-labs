@@ -38,24 +38,38 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 ---
 
+## Cross-Cutting: Dev Environment, Testing & CI
+
+These are not a phase — they are invariants that every phase must satisfy.
+
+- **Local dev**: `npm test` runs fast in-process tests. `docker compose up` runs the full local stack (Nomos + Caddy). Both must work on every commit.
+- **Unit/integration tests**: every phase ships tests alongside code. No feature merges without test coverage for the new behavior.
+- **CI pipeline**: runs `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` on every push. Gate is mandatory — red CI blocks merge.
+- **E2E tests**: Phase 1 establishes the first e2e smoke test (health check through Docker/Caddy). Each subsequent phase extends the e2e suite to cover its feature (e.g., Phase 4 adds an e2e streaming test through the full stack).
+- **Phase exit rule**: a phase is not done until unit tests, CI, and relevant e2e tests are green.
+
+---
+
 ## Phase 1: Project Scaffold + Deployable Skeleton
 
-**Goal**: Establish package structure, Express app, deployment infra, and CI. First commit is a deployable service.
+**Goal**: Establish package structure, Express app, local dev workflow, test infra, CI pipeline, and deployment infra. First commit is a deployable, testable, CI-gated service.
 
 - [ ] Create `nomos/` package structure: `src/`, `tests/`, `package.json`
 - [ ] Wire into monorepo test script in root `package.json`
 - [ ] Express app entry point with health endpoint (`GET /health`)
 - [ ] Structured JSON logging to stdout
+- [ ] Local dev workflow: `npm test` for fast unit tests, `docker compose up` for full local stack
 - [ ] Dockerfile (Node.js + Express, non-root user, health check)
 - [ ] `docker-compose.yml` (nomos + caddy services, restart: unless-stopped, data volume)
 - [ ] Caddyfile (TLS termination, SSE-aware reverse proxy, no buffering)
 - [ ] Env-based configuration (`.env` template with all config knobs)
-- [ ] CI pipeline wiring
-- [ ] Tests: health endpoint responds, app starts/stops cleanly
+- [ ] CI pipeline: tests + typecheck on every push, merge blocked on red
+- [ ] Unit tests: health endpoint responds, app starts/stops cleanly
+- [ ] E2E smoke test: Docker Compose up → Caddy → health check green
 
-**Key constraint**: The skeleton must be deployable end-to-end (Docker Compose up → Caddy → health check green) before any feature work begins.
+**Key constraint**: The skeleton must be deployable, testable locally, and CI-gated before any feature work begins. This phase establishes the dev experience that all subsequent phases inherit.
 
-**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes. Docker Compose up + health check succeeds.
+**Exit gate**: `./scripts/run_silent.sh "tests" npm test` passes. CI green. Docker Compose up + e2e health check succeeds.
 
 ---
 
@@ -143,8 +157,9 @@ Oracle is the first consumer but Oracle migration is out of scope for this plan.
 
 ## Final Gates
 
-- [ ] Full test suite green
+- [ ] Full unit/integration test suite green
 - [ ] TypeScript check passes (noEmit)
-- [ ] End-to-end: stub request through full stack (auth → budget check → safeguards → StubRunner → SSE response)
+- [ ] CI pipeline green on all checks
+- [ ] Full e2e suite green: stub request through Docker/Caddy stack (auth → budget check → safeguards → StubRunner → SSE response)
 - [ ] Docker Compose up + health check + streaming smoke test
 - [ ] Move this plan to `nomos/docs/plans/implemented/`
