@@ -1,6 +1,6 @@
 ---
 name: check-domain
-version: "0.2.1"
+version: "0.3.0"
 description: >
   Check domain name availability and find alternatives.
 argument-hint: [domain]
@@ -52,11 +52,23 @@ Three MCP tools are available from the `instant-domain-search` server:
 4. Verify with `check_domain_availability` before telling
    the user a domain is definitively available
 
-## Guidelines
+## Output Format
 
-- Present results in tables for easy scanning.
+Present ALL results (primary and alternatives) in a single table:
+
+| Domain | Available | Notes |
+|--------|-----------|-------|
+| enoa.ai | No | Registered |
+| enoa.com | No | Registered |
+| theenoa.com | Yes | |
+| goenoa.com | Yes | |
+
+Rules:
+- **Show domain names only** — never show raw URLs or registration links
+  from the API response. Extract the domain name from the result.
+- One unified table, not separate sections for primary vs alternatives.
 - Queries go to authoritative registries — no front-running risk.
-  Mention this to the user if they express concern about privacy.
+  Mention this if the user expresses concern about privacy.
 
 ## Input
 
