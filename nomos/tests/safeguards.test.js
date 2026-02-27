@@ -1,16 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createSafeguards, redactContent } from "../src/safeguards.js";
-
-function stubLogger() {
-  const entries = [];
-  return {
-    info(msg, data = {}) { entries.push({ level: "info", msg, ...data }); },
-    warn(msg, data = {}) { entries.push({ level: "warn", msg, ...data }); },
-    error(msg, data = {}) { entries.push({ level: "error", msg, ...data }); },
-    entries,
-  };
-}
+import { stubLogger } from "./helpers.js";
 
 // --- injection pattern detection ---
 

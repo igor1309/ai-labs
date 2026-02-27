@@ -1,31 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 import test from "node:test";
-import { openDb } from "../src/db.js";
-import { initSchema } from "../src/schema.js";
 import { createBudgetService } from "../src/budget.js";
-
-function setupTestDb() {
-  const tmp = mkdtempSync(join(tmpdir(), "nomos-budget-test-"));
-  const dbPath = join(tmp, "test.db");
-  const db = openDb(dbPath);
-  initSchema(db);
-  return { db, tmp };
-}
-
-function insertProject(db, { id, name = "proj", scope = "live" }) {
-  db.prepare(
-    "INSERT INTO projects (id, name, token_hash, scope) VALUES (?, ?, ?, ?)"
-  ).run(id, name, `hash-${id}`, scope);
-}
-
-function insertBudget(db, { projectId, limitTokens, period, periodStart }) {
-  db.prepare(
-    "INSERT INTO budgets (project_id, limit_tokens, period, period_start) VALUES (?, ?, ?, ?)"
-  ).run(projectId, limitTokens, period, periodStart);
-}
+import { setupTestDb, insertProject, insertBudget } from "./helpers.js";
 
 // --- logUsage ---
 

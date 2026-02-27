@@ -1,37 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 import test from "node:test";
-import { openDb } from "../src/db.js";
-import { initSchema } from "../src/schema.js";
-import { hashToken } from "../src/auth.js";
 import { createApp } from "../src/app.js";
 import { createSafeguards } from "../src/safeguards.js";
-
-function stubLogger() {
-  const entries = [];
-  return {
-    info(msg, data = {}) { entries.push({ level: "info", msg, ...data }); },
-    warn(msg, data = {}) { entries.push({ level: "warn", msg, ...data }); },
-    error(msg, data = {}) { entries.push({ level: "error", msg, ...data }); },
-    entries,
-  };
-}
-
-function setupTestDb() {
-  const tmp = mkdtempSync(join(tmpdir(), "nomos-safeguards-int-"));
-  const dbPath = join(tmp, "test.db");
-  const db = openDb(dbPath);
-  initSchema(db);
-  return { db, tmp };
-}
-
-function insertProject(db, { id, name, token, scope, active = 1 }) {
-  db.prepare(
-    "INSERT INTO projects (id, name, token_hash, scope, active) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, name, hashToken(token), scope, active);
-}
+import { stubLogger, setupTestDb, insertProject, listen } from "./helpers.js";
 
 function capturingRunner() {
   let lastRequest = null;
@@ -47,12 +19,6 @@ function capturingRunner() {
     },
     get lastRequest() { return lastRequest; },
   };
-}
-
-async function listen(app) {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => resolve(server));
-  });
 }
 
 // --- injection detection: log-only mode (default) ---

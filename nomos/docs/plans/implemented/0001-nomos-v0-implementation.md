@@ -1,13 +1,13 @@
 ---
 date: 2026-02-26
-status: proposed
+status: implemented
 scope: Nomos V0
 runtime: Express (Node.js)
 oracle-migration: out of scope (standalone first)
 worktree required: yes
 expected worktree: worktrees/nomos-v0
 expected branch: codex/nomos-v0
-preflight check: [ ] done
+preflight check: [x] done (retroactive — implementation proceeded without worktree; see review)
 ---
 
 # Nomos V0 Implementation Plan
@@ -159,8 +159,8 @@ These are not a phase — they are invariants that every phase must satisfy.
 
 ## Final Gates
 
-- [ ] Full unit/integration test suite green
-- [ ] TypeScript check passes (noEmit)
+- [x] Full unit/integration test suite green
+- [x] TypeScript check passes (noEmit)
 - [ ] CI pipeline green on all checks
 - [ ] Release pipeline: full e2e suite green (stub request through Docker/Caddy stack: auth → budget check → safeguards → StubRunner → SSE response)
-- [ ] Move this plan to `nomos/docs/plans/implemented/`
+- [x] Move this plan to `nomos/docs/plans/implemented/`

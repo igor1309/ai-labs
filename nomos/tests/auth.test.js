@@ -1,13 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 import test from "node:test";
 import express from "express";
-import { openDb } from "../src/db.js";
-import { initSchema } from "../src/schema.js";
 import { hashToken, redactToken, createAuthMiddleware } from "../src/auth.js";
+import { stubLogger, setupTestDb, insertProject, listen } from "./helpers.js";
 
 // --- hashToken ---
 
@@ -38,30 +35,6 @@ test("redactToken returns *** for short token", () => {
 
 // --- createAuthMiddleware (integration with real SQLite) ---
 
-function setupTestDb() {
-  const tmp = mkdtempSync(join(tmpdir(), "nomos-auth-test-"));
-  const dbPath = join(tmp, "test.db");
-  const db = openDb(dbPath);
-  initSchema(db);
-  return { db, tmp };
-}
-
-function insertProject(db, { id, name, token, scope, active = 1 }) {
-  db.prepare(
-    "INSERT INTO projects (id, name, token_hash, scope, active) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, name, hashToken(token), scope, active);
-}
-
-function stubLogger() {
-  const entries = [];
-  return {
-    info(msg, data = {}) { entries.push({ level: "info", msg, ...data }); },
-    warn(msg, data = {}) { entries.push({ level: "warn", msg, ...data }); },
-    error(msg, data = {}) { entries.push({ level: "error", msg, ...data }); },
-    entries,
-  };
-}
-
 function createTestApp(db, logger, allowedScope) {
   const app = express();
   const prefix = allowedScope === "stub" ? "/stub/v1" : "/v1";
@@ -70,14 +43,6 @@ function createTestApp(db, logger, allowedScope) {
     res.json({ ok: true, project: req.project });
   });
   return app;
-}
-
-async function listen(app) {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => {
-      resolve(server);
-    });
-  });
 }
 
 test("valid token with correct scope passes through", async () => {

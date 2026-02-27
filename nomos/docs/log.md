@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-27
+Close V0 completion review findings: add safeguards env vars to .env.example, update plan status to implemented and move to plans/implemented/, add repo-level log entry, fix misleading stub-runner test, extract shared test helpers.
+
 ## 2026-02-26
 Implement Phase 6: prompt safeguards — best-effort input sanitization (null bytes, zero-width chars, RTL overrides), regex-based injection pattern detection (8 default patterns: ignore-previous, disregard-instructions, new-instructions, you-are-now, system-prompt-leak, jailbreak-prefix, role-override, prompt-injection-marker), optional system prompt reinforcement (prepend/append safety text), suspicious payload logging with redacted content for audit, per-safeguard enable/disable config via env vars, configurable blocking mode. Safeguards protocol owned by chat-completions handler, wired through app/server. 41 new tests (32 unit + 9 integration).
 Implement Phase 5: cost control & budget enforcement — usage_log and budgets SQLite schemas, post-completion token usage logging (non-streaming and streaming), pre-request budget check with 429 hard stop, daily/monthly period reset, GET /v1/usage report endpoint with per-model breakdown, budget service wired into chat-completions handler and server. 35 new tests (7 schema + 16 budget unit + 12 integration).
