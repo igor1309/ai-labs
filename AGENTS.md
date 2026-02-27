@@ -118,17 +118,39 @@ When creating implementation plans (especially from review findings), the plan m
 
 ## Release Process
 
-Release policy is outcome-based. Commands are implementation detail; these invariants are mandatory:
+Release policy is outcome-based, per-unit, and governed by ADR-000 through ADR-006 (`docs/adr/release/`). Commands are implementation detail; these invariants are mandatory.
+
+### Per-unit release model
+
+- **Release units** are independently versioned and released. Units are declared in `release-units.config.toml` and tracked in the committed manifest `release-units.toml`.
+- **Discovery**: `release-units.config.toml` lists directory prefixes eligible for release-unit discovery. The generator (`scripts/release/generate-manifest.js`) produces the committed manifest. CI fails if the manifest drifts.
+- **Canonical version**: Node units use `package.json`; non-Node units use `release.toml`. A unit MUST NOT contain both. Versions follow semver.
+- **Tagging**: per-unit tags follow `<basename>_v<version>` (e.g., `nomos_v0.6.0`). Basename is the leaf directory name, must be globally unique, and must not contain underscores.
+- **Release detection**: a release occurs only when **both** files under the unit root changed **and** the canonical version changed since the last matching tag (`<basename>_v*`). No tag → base is the initial commit.
+- **Trunk-only**: releases trigger only on push to `trunk`. Release branches are prohibited.
+- **Docker units**: Docker-producing units (marked in manifest) publish two image tags: `<version>` and `<git-sha>`.
+
+### Release invariants
 
 - **Start state**: release from `trunk`.
-- **SemVer decision**: choose release bump per SemVer 2.0 from the delta since the previous tag (or full history on first release).
+- **SemVer decision**: choose release bump per SemVer 2.0 from the delta since the previous unit tag (or full history on first release).
 - **Release notes**: add exactly one new top entry in the release-scope log (`docs/log.md` for repo-level releases, `<project>/docs/log.md` for project releases) at the top of the current date section, if present, scoped to that reviewed delta.
-- **Version consistency**: `package.json` version, `package-lock.json` version, and release tag `vX.Y.Z` must match.
+- **Version consistency**: canonical version in the unit's metadata file and the release tag `<basename>_v<version>` must match.
 - **Push safety**: push only `trunk` and the explicit release tag; never `git push --tags`.
-- **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging. `tsx` (test runner) ignores unused imports; `tsc` (CI build) does not.
+- **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging.
 - **Deployment gate**: releases deploy via CI on tag push after tests pass.
-- **CI trigger**: `.github/workflows/release.yml` runs on `v*` tag push and gates deploy via core → real-provider-smoke → web-e2e → deploy (worker/pages).
+- **CI trigger**: `.github/workflows/release-unit.yml` runs per-unit release detection, validation, tag creation, and Docker tagging.
+- **Legacy coexistence**: the existing `v*` tag namespace (`.github/workflows/release.yml`, Oracle-specific) coexists with the new `<basename>_v*` namespace. The legacy workflow is not modified; migration is deferred.
 - **Smoke model**: the real-provider smoke gate uses `vars.OPENROUTER_CI_MODEL` and `secrets.OPENROUTER_API_KEY`.
+
+## ADR Governance
+
+Architecture Decision Records (ADRs) live in `docs/adr/` organized by domain (e.g., `docs/adr/release/`, `docs/adr/governance/`).
+
+- ADR structure follows the template in `docs/adr/governance/adr-structure-template.md` (6-section progressive disclosure: Executive Summary, Context, Decision, Rules/Invariants, Consequences, Non-Goals).
+- ADR review follows the standard in `docs/adr/governance/adr-review-standard.md` (4 dimensions: Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision Stability).
+- Implementation plans derived from ADRs must include an ADR Traceability Matrix mapping each invariant to its implementation phase.
+- Planner requirements for ADR-based plans are defined in `docs/adr/governance/implementation-plan-planner-requirements.md`.
 
 ## "protocol owned by client" rule
 
