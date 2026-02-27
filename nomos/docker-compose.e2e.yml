@@ -1,0 +1,43 @@
+# E2E test stack for local deploy validation (OrbStack / Docker Desktop).
+# Isolated from the production compose: different container names, port 8180, own volumes.
+# Usage: RUN_NOMOS_E2E=1 node --test nomos/tests/e2e-local-deploy.test.js
+services:
+  nomos:
+    build: .
+    container_name: nomos-e2e
+    env_file: .env.e2e
+    volumes:
+      - nomos-e2e-data:/app/data
+      - ./tests/fixtures:/app/tests/fixtures:ro
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    labels:
+      com.logging.project: nomos
+      com.logging.service: api
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: nomos-e2e-caddy
+    ports:
+      - "8180:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-e2e-data:/data
+      - caddy-e2e-config:/config
+    depends_on:
+      nomos:
+        condition: service_healthy
+    labels:
+      com.logging.project: nomos
+      com.logging.service: caddy
+
+volumes:
+  nomos-e2e-data:
+  caddy-e2e-data:
+  caddy-e2e-config:
