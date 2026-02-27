@@ -1,43 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import test from "node:test";
-import { openDb } from "../src/db.js";
-import { initSchema } from "../src/schema.js";
-import { hashToken } from "../src/auth.js";
 import { createApp } from "../src/app.js";
 import { createBudgetService } from "../src/budget.js";
-
-function stubLogger() {
-  const entries = [];
-  return {
-    info(msg, data = {}) { entries.push({ level: "info", msg, ...data }); },
-    warn(msg, data = {}) { entries.push({ level: "warn", msg, ...data }); },
-    error(msg, data = {}) { entries.push({ level: "error", msg, ...data }); },
-    entries,
-  };
-}
-
-function setupTestDb() {
-  const tmp = mkdtempSync(join(tmpdir(), "nomos-budget-int-"));
-  const dbPath = join(tmp, "test.db");
-  const db = openDb(dbPath);
-  initSchema(db);
-  return { db, tmp };
-}
-
-function insertProject(db, { id, name, token, scope, active = 1 }) {
-  db.prepare(
-    "INSERT INTO projects (id, name, token_hash, scope, active) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, name, hashToken(token), scope, active);
-}
-
-function insertBudget(db, { projectId, limitTokens, period, periodStart }) {
-  db.prepare(
-    "INSERT INTO budgets (project_id, limit_tokens, period, period_start) VALUES (?, ?, ?, ?)"
-  ).run(projectId, limitTokens, period, periodStart);
-}
+import { stubLogger, setupTestDb, insertProject, insertBudget, listen } from "./helpers.js";
 
 function fakeRunner(response) {
   return {
@@ -72,12 +39,6 @@ function fakeRunnerWithUsage({ promptTokens, completionTokens }) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-async function listen(app) {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => resolve(server));
-  });
 }
 
 // --- pre-request budget check ---

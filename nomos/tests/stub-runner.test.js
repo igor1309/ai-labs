@@ -116,7 +116,12 @@ test("executeStream rejects for missing fixture", async () => {
 
 // --- fixture loading ---
 
-test("createStubRunner requires fixturesDir", () => {
+test("createStubRunner throws when fixturesDir is missing", () => {
+  assert.throws(() => createStubRunner({}), { message: "fixturesDir is required" });
+  assert.throws(() => createStubRunner(), { message: "fixturesDir is required" });
+});
+
+test("createStubRunner returns runner with execute methods", () => {
   const runner = createStubRunner({ fixturesDir });
   assert.equal(typeof runner.execute, "function");
   assert.equal(typeof runner.executeStream, "function");

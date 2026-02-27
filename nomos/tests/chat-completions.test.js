@@ -2,16 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
 import { createChatCompletionsHandler } from "../src/chat-completions.js";
-
-function stubLogger() {
-  const entries = [];
-  return {
-    info(msg, data = {}) { entries.push({ level: "info", msg, ...data }); },
-    warn(msg, data = {}) { entries.push({ level: "warn", msg, ...data }); },
-    error(msg, data = {}) { entries.push({ level: "error", msg, ...data }); },
-    entries,
-  };
-}
+import { stubLogger, listen } from "./helpers.js";
 
 function createTestApp(runner) {
   const app = express();
@@ -19,12 +10,6 @@ function createTestApp(runner) {
   const logger = stubLogger();
   app.post("/v1/chat/completions", createChatCompletionsHandler({ runner, logger }));
   return { app, logger };
-}
-
-async function listen(app) {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => resolve(server));
-  });
 }
 
 // --- request validation ---
