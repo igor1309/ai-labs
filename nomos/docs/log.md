@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-27
+Add CI/CD deploy pipeline (ADR-0002): release-unit workflow deploys to VPS via SSH on nomos_v* tag push — scp source files, rebuild Docker image, restart stack, health check. GitHub secrets VPS_HOST/VPS_USER/VPS_SSH_KEY configured.
 Deploy Nomos to production VPS (nomos.enoa.ai): Docker Compose + Caddy TLS + SQLite stack live on 95.164.53.144, oracle project registered, automated backups and log rotation configured. Fix deployment guide: add container UID note for root deploys, DNS verification gate before stack start, log rotation timing warning.
 Add VPS deployment guide (docs/vps-deployment-guide.md): step-by-step instructions covering Docker install, firewall, Caddy TLS, .env configuration, image build/pull, project registration, budget setup, backup automation, log rotation, updates/rollbacks, and incident triage.
 Add self-contained e2e local deploy test (docker-compose.e2e.yml + e2e-local-deploy.test.js): isolated stack on port 8180 with own container names/volumes, auto-seeds stub project into DB, validates health through Caddy, auth enforcement, non-streaming and streaming stub completions, 404 handling, and bad-request errors. 8 e2e tests, gated by RUN_NOMOS_E2E=1.
