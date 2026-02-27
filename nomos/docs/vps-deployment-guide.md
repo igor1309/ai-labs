@@ -7,18 +7,65 @@ Step-by-step instructions for deploying Nomos on a fresh VPS.
 
 ---
 
+## Current Deployment
+
+Concrete values for the active deployment. The rest of the guide uses `YOUR_DOMAIN` / `VPS_IP` placeholders — substitute these values when following each step.
+
+| Parameter | Value |
+|---|---|
+| **Domain** | `nomos.enoa.ai` |
+| **VPS IP** | `95.164.53.144` |
+| **DNS provider** | Cloudflare (manages `enoa.ai`) |
+| **LLM vendor** | OpenRouter |
+| **Vendor base URL** | `https://openrouter.ai/api/v1` |
+| **Deploy path** | `/opt/nomos` |
+
+---
+
 ## Prerequisites
 
 | Requirement | Notes |
 |---|---|
 | VPS with Linux (Ubuntu 22.04+ or Debian 12+ recommended) | 1 vCPU / 1 GB RAM is sufficient for low traffic |
 | SSH access with a sudo-capable user | All commands below assume you SSH in as this user |
-| A domain name pointing to the VPS | A-record: `nomos.example.com → <VPS_IP>` |
-| An LLM vendor API key | OpenAI, OpenRouter, or any OpenAI-compatible provider |
+| A domain name pointing to the VPS | A-record: `YOUR_DOMAIN → VPS_IP` |
+| An LLM vendor API key | OpenRouter, OpenAI, or any OpenAI-compatible provider |
+| DNS managed via Cloudflare (or other provider) | See §1 for Cloudflare-specific setup |
 
 ---
 
-## 1. Install Docker
+## 1. Cloudflare DNS Setup
+
+Caddy needs to reach the VPS directly to obtain TLS certificates via Let's Encrypt (HTTP-01 challenge). Cloudflare's proxy (orange cloud) intercepts this. Use **DNS-only mode** for the Nomos subdomain.
+
+### 1.1 Create the DNS record
+
+In the Cloudflare dashboard for `enoa.ai`:
+
+1. Go to **DNS → Records → Add Record**
+2. Set:
+   - **Type**: `A`
+   - **Name**: `nomos` (creates `nomos.enoa.ai`)
+   - **IPv4 address**: `VPS_IP` (e.g., `95.164.53.144`)
+   - **Proxy status**: **DNS only** (grey cloud)
+   - **TTL**: Auto
+3. Save
+
+> **Why grey cloud?** Caddy handles TLS directly via Let's Encrypt. If Cloudflare proxy is enabled (orange cloud), the ACME HTTP-01 challenge fails because Cloudflare intercepts the verification request before it reaches Caddy. DNS-only mode lets traffic go straight to the VPS where Caddy can prove domain ownership and terminate TLS itself.
+
+### 1.2 Verify DNS propagation
+
+```bash
+# From your local machine or the VPS
+dig +short nomos.enoa.ai
+# Should return: 95.164.53.144 (your VPS_IP)
+```
+
+Wait for propagation before proceeding (usually instant with Cloudflare, up to a few minutes).
+
+---
+
+## 2. Install Docker
 
 ```bash
 # Install Docker Engine + Compose plugin (official method)
@@ -33,7 +80,7 @@ docker compose version
 
 ---
 
-## 2. Open Firewall Ports
+## 3. Open Firewall Ports
 
 ```bash
 # UFW (Ubuntu/Debian)
@@ -49,7 +96,7 @@ Also verify your VPS provider's security group / firewall panel allows inbound 8
 
 ---
 
-## 3. Create Deployment Directory
+## 4. Create Deployment Directory
 
 ```bash
 sudo mkdir -p /opt/nomos/{data,backups,bin}
@@ -73,9 +120,9 @@ Final layout:
 
 ---
 
-## 4. Create Configuration Files
+## 5. Create Configuration Files
 
-### 4.1 docker-compose.yml
+### 5.1 docker-compose.yml
 
 ```yaml
 services:
@@ -116,12 +163,12 @@ volumes:
 
 > **Building from source instead of a registry image?** Clone the repo onto the VPS, copy the `nomos/` directory, and replace `image: nomos:latest` with `build: .` (the Dockerfile is already in the project root).
 
-### 4.2 Caddyfile
+### 5.2 Caddyfile
 
-Replace `nomos.example.com` with your actual domain. Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
+Replace `YOUR_DOMAIN` with your actual domain (e.g., `nomos.enoa.ai`). Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
 
 ```
-nomos.example.com {
+YOUR_DOMAIN {
 	reverse_proxy nomos:8080 {
 		flush_interval -1
 	}
@@ -130,7 +177,7 @@ nomos.example.com {
 
 `flush_interval -1` is **critical** — it disables response buffering so SSE streaming works correctly.
 
-### 4.3 .env
+### 5.3 .env
 
 ```bash
 # Server
@@ -139,10 +186,10 @@ NOMOS_HOST=0.0.0.0
 NOMOS_DB_PATH=data/nomos.db
 NODE_ENV=production
 
-# Vendor (upstream AI provider)
-NOMOS_VENDOR_BASE_URL=https://api.openai.com/v1
+# Vendor — OpenRouter (default for this deployment)
+NOMOS_VENDOR_BASE_URL=https://openrouter.ai/api/v1
 NOMOS_VENDOR_TIMEOUT_MS=30000
-NOMOS_VENDOR_API_KEY=sk-your-real-key-here
+NOMOS_VENDOR_API_KEY=sk-or-v1-your-openrouter-key-here
 
 # Stub API (must be disabled in production)
 NOMOS_STUB_ENABLED=false
@@ -160,17 +207,17 @@ Lock down permissions on the env file:
 chmod 600 /opt/nomos/.env
 ```
 
-**Vendor URL examples:**
+**Alternative vendor URLs** (swap `NOMOS_VENDOR_BASE_URL` and key as needed):
 
 | Provider | NOMOS_VENDOR_BASE_URL |
 |---|---|
-| OpenAI | `https://api.openai.com/v1` |
 | OpenRouter | `https://openrouter.ai/api/v1` |
+| OpenAI | `https://api.openai.com/v1` |
 | Any OpenAI-compatible | The provider's base URL ending in `/v1` |
 
 ---
 
-## 5. Build or Pull the Image
+## 6. Build or Pull the Image
 
 ### Option A: Build from source on the VPS
 
@@ -207,7 +254,7 @@ docker compose pull
 
 ---
 
-## 6. Start the Stack
+## 7. Start the Stack
 
 ```bash
 cd /opt/nomos
@@ -230,18 +277,18 @@ Press `Ctrl+C` to stop tailing.
 
 ---
 
-## 7. Register a Client Project
+## 8. Register a Client Project
 
 Nomos authenticates clients via bearer tokens. Each project gets a unique token stored as a SHA-256 hash in the database.
 
-### 7.1 Generate a token
+### 8.1 Generate a token
 
 ```bash
 TOKEN=$(openssl rand -hex 32)
 echo "Save this token securely: $TOKEN"
 ```
 
-### 7.2 Insert the project into the database
+### 8.2 Insert the project into the database
 
 ```bash
 TOKEN_HASH=$(echo -n "$TOKEN" | sha256sum | awk '{print $1}')
@@ -264,7 +311,7 @@ Parameters:
 - **scope**: `live` (real vendor calls) or `stub` (test fixtures)
 - **active**: `1` (enabled) or `0` (disabled)
 
-### 7.3 (Optional) Set a budget
+### 8.3 (Optional) Set a budget
 
 ```bash
 docker exec nomos node -e "
@@ -280,35 +327,37 @@ docker exec nomos node -e "
 
 ---
 
-## 8. Verify the Deployment
+## 9. Verify the Deployment
 
-### 8.1 Health check
+### 9.1 Health check
 
 ```bash
-curl -fsS https://nomos.example.com/health
+curl -fsS https://YOUR_DOMAIN/health
 # Expected: {"status":"ok"}
 ```
 
-### 8.2 Authenticated API call
+### 9.2 Authenticated API call
 
 ```bash
-curl -s https://nomos.example.com/v1/chat/completions \
+curl -s https://YOUR_DOMAIN/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
-    "model": "gpt-4o",
+    "model": "openrouter/auto",
     "messages": [{"role": "user", "content": "Say hello"}]
   }'
 ```
 
-### 8.3 Streaming test
+> Replace `openrouter/auto` with any model available on your vendor (e.g., `anthropic/claude-sonnet-4-20250514`, `openai/gpt-4o`).
+
+### 9.3 Streaming test
 
 ```bash
-curl -N https://nomos.example.com/v1/chat/completions \
+curl -N https://YOUR_DOMAIN/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
-    "model": "gpt-4o",
+    "model": "openrouter/auto",
     "messages": [{"role": "user", "content": "Say hello"}],
     "stream": true
   }'
@@ -318,7 +367,7 @@ You should see incremental `data: {...}` lines ending with `data: [DONE]`.
 
 ---
 
-## 9. Set Up Automated Backups
+## 10. Set Up Automated Backups
 
 Create `/opt/nomos/bin/backup.sh`:
 
@@ -356,7 +405,7 @@ chmod +x /opt/nomos/bin/backup.sh
 
 ---
 
-## 10. Configure Log Rotation
+## 11. Configure Log Rotation
 
 Docker's default `json-file` driver keeps logs indefinitely. Add limits in `/etc/docker/daemon.json`:
 
@@ -378,7 +427,7 @@ sudo systemctl restart docker
 
 ---
 
-## 11. Updates & Rollbacks
+## 12. Updates & Rollbacks
 
 ### Deploy an update
 
@@ -399,7 +448,7 @@ docker compose up -d
 ```bash
 docker compose ps
 docker logs --tail=50 nomos
-curl -fsS https://nomos.example.com/health
+curl -fsS https://YOUR_DOMAIN/health
 ```
 
 ### Rollback
@@ -409,7 +458,7 @@ curl -fsS https://nomos.example.com/health
 
 ```bash
 docker compose up -d
-curl -fsS https://nomos.example.com/health
+curl -fsS https://YOUR_DOMAIN/health
 ```
 
 If the issue is database-related, restore from backup:
@@ -422,7 +471,7 @@ docker compose up -d
 
 ---
 
-## 12. Incident Triage
+## 13. Incident Triage
 
 Quick diagnostic checklist:
 
@@ -435,10 +484,10 @@ docker logs --tail=300 nomos
 docker logs --tail=100 nomos-caddy
 
 # 3. Health endpoint (verbose)
-curl -v https://nomos.example.com/health
+curl -v https://YOUR_DOMAIN/health
 
 # 4. Can Nomos reach the vendor from inside the container?
-docker exec nomos wget -qO- https://api.openai.com/v1/models 2>&1 | head -5
+docker exec nomos wget -qO- https://openrouter.ai/api/v1/models 2>&1 | head -5
 
 # 5. Disk space (SQLite needs room to write)
 df -h /opt/nomos/data
