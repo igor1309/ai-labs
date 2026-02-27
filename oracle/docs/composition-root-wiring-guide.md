@@ -44,6 +44,18 @@ Composition wiring must not implement business decisions at runtime from domain 
 - Inline stub/fake behavior inside wiring composers or assemblers.
 - Any implicit fallback to in-memory/demo behavior in production mode.
 
+## Naming Discipline
+
+Name adapters by protocol or capability, not by what they currently connect to.
+
+The adapter's identity is the protocol it speaks (e.g., "OpenAI-compatible HTTP LLM client"). What sits behind the URL — a vendor, a proxy, a mock — is configuration, not identity.
+
+Rules:
+- File names, exports, and internal function names must describe the adapter's protocol, not a specific service.
+- Error messages must be role-based ("LLM request timed out"), not service-branded ("OpenRouter request timed out").
+- Environment variable names must be role-based (`LLM_API_KEY`), not service-branded (`OPENROUTER_API_KEY`).
+- Litmus test: can you switch the service by changing only config values (URLs, credentials) without renaming any files, functions, or env vars? If not, service identity has leaked into code identity.
+
 ## Interfaces First
 Composition should declare required collaborators by interface shape.
 
