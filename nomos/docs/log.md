@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-27
+Add VPS deployment guide (docs/vps-deployment-guide.md): step-by-step instructions covering Docker install, firewall, Caddy TLS, .env configuration, image build/pull, project registration, budget setup, backup automation, log rotation, updates/rollbacks, and incident triage.
 Add self-contained e2e local deploy test (docker-compose.e2e.yml + e2e-local-deploy.test.js): isolated stack on port 8180 with own container names/volumes, auto-seeds stub project into DB, validates health through Caddy, auth enforcement, non-streaming and streaming stub completions, 404 handling, and bad-request errors. 8 e2e tests, gated by RUN_NOMOS_E2E=1.
 Fix all review WARNs: path traversal guard in StubRunner, redactContent boundary fix (slice(-0) bug), extract fakeRunner/fakeRunnerWithUsage to shared helpers, unify cleanupTestDb() across test files, fix time-sensitive budget tests (fixed dates), fix object identity assertion in safeguards test, add cross-project usage isolation test, tighten e2e SSE assertion, add streaming usage tracking comment. Archive reviews 0001 and 0003.
 Fix test review findings: replace tautological hashToken test with hardcoded digest, add malformed JSON body test, add missing Content-Type test, add LiveRunner timeout tests (execute + stream). 142 tests, 0 fail.
