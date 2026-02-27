@@ -277,7 +277,7 @@ test("test_normalize_shouldThrowError_onMissingClarificationMessageWithNeedsClar
   })
 })
 
-test("test_normalize_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
+test("test_normalize_shouldThrowLlmRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
   const adapterModule = await loadAdapterModule()
   const modelClient = adapterModule?.createLlmNormalizerModelClient?.({
     apiKey: "openrouter-api-key",
@@ -302,7 +302,7 @@ test("test_normalize_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWith
   })
 })
 
-test("test_normalize_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
+test("test_normalize_shouldThrowLlmRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
   const adapterModule = await loadAdapterModule()
   const modelClient = adapterModule?.createLlmNormalizerModelClient?.({
     apiKey: "openrouter-api-key",

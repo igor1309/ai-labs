@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterRequest", async () => {
+test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onLlmRequest", async () => {
   const adapterModule = await loadAdapterModule()
   const resourcesModule = await loadResourcesModule()
   const httpClientSpy = makeHttpClientSpy()
@@ -335,7 +335,7 @@ test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async ()
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
-test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
+test("test_generate_shouldThrowLlmRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
     responseBody: {
@@ -358,7 +358,7 @@ test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithE
   })
 })
 
-test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
+test("test_generate_shouldThrowLlmRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
     responseBody: {
@@ -379,7 +379,7 @@ test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWitho
   })
 })
 
-test("test_generate_shouldRequestJsonObjectResponseFormat_onOpenRouterRequest", async () => {
+test("test_generate_shouldRequestJsonObjectResponseFormat_onLlmRequest", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
   const modelClient = adapterModule?.createLlmOutlookModelClient?.({
