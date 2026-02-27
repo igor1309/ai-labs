@@ -307,3 +307,41 @@ test("empty body returns 400", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test("malformed JSON body returns 400", async () => {
+  const { app } = createTestApp({ execute() {} });
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not valid json{{{",
+    });
+    assert.equal(res.status, 400);
+    // Express returns HTML error page for parse failures; verify it doesn't crash (500)
+    await res.text();
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("missing Content-Type header returns 400", async () => {
+  const { app } = createTestApp({ execute() {} });
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: {},
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+    });
+    // Without Content-Type: application/json, Express json() skips parsing,
+    // req.body is undefined, handler falls back to {} and model is missing → 400
+    assert.equal(res.status, 400);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

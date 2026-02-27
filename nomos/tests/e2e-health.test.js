@@ -49,8 +49,8 @@ test("SSE streaming through Caddy delivers chunks without buffering", { skip: !r
   const text = await res.text();
   const dataLines = text.split("\n").filter((l) => l.startsWith("data: "));
 
-  // StubRunner test-model fixture: 5 chunks + [DONE]
-  assert.ok(dataLines.length >= 2, `expected at least 2 data lines, got ${dataLines.length}`);
+  // StubRunner test-model fixture: 5 chunks + [DONE] = 6 data lines
+  assert.equal(dataLines.length, 6, `expected 6 data lines, got ${dataLines.length}`);
   assert.equal(dataLines[dataLines.length - 1], "data: [DONE]");
 
   // Verify first chunk is parseable JSON

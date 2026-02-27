@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-02-27
+Fix all review WARNs: path traversal guard in StubRunner, redactContent boundary fix (slice(-0) bug), extract fakeRunner/fakeRunnerWithUsage to shared helpers, unify cleanupTestDb() across test files, fix time-sensitive budget tests (fixed dates), fix object identity assertion in safeguards test, add cross-project usage isolation test, tighten e2e SSE assertion, add streaming usage tracking comment. Archive reviews 0001 and 0003.
+Fix test review findings: replace tautological hashToken test with hardcoded digest, add malformed JSON body test, add missing Content-Type test, add LiveRunner timeout tests (execute + stream). 142 tests, 0 fail.
 Close V0 completion review findings: add safeguards env vars to .env.example, update plan status to implemented and move to plans/implemented/, add repo-level log entry, fix misleading stub-runner test, extract shared test helpers.
 
 ## 2026-02-26

@@ -1,22 +1,11 @@
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { createApp } from "../src/app.js";
 import { createStubRunner } from "../src/stub-runner.js";
-import { stubLogger, setupTestDb, insertProject, listen } from "./helpers.js";
+import { stubLogger, setupTestDb, insertProject, listen, fakeRunner, cleanupTestDb } from "./helpers.js";
 
 const fixturesDir = join(import.meta.dirname, "fixtures");
-
-function fakeRunner(response) {
-  return {
-    async execute() { return response; },
-    async *executeStream() {
-      yield { type: "chunk", data: response };
-      yield { type: "end" };
-    },
-  };
-}
 
 // --- runner dispatch ---
 
@@ -53,8 +42,7 @@ test("POST /v1/chat/completions dispatches to liveRunner", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -92,8 +80,7 @@ test("POST /stub/v1/chat/completions dispatches to stubRunner when enabled", asy
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -129,8 +116,7 @@ test("stub routes return 404 when NOMOS_STUB_ENABLED is false", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -154,8 +140,7 @@ test("stub routes return 404 for any /stub/* path when disabled", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -186,8 +171,7 @@ test("POST /v1/chat/completions requires auth", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -238,8 +222,7 @@ test("POST /stub/v1/chat/completions streams SSE when stream=true", async () => 
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -267,7 +250,6 @@ test("GET /health still works with new routing", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });

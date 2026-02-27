@@ -45,3 +45,34 @@ export function cleanupTestDb(db, tmp) {
   db.close();
   rmSync(tmp, { recursive: true, force: true });
 }
+
+export function fakeRunner(response) {
+  return {
+    async execute() { return response; },
+    async *executeStream() {
+      yield { type: "chunk", data: response };
+      yield { type: "end" };
+    },
+  };
+}
+
+export function fakeRunnerWithUsage({ promptTokens, completionTokens }) {
+  const response = {
+    id: "resp-1",
+    model: "gpt-4",
+    choices: [{ message: { role: "assistant", content: "hello" }, finish_reason: "stop" }],
+    usage: {
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: promptTokens + completionTokens,
+    },
+  };
+  return {
+    async execute() { return response; },
+    async *executeStream() {
+      yield { type: "chunk", data: { id: "c1", choices: [{ delta: { content: "hello" } }] } };
+      yield { type: "chunk", data: { id: "c1", choices: [{ delta: {} }], usage: response.usage } };
+      yield { type: "end" };
+    },
+  };
+}

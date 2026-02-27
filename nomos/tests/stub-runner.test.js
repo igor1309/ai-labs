@@ -126,3 +126,22 @@ test("createStubRunner returns runner with execute methods", () => {
   assert.equal(typeof runner.execute, "function");
   assert.equal(typeof runner.executeStream, "function");
 });
+
+// --- path traversal guard ---
+
+test("execute rejects model names with path traversal", async () => {
+  const runner = createStubRunner({ fixturesDir });
+  await assert.rejects(
+    () => runner.execute({ model: "../../etc/passwd" }),
+    { message: "invalid model name: path traversal detected" }
+  );
+});
+
+test("executeStream rejects model names with path traversal", async () => {
+  const runner = createStubRunner({ fixturesDir });
+  await assert.rejects(async () => {
+    for await (const _ of runner.executeStream({ model: "../../../etc/shadow" })) {
+      // consume
+    }
+  }, { message: "invalid model name: path traversal detected" });
+});

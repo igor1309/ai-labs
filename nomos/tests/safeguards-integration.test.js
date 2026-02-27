@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
 import test from "node:test";
 import { createApp } from "../src/app.js";
 import { createSafeguards } from "../src/safeguards.js";
-import { stubLogger, setupTestDb, insertProject, listen } from "./helpers.js";
+import { stubLogger, setupTestDb, insertProject, listen, cleanupTestDb } from "./helpers.js";
 
 function capturingRunner() {
   let lastRequest = null;
@@ -61,8 +60,7 @@ test("injection detected logs warning but request passes through (block=false)",
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -105,8 +103,7 @@ test("injection detected blocks request when block=true", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -147,8 +144,7 @@ test("clean request passes through normally with safeguards enabled", async () =
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -184,8 +180,7 @@ test("sanitization strips dangerous characters before runner", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -227,8 +222,7 @@ test("reinforcement prepends safety text to runner request", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -267,8 +261,7 @@ test("reinforcement creates system message when none exists", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -306,8 +299,7 @@ test("safeguards disabled passes injection through without logging", async () =>
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -348,8 +340,7 @@ test("injection blocks streaming request when block=true", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -382,7 +373,6 @@ test("handler works without safeguards (null)", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });

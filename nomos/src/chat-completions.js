@@ -134,7 +134,9 @@ async function handleStream({ runner, logger, budgetService, request, projectId,
     for await (const event of runner.executeStream(request)) {
       if (event.type === "chunk") {
         res.write(`data: ${JSON.stringify(event.data)}\n\n`);
-        // Capture usage from final chunk if present
+        // Capture usage from final chunk if present.
+        // Note: some providers omit usage in streaming responses; in that case
+        // streamUsage stays null and no usage is logged (best-effort).
         if (event.data?.usage) {
           streamUsage = {
             promptTokens: event.data.usage.prompt_tokens || 0,
