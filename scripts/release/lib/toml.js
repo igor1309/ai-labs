@@ -23,7 +23,6 @@
  */
 export function parse(text) {
   const result = {};
-  let currentArray = null;
   let currentObj = null;
 
   for (const raw of text.split('\n')) {
@@ -37,7 +36,6 @@ export function parse(text) {
       if (!result[name]) result[name] = [];
       currentObj = {};
       result[name].push(currentObj);
-      currentArray = name;
       continue;
     }
 

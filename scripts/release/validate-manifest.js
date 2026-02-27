@@ -22,7 +22,7 @@
 
 import { existsSync } from 'node:fs';
 import { resolve, join, basename as pathBasename } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { loadManifest } from './lib/manifest.js';
 
 const rootIdx = process.argv.indexOf('--root');
@@ -119,7 +119,7 @@ for (const unit of manifest.units) {
 //    leaving old tags orphaned. The validator prevents re-adding a
 //    directory with the same leaf name.
 try {
-  const tagsRaw = execSync('git tag -l', { cwd: repoRoot, encoding: 'utf8' });
+  const tagsRaw = execFileSync('git', ['tag', '-l'], { cwd: repoRoot, encoding: 'utf8' });
   const tags = tagsRaw.split('\n').filter(Boolean);
   const manifestBasenames = new Set(manifest.units.map(u => u.basename));
 
