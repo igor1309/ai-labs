@@ -104,6 +104,8 @@ sudo chown -R $USER:$USER /opt/nomos
 cd /opt/nomos
 ```
 
+> **Running as root?** The Nomos container runs as a non-root user (`nomos`, UID 100, GID 101). The `data/` directory must be writable by this user. If you deploy as root, run: `chown -R 100:101 /opt/nomos/data` after creating the directory.
+
 Final layout:
 
 ```
@@ -256,6 +258,8 @@ docker compose pull
 
 ## 7. Start the Stack
 
+> **Prerequisite**: Verify DNS resolves before starting. Caddy attempts TLS certificate acquisition immediately on startup. If DNS is not propagated, it enters a retry backoff loop and HTTPS will not work until it retries (up to 60s+ delays). Run `dig +short YOUR_DOMAIN` and confirm it returns your VPS IP before proceeding.
+
 ```bash
 cd /opt/nomos
 docker compose up -d
@@ -406,6 +410,8 @@ chmod +x /opt/nomos/bin/backup.sh
 ---
 
 ## 11. Configure Log Rotation
+
+> **Timing**: Ideally configure this *before* step 7 (first stack start), since the Docker daemon restart below will stop all running containers. If the stack is already running, you will need to run `docker compose down && docker compose up -d` after restarting Docker to recreate the network and containers.
 
 Docker's default `json-file` driver keeps logs indefinitely. Add limits in `/etc/docker/daemon.json`:
 
