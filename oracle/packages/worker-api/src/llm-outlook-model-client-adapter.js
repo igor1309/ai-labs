@@ -2,7 +2,7 @@ import { systemPrompts } from "./generated/localized-resources.generated.js"
 
 export function createLlmOutlookModelClient({
   apiKey,
-  baseUrl = "https://nomos.enoa.ai",
+  endpointUrl = "https://nomos.enoa.ai/v1/chat/completions",
   httpClient = fetch,
   llmCallAccumulator,
   model,
@@ -48,7 +48,7 @@ export function createLlmOutlookModelClient({
       const { cancelTimeout, signal } = createTimeoutSignal(timeoutMs)
 
       try {
-        const response = await httpClient(`${baseUrl}/v1/chat/completions`, {
+        const response = await httpClient(endpointUrl, {
           body: JSON.stringify({
             messages: [
               {

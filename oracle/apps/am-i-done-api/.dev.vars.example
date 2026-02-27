@@ -2,6 +2,6 @@
 # Do not commit real secrets.
 ENVIRONMENT=dev
 LLM_API_KEY=replace-with-nomos-project-token
-LLM_BASE_URL=https://nomos.enoa.ai
+LLM_ENDPOINT_URL=https://nomos.enoa.ai/v1/chat/completions
 NORMALIZER_MODEL=openai/gpt-5-nano
 OUTLOOK_MODEL=openai/gpt-5-nano

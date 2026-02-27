@@ -77,7 +77,7 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndLlmAdapters_onValidOutlookReque
     DB: d1DatabaseSpy.db,
     NORMALIZER_CACHE: normalizerCacheSpy.kv,
     NORMALIZER_MODEL: "openrouter/normalizer-model",
-    LLM_BASE_URL: "https://llm.custom",
+    LLM_ENDPOINT_URL: "https://llm.custom/v1/chat/completions",
     LLM_TIMEOUT_MS: "1337",
     OUTLOOK_CACHE: outlookCacheSpy.kv,
     OUTLOOK_MODEL: "openrouter/outlook-model",
@@ -418,11 +418,11 @@ test("test_fetch_shouldNotFailResponse_onTelemetryDatasetThrowing", async () => 
   assert.equal(body?.needsClarification, false)
 })
 
-test("test_makeWorkerFetch_shouldUseDefaultBaseUrlAndConfiguredModels_onBlankOptionalBaseUrlBinding", async () => {
+test("test_makeWorkerFetch_shouldUseDefaultEndpointUrlAndConfiguredModels_onBlankOptionalEndpointUrlBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
   const calls = []
   const env = makeEnv({
-    LLM_BASE_URL: ""
+    LLM_ENDPOINT_URL: ""
   })
   const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
     httpClient: async (url, init) => {
@@ -518,13 +518,13 @@ test("test_makeWorkerFetch_shouldUseDefaultTimeout_onInvalidLlmTimeoutBinding", 
   assert.deepEqual(httpClientSpy.calls.map((call) => call.init.timeoutMs), [10000, 10000])
 })
 
-test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onInvalidLlmBaseUrl", async () => {
+test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onInvalidLlmEndpointUrl", async () => {
   const assemblerModule = await loadAssemblerModule()
 
   assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
-    LLM_BASE_URL: "not-a-valid-url"
+    LLM_ENDPOINT_URL: "not-a-valid-url"
   })), {
-    message: "Invalid binding: LLM_BASE_URL"
+    message: "Invalid binding: LLM_ENDPOINT_URL"
   })
 })
 

@@ -10,7 +10,7 @@ import { createRawInputCountersStore } from "../../../packages/worker-api/src/ra
 import { requestGuard } from "../../../packages/worker-api/src/request-guard.js"
 import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../../../packages/worker-api/src/worker-api.js"
 
-const DEFAULT_LLM_BASE_URL = "https://nomos.enoa.ai"
+const DEFAULT_LLM_ENDPOINT_URL = "https://nomos.enoa.ai/v1/chat/completions"
 const DEFAULT_LLM_TIMEOUT_MS = 10000
 const DEFAULT_PROMPT_VERSION = "2"
 const VALID_ENVIRONMENTS = new Set(["prod", "preview", "dev"])
@@ -94,18 +94,18 @@ function requireBinding(env, bindingName) {
 }
 
 function resolveConfig(env) {
-  const llmBaseUrl = resolveOptionalStringBinding(
+  const llmEndpointUrl = resolveOptionalStringBinding(
     env,
-    "LLM_BASE_URL",
-    DEFAULT_LLM_BASE_URL
+    "LLM_ENDPOINT_URL",
+    DEFAULT_LLM_ENDPOINT_URL
   )
-  validateAbsoluteUrlBinding(llmBaseUrl, "LLM_BASE_URL")
+  validateAbsoluteUrlBinding(llmEndpointUrl, "LLM_ENDPOINT_URL")
 
   return {
     environment: resolveEnvironment(env),
     llmApiKey: resolveLlmApiKey(env),
     normalizerModel: resolveRequiredStringBinding(env, "NORMALIZER_MODEL"),
-    llmBaseUrl,
+    llmEndpointUrl,
     outlookModel: resolveRequiredStringBinding(env, "OUTLOOK_MODEL"),
     promptVersion: typeof env.PROMPT_VERSION === "string" && env.PROMPT_VERSION.trim() !== "" ? env.PROMPT_VERSION : DEFAULT_PROMPT_VERSION,
     timeoutMs: parseTimeout(env.LLM_TIMEOUT_MS)
@@ -192,7 +192,7 @@ function createConfiguredLlmNormalizerModelClient({
 }) {
   return createLlmNormalizerModelClient({
     apiKey: config.llmApiKey,
-    baseUrl: config.llmBaseUrl,
+    endpointUrl: config.llmEndpointUrl,
     httpClient,
     llmCallAccumulator,
     model: config.normalizerModel,
@@ -206,7 +206,7 @@ function createConfiguredLlmNormalizerModelClient({
 function createConfiguredLlmOutlookModelClient({ config, httpClient, llmCallAccumulator, requestId, telemetry }) {
   return createLlmOutlookModelClient({
     apiKey: config.llmApiKey,
-    baseUrl: config.llmBaseUrl,
+    endpointUrl: config.llmEndpointUrl,
     httpClient,
     llmCallAccumulator,
     model: config.outlookModel,

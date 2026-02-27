@@ -19,7 +19,7 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     ENVIRONMENT: "dev",
     NORMALIZER_CACHE: makeKvNamespaceSpy(),
     NORMALIZER_MODEL: normalizerModel,
-    LLM_BASE_URL: process.env.LLM_BASE_URL,
+    LLM_ENDPOINT_URL: process.env.LLM_ENDPOINT_URL,
     LLM_API_KEY: llmApiKey,
     LLM_TIMEOUT_MS: process.env.LLM_TIMEOUT_MS,
     OUTLOOK_CACHE: makeKvNamespaceSpy(),

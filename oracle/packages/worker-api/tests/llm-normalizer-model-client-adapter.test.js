@@ -71,7 +71,7 @@ test("test_normalize_shouldSendRequestWithConfiguredModelBaseUrlAndTimeout_onNor
   const httpClientSpy = makeHttpClientSpy()
   const modelClient = adapterModule?.createLlmNormalizerModelClient?.({
     apiKey: "openrouter-api-key",
-    baseUrl: "https://custom-openrouter.example",
+    endpointUrl: "https://custom-openrouter.example/v1/chat/completions",
     httpClient: httpClientSpy.httpClient,
     requestId: "request-id",
     schemaVersion: "1",
