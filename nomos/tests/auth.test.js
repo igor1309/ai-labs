@@ -23,8 +23,13 @@ test("redactToken masks middle of long token", () => {
   assert.equal(redacted, "abcd***mnop");
 });
 
+test("redactToken masks token at exactly 8 chars (boundary)", () => {
+  assert.equal(redactToken("abcdefgh"), "abcd***efgh");
+});
+
 test("redactToken returns *** for short token", () => {
   assert.equal(redactToken("short"), "***");
+  assert.equal(redactToken("1234567"), "***");
   assert.equal(redactToken(""), "***");
   assert.equal(redactToken(null), "***");
   assert.equal(redactToken(undefined), "***");
