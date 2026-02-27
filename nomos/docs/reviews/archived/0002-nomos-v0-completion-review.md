@@ -38,12 +38,6 @@ All 6 phases are implemented, tests pass (282/297 overall, all 130 nomos tests g
 
 ## New Findings
 
-### FAIL (must fix before production deployment)
-
-**~~F1. `nomos/package-lock.json` not committed~~** — **verified pass**
-
-Checked during review: `git ls-files nomos/package-lock.json` confirms it is tracked. CI (`npm ci`) and Docker builds (`COPY package-lock.json`) will work correctly. No action needed.
-
 ### WARN (should address)
 
 **W1. `nomos` not wired as npm workspace — root `npm test` fails without manual install** — `package.json`
