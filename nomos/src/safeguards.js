@@ -26,7 +26,7 @@ export function redactContent(content, maxLen = 50) {
   if (!content || typeof content !== "string") return "***";
   if (content.length <= maxLen) return content;
   const half = Math.floor(maxLen / 2);
-  return content.slice(0, half) + "..." + content.slice(-half);
+  return content.slice(0, half) + "..." + (half > 0 ? content.slice(-half) : "");
 }
 
 export function createSafeguards({ config = {}, logger }) {

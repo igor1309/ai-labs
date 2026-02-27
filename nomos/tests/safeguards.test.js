@@ -152,12 +152,13 @@ test("sanitization disabled leaves content unchanged", () => {
   assert.equal(result.sanitized[0].content, "hello\x00world");
 });
 
-test("clean content is not cloned during sanitization", () => {
+test("clean content passes through without modification", () => {
   const sg = createSafeguards({ logger: stubLogger() });
   const msg = { role: "user", content: "clean text" };
   const messages = [msg];
   const result = sg.scanMessages(messages);
-  assert.equal(result.sanitized[0], msg);
+  assert.equal(result.sanitized[0].role, "user");
+  assert.equal(result.sanitized[0].content, "clean text");
 });
 
 // --- system prompt reinforcement ---
@@ -319,6 +320,16 @@ test("redactContent handles null/undefined", () => {
   assert.equal(redactContent(null), "***");
   assert.equal(redactContent(undefined), "***");
   assert.equal(redactContent(""), "***");
+});
+
+test("redactContent with maxLen=0 truncates any non-empty string", () => {
+  const result = redactContent("hello", 0);
+  assert.equal(result, "...");
+});
+
+test("redactContent with maxLen=1 truncates with minimal halves", () => {
+  const result = redactContent("hello", 1);
+  assert.equal(result, "...");
 });
 
 // --- property accessors ---

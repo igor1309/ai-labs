@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
 import test from "node:test";
 import { createBudgetService } from "../src/budget.js";
-import { setupTestDb, insertProject, insertBudget } from "./helpers.js";
+import { setupTestDb, insertProject, insertBudget, cleanupTestDb } from "./helpers.js";
 
 // --- logUsage ---
 
@@ -26,8 +25,7 @@ test("logUsage inserts into usage_log", () => {
     assert.equal(row.completion_tokens, 20);
     assert.equal(row.timestamp, "2026-02-26 12:00:00");
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -43,8 +41,7 @@ test("logUsage increments budget current_usage", () => {
     const row = db.prepare("SELECT current_usage FROM budgets WHERE project_id = ?").get("p1");
     assert.equal(row.current_usage, 30);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -64,8 +61,7 @@ test("logUsage accumulates across multiple calls", () => {
     const logs = db.prepare("SELECT * FROM usage_log WHERE project_id = ?").all("p1");
     assert.equal(logs.length, 2);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -80,8 +76,7 @@ test("logUsage works without a budget row", () => {
     const row = db.prepare("SELECT * FROM usage_log WHERE project_id = ?").get("p1");
     assert.equal(row.prompt_tokens, 10);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -99,8 +94,7 @@ test("checkBudget allows when no budget is configured", () => {
     assert.equal(result.remaining, null);
     assert.equal(result.usage, 0);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -119,8 +113,7 @@ test("checkBudget allows when under limit", () => {
     assert.equal(result.limit, 1000);
     assert.equal(result.usage, 300);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -138,8 +131,7 @@ test("checkBudget rejects when at exact limit (hard stop)", () => {
     assert.equal(result.remaining, 0);
     assert.equal(result.usage, 100);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -157,8 +149,7 @@ test("checkBudget rejects when over limit (hard stop)", () => {
     assert.equal(result.remaining, -10);
     assert.equal(result.usage, 60);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -185,8 +176,7 @@ test("checkBudget resets daily budget when period expired", () => {
     assert.equal(row.current_usage, 0);
     assert.equal(row.period_start, "2026-02-26");
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -205,8 +195,7 @@ test("checkBudget resets monthly budget when period expired", () => {
     assert.equal(result.usage, 0);
     assert.equal(result.remaining, 5000);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -225,8 +214,7 @@ test("checkBudget does not reset when still within daily period", () => {
     assert.equal(result.usage, 100);
     assert.equal(result.remaining, 0);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -245,8 +233,7 @@ test("checkBudget does not reset when still within monthly period", () => {
     assert.equal(result.usage, 5000);
     assert.equal(result.remaining, 0);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -264,8 +251,7 @@ test("getUsageReport returns empty report for project with no usage", () => {
     assert.equal(report.budget, null);
     assert.deepEqual(report.by_model, []);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -293,8 +279,7 @@ test("getUsageReport returns usage breakdown by model", () => {
     assert.equal(gpt35.total_tokens, 10);
     assert.equal(gpt35.request_count, 1);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -314,8 +299,7 @@ test("getUsageReport includes budget info when configured", () => {
     assert.equal(report.budget.period, "daily");
     assert.equal(report.budget.period_start, "2026-02-26");
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -341,7 +325,6 @@ test("usage logging is isolated per project", () => {
     assert.equal(p2.usage, 20);
     assert.equal(p2.allowed, true);
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });

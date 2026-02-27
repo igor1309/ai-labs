@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
 import test from "node:test";
 import express from "express";
 import { hashToken, redactToken, createAuthMiddleware } from "../src/auth.js";
-import { stubLogger, setupTestDb, insertProject, listen } from "./helpers.js";
+import { stubLogger, setupTestDb, insertProject, listen, cleanupTestDb } from "./helpers.js";
 
 // --- hashToken ---
 
@@ -67,8 +66,7 @@ test("valid token with correct scope passes through", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -90,8 +88,7 @@ test("missing authorization header returns 401", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -116,8 +113,7 @@ test("invalid token returns 401", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -142,8 +138,7 @@ test("inactive project returns 401", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -168,8 +163,7 @@ test("stub-scoped token on live path returns 403", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -194,8 +188,7 @@ test("live-scoped token on stub path returns 403", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -222,8 +215,7 @@ test("valid stub token on stub path passes through", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -247,8 +239,7 @@ test("non-bearer authorization header returns 401", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -279,8 +270,7 @@ test("auth middleware logs warning with token_hash not raw token", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
 
@@ -305,7 +295,6 @@ test("health endpoint remains unauthenticated", async () => {
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    db.close();
-    rmSync(tmp, { recursive: true, force: true });
+    cleanupTestDb(db, tmp);
   }
 });
