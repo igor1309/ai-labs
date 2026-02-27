@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { openDb } from "./db.js";
@@ -7,6 +8,9 @@ import { createLiveRunner } from "./live-runner.js";
 import { createStubRunner } from "./stub-runner.js";
 import { createBudgetService } from "./budget.js";
 import { createSafeguards } from "./safeguards.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
 
 const config = loadConfig();
 const logger = createLogger();
@@ -33,6 +37,7 @@ const safeguards = createSafeguards({ config, logger });
 const app = createApp({
   logger,
   db,
+  version,
   liveRunner,
   stubRunner,
   stubEnabled: config.stubEnabled,

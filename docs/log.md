@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-27
+Nomos: add deploy smoke checks (version in /health, real LLM call). See `nomos/docs/log.md`.
 Nomos: add CI/CD deploy pipeline via SSH (ADR-0002). See `nomos/docs/log.md`.
 Nomos: deploy to production VPS (nomos.enoa.ai), fix deployment guide with lessons learned. See `nomos/docs/log.md`.
 Update AGENTS.md (Release Process section) and README.md to reflect new per-unit release model (ADR-000–006), add ADR Governance section to AGENTS.md.

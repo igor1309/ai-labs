@@ -2,11 +2,13 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
-export function createApp({ logger, db, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null }) {
+export function createApp({ logger, db, version = null, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null }) {
   const app = express();
 
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok" });
+    const body = { status: "ok" };
+    if (version) body.version = version;
+    res.json(body);
   });
 
   app.use(express.json());
