@@ -304,7 +304,7 @@ Per CLAUDE.md Architecture Doc Review criteria:
 | ------------------ | ------- | ------------------------------------------ |
 | Ambiguity          | `pass`  | Core terms defined; rules unambiguous       |
 | Clarity            | `pass`  | Scope, allowed/prohibited behavior explicit |
-| Consistency        | `warn`  | F2: Phase 4 dependency gap with Phase 1     |
+| Consistency        | `pass`  | F2 resolved: Docker status in Phase 1       |
 | Readability        | `pass`  | Skimmable structure, concise bullets        |
 | Best practices     | `pass`  | Aligns with repo architecture constraints   |
 | Drift resistance   | `pass`  | Uses MUST/MUST NOT; CI verification gates   |
@@ -313,14 +313,12 @@ Per CLAUDE.md Architecture Doc Review criteria:
 
 ## 6. Summary
 
-| Finding | Severity | Resolution required before execution? |
-| ------- | -------- | ------------------------------------- |
-| F1      | `warn`   | Recommended — minor traceability gap  |
-| F2      | `fail`   | Yes — structural dependency gap       |
-| F3      | `warn`   | Recommended — ADR traceability gap    |
-| F4      | `warn`   | Optional — editorial improvement      |
-| F5      | obs.     | No — already compliant                |
+| Finding | Severity | Status     | Resolution                            |
+| ------- | -------- | ---------- | ------------------------------------- |
+| F1      | `warn`   | `resolved` | ADR-001 invariant added to matrix     |
+| F2      | `fail`   | `resolved` | Docker status added to Phase 1        |
+| F3      | `warn`   | `resolved` | Legacy migration labeled as transition concern |
+| F4      | `warn`   | `resolved` | Edge case analysis condensed          |
+| F5      | obs.     | `pass`     | Already compliant                     |
 
-**Recommendation**: Address F2 (mandatory) and F1 (recommended) before
-execution begins. F3 and F4 are advisory improvements that strengthen
-the plan but do not block execution.
+All findings resolved. Plan is ready for execution.

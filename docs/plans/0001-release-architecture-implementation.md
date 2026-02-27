@@ -57,6 +57,7 @@ Non-Goals and planner requirements §9:
 | 004   | No tag → base is initial repository commit             | 2     |
 | 004   | Release only if path changed AND version changed       | 2     |
 | 004   | Detection is idempotent                                | 2     |
+| 001   | Each release unit has its own version                  | 1     |
 | 001   | Version bump is explicit release intent signal         | 2     |
 | 003   | Tag format `<basename>_v<version>`                     | 3     |
 | 003   | Tag lookup uses glob `<basename>_v*`                   | 3     |
@@ -174,16 +175,10 @@ checks:
     the initial repository commit. If the unit's path contains changes
     (it will, since the unit was added after initial commit) and the
     version is set, a release is detected.
--   **Version change without path change**: a version bump in the
-    metadata file without any other file changes under the unit root
-    does not trigger release (the metadata file itself is under the unit
-    root, so this scenario means only the metadata file changed — the
-    executor must define whether the metadata file counts as a "path
-    change." Per ADR-004, files under unit root includes the metadata
-    file, so a version bump alone _does_ constitute a file change. The
-    invariant therefore becomes: version change without path change is
-    only possible if the metadata file lives outside the unit root,
-    which the architecture prohibits. Detection correctly triggers).
+-   **Version change without path change**: the metadata file resides
+    under the unit root, so a version-only bump constitutes a path
+    change. This scenario is architecturally impossible and is listed
+    for completeness. Detection correctly triggers.
 -   **Path change without version change**: files changed but version
     unchanged → no release. This is the guard against accidental
     releases.
@@ -222,9 +217,10 @@ checks:
 4.  Tags are created only on `trunk`.
 5.  Attempting to create a release tag from a non-trunk ref is rejected.
 6.  No tag is created if detection did not signal a release.
-7.  The existing `v*` tag namespace (used by the legacy Oracle release
-    workflow) is migrated or coexists without conflict — the executor
-    must ensure the transition does not break existing tag references.
+7.  **Transition concern (not ADR-derived):** The existing `v*` tag
+    namespace (used by the legacy Oracle release workflow) is migrated
+    or coexists without conflict — the executor must ensure the
+    transition does not break existing tag references.
 
 ### Acceptance criteria (observable outcomes)
 
@@ -233,7 +229,8 @@ checks:
 -   Tag version equals the canonical version from the unit metadata.
 -   Release from a non-trunk branch is rejected.
 -   No spurious tags are created (detection-gated).
--   Legacy `v*` tags are not broken or orphaned by the transition.
+-   **(Transition concern)** Legacy `v*` tags are not broken or orphaned
+    by the transition.
 
 ### Edge cases addressed
 
