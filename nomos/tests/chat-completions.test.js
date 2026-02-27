@@ -4,11 +4,14 @@ import express from "express";
 import { createChatCompletionsHandler } from "../src/chat-completions.js";
 import { stubLogger, listen } from "./helpers.js";
 
-function createTestApp(runner) {
+function createTestApp(runner, { budgetService, safeguards, project } = {}) {
   const app = express();
   app.use(express.json());
+  if (project) {
+    app.use((req, _res, next) => { req.project = project; next(); });
+  }
   const logger = stubLogger();
-  app.post("/v1/chat/completions", createChatCompletionsHandler({ runner, logger }));
+  app.post("/v1/chat/completions", createChatCompletionsHandler({ runner, logger, budgetService, safeguards }));
   return { app, logger };
 }
 
@@ -326,6 +329,163 @@ test("malformed JSON body returns 400", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+// --- guard clause coverage ---
+
+test("handler skips budget check when budgetService is null", async () => {
+  const fixture = { id: "r1", choices: [{ message: { content: "hi" } }], usage: { prompt_tokens: 5, completion_tokens: 3 } };
+  const { app } = createTestApp({ async execute() { return fixture; } }); // no budgetService
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+    });
+    assert.equal(res.status, 200);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("handler skips budget check when req.project is undefined", async () => {
+  let logUsageCalled = false;
+  const budget = {
+    checkBudget() { return { allowed: true, remaining: 100, limit: 1000, usage: 0 }; },
+    logUsage() { logUsageCalled = true; },
+  };
+  const fixture = { id: "r1", choices: [], usage: { prompt_tokens: 5, completion_tokens: 3 } };
+  // budgetService provided but no project on req (no auth middleware)
+  const { app } = createTestApp({ async execute() { return fixture; } }, { budgetService: budget });
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(logUsageCalled, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("non-streaming: no usage logged when response has no usage field", async () => {
+  let logUsageCalled = false;
+  const budget = {
+    checkBudget() { return { allowed: true, remaining: 100, limit: 1000, usage: 0 }; },
+    logUsage() { logUsageCalled = true; },
+  };
+  const fixture = { id: "r1", choices: [{ message: { content: "hi" } }] }; // no usage
+  const { app } = createTestApp(
+    { async execute() { return fixture; } },
+    { budgetService: budget, project: { id: "p1", name: "test" } },
+  );
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(logUsageCalled, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("streaming: no usage logged when stream has no usage data in chunks", async () => {
+  let logUsageCalled = false;
+  const budget = {
+    checkBudget() { return { allowed: true, remaining: 100, limit: 1000, usage: 0 }; },
+    logUsage() { logUsageCalled = true; },
+  };
+  const runner = {
+    async *executeStream() {
+      yield { type: "chunk", data: { id: "c1", choices: [{ delta: { content: "hi" } }] } };
+      yield { type: "end" };
+    },
+  };
+  const { app } = createTestApp(runner, { budgetService: budget, project: { id: "p1", name: "test" } });
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }], stream: true }),
+    });
+    await res.text();
+    assert.equal(logUsageCalled, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("streaming: usage captured from last chunk containing usage field", async () => {
+  let loggedUsage;
+  const budget = {
+    checkBudget() { return { allowed: true, remaining: 100, limit: 1000, usage: 0 }; },
+    logUsage(data) { loggedUsage = data; },
+  };
+  const runner = {
+    async *executeStream() {
+      yield { type: "chunk", data: { id: "c1", choices: [{ delta: { content: "hi" } }] } };
+      yield { type: "chunk", data: { id: "c1", choices: [{ delta: {} }], usage: { prompt_tokens: 10, completion_tokens: 20 } } };
+      yield { type: "end" };
+    },
+  };
+  const { app } = createTestApp(runner, { budgetService: budget, project: { id: "p1", name: "test" } });
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }], stream: true }),
+    });
+    await res.text();
+    assert.equal(loggedUsage.promptTokens, 10);
+    assert.equal(loggedUsage.completionTokens, 20);
+    assert.equal(loggedUsage.model, "gpt-4");
+    assert.equal(loggedUsage.projectId, "p1");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("non-streaming runner error logs model name", async () => {
+  const runner = { async execute() { throw new Error("vendor down"); } };
+  const { app, logger } = createTestApp(runner);
+  const server = await listen(app);
+
+  try {
+    const { port } = server.address();
+    await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+    });
+    const errorLog = logger.entries.find((e) => e.level === "error" && e.msg === "runner execute failed");
+    assert.ok(errorLog);
+    assert.equal(errorLog.model, "gpt-4");
+    assert.equal(errorLog.error, "vendor down");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+// --- edge cases ---
 
 test("missing Content-Type header returns 400", async () => {
   const { app } = createTestApp({ execute() {} });

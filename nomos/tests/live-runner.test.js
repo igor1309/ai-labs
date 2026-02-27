@@ -337,3 +337,130 @@ test("executeStream rejects when vendor exceeds timeout", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+// --- SSE edge cases ---
+
+test("executeStream skips malformed JSON SSE lines", async () => {
+  const server = await fakeVendor((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      res.write(`data: ${JSON.stringify({ id: "c1", choices: [{ delta: { content: "ok" } }] })}\n\n`);
+      res.write("data: {not valid json\n\n");
+      res.write(`data: ${JSON.stringify({ id: "c2", choices: [{ delta: { content: "fine" } }] })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+    });
+  });
+
+  try {
+    const { port } = server.address();
+    const runner = createLiveRunner({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 5000 });
+
+    const events = [];
+    for await (const event of runner.executeStream({ model: "gpt-4", messages: [] })) {
+      events.push(event);
+    }
+
+    // Malformed line is silently skipped; only 2 chunks + 1 end
+    assert.equal(events.length, 3);
+    assert.equal(events[0].data.choices[0].delta.content, "ok");
+    assert.equal(events[1].data.choices[0].delta.content, "fine");
+    assert.equal(events[2].type, "end");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("executeStream ignores non-data SSE lines (comments, blanks)", async () => {
+  const server = await fakeVendor((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      res.write(": this is an SSE comment\n\n");
+      res.write("\n");
+      res.write("event: ping\n\n");
+      res.write(`data: ${JSON.stringify({ id: "c1", choices: [{ delta: { content: "hi" } }] })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+    });
+  });
+
+  try {
+    const { port } = server.address();
+    const runner = createLiveRunner({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 5000 });
+
+    const events = [];
+    for await (const event of runner.executeStream({ model: "gpt-4", messages: [] })) {
+      events.push(event);
+    }
+
+    assert.equal(events.length, 2);
+    assert.equal(events[0].type, "chunk");
+    assert.equal(events[1].type, "end");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("executeStream handles data split across read chunks", async () => {
+  const server = await fakeVendor((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      // Write a single SSE line in two separate TCP writes to force buffer splitting
+      const full = `data: ${JSON.stringify({ id: "c1", choices: [{ delta: { content: "split" } }] })}\n\n`;
+      const mid = Math.floor(full.length / 2);
+      res.write(full.slice(0, mid));
+      // Small delay to force separate read() calls
+      setTimeout(() => {
+        res.write(full.slice(mid));
+        res.write("data: [DONE]\n\n");
+        res.end();
+      }, 20);
+    });
+  });
+
+  try {
+    const { port } = server.address();
+    const runner = createLiveRunner({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 5000 });
+
+    const events = [];
+    for await (const event of runner.executeStream({ model: "gpt-4", messages: [] })) {
+      events.push(event);
+    }
+
+    assert.equal(events.length, 2);
+    assert.equal(events[0].type, "chunk");
+    assert.equal(events[0].data.choices[0].delta.content, "split");
+    assert.equal(events[1].type, "end");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("execute uses fallback message when error JSON has no message field", async () => {
+  const server = await fakeVendor((_req, res) => {
+    let body = "";
+    _req.on("data", (d) => (body += d));
+    _req.on("end", () => {
+      res.writeHead(422, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: { type: "invalid_request" } }));
+    });
+  });
+
+  try {
+    const { port } = server.address();
+    const runner = createLiveRunner({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 5000 });
+
+    await assert.rejects(
+      () => runner.execute({ model: "gpt-4", messages: [] }),
+      (err) => err.message === "upstream 422"
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

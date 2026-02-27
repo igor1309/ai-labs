@@ -22,6 +22,8 @@ const SANITIZE_PATTERNS = [
   { name: "rtl_override", regex: /[\u202A-\u202E\u2066-\u2069]/g, replacement: "" },
 ];
 
+// Output may exceed maxLen for small values (e.g., maxLen=1 → "...") because
+// the "..." separator has a fixed 3-char cost. This is acceptable for logging.
 export function redactContent(content, maxLen = 50) {
   if (!content || typeof content !== "string") return "***";
   if (content.length <= maxLen) return content;
