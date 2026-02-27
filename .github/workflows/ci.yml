@@ -5,6 +5,7 @@ on:
     branches:
       - "**"
     tags-ignore:
+      - "*_v*"
       - "v*"
   pull_request:
   workflow_dispatch:
@@ -21,6 +22,7 @@ jobs:
       nomos: ${{ steps.filter.outputs.nomos }}
       oracle: ${{ steps.filter.outputs.oracle }}
       shared: ${{ steps.filter.outputs.shared }}
+      release: ${{ steps.filter.outputs.release }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +48,13 @@ jobs:
               - "nomos/**"
             oracle:
               - "oracle/**"
+            release:
+              - "release-units.config.toml"
+              - "release-units.toml"
+              - "scripts/release/**"
+              - "loki/**"
+              - "nomos/**"
+              - "oracle/**"
 
   loki-core:
     needs: [changes]
@@ -62,6 +71,28 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/oracle-core.yml
 
+  release-validation:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.release == 'true' || needs.changes.outputs.shared == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Verify manifest is up to date
+        run: node scripts/release/generate-manifest.js --check
+
+      - name: Validate manifest invariants
+        run: node scripts/release/validate-manifest.js
+
   real-provider-smoke:
     needs: [changes, oracle-core]
     if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}
@@ -72,8 +103,8 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.loki-core.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, loki-core, nomos-core, oracle-core, real-provider-smoke]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.loki-core.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, loki-core, nomos-core, oracle-core, release-validation, real-provider-smoke]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -84,6 +115,7 @@ jobs:
         loki-core=${{ needs.loki-core.result }}
         nomos-core=${{ needs.nomos-core.result }}
         oracle-core=${{ needs.oracle-core.result }}
+        release-validation=${{ needs.release-validation.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
