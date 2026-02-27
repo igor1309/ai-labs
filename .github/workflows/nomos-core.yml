@@ -30,9 +30,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install nomos dependencies
-        run: cd nomos && npm ci
-
       - name: Typecheck
         run: ./scripts/run_silent.sh "build" npx tsc --noEmit
 
