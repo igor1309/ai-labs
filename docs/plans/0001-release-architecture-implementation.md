@@ -51,6 +51,7 @@ Non-Goals and planner requirements §9:
 | 002   | Unit MUST NOT contain both                             | 1     |
 | 002   | Version follows semver                                 | 1     |
 | 003   | Basenames globally unique                              | 1     |
+| 003   | Historical basenames MUST NOT be reused                | 1     |
 | 003   | Basenames MUST NOT contain underscores                 | 1     |
 | 003   | Basename equals leaf directory name of unit root path  | 1     |
 | 004   | Base commit is last matching tag for unit               | 2     |
@@ -102,13 +103,17 @@ checks:
     `release.toml`.
 6.  Every basename equals the leaf directory name of its unit root path.
 7.  All basenames are globally unique across units.
-8.  No basename contains an underscore.
-9.  Every canonical version is valid semver.
-10. Each unit records whether it is a Docker-producing unit.
+8.  No basename matches a historical basename from a removed or renamed
+    unit (tag prefix `<basename>_v*` exists for a unit not in manifest).
+9.  No basename contains an underscore.
+10. Every canonical version is valid semver.
+11. Each unit records whether it is a Docker-producing unit.
 
 ### Acceptance criteria (observable outcomes)
 
 -   CI fails when a basename collision is introduced.
+-   CI fails when a basename matches an existing tag prefix for a unit
+    not in the current manifest (historical basename reuse).
 -   CI fails when a unit contains both `package.json` and
     `release.toml`.
 -   CI fails when the committed manifest diverges from regenerated
@@ -176,9 +181,10 @@ checks:
     (it will, since the unit was added after initial commit) and the
     version is set, a release is detected.
 -   **Version change without path change**: the metadata file resides
-    under the unit root, so a version-only bump constitutes a path
-    change. This scenario is architecturally impossible and is listed
-    for completeness. Detection correctly triggers.
+    under the unit root, so a version-only bump constitutes both a path
+    change and a version change. The hypothetical scenario of a pure
+    version change without any path change is architecturally impossible
+    given the metadata-in-unit-root invariant.
 -   **Path change without version change**: files changed but version
     unchanged → no release. This is the guard against accidental
     releases.
@@ -238,6 +244,12 @@ checks:
     changes. The old `<old-basename>_v*` tags remain as historical
     artifacts. The renamed unit starts fresh with no matching tag,
     triggering first-release behavior from Phase 2.
+-   **Basename reuse after rename**: a basename previously used by a
+    removed or renamed unit MUST NOT be reused by a new unit. Historical
+    tags `<old-basename>_v*` persist and would cause incorrect detection
+    base if reused. Phase 1 validation MUST reject a basename that
+    matches any existing tag prefix for a unit not in the current
+    manifest (ADR-003 §4).
 -   **Basename collision attempt**: blocked in Phase 1. If somehow
     reached, tag creation would produce a duplicate tag prefix — this is
     a defense-in-depth concern that Phase 1 validation prevents.

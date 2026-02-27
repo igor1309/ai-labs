@@ -29,6 +29,8 @@ The separator between basename and version is `_v`.
 -   `<basename>` MUST equal the leaf directory name of the unit root
     path.
 -   Basenames MUST be globally unique across all release units.
+-   A basename previously used by a removed or renamed unit MUST NOT be
+    reused by a new unit.
 -   Basenames MUST NOT contain underscores (`_`).
 -   Tag lookup MUST use glob `<basename>_v*`.
 

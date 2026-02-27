@@ -418,18 +418,18 @@ textual issue captured as this review's F2.
 
 ## 10. Summary
 
-| Finding | Severity | Description                                  |
-| ------- | -------- | -------------------------------------------- |
-| F1      | `warn`   | Basename reuse after rename — tag collision risk |
-| F2      | `warn`   | Phase 2 edge case text ambiguity             |
-| O1      | obs.     | ADR-002 ecosystem extensibility              |
-| O2      | obs.     | ADR Context sections terse                   |
+| Finding | Severity | Status     | Resolution                                    |
+| ------- | -------- | ---------- | --------------------------------------------- |
+| F1      | `warn`   | `resolved` | ADR-003 rule added; plan Phase 1 invariant, acceptance criterion, and Phase 3 edge case added |
+| F2      | `warn`   | `resolved` | Plan Phase 2 edge case text rewritten         |
+| O1      | obs.     | noted      | No action needed                              |
+| O2      | obs.     | noted      | No action needed                              |
 
-**Outcome**: Accepted with clarifications.
+**Outcome**: Accepted — all findings resolved.
 
 The ADR forest is coherent, well-bounded, and cross-consistent. The
 implementation plan faithfully translates ADR invariants into an
-executable phased strategy. The two `warn` findings are refinements
-that improve edge case precision and textual clarity — neither blocks
-execution. The plan is ready for implementation with the recommended
-clarifications applied at the executor's discretion.
+executable phased strategy. Both findings have been resolved:
+F1 by adding an ADR-003 rule and corresponding plan invariants/validation,
+F2 by rewriting the ambiguous edge case text. The plan is ready for
+implementation.
