@@ -68,6 +68,7 @@ Non-Goals and planner requirements §9:
 | 006   | Docker-producing units publish `<git-sha>` image tag   | 4     |
 | 006   | Image version matches canonical semver                 | 4     |
 | 006   | Policy applies only to Docker-producing units          | 4     |
+| 006   | Manifest records Docker-producing status per unit      | 1     |
 | 006   | Git tag corresponds to `<basename>_v<version>`         | 4     |
 | 000   | Deterministic, idempotent releases                     | 5     |
 | 000   | CI enforces invariants strictly                        | 5     |
@@ -80,7 +81,7 @@ Non-Goals and planner requirements §9:
 
 ADR-005 (discovery, manifest, drift), ADR-002 (canonical metadata,
 mutual exclusion, semver), ADR-003 (basename uniqueness, no underscores,
-leaf-name rule).
+leaf-name rule), ADR-006 (Docker-producing status in manifest).
 
 ### Invariants established
 
@@ -91,7 +92,8 @@ checks:
     eligible for release-unit discovery.
 2.  A committed manifest (`release-units.toml`) lists every discovered
     unit with its root path, basename, canonical metadata type
-    (`package.json` or `release.toml`), and current version.
+    (`package.json` or `release.toml`), current version, and whether
+    the unit is a Docker-producing unit.
 3.  The manifest is the output of a deterministic generator that reads
     the configuration and scans the repository.
 4.  Each listed unit contains exactly one canonical metadata file.
@@ -101,6 +103,7 @@ checks:
 7.  All basenames are globally unique across units.
 8.  No basename contains an underscore.
 9.  Every canonical version is valid semver.
+10. Each unit records whether it is a Docker-producing unit.
 
 ### Acceptance criteria (observable outcomes)
 
@@ -285,8 +288,8 @@ checks:
 ### Applicability
 
 Based on current repository state, `nomos` is the only Docker-producing
-unit. The executor must ensure the manifest (Phase 1) captures which
-units produce Docker images, so this phase applies conditionally.
+unit. The manifest (Phase 1, invariant 10) records Docker-producing
+status per unit, so this phase applies only to units marked accordingly.
 
 ### Phase completion criteria
 
