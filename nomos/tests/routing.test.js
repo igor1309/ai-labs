@@ -298,6 +298,72 @@ test("malformed JSON body returns 400 through real app error handler", async () 
   }
 });
 
+test("POST /v1/chat/completions returns JSON 404 when no liveRunner configured", async () => {
+  const { db, tmp } = setupTestDb();
+
+  try {
+    insertProject(db, { id: "p1", name: "proj", token: "tok-p1", scope: "live" });
+    const logger = stubLogger();
+    const app = createApp({ logger, db }); // no liveRunner
+    const server = await listen(app);
+
+    try {
+      const { port } = server.address();
+      const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok-p1",
+        },
+        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+      });
+      assert.equal(res.status, 404);
+      const body = await res.json();
+      assert.equal(body.error, "not found");
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    cleanupTestDb(db, tmp);
+  }
+});
+
+test("error handler returns 500 with generic message for errors without status", async () => {
+  const { db, tmp } = setupTestDb();
+
+  try {
+    insertProject(db, { id: "p1", name: "proj", token: "tok-p1", scope: "live" });
+    const logger = stubLogger();
+    // Runner that throws a plain Error (no status field)
+    const brokenRunner = {
+      async execute() { throw new Error("db connection lost"); },
+      async *executeStream() { throw new Error("db connection lost"); },
+    };
+    const app = createApp({ logger, db, liveRunner: brokenRunner });
+    const server = await listen(app);
+
+    try {
+      const { port } = server.address();
+      const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok-p1",
+        },
+        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "hi" }] }),
+      });
+      // chat-completions handler catches runner errors and returns 502 directly
+      assert.equal(res.status, 502);
+      const body = await res.json();
+      assert.equal(body.error.message, "upstream request failed");
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    cleanupTestDb(db, tmp);
+  }
+});
+
 // --- health remains unaffected ---
 
 test("GET /health still works with new routing", async () => {
