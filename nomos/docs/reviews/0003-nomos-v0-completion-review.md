@@ -198,10 +198,109 @@ The code is minimal, clean, and well-structured. Factory functions provide testa
 
 ---
 
+## Test Suite Deep Review — Score: 7/10
+
+Good foundation with solid behavioral testing and isolation. Score held back by missing edge cases, structural duplication, and a few assertions that test internal details rather than observable behavior.
+
+### FAIL — Must fix
+
+**TF1. `hashToken` test re-implements the function under test** — `auth.test.js:11-16`
+
+```js
+const hash = hashToken("my-secret-token");
+const expected = createHash("sha256").update("my-secret-token").digest("hex");
+assert.equal(hash, expected);
+```
+
+Tautology — the test does exactly what `hashToken` does internally, then asserts they match. Always passes unless the test itself has a bug. Tests implementation, not behavior.
+
+Fix: Replace with a hardcoded known-good hash to test the behavioral contract.
+
+**TF2. No test for malformed JSON body** — `chat-completions.test.js`
+
+No test for what happens when the body is not valid JSON (e.g., `body: "not json"`). Express `json()` middleware will reject it, but the error format is untested — could leak stack traces.
+
+Fix: Add a test with an invalid JSON body and verify a sensible error response.
+
+**TF3. No test for missing Content-Type header** — `chat-completions.test.js`
+
+All chat-completions tests send `Content-Type: application/json`. No test for missing or wrong content type. Express `json()` will silently skip parsing, causing `req.body` to be undefined, hitting the `|| {}` fallback in `chat-completions.js:22`.
+
+Fix: Add a test: POST with `Content-Type: text/plain` → should return 400 (model is required), not crash.
+
+### WARN — Should fix
+
+**TW1. `fakeRunner` duplicated across 3 files** — `routing.test.js:11-19`, `budget-integration.test.js:9-17`, `chat-completions.test.js:7-13`
+
+Three files define nearly identical `fakeRunner()` functions plus `fakeRunnerWithUsage()`. Not in helpers.
+
+**TW2. Schema tests don't use `setupTestDb` helper** — `schema.test.js`
+
+All 9 schema tests manually create temp dirs, open DB, and clean up. Reasonable trade-off since schema tests need fine-grained DB control (e.g., calling `initSchema` twice for idempotency), but 50+ lines of repeated boilerplate.
+
+**TW3. `clean content is not cloned` tests object identity** — `safeguards.test.js:155-161`
+
+`assert.equal(result.sanitized[0], msg)` — asserts same JS object reference. Tests an implementation optimization, not a behavioral contract. Breaks if someone refactors to always shallow-clone.
+
+**TW4. Budget integration tests use `today()` — time-sensitive** — `budget-integration.test.js:40-42`
+
+Uses `new Date()` for `periodStart`. If a test runs at exactly midnight UTC, the period could expire between setup and assertion. Unit `budget.test.js` correctly uses fixed dates.
+
+**TW5. No test for concurrent budget writes** — `budget.test.js`
+
+Inherently safe with synchronous `better-sqlite3`, but undocumented.
+
+**TW6. No test for cross-project usage isolation on `/v1/usage`** — `budget-integration.test.js`
+
+No test verifying project A's token cannot see project B's usage data through the endpoint.
+
+**TW7. E2E SSE assertion too lenient** — `e2e-health.test.js:53`
+
+`assert.ok(dataLines.length >= 2)` — fixture has exactly 6 data lines. Asserting `>= 2` would pass even if most chunks were lost to buffering, which is exactly what this e2e test is supposed to detect.
+
+**TW8. No `redactContent` boundary test** — `safeguards.test.js`
+
+`maxLen=0` or `maxLen=1` untested. `Math.floor(maxLen / 2)` with `maxLen=1` yields `half=0`.
+
+**TW9. LiveRunner timeout test missing** — `live-runner.test.js`
+
+No test for `timeoutMs`. The runner uses `AbortSignal.timeout(timeoutMs)`, but no test verifies a slow vendor triggers a timeout error. This is the most critical operational behavior of LiveRunner.
+
+### PASS — No action needed
+
+**TP1. Test isolation** — Every test creates its own temp DB and ephemeral server (port 0). `finally` blocks ensure cleanup. No shared mutable state.
+
+**TP2. Behavioral focus in integration tests** — Full request/response flows through real HTTP stack. Verify status codes, response bodies, and side effects (DB rows, log entries).
+
+**TP3. Budget edge cases** — Exact-limit boundary, over-limit, period reset, multi-project isolation.
+
+**TP4. Streaming error handling** — Mid-stream throw, stream without `[DONE]`, error events.
+
+**TP5. Security assertions** — Token redaction verified (raw token never in logs). Blocking prevents runner call (`runner.lastRequest === null`).
+
+**TP6. Custom pattern override** — Custom patterns replace defaults entirely.
+
+### Summary
+
+| Category | Count |
+|----------|-------|
+| FAIL (must fix) | 3 |
+| WARN (should fix) | 9 |
+| PASS | 6 |
+
+---
+
 ## Action Items (ordered by priority)
 
-1. **W1**: Add path traversal guard in StubRunner (low priority — stub is auth-gated and disabled by default)
-2. **W4**: Document streaming usage tracking upstream dependency (comment only)
-3. **W5**: Check plan final gates after first CI/release run
-4. **W2**: Accept test helper duplication in app.test.js/health.test.js as intentional (no action needed)
-5. **W3**: Decide on `cleanupTestDb()` usage consistency (optional cleanup)
+### Test fixes (from test review)
+1. **TF1**: Replace tautological hashToken test with known-good hash assertion
+2. **TF2**: Add malformed JSON body test
+3. **TF3**: Add missing Content-Type header test
+4. **TW9**: Add LiveRunner timeout test
+
+### Code fixes (from code review)
+5. **W1**: Add path traversal guard in StubRunner
+6. **W4**: Document streaming usage tracking upstream dependency (comment only)
+7. **W5**: Check plan final gates after first CI/release run
+8. **W2**: Accept test helper duplication in app.test.js/health.test.js as intentional (no action needed)
+9. **W3**: Decide on `cleanupTestDb()` usage consistency (optional cleanup)
