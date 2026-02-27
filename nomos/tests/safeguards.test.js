@@ -308,8 +308,8 @@ test("custom patterns override defaults", () => {
 test("redactContent truncates long strings", () => {
   const long = "A".repeat(100);
   const redacted = redactContent(long, 50);
-  assert.ok(redacted.length < 100);
-  assert.ok(redacted.includes("..."));
+  assert.equal(redacted, "A".repeat(25) + "..." + "A".repeat(25));
+  assert.equal(redacted.length, 53);
 });
 
 test("redactContent returns short strings as-is", () => {
