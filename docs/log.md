@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-27
+Wire nomos as npm workspace; remove redundant `cd nomos && npm ci` from CI workflows.
 Nomos: complete V0 implementation (Phases 2-6) — runner abstraction, auth & project identity, unified API proxy with SSE streaming, cost control & budget enforcement, prompt safeguards. 130 tests, all passing. See `nomos/docs/log.md`.
 
 ## 2026-02-26

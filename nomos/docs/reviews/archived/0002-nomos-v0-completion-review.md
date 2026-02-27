@@ -7,7 +7,7 @@ Scope: All 6 phases + prior review finding remediation
 
 ## Verdict: Complete — ready for release
 
-All 6 phases are implemented, tests pass (282/297 overall, all 130 nomos tests green), typecheck passes, prior review findings (F1–F4, W1) have been addressed. One new WARN finding identified below (developer experience, not a blocker). No FAILs remain.
+All 6 phases are implemented, all tests pass, typecheck passes, all prior review findings (F1–F4, W1–W2) resolved, all new findings resolved. No open items remain.
 
 ---
 
@@ -40,17 +40,9 @@ All 6 phases are implemented, tests pass (282/297 overall, all 130 nomos tests g
 
 ### WARN (should address)
 
-**W1. `nomos` not wired as npm workspace — root `npm test` fails without manual install** — `package.json`
+**~~W1. `nomos` not wired as npm workspace~~** — **resolved**
 
-Root `package.json` runs nomos tests via `node --test nomos/tests/*.test.js`, but does not list nomos as a workspace. Running `npm ci` at root does not install `express` or `better-sqlite3`. This means `npm test` at root fails for nomos tests unless you separately run `cd nomos && npm ci`.
-
-The CI workflow handles this correctly (`nomos-core.yml:33-34` runs `cd nomos && npm ci`), so CI is not broken. But any developer running `npm test` at root will see all 11 nomos test files fail with `ERR_MODULE_NOT_FOUND`.
-
-Two options:
-1. Add `"workspaces": ["nomos"]` to root `package.json` so `npm ci` installs nomos deps
-2. Accept the split and document it (e.g., in contributing guide or nomos README)
-
-**Impact**: Developer experience only; CI is unaffected.
+Fixed: added `"workspaces": ["nomos"]` to root `package.json`. Removed redundant `cd nomos && npm ci` steps from `nomos-core.yml` and `release.yml`. Verified: `npm ci` at root installs nomos deps; `npm test` passes all 130 nomos tests.
 
 ---
 
@@ -195,4 +187,4 @@ All phase deliverables match the plan. No missing items.
 
 ## Action Items
 
-1. **W1**: Consider wiring nomos as an npm workspace or documenting the two-step install for local development
+All findings resolved. No remaining action items.
