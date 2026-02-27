@@ -84,8 +84,51 @@ jobs:
       - name: Run tests
         run: ./scripts/run_silent.sh "tests" npm test
 
-  github-release:
+  deploy-nomos:
+    if: ${{ needs.verify.outputs.basename == 'nomos' }}
     needs: [core, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Copy source files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src"
+          target: /tmp/nomos-deploy
+          strip_components: 1
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/nomos
+            cp /tmp/nomos-deploy/Dockerfile .
+            cp /tmp/nomos-deploy/package.json .
+            cp /tmp/nomos-deploy/package-lock.json .
+            rm -rf src && cp -r /tmp/nomos-deploy/src .
+            rm -rf /tmp/nomos-deploy
+            docker build -t nomos:latest .
+            docker compose down
+            docker compose up -d
+            sleep 5
+            docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
+            echo "Deploy successful"
+
+  github-release:
+    needs: [core, verify, deploy-nomos]
+    if: ${{ always() && !cancelled() && needs.core.result == 'success' && (needs.deploy-nomos.result == 'success' || needs.deploy-nomos.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -106,8 +149,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.github-release.result == 'failure') }}
-    needs: [verify, core, github-release]
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.deploy-nomos.result == 'failure' || needs.github-release.result == 'failure') }}
+    needs: [verify, core, deploy-nomos, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -116,6 +159,7 @@ jobs:
       job_results: |
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
+        deploy-nomos=${{ needs.deploy-nomos.result }}
         github-release=${{ needs.github-release.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
