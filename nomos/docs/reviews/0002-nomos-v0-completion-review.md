@@ -48,12 +48,12 @@ Checked during review: `git ls-files nomos/package-lock.json` confirms it is tra
 
 **W1. `nomos` not wired as npm workspace — root `npm test` fails without manual install** — `package.json`
 
-Root `package.json` runs nomos tests via `node --test nomos/tests/*.test.js`, but does not list nomos as a workspace. Running `npm install` at root does not install `express` or `better-sqlite3`. This means `npm test` at root fails for nomos tests unless you separately run `cd nomos && npm install`.
+Root `package.json` runs nomos tests via `node --test nomos/tests/*.test.js`, but does not list nomos as a workspace. Running `npm ci` at root does not install `express` or `better-sqlite3`. This means `npm test` at root fails for nomos tests unless you separately run `cd nomos && npm ci`.
 
 The CI workflow handles this correctly (`nomos-core.yml:33-34` runs `cd nomos && npm ci`), so CI is not broken. But any developer running `npm test` at root will see all 11 nomos test files fail with `ERR_MODULE_NOT_FOUND`.
 
 Two options:
-1. Add `"workspaces": ["nomos"]` to root `package.json` so `npm install` installs nomos deps
+1. Add `"workspaces": ["nomos"]` to root `package.json` so `npm ci` installs nomos deps
 2. Accept the split and document it (e.g., in contributing guide or nomos README)
 
 **Impact**: Developer experience only; CI is unaffected.
