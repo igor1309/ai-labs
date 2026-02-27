@@ -57,6 +57,7 @@ Non-Goals and planner requirements §9:
 | 004   | No tag → base is initial repository commit             | 2     |
 | 004   | Release only if path changed AND version changed       | 2     |
 | 004   | Detection is idempotent                                | 2     |
+| 001   | Each release unit has its own version                  | 1     |
 | 001   | Version bump is explicit release intent signal         | 2     |
 | 003   | Tag format `<basename>_v<version>`                     | 3     |
 | 003   | Tag lookup uses glob `<basename>_v*`                   | 3     |
@@ -68,6 +69,7 @@ Non-Goals and planner requirements §9:
 | 006   | Docker-producing units publish `<git-sha>` image tag   | 4     |
 | 006   | Image version matches canonical semver                 | 4     |
 | 006   | Policy applies only to Docker-producing units          | 4     |
+| 006   | Manifest records Docker-producing status per unit      | 1     |
 | 006   | Git tag corresponds to `<basename>_v<version>`         | 4     |
 | 000   | Deterministic, idempotent releases                     | 5     |
 | 000   | CI enforces invariants strictly                        | 5     |
@@ -80,7 +82,7 @@ Non-Goals and planner requirements §9:
 
 ADR-005 (discovery, manifest, drift), ADR-002 (canonical metadata,
 mutual exclusion, semver), ADR-003 (basename uniqueness, no underscores,
-leaf-name rule).
+leaf-name rule), ADR-006 (Docker-producing status in manifest).
 
 ### Invariants established
 
@@ -91,7 +93,8 @@ checks:
     eligible for release-unit discovery.
 2.  A committed manifest (`release-units.toml`) lists every discovered
     unit with its root path, basename, canonical metadata type
-    (`package.json` or `release.toml`), and current version.
+    (`package.json` or `release.toml`), current version, and whether
+    the unit is a Docker-producing unit.
 3.  The manifest is the output of a deterministic generator that reads
     the configuration and scans the repository.
 4.  Each listed unit contains exactly one canonical metadata file.
@@ -101,6 +104,7 @@ checks:
 7.  All basenames are globally unique across units.
 8.  No basename contains an underscore.
 9.  Every canonical version is valid semver.
+10. Each unit records whether it is a Docker-producing unit.
 
 ### Acceptance criteria (observable outcomes)
 
@@ -171,16 +175,10 @@ checks:
     the initial repository commit. If the unit's path contains changes
     (it will, since the unit was added after initial commit) and the
     version is set, a release is detected.
--   **Version change without path change**: a version bump in the
-    metadata file without any other file changes under the unit root
-    does not trigger release (the metadata file itself is under the unit
-    root, so this scenario means only the metadata file changed — the
-    executor must define whether the metadata file counts as a "path
-    change." Per ADR-004, files under unit root includes the metadata
-    file, so a version bump alone _does_ constitute a file change. The
-    invariant therefore becomes: version change without path change is
-    only possible if the metadata file lives outside the unit root,
-    which the architecture prohibits. Detection correctly triggers).
+-   **Version change without path change**: the metadata file resides
+    under the unit root, so a version-only bump constitutes a path
+    change. This scenario is architecturally impossible and is listed
+    for completeness. Detection correctly triggers.
 -   **Path change without version change**: files changed but version
     unchanged → no release. This is the guard against accidental
     releases.
@@ -219,9 +217,10 @@ checks:
 4.  Tags are created only on `trunk`.
 5.  Attempting to create a release tag from a non-trunk ref is rejected.
 6.  No tag is created if detection did not signal a release.
-7.  The existing `v*` tag namespace (used by the legacy Oracle release
-    workflow) is migrated or coexists without conflict — the executor
-    must ensure the transition does not break existing tag references.
+7.  **Transition concern (not ADR-derived):** The existing `v*` tag
+    namespace (used by the legacy Oracle release workflow) is migrated
+    or coexists without conflict — the executor must ensure the
+    transition does not break existing tag references.
 
 ### Acceptance criteria (observable outcomes)
 
@@ -230,7 +229,8 @@ checks:
 -   Tag version equals the canonical version from the unit metadata.
 -   Release from a non-trunk branch is rejected.
 -   No spurious tags are created (detection-gated).
--   Legacy `v*` tags are not broken or orphaned by the transition.
+-   **(Transition concern)** Legacy `v*` tags are not broken or orphaned
+    by the transition.
 
 ### Edge cases addressed
 
@@ -285,8 +285,8 @@ checks:
 ### Applicability
 
 Based on current repository state, `nomos` is the only Docker-producing
-unit. The executor must ensure the manifest (Phase 1) captures which
-units produce Docker images, so this phase applies conditionally.
+unit. The manifest (Phase 1, invariant 10) records Docker-producing
+status per unit, so this phase applies only to units marked accordingly.
 
 ### Phase completion criteria
 
