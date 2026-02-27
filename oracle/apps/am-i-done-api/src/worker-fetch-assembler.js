@@ -2,16 +2,16 @@ import { createProfessionNormalizer } from "../../../packages/profession-normali
 import { createProfessionOutlookService } from "../../../packages/profession-outlook/src/profession-outlook.js"
 import { createAnalyticsEngineTelemetry, createNoopAnalyticsEngineTelemetry } from "../../../packages/worker-api/src/analytics-engine-telemetry.js"
 import { createCloudflareKvJsonCacheAdapter } from "../../../packages/worker-api/src/cloudflare-kv-json-cache-adapter.js"
-import { createOpenRouterNormalizerModelClient } from "../../../packages/worker-api/src/openrouter-normalizer-model-client-adapter.js"
-import { createOpenRouterOutlookModelClient } from "../../../packages/worker-api/src/openrouter-outlook-model-client-adapter.js"
+import { createLlmNormalizerModelClient } from "../../../packages/worker-api/src/llm-normalizer-model-client-adapter.js"
+import { createLlmOutlookModelClient } from "../../../packages/worker-api/src/llm-outlook-model-client-adapter.js"
 import { createPopularityCountersStore } from "../../../packages/worker-api/src/popularity-counters-store.js"
 import { createPopularityTracker } from "../../../packages/worker-api/src/popularity-tracker.js"
 import { createRawInputCountersStore } from "../../../packages/worker-api/src/raw-input-counters-store.js"
 import { requestGuard } from "../../../packages/worker-api/src/request-guard.js"
 import { createWorkerApiEntrypointRouter, createWorkerFetchHandler } from "../../../packages/worker-api/src/worker-api.js"
 
-const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai"
-const DEFAULT_OPENROUTER_TIMEOUT_MS = 10000
+const DEFAULT_LLM_BASE_URL = "https://nomos.enoa.ai"
+const DEFAULT_LLM_TIMEOUT_MS = 10000
 const DEFAULT_PROMPT_VERSION = "2"
 const VALID_ENVIRONMENTS = new Set(["prod", "preview", "dev"])
 
@@ -43,7 +43,7 @@ export function makeWorkerFetch(env, {
     makeProfessionNormalizer: ({ llmCallAccumulator, requestId, schemaVersion }) => createProfessionNormalizer({
       cache: normalizerCache,
       cacheVersion: schemaVersion === "2" ? "2" : "1",
-      modelClient: createConfiguredOpenRouterNormalizerModelClient({
+      modelClient: createConfiguredLlmNormalizerModelClient({
         config,
         httpClient,
         llmCallAccumulator,
@@ -54,7 +54,7 @@ export function makeWorkerFetch(env, {
     }),
     makeProfessionOutlookService: ({ llmCallAccumulator, requestId }) => createProfessionOutlookService({
       cache: outlookCache,
-      modelClient: createConfiguredOpenRouterOutlookModelClient({
+      modelClient: createConfiguredLlmOutlookModelClient({
         config,
         httpClient,
         llmCallAccumulator,
@@ -84,7 +84,7 @@ function defaultRequestIdGenerator() {
 function parseTimeout(value) {
   const parsed = Number.parseInt(value ?? "", 10)
 
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_OPENROUTER_TIMEOUT_MS
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_LLM_TIMEOUT_MS
 }
 
 function requireBinding(env, bindingName) {
@@ -94,21 +94,21 @@ function requireBinding(env, bindingName) {
 }
 
 function resolveConfig(env) {
-  const openRouterBaseUrl = resolveOptionalStringBinding(
+  const llmBaseUrl = resolveOptionalStringBinding(
     env,
-    "OPENROUTER_BASE_URL",
-    DEFAULT_OPENROUTER_BASE_URL
+    "LLM_BASE_URL",
+    DEFAULT_LLM_BASE_URL
   )
-  validateAbsoluteUrlBinding(openRouterBaseUrl, "OPENROUTER_BASE_URL")
+  validateAbsoluteUrlBinding(llmBaseUrl, "LLM_BASE_URL")
 
   return {
     environment: resolveEnvironment(env),
-    openRouterApiKey: resolveOpenRouterApiKey(env),
+    llmApiKey: resolveLlmApiKey(env),
     normalizerModel: resolveRequiredStringBinding(env, "NORMALIZER_MODEL"),
-    openRouterBaseUrl,
+    llmBaseUrl,
     outlookModel: resolveRequiredStringBinding(env, "OUTLOOK_MODEL"),
     promptVersion: typeof env.PROMPT_VERSION === "string" && env.PROMPT_VERSION.trim() !== "" ? env.PROMPT_VERSION : DEFAULT_PROMPT_VERSION,
-    timeoutMs: parseTimeout(env.OPENROUTER_TIMEOUT_MS)
+    timeoutMs: parseTimeout(env.LLM_TIMEOUT_MS)
   }
 }
 
@@ -122,10 +122,10 @@ function resolveEnvironment(env) {
   return environment
 }
 
-function resolveOpenRouterApiKey(env) {
-  requireBinding(env, "OPENROUTER_API_KEY")
-  requireNonEmptyStringBinding(env, "OPENROUTER_API_KEY")
-  return env.OPENROUTER_API_KEY
+function resolveLlmApiKey(env) {
+  requireBinding(env, "LLM_API_KEY")
+  requireNonEmptyStringBinding(env, "LLM_API_KEY")
+  return env.LLM_API_KEY
 }
 
 function requireNonEmptyStringBinding(env, bindingName) {
@@ -182,7 +182,7 @@ function resolveTelemetry({ env, environment, waitUntil }) {
   })
 }
 
-function createConfiguredOpenRouterNormalizerModelClient({
+function createConfiguredLlmNormalizerModelClient({
   config,
   httpClient,
   llmCallAccumulator,
@@ -190,9 +190,9 @@ function createConfiguredOpenRouterNormalizerModelClient({
   schemaVersion,
   telemetry
 }) {
-  return createOpenRouterNormalizerModelClient({
-    apiKey: config.openRouterApiKey,
-    baseUrl: config.openRouterBaseUrl,
+  return createLlmNormalizerModelClient({
+    apiKey: config.llmApiKey,
+    baseUrl: config.llmBaseUrl,
     httpClient,
     llmCallAccumulator,
     model: config.normalizerModel,
@@ -203,10 +203,10 @@ function createConfiguredOpenRouterNormalizerModelClient({
   })
 }
 
-function createConfiguredOpenRouterOutlookModelClient({ config, httpClient, llmCallAccumulator, requestId, telemetry }) {
-  return createOpenRouterOutlookModelClient({
-    apiKey: config.openRouterApiKey,
-    baseUrl: config.openRouterBaseUrl,
+function createConfiguredLlmOutlookModelClient({ config, httpClient, llmCallAccumulator, requestId, telemetry }) {
+  return createLlmOutlookModelClient({
+    apiKey: config.llmApiKey,
+    baseUrl: config.llmBaseUrl,
     httpClient,
     llmCallAccumulator,
     model: config.outlookModel,

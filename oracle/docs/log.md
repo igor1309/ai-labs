@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-28
+- Wire Oracle LLM calls through Nomos proxy: rename adapters and env vars from openrouter to llm, change default base URL to nomos.enoa.ai, update CI smoke to route through Nomos.
+
 ## 2026-02-23
 - Increase web app default request timeout to `60000ms` to align browser-side abort behavior with Worker OpenRouter timeout.
 - Increase Worker OpenRouter timeout to `60000ms` in `wrangler.toml` after observed request cancellations/timeouts during live tailing.

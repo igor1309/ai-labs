@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterRequest", async () => {
+test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onLlmRequest", async () => {
   const adapterModule = await loadAdapterModule()
   const resourcesModule = await loadResourcesModule()
   const httpClientSpy = makeHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     requestId: "request-id",
@@ -18,7 +18,7 @@ test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterReq
 
   await modelClient?.generate(makeOutlookInput())
 
-  assert.deepEqual(httpClientSpy.calls, [makeOpenRouterRequestCall({
+  assert.deepEqual(httpClientSpy.calls, [makeLlmRequestCall({
     model: "openrouter/model-id",
     systemPrompt: resourcesModule?.systemPrompts?.outlook?.en,
     timeoutMs: 4500,
@@ -26,20 +26,20 @@ test("test_generate_shouldSendAuthHeadersAndModelMessagesPayload_onOpenRouterReq
   })])
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_onMissingApiKey", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowMissingDependencyError_onMissingApiKey", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     httpClient: makeHttpClientSpy().httpClient,
     model: "openrouter/model-id",
     timeoutMs: 1000
   }), { message: "Missing required dependency: apiKey" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onEmptyApiKey", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowInvalidDependencyError_onEmptyApiKey", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "   ",
     httpClient: makeHttpClientSpy().httpClient,
     model: "openrouter/model-id",
@@ -47,10 +47,10 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   }), { message: "Invalid dependency: apiKey" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onNonStringApiKey", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowInvalidDependencyError_onNonStringApiKey", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: 1234,
     httpClient: makeHttpClientSpy().httpClient,
     model: "openrouter/model-id",
@@ -58,10 +58,10 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   }), { message: "Invalid dependency: apiKey" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidHttpClient", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidHttpClient", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: {},
     model: "openrouter/model-id",
@@ -69,20 +69,20 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   }), { message: "Invalid dependency: httpClient" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowMissingDependencyError_onMissingModel", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowMissingDependencyError_onMissingModel", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: makeHttpClientSpy().httpClient,
     timeoutMs: 1000
   }), { message: "Missing required dependency: model" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onEmptyModel", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowInvalidDependencyError_onEmptyModel", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: makeHttpClientSpy().httpClient,
     model: "   ",
@@ -90,10 +90,10 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   }), { message: "Invalid dependency: model" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onNonStringModel", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowInvalidDependencyError_onNonStringModel", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: makeHttpClientSpy().httpClient,
     model: {},
@@ -101,10 +101,10 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
   }), { message: "Invalid dependency: model" })
 })
 
-test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidTimeoutMs", async () => {
+test("test_createLlmOutlookModelClient_shouldThrowInvalidDependencyError_onInvalidTimeoutMs", async () => {
   const adapterModule = await loadAdapterModule()
 
-  assert.throws(() => adapterModule?.createOpenRouterOutlookModelClient?.({
+  assert.throws(() => adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: makeHttpClientSpy().httpClient,
     model: "openrouter/model-id",
@@ -115,7 +115,7 @@ test("test_createOpenRouterOutlookModelClient_shouldThrowInvalidDependencyError_
 test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAndHints_onUserPrompt", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -144,7 +144,7 @@ test("test_generate_shouldIncludeCanonicalProfessionLocaleSchemaPromptVersionAnd
 test("test_generate_shouldSelectRussianSystemPrompt_onLocaleRu", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -164,7 +164,7 @@ test("test_generate_shouldSelectRussianSystemPrompt_onLocaleRu", async () => {
 test("test_generate_shouldIncludeLocaleInUserPrompt_onLocaleRu", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -184,7 +184,7 @@ test("test_generate_shouldIncludeLocaleInUserPrompt_onLocaleRu", async () => {
 test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPrompt", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -208,7 +208,7 @@ test("test_generate_shouldIncludeJsonOnlySchemaAndStableSectionsRules_onSystemPr
 test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseBody: makeOpenRouterSuccessPayload({
+    responseBody: makeLlmSuccessPayload({
       assumptions: ["steady demand"],
       confidence: {
         label: "medium",
@@ -222,7 +222,7 @@ test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () =>
       whatToDoNext: ["strengthen systems thinking"]
     })
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -235,9 +235,9 @@ test("test_generate_shouldThrow_onMissingRequiredOutlookAnswerKeys", async () =>
 test("test_generate_shouldThrow_onNonJsonModelOutput", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseBody: makeOpenRouterRawPayload("not-json")
+    responseBody: makeLlmRawPayload("not-json")
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -253,9 +253,9 @@ test("test_generate_shouldReturnParsedOutlookAnswer_onValidJsonModelOutput", asy
   })
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseBody: makeOpenRouterSuccessPayload(expectedAnswer)
+    responseBody: makeLlmSuccessPayload(expectedAnswer)
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -270,7 +270,7 @@ test("test_generate_shouldReturnParsedOutlookAnswer_onValidJsonModelOutput", asy
 test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseBody: makeOpenRouterSuccessPayload({
+    responseBody: makeLlmSuccessPayload({
       ...makeOutlookAnswer(),
       confidence: {
         label: "certain",
@@ -278,7 +278,7 @@ test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () =>
       }
     })
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -291,7 +291,7 @@ test("test_generate_shouldThrow_onConfidenceLabelOutsideAllowedSet", async () =>
 test("test_generate_shouldNormalizeConfidenceLabel_onCaseVariantLabel", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseBody: makeOpenRouterSuccessPayload({
+    responseBody: makeLlmSuccessPayload({
       ...makeOutlookAnswer(),
       confidence: {
         label: "Medium",
@@ -299,7 +299,7 @@ test("test_generate_shouldNormalizeConfidenceLabel_onCaseVariantLabel", async ()
       }
     })
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -314,7 +314,7 @@ test("test_generate_shouldNormalizeConfidenceLabel_onCaseVariantLabel", async ()
 test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
-    responseBody: makeOpenRouterSuccessPayload({
+    responseBody: makeLlmSuccessPayload({
       ...makeOutlookAnswer(),
       assumptions: ["steady demand", 1],
       keyRisks: ["skills mismatch", 1],
@@ -325,7 +325,7 @@ test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async ()
       whatToDoNext: ["strengthen systems thinking", 1]
     })
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -335,7 +335,7 @@ test("test_generate_shouldThrow_onInvalidTimeHorizonAndListFieldTypes", async ()
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()))
 })
 
-test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
+test("test_generate_shouldThrowLlmRequestFailedError_onNonOkResponseWithErrorMessage", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
     responseBody: {
@@ -346,7 +346,7 @@ test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithE
     responseOk: false,
     responseStatus: 401
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -354,11 +354,11 @@ test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithE
   })
 
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()), {
-    message: "OpenRouter request failed (401): Unauthorized"
+    message: "LLM request failed (401): Unauthorized"
   })
 })
 
-test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
+test("test_generate_shouldThrowLlmRequestFailedError_onNonOkResponseWithoutErrorMessage", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy({
     responseBody: {
@@ -367,7 +367,7 @@ test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWitho
     responseOk: false,
     responseStatus: 400
   })
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -375,14 +375,14 @@ test("test_generate_shouldThrowOpenRouterRequestFailedError_onNonOkResponseWitho
   })
 
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()), {
-    message: "OpenRouter request failed (400)"
+    message: "LLM request failed (400)"
   })
 })
 
-test("test_generate_shouldRequestJsonObjectResponseFormat_onOpenRouterRequest", async () => {
+test("test_generate_shouldRequestJsonObjectResponseFormat_onLlmRequest", async () => {
   const adapterModule = await loadAdapterModule()
   const httpClientSpy = makeHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: httpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -399,7 +399,7 @@ test("test_generate_shouldRequestJsonObjectResponseFormat_onOpenRouterRequest", 
 test("test_generate_shouldAbortRequestAndThrowTimeoutError_onHttpClientTimeout", async () => {
   const adapterModule = await loadAdapterModule()
   const hangingHttpClientSpy = makeHangingHttpClientSpy()
-  const modelClient = adapterModule?.createOpenRouterOutlookModelClient?.({
+  const modelClient = adapterModule?.createLlmOutlookModelClient?.({
     apiKey: "openrouter-api-key",
     httpClient: hangingHttpClientSpy.httpClient,
     model: "openrouter/model-id",
@@ -407,7 +407,7 @@ test("test_generate_shouldAbortRequestAndThrowTimeoutError_onHttpClientTimeout",
   })
 
   await assert.rejects(() => modelClient?.generate(makeOutlookInput()), {
-    message: "OpenRouter request timed out"
+    message: "LLM request timed out"
   })
   assert.equal(hangingHttpClientSpy.calls.length, 1)
   assert.equal(typeof hangingHttpClientSpy.calls[0].signal?.addEventListener, "function")
@@ -416,7 +416,7 @@ test("test_generate_shouldAbortRequestAndThrowTimeoutError_onHttpClientTimeout",
 
 async function loadAdapterModule() {
   try {
-    return await import("../src/openrouter-outlook-model-client-adapter.js")
+    return await import("../src/llm-outlook-model-client-adapter.js")
   } catch {
     return null
   }
@@ -430,7 +430,7 @@ async function loadResourcesModule() {
   }
 }
 
-function makeHttpClientSpy({ responseBody = makeOpenRouterSuccessPayload(), responseOk = true, responseStatus = 200 } = {}) {
+function makeHttpClientSpy({ responseBody = makeLlmSuccessPayload(), responseOk = true, responseStatus = 200 } = {}) {
   const calls = []
 
   return {
@@ -507,11 +507,11 @@ function makeOutlookAnswer({ headline = "Outlook remains resilient." } = {}) {
   }
 }
 
-function makeOpenRouterSuccessPayload(answer = makeOutlookAnswer()) {
-  return makeOpenRouterRawPayload(JSON.stringify(answer))
+function makeLlmSuccessPayload(answer = makeOutlookAnswer()) {
+  return makeLlmRawPayload(JSON.stringify(answer))
 }
 
-function makeOpenRouterRawPayload(content) {
+function makeLlmRawPayload(content) {
   return {
     choices: [
       {
@@ -523,7 +523,7 @@ function makeOpenRouterRawPayload(content) {
   }
 }
 
-function makeOpenRouterRequestCall({ model, systemPrompt, timeoutMs, userPromptContent }) {
+function makeLlmRequestCall({ model, systemPrompt, timeoutMs, userPromptContent }) {
   return {
     body: {
       messages: [
@@ -541,6 +541,6 @@ function makeOpenRouterRequestCall({ model, systemPrompt, timeoutMs, userPromptC
     },
     method: "POST",
     timeoutMs,
-    url: "https://openrouter.ai/api/v1/chat/completions"
+    url: "https://nomos.enoa.ai/v1/chat/completions"
   }
 }

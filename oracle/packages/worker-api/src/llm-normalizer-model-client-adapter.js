@@ -1,12 +1,13 @@
 import { systemPrompts } from "./generated/localized-resources.generated.js"
 
-export function createOpenRouterOutlookModelClient({
+export function createLlmNormalizerModelClient({
   apiKey,
-  baseUrl = "https://openrouter.ai",
+  baseUrl = "https://nomos.enoa.ai",
   httpClient = fetch,
   llmCallAccumulator,
   model,
   requestId,
+  schemaVersion,
   telemetry,
   timeoutMs
 } = {}) {
@@ -30,11 +31,10 @@ export function createOpenRouterOutlookModelClient({
   }
 
   return {
-    async generate(input) {
+    async normalize(input) {
       const startTimeMs = Date.now()
       const locale = typeof input?.locale === "string" ? input.locale : ""
-      const schemaVersion = typeof input?.schemaVersion === "string" ? input.schemaVersion : ""
-      const promptVersion = typeof input?.promptVersion === "string" ? input.promptVersion : ""
+      const telemetrySchemaVersion = typeof schemaVersion === "string" ? schemaVersion : ""
       let httpStatus = 0
       let errorType = ""
       let status = "error"
@@ -48,7 +48,7 @@ export function createOpenRouterOutlookModelClient({
       const { cancelTimeout, signal } = createTimeoutSignal(timeoutMs)
 
       try {
-        const response = await httpClient(`${baseUrl}/api/v1/chat/completions`, {
+        const response = await httpClient(`${baseUrl}/v1/chat/completions`, {
           body: JSON.stringify({
             messages: [
               {
@@ -56,7 +56,10 @@ export function createOpenRouterOutlookModelClient({
                 role: "system"
               },
               {
-                content: JSON.stringify(input),
+                content: JSON.stringify({
+                  locale: input.locale,
+                  profession: input.profession
+                }),
                 role: "user"
               }
             ],
@@ -89,22 +92,22 @@ export function createOpenRouterOutlookModelClient({
 
         if (response?.ok === false) {
           errorType = "http_error"
-          throw new Error(formatOpenRouterHttpError(response?.status, payload))
+          throw new Error(formatLlmHttpError(response?.status, payload))
         }
 
-        const parsed = normalizeOutlookAnswer(parseModelResponse(payload))
-        validateOutlookAnswer(parsed)
+        const parsed = parseModelResponse(payload)
+        validateResult(parsed)
 
         status = "ok"
         return parsed
       } catch (error) {
         if (signal?.aborted) {
           errorType = "timeout"
-          throw new Error("OpenRouter request timed out")
+          throw new Error("LLM request timed out")
         }
 
         if (errorType === "") {
-          errorType = classifyOpenRouterErrorType(error)
+          errorType = classifyLlmErrorType(error)
         }
 
         throw error
@@ -112,7 +115,7 @@ export function createOpenRouterOutlookModelClient({
         cancelTimeout()
 
         emitLlmCallTelemetry({
-          client: "outlook",
+          client: "normalizer",
           completionTokens,
           costMicrosUsd,
           costSource,
@@ -122,9 +125,9 @@ export function createOpenRouterOutlookModelClient({
           locale,
           model,
           promptTokens,
-          promptVersion,
+          promptVersion: undefined,
           requestId,
-          schemaVersion,
+          schemaVersion: telemetrySchemaVersion,
           status,
           telemetry,
           totalTokens,
@@ -144,10 +147,17 @@ export function createOpenRouterOutlookModelClient({
 }
 
 function resolveSystemPrompt(locale) {
-  return locale === "ru" ? systemPrompts.outlook.ru : systemPrompts.outlook.en
+  return locale === "ru" ? systemPrompts.normalizer.ru : systemPrompts.normalizer.en
 }
 
 function createTimeoutSignal(timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return {
+      cancelTimeout() {},
+      signal: undefined
+    }
+  }
+
   const timeoutController = new AbortController()
   const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
 
@@ -163,92 +173,55 @@ function parseModelResponse(payload) {
   const content = payload?.choices?.[0]?.message?.content
 
   if (typeof content !== "string") {
-    throw new Error("Invalid OpenRouter response")
+    throw new Error("Invalid LLM response")
   }
 
   try {
     return JSON.parse(content)
   } catch {
-    throw new Error("Invalid JSON response from OpenRouter")
+    throw new Error("Invalid JSON response from LLM")
   }
 }
 
 async function readJsonResponse(response) {
   if (typeof response?.json !== "function") {
-    throw new Error("Invalid OpenRouter response")
+    throw new Error("Invalid LLM response")
   }
 
   try {
     return await response.json()
   } catch {
-    throw new Error("Invalid OpenRouter response")
+    throw new Error("Invalid LLM response")
   }
 }
 
-function formatOpenRouterHttpError(status, payload) {
+function formatLlmHttpError(status, payload) {
   const details = typeof payload?.error?.message === "string" ? `: ${payload.error.message}` : ""
   const statusText = Number.isFinite(status) ? `${status}` : "unknown status"
 
-  return `OpenRouter request failed (${statusText})${details}`
+  return `LLM request failed (${statusText})${details}`
 }
 
-function validateOutlookAnswer(answer) {
-  if (typeof answer?.headline !== "string") {
-    throw new Error("Invalid outlook answer: headline")
-  }
-  if (typeof answer?.timeHorizon?.label !== "string" || typeof answer?.timeHorizon?.explanation !== "string") {
-    throw new Error("Invalid outlook answer: timeHorizon")
-  }
-  if (!["low", "medium", "high"].includes(answer?.confidence?.label) || typeof answer?.confidence?.rationale !== "string") {
-    throw new Error("Invalid outlook answer: confidence")
-  }
-  if (!areAllStrings(answer?.keyRisks) || !areAllStrings(answer?.whatToDoNext) || !areAllStrings(answer?.assumptions)) {
-    throw new Error("Invalid outlook answer: array fields")
-  }
-}
-
-function normalizeOutlookAnswer(answer) {
-  if (answer === null || typeof answer !== "object") {
-    return answer
+function validateResult(value) {
+  if (typeof value?.needsClarification !== "boolean") {
+    throw new Error("Invalid normalizer result: needsClarification")
   }
 
-  const confidence = answer.confidence
-  if (confidence === null || typeof confidence !== "object") {
-    return answer
-  }
-
-  const normalizedConfidenceLabel = normalizeConfidenceLabel(confidence.label)
-  if (normalizedConfidenceLabel === null) {
-    return answer
-  }
-
-  return {
-    ...answer,
-    confidence: {
-      ...confidence,
-      label: normalizedConfidenceLabel
+  if (value?.needsClarification === true) {
+    if (
+      typeof value?.clarification?.message !== "string" ||
+      !Array.isArray(value?.clarification?.suggestions) ||
+      !value.clarification.suggestions.every((suggestion) => typeof suggestion === "string")
+    ) {
+      throw new Error("Invalid normalizer clarification result")
     }
-  }
-}
 
-function normalizeConfidenceLabel(label) {
-  if (typeof label !== "string") {
-    return null
+    return
   }
 
-  const normalized = label.trim().toLowerCase()
-  if (normalized === "low" || normalized === "medium" || normalized === "high") {
-    return normalized
+  if (typeof value?.canonicalProfession !== "string") {
+    throw new Error("Invalid normalizer canonical result")
   }
-  if (normalized === "moderate") {
-    return "medium"
-  }
-
-  return null
-}
-
-function areAllStrings(values) {
-  return Array.isArray(values) && values.every((value) => typeof value === "string")
 }
 
 function isNonEmptyString(value) {
@@ -345,22 +318,22 @@ function toNonNegativeInteger(value) {
   return Math.floor(parsed)
 }
 
-function classifyOpenRouterErrorType(error) {
+function classifyLlmErrorType(error) {
   const message = typeof error?.message === "string" ? error.message : ""
 
-  if (message.includes("OpenRouter request failed")) {
+  if (message.includes("LLM request failed")) {
     return "http_error"
   }
 
-  if (message === "Invalid JSON response from OpenRouter") {
+  if (message === "Invalid JSON response from LLM") {
     return "invalid_json"
   }
 
-  if (message.startsWith("Invalid outlook answer:")) {
+  if (message.startsWith("Invalid normalizer ")) {
     return "invalid_schema"
   }
 
-  if (message === "Invalid OpenRouter response") {
+  if (message === "Invalid LLM response") {
     return "invalid_response"
   }
 

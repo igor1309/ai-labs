@@ -98,9 +98,9 @@ jobs:
     if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
-      openrouter_model: ${{ vars.OPENROUTER_CI_MODEL }}
+      llm_model: ${{ vars.OPENROUTER_CI_MODEL }}
     secrets:
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      LLM_API_KEY: ${{ secrets.NOMOS_ORACLE_TOKEN }}
 
   notify:
     if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.loki-core.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
