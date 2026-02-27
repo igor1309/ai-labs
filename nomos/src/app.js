@@ -41,8 +41,11 @@ export function createApp({ logger, db, liveRunner = null, stubRunner = null, st
   }
 
   app.use((err, _req, res, _next) => {
-    logger.error("unhandled error", { error: err.message });
-    res.status(500).json({ error: "internal server error" });
+    const status = err.status || err.statusCode || 500;
+    logger.error("unhandled error", { error: err.message, status });
+    res.status(status).json({
+      error: status < 500 ? err.message : "internal server error",
+    });
   });
 
   return app;
