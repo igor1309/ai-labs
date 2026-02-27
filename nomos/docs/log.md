@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-27
+Fix test review findings: replace tautological hashToken test with hardcoded digest, add malformed JSON body test, add missing Content-Type test, add LiveRunner timeout tests (execute + stream). 142 tests, 0 fail.
 Close V0 completion review findings: add safeguards env vars to .env.example, update plan status to implemented and move to plans/implemented/, add repo-level log entry, fix misleading stub-runner test, extract shared test helpers.
 
 ## 2026-02-26
