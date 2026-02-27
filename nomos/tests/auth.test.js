@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { rmSync } from "node:fs";
 import test from "node:test";
 import express from "express";
@@ -8,10 +7,9 @@ import { stubLogger, setupTestDb, insertProject, listen } from "./helpers.js";
 
 // --- hashToken ---
 
-test("hashToken returns consistent SHA-256 hex digest", () => {
+test("hashToken returns expected SHA-256 hex digest", () => {
   const hash = hashToken("my-secret-token");
-  const expected = createHash("sha256").update("my-secret-token").digest("hex");
-  assert.equal(hash, expected);
+  assert.equal(hash, "ea5add57437cbf20af59034d7ed17968dcc56767b41965fcc5b376d45db8b4a3");
   assert.equal(hash.length, 64);
 });
 

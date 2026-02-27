@@ -284,3 +284,56 @@ test("executeStream yields end on stream without [DONE]", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+// --- timeout ---
+
+test("execute rejects when vendor exceeds timeout", async () => {
+  const server = await fakeVendor((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      // Never respond — let the timeout fire
+    });
+  });
+
+  try {
+    const { port } = server.address();
+    const runner = createLiveRunner({
+      baseUrl: `http://127.0.0.1:${port}`,
+      timeoutMs: 50,
+    });
+
+    await assert.rejects(
+      () => runner.execute({ model: "gpt-4", messages: [] }),
+      (err) => err.name === "TimeoutError" || err.name === "AbortError"
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("executeStream rejects when vendor exceeds timeout", async () => {
+  const server = await fakeVendor((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      // Never respond — let the timeout fire
+    });
+  });
+
+  try {
+    const { port } = server.address();
+    const runner = createLiveRunner({
+      baseUrl: `http://127.0.0.1:${port}`,
+      timeoutMs: 50,
+    });
+
+    await assert.rejects(async () => {
+      for await (const _ of runner.executeStream({ model: "gpt-4", messages: [] })) {
+        // consume
+      }
+    }, (err) => err.name === "TimeoutError" || err.name === "AbortError");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
