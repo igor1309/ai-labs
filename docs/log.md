@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-28
+Oracle: wire LLM calls through Nomos proxy. See `oracle/docs/log.md`.
+
 ## 2026-02-27
 Nomos: add Telegram deploy success notification. See `nomos/docs/log.md`.
 Nomos: add deploy smoke checks (version in /health, real LLM call). See `nomos/docs/log.md`.

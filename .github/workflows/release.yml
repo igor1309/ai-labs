@@ -98,7 +98,7 @@ jobs:
     timeout-minutes: 10
     # Requires:
     # - vars.OPENROUTER_CI_MODEL (cheap model for the smoke gate)
-    # - secrets.OPENROUTER_API_KEY
+    # - secrets.NOMOS_ORACLE_TOKEN
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -116,9 +116,9 @@ jobs:
 
       - name: Run real-provider smoke
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM_API_KEY: ${{ secrets.NOMOS_ORACLE_TOKEN }}
           NORMALIZER_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
-          OPENROUTER_TIMEOUT_MS: "180000"
+          LLM_TIMEOUT_MS: "180000"
           OUTLOOK_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js

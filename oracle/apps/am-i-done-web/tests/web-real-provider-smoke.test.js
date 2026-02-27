@@ -11,7 +11,7 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     return
   }
 
-  const openRouterApiKey = resolveOpenRouterApiKey(process.env.OPENROUTER_API_KEY)
+  const llmApiKey = resolveLlmApiKey(process.env.LLM_API_KEY)
   const normalizerModel = resolveRequiredModel(process.env.NORMALIZER_MODEL, "NORMALIZER_MODEL")
   const outlookModel = resolveRequiredModel(process.env.OUTLOOK_MODEL, "OUTLOOK_MODEL")
   const workerFetch = makeWorkerFetch({
@@ -19,9 +19,9 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     ENVIRONMENT: "dev",
     NORMALIZER_CACHE: makeKvNamespaceSpy(),
     NORMALIZER_MODEL: normalizerModel,
-    OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL,
-    OPENROUTER_API_KEY: openRouterApiKey,
-    OPENROUTER_TIMEOUT_MS: process.env.OPENROUTER_TIMEOUT_MS,
+    LLM_BASE_URL: process.env.LLM_BASE_URL,
+    LLM_API_KEY: llmApiKey,
+    LLM_TIMEOUT_MS: process.env.LLM_TIMEOUT_MS,
     OUTLOOK_CACHE: makeKvNamespaceSpy(),
     OUTLOOK_MODEL: outlookModel,
     PROMPT_VERSION: "2"
@@ -90,9 +90,9 @@ function makeKvNamespaceSpy() {
   }
 }
 
-function resolveOpenRouterApiKey(bindingValue) {
+function resolveLlmApiKey(bindingValue) {
   if (typeof bindingValue !== "string" || bindingValue.trim() === "") {
-    throw new Error("Missing required OPENROUTER_API_KEY for real-provider smoke checks.")
+    throw new Error("Missing required LLM_API_KEY for real-provider smoke checks.")
   }
 
   return bindingValue

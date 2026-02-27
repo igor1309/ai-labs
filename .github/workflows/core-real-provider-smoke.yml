@@ -7,17 +7,17 @@ on:
         description: "Git ref to checkout."
         required: false
         type: string
-      openrouter_model:
-        description: "OpenRouter model ID used for both NORMALIZER_MODEL and OUTLOOK_MODEL."
+      llm_model:
+        description: "LLM model ID used for both NORMALIZER_MODEL and OUTLOOK_MODEL."
         required: true
         type: string
-      openrouter_timeout_ms:
+      llm_timeout_ms:
         description: "Timeout for real-provider smoke calls."
         required: false
         default: "180000"
         type: string
     secrets:
-      OPENROUTER_API_KEY:
+      LLM_API_KEY:
         required: true
 
 permissions:
@@ -44,9 +44,9 @@ jobs:
 
       - name: Run real-provider smoke
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NORMALIZER_MODEL: ${{ inputs.openrouter_model }}
-          OPENROUTER_TIMEOUT_MS: ${{ inputs.openrouter_timeout_ms }}
-          OUTLOOK_MODEL: ${{ inputs.openrouter_model }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          NORMALIZER_MODEL: ${{ inputs.llm_model }}
+          LLM_TIMEOUT_MS: ${{ inputs.llm_timeout_ms }}
+          OUTLOOK_MODEL: ${{ inputs.llm_model }}
           RUN_REAL_PROVIDER_SMOKE: "1"
         run: ./scripts/run_silent.sh "real-provider-smoke" node --test oracle/apps/am-i-done-web/tests/web-real-provider-smoke.test.js

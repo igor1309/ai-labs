@@ -33,11 +33,11 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingEnvironmentBi
   })
 })
 
-test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingOpenRouterApiKeyBinding", async () => {
+test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingLlmApiKeyBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
 
-  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("OPENROUTER_API_KEY")), {
-    message: "Missing required binding: OPENROUTER_API_KEY"
+  assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnvWithout("LLM_API_KEY")), {
+    message: "Missing required binding: LLM_API_KEY"
   })
 })
 
@@ -67,9 +67,9 @@ test("test_makeWorkerFetch_shouldThrowMissingBindingError_onMissingTelemetryData
   })
 })
 
-test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlookRequest", async () => {
+test("test_fetch_shouldRouteOutlookAndWireKvD1AndLlmAdapters_onValidOutlookRequest", async () => {
   const assemblerModule = await loadAssemblerModule()
-  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const httpClientSpy = makeLlmHttpClientSpy()
   const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
   const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
   const d1DatabaseSpy = makeD1DatabaseSpy()
@@ -77,8 +77,8 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlo
     DB: d1DatabaseSpy.db,
     NORMALIZER_CACHE: normalizerCacheSpy.kv,
     NORMALIZER_MODEL: "openrouter/normalizer-model",
-    OPENROUTER_BASE_URL: "https://openrouter.custom",
-    OPENROUTER_TIMEOUT_MS: "1337",
+    LLM_BASE_URL: "https://llm.custom",
+    LLM_TIMEOUT_MS: "1337",
     OUTLOOK_CACHE: outlookCacheSpy.kv,
     OUTLOOK_MODEL: "openrouter/outlook-model",
     PROMPT_VERSION: "prompt-v7"
@@ -135,19 +135,19 @@ test("test_fetch_shouldRouteOutlookAndWireKvD1AndOpenRouterAdapters_onValidOutlo
     {
       model: "openrouter/normalizer-model",
       timeoutMs: 1337,
-      url: "https://openrouter.custom/api/v1/chat/completions"
+      url: "https://llm.custom/v1/chat/completions"
     },
     {
       model: "openrouter/outlook-model",
       timeoutMs: 1337,
-      url: "https://openrouter.custom/api/v1/chat/completions"
+      url: "https://llm.custom/v1/chat/completions"
     }
   ])
 })
 
 test("test_fetch_shouldIncrementRawAndCanonicalCounters_onOutlookCacheHit", async () => {
   const assemblerModule = await loadAssemblerModule()
-  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const httpClientSpy = makeLlmHttpClientSpy()
   const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeNormalizerResult()) })
   const outlookCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeOutlookAnswer()) })
   const d1DatabaseSpy = makeD1DatabaseSpy()
@@ -197,7 +197,7 @@ test("test_fetch_shouldIncrementRawAndCanonicalCounters_onOutlookCacheHit", asyn
 test("test_fetch_shouldEmitZeroLlmCalls_onOutlookCacheHitInProd", async () => {
   const assemblerModule = await loadAssemblerModule()
   const datasetSpy = makeAnalyticsEngineDatasetSpy()
-  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const httpClientSpy = makeLlmHttpClientSpy()
   const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeNormalizerResult()) })
   const outlookCacheSpy = makeKvNamespaceSpy({ getResult: JSON.stringify(makeOutlookAnswer()) })
   const d1DatabaseSpy = makeD1DatabaseSpy()
@@ -239,7 +239,7 @@ test("test_fetch_shouldEmitZeroLlmCalls_onOutlookCacheHitInProd", async () => {
 test("test_fetch_shouldEmitTwoLlmCallsAndCompleteTotals_onFullCacheMissWithProviderMetadata", async () => {
   const assemblerModule = await loadAssemblerModule()
   const datasetSpy = makeAnalyticsEngineDatasetSpy()
-  const httpClientSpy = makeOpenRouterHttpClientSpy({
+  const httpClientSpy = makeLlmHttpClientSpy({
     normalizerUsage: {
       completion_tokens: 20,
       cost: 0.000123,
@@ -296,7 +296,7 @@ test("test_fetch_shouldEmitTwoLlmCallsAndCompleteTotals_onFullCacheMissWithProvi
 test("test_fetch_shouldMarkTotalsPartial_onProviderUsageWithoutCost", async () => {
   const assemblerModule = await loadAssemblerModule()
   const datasetSpy = makeAnalyticsEngineDatasetSpy()
-  const httpClientSpy = makeOpenRouterHttpClientSpy({
+  const httpClientSpy = makeLlmHttpClientSpy({
     normalizerUsage: {
       completion_tokens: 20,
       prompt_tokens: 10,
@@ -347,7 +347,7 @@ test("test_fetch_shouldMarkTotalsPartial_onProviderUsageWithoutCost", async () =
 test("test_fetch_shouldMarkTotalsMissing_onMissingProviderMetadata", async () => {
   const assemblerModule = await loadAssemblerModule()
   const datasetSpy = makeAnalyticsEngineDatasetSpy()
-  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const httpClientSpy = makeLlmHttpClientSpy()
   const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
   const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
   const env = makeEnv({
@@ -387,7 +387,7 @@ test("test_fetch_shouldMarkTotalsMissing_onMissingProviderMetadata", async () =>
 test("test_fetch_shouldNotFailResponse_onTelemetryDatasetThrowing", async () => {
   const assemblerModule = await loadAssemblerModule()
   const datasetSpy = makeAnalyticsEngineDatasetSpy({ shouldThrow: true })
-  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const httpClientSpy = makeLlmHttpClientSpy()
   const normalizerCacheSpy = makeKvNamespaceSpy({ getResult: null })
   const outlookCacheSpy = makeKvNamespaceSpy({ getResult: null })
   const env = makeEnv({
@@ -422,7 +422,7 @@ test("test_makeWorkerFetch_shouldUseDefaultBaseUrlAndConfiguredModels_onBlankOpt
   const assemblerModule = await loadAssemblerModule()
   const calls = []
   const env = makeEnv({
-    OPENROUTER_BASE_URL: ""
+    LLM_BASE_URL: ""
   })
   const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
     httpClient: async (url, init) => {
@@ -480,21 +480,21 @@ test("test_makeWorkerFetch_shouldUseDefaultBaseUrlAndConfiguredModels_onBlankOpt
   assert.deepEqual(calls, [
     {
       model: "openai/gpt-5-nano",
-      url: "https://openrouter.ai/api/v1/chat/completions"
+      url: "https://nomos.enoa.ai/v1/chat/completions"
     },
     {
       model: "openai/gpt-5-nano",
-      url: "https://openrouter.ai/api/v1/chat/completions"
+      url: "https://nomos.enoa.ai/v1/chat/completions"
     }
   ])
 })
 
-test("test_makeWorkerFetch_shouldUseDefaultTimeout_onInvalidOpenRouterTimeoutBinding", async () => {
+test("test_makeWorkerFetch_shouldUseDefaultTimeout_onInvalidLlmTimeoutBinding", async () => {
   const assemblerModule = await loadAssemblerModule()
-  const httpClientSpy = makeOpenRouterHttpClientSpy()
+  const httpClientSpy = makeLlmHttpClientSpy()
   const env = makeEnv({
     NORMALIZER_MODEL: "openrouter/normalizer-model",
-    OPENROUTER_TIMEOUT_MS: "0",
+    LLM_TIMEOUT_MS: "0",
     OUTLOOK_MODEL: "openrouter/outlook-model"
   })
   const workerFetch = assemblerModule?.makeWorkerFetch?.(env, {
@@ -518,13 +518,13 @@ test("test_makeWorkerFetch_shouldUseDefaultTimeout_onInvalidOpenRouterTimeoutBin
   assert.deepEqual(httpClientSpy.calls.map((call) => call.init.timeoutMs), [10000, 10000])
 })
 
-test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onInvalidOpenRouterBaseUrl", async () => {
+test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onInvalidLlmBaseUrl", async () => {
   const assemblerModule = await loadAssemblerModule()
 
   assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
-    OPENROUTER_BASE_URL: "not-a-valid-url"
+    LLM_BASE_URL: "not-a-valid-url"
   })), {
-    message: "Invalid binding: OPENROUTER_BASE_URL"
+    message: "Invalid binding: LLM_BASE_URL"
   })
 })
 
@@ -594,7 +594,7 @@ function makeEnv(overrides = {}) {
     ENVIRONMENT: "dev",
     NORMALIZER_CACHE: makeKvNamespaceSpy().kv,
     NORMALIZER_MODEL: "openai/gpt-5-nano",
-    OPENROUTER_API_KEY: "openrouter-api-key",
+    LLM_API_KEY: "llm-api-key",
     OUTLOOK_CACHE: makeKvNamespaceSpy().kv,
     OUTLOOK_MODEL: "openai/gpt-5-nano",
     PROMPT_VERSION: "1",
@@ -636,7 +636,7 @@ function makeNormalizerResult() {
   }
 }
 
-function makeOpenRouterHttpClientSpy({ normalizerUsage, outlookUsage } = {}) {
+function makeLlmHttpClientSpy({ normalizerUsage, outlookUsage } = {}) {
   const calls = []
 
   return {
@@ -804,17 +804,17 @@ test("test_fetch_shouldDelegateToAssembledOutlookHandler_onPostApiOutlook", asyn
   assert.equal(requestIdGeneratorSpy.calls.length, 1)
 })
 
-test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onEmptyOrWhitespaceOpenRouterApiKey", async () => {
+test("test_makeWorkerFetch_shouldThrowInvalidBindingError_onEmptyOrWhitespaceLlmApiKey", async () => {
   const assemblerModule = await loadAssemblerModule()
 
   assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
-    OPENROUTER_API_KEY: ""
+    LLM_API_KEY: ""
   })), {
-    message: "Invalid binding: OPENROUTER_API_KEY"
+    message: "Invalid binding: LLM_API_KEY"
   })
   assert.throws(() => assemblerModule?.makeWorkerFetch?.(makeEnv({
-    OPENROUTER_API_KEY: "   "
+    LLM_API_KEY: "   "
   })), {
-    message: "Invalid binding: OPENROUTER_API_KEY"
+    message: "Invalid binding: LLM_API_KEY"
   })
 })

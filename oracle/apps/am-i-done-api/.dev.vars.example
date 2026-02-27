@@ -1,6 +1,7 @@
 # Copy to .dev.vars for local wrangler dev only.
 # Do not commit real secrets.
 ENVIRONMENT=dev
-OPENROUTER_API_KEY=replace-with-local-key
+LLM_API_KEY=replace-with-nomos-project-token
+LLM_BASE_URL=https://nomos.enoa.ai
 NORMALIZER_MODEL=openai/gpt-5-nano
 OUTLOOK_MODEL=openai/gpt-5-nano
