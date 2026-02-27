@@ -3,4 +3,6 @@ docs/
 data/
 node_modules/
 .env
+.env.e2e
+.e2e-seed.mjs
 .git
