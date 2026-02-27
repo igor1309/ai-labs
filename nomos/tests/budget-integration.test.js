@@ -70,6 +70,10 @@ function fakeRunnerWithUsage({ promptTokens, completionTokens }) {
   };
 }
 
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function listen(app) {
   return new Promise((resolve) => {
     const server = app.listen(0, () => resolve(server));
@@ -82,7 +86,7 @@ test("request succeeds when under budget", async () => {
   const { db, tmp } = setupTestDb();
   try {
     insertProject(db, { id: "p1", name: "proj", token: "tok-1", scope: "live" });
-    insertBudget(db, { projectId: "p1", limitTokens: 1000, period: "daily", periodStart: "2026-02-26" });
+    insertBudget(db, { projectId: "p1", limitTokens: 1000, period: "daily", periodStart: today() });
     const budgetService = createBudgetService(db);
     const logger = stubLogger();
     const app = createApp({
@@ -119,7 +123,7 @@ test("request rejected with 429 when budget exceeded (hard stop)", async () => {
   const { db, tmp } = setupTestDb();
   try {
     insertProject(db, { id: "p1", name: "proj", token: "tok-1", scope: "live" });
-    insertBudget(db, { projectId: "p1", limitTokens: 50, period: "daily", periodStart: "2026-02-26" });
+    insertBudget(db, { projectId: "p1", limitTokens: 50, period: "daily", periodStart: today() });
     const budgetService = createBudgetService(db);
 
     // Exhaust budget first
@@ -162,7 +166,7 @@ test("streaming request rejected with 429 when budget exceeded", async () => {
   const { db, tmp } = setupTestDb();
   try {
     insertProject(db, { id: "p1", name: "proj", token: "tok-1", scope: "live" });
-    insertBudget(db, { projectId: "p1", limitTokens: 50, period: "daily", periodStart: "2026-02-26" });
+    insertBudget(db, { projectId: "p1", limitTokens: 50, period: "daily", periodStart: today() });
     const budgetService = createBudgetService(db);
 
     budgetService.logUsage({ projectId: "p1", model: "gpt-4", promptTokens: 30, completionTokens: 30 });
@@ -207,7 +211,7 @@ test("budget check logs warning on rejection", async () => {
   const { db, tmp } = setupTestDb();
   try {
     insertProject(db, { id: "p1", name: "proj", token: "tok-1", scope: "live" });
-    insertBudget(db, { projectId: "p1", limitTokens: 10, period: "daily", periodStart: "2026-02-26" });
+    insertBudget(db, { projectId: "p1", limitTokens: 10, period: "daily", periodStart: today() });
     const budgetService = createBudgetService(db);
     budgetService.logUsage({ projectId: "p1", model: "gpt-4", promptTokens: 5, completionTokens: 10 });
 
@@ -369,7 +373,7 @@ test("GET /v1/usage returns usage report for authenticated project", async () =>
   const { db, tmp } = setupTestDb();
   try {
     insertProject(db, { id: "p1", name: "proj", token: "tok-1", scope: "live" });
-    insertBudget(db, { projectId: "p1", limitTokens: 1000, period: "daily", periodStart: "2026-02-26" });
+    insertBudget(db, { projectId: "p1", limitTokens: 1000, period: "daily", periodStart: today() });
     const budgetService = createBudgetService(db);
 
     budgetService.logUsage({ projectId: "p1", model: "gpt-4", promptTokens: 100, completionTokens: 200 });
@@ -498,7 +502,7 @@ test("stub endpoint also enforces budget", async () => {
   const { db, tmp } = setupTestDb();
   try {
     insertProject(db, { id: "s1", name: "stub-proj", token: "tok-stub", scope: "stub" });
-    insertBudget(db, { projectId: "s1", limitTokens: 10, period: "daily", periodStart: "2026-02-26" });
+    insertBudget(db, { projectId: "s1", limitTokens: 10, period: "daily", periodStart: today() });
     const budgetService = createBudgetService(db);
     budgetService.logUsage({ projectId: "s1", model: "test", promptTokens: 5, completionTokens: 10 });
 
