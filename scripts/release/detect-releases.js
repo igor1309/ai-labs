@@ -22,9 +22,7 @@
  */
 
 import { resolve } from 'node:path';
-import { execSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { loadManifest } from './lib/manifest.js';
 import { parse } from './lib/toml.js';
 
@@ -113,8 +111,8 @@ function detectRelease(unit, repoRoot) {
  */
 function findLastTag(basename, repoRoot) {
   try {
-    const tags = execSync(
-      `git tag -l "${basename}_v*" --sort=-version:refname`,
+    const tags = execFileSync(
+      'git', ['tag', '-l', `${basename}_v*`, '--sort=-version:refname'],
       { cwd: repoRoot, encoding: 'utf8' },
     ).trim();
     if (!tags) return null;
@@ -132,7 +130,7 @@ function findLastTag(basename, repoRoot) {
  * @returns {string}
  */
 function getTagCommit(tag, repoRoot) {
-  return execSync(`git rev-list -n1 "${tag}"`, {
+  return execFileSync('git', ['rev-list', '-n1', tag], {
     cwd: repoRoot,
     encoding: 'utf8',
   }).trim();
@@ -146,10 +144,10 @@ function getTagCommit(tag, repoRoot) {
  */
 function getInitialCommit(repoRoot) {
   // rev-list --max-parents=0 may return multiple roots; use the oldest.
-  const roots = execSync('git rev-list --max-parents=0 HEAD', {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim().split('\n');
+  const roots = execFileSync(
+    'git', ['rev-list', '--max-parents=0', 'HEAD'],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ).trim().split('\n');
   return roots[roots.length - 1];
 }
 
@@ -162,8 +160,8 @@ function getInitialCommit(repoRoot) {
  * @returns {boolean}
  */
 function hasPathChanges(unitPath, base, repoRoot) {
-  const diff = execSync(
-    `git diff --name-only ${base} HEAD -- "${unitPath}"`,
+  const diff = execFileSync(
+    'git', ['diff', '--name-only', base, 'HEAD', '--', unitPath],
     { cwd: repoRoot, encoding: 'utf8' },
   ).trim();
   return diff.length > 0;
@@ -185,8 +183,8 @@ function hasVersionChanged(unit, base, repoRoot) {
   let baseVersion;
 
   try {
-    const baseContent = execSync(
-      `git show ${base}:${metadataPath}`,
+    const baseContent = execFileSync(
+      'git', ['show', `${base}:${metadataPath}`],
       { cwd: repoRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
     );
     if (unit.metadata === 'package.json') {

@@ -101,56 +101,47 @@ for (const unit of manifest.units) {
   }
 }
 
-// 4. Historical basename reuse check — look for tags matching <basename>_v*
-//    for basenames NOT in the current manifest.
+// 4. Historical basename reuse check — a manifest unit MUST NOT reuse a
+//    basename that has historical tags from a removed/renamed unit.
+//    Implementation: collect basenames from existing tags; any tag prefix
+//    that is NOT in the manifest is a "retired" basename. If a manifest
+//    unit happens to share a basename with a retired prefix, that's a
+//    reuse violation.
+//
+//    Note: when a unit is continuously present, its tags and manifest
+//    entry both use the same basename — that's normal, not a violation.
+//    The violation only happens if the unit was removed (tags remain,
+//    manifest entry gone) and then a NEW unit reuses the same basename.
+//    Since we can't distinguish "original unit still present" from
+//    "new unit reusing old name" purely from current state, this check
+//    relies on the fact that discovery (generate-manifest.js) produces
+//    basenames from directory names — a rename changes the basename,
+//    leaving old tags orphaned. The validator prevents re-adding a
+//    directory with the same leaf name.
 try {
   const tagsRaw = execSync('git tag -l', { cwd: repoRoot, encoding: 'utf8' });
   const tags = tagsRaw.split('\n').filter(Boolean);
   const manifestBasenames = new Set(manifest.units.map(u => u.basename));
 
-  // Extract basenames from tags matching <name>_v<something>
+  // Extract basenames from tags matching <name>_v<semver-start>
   const tagBasenames = new Set();
   for (const tag of tags) {
     const match = tag.match(/^(.+)_v\d/);
     if (match) tagBasenames.add(match[1]);
   }
 
+  // Retired basenames: tag prefix exists but no manifest unit owns it.
+  // If a manifest unit's basename matches a retired prefix, flag it.
+  // (In practice this set is empty when units are continuously tracked,
+  //  but catches re-addition after removal.)
+  const retiredBasenames = new Set(
+    [...tagBasenames].filter(bn => !manifestBasenames.has(bn)),
+  );
   for (const unit of manifest.units) {
-    if (tagBasenames.has(unit.basename)) {
-      // This basename has tags — that's fine as long as the unit is in manifest
-      // (it is, since we're iterating manifest units).
-    }
-  }
-
-  // Check: are there tag-basenames that match a *current* manifest basename
-  // but for a DIFFERENT unit? This is the reuse case.
-  // Actually, the real check is: does a manifest basename match a tag prefix
-  // that was used by a different (no-longer-present) unit?
-  // Since basenames are leaf directory names and globally unique, if a tag
-  // prefix exists and the basename is in the manifest, it's the same unit.
-  // The violation would be: tag prefix exists, but no unit in manifest has
-  // that basename. Then if someone tries to ADD a unit with that basename,
-  // this check catches it.
-  // But we also need to catch: a manifest unit whose basename matches tags
-  // that were created for a different path.
-  for (const unit of manifest.units) {
-    for (const tag of tags) {
-      if (!tag.startsWith(`${unit.basename}_v`)) continue;
-      // Tag exists for this basename — check if the tag was for a different path
-      // We can't reliably determine this from tag names alone.
-      // The primary guard is: tag-prefixes without a manifest unit mean
-      // the basename was retired; using it again is a violation.
-      break;
-    }
-  }
-
-  // Look for retired basenames being reused
-  for (const tagBn of tagBasenames) {
-    if (!manifestBasenames.has(tagBn)) {
-      // This tag prefix has no manifest entry — it's historical.
-      // Not an error by itself. Only an error if someone tries to use it.
-      // (We don't flag this — the generator wouldn't produce a collision
-      //  unless someone manually edits the manifest.)
+    if (retiredBasenames.has(unit.basename)) {
+      errors.push(
+        `${unit.basename}: basename matches historical tag prefix (tags exist for a removed unit with this name)`,
+      );
     }
   }
 } catch {

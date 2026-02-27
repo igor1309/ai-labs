@@ -22,7 +22,7 @@
  */
 
 import { resolve } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 const rootIdx = process.argv.indexOf('--root');
 const repoRoot = rootIdx !== -1
@@ -32,10 +32,10 @@ const repoRoot = rootIdx !== -1
 const dryRun = process.argv.includes('--dry-run');
 
 // Trunk enforcement: reject if HEAD is not on trunk.
-const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-  cwd: repoRoot,
-  encoding: 'utf8',
-}).trim();
+const currentBranch = execFileSync(
+  'git', ['rev-parse', '--abbrev-ref', 'HEAD'],
+  { cwd: repoRoot, encoding: 'utf8' },
+).trim();
 
 if (currentBranch !== 'trunk') {
   process.stderr.write(
@@ -46,8 +46,9 @@ if (currentBranch !== 'trunk') {
 
 // Run detection to find which units need releases.
 const detectScript = new URL('./detect-releases.js', import.meta.url).pathname;
-const detectOutput = execSync(
-  `node ${detectScript} --root ${repoRoot} --json`,
+const detectOutput = execFileSync(
+  process.execPath,
+  [detectScript, '--root', repoRoot, '--json'],
   { cwd: repoRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
 );
 const detections = JSON.parse(detectOutput);
@@ -66,7 +67,7 @@ for (const unit of releasing) {
 
   // Verify tag doesn't already exist (idempotency guard)
   try {
-    execSync(`git rev-parse --verify "refs/tags/${tagName}"`, {
+    execFileSync('git', ['rev-parse', '--verify', `refs/tags/${tagName}`], {
       cwd: repoRoot,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -79,7 +80,7 @@ for (const unit of releasing) {
   if (dryRun) {
     process.stdout.write(`DRY-RUN ${tagName}\n`);
   } else {
-    execSync(`git tag "${tagName}"`, { cwd: repoRoot, stdio: 'pipe' });
+    execFileSync('git', ['tag', tagName], { cwd: repoRoot, stdio: 'pipe' });
     process.stdout.write(`CREATED ${tagName}\n`);
   }
   created.push(tagName);

@@ -43,41 +43,9 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          # Parse tag: <basename>_v<version>
-          basename="${TAG%%_v*}"
-          version="${TAG#*_v}"
-          echo "basename=${basename}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "Parsed tag: basename=${basename}, version=${version}"
-
-          # Look up unit in manifest
-          node -e "
-            import { loadManifest } from './scripts/release/lib/manifest.js';
-            const m = loadManifest('.');
-            const unit = m.units.find(u => u.basename === '${basename}');
-            if (!unit) { console.error('Unit not found in manifest: ${basename}'); process.exit(1); }
-            if (unit.version !== '${version}') {
-              console.error('Tag version ${version} does not match canonical version ' + unit.version);
-              process.exit(1);
-            }
-            console.log('Unit validated: ' + JSON.stringify(unit));
-          "
-
-          # Extract docker and path from manifest
-          docker=$(node -e "
-            import { loadManifest } from './scripts/release/lib/manifest.js';
-            const m = loadManifest('.');
-            const unit = m.units.find(u => u.basename === '${basename}');
-            console.log(unit.docker);
-          ")
-          unit_path=$(node -e "
-            import { loadManifest } from './scripts/release/lib/manifest.js';
-            const m = loadManifest('.');
-            const unit = m.units.find(u => u.basename === '${basename}');
-            console.log(unit.path);
-          ")
-          echo "docker=${docker}" >> "$GITHUB_OUTPUT"
-          echo "unit_path=${unit_path}" >> "$GITHUB_OUTPUT"
+          # verify-tag.js parses the tag safely (no shell→JS interpolation),
+          # validates against the manifest, and outputs key=value lines.
+          node scripts/release/verify-tag.js "$TAG" | tee /dev/stderr >> "$GITHUB_OUTPUT"
 
       - name: Verify tag commit is on trunk
         env:

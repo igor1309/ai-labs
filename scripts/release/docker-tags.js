@@ -19,7 +19,7 @@
  */
 
 import { resolve } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 const rootIdx = process.argv.indexOf('--root');
 const repoRoot = rootIdx !== -1
@@ -30,8 +30,9 @@ const jsonOutput = process.argv.includes('--json');
 
 // Get detected releases
 const detectScript = new URL('./detect-releases.js', import.meta.url).pathname;
-const detectOutput = execSync(
-  `node ${detectScript} --root ${repoRoot} --json`,
+const detectOutput = execFileSync(
+  process.execPath,
+  [detectScript, '--root', repoRoot, '--json'],
   { cwd: repoRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
 );
 const detections = JSON.parse(detectOutput);
@@ -39,10 +40,10 @@ const detections = JSON.parse(detectOutput);
 // Filter to Docker-producing units with detected releases
 const dockerReleases = detections.filter(d => d.release && d.docker);
 
-const headSha = execSync('git rev-parse HEAD', {
-  cwd: repoRoot,
-  encoding: 'utf8',
-}).trim();
+const headSha = execFileSync(
+  'git', ['rev-parse', 'HEAD'],
+  { cwd: repoRoot, encoding: 'utf8' },
+).trim();
 
 const results = dockerReleases.map(d => ({
   basename: d.basename,
