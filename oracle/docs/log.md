@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-02-28
+- Replace `LLM_BASE_URL` + hardcoded path with single `LLM_ENDPOINT_URL` (full URL, no path concatenation) across adapters, assembler, tests, and config.
+- Add naming discipline rule to composition root guide: name adapters by protocol/capability, not by what they connect to.
 - Wire Oracle LLM calls through Nomos proxy: rename adapters and env vars from openrouter to llm, change default base URL to nomos.enoa.ai, update CI smoke to route through Nomos.
 
 ## 2026-02-23
