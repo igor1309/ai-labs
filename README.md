@@ -18,3 +18,13 @@ Architecture Decision Records (ADRs) live in `docs/adr/`, organized by domain:
 ## Releases
 
 Each project is an independent release unit. Releases are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for configured units and `release-units.toml` for the current manifest. Full release policy is in `CLAUDE.md` under "Release Process".
+
+## LOC Dashboard
+
+```bash
+# sorted by project name (default)
+bash scripts/loc-dashboard.sh
+
+# sorted by total descending
+bash scripts/loc-dashboard.sh --sort=total
+```
