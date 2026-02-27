@@ -1,4 +1,17 @@
-name: Release
+name: Release (Legacy Oracle)
+
+# LEGACY WORKFLOW — Oracle-specific, triggers on global v* tags.
+#
+# Coexistence boundary (ADR-000):
+#   This workflow handles Oracle releases via the v* tag namespace
+#   (tied to root package.json). New per-unit releases use the
+#   <basename>_v<version> tag format and are handled by release-unit.yml.
+#
+# Migration path:
+#   When Oracle is added to release-units.config.toml with its own
+#   metadata (release.toml or package.json in oracle/), this workflow
+#   should be retired in favor of release-unit.yml with an Oracle-specific
+#   deploy job.
 
 on:
   push:

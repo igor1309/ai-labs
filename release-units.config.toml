@@ -1,0 +1,6 @@
+# Release unit discovery configuration (ADR-005).
+# Each entry is a directory path relative to the repository root.
+# A directory becomes a release unit if it contains exactly one canonical
+# metadata file: package.json (Node) or release.toml (non-Node).
+
+paths = ["loki", "nomos", "oracle"]

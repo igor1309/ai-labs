@@ -1,0 +1,141 @@
+/**
+ * Minimal TOML parser/writer for the release-unit config and manifest subset.
+ *
+ * Supports:
+ *   - Comments (# ...)
+ *   - Key/value: key = "string" | true | false | integer
+ *   - Arrays: key = ["a", "b"]
+ *   - Array of tables: [[name]]
+ *   - Blank lines
+ *
+ * Does NOT support:
+ *   - Nested tables, inline tables, multi-line strings, dotted keys, etc.
+ */
+
+/**
+ * Parse a TOML string into a plain object.
+ *
+ * Top-level key/value pairs become properties of the returned object.
+ * [[name]] sections become arrays of objects under the key `name`.
+ *
+ * @param {string} text
+ * @returns {Record<string, unknown>}
+ */
+export function parse(text) {
+  const result = {};
+  let currentArray = null;
+  let currentObj = null;
+
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (line === '' || line.startsWith('#')) continue;
+
+    // Array-of-tables header: [[name]]
+    const aotMatch = line.match(/^\[\[(\w[\w-]*)\]\]$/);
+    if (aotMatch) {
+      const name = aotMatch[1];
+      if (!result[name]) result[name] = [];
+      currentObj = {};
+      result[name].push(currentObj);
+      currentArray = name;
+      continue;
+    }
+
+    // Key = Value
+    const kvMatch = line.match(/^(\w[\w-]*)\s*=\s*(.+)$/);
+    if (!kvMatch) continue;
+
+    const key = kvMatch[1];
+    const valRaw = kvMatch[2].trim();
+    const value = parseValue(valRaw);
+
+    if (currentObj) {
+      currentObj[key] = value;
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * @param {string} raw
+ * @returns {unknown}
+ */
+function parseValue(raw) {
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  if (/^-?\d+$/.test(raw)) return Number(raw);
+
+  // Quoted string
+  const strMatch = raw.match(/^"((?:[^"\\]|\\.)*)"$/);
+  if (strMatch) return strMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+
+  // Array: ["a", "b", ...]
+  if (raw.startsWith('[') && raw.endsWith(']')) {
+    const inner = raw.slice(1, -1).trim();
+    if (inner === '') return [];
+    return inner.split(',').map(s => parseValue(s.trim()));
+  }
+
+  return raw;
+}
+
+/**
+ * Stringify a manifest object into deterministic TOML.
+ *
+ * Handles top-level scalars/arrays and [[units]] array-of-tables.
+ *
+ * @param {Record<string, unknown>} obj
+ * @param {{ header?: string }} options
+ * @returns {string}
+ */
+export function stringify(obj, options = {}) {
+  const lines = [];
+  if (options.header) {
+    for (const h of options.header.split('\n')) {
+      lines.push(`# ${h}`);
+    }
+    lines.push('');
+  }
+
+  // Top-level scalars / arrays first
+  for (const [key, value] of Object.entries(obj)) {
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+      continue; // array-of-tables handled below
+    }
+    lines.push(`${key} = ${formatValue(value)}`);
+  }
+
+  // Array-of-tables
+  for (const [key, value] of Object.entries(obj)) {
+    if (!Array.isArray(value) || value.length === 0 || typeof value[0] !== 'object') {
+      continue;
+    }
+    for (const entry of value) {
+      lines.push('');
+      lines.push(`[[${key}]]`);
+      for (const [k, v] of Object.entries(entry)) {
+        lines.push(`${k} = ${formatValue(v)}`);
+      }
+    }
+  }
+
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function formatValue(value) {
+  if (typeof value === 'boolean') return String(value);
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  if (Array.isArray(value)) {
+    return `[${value.map(v => formatValue(v)).join(', ')}]`;
+  }
+  return String(value);
+}

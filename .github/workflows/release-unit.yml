@@ -1,0 +1,154 @@
+name: Release Unit
+
+# Per-unit release workflow (ADR-000 through ADR-006).
+# Triggers on tags matching <basename>_v<version>.
+# Determines which unit is being released, validates invariants,
+# runs tests, and dispatches to unit-specific deployment.
+
+on:
+  push:
+    tags:
+      - "*_v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-unit-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      basename: ${{ steps.parse.outputs.basename }}
+      version: ${{ steps.parse.outputs.version }}
+      docker: ${{ steps.parse.outputs.docker }}
+      unit_path: ${{ steps.parse.outputs.unit_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Parse tag and validate against manifest
+        id: parse
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Parse tag: <basename>_v<version>
+          basename="${TAG%%_v*}"
+          version="${TAG#*_v}"
+          echo "basename=${basename}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Parsed tag: basename=${basename}, version=${version}"
+
+          # Look up unit in manifest
+          node -e "
+            import { loadManifest } from './scripts/release/lib/manifest.js';
+            const m = loadManifest('.');
+            const unit = m.units.find(u => u.basename === '${basename}');
+            if (!unit) { console.error('Unit not found in manifest: ${basename}'); process.exit(1); }
+            if (unit.version !== '${version}') {
+              console.error('Tag version ${version} does not match canonical version ' + unit.version);
+              process.exit(1);
+            }
+            console.log('Unit validated: ' + JSON.stringify(unit));
+          "
+
+          # Extract docker and path from manifest
+          docker=$(node -e "
+            import { loadManifest } from './scripts/release/lib/manifest.js';
+            const m = loadManifest('.');
+            const unit = m.units.find(u => u.basename === '${basename}');
+            console.log(unit.docker);
+          ")
+          unit_path=$(node -e "
+            import { loadManifest } from './scripts/release/lib/manifest.js';
+            const m = loadManifest('.');
+            const unit = m.units.find(u => u.basename === '${basename}');
+            console.log(unit.path);
+          ")
+          echo "docker=${docker}" >> "$GITHUB_OUTPUT"
+          echo "unit_path=${unit_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag commit is on trunk
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --force --tags origin
+          git fetch origin trunk:refs/remotes/origin/trunk
+          tag_sha="$(git rev-list -n1 "${TAG}")"
+          git merge-base --is-ancestor "${tag_sha}" "origin/trunk"
+
+      - name: Validate manifest invariants
+        run: node scripts/release/validate-manifest.js
+
+  core:
+    needs: [verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: ./scripts/run_silent.sh "build" npx tsc --noEmit
+
+      - name: Run tests
+        run: ./scripts/run_silent.sh "tests" npm test
+
+  github-release:
+    needs: [core, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          name: "${{ needs.verify.outputs.basename }} v${{ needs.verify.outputs.version }}"
+          body: "Release of **${{ needs.verify.outputs.basename }}** version `${{ needs.verify.outputs.version }}`."
+          generateReleaseNotes: false
+          draft: false
+          prerelease: false
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.github-release.result == 'failure') }}
+    needs: [verify, core, github-release]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Release Unit"
+      ref_label: "tag"
+      ref_value: ${{ github.ref_name }}
+      job_results: |
+        verify=${{ needs.verify.result }}
+        core=${{ needs.core.result }}
+        github-release=${{ needs.github-release.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
