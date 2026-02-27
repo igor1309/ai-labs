@@ -9,5 +9,11 @@ export function loadConfig() {
     vendorTimeoutMs: parseInt(process.env.NOMOS_VENDOR_TIMEOUT_MS || "30000", 10),
     vendorApiKey: process.env.NOMOS_VENDOR_API_KEY || "",
     fixturesDir: process.env.NOMOS_FIXTURES_DIR || "tests/fixtures",
+    safeguardsEnabled: process.env.NOMOS_SAFEGUARDS_ENABLED !== "false",
+    safeguardsSanitize: process.env.NOMOS_SAFEGUARDS_SANITIZE !== "false",
+    safeguardsReinforce: process.env.NOMOS_SAFEGUARDS_REINFORCE === "true",
+    safeguardsBlockOnDetect: process.env.NOMOS_SAFEGUARDS_BLOCK === "true",
+    safeguardsReinforcePrepend: process.env.NOMOS_SAFEGUARDS_REINFORCE_PREPEND || "",
+    safeguardsReinforceAppend: process.env.NOMOS_SAFEGUARDS_REINFORCE_APPEND || "",
   };
 }

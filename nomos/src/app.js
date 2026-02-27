@@ -2,7 +2,7 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
-export function createApp({ logger, db, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null }) {
+export function createApp({ logger, db, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null }) {
   const app = express();
 
   app.get("/health", (_req, res) => {
@@ -27,13 +27,13 @@ export function createApp({ logger, db, liveRunner = null, stubRunner = null, st
   }
 
   if (liveRunner) {
-    app.post("/v1/chat/completions", createChatCompletionsHandler({ runner: liveRunner, logger, budgetService }));
+    app.post("/v1/chat/completions", createChatCompletionsHandler({ runner: liveRunner, logger, budgetService, safeguards }));
   }
 
   // Stub API: /stub/v1/* (gated by config)
   if (stubEnabled && stubRunner) {
     app.use("/stub/v1", createAuthMiddleware({ db, logger, allowedScope: "stub" }));
-    app.post("/stub/v1/chat/completions", createChatCompletionsHandler({ runner: stubRunner, logger, budgetService }));
+    app.post("/stub/v1/chat/completions", createChatCompletionsHandler({ runner: stubRunner, logger, budgetService, safeguards }));
   } else {
     app.use("/stub", (_req, res) => {
       res.status(404).json({ error: "not found" });
