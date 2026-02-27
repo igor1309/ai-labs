@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-27
+Add Telegram success notification on deploy with version, model, and LLM response.
 Add deploy smoke checks: /health returns version, post-deploy version verification, real LLM smoke test via OPENROUTER_CI_MODEL (openai/gpt-5-nano) with dedicated smoke project token.
 Add CI/CD deploy pipeline (ADR-0002): release-unit workflow deploys to VPS via SSH on nomos_v* tag push — scp source files, rebuild Docker image, restart stack, health check. GitHub secrets VPS_HOST/VPS_USER/VPS_SSH_KEY configured.
 Deploy Nomos to production VPS (nomos.enoa.ai): Docker Compose + Caddy TLS + SQLite stack live on 95.164.53.144, oracle project registered, automated backups and log rotation configured. Fix deployment guide: add container UID note for root deploys, DNS verification gate before stack start, log rotation timing warning.

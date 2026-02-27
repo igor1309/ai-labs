@@ -160,11 +160,32 @@ jobs:
               -d "{\"model\":\"${OPENROUTER_CI_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" \
               https://nomos.enoa.ai/v1/chat/completions)
             HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | head -n -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
             echo "HTTP status: $HTTP_CODE"
             echo "Response body length: $(echo "$BODY" | wc -c)"
             [ "$HTTP_CODE" = "200" ] || { echo "Smoke test failed: expected 200, got $HTTP_CODE"; exit 1; }
+            echo "$BODY" > /tmp/nomos-smoke-body.json
             echo "Smoke test passed"
+
+      - name: Notify deploy success
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+          OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: CI_BOT_TOKEN,CI_CHAT_ID,EXPECTED_VERSION,OPENROUTER_CI_MODEL
+          script: |
+            set -e
+            CONTENT=$(python3 -c "import sys,json; print(json.load(sys.stdin)['choices'][0]['message']['content'])" < /tmp/nomos-smoke-body.json 2>/dev/null || echo "(could not parse)")
+            CONTENT=$(echo "$CONTENT" | cut -c1-200)
+            TEXT=$(printf "✅ nomos v%s deployed\nsmoke: passed (%s)\nresponse: %s" "$EXPECTED_VERSION" "$OPENROUTER_CI_MODEL" "$CONTENT")
+            curl -fsS --max-time 10 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" --data-urlencode "text=${TEXT}"
+            rm -f /tmp/nomos-smoke-body.json
 
   github-release:
     needs: [core, verify, deploy-nomos]
