@@ -226,6 +226,42 @@ test("POST /stub/v1/chat/completions streams SSE when stream=true", async () => 
   }
 });
 
+// --- catch-all 404 ---
+
+test("unknown route returns JSON 404", async () => {
+  const { db, tmp } = setupTestDb();
+
+  try {
+    insertProject(db, { id: "p1", name: "proj", token: "tok-p1", scope: "live" });
+    const logger = stubLogger();
+    const app = createApp({
+      logger,
+      db,
+      liveRunner: fakeRunner({ id: "r1" }),
+    });
+    const server = await listen(app);
+
+    try {
+      const { port } = server.address();
+      const res = await fetch(`http://127.0.0.1:${port}/v1/images/generations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok-p1",
+        },
+        body: JSON.stringify({ model: "gpt-4" }),
+      });
+      assert.equal(res.status, 404);
+      const body = await res.json();
+      assert.equal(body.error, "not found");
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    cleanupTestDb(db, tmp);
+  }
+});
+
 // --- error handler ---
 
 test("malformed JSON body returns 400 through real app error handler", async () => {

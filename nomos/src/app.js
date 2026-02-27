@@ -40,6 +40,10 @@ export function createApp({ logger, db, liveRunner = null, stubRunner = null, st
     });
   }
 
+  app.use((_req, res) => {
+    res.status(404).json({ error: "not found" });
+  });
+
   app.use((err, _req, res, _next) => {
     const status = err.status || err.statusCode || 500;
     logger.error("unhandled error", { error: err.message, status });
