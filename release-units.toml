@@ -6,5 +6,5 @@
 basename = "nomos"
 path = "nomos"
 metadata = "package.json"
-version = "0.7.0"
+version = "0.7.1"
 docker = true

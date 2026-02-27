@@ -145,19 +145,19 @@ jobs:
       - name: Smoke test (real LLM call)
         env:
           NOMOS_SMOKE_TOKEN: ${{ secrets.NOMOS_SMOKE_TOKEN }}
-          OPENROUTER_CI_FREE: ${{ vars.OPENROUTER_CI_FREE }}
+          OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: NOMOS_SMOKE_TOKEN,OPENROUTER_CI_FREE
+          envs: NOMOS_SMOKE_TOKEN,OPENROUTER_CI_MODEL
           script: |
             set -e
             RESPONSE=$(curl -s --max-time 60 -w "\n%{http_code}" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${NOMOS_SMOKE_TOKEN}" \
-              -d "{\"model\":\"${OPENROUTER_CI_FREE}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" \
+              -d "{\"model\":\"${OPENROUTER_CI_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" \
               https://nomos.enoa.ai/v1/chat/completions)
             HTTP_CODE=$(echo "$RESPONSE" | tail -1)
             BODY=$(echo "$RESPONSE" | head -n -1)
