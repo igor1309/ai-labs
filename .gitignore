@@ -6,6 +6,7 @@ node_modules
 .dev.vars
 .dev.vars.*
 !.env.example
+!.env.staging.example
 !.dev.vars.example
 worktrees/
 nomos/data/
