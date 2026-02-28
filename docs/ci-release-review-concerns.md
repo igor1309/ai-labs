@@ -14,9 +14,9 @@ Nomos staging and prod deploy jobs contain ~40 lines of inline shell each (SCP, 
 
 If prod smoke fails after `docker compose up`, there is no automatic rollback to the previous version. The pipeline fails and notifies, but the broken version stays running.
 
-## Legacy `release.yml` Drift Risk
+## ~~Legacy `release.yml` Drift Risk~~ (deferred)
 
-Oracle's legacy pipeline (`release.yml`, triggered by `v*` tags) runs the same tests but uses a different job structure than `release-unit.yml`. When Oracle migrates to per-unit releases, the legacy workflow should be retired to avoid confusion.
+Deferred: resolves naturally when Oracle migrates to per-unit releases — `release.yml` gets retired at that point. Until then, the legacy workflow is the only Oracle release path and must stay.
 
 ## ~~Loki and Oracle Not Yet Release Units~~ (acknowledged)
 
