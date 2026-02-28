@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-28
+Add daily scheduled health check (`scheduled-health.yml`): Nomos staging/prod health endpoints + LLM smoke test, Telegram notification on failure.
 Close release ADR review (review-2): all findings resolved, ADR-003 Decision Stability upgraded to pass.
 Oracle: wire LLM calls through Nomos proxy. See `oracle/docs/log.md`.
 

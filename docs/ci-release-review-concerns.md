@@ -34,6 +34,6 @@ Staging and prod health checks use `sleep 2` in a loop (up to 30 iterations). Th
 
 `release.yml` uses inline notification logic while `release-unit.yml` and `ci.yml` use the reusable `notify-telegram-failure.yml`. Could be unified.
 
-## No Scheduled CI
+## ~~No Scheduled CI~~ (resolved)
 
-There are no periodic jobs (nightly full suite, dependency audit). If OpenRouter or VPS health degrades between commits, nothing detects it until the next push.
+Resolved: `scheduled-health.yml` runs daily at 06:00 UTC — checks Nomos staging/prod health endpoints and runs an LLM smoke test through the prod proxy. Telegram notification on failure.
