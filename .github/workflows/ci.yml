@@ -103,6 +103,9 @@ jobs:
       - name: Validate manifest invariants
         run: node scripts/release/validate-manifest.js
 
+      - name: Run release script tests
+        run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js
+
   real-provider-smoke:
     needs: [changes, oracle-core]
     if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}
