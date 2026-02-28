@@ -7,7 +7,17 @@ on:
     tags-ignore:
       - "*_v*"
       - "v*"
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
+      - ".claude/**"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
+      - ".claude/**"
   workflow_dispatch:
 
 permissions:
