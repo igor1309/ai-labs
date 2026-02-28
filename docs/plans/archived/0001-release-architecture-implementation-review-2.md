@@ -4,6 +4,7 @@
 **Date**: 2026-02-27
 **Scope**: Release ADRs (000–006), implementation plan, planner requirements compliance
 **Prior review**: `0001-release-architecture-implementation-review.md` (all findings resolved)
+**Status**: Closed — all findings resolved, ADR set accepted
 
 **Reviewed documents**:
 - `docs/adr/release/ADR-000` through `ADR-006`
@@ -80,7 +81,7 @@ textual clarity.
 | Intent Integrity      | `pass`  | Tag format unambiguous; examples provided           |
 | Boundary Clarity      | `pass`  | Non-Goals: namespaced hierarchies, multi-separator  |
 | Cross-ADR Consistency | `pass`  | No-underscore rule ensures `_v` separator is unambiguous; glob aligns with ADR-004 |
-| Decision Stability    | `warn`  | See finding F1 below — basename reuse after rename  |
+| Decision Stability    | `pass`  | Resolved — basename reuse rule added (F1)           |
 
 **Review summary block**:
 - I understand this ADR to decide that tags follow `<basename>_v<version>` where basename is the leaf directory name, globally unique, and underscore-free.

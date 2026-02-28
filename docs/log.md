@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-28
+Close release ADR review (review-2): all findings resolved, ADR-003 Decision Stability upgraded to pass.
 Oracle: wire LLM calls through Nomos proxy. See `oracle/docs/log.md`.
 
 ## 2026-02-27
