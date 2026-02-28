@@ -30,9 +30,9 @@ Nomos deploys to one VPS via SSH. No blue/green, no canary. The staging-to-prod 
 
 Staging and prod health checks use `sleep 2` in a loop (up to 30 iterations). This works but is noisy in CI logs.
 
-## Telegram Notification Inconsistency
+## ~~Telegram Notification Inconsistency~~ (resolved)
 
-`release.yml` uses inline notification logic while `release-unit.yml` and `ci.yml` use the reusable `notify-telegram-failure.yml`. Could be unified.
+Resolved: `release.yml` notify job replaced with reusable `notify-telegram-failure.yml`, matching `ci.yml` and `release-unit.yml`.
 
 ## ~~No Scheduled CI~~ (resolved)
 
