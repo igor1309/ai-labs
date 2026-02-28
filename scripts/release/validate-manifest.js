@@ -7,12 +7,10 @@
  *   1. Each basename equals the leaf directory name of its path     (ADR-003)
  *   2. Basenames are globally unique                                (ADR-003)
  *   3. No basename contains an underscore                           (ADR-003)
- *   4. No basename matches an existing tag prefix for a unit not in
- *      the manifest (historical basename reuse)                     (ADR-003)
- *   5. Each unit has exactly one canonical metadata file            (ADR-002/005)
- *   6. No unit has both package.json and release.toml               (ADR-002)
- *   7. Every canonical version is valid semver                      (ADR-002)
- *   8. Docker-producing status recorded                             (ADR-006)
+ *   4. Each unit has exactly one canonical metadata file            (ADR-002/005)
+ *   5. No unit has both package.json and release.toml               (ADR-002)
+ *   6. Every canonical version is valid semver                      (ADR-002)
+ *   7. Docker-producing status recorded                             (ADR-006)
  *
  * Usage:
  *   node scripts/release/validate-manifest.js
@@ -22,7 +20,6 @@
 
 import { existsSync } from 'node:fs';
 import { resolve, join, basename as pathBasename } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { loadManifest } from './lib/manifest.js';
 
 const rootIdx = process.argv.indexOf('--root');
@@ -101,56 +98,6 @@ for (const unit of manifest.units) {
   }
 }
 
-// 4. Historical basename reuse check — a manifest unit MUST NOT reuse a
-//    basename that has historical tags from a removed/renamed unit.
-//    Implementation: collect basenames from existing tags; any tag prefix
-//    that is NOT in the manifest is a "retired" basename. If a manifest
-//    unit happens to share a basename with a retired prefix, that's a
-//    reuse violation.
-//
-//    Note: when a unit is continuously present, its tags and manifest
-//    entry both use the same basename — that's normal, not a violation.
-//    The violation only happens if the unit was removed (tags remain,
-//    manifest entry gone) and then a NEW unit reuses the same basename.
-//    Since we can't distinguish "original unit still present" from
-//    "new unit reusing old name" purely from current state, this check
-//    relies on the fact that discovery (generate-manifest.js) produces
-//    basenames from directory names — a rename changes the basename,
-//    leaving old tags orphaned. The validator prevents re-adding a
-//    directory with the same leaf name.
-try {
-  const tagsRaw = execFileSync('git', ['tag', '-l'], { cwd: repoRoot, encoding: 'utf8' });
-  const tags = tagsRaw.split('\n').filter(Boolean);
-  const manifestBasenames = new Set(manifest.units.map(u => u.basename));
-
-  // Extract basenames from tags matching <name>_v<semver-start>
-  const tagBasenames = new Set();
-  for (const tag of tags) {
-    const match = tag.match(/^(.+)_v\d/);
-    if (match) tagBasenames.add(match[1]);
-  }
-
-  // Retired basenames: tag prefix exists but no manifest unit owns it.
-  // If a manifest unit's basename matches a retired prefix, flag it.
-  // (In practice this set is empty when units are continuously tracked,
-  //  but catches re-addition after removal.)
-  const retiredBasenames = new Set(
-    [...tagBasenames].filter(bn => !manifestBasenames.has(bn)),
-  );
-  for (const unit of manifest.units) {
-    if (retiredBasenames.has(unit.basename)) {
-      errors.push(
-        `${unit.basename}: basename matches historical tag prefix (tags exist for a removed unit with this name)`,
-      );
-    }
-  }
-} catch {
-  // If git is not available (e.g. in some test environments), skip tag checks
-  // but warn.
-  process.stderr.write(
-    'Warning: could not read git tags; skipping historical basename reuse check.\n',
-  );
-}
 
 if (errors.length > 0) {
   for (const e of errors) {
