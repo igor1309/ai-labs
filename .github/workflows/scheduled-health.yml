@@ -1,0 +1,68 @@
+name: Scheduled Health
+
+# Daily check of external dependencies (VPS, LLM provider).
+# Catches degradation between commits that push-triggered CI would miss.
+# Runs at 06:00 UTC (09:00 Moscow time).
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nomos-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check staging health
+        env:
+          NOMOS_STAGING_URL: https://staging.nomos.enoa.ai
+        run: |
+          HEALTH=$(curl -fsS --max-time 10 "${NOMOS_STAGING_URL}/health")
+          echo "Staging: ${HEALTH}"
+          echo "${HEALTH}" | grep -q '"ok"'
+
+      - name: Check production health
+        env:
+          NOMOS_PROD_URL: https://nomos.enoa.ai
+        run: |
+          HEALTH=$(curl -fsS --max-time 10 "${NOMOS_PROD_URL}/health")
+          echo "Production: ${HEALTH}"
+          echo "${HEALTH}" | grep -q '"ok"'
+
+  llm-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: LLM provider smoke test
+        env:
+          NOMOS_SMOKE_TOKEN: ${{ secrets.NOMOS_SMOKE_TOKEN }}
+          OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+        run: |
+          RESPONSE=$(curl -s --max-time 60 -w "\n%{http_code}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${NOMOS_SMOKE_TOKEN}" \
+            -d "{\"model\":\"${OPENROUTER_CI_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" \
+            https://nomos.enoa.ai/v1/chat/completions)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          echo "HTTP status: ${HTTP_CODE}"
+          [ "${HTTP_CODE}" = "200" ] || { echo "LLM smoke failed: expected 200, got ${HTTP_CODE}"; exit 1; }
+          echo "LLM smoke passed"
+
+  notify:
+    if: ${{ always() && !cancelled() && (needs.nomos-health.result == 'failure' || needs.llm-smoke.result == 'failure') }}
+    needs: [nomos-health, llm-smoke]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Scheduled Health"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        nomos-health=${{ needs.nomos-health.result }}
+        llm-smoke=${{ needs.llm-smoke.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
