@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-28
+Extract inline deploy scripts to `nomos/scripts/` (staging, prod, rollback) and call from `release-unit.yml`.
 Add automatic rollback to prod deploy: tag previous image as `nomos:rollback`, restore on failure.
 Unify `release.yml` notification: replace inline Telegram logic with reusable `notify-telegram-failure.yml`.
 Add daily scheduled health check (`scheduled-health.yml`): Nomos staging/prod health endpoints + LLM smoke test, Telegram notification on failure.

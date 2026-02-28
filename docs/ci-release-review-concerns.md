@@ -6,9 +6,9 @@ description: "Potential concerns identified during CI and release process review
 
 # CI & Release Process — Review Concerns
 
-## Inline Deploy Scripts
+## ~~Inline Deploy Scripts~~ (resolved)
 
-Nomos staging and prod deploy jobs contain ~40 lines of inline shell each (SCP, docker build, health polling, smoke tests). This is fragile and hard to test locally. Consider extracting to a deploy script checked into the repo.
+Resolved: deploy logic extracted to `nomos/scripts/deploy-staging.sh`, `deploy-prod.sh`, and `rollback-prod.sh`. Scripts are SCP'd to VPS and called from `release-unit.yml`. Verify-version and smoke-test steps remain inline (short, env-var-driven).
 
 ## ~~No Rollback Automation~~ (resolved)
 

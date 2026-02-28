@@ -101,7 +101,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml"
+          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml,nomos/scripts"
           target: /tmp/nomos-deploy
           strip_components: 1
 
@@ -111,20 +111,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/nomos
-            cp /tmp/nomos-deploy/Dockerfile .
-            cp /tmp/nomos-deploy/package.json .
-            cp /tmp/nomos-deploy/package-lock.json .
-            cp /tmp/nomos-deploy/docker-compose.staging.yml .
-            rm -rf src && cp -r /tmp/nomos-deploy/src .
-            docker build -t nomos:latest .
-            docker compose -f docker-compose.staging.yml down
-            docker compose -f docker-compose.staging.yml up -d --build
-            sleep 5
-            docker exec nomos-staging wget -qO- http://127.0.0.1:8081/health | grep -q '"ok"'
-            echo "Staging deploy successful"
+          script: bash /tmp/nomos-deploy/scripts/deploy-staging.sh
 
       - name: Verify staging version
         uses: appleboy/ssh-action@v1
@@ -178,16 +165,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/nomos
-            rm -rf /tmp/nomos-deploy
-            docker tag nomos:latest nomos:rollback || true
-            docker compose down
-            docker compose up -d
-            sleep 5
-            docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
-            echo "Production deploy successful"
+          script: bash /tmp/nomos-deploy/scripts/deploy-prod.sh
 
       - name: Verify production version
         uses: appleboy/ssh-action@v1
@@ -257,19 +235,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/nomos
-            if docker image inspect nomos:rollback >/dev/null 2>&1; then
-              docker tag nomos:rollback nomos:latest
-              docker compose down
-              docker compose up -d
-              sleep 5
-              docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
-              echo "Rollback successful"
-            else
-              echo "No rollback image available (first deploy?), skipping"
-            fi
+          script: bash /opt/nomos/scripts/rollback-prod.sh
 
   github-release:
     needs: [core, verify, deploy-nomos-prod]
