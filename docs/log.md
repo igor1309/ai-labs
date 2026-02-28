@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-02-28
+Relax ADR-003 basename reuse invariant from MUST NOT to SHOULD NOT (enforcement deferred).
 Fix AGENTS.md: clarify `release-unit.yml` is post-tag pipeline; detection and tagging are operator scripts.
 Amend ADR-006 and AGENTS.md: mark Docker registry publishing as deferred, VPS-local tagging is current behavior.
 Remove non-functional historical basename reuse check from `validate-manifest.js`.
