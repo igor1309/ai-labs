@@ -238,8 +238,8 @@ jobs:
           script: bash /opt/nomos/scripts/rollback-prod.sh
 
   github-release:
-    needs: [core, verify, deploy-nomos-prod]
-    if: ${{ always() && !cancelled() && needs.core.result == 'success' && (needs.deploy-nomos-prod.result == 'success' || needs.deploy-nomos-prod.result == 'skipped') }}
+    needs: [core, verify, deploy-nomos-staging, deploy-nomos-prod]
+    if: ${{ always() && !cancelled() && needs.core.result == 'success' && needs.deploy-nomos-staging.result != 'failure' && needs.deploy-nomos-prod.result != 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
