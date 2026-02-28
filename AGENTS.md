@@ -140,7 +140,7 @@ Release policy is outcome-based, per-unit, and governed by ADR-000 through ADR-0
 - **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging.
 - **Deployment gate**: releases deploy via CI on tag push after tests pass.
 - **Post-push verification**: after pushing the tag, watch the Release Unit workflow with `gh run list` or `gh run watch`. Confirm CI and release-unit jobs pass before declaring the release complete.
-- **CI trigger**: `.github/workflows/release-unit.yml` runs per-unit release detection, validation, tag creation, and Docker tagging.
+- **CI trigger**: `.github/workflows/release-unit.yml` is a post-tag pipeline that verifies, tests, and deploys. Release detection (`detect-releases.js`) and tag creation (`create-tags.js`) are operator-run scripts.
 - **Legacy coexistence**: the existing `v*` tag namespace (`.github/workflows/release.yml`, Oracle-specific) coexists with the new `<basename>_v*` namespace. The legacy workflow is not modified; migration is deferred.
 - **Smoke model**: the real-provider smoke gate uses `vars.OPENROUTER_CI_MODEL` and `secrets.OPENROUTER_API_KEY`.
 
