@@ -61,9 +61,9 @@ Commit the repository artifacts that define the staging Docker Compose stack, is
 
 ### Acceptance criteria
 
-- The staging compose file is a valid Docker Compose specification that can be parsed without error.
+- The staging compose file parses without error: `docker compose -f nomos/docker-compose.staging.yml config`.
 - The staging compose file uses project name `nomos-staging`, container name `nomos-staging`, volume `nomos-staging-data`, and maps internal port 8081.
-- No resource name (project, container, volume, network) collides with `docker-compose.yml` or `docker-compose.e2e.yml`.
+- No resource name (project, container, volume, network) collides with `docker-compose.yml` or `docker-compose.e2e.yml`. Verify: `docker compose -f nomos/docker-compose.staging.yml config --format json | jq '.services[].container_name, .volumes | keys[]'` produces no names that appear in the other compose files.
 - `.env.staging.example` sets `NOMOS_PORT=8081`, `NOMOS_STUB_ENABLED=false`, and `NOMOS_DB_PATH=data/nomos.db` (separate volume ensures separate database).
 - Full test suite passes: `./scripts/run_silent.sh "tests" npm test`.
 - Build passes: `./scripts/run_silent.sh "build" npx tsc --noEmit`.
@@ -136,7 +136,7 @@ Split the existing `deploy-nomos` CI job into a two-stage promotion pipeline: de
 - `deploy-nomos-staging` deploys to the staging compose stack on the VPS and runs a health check and real LLM smoke test against the staging domain.
 - `deploy-nomos-prod` job exists, depends on `deploy-nomos-staging`.
 - `deploy-nomos-prod` deploys to the production compose stack and runs the existing production health check and smoke test.
-- `github-release` job depends on `deploy-nomos-prod`.
+- `github-release` job depends on `deploy-nomos-prod` but allows `skipped` result, so non-nomos unit releases are not blocked by the staging gate.
 - Notification job references both staging and production deploy results.
 - Full test suite passes: `./scripts/run_silent.sh "tests" npm test`.
 - Build passes: `./scripts/run_silent.sh "build" npx tsc --noEmit`.
@@ -146,6 +146,7 @@ Split the existing `deploy-nomos` CI job into a two-stage promotion pipeline: de
 - If staging smoke test fails, production deploy must not execute. The pipeline must halt.
 - If staging deploy succeeds but smoke test fails, the staging container remains running with the new version (no automatic rollback — consistent with ADR-0003 non-goals).
 - The staging smoke test must use a dedicated smoke token (`NOMOS_STAGING_SMOKE_TOKEN` secret) distinct from the production smoke token.
+- A non-nomos unit release tag (e.g. `oracle_v*`) must not trigger `deploy-nomos-staging` or `deploy-nomos-prod`. Verify: the `if` condition on both jobs checks `basename == 'nomos'`, and `github-release` treats `skipped` deploy results as success.
 
 ---
 
