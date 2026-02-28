@@ -22,13 +22,13 @@ Oracle's legacy pipeline (`release.yml`, triggered by `v*` tags) runs the same t
 
 `release-units.config.toml` declares all three paths (`loki`, `nomos`, `oracle`), but only Nomos has a canonical metadata file. Loki and Oracle releases are manual or legacy-only.
 
-## Single VPS Deployment Target
+## ~~Single VPS Deployment Target~~ (accepted)
 
-Nomos deploys to one VPS via SSH. No blue/green, no canary. The staging-to-prod promotion mitigates risk, but a failed prod deploy could cause downtime.
+Accepted: single-VPS deployment is appropriate for current scale. Blue/green requires a second host or orchestration — overkill for a low-traffic proxy. The highest-value mitigation is rollback automation (see "No Rollback Automation" above), not additional infrastructure. Zero-downtime restart via Docker health-check readiness is a possible future improvement but not urgent.
 
-## Health Poll Busy Loop
+## ~~Health Poll Busy Loop~~ (invalid)
 
-Staging and prod health checks use `sleep 2` in a loop (up to 30 iterations). This works but is noisy in CI logs.
+Invalid: the actual code uses a single `sleep 5` + one health check (`release-unit.yml:125-126`, `187-188`), not a polling loop. No issue exists.
 
 ## ~~Telegram Notification Inconsistency~~ (resolved)
 
