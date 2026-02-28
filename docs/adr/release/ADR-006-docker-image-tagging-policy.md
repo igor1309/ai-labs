@@ -26,8 +26,9 @@ reference.
     images.
 -   Image version MUST match canonical semver defined by the unit.
 -   Git tag MUST correspond to `<basename>_v<version>`.
--   Image MUST be pushed with SHA tag.
--   Image MUST be pushed with version tag.
+-   Image tags `<version>` and `<git-sha>` are defined and reserved.
+    Registry publishing is deferred; current deployment builds and
+    tags images locally on the VPS.
 
 ## 5. Consequences
 
