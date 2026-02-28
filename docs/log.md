@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-02-28
+Add release script tests to CI `release-validation` job.
+Fix `github-release` condition: block when Nomos staging deploy fails.
 Extract inline deploy scripts to `nomos/scripts/` (staging, prod, rollback) and call from `release-unit.yml`.
 Add automatic rollback to prod deploy: tag previous image as `nomos:rollback`, restore on failure.
 Unify `release.yml` notification: replace inline Telegram logic with reusable `notify-telegram-failure.yml`.
