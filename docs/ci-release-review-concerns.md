@@ -10,9 +10,9 @@ description: "Potential concerns identified during CI and release process review
 
 Nomos staging and prod deploy jobs contain ~40 lines of inline shell each (SCP, docker build, health polling, smoke tests). This is fragile and hard to test locally. Consider extracting to a deploy script checked into the repo.
 
-## No Rollback Automation
+## ~~No Rollback Automation~~ (resolved)
 
-If prod smoke fails after `docker compose up`, there is no automatic rollback to the previous version. The pipeline fails and notifies, but the broken version stays running.
+Resolved: prod deploy now tags the running image as `nomos:rollback` before replacing it. A `if: failure()` step at the end of the prod job restores the previous image when health check, version verification, or smoke test fails.
 
 ## ~~Legacy `release.yml` Drift Risk~~ (deferred)
 
