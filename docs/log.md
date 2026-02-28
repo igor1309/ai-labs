@@ -1,6 +1,9 @@
 # Log
 
 ## 2026-02-28
+Fix AGENTS.md: clarify `release-unit.yml` is post-tag pipeline; detection and tagging are operator scripts.
+Amend ADR-006 and AGENTS.md: mark Docker registry publishing as deferred, VPS-local tagging is current behavior.
+Remove non-functional historical basename reuse check from `validate-manifest.js`.
 Add release script tests to CI `release-validation` job.
 Fix `github-release` condition: block when Nomos staging deploy fails.
 Extract inline deploy scripts to `nomos/scripts/` (staging, prod, rollback) and call from `release-unit.yml`.
