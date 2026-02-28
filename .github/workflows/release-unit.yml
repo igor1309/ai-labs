@@ -245,7 +245,7 @@ jobs:
             set -e
             CONTENT=$(python3 -c "import sys,json; print(json.load(sys.stdin)['choices'][0]['message']['content'])" < /tmp/nomos-smoke-body.json 2>/dev/null || echo "(could not parse)")
             CONTENT=$(echo "$CONTENT" | cut -c1-200)
-            TEXT=$(printf "✅ nomos v%s deployed\nstaging: passed\nproduction: passed (%s)\nresponse: %s" "$EXPECTED_VERSION" "$OPENROUTER_CI_MODEL" "$CONTENT")
+            TEXT=$(printf "✅ nomos v%s deployed\nstaging: passed\nproduction: passed\n%s → %s" "$EXPECTED_VERSION" "$OPENROUTER_CI_MODEL" "$CONTENT")
             curl -fsS --max-time 10 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" --data-urlencode "text=${TEXT}"
             rm -f /tmp/nomos-smoke-body.json
 
