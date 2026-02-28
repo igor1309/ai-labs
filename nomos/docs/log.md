@@ -1,5 +1,8 @@
 # Log
 
+## 2026-02-28
+Implement staging environment (ADR-0003): add docker-compose.staging.yml (isolated project, container, volume, port 8081, external network), .env.staging.example template, VPS deployment guide staging section (DNS, Caddyfile, env setup, smoke-test project registration), split deploy-nomos CI job into deploy-nomos-staging → deploy-nomos-prod promotion pipeline with dedicated staging smoke token.
+
 ## 2026-02-27
 Add Telegram success notification on deploy with version, model, and LLM response.
 Add deploy smoke checks: /health returns version, post-deploy version verification, real LLM smoke test via OPENROUTER_CI_MODEL (openai/gpt-5-nano) with dedicated smoke project token.

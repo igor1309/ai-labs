@@ -501,15 +501,203 @@ df -h /opt/nomos/data
 
 ---
 
+## 14. Staging Environment
+
+A second Docker Compose stack on the same VPS, accessible at `staging.YOUR_DOMAIN`. CI deploys here first; production deploys only after staging smoke tests pass.
+
+> **Resource contention**: staging and production share the same VPS (1 vCPU / 1 GB RAM). Under simultaneous load they compete for CPU, but staging sees near-zero traffic (only CI smoke tests). Do not run load tests against staging while production is serving traffic.
+
+### 14.1 DNS record for staging
+
+In the Cloudflare dashboard for your root domain:
+
+1. **DNS → Records → Add Record**
+2. Set:
+   - **Type**: `A`
+   - **Name**: `staging.nomos` (creates `staging.YOUR_DOMAIN`)
+   - **IPv4 address**: same VPS IP as production
+   - **Proxy status**: **DNS only** (grey cloud)
+   - **TTL**: Auto
+3. Save
+
+Verify:
+
+```bash
+dig +short staging.YOUR_DOMAIN
+# Should return: VPS_IP
+```
+
+### 14.2 Create the shared Docker network
+
+Both the production and staging compose stacks must join a shared external network so the production Caddy can route to the staging container.
+
+```bash
+docker network create nomos-shared
+```
+
+Update the production `docker-compose.yml` on the VPS to join this network:
+
+```yaml
+services:
+  nomos:
+    # ... existing config ...
+    networks:
+      - default
+      - nomos-shared
+
+  caddy:
+    # ... existing config ...
+    networks:
+      - default
+      - nomos-shared
+
+networks:
+  nomos-shared:
+    external: true
+```
+
+Recreate the production stack to pick up the network change:
+
+```bash
+docker compose down && docker compose up -d
+```
+
+### 14.3 Update the VPS Caddyfile
+
+Edit the Caddyfile on the VPS (not the repo Caddyfile) to route both domains:
+
+```
+YOUR_DOMAIN {
+	reverse_proxy nomos:8080 {
+		flush_interval -1
+	}
+}
+
+staging.YOUR_DOMAIN {
+	reverse_proxy nomos-staging:8081 {
+		flush_interval -1
+	}
+}
+```
+
+Reload Caddy:
+
+```bash
+docker exec nomos-caddy caddy reload --config /etc/caddy/Caddyfile
+```
+
+### 14.4 Create `.env.staging`
+
+Copy the template from the repo and populate with real values:
+
+```bash
+cp /path/to/repo/nomos/.env.staging.example /opt/nomos/.env.staging
+```
+
+Edit `/opt/nomos/.env.staging` and set:
+- `NOMOS_VENDOR_API_KEY` — same vendor key as production
+- `NOMOS_VENDOR_BASE_URL` — same vendor URL as production
+
+> **Never commit `.env.staging`**. It contains real secrets. The committed `.env.staging.example` is a template only.
+
+Lock down permissions:
+
+```bash
+chmod 600 /opt/nomos/.env.staging
+```
+
+### 14.5 Deploy the staging compose file
+
+Copy `docker-compose.staging.yml` from the repo to the VPS:
+
+```bash
+cp /path/to/repo/nomos/docker-compose.staging.yml /opt/nomos/
+```
+
+### 14.6 Start the staging stack
+
+```bash
+docker compose -f /opt/nomos/docker-compose.staging.yml up -d
+```
+
+Verify:
+
+```bash
+docker exec nomos-staging wget -qO- http://127.0.0.1:8081/health
+# Expected: {"status":"ok", ...}
+```
+
+### 14.7 Register a staging smoke-test project
+
+The CI pipeline runs a smoke test against staging after each deploy. Register a dedicated project for this:
+
+```bash
+TOKEN=$(openssl rand -hex 32)
+echo "Save as NOMOS_STAGING_SMOKE_TOKEN GitHub secret: $TOKEN"
+
+TOKEN_HASH=$(echo -n "$TOKEN" | sha256sum | awk '{print $1}')
+
+docker exec nomos-staging node -e "
+  import Database from 'better-sqlite3';
+  const db = new Database('/app/data/nomos.db');
+  db.prepare(
+    'INSERT INTO projects (id, name, token_hash, scope, active) VALUES (?, ?, ?, ?, ?)'
+  ).run('ci-smoke', 'CI Smoke Test', '$TOKEN_HASH', 'live', 1);
+  db.close();
+  console.log('Staging smoke project registered.');
+"
+```
+
+Add the token as a GitHub Actions secret named `NOMOS_STAGING_SMOKE_TOKEN`.
+
+### 14.8 Verify staging end-to-end
+
+```bash
+# Health check via staging domain
+curl -fsS https://staging.YOUR_DOMAIN/health
+
+# Authenticated API call
+curl -s https://staging.YOUR_DOMAIN/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"model": "openrouter/auto", "messages": [{"role": "user", "content": "ping"}]}'
+```
+
+### 14.9 Staging directory layout
+
+After setup, the VPS `/opt/nomos/` directory includes:
+
+```
+/opt/nomos/
+├── docker-compose.yml          (production)
+├── docker-compose.staging.yml  (staging)
+├── Caddyfile                   (routes both domains)
+├── .env                        (production secrets)
+├── .env.staging                (staging secrets)
+├── data/
+│   └── nomos.db                (production database)
+├── backups/
+└── bin/
+    └── backup.sh
+```
+
+The staging database lives in the `nomos-staging-data` Docker volume, separate from production data.
+
+---
+
 ## Quick Reference
 
 | Action | Command |
 |---|---|
-| Start | `cd /opt/nomos && docker compose up -d` |
-| Stop | `cd /opt/nomos && docker compose down` |
+| Start (prod) | `cd /opt/nomos && docker compose up -d` |
+| Start (staging) | `cd /opt/nomos && docker compose -f docker-compose.staging.yml up -d` |
+| Stop (prod) | `cd /opt/nomos && docker compose down` |
+| Stop (staging) | `cd /opt/nomos && docker compose -f docker-compose.staging.yml down` |
 | Logs (nomos) | `docker logs -f nomos` |
+| Logs (staging) | `docker logs -f nomos-staging` |
 | Logs (caddy) | `docker logs -f nomos-caddy` |
-| Health check | `curl -fsS https://YOUR_DOMAIN/health` |
-| Update | `docker compose pull && docker compose up -d` |
+| Health (prod) | `curl -fsS https://YOUR_DOMAIN/health` |
+| Health (staging) | `curl -fsS https://staging.YOUR_DOMAIN/health` |
+| Update (prod) | `docker compose pull && docker compose up -d` |
 | Backup now | `/opt/nomos/bin/backup.sh` |
-| Container status | `docker compose ps` |
+| Container status | `docker compose ps && docker compose -f docker-compose.staging.yml ps` |

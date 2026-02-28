@@ -1,0 +1,25 @@
+name: nomos-staging
+
+services:
+  nomos:
+    build: .
+    container_name: nomos-staging
+    restart: unless-stopped
+    env_file: .env.staging
+    volumes:
+      - nomos-staging-data:/app/data
+    expose:
+      - "8081"
+    networks:
+      - default
+      - nomos-shared
+    labels:
+      com.logging.project: nomos
+      com.logging.service: api
+
+networks:
+  nomos-shared:
+    external: true
+
+volumes:
+  nomos-staging-data:

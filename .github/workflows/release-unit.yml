@@ -84,7 +84,7 @@ jobs:
       - name: Run tests
         run: ./scripts/run_silent.sh "tests" npm test
 
-  deploy-nomos:
+  deploy-nomos-staging:
     if: ${{ needs.verify.outputs.basename == 'nomos' }}
     needs: [core, verify]
     runs-on: ubuntu-latest
@@ -101,11 +101,11 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src"
+          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml"
           target: /tmp/nomos-deploy
           strip_components: 1
 
-      - name: Deploy on VPS
+      - name: Deploy staging on VPS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -117,16 +117,78 @@ jobs:
             cp /tmp/nomos-deploy/Dockerfile .
             cp /tmp/nomos-deploy/package.json .
             cp /tmp/nomos-deploy/package-lock.json .
+            cp /tmp/nomos-deploy/docker-compose.staging.yml .
             rm -rf src && cp -r /tmp/nomos-deploy/src .
-            rm -rf /tmp/nomos-deploy
             docker build -t nomos:latest .
+            docker compose -f docker-compose.staging.yml down
+            docker compose -f docker-compose.staging.yml up -d
+            sleep 5
+            docker exec nomos-staging wget -qO- http://127.0.0.1:8081/health | grep -q '"ok"'
+            echo "Staging deploy successful"
+
+      - name: Verify staging version
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            HEALTH=$(docker exec nomos-staging wget -qO- http://127.0.0.1:8081/health)
+            echo "Health response: $HEALTH"
+            echo "$HEALTH" | grep -q "\"version\":\"${EXPECTED_VERSION}\""
+            echo "Staging version verified: ${EXPECTED_VERSION}"
+
+      - name: Staging smoke test (real LLM call)
+        env:
+          NOMOS_STAGING_SMOKE_TOKEN: ${{ secrets.NOMOS_STAGING_SMOKE_TOKEN }}
+          OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: NOMOS_STAGING_SMOKE_TOKEN,OPENROUTER_CI_MODEL
+          script: |
+            set -e
+            RESPONSE=$(curl -s --max-time 60 -w "\n%{http_code}" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${NOMOS_STAGING_SMOKE_TOKEN}" \
+              -d "{\"model\":\"${OPENROUTER_CI_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" \
+              https://staging.nomos.enoa.ai/v1/chat/completions)
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            echo "HTTP status: $HTTP_CODE"
+            echo "Response body length: $(echo "$BODY" | wc -c)"
+            [ "$HTTP_CODE" = "200" ] || { echo "Staging smoke test failed: expected 200, got $HTTP_CODE"; exit 1; }
+            echo "Staging smoke test passed"
+
+  deploy-nomos-prod:
+    if: ${{ needs.verify.outputs.basename == 'nomos' }}
+    needs: [deploy-nomos-staging, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Deploy production on VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/nomos
+            rm -rf /tmp/nomos-deploy
             docker compose down
             docker compose up -d
             sleep 5
             docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
-            echo "Deploy successful"
+            echo "Production deploy successful"
 
-      - name: Verify version
+      - name: Verify production version
         uses: appleboy/ssh-action@v1
         env:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
@@ -140,9 +202,9 @@ jobs:
             HEALTH=$(docker exec nomos wget -qO- http://127.0.0.1:8080/health)
             echo "Health response: $HEALTH"
             echo "$HEALTH" | grep -q "\"version\":\"${EXPECTED_VERSION}\""
-            echo "Version verified: ${EXPECTED_VERSION}"
+            echo "Production version verified: ${EXPECTED_VERSION}"
 
-      - name: Smoke test (real LLM call)
+      - name: Production smoke test (real LLM call)
         env:
           NOMOS_SMOKE_TOKEN: ${{ secrets.NOMOS_SMOKE_TOKEN }}
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
@@ -163,9 +225,9 @@ jobs:
             BODY=$(echo "$RESPONSE" | sed '$d')
             echo "HTTP status: $HTTP_CODE"
             echo "Response body length: $(echo "$BODY" | wc -c)"
-            [ "$HTTP_CODE" = "200" ] || { echo "Smoke test failed: expected 200, got $HTTP_CODE"; exit 1; }
+            [ "$HTTP_CODE" = "200" ] || { echo "Production smoke test failed: expected 200, got $HTTP_CODE"; exit 1; }
             echo "$BODY" > /tmp/nomos-smoke-body.json
-            echo "Smoke test passed"
+            echo "Production smoke test passed"
 
       - name: Notify deploy success
         env:
@@ -183,13 +245,13 @@ jobs:
             set -e
             CONTENT=$(python3 -c "import sys,json; print(json.load(sys.stdin)['choices'][0]['message']['content'])" < /tmp/nomos-smoke-body.json 2>/dev/null || echo "(could not parse)")
             CONTENT=$(echo "$CONTENT" | cut -c1-200)
-            TEXT=$(printf "✅ nomos v%s deployed\nsmoke: passed (%s)\nresponse: %s" "$EXPECTED_VERSION" "$OPENROUTER_CI_MODEL" "$CONTENT")
+            TEXT=$(printf "✅ nomos v%s deployed\nstaging: passed\nproduction: passed (%s)\nresponse: %s" "$EXPECTED_VERSION" "$OPENROUTER_CI_MODEL" "$CONTENT")
             curl -fsS --max-time 10 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" --data-urlencode "text=${TEXT}"
             rm -f /tmp/nomos-smoke-body.json
 
   github-release:
-    needs: [core, verify, deploy-nomos]
-    if: ${{ always() && !cancelled() && needs.core.result == 'success' && (needs.deploy-nomos.result == 'success' || needs.deploy-nomos.result == 'skipped') }}
+    needs: [core, verify, deploy-nomos-prod]
+    if: ${{ always() && !cancelled() && needs.core.result == 'success' && (needs.deploy-nomos-prod.result == 'success' || needs.deploy-nomos-prod.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -210,8 +272,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.deploy-nomos.result == 'failure' || needs.github-release.result == 'failure') }}
-    needs: [verify, core, deploy-nomos, github-release]
+    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.deploy-nomos-staging.result == 'failure' || needs.deploy-nomos-prod.result == 'failure' || needs.github-release.result == 'failure') }}
+    needs: [verify, core, deploy-nomos-staging, deploy-nomos-prod, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -220,7 +282,8 @@ jobs:
       job_results: |
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
-        deploy-nomos=${{ needs.deploy-nomos.result }}
+        deploy-nomos-staging=${{ needs.deploy-nomos-staging.result }}
+        deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
         github-release=${{ needs.github-release.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
