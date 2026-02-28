@@ -18,9 +18,9 @@ If prod smoke fails after `docker compose up`, there is no automatic rollback to
 
 Oracle's legacy pipeline (`release.yml`, triggered by `v*` tags) runs the same tests but uses a different job structure than `release-unit.yml`. When Oracle migrates to per-unit releases, the legacy workflow should be retired to avoid confusion.
 
-## Loki and Oracle Not Yet Release Units
+## ~~Loki and Oracle Not Yet Release Units~~ (acknowledged)
 
-`release-units.config.toml` declares all three paths (`loki`, `nomos`, `oracle`), but only Nomos has a canonical metadata file. Loki and Oracle releases are manual or legacy-only.
+Loki is on hold. Oracle migration to per-unit releases is TBD. Only Nomos is an active release unit. No action needed until these projects resume or grow beyond the legacy pipeline.
 
 ## ~~Single VPS Deployment Target~~ (accepted)
 
