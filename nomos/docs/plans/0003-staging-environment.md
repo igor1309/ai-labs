@@ -28,7 +28,7 @@ Preflight check: [ ] done
 | `docker-compose.staging.yml` committed | 1 |
 | `.env.staging.example` committed | 1 |
 | Single Caddy serves both production and staging domains | 2 |
-| DNS A-record for `staging.nomos.enoa.ai` documented | 2 |
+| DNS A-record for `staging.<NOMOS_DOMAIN>` documented | 2 |
 | VPS Caddyfile updated to route both domains (documented, not repo Caddyfile) | 2 |
 | `docs/vps-deployment-guide.md` documents staging setup | 2 |
 | `deploy-nomos` split into `deploy-nomos-staging` → `deploy-nomos-prod` | 3 |
@@ -83,8 +83,8 @@ Document the VPS-side setup required for staging: Caddyfile changes, DNS, env fi
 
 ### ADR invariants addressed
 
-- Single Caddy serves both `nomos.enoa.ai` and `staging.nomos.enoa.ai`.
-- DNS A-record for `staging.nomos.enoa.ai` points to VPS IP.
+- Single Caddy serves both `<NOMOS_DOMAIN>` and `staging.<NOMOS_DOMAIN>`.
+- DNS A-record for `staging.<NOMOS_DOMAIN>` points to VPS IP.
 - `docs/vps-deployment-guide.md` documents staging setup.
 - VPS Caddyfile updated to route both domains (documented, not repo Caddyfile).
 

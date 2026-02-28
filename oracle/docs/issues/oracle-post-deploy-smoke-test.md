@@ -12,7 +12,7 @@ Oracle should adopt the same post-deploy smoke pattern to verify the deployed se
 |--------|-------------------------------|----------------------------|
 | **Smoke type** | Pre-deploy (test harness) | Post-deploy (live service) |
 | **Smoke location** | Separate `real-provider-smoke` job | Embedded in `deploy-nomos` job |
-| **What it tests** | LLM call via worker assembler in Node test | HTTP call to live `https://nomos.enoa.ai/v1/chat/completions` |
+| **What it tests** | LLM call via worker assembler in Node test | HTTP call to live `https://<NOMOS_DOMAIN>/v1/chat/completions` |
 | **Timing** | Before `web-e2e` and `deploy` | After `docker compose up` + health check + version verify |
 | **Release gate** | Blocks deploy job | Blocks `github-release` job |
 

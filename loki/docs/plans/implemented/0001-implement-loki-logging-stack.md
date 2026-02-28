@@ -16,12 +16,12 @@ Implement the decision in `loki/docs/decisions/0001-loki-logging-stack.md`:
 - Grafana access via Cloudflare Tunnel + Cloudflare Access (no inbound Grafana ports)
 
 ## Assumptions
-- Target host: existing VPS at `95.164.53.144` running Ubuntu `24.04`.
+- Target host: existing VPS at `<VPS_IP>` running Ubuntu `24.04`.
 - A Cloudflare-managed domain is available and Cloudflare Access can be configured.
 - We will document an initial allowlist of `project` and `service` values to keep them bounded (and update it via PR when onboarding changes).
 
 ## Closed decisions (from open questions)
-- VPS: use the existing host `95.164.53.144` (Ubuntu `24.04`).
+- VPS: use the existing host `<VPS_IP>` (Ubuntu `24.04`).
 - Storage: use a dedicated data volume for Loki persistence (mounted on the host).
 - Pilot onboarding: `project=oracle` (first project to onboard end-to-end).
 - Alerting (iteration 1): enable Grafana alerting to Telegram for:

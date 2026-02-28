@@ -52,7 +52,7 @@ Replace this with a real dedicated data volume before production retention growt
 - Keep this status explicit in operational notes/logs until dedicated-volume cutover is complete.
 
 ### Current blocker example (real host status)
-- Host: `95.164.53.144`
+- Host: `<VPS_IP>`
 - Requested provider action: attach a separate raw/unformatted `20G` block volume.
 - Current blocker: provider expanded the primary/root disk instead of attaching a separate volume.
 - Phase 1 remains **provisionally passed** until separate-volume attachment succeeds and loopback cutover is completed.

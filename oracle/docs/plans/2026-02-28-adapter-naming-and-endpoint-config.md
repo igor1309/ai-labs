@@ -65,7 +65,7 @@ git commit -m "add naming discipline rule to composition root guide"
 
 Throughout the plan:
 - `LLM_BASE_URL` → `LLM_ENDPOINT_URL`
-- Default value: `https://nomos.enoa.ai/v1/chat/completions` (full URL, no path concatenation)
+- Default value: `https://<NOMOS_DOMAIN>/v1/chat/completions` (full URL, no path concatenation)
 
 **Step 2: Update adapter change description**
 
@@ -73,27 +73,27 @@ In Tasks 1 and 3 (adapter files), replace the URL construction change:
 
 Old plan says:
 ```
-- `baseUrl = "https://openrouter.ai"` → `baseUrl = "https://nomos.enoa.ai"`
+- `baseUrl = "https://openrouter.ai"` → `baseUrl = "https://<NOMOS_DOMAIN>"`
 - `${baseUrl}/api/v1/chat/completions` → `${baseUrl}/v1/chat/completions`
 ```
 
 New:
 ```
-- Parameter: `baseUrl = "https://openrouter.ai"` → `endpointUrl = "https://nomos.enoa.ai/v1/chat/completions"`
+- Parameter: `baseUrl = "https://openrouter.ai"` → `endpointUrl = "https://<NOMOS_DOMAIN>/v1/chat/completions"`
 - URL construction: `${baseUrl}/api/v1/chat/completions` → `endpointUrl` (use directly, no concatenation)
 ```
 
 **Step 3: Update composition root change description**
 
 In Task 5 (worker-fetch-assembler), replace:
-- `DEFAULT_LLM_BASE_URL = "https://nomos.enoa.ai"` → `DEFAULT_LLM_ENDPOINT_URL = "https://nomos.enoa.ai/v1/chat/completions"`
+- `DEFAULT_LLM_BASE_URL = "https://<NOMOS_DOMAIN>"` → `DEFAULT_LLM_ENDPOINT_URL = "https://<NOMOS_DOMAIN>/v1/chat/completions"`
 - `config.llmBaseUrl` → `config.llmEndpointUrl`
 - Env var resolution: `"LLM_BASE_URL"` → `"LLM_ENDPOINT_URL"`
 
 **Step 4: Update config files description**
 
 In Task 7:
-- `.dev.vars.example`: `LLM_BASE_URL=https://nomos.enoa.ai` → `LLM_ENDPOINT_URL=https://nomos.enoa.ai/v1/chat/completions`
+- `.dev.vars.example`: `LLM_BASE_URL=https://<NOMOS_DOMAIN>` → `LLM_ENDPOINT_URL=https://<NOMOS_DOMAIN>/v1/chat/completions`
 
 **Step 5: Update test assertions**
 

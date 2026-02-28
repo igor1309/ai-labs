@@ -3,7 +3,7 @@
 ## 2026-02-28
 - Deploy v0.2.0: replace `LLM_BASE_URL` + hardcoded path with single `LLM_ENDPOINT_URL` (full URL, no path concatenation) across adapters, assembler, tests, config, and Cloudflare Workers secret.
 - Add naming discipline rule to composition root guide: name adapters by protocol/capability, not by what they connect to.
-- Wire Oracle LLM calls through Nomos proxy: rename adapters and env vars from openrouter to llm, change default base URL to nomos.enoa.ai, update CI smoke to route through Nomos.
+- Wire Oracle LLM calls through Nomos proxy: rename adapters and env vars from openrouter to llm, change default base URL to <NOMOS_DOMAIN>, update CI smoke to route through Nomos.
 
 ## 2026-02-23
 - Increase web app default request timeout to `60000ms` to align browser-side abort behavior with Worker OpenRouter timeout.

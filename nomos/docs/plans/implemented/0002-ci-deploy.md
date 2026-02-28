@@ -16,7 +16,7 @@ Expected branch: trunk
 
 Add the following secrets to the `igor1309/ai-labs` repository:
 
-- `VPS_HOST` — `95.164.53.144`
+- `VPS_HOST` — `<VPS_IP>`
 - `VPS_USER` — `root`
 - `VPS_SSH_KEY` — contents of the SSH private key that authenticates to the VPS
 
@@ -67,7 +67,7 @@ Gate: notify job references deploy result.
 
 Bump `nomos/package.json` version to `0.6.1`, commit, tag `nomos_v0.6.1`, push.
 
-Gate: `gh run list` shows Release Unit workflow passes all jobs including deploy. Health check on `https://nomos.enoa.ai/health` returns ok.
+Gate: `gh run list` shows Release Unit workflow passes all jobs including deploy. Health check on `https://<NOMOS_DOMAIN>/health` returns ok.
 
 - [ ] done
 

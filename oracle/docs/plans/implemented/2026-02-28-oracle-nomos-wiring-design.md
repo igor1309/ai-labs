@@ -21,7 +21,7 @@ Rename `openrouter-*-model-client-adapter.js` to `llm-*-model-client-adapter.js`
 Changes in both adapters:
 - Export: `createOpenRouter*` → `createLlm*`
 - URL path: `${baseUrl}/api/v1/chat/completions` → `${baseUrl}/v1/chat/completions`
-- Default `baseUrl`: `https://openrouter.ai` → `https://nomos.enoa.ai`
+- Default `baseUrl`: `https://openrouter.ai` → `https://<NOMOS_DOMAIN>`
 - Error messages: "OpenRouter" → "LLM" (e.g., "LLM request timed out", "Invalid LLM response")
 - Internal function names: `formatOpenRouterHttpError` → `formatLlmHttpError`, `classifyOpenRouterErrorType` → `classifyLlmErrorType`
 
@@ -30,7 +30,7 @@ Request format unchanged — already OpenAI-compatible. Usage/cost extraction un
 ### Composition root
 
 `oracle/apps/am-i-done-api/src/worker-fetch-assembler.js`:
-- Constants: `DEFAULT_OPENROUTER_BASE_URL` → `DEFAULT_LLM_BASE_URL` (`https://nomos.enoa.ai`), `DEFAULT_OPENROUTER_TIMEOUT_MS` → `DEFAULT_LLM_TIMEOUT_MS`
+- Constants: `DEFAULT_OPENROUTER_BASE_URL` → `DEFAULT_LLM_BASE_URL` (`https://<NOMOS_DOMAIN>`), `DEFAULT_OPENROUTER_TIMEOUT_MS` → `DEFAULT_LLM_TIMEOUT_MS`
 - Env vars: `OPENROUTER_API_KEY` → `LLM_API_KEY`, `OPENROUTER_BASE_URL` → `LLM_BASE_URL`, `OPENROUTER_TIMEOUT_MS` → `LLM_TIMEOUT_MS`
 - Config fields: `openRouterApiKey` → `llmApiKey`, `openRouterBaseUrl` → `llmBaseUrl`
 - Factory functions: `createConfiguredOpenRouter*` → `createConfiguredLlm*`, `resolveOpenRouterApiKey` → `resolveLlmApiKey`
@@ -38,7 +38,7 @@ Request format unchanged — already OpenAI-compatible. Usage/cost extraction un
 ### Config files
 
 - `wrangler.toml`: `OPENROUTER_TIMEOUT_MS` → `LLM_TIMEOUT_MS`
-- `.dev.vars.example`: `OPENROUTER_API_KEY` → `LLM_API_KEY`, add `LLM_BASE_URL=https://nomos.enoa.ai`
+- `.dev.vars.example`: `OPENROUTER_API_KEY` → `LLM_API_KEY`, add `LLM_BASE_URL=https://<NOMOS_DOMAIN>`
 
 ### Tests
 
@@ -51,7 +51,7 @@ Rename and update three test files:
 
 Update `oracle-core.yml` to route smoke tests through Nomos:
 - Use Nomos oracle project bearer token as `LLM_API_KEY`
-- Set `LLM_BASE_URL=https://nomos.enoa.ai`
+- Set `LLM_BASE_URL=https://<NOMOS_DOMAIN>`
 
 ### Cloudflare Workers secrets
 

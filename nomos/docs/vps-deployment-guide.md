@@ -13,9 +13,9 @@ Concrete values for the active deployment. The rest of the guide uses `YOUR_DOMA
 
 | Parameter | Value |
 |---|---|
-| **Domain** | `nomos.enoa.ai` |
-| **VPS IP** | `95.164.53.144` |
-| **DNS provider** | Cloudflare (manages `enoa.ai`) |
+| **Domain** | `<NOMOS_DOMAIN>` |
+| **VPS IP** | `<VPS_IP>` |
+| **DNS provider** | Cloudflare (manages `<ROOT_DOMAIN>`) |
 | **LLM vendor** | OpenRouter |
 | **Vendor base URL** | `https://openrouter.ai/api/v1` |
 | **Deploy path** | `/opt/nomos` |
@@ -40,13 +40,13 @@ Caddy needs to reach the VPS directly to obtain TLS certificates via Let's Encry
 
 ### 1.1 Create the DNS record
 
-In the Cloudflare dashboard for `enoa.ai`:
+In the Cloudflare dashboard for `<ROOT_DOMAIN>`:
 
 1. Go to **DNS → Records → Add Record**
 2. Set:
    - **Type**: `A`
-   - **Name**: `nomos` (creates `nomos.enoa.ai`)
-   - **IPv4 address**: `VPS_IP` (e.g., `95.164.53.144`)
+   - **Name**: `nomos` (creates `<NOMOS_DOMAIN>`)
+   - **IPv4 address**: `VPS_IP` (e.g., `<VPS_IP>`)
    - **Proxy status**: **DNS only** (grey cloud)
    - **TTL**: Auto
 3. Save
@@ -57,8 +57,8 @@ In the Cloudflare dashboard for `enoa.ai`:
 
 ```bash
 # From your local machine or the VPS
-dig +short nomos.enoa.ai
-# Should return: 95.164.53.144 (your VPS_IP)
+dig +short <NOMOS_DOMAIN>
+# Should return: <VPS_IP> (your VPS_IP)
 ```
 
 Wait for propagation before proceeding (usually instant with Cloudflare, up to a few minutes).
@@ -167,7 +167,7 @@ volumes:
 
 ### 5.2 Caddyfile
 
-Replace `YOUR_DOMAIN` with your actual domain (e.g., `nomos.enoa.ai`). Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
+Replace `YOUR_DOMAIN` with your actual domain (e.g., `<NOMOS_DOMAIN>`). Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
 
 ```
 YOUR_DOMAIN {

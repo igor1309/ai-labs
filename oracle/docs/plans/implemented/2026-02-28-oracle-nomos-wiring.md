@@ -10,7 +10,7 @@ description: "Implementation plan for wiring Oracle LLM calls through Nomos prox
 
 **Goal:** Route Oracle's LLM calls through Nomos proxy instead of directly to OpenRouter.
 
-**Architecture:** Rename-and-reconfigure — adapter files renamed from `openrouter-*` to `llm-*`, env vars from `OPENROUTER_*` to `LLM_*`, URL path from `/api/v1/` to `/v1/`, default base URL to `https://nomos.enoa.ai`. No logic changes, no domain module changes.
+**Architecture:** Rename-and-reconfigure — adapter files renamed from `openrouter-*` to `llm-*`, env vars from `OPENROUTER_*` to `LLM_*`, URL path from `/api/v1/` to `/v1/`, default base URL to `https://<NOMOS_DOMAIN>`. No logic changes, no domain module changes.
 
 **Tech Stack:** Node.js, Cloudflare Workers
 
@@ -37,7 +37,7 @@ git mv oracle/packages/worker-api/src/openrouter-normalizer-model-client-adapter
 
 Apply these replacements in `llm-normalizer-model-client-adapter.js`:
 - `createOpenRouterNormalizerModelClient` → `createLlmNormalizerModelClient`
-- `baseUrl = "https://openrouter.ai"` → `baseUrl = "https://nomos.enoa.ai"`
+- `baseUrl = "https://openrouter.ai"` → `baseUrl = "https://<NOMOS_DOMAIN>"`
 - `${baseUrl}/api/v1/chat/completions` → `${baseUrl}/v1/chat/completions`
 - `"OpenRouter request timed out"` → `"LLM request timed out"`
 - `"Invalid OpenRouter response"` (3 occurrences) → `"Invalid LLM response"`
@@ -118,7 +118,7 @@ git mv oracle/packages/worker-api/src/openrouter-outlook-model-client-adapter.js
 
 Same pattern as Task 1 but for outlook adapter:
 - `createOpenRouterOutlookModelClient` → `createLlmOutlookModelClient`
-- `baseUrl = "https://openrouter.ai"` → `baseUrl = "https://nomos.enoa.ai"`
+- `baseUrl = "https://openrouter.ai"` → `baseUrl = "https://<NOMOS_DOMAIN>"`
 - `${baseUrl}/api/v1/chat/completions` → `${baseUrl}/v1/chat/completions`
 - `"OpenRouter request timed out"` → `"LLM request timed out"`
 - `"Invalid OpenRouter response"` (3 occurrences) → `"Invalid LLM response"`
@@ -155,7 +155,7 @@ git mv oracle/packages/worker-api/tests/openrouter-outlook-model-client-adapter.
 - `makeOpenRouterRequestCall` → `makeLlmRequestCall`
 - `makeOpenRouterSuccessPayload` → `makeLlmSuccessPayload`
 - `makeOpenRouterRawPayload` → `makeLlmRawPayload`
-- URL assertion in `makeLlmRequestCall`: `"https://openrouter.ai/api/v1/chat/completions"` → `"https://nomos.enoa.ai/v1/chat/completions"`
+- URL assertion in `makeLlmRequestCall`: `"https://openrouter.ai/api/v1/chat/completions"` → `"https://<NOMOS_DOMAIN>/v1/chat/completions"`
 - Error assertions: `"OpenRouter request failed (401): Unauthorized"` → `"LLM request failed (401): Unauthorized"`
 - Error assertions: `"OpenRouter request failed (400)"` → `"LLM request failed (400)"`
 - Error assertions: `"OpenRouter request timed out"` → `"LLM request timed out"`
@@ -202,7 +202,7 @@ const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai"
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 10000
 
 // New:
-const DEFAULT_LLM_BASE_URL = "https://nomos.enoa.ai"
+const DEFAULT_LLM_BASE_URL = "https://<NOMOS_DOMAIN>"
 const DEFAULT_LLM_TIMEOUT_MS = 10000
 ```
 
@@ -283,7 +283,7 @@ LLM_API_KEY: "llm-api-key",
 **Step 4: Update URL assertions**
 
 - `"https://openrouter.custom/api/v1/chat/completions"` → `"https://llm.custom/v1/chat/completions"`
-- `"https://openrouter.ai/api/v1/chat/completions"` → `"https://nomos.enoa.ai/v1/chat/completions"`
+- `"https://openrouter.ai/api/v1/chat/completions"` → `"https://<NOMOS_DOMAIN>/v1/chat/completions"`
 
 **Step 5: Update spy names**
 
@@ -330,7 +330,7 @@ OPENROUTER_API_KEY=replace-with-local-key
 
 # New:
 LLM_API_KEY=replace-with-nomos-project-token
-LLM_BASE_URL=https://nomos.enoa.ai
+LLM_BASE_URL=https://<NOMOS_DOMAIN>
 ```
 
 **Step 3: Run tests**
@@ -432,7 +432,7 @@ git commit -m "update CI smoke: route through nomos instead of direct openrouter
 
 `oracle/docs/log.md` — add under `## 2026-02-28` (create section if needed):
 ```
-Wire Oracle LLM calls through Nomos proxy: rename adapters and env vars from openrouter to llm, change default base URL to nomos.enoa.ai, update CI smoke to route through Nomos.
+Wire Oracle LLM calls through Nomos proxy: rename adapters and env vars from openrouter to llm, change default base URL to <NOMOS_DOMAIN>, update CI smoke to route through Nomos.
 ```
 
 `docs/log.md` — add under `## 2026-02-28`:
