@@ -128,7 +128,7 @@ Release policy is outcome-based, per-unit, and governed by ADR-000 through ADR-0
 - **Tagging**: per-unit tags follow `<basename>_v<version>` (e.g., `nomos_v0.6.0`). Basename is the leaf directory name, must be globally unique, and must not contain underscores.
 - **Release detection**: a release occurs only when **both** files under the unit root changed **and** the canonical version changed since the last matching tag (`<basename>_v*`). No tag → base is the initial commit.
 - **Trunk-only**: releases trigger only on push to `trunk`. Release branches are prohibited.
-- **Docker units**: Docker-producing units (marked in manifest) publish two image tags: `<version>` and `<git-sha>`.
+- **Docker units**: Docker-producing units (marked in manifest) define two image tags: `<version>` and `<git-sha>`. Registry publishing is deferred; images are built and tagged locally on the VPS.
 
 ### Release invariants
 
