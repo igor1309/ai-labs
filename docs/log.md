@@ -1,5 +1,9 @@
 # Log
 
+## 2026-03-01
+Replace inline Telegram curl in `release-unit.yml` deploy notification with shared `ci-shared/scripts/notify_telegram.sh` (fixes #62, #61). Transport script is copied to VPS via existing scp step.
+Extract Telegram transport to `ci-shared` (PR #64 merged): shared `notify_telegram.sh` with ADR-001 curl flags, local adapter in `scripts/ci/`.
+
 ## 2026-02-28
 Remove Loki from CI: delete `loki-core.yml`, remove from `ci.yml` dispatch and notify, remove from `npm test` glob. Loki code and tests stay in repo.
 Relax ADR-003 basename reuse invariant from MUST NOT to SHOULD NOT (enforcement deferred).

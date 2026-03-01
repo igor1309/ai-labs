@@ -101,7 +101,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml,nomos/scripts"
+          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml,nomos/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
           target: /tmp/nomos-deploy
           strip_components: 1
 
@@ -225,7 +225,7 @@ jobs:
             CONTENT=$(python3 -c "import sys,json; print(json.load(sys.stdin)['choices'][0]['message']['content'])" < /tmp/nomos-smoke-body.json 2>/dev/null || echo "(could not parse)")
             CONTENT=$(echo "$CONTENT" | cut -c1-200)
             TEXT=$(printf "✅ nomos v%s deployed\nstaging: passed\nproduction: passed\n%s → %s" "$EXPECTED_VERSION" "$OPENROUTER_CI_MODEL" "$CONTENT")
-            curl -fsS --max-time 10 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" --data-urlencode "text=${TEXT}"
+            bash /tmp/nomos-deploy/ci-shared/scripts/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$TEXT"
             rm -f /tmp/nomos-smoke-body.json
 
       - name: Rollback production on failure
