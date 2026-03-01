@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
 message="${1:-}"
@@ -11,4 +10,5 @@ fi
 : "${CI_BOT_TOKEN:?CI_BOT_TOKEN is required}"
 : "${CI_CHAT_ID:?CI_CHAT_ID is required}"
 
-curl -fsS --connect-timeout 5 --max-time 20 --retry 3 --retry-delay 1 --retry-all-errors -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" --data-urlencode "text=${message}"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$script_dir/notify_telegram.sh" "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$message"
