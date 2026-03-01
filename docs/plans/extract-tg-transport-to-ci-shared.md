@@ -4,26 +4,29 @@ Status: ready for implementation (requires access to both `ai-labs` and `ci-shar
 
 ## Goal
 
-Extract the Telegram HTTP transport into `ci-shared` so any repo can send a message to any bot/chat with correct retry and timeout settings. Keep message formatting with callers.
+Extract the Telegram HTTP transport into `ci-shared` so any repo can send messages to any bot/chat with correct retry, timeout, and ordered delivery. Keep message formatting with callers.
+
+Governed by: `docs/adr/ci/ADR-001-telegram-transport-api.md`
 
 ## Why extract transport, not the whole notification?
 
-Message formatting (emoji, templates, job-result parsing) is business logic owned by each caller. Transport — the curl call with correct retry, timeout, and encoding flags — is the part that's easy to get subtly wrong and already has been (the inline curl in `release-unit.yml` is missing retries and has a weaker timeout). Different clients may also use different bots and chats, so token and chat_id are positional args rather than env vars. The script accepts a single message; splitting messages across multiple calls is a caller decision.
+Message formatting (emoji, templates, job-result parsing) is business logic owned by each caller. Transport — the curl call with correct retry, timeout, and encoding flags — is the part that's easy to get subtly wrong. Different clients may also use different bots and chats, so token and chat_id are positional args rather than env vars. The script accepts variadic message chunks and sends them sequentially, guaranteeing delivery order. Splitting is a caller decision; ordered delivery is a transport concern.
 
 ## Design
 
 ### Script: `notify_telegram.sh`
 
 ```
-Usage: notify_telegram.sh <token> <chat_id> <message>
+Usage: notify_telegram.sh <token> <chat_id> <chunk1> [chunk2...]
 ```
 
 **Responsibility — transport only:**
-- Accept token, chat_id, and message as positional args
-- POST to `https://api.telegram.org/bot<token>/sendMessage`
+- Accept token, chat_id, and one or more message chunks as positional args
+- POST each chunk to `https://api.telegram.org/bot<token>/sendMessage` sequentially
 - curl flags: `-fsS --connect-timeout 5 --max-time 20 --retry 3 --retry-delay 1 --retry-all-errors`
 - `--data-urlencode` for message text (safe special chars)
-- Propagate exit code
+- Fail-fast: stop on first chunk failure, propagate exit code
+- Partial delivery accepted (chunks sent before failure cannot be retracted)
 
 **Not its responsibility:**
 - Message formatting (emoji, templates) — caller
@@ -31,25 +34,24 @@ Usage: notify_telegram.sh <token> <chat_id> <message>
 - Choosing which bot/chat — caller via args
 - Deciding when to notify — caller
 
-### Target script (~12 lines)
+### Target script
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 3 ]; then
-  echo "usage: notify_telegram.sh <token> <chat_id> <message>" >&2
+if [ "$#" -lt 3 ]; then
+  echo "usage: notify_telegram.sh <token> <chat_id> <chunk1> [chunk2...]" >&2
   exit 2
 fi
 
 token="$1"
 chat_id="$2"
-message="$3"
+shift 2
 
-curl -fsS --connect-timeout 5 --max-time 20 \
-  --retry 3 --retry-delay 1 --retry-all-errors \
-  -X POST "https://api.telegram.org/bot${token}/sendMessage" \
-  -d "chat_id=${chat_id}" --data-urlencode "text=${message}"
+for chunk in "$@"; do
+  curl -fsS --connect-timeout 5 --max-time 20 --retry 3 --retry-delay 1 --retry-all-errors -X POST "https://api.telegram.org/bot${token}/sendMessage" -d "chat_id=${chat_id}" --data-urlencode "text=${chunk}"
+done
 ```
 
 ## Implementation Steps
@@ -82,7 +84,7 @@ exec "$script_dir/../../vendor/ci-shared/scripts/notify_telegram.sh" "$@"
 
 ### Step 4 — Update callers in ai-labs
 
-**A. `scripts/ci/notify_telegram_failure.sh`** — replace with wrapper call:
+**`scripts/ci/notify_telegram_failure.sh`** — rewrite as thin adapter:
 
 ```bash
 #!/usr/bin/env bash
@@ -103,22 +105,7 @@ exec "$script_dir/notify_telegram.sh" "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$message"
 
 This preserves the existing interface (env-var based) for `notify-telegram-failure.yml` — no workflow changes needed. The file stays at its current path and name; it becomes a thin adapter from the env-var convention to the positional-args transport script.
 
-**B. `release-unit.yml:228`** — replace inline curl (tracked in GitHub issue "Consolidate inline Telegram curl in release-unit.yml with shared script"):
-
-```yaml
-# Before (inline curl, missing retries):
-curl -fsS --max-time 10 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" ...
-
-# After (uses shared transport):
-# Note: script must be available on VPS or copied during deploy.
-# Simplest option: inline the same curl flags from the shared script.
-# Or: scp the script to VPS during deploy setup.
-```
-
-> **Decision gate (blocks Step 4B):** The VPS deploy step runs via SSH (`appleboy/ssh-action`), so repo scripts aren't available on the remote host. Options:
-> 1. Inline the correct curl flags (matching the shared script) — simplest, still a mild duplication of flags but not logic. **Recommended:** the VPS context makes script sharing awkward and this is a single call site.
-> 2. Copy the script to VPS as part of deployment — cleaner but adds a step.
-> 3. Run the notification from the GitHub runner instead of the VPS — requires restructuring the step.
+> **Out of scope:** The inline curl in `release-unit.yml:228` is tracked separately in [#62](https://github.com/igor1309/ai-labs/issues/62).
 
 ### Step 5 — Tests
 
@@ -128,10 +115,10 @@ curl -fsS --max-time 10 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sen
 ### Step 6 — Commit and push ai-labs changes
 
 Expected changed files in ai-labs:
+- `docs/adr/ci/ADR-001-telegram-transport-api.md` — new ADR
 - `vendor/ci-shared/` — subtree update
 - `scripts/ci/notify_telegram.sh` — new local wrapper
 - `scripts/ci/notify_telegram_failure.sh` — rewritten as thin adapter (preserves existing env-var interface, delegates to `notify_telegram.sh`)
-- `.github/workflows/release-unit.yml` — updated curl flags (if Step 4B decision is option 1)
 
 No workflow interface changes — `notify-telegram-failure.yml` and all callers remain unchanged.
 
@@ -143,4 +130,4 @@ No workflow interface changes — `notify-telegram-failure.yml` and all callers 
 | `scripts/run_silent.sh` | Local wrapper proxy (pattern to follow) |
 | `scripts/ci/notify_telegram_failure.sh` | Current TG script — env-var interface, 15 lines |
 | `.github/workflows/notify-telegram-failure.yml` | Reusable workflow — formats failure messages, calls the script |
-| `.github/workflows/release-unit.yml:228` | Inline curl — duplicate, missing retries (GitHub issue created) |
+| `.github/workflows/release-unit.yml:228` | Inline curl — out of scope, tracked in [#62](https://github.com/igor1309/ai-labs/issues/62) |
