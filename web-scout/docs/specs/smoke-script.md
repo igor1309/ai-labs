@@ -23,40 +23,21 @@ SEARXNG_URL=http://localhost:8888 ANTHROPIC_API_KEY=... node web-scout/smoke.js
 
 ### Scout agent
 
-`async (query: string) => string` — returns raw JSON from the MCP tool call.
+`async (query: string) => string` — executes the web-scout MCP `search` tool with the given query and returns the raw JSON result. Only the web-scout MCP `search` tool is permitted; built-in web search or fetch tools are explicitly excluded. Budget ceiling: `$0.02`.
 
-- Model: Claude Haiku
-- MCP server: web-scout stdio — `node web-scout/src/index.js` with `SEARXNG_URL` from env
-- Allowed tools: `['mcp__web-scout__search']` — exhaustive list, nothing else permitted (no WebSearch, no WebFetch)
-- Prompt: `"Call the search tool with query '{query}'. Return only the raw JSON result verbatim, no commentary."`
-- Returns: `result.result` (raw JSON string)
-- Budget: `maxBudgetUsd: 0.02`
+_Implementation notes:_ model Claude Haiku; MCP server spawned as `node web-scout/src/index.js` with `SEARXNG_URL` from env; prompt instructs the agent to return only the raw JSON result verbatim; result extracted from `result.result`; SDK option `maxBudgetUsd: 0.02`.
 
 ### Docker logs
 
-Captured from the SearXNG container after scout completes (`docker logs --tail 50 searxng`). If the container is not running or the command fails, passed as `"(unavailable)"` — does not abort the script.
+Captured from the SearXNG container after scout completes. If unavailable, passed as `"(unavailable)"` — does not abort the script.
+
+_Implementation notes:_ `docker logs --tail 50 searxng`.
 
 ### Judge agent
 
-`async (query: string, resultsJson: string, logs: string) => { verdict: "PASS" | "FAIL", explanation: string }`
+`async (query: string, resultsJson: string, logs: string) => { verdict: "PASS" | "FAIL", explanation: string }` — evaluates result relevance and log health given the query, scout output, and docker logs. No search or fetch tools permitted. Budget ceiling: `$0.03`.
 
-- Model: Claude Haiku
-- No tools — pure reasoning only
-- Prompt:
-  ```
-  Query: '{query}'
-
-  Search results:
-  {resultsJson}
-
-  Docker logs:
-  {logs}
-
-  Did the search return relevant results and did the docker logs show successful processing?
-  Start your answer with PASS or FAIL.
-  ```
-- Verdict: extracted by checking whether `result.result` starts with `PASS` or `FAIL`
-- Budget: `maxBudgetUsd: 0.03`
+_Implementation notes:_ model Claude Haiku; no tools; prompt provides query, results JSON, and docker logs and asks the agent to start its answer with PASS or FAIL; verdict extracted by checking the first word of `result.result`; SDK option `maxBudgetUsd: 0.03`.
 
 ## Fixed query
 
@@ -71,9 +52,8 @@ Captured from the SearXNG container after scout completes (`docker logs --tail 5
 5. Results JSON must be parseable; exits non-zero otherwise.
 6. `results` array must be non-empty; exits non-zero otherwise.
 7. Each result must have a non-empty `title` (string) and `url` (string); exits non-zero otherwise.
-8. Docker logs (when available) must contain no fatal error markers; exits non-zero otherwise.
-9. Exits non-zero if the judge verdict is FAIL or unparseable.
-10. Docker logs unavailability does not abort — logs are passed as `"(unavailable)"`.
+8. Exits non-zero if the judge verdict is FAIL or unparseable.
+9. Docker logs unavailability does not abort — logs are passed as `"(unavailable)"`.
 
 ## Tests
 
@@ -85,7 +65,7 @@ Captured from the SearXNG container after scout completes (`docker logs --tail 5
 6. `exits_nonzero_whenResultMissingTitleOrUrl`
 7. `exits_nonzero_whenJudgeVerdictIsFail`
 8. `exits_nonzero_whenJudgeVerdictIsUnparseable`
-9. `logsUnavailable_doesNotAbort_passedAsUnavailableString`
+9. `logsUnavailable_doesNotAbort_scriptContinuesToJudge`
 10. `exits_nonzero_whenScoutCostExceedsLimit`
 11. `exits_nonzero_whenJudgeCostExceedsLimit`
 12. `exits_nonzero_whenTotalCostExceedsLimit`
@@ -93,6 +73,4 @@ Captured from the SearXNG container after scout completes (`docker logs --tail 5
 
 ## Done criteria
 
-- Script exits 0 when SearXNG is running and the judge deems results relevant.
-- Script exits 1 when SearXNG is down, returns no results, or the judge deems results irrelevant.
-- Both agent costs printed to stdout.
+Script exits 0 (PASS) or 1 (FAIL) with verdict, explanation, and both agent costs printed to stdout.
