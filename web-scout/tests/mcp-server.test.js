@@ -69,3 +69,25 @@ test("search_shouldReturnError_onEmptyQuery", async () => {
   await mcpClient.close()
   await server.close()
 })
+
+test("search_shouldPassOptionalParams_toClient", async () => {
+  let capturedArgs
+  const clientStub = {
+    search: async (query, options) => {
+      capturedArgs = { query, options }
+      return { results: [], query, number_of_results: 0 }
+    }
+  }
+  const { server, mcpClient } = await makeConnectedPair(clientStub)
+
+  await mcpClient.callTool({
+    name: "search",
+    arguments: { query: "test", categories: "general", language: "en", pageNo: 2 }
+  })
+
+  assert.equal(capturedArgs.query, "test")
+  assert.deepEqual(capturedArgs.options, { categories: "general", language: "en", pageNo: 2 })
+
+  await mcpClient.close()
+  await server.close()
+})
