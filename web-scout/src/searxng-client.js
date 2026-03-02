@@ -12,14 +12,15 @@ export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, 
       const response = await fetchFn(url.toString())
       const data = await response.json()
 
+      const mapped = data.results.map(($0) => ({
+        title: $0.title,
+        url: $0.url,
+        snippet: $0.snippet,
+        engines: $0.engines,
+        score: $0.score
+      }))
       return {
-        results: data.results.map(($0) => ({
-          title: $0.title,
-          url: $0.url,
-          snippet: $0.snippet,
-          engines: $0.engines,
-          score: $0.score
-        })),
+        results: maxResults != null ? mapped.slice(0, maxResults) : mapped,
         query: data.query,
         number_of_results: data.number_of_results
       }

@@ -79,3 +79,25 @@ test("search_shouldReturnEmptyResults_whenSearxngReturnsNone", async (t) => {
 
   assert.deepEqual(result, { results: [], query: "nothing", number_of_results: 0 })
 })
+
+test("search_shouldTruncateResults_toMaxResults", async (t) => {
+  const threeResults = [
+    { title: "A", url: "https://a.com", snippet: "a", engines: ["g"], score: 3 },
+    { title: "B", url: "https://b.com", snippet: "b", engines: ["g"], score: 2 },
+    { title: "C", url: "https://c.com", snippet: "c", engines: ["g"], score: 1 }
+  ]
+  const fetchMock = t.mock.fn(async () => ({
+    ok: true,
+    json: async () => ({ results: threeResults, query: "test", number_of_results: 3 })
+  }))
+  const client = makeSearxngClient({
+    baseUrl: "http://localhost:8888",
+    fetch: fetchMock,
+    maxResults: 2
+  })
+
+  const result = await client.search("test")
+
+  assert.equal(result.results.length, 2)
+  assert.deepEqual(result.results.map(($0) => $0.title), ["A", "B"])
+})
