@@ -122,9 +122,11 @@ test("search_shouldWriteSuccessLogToStderr_onSuccess", async () => {
   const searchResult = { results: [{ title: "T", url: "http://x.com", snippet: "s", engines: ["g"], score: 1 }], query: "q", number_of_results: 1 }
   const { server, mcpClient } = await makeConnectedPair({ search: async () => searchResult })
   const spy = captureStderr()
-
-  await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
-  spy.restore()
+  try {
+    await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
+  } finally {
+    spy.restore()
+  }
 
   assert.equal(spy.lines.length, 1)
   const entry = JSON.parse(spy.lines[0])
@@ -141,9 +143,11 @@ test("search_shouldWriteErrorLogToStderr_onClientFailure", async () => {
   const clientStub = { search: async () => { throw new Error("SearXNG down") } }
   const { server, mcpClient } = await makeConnectedPair(clientStub)
   const spy = captureStderr()
-
-  await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
-  spy.restore()
+  try {
+    await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
+  } finally {
+    spy.restore()
+  }
 
   assert.equal(spy.lines.length, 1)
   const entry = JSON.parse(spy.lines[0])
@@ -162,11 +166,13 @@ test("search_shouldNotWriteToStderr_whenLogLevelSilent", async () => {
   const originalLogLevel = process.env.LOG_LEVEL
   process.env.LOG_LEVEL = "silent"
   const spy = captureStderr()
-
-  await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
-  spy.restore()
-  if (originalLogLevel === undefined) delete process.env.LOG_LEVEL
-  else process.env.LOG_LEVEL = originalLogLevel
+  try {
+    await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
+  } finally {
+    spy.restore()
+    if (originalLogLevel === undefined) delete process.env.LOG_LEVEL
+    else process.env.LOG_LEVEL = originalLogLevel
+  }
 
   assert.equal(spy.lines.length, 0)
 
@@ -189,7 +195,12 @@ test("startup_shouldWriteStartupLogToStderr_onBoot", async () => {
 
   child.kill()
 
-  const entry = JSON.parse(line)
+  let entry
+  try {
+    entry = JSON.parse(line.trim())
+  } catch {
+    assert.fail(`Expected JSON startup log, got: ${JSON.stringify(line)}`)
+  }
   assert.equal(entry.event, "startup")
   assert.equal(entry.searxngUrl, "http://localhost:9999")
   assert.equal(typeof entry.timeoutMs, "undefined")
