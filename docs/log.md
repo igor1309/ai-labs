@@ -2,6 +2,7 @@
 
 ## 2026-03-02
 
+web-scout: add structured JSON logging to stderr (startup + per-call), `LOG_LEVEL` env var, and updated README. See `web-scout/docs/log.md`.
 Add web-scout CI workflow (`web-scout-core.yml`) and path-filter dispatch in `ci.yml`.
 
 ## 2026-03-01
