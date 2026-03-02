@@ -50,6 +50,20 @@ Add to your local `.mcp.json` (do not commit):
 }
 ```
 
+### 4. Enable the server and approve permissions
+
+Create `.claude/settings.local.json` (do not commit):
+
+```json
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["web-scout"],
+  "permissions": {
+    "allow": ["mcp__web-scout__search"]
+  }
+}
+```
+
 Restart Claude Code. The `search` tool will be available.
 
 ## Docker logs
