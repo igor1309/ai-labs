@@ -21,17 +21,42 @@ SEARXNG_URL=http://localhost:8888 ANTHROPIC_API_KEY=... node web-scout/smoke.js
 
 ## Components
 
-### Scout
+### Scout agent
 
-`async (query: string) => string` — executes the web-scout MCP `search` tool with the given query and returns the raw JSON result. Only the web-scout MCP `search` tool is permitted; built-in web search or fetch tools are explicitly excluded. Budget ceiling: `$0.02`.
+`async (query: string) => string` — returns raw JSON from the MCP tool call.
+
+- Model: Claude Haiku
+- MCP server: web-scout stdio — `node web-scout/src/index.js` with `SEARXNG_URL` from env
+- Allowed tools: `['mcp__web-scout__search']` — exhaustive list, nothing else permitted (no WebSearch, no WebFetch)
+- Prompt: `"Call the search tool with query '{query}'. Return only the raw JSON result verbatim, no commentary."`
+- Returns: `result.result` (raw JSON string)
+- Budget: `maxBudgetUsd: 0.02`
 
 ### Docker logs
 
-Captured from the SearXNG container after scout completes. If unavailable, passed as `"(unavailable)"` — does not abort the script.
+Captured from the SearXNG container after scout completes (`docker logs --tail 50 searxng`). If the container is not running or the command fails, passed as `"(unavailable)"` — does not abort the script.
 
-### Judge
+### Judge agent
 
-`async (query: string, resultsJson: string, logs: string) => { verdict: "PASS" | "FAIL", explanation: string }` — evaluates result relevance and log health given the query, scout output, and docker logs. No search or fetch tools permitted. Budget ceiling: `$0.03`.
+`async (query: string, resultsJson: string, logs: string) => { verdict: "PASS" | "FAIL", explanation: string }`
+
+- Model: Claude Haiku
+- No tools — pure reasoning only
+- Prompt:
+  ```
+  Query: '{query}'
+
+  Search results:
+  {resultsJson}
+
+  Docker logs:
+  {logs}
+
+  Did the search return relevant results and did the docker logs show successful processing?
+  Start your answer with PASS or FAIL.
+  ```
+- Verdict: extracted by checking whether `result.result` starts with `PASS` or `FAIL`
+- Budget: `maxBudgetUsd: 0.03`
 
 ## Fixed query
 
@@ -40,7 +65,7 @@ Captured from the SearXNG container after scout completes. If unavailable, passe
 ## Behavior rules
 
 1. Exits non-zero if `SEARXNG_URL` or `ANTHROPIC_API_KEY` is missing.
-2. Exits non-zero if the scout returns no result or exceeds `$0.02`.
+2. Exits non-zero if the scout returns no result or cost exceeds `$0.02`.
 3. Exits non-zero if the judge cost exceeds `$0.03`.
 4. Exits non-zero if combined cost exceeds `$0.05`.
 5. Results JSON must be parseable; exits non-zero otherwise.
