@@ -1,5 +1,7 @@
+const DEFAULT_TIMEOUT_MS = 5000
+
 /** @param {{ baseUrl: string, fetch?: typeof globalThis.fetch, timeoutMs?: number, maxResults?: number }} options */
-export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, timeoutMs, maxResults }) {
+export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, timeoutMs = DEFAULT_TIMEOUT_MS, maxResults }) {
   return {
     async search(query, options) {
       if (!query || !query.trim()) {
@@ -12,7 +14,15 @@ export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, 
       if (options?.language) url.searchParams.set("language", options.language)
       if (options?.pageNo) url.searchParams.set("pageno", String(options.pageNo))
 
-      const response = await fetchFn(url.toString())
+      let response
+      try {
+        response = await fetchFn(url.toString(), { signal: AbortSignal.timeout(timeoutMs) })
+      } catch (err) {
+        if (err.name === "AbortError" || err.name === "TimeoutError") {
+          throw new Error(`SearXNG request timeout after ${timeoutMs}ms`)
+        }
+        throw err
+      }
       if (!response.ok) {
         const body = await response.text()
         throw new Error(`SearXNG request failed with status ${response.status}: ${body}`)

@@ -135,3 +135,11 @@ test("search_shouldThrow_onNonJsonResponse", async (t) => {
 
   await assert.rejects(() => client.search("test"), { message: /invalid json/i })
 })
+
+test("search_shouldThrow_onTimeout", async (t) => {
+  const abortError = Object.assign(new Error("The operation was aborted"), { name: "AbortError" })
+  const fetchMock = t.mock.fn(async () => { throw abortError })
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888", fetch: fetchMock, timeoutMs: 100 })
+
+  await assert.rejects(() => client.search("test"), { message: /timeout/i })
+})
