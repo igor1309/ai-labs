@@ -1,7 +1,8 @@
 const DEFAULT_TIMEOUT_MS = 5000
+const DEFAULT_MAX_RESULTS = 10
 
 /** @param {{ baseUrl: string, fetch?: typeof globalThis.fetch, timeoutMs?: number, maxResults?: number }} options */
-export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, timeoutMs = DEFAULT_TIMEOUT_MS, maxResults }) {
+export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, timeoutMs = DEFAULT_TIMEOUT_MS, maxResults = DEFAULT_MAX_RESULTS }) {
   return {
     async search(query, options) {
       if (!query || !query.trim()) {

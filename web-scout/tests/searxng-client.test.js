@@ -143,3 +143,18 @@ test("search_shouldThrow_onTimeout", async (t) => {
 
   await assert.rejects(() => client.search("test"), { message: /timeout/i })
 })
+
+test("search_shouldCapResults_toDefault10_whenMaxResultsNotSet", async (t) => {
+  const elevenResults = Array.from({ length: 11 }, ($0, i) => ({
+    title: `R${i}`, url: `https://r${i}.com`, snippet: `s${i}`, engines: ["g"], score: i
+  }))
+  const fetchMock = t.mock.fn(async () => ({
+    ok: true,
+    json: async () => ({ results: elevenResults, query: "test", number_of_results: 11 })
+  }))
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888", fetch: fetchMock })
+
+  const result = await client.search("test")
+
+  assert.equal(result.results.length, 10)
+})
