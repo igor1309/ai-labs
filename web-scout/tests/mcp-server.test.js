@@ -45,3 +45,27 @@ test("search_shouldReturnMcpError_onClientFailure", async () => {
   await mcpClient.close()
   await server.close()
 })
+
+test("search_shouldReturnError_onMissingQuery", async () => {
+  const clientStub = { search: async () => ({}) }
+  const { server, mcpClient } = await makeConnectedPair(clientStub)
+
+  const result = await mcpClient.callTool({ name: "search", arguments: {} })
+
+  assert.equal(result.isError, true)
+
+  await mcpClient.close()
+  await server.close()
+})
+
+test("search_shouldReturnError_onEmptyQuery", async () => {
+  const clientStub = { search: async () => ({}) }
+  const { server, mcpClient } = await makeConnectedPair(clientStub)
+
+  const result = await mcpClient.callTool({ name: "search", arguments: { query: "" } })
+
+  assert.equal(result.isError, true)
+
+  await mcpClient.close()
+  await server.close()
+})
