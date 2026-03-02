@@ -66,6 +66,16 @@ Create `.claude/settings.local.json` (do not commit):
 
 Restart Claude Code. The `search` tool will be available.
 
+## Smoke script
+
+Verifies the full local stack (SearXNG + MCP server) using two Claude agents. Requires SearXNG running and `ANTHROPIC_API_KEY` set.
+
+```bash
+SEARXNG_URL=http://localhost:8888 ANTHROPIC_API_KEY=<key> node web-scout/smoke.js
+```
+
+Exits 0 on PASS, 1 on FAIL. Prints verdict, judge explanation, and both agent costs.
+
 ## Docker logs
 
 ```bash

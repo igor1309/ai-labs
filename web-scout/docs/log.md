@@ -1,5 +1,9 @@
 # Log
 
+## 2026-03-03
+
+Add smoke script (`web-scout/smoke.js`): two-agent local stack verification using Claude Haiku via Agent SDK. Scout agent runs the MCP `search` tool; judge agent evaluates result relevance and docker log health. Exits 0/1 with verdict and agent costs. 13 unit tests added, all passing.
+
 ## 2026-03-02
 
 Update README: expand local dev setup (add `npm install` step, Claude Code permissions config via `settings.local.json`), add Docker logs section, add `LOG_LEVEL` to env vars table, and add log format section with example JSON lines.
