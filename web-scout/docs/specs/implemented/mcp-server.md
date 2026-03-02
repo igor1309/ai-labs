@@ -32,6 +32,7 @@ Required:
 Optional:
 - `SEARXNG_TIMEOUT_MS` — request timeout, defaults to `5000`
 - `SEARXNG_MAX_RESULTS` — result cap, defaults to `10`
+- `LOG_LEVEL` — logging verbosity; `info` (default) logs every call, `silent` suppresses all output
 
 ## Behavior rules
 
@@ -40,6 +41,7 @@ Optional:
 3. Delegates search to `searxngClient.search` (see `searxng-client.md`).
 4. Returns results as MCP `text` content type with JSON body.
 5. Catches `searxngClient` errors and returns MCP error responses (does not crash the server).
+6. Writes a JSON line to `stderr` for each tool call: `{event, query, latencyMs, resultCount}` on success; `{event, query, latencyMs, error}` on failure. Suppressed when `LOG_LEVEL=silent`.
 
 ## Tests (required)
 
@@ -52,6 +54,12 @@ Using a stubbed `searxngClient`:
 
 Startup:
 - Exits with error when `SEARXNG_URL` is not set.
+
+Logging:
+- Writes a JSON line to stderr on startup with {event, searxngUrl, timeoutMs, maxResults}.
+- Writes a JSON line to stderr on successful search with {event, query, latencyMs, resultCount}.
+- Writes a JSON line to stderr on search failure with {event, query, latencyMs, error}.
+- Does not write to stderr when LOG_LEVEL=silent.
 
 ## Done criteria
 
