@@ -6,6 +6,15 @@ const execFileAsync = promisify(execFile)
 
 const QUERY = "Python programming language"
 
+// The Agent SDK spawns `claude` as a child process. When smoke.js runs
+// inside an existing Claude Code session, CLAUDECODE is set and the child
+// refuses to start. Strip it so the subprocess can launch cleanly.
+function sdkEnv() {
+  const env = { ...process.env }
+  delete env.CLAUDECODE
+  return env
+}
+
 // --- Real agent implementations ---
 
 function makeScout(env) {
@@ -19,11 +28,12 @@ function makeScout(env) {
         model: "claude-haiku-4-5",
         maxBudgetUsd: 0.02,
         permissionMode: "dontAsk",
+        env: sdkEnv(),
         mcpServers: {
           "web-scout": {
             command: "node",
             args: [indexPath],
-            env: { ...process.env, SEARXNG_URL: env.SEARXNG_URL },
+            env: { ...sdkEnv(), SEARXNG_URL: env.SEARXNG_URL },
           },
         },
       },
@@ -50,6 +60,7 @@ function makeJudge() {
         maxBudgetUsd: 0.03,
         permissionMode: "dontAsk",
         allowedTools: [],
+        env: sdkEnv(),
       },
     })) {
       if (msg.type === "result") resultMsg = msg
@@ -153,5 +164,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     judge: makeJudge(),
     dockerLogs: makeDockerLogs(),
     env: process.env,
-  }).then((code) => process.exit(code))
+  }).then((code) => process.exit(code)).catch((err) => {
+    console.error("FATAL:", err)
+    process.exit(1)
+  })
 }
