@@ -1,0 +1,25 @@
+/** @param {{ baseUrl: string, fetch?: typeof globalThis.fetch, timeoutMs?: number, maxResults?: number }} options */
+export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, timeoutMs, maxResults }) {
+  return {
+    async search(query, options) {
+      const url = new URL("/search", baseUrl)
+      url.searchParams.set("q", query)
+      url.searchParams.set("format", "json")
+
+      const response = await fetchFn(url.toString())
+      const data = await response.json()
+
+      return {
+        results: data.results.map(($0) => ({
+          title: $0.title,
+          url: $0.url,
+          snippet: $0.snippet,
+          engines: $0.engines,
+          score: $0.score
+        })),
+        query: data.query,
+        number_of_results: data.number_of_results
+      }
+    }
+  }
+}
