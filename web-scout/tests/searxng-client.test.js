@@ -67,3 +67,15 @@ test("search_shouldPassOptionalParams_whenProvided", async (t) => {
   assert.equal(params.get("language"), "en")
   assert.equal(params.get("pageno"), "2")
 })
+
+test("search_shouldReturnEmptyResults_whenSearxngReturnsNone", async (t) => {
+  const fetchMock = t.mock.fn(async () => ({
+    ok: true,
+    json: async () => ({ results: [], query: "nothing", number_of_results: 0 })
+  }))
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888", fetch: fetchMock })
+
+  const result = await client.search("nothing")
+
+  assert.deepEqual(result, { results: [], query: "nothing", number_of_results: 0 })
+})
