@@ -111,3 +111,17 @@ test("search_shouldThrow_onWhitespaceOnlyQuery", async () => {
   const client = makeSearxngClient({ baseUrl: "http://localhost:8888" })
   await assert.rejects(() => client.search("   "), { message: /empty query/i })
 })
+
+test("search_shouldThrow_onNon2xxResponse", async (t) => {
+  const fetchMock = t.mock.fn(async () => ({
+    ok: false,
+    status: 503,
+    text: async () => "Service Unavailable"
+  }))
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888", fetch: fetchMock })
+
+  await assert.rejects(() => client.search("test"), (err) => {
+    assert.match(err.message, /503/)
+    return true
+  })
+})

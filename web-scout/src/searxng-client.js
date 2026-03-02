@@ -13,6 +13,10 @@ export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, 
       if (options?.pageNo) url.searchParams.set("pageno", String(options.pageNo))
 
       const response = await fetchFn(url.toString())
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(`SearXNG request failed with status ${response.status}: ${body}`)
+      }
       const data = await response.json()
 
       const mapped = data.results.map(($0) => ({
