@@ -8,17 +8,11 @@ description: "Implementation plan: structured logging for web-scout (v0.0.2 logg
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add structured JSON logging to stderr in `mcp-server.js` (per tool call) and `index.js` (startup), controlled by `LOG_LEVEL` env var.
+**Goal:** Add structured JSON logging to stderr: startup event in `index.js`, per-call events in `mcp-server.js`, all controlled by `LOG_LEVEL` env var.
 
 **Architecture:** Inline `process.stderr.write` calls at each log site, guarded by `process.env.LOG_LEVEL !== "silent"`. No new module, no new dependency. Latency captured with `Date.now()` before/after `searxngClient.search`.
 
 **Tech Stack:** Node.js ESM, `node:test`, `node:assert/strict`
-
----
-
-## Worktree required: no
-## Expected branch: trunk
-## Preflight check: [ ] done
 
 ---
 
@@ -44,6 +38,7 @@ Behavior rules (add Rule 6):
 Also add to Tests section:
 ```
 Logging:
+- Writes a JSON line to stderr on startup with {event, searxngUrl, timeoutMs, maxResults}.
 - Writes a JSON line to stderr on successful search with {event, query, latencyMs, resultCount}.
 - Writes a JSON line to stderr on search failure with {event, query, latencyMs, error}.
 - Does not write to stderr when LOG_LEVEL=silent.
@@ -129,7 +124,8 @@ test("search_shouldNotWriteToStderr_whenLogLevelSilent", async () => {
 
   await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
   spy.restore()
-  process.env.LOG_LEVEL = originalLogLevel
+  if (originalLogLevel === undefined) delete process.env.LOG_LEVEL
+  else process.env.LOG_LEVEL = originalLogLevel
 
   assert.equal(spy.lines.length, 0)
 
@@ -176,7 +172,7 @@ async ({ query, categories, language, pageNo }) => {
   try {
     const result = await searxngClient.search(query, { categories, language, pageNo })
     if (process.env.LOG_LEVEL !== "silent")
-      process.stderr.write(JSON.stringify({ event: "search", query, latencyMs: Date.now() - startMs, resultCount: result.results?.length ?? 0 }) + "\n")
+      process.stderr.write(JSON.stringify({ event: "search", query, latencyMs: Date.now() - startMs, resultCount: result.results.length }) + "\n")
     return { content: [{ type: "text", text: JSON.stringify(result) }] }
   } catch (err) {
     if (process.env.LOG_LEVEL !== "silent")
@@ -207,22 +203,52 @@ git commit -m "add per-call structured logging to mcp-server"
 
 **Files:**
 - Modify: `web-scout/src/index.js`
+- Modify: `web-scout/tests/mcp-server.test.js`
 
-**Step 1: Add startup log after client creation, before server.connect**
+**Step 1: Write failing test for startup log**
 
-Current `index.js`:
+Add `spawn` to the existing `child_process` import at the top of `mcp-server.test.js`:
+
 ```js
-const client = makeSearxngClient({
-  baseUrl: url,
-  timeoutMs: Number(process.env.SEARXNG_TIMEOUT_MS) || undefined,
-  maxResults: Number(process.env.SEARXNG_MAX_RESULTS) || undefined
-})
-
-const server = createMcpServer(client)
-await server.connect(new StdioServerTransport())
+import { execFile, spawn } from "node:child_process"
 ```
 
-Updated `index.js`:
+Add a new test at the bottom of the Tests section:
+
+```js
+test("startup_shouldWriteStartupLogToStderr_onBoot", async () => {
+  const indexPath = new URL("../src/index.js", import.meta.url).pathname
+  const child = spawn("node", [indexPath], {
+    env: { ...process.env, SEARXNG_URL: "http://localhost:9999" },
+    stdio: ["pipe", "pipe", "pipe"]
+  })
+
+  const line = await new Promise((resolve, reject) => {
+    child.stderr.once("data", (chunk) => resolve(chunk.toString()))
+    child.once("error", reject)
+    setTimeout(() => reject(new Error("timeout waiting for startup log")), 3000)
+  })
+
+  child.kill()
+
+  const entry = JSON.parse(line)
+  assert.equal(entry.event, "startup")
+  assert.equal(entry.searxngUrl, "http://localhost:9999")
+  assert.equal(typeof entry.timeoutMs, "undefined")
+  assert.equal(typeof entry.maxResults, "undefined")
+})
+```
+
+**Step 2: Run tests to confirm RED**
+
+```bash
+./scripts/run_silent.sh "tests" npm test
+```
+
+Expected: `startup_shouldWriteStartupLogToStderr_onBoot` fails. All other 9 tests pass.
+
+**Step 3: Implement startup log in index.js**
+
 ```js
 const timeoutMs = Number(process.env.SEARXNG_TIMEOUT_MS) || undefined
 const maxResults = Number(process.env.SEARXNG_MAX_RESULTS) || undefined
@@ -236,18 +262,18 @@ const server = createMcpServer(client)
 await server.connect(new StdioServerTransport())
 ```
 
-**Step 2: Run tests to confirm all still pass**
+**Step 4: Run tests to confirm GREEN**
 
 ```bash
 ./scripts/run_silent.sh "tests" npm test
 ```
 
-Expected: all 9 tests pass (startup log is not captured by existing tests — that's acceptable; it's a one-liner on a code path that exits immediately if `SEARXNG_URL` is missing, and is verified by observation in the next task's manual smoke).
+Expected: all 10 tests pass.
 
-**Step 3: Commit**
+**Step 5: Commit**
 
 ```bash
-git add web-scout/src/index.js
+git add web-scout/src/index.js web-scout/tests/mcp-server.test.js
 git commit -m "add startup log to index.js"
 ```
 
@@ -261,17 +287,24 @@ git commit -m "add startup log to index.js"
 ./scripts/run_silent.sh "tests" npm test
 ```
 
-Expected: all 9 tests pass.
+Expected: all 10 tests pass.
 
-**Step 2: Run build check**
+**Step 2: Syntax check**
 
 ```bash
-./scripts/run_silent.sh "build" npx tsc --noEmit
+node --check web-scout/src/index.js web-scout/src/mcp-server.js web-scout/src/searxng-client.js
 ```
 
-Expected: no errors (project is JS, so this may be a no-op or pass immediately).
+Expected: no output (clean parse).
 
-**Step 3: Push**
+**Step 3: Archive plan**
+
+```bash
+git mv web-scout/docs/plans/2026-03-02-web-scout-logging.md web-scout/docs/plans/implemented/
+git commit -m "move logging plan to implemented"
+```
+
+**Step 4: Push**
 
 ```bash
 git push origin trunk
@@ -285,5 +318,5 @@ git push origin trunk
 - `mcp-server.js` writes `{event:"search_error", query, latencyMs, error}` to stderr on failure.
 - `LOG_LEVEL=silent` suppresses all writes.
 - `index.js` writes `{event:"startup", searxngUrl, timeoutMs, maxResults}` on boot.
-- All 9 tests pass.
+- All 10 tests pass.
 - Spec updated with Rule 6 and `LOG_LEVEL` config entry.
