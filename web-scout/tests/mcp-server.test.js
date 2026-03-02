@@ -10,6 +10,16 @@ const execFileAsync = promisify(execFile)
 
 // Helpers
 
+function captureStderr() {
+  const lines = []
+  const original = process.stderr.write.bind(process.stderr)
+  process.stderr.write = (chunk) => { lines.push(chunk); return true }
+  return {
+    lines,
+    restore: () => { process.stderr.write = original }
+  }
+}
+
 async function makeConnectedPair(clientStub) {
   const server = createMcpServer(clientStub)
   const mcpClient = new Client({ name: "test-client", version: "0.0.1" })
@@ -106,4 +116,60 @@ test("startup_shouldExitWithError_whenSearxngUrlMissing", async () => {
       return true
     }
   )
+})
+
+test("search_shouldWriteSuccessLogToStderr_onSuccess", async () => {
+  const searchResult = { results: [{ title: "T", url: "http://x.com", snippet: "s", engines: ["g"], score: 1 }], query: "q", number_of_results: 1 }
+  const { server, mcpClient } = await makeConnectedPair({ search: async () => searchResult })
+  const spy = captureStderr()
+
+  await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
+  spy.restore()
+
+  assert.equal(spy.lines.length, 1)
+  const entry = JSON.parse(spy.lines[0])
+  assert.equal(entry.event, "search")
+  assert.equal(entry.query, "q")
+  assert.equal(typeof entry.latencyMs, "number")
+  assert.equal(entry.resultCount, 1)
+
+  await mcpClient.close()
+  await server.close()
+})
+
+test("search_shouldWriteErrorLogToStderr_onClientFailure", async () => {
+  const clientStub = { search: async () => { throw new Error("SearXNG down") } }
+  const { server, mcpClient } = await makeConnectedPair(clientStub)
+  const spy = captureStderr()
+
+  await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
+  spy.restore()
+
+  assert.equal(spy.lines.length, 1)
+  const entry = JSON.parse(spy.lines[0])
+  assert.equal(entry.event, "search_error")
+  assert.equal(entry.query, "q")
+  assert.equal(typeof entry.latencyMs, "number")
+  assert.equal(entry.error, "SearXNG down")
+
+  await mcpClient.close()
+  await server.close()
+})
+
+test("search_shouldNotWriteToStderr_whenLogLevelSilent", async () => {
+  const searchResult = { results: [], query: "q", number_of_results: 0 }
+  const { server, mcpClient } = await makeConnectedPair({ search: async () => searchResult })
+  const originalLogLevel = process.env.LOG_LEVEL
+  process.env.LOG_LEVEL = "silent"
+  const spy = captureStderr()
+
+  await mcpClient.callTool({ name: "search", arguments: { query: "q" } })
+  spy.restore()
+  if (originalLogLevel === undefined) delete process.env.LOG_LEVEL
+  else process.env.LOG_LEVEL = originalLogLevel
+
+  assert.equal(spy.lines.length, 0)
+
+  await mcpClient.close()
+  await server.close()
 })
