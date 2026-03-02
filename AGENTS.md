@@ -17,6 +17,19 @@
 - Tests must cover reasonable edge cases for new or changed behavior.
 - Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
 
+## Specs
+
+Specs define a component's contract before implementation. They live at `<project>/docs/specs/<name>.md` and move to `<project>/docs/specs/implemented/` after implementation.
+
+Required sections:
+- **Goal**: one sentence — what the component does and who owns it.
+- **Public interface**: function signatures, input/output shapes.
+- **Behavior rules**: validation, error handling, edge cases — concrete and testable.
+- **Tests (required)**: enumerated test cases that cover the behavior rules.
+- **Done criteria**: what "finished" means — typically interface + tests.
+
+Specs must not contain architecture preamble, future speculation, or implementation details. They describe *what* and *when it fails*, not *how*.
+
 ## Log
 
 - Log entries are in reverse chronological order (newest first).
