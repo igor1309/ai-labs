@@ -125,3 +125,13 @@ test("search_shouldThrow_onNon2xxResponse", async (t) => {
     return true
   })
 })
+
+test("search_shouldThrow_onNonJsonResponse", async (t) => {
+  const fetchMock = t.mock.fn(async () => ({
+    ok: true,
+    json: async () => { throw new SyntaxError("Unexpected token") }
+  }))
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888", fetch: fetchMock })
+
+  await assert.rejects(() => client.search("test"), { message: /invalid json/i })
+})

@@ -17,7 +17,12 @@ export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, 
         const body = await response.text()
         throw new Error(`SearXNG request failed with status ${response.status}: ${body}`)
       }
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch {
+        throw new Error("Invalid JSON response from SearXNG")
+      }
 
       const mapped = data.results.map(($0) => ({
         title: $0.title,
