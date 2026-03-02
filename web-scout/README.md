@@ -10,6 +10,8 @@ Create a local `settings.yml` to enable JSON output:
 
 ```yaml
 use_default_settings: true
+server:
+  secret_key: "change-me-local"
 search:
   formats:
     - html
@@ -19,12 +21,18 @@ search:
 Run SearXNG with that config mounted:
 
 ```bash
-docker run -d --name searxng -p 8888:8080 -e SEARXNG_SECRET_KEY=dev -v /absolute/path/to/settings.yml:/etc/searxng/settings.yml searxng/searxng:latest
+docker run -d --name searxng -p 8888:8080 -v /absolute/path/to/settings.yml:/etc/searxng/settings.yml searxng/searxng:latest
 ```
 
 Verify it's up: `curl "http://localhost:8888/search?q=test&format=json"`
 
-### 2. Register with Claude Code
+### 2. Install dependencies
+
+```bash
+npm install --prefix web-scout
+```
+
+### 3. Register with Claude Code
 
 Add to your local `.mcp.json` (do not commit):
 
@@ -43,6 +51,13 @@ Add to your local `.mcp.json` (do not commit):
 ```
 
 Restart Claude Code. The `search` tool will be available.
+
+## Docker logs
+
+```bash
+docker logs searxng
+docker logs -f searxng   # follow
+```
 
 ## Environment variables
 
