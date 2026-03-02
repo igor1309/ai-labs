@@ -49,6 +49,7 @@ function makeJudge() {
         model: "claude-haiku-4-5",
         maxBudgetUsd: 0.03,
         permissionMode: "dontAsk",
+        allowedTools: [],
       },
     })) {
       if (msg.type === "result") resultMsg = msg
