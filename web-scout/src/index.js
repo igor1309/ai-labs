@@ -8,11 +8,13 @@ if (!url) {
   process.exit(1)
 }
 
-const client = makeSearxngClient({
-  baseUrl: url,
-  timeoutMs: Number(process.env.SEARXNG_TIMEOUT_MS) || undefined,
-  maxResults: Number(process.env.SEARXNG_MAX_RESULTS) || undefined
-})
+const timeoutMs = Number(process.env.SEARXNG_TIMEOUT_MS) || undefined
+const maxResults = Number(process.env.SEARXNG_MAX_RESULTS) || undefined
+
+const client = makeSearxngClient({ baseUrl: url, timeoutMs, maxResults })
+
+if (process.env.LOG_LEVEL !== "silent")
+  process.stderr.write(JSON.stringify({ event: "startup", searxngUrl: url, timeoutMs, maxResults }) + "\n")
 
 const server = createMcpServer(client)
 await server.connect(new StdioServerTransport())

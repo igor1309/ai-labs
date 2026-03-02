@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { execFile } from "node:child_process"
+import { execFile, spawn } from "node:child_process"
 import { promisify } from "node:util"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
@@ -172,4 +172,26 @@ test("search_shouldNotWriteToStderr_whenLogLevelSilent", async () => {
 
   await mcpClient.close()
   await server.close()
+})
+
+test("startup_shouldWriteStartupLogToStderr_onBoot", async () => {
+  const indexPath = new URL("../src/index.js", import.meta.url).pathname
+  const child = spawn("node", [indexPath], {
+    env: { ...process.env, SEARXNG_URL: "http://localhost:9999" },
+    stdio: ["pipe", "pipe", "pipe"]
+  })
+
+  const line = await new Promise((resolve, reject) => {
+    child.stderr.once("data", (chunk) => resolve(chunk.toString()))
+    child.once("error", reject)
+    setTimeout(() => reject(new Error("timeout waiting for startup log")), 3000)
+  })
+
+  child.kill()
+
+  const entry = JSON.parse(line)
+  assert.equal(entry.event, "startup")
+  assert.equal(entry.searxngUrl, "http://localhost:9999")
+  assert.equal(typeof entry.timeoutMs, "undefined")
+  assert.equal(typeof entry.maxResults, "undefined")
 })
