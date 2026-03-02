@@ -5,6 +5,9 @@ export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, 
       const url = new URL("/search", baseUrl)
       url.searchParams.set("q", query)
       url.searchParams.set("format", "json")
+      if (options?.categories) url.searchParams.set("categories", options.categories)
+      if (options?.language) url.searchParams.set("language", options.language)
+      if (options?.pageNo) url.searchParams.set("pageno", String(options.pageNo))
 
       const response = await fetchFn(url.toString())
       const data = await response.json()

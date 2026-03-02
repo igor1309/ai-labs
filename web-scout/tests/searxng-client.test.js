@@ -48,3 +48,22 @@ test("search_shouldSendGetRequest_andReturnParsedResult", async (t) => {
     number_of_results: 1
   })
 })
+
+test("search_shouldPassOptionalParams_whenProvided", async (t) => {
+  const fetchMock = t.mock.fn(async () => ({
+    ok: true,
+    json: async () => ({ results: [], query: "test", number_of_results: 0 })
+  }))
+  const client = makeSearxngClient({
+    baseUrl: "http://localhost:8888",
+    fetch: fetchMock
+  })
+
+  await client.search("test", { categories: "general", language: "en", pageNo: 2 })
+
+  const [url] = fetchMock.mock.calls[0].arguments
+  const params = new URL(url).searchParams
+  assert.equal(params.get("categories"), "general")
+  assert.equal(params.get("language"), "en")
+  assert.equal(params.get("pageno"), "2")
+})
