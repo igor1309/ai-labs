@@ -101,3 +101,13 @@ test("search_shouldTruncateResults_toMaxResults", async (t) => {
   assert.equal(result.results.length, 2)
   assert.deepEqual(result.results.map(($0) => $0.title), ["A", "B"])
 })
+
+test("search_shouldThrow_onEmptyQuery", async () => {
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888" })
+  await assert.rejects(() => client.search(""), { message: /empty query/i })
+})
+
+test("search_shouldThrow_onWhitespaceOnlyQuery", async () => {
+  const client = makeSearxngClient({ baseUrl: "http://localhost:8888" })
+  await assert.rejects(() => client.search("   "), { message: /empty query/i })
+})

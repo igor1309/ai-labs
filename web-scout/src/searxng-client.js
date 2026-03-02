@@ -2,6 +2,9 @@
 export function makeSearxngClient({ baseUrl, fetch: fetchFn = globalThis.fetch, timeoutMs, maxResults }) {
   return {
     async search(query, options) {
+      if (!query || !query.trim()) {
+        throw new Error("Empty query")
+      }
       const url = new URL("/search", baseUrl)
       url.searchParams.set("q", query)
       url.searchParams.set("format", "json")
