@@ -1,8 +1,12 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 import { createMcpServer } from "../src/mcp-server.js"
+
+const execFileAsync = promisify(execFile)
 
 // Helpers
 
@@ -90,4 +94,16 @@ test("search_shouldPassOptionalParams_toClient", async () => {
 
   await mcpClient.close()
   await server.close()
+})
+
+test("startup_shouldExitWithError_whenSearxngUrlMissing", async () => {
+  const indexPath = new URL("../src/index.js", import.meta.url).pathname
+  await assert.rejects(
+    () => execFileAsync("node", [indexPath], { env: { PATH: process.env.PATH } }),
+    (err) => {
+      assert.match(err.stderr, /SEARXNG_URL/i)
+      assert.notEqual(err.code, 0)
+      return true
+    }
+  )
 })
