@@ -58,6 +58,7 @@ Verify that markdown documentation accurately describes the current codebase. De
 
 **Key features:**
 - Strict protocol against over-editing — guardrails are the point
+- Excludes `implemented/` and `archived/` directories — historical artifacts, not current code
 - Parallel subagent audit for 3+ files, inline for 1–2
 - Read-only subagents with structured prompt template
 - Individual mismatch review before accepting findings

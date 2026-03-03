@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-03-03
+
+### Doc Drift Audit v1.3.0 — Exclude Implemented/Archived Dirs
+Excluded `**/implemented/**` and `**/archived/**` from markdown discovery. Historical artifacts describe past state; auditing them against current code produces false positives. Marketplace v1.21.0.
+
 ## 2026-02-26
 
 ### Check Domain v0.3.0 — MCP Fix & Output Format
