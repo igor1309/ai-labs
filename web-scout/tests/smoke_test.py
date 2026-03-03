@@ -14,7 +14,7 @@ VALID_RESULTS_JSON = json.dumps({
 # --- Helpers ---
 
 def make_scout(result=VALID_RESULTS_JSON, raises=False):
-    def scout(query):
+    def scout(query, scout_span=None):
         if raises:
             raise RuntimeError("scout failed")
         return result
@@ -72,8 +72,8 @@ def make_mock_langfuse():
     trace = MagicMock()
     scout_span = MagicMock()
     judge_span = MagicMock()
-    lf.trace.return_value = trace
-    trace.span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
+    lf.start_span.return_value = trace
+    trace.start_span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
     return lf, trace, scout_span, judge_span
 
 
@@ -156,12 +156,14 @@ def test_noLangfuseKeys_doesNotInstantiateLangfuseClient():
 
 
 def test_langfuseKeys_present_clientInstantiated():
-    with patch("langfuse.Langfuse") as MockLangfuse:
-        mock_instance = MagicMock()
-        MockLangfuse.return_value = mock_instance
+    import sys
+    mock_lf_module = MagicMock()
+    mock_instance = MagicMock()
+    mock_lf_module.Langfuse.return_value = mock_instance
+    with patch.dict(sys.modules, {"langfuse": mock_lf_module}):
         from smoke import make_langfuse_client
         client = make_langfuse_client(make_langfuse_env())
-        MockLangfuse.assert_called_once_with(
+        mock_lf_module.Langfuse.assert_called_once_with(
             secret_key="sk-test",
             public_key="pk-test",
             host="http://langfuse:3000",
@@ -207,3 +209,18 @@ def test_traceLevelDefault_onPass():
     code = run(**make_deps(), langfuse=lf)
     assert code == 0
     trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
+
+
+def test_mcpSearch_capturedAsChildOfScoutSpan():
+    from smoke import _run_with_mcp_span
+    mock_mcp = MagicMock()
+    mock_mcp._run.return_value = "search results"
+    scout_span = MagicMock()
+    mcp_span = MagicMock()
+    scout_span.start_span.return_value = mcp_span
+
+    _run_with_mcp_span(mock_mcp, "python", scout_span)
+
+    scout_span.start_span.assert_called_once_with(name="mcp-search", input={"query": "python"})
+    mcp_span.update.assert_called_once_with(output="search results")
+    mcp_span.end.assert_called_once_with()

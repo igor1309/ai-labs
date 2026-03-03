@@ -208,6 +208,21 @@ Use that guide as the source of truth for:
 - layered assembly responsibilities,
 - composition wiring test strategy.
 
+## Docker Compose and Worktrees
+
+Bind-mount paths in a compose file are resolved relative to the compose file's location at `docker compose up` time and frozen into the container. If that source path later disappears (e.g. the worktree it lived in was deleted), mounts break silently — the container may still report healthy while the missing config causes port or feature regressions.
+
+- **Before removing a worktree**, check for running stacks started from it: `docker inspect <container> --format '{{json .Mounts}}'`. Stop the stack before removing the worktree.
+- **Container healthy ≠ all ports reachable.** A health check that probes one port (e.g. ClickHouse TCP 9000 via `clickhouse-client`) does not verify other ports (e.g. HTTP 8123). When a service is unreachable from sibling containers, inspect mount sources and listen addresses before assuming the health check is authoritative.
+- **Long-lived shared stacks** (e.g. local Langfuse) should be started from a stable workspace, not a feature worktree, to avoid the bind-mount source disappearing mid-work.
+
+## Dependency API Versions in Specs
+
+When a spec pins a dependency with a floor version (`>=X.0.0`), the implementation must verify the actual installed API — especially across major versions. A version floor does not guarantee API compatibility.
+
+- Before writing instrumentation or integration code against a library, read the installed package's method signatures (`inspect.signature`, source, or official changelog).
+- Specs should name the concrete API methods they expect, not just the package version, so implementation drift is detectable at review time rather than at runtime.
+
 ## Architecture Doc Review
 
 Use this checklist when reviewing architecture/design docs in PRs.
