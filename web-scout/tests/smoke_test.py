@@ -1,6 +1,7 @@
 # web-scout/tests/smoke_test.py
 import json
 import pytest
+from unittest.mock import MagicMock, call, patch
 from smoke import run
 
 VALID_RESULTS_JSON = json.dumps({
@@ -54,6 +55,26 @@ def make_deps(**overrides):
     )
     base.update(overrides)
     return base
+
+
+def make_langfuse_env(**overrides):
+    base = {
+        "LANGFUSE_SECRET_KEY": "sk-test",
+        "LANGFUSE_PUBLIC_KEY": "pk-test",
+        "LANGFUSE_BASE_URL": "http://langfuse:3000",
+    }
+    base.update(overrides)
+    return {k: v for k, v in base.items() if v is not None}
+
+
+def make_mock_langfuse():
+    lf = MagicMock()
+    trace = MagicMock()
+    scout_span = MagicMock()
+    judge_span = MagicMock()
+    lf.trace.return_value = trace
+    trace.span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
+    return lf, trace, scout_span, judge_span
 
 
 # --- Tests ---
@@ -124,3 +145,65 @@ def test_logsUnavailable_doesNotAbort_scriptContinuesToJudge():
 def test_exits_zero_whenSearxngRunningAndResultsRelevant():
     code = run(**make_deps())
     assert code == 0
+
+
+# --- Langfuse observability tests ---
+
+def test_noLangfuseKeys_doesNotInstantiateLangfuseClient():
+    from smoke import make_langfuse_client
+    client = make_langfuse_client({})
+    assert client is None
+
+
+def test_langfuseKeys_present_clientInstantiated():
+    with patch("langfuse.Langfuse") as MockLangfuse:
+        mock_instance = MagicMock()
+        MockLangfuse.return_value = mock_instance
+        from smoke import make_langfuse_client
+        client = make_langfuse_client(make_langfuse_env())
+        MockLangfuse.assert_called_once_with(
+            secret_key="sk-test",
+            public_key="pk-test",
+            host="http://langfuse:3000",
+        )
+        assert client is mock_instance
+
+
+def test_smokePass_traceFlushed():
+    lf, *_ = make_mock_langfuse()
+    run(**make_deps(), langfuse=lf)
+    lf.flush.assert_called_once_with()
+
+
+def test_smokeFail_traceFlushed():
+    lf, *_ = make_mock_langfuse()
+    run(**make_deps(judge=make_judge(result="FAIL not relevant")), langfuse=lf)
+    lf.flush.assert_called_once_with()
+
+
+def test_scoutException_spanMarkedError_traceFlushed():
+    lf, trace, scout_span, _ = make_mock_langfuse()
+    run(**make_deps(scout=make_scout(raises=True)), langfuse=lf)
+    scout_span.update.assert_any_call(level="ERROR")
+    trace.update.assert_any_call(level="ERROR")
+    lf.flush.assert_called_once_with()
+
+
+def test_traceOutput_isVerdictString():
+    lf, trace, *_ = make_mock_langfuse()
+    run(**make_deps(judge=make_judge(result="PASS results look relevant")), langfuse=lf)
+    trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
+
+
+def test_traceLevelError_onFail():
+    lf, trace, *_ = make_mock_langfuse()
+    code = run(**make_deps(judge=make_judge(result="FAIL not relevant")), langfuse=lf)
+    assert code == 1
+    trace.update.assert_any_call(output="FAIL not relevant", level="ERROR")
+
+
+def test_traceLevelDefault_onPass():
+    lf, trace, *_ = make_mock_langfuse()
+    code = run(**make_deps(), langfuse=lf)
+    assert code == 0
+    trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
