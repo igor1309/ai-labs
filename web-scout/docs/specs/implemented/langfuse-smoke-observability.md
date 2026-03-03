@@ -9,27 +9,27 @@ updated: 2026-03-03
 
 ## Goal
 
-Instrument `smoke.py` with opt-in Langfuse tracing so each smoke run produces one trace with nested spans for the scout agent, MCP tool call, and judge agent, including token usage and cost — with zero behavioural change when Langfuse keys are absent.
+Instrument `smoke.py` with Langfuse tracing so each smoke run produces one trace with nested spans for the scout agent, MCP tool call, and judge agent, including token usage and cost. Langfuse keys are required — the script fails if they are absent.
 
 ## Public interface
 
 No change to the existing smoke script CLI or exit codes.
 
-### New optional env vars
+### Env vars
 
-| Variable | Description |
-|---|---|
-| `LANGFUSE_SECRET_KEY` | Langfuse secret key for the target project |
-| `LANGFUSE_PUBLIC_KEY` | Langfuse public key for the target project |
-| `LANGFUSE_BASE_URL` | Langfuse instance URL; optional, falls back to the Langfuse cloud endpoint when absent |
+| Variable | Required | Description |
+|---|---|---|
+| `LANGFUSE_SECRET_KEY` | yes | Langfuse secret key for the target project |
+| `LANGFUSE_PUBLIC_KEY` | yes | Langfuse public key for the target project |
+| `LANGFUSE_BASE_URL` | no | Langfuse instance URL; falls back to the Langfuse cloud endpoint when absent |
 
-If all three are absent, instrumentation is a no-op — the script runs and exits exactly as before.
+The script exits with code 1 if `LANGFUSE_SECRET_KEY` or `LANGFUSE_PUBLIC_KEY` is missing.
 
 When using the local Docker stack, set `LANGFUSE_PUBLIC_KEY` = `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` = `LANGFUSE_INIT_PROJECT_SECRET_KEY` from `web-scout/.env`.
 
 ## Behavior rules
 
-1. When Langfuse keys are absent, the script behaves identically to v0.0.2 — no errors, no warnings.
+1. When Langfuse keys are absent, the script exits with code 1 and prints `FAIL: LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY are required`.
 2. When keys are present, a single trace is created at the start of `run()` and all spans are recorded before `run()` returns.
 3. Scout span starts before `scout(query)` is called and ends when it returns (success or exception).
 4. Judge span starts before `judge(query, result, logs)` is called and ends when it returns.
@@ -66,7 +66,7 @@ All existing `smoke_test.py` tests must continue to pass unchanged.
 
 ## Done criteria
 
-- `smoke.py` runs to completion with PASS/FAIL exit as before when Langfuse keys are absent.
+- `smoke.py` exits with code 1 when Langfuse keys are absent.
 - When keys are present, one trace appears in the Langfuse UI per run with scout, judge, and MCP spans nested correctly (`web-scout-smoke → scout-agent → mcp-search`, `web-scout-smoke → judge-agent`).
 - Token/cost fields: not populated — see rule 6 for known limitation.
 - All 21 unit tests pass (9 Langfuse observability tests + 12 base smoke tests).

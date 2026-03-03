@@ -1,12 +1,12 @@
 ---
 date: 2026-03-03
 model: claude-opus-4-6
-description: "Langfuse observability: optional local tracing for web-scout smoke runs"
+description: "Langfuse observability: local tracing for web-scout smoke runs"
 ---
 
 # Langfuse observability
 
-Optional local tracing for smoke runs. When `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` are set, each run produces one trace in Langfuse. All three values are pre-filled in `web-scout/.env`.
+Local tracing for smoke runs. Each run produces one trace in Langfuse. The script requires `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` (fails with exit 1 if either is missing). `LANGFUSE_BASE_URL` is optional (falls back to Langfuse cloud). All three values are pre-filled in `web-scout/.env`.
 
 ## How it works
 
@@ -19,7 +19,7 @@ web-scout-smoke
 └── judge-agent
 ```
 
-When the Langfuse env vars are absent, tracing is skipped with no behavioural change.
+The script exits with `FAIL: LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY are required` if keys are missing.
 
 ## Langfuse is a shared service
 

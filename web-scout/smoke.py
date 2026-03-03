@@ -251,8 +251,8 @@ if __name__ == "__main__":
     judge = make_judge(env)
     docker_logs = make_docker_logs()
 
-    if langfuse_client:
-        code = run_with_langfuse(langfuse_client, scout, judge, docker_logs, env=env)
-    else:
-        code = run(scout, judge, docker_logs, env=env)
+    if not langfuse_client:
+        print("FAIL: LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY are required")
+        sys.exit(1)
+    code = run_with_langfuse(langfuse_client, scout, judge, docker_logs, env=env)
     sys.exit(code)
