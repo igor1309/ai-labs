@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process"
-import { relative } from "node:path"
+import { readFile } from "node:fs/promises"
+import { join, relative, resolve } from "node:path"
 
 const DEFAULT_GLOB = "**/*.md"
 const DEFAULT_MAX_RESULTS = 20
@@ -8,6 +9,80 @@ const DEFAULT_MAX_LINES = 200
 /** @param {{ root: string, glob?: string, maxResults?: number, maxLines?: number }} options */
 export function makeCorpusClient({ root, glob = DEFAULT_GLOB, maxResults = DEFAULT_MAX_RESULTS, maxLines = DEFAULT_MAX_LINES }) {
   return {
+    async readSection({ file, heading, startLine, endLine } = {}) {
+      const resolved = resolve(root, file)
+      if (!resolved.startsWith(resolve(root) + "/") && resolved !== resolve(root)) {
+        throw new Error("Path outside corpus root")
+      }
+
+      const raw = await readFile(resolved, "utf-8")
+      const allLines = raw.split("\n")
+      // Remove trailing empty element from final newline
+      if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+        allLines.pop()
+      }
+
+      if (startLine != null && endLine != null) {
+        const slice = allLines.slice(startLine - 1, endLine)
+        return { file, content: slice.join("\n"), startLine, endLine, truncated: false }
+      }
+
+      if (heading != null) {
+        const escapedHeading = escapeRegex(heading)
+        const headingPattern = new RegExp(`^(#{1,6})\\s+${escapedHeading}\\s*$`)
+        let matchIndex = -1
+        let matchLevel = 0
+        for (let i = 0; i < allLines.length; i++) {
+          const m = allLines[i].match(headingPattern)
+          if (m) {
+            matchIndex = i
+            matchLevel = m[1].length
+            break
+          }
+        }
+        if (matchIndex === -1) {
+          throw new Error(`Heading "${heading}" not found`)
+        }
+        let endIndex = allLines.length
+        for (let i = matchIndex + 1; i < allLines.length; i++) {
+          const m = allLines[i].match(/^(#{1,6})\s/)
+          if (m && m[1].length <= matchLevel) {
+            endIndex = i
+            break
+          }
+        }
+        let sectionLines = allLines.slice(matchIndex, endIndex)
+        let truncated = false
+        if (sectionLines.length > maxLines) {
+          sectionLines = sectionLines.slice(0, maxLines)
+          truncated = true
+        }
+        return {
+          file,
+          content: sectionLines.join("\n"),
+          startLine: matchIndex + 1,
+          endLine: matchIndex + sectionLines.length,
+          truncated
+        }
+      }
+
+      // Full file mode
+      let lines = allLines
+      let truncated = false
+      if (lines.length > maxLines) {
+        lines = lines.slice(0, maxLines)
+        truncated = true
+      }
+      const suffix = (!truncated && raw.endsWith("\n")) ? "\n" : ""
+      return {
+        file,
+        content: lines.join("\n") + suffix,
+        startLine: 1,
+        endLine: lines.length,
+        truncated
+      }
+    },
+
     async search(query, options) {
       if (!query || !query.trim()) {
         throw new Error("Empty query")
@@ -78,4 +153,8 @@ function parseRgJson(stdout, root) {
   }
 
   return matches
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }

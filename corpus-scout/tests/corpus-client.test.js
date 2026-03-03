@@ -142,3 +142,130 @@ test("search_shouldThrow_onEmptyQuery", async () => {
     await rm(root, { recursive: true })
   }
 })
+
+const sampleDoc = `# Title
+Intro paragraph.
+
+## Characters
+Alice is the protagonist.
+Bob is the antagonist.
+
+## Plot
+The story begins at dawn.
+
+### Act One
+First act details.
+
+## Ending
+They reconcile.
+`
+
+test("readSection_shouldReturnFullFile_whenNoHeadingOrRange", async () => {
+  const root = await makeTempCorpus({ "doc.md": "line one\nline two\nline three\n" })
+  try {
+    const client = makeCorpusClient({ root })
+    const result = await client.readSection({ file: "doc.md" })
+    assert.equal(result.file, "doc.md")
+    assert.equal(result.content, "line one\nline two\nline three\n")
+    assert.equal(result.startLine, 1)
+    assert.equal(result.endLine, 3)
+    assert.equal(result.truncated, false)
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldReturnHeadingSection_whenHeadingProvided", async () => {
+  const root = await makeTempCorpus({ "doc.md": sampleDoc })
+  try {
+    const client = makeCorpusClient({ root })
+    const result = await client.readSection({ file: "doc.md", heading: "Characters" })
+    assert.ok(result.content.includes("Alice is the protagonist."))
+    assert.ok(result.content.includes("Bob is the antagonist."))
+    assert.ok(!result.content.includes("The story begins at dawn."))
+    assert.equal(result.truncated, false)
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldIncludeSubheadings_inSection", async () => {
+  const root = await makeTempCorpus({ "doc.md": sampleDoc })
+  try {
+    const client = makeCorpusClient({ root })
+    const result = await client.readSection({ file: "doc.md", heading: "Plot" })
+    assert.ok(result.content.includes("The story begins at dawn."))
+    assert.ok(result.content.includes("### Act One"))
+    assert.ok(result.content.includes("First act details."))
+    assert.ok(!result.content.includes("They reconcile."))
+    assert.equal(result.truncated, false)
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldReturnLineRange_whenStartAndEndProvided", async () => {
+  const root = await makeTempCorpus({ "doc.md": "line1\nline2\nline3\nline4\nline5\n" })
+  try {
+    const client = makeCorpusClient({ root })
+    const result = await client.readSection({ file: "doc.md", startLine: 2, endLine: 4 })
+    assert.equal(result.content, "line2\nline3\nline4")
+    assert.equal(result.startLine, 2)
+    assert.equal(result.endLine, 4)
+    assert.equal(result.truncated, false)
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldTruncate_whenExceedingMaxLines", async () => {
+  const lines = Array.from({ length: 300 }, (_, i) => `line ${i + 1}`).join("\n") + "\n"
+  const root = await makeTempCorpus({ "doc.md": lines })
+  try {
+    const client = makeCorpusClient({ root, maxLines: 10 })
+    const result = await client.readSection({ file: "doc.md" })
+    assert.equal(result.content.split("\n").length, 10)
+    assert.equal(result.truncated, true)
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldThrow_onDirectoryTraversal", async () => {
+  const root = await makeTempCorpus({ "doc.md": "content\n" })
+  try {
+    const client = makeCorpusClient({ root })
+    await assert.rejects(
+      () => client.readSection({ file: "../../../etc/passwd" }),
+      { message: /outside corpus/i }
+    )
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldThrow_onMissingFile", async () => {
+  const root = await makeTempCorpus({ "doc.md": "content\n" })
+  try {
+    const client = makeCorpusClient({ root })
+    await assert.rejects(
+      () => client.readSection({ file: "nonexistent.md" }),
+      { code: "ENOENT" }
+    )
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("readSection_shouldThrow_onHeadingNotFound", async () => {
+  const root = await makeTempCorpus({ "doc.md": sampleDoc })
+  try {
+    const client = makeCorpusClient({ root })
+    await assert.rejects(
+      () => client.readSection({ file: "doc.md", heading: "Nonexistent" }),
+      { message: /heading.*not found/i }
+    )
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
