@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { runSmoke, runWithLangfuse, makeLangfuseClient } from "../scripts/smoke.js"
+import { runSmoke, runWithLangfuse, makeLangfuseClient, TRACE_NAME, TRACE_TAGS, LEVEL_ERROR, LEVEL_DEFAULT } from "../scripts/smoke.js"
 
 // --- Helpers ---
 
@@ -111,8 +111,8 @@ await test("runWithLangfuse_createsTrace_withCorpusScoutTag", async () => {
 
   await runWithLangfuse(langfuse, makeMockCallTool(), "my query")
 
-  assert.equal(traceArgs.name, "corpus-scout-smoke")
-  assert.deepEqual(traceArgs.tags, ["smoke", "corpus-scout"])
+  assert.equal(traceArgs.name, TRACE_NAME)
+  assert.deepEqual(traceArgs.tags, TRACE_TAGS)
   assert.deepEqual(traceArgs.input, { query: "my query" })
 })
 
@@ -137,7 +137,7 @@ await test("runWithLangfuse_success_updatesTraceToDefaultLevel", async () => {
 
   await runWithLangfuse(langfuse, makeMockCallTool(), "test")
 
-  assert.ok(updates.some((u) => u.level === "DEFAULT"), "expected DEFAULT level update")
+  assert.ok(updates.some((u) => u.level === LEVEL_DEFAULT), "expected DEFAULT level update")
 })
 
 await test("runWithLangfuse_failure_updatesTraceToErrorLevel", async () => {
@@ -147,7 +147,7 @@ await test("runWithLangfuse_failure_updatesTraceToErrorLevel", async () => {
 
   await runWithLangfuse(langfuse, makeMockCallTool({ searchError: "err" }), "test")
 
-  assert.ok(updates.some((u) => u.level === "ERROR"), "expected ERROR level update")
+  assert.ok(updates.some((u) => u.level === LEVEL_ERROR), "expected ERROR level update")
 })
 
 await test("runWithLangfuse_success_returnsPassTrue", async () => {

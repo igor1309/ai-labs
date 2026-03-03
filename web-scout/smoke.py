@@ -4,6 +4,26 @@ import os
 
 QUERY = "Python programming language"
 
+# Langfuse labelling — single source of truth for all trace/span identifiers
+TRACE_NAME    = "web-scout-smoke"
+TRACE_TAGS    = ["smoke", "web-scout"]
+SPAN_SCOUT    = "scout-agent"
+SPAN_MCP      = "mcp-search"
+SPAN_JUDGE    = "judge-agent"
+LEVEL_ERROR   = "ERROR"
+LEVEL_DEFAULT = "DEFAULT"
+
+
+def _start_smoke_trace(langfuse):
+    """Create and tag the root smoke trace.
+
+    Langfuse Python SDK v3 start_span() does not accept tags; they must be
+    applied via a subsequent update_trace() call.
+    """
+    trace = langfuse.start_span(name=TRACE_NAME)
+    trace.update_trace(tags=TRACE_TAGS)
+    return trace
+
 
 def run(scout, judge, docker_logs, env=None, print_fn=print):
     if env is None:
@@ -66,23 +86,22 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
 
 
 def run_with_langfuse(langfuse, scout, judge, docker_logs, env=None, print_fn=print):
-    trace = langfuse.start_span(name="web-scout-smoke")
-    trace.update_trace(tags=["smoke", "web-scout"])
+    trace = _start_smoke_trace(langfuse)
     captured_verdict = {}
 
     try:
-        scout_span = trace.start_span(name="scout-agent")
+        scout_span = trace.start_span(name=SPAN_SCOUT)
 
         original_scout = scout
         def wrapped_scout(query):
-            mcp_span = scout_span.start_span(name="mcp-search", input={"query": query})
+            mcp_span = scout_span.start_span(name=SPAN_MCP, input={"query": query})
             try:
                 result = original_scout(query)
                 mcp_span.update(output=result)
                 return result
             except Exception:
-                scout_span.update(level="ERROR")
-                trace.update(level="ERROR")
+                scout_span.update(level=LEVEL_ERROR)
+                trace.update(level=LEVEL_ERROR)
                 raise
             finally:
                 mcp_span.end()
@@ -90,7 +109,7 @@ def run_with_langfuse(langfuse, scout, judge, docker_logs, env=None, print_fn=pr
 
         original_judge = judge
         def wrapped_judge(query, results_json, logs):
-            judge_span = trace.start_span(name="judge-agent")
+            judge_span = trace.start_span(name=SPAN_JUDGE)
             try:
                 result = original_judge(query, results_json, logs)
                 captured_verdict["text"] = result
@@ -101,7 +120,7 @@ def run_with_langfuse(langfuse, scout, judge, docker_logs, env=None, print_fn=pr
         code = run(wrapped_scout, wrapped_judge, docker_logs, env=env, print_fn=print_fn)
 
         if "text" in captured_verdict:
-            level = "ERROR" if code != 0 else "DEFAULT"
+            level = LEVEL_ERROR if code != 0 else LEVEL_DEFAULT
             trace.update(output=captured_verdict["text"], level=level)
 
         return code
