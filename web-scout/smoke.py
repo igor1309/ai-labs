@@ -23,7 +23,7 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
     try:
         scout_span = trace.start_span(name="scout-agent") if trace else None
         try:
-            result = scout(QUERY)
+            result = scout(QUERY, scout_span=scout_span)
         except Exception:
             if scout_span:
                 scout_span.update(level="ERROR")
@@ -113,6 +113,18 @@ def _make_llm(env):
     )
 
 
+def _run_with_mcp_span(mcp_search, query, scout_span):
+    mcp_span = scout_span.start_span(name="mcp-search", input={"query": query}) if scout_span else None
+    try:
+        result = mcp_search._run(query=query)
+        if mcp_span:
+            mcp_span.update(output=result)
+        return result
+    finally:
+        if mcp_span:
+            mcp_span.end()
+
+
 def make_scout(env):
     from pathlib import Path
     from crewai import Agent, Task, Crew
@@ -122,7 +134,7 @@ def make_scout(env):
     llm = _make_llm(env)
     index_path = str(Path(__file__).parent / "src" / "index.js")
 
-    def scout(query):
+    def scout(query, scout_span=None):
         mcp_params = StdioServerParameters(
             command="node",
             args=[index_path],
@@ -148,7 +160,7 @@ def make_scout(env):
                 args_schema: type[BaseModel] = SearchInput
 
                 def _run(self, query: str) -> str:
-                    return mcp_search._run(query=query)
+                    return _run_with_mcp_span(mcp_search, query, scout_span)
 
             search_tools = [SearchTool()]
             agent = Agent(
