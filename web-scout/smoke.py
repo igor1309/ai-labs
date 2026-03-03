@@ -31,7 +31,7 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
             if trace:
                 trace.update(level="ERROR")
             print_fn("FAIL: scout agent raised an exception")
-            return 1  # spec rule 7 says "before re-raising" but run() never raises — returns 1
+            return 1  # error recorded on span and trace before exit
         if scout_span:
             scout_span.end()
 
