@@ -67,8 +67,11 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
 
 def _make_llm(env):
     from crewai import LLM
+    # LiteLLM strips the leading "openai/" provider prefix before forwarding to
+    # the custom base_url, so "openai/openai/gpt-4o-mini" arrives at nomos as
+    # model="openai/gpt-4o-mini" — the full OpenRouter model ID.
     return LLM(
-        model="openai/gpt-5-nano",
+        model="openai/openai/gpt-4o-mini",
         base_url=env["NOMOS_BASE_URL"] + "/v1",
         api_key=env["NOMOS_API_KEY"],
     )
@@ -77,7 +80,7 @@ def _make_llm(env):
 def make_scout(env):
     from pathlib import Path
     from crewai import Agent, Task, Crew
-    from crewai.tools.mcp_tools import MCPServerAdapter
+    from crewai_tools import MCPServerAdapter
     from mcp import StdioServerParameters
 
     llm = _make_llm(env)
@@ -90,7 +93,28 @@ def make_scout(env):
             env=dict(env),
         )
         with MCPServerAdapter(mcp_params) as mcp:
-            search_tools = [t for t in mcp.tools if t.name == "search"]
+            mcp_search = next((t for t in mcp if t.name == "search"), None)
+            if mcp_search is None:
+                raise ValueError("search tool not found in MCP server")
+
+            # MCPServerAdapter generates a schema with anyOf:[], enum:null,
+            # items:null — invalid JSON Schema that OpenRouter rejects.
+            # Wrap the tool with a clean single-parameter schema.
+            from crewai.tools import BaseTool
+            from pydantic import BaseModel, Field
+
+            class SearchInput(BaseModel):
+                query: str = Field(..., description="Search query string")
+
+            class SearchTool(BaseTool):
+                name: str = "search"
+                description: str = "Search the web using SearXNG and return JSON results"
+                args_schema: type[BaseModel] = SearchInput
+
+                def _run(self, query: str) -> str:
+                    return mcp_search._run(query=query)
+
+            search_tools = [SearchTool()]
             agent = Agent(
                 role="Web Scout",
                 goal=f'Search for "{query}" and return the raw JSON result verbatim',

@@ -71,7 +71,7 @@ Restart Claude Code. The `search` tool will be available.
 Verifies the full local stack (SearXNG + MCP server) using two CrewAI agents routed through nomos. Requires SearXNG running, nomos running, and the three env vars below set.
 
 ```bash
-SEARXNG_URL=http://localhost:8888 NOMOS_API_KEY=<key> NOMOS_BASE_URL=http://nomos:8000 python web-scout/smoke.py
+SEARXNG_URL=http://localhost:8888 NOMOS_API_KEY=<key> NOMOS_BASE_URL=http://nomos:8000 python3 web-scout/smoke.py
 ```
 
 Exits 0 on PASS, 1 on FAIL. Prints the judge verdict and explanation.
@@ -88,13 +88,13 @@ All three are pre-filled in `web-scout/.env` (gitignored). Source it before runn
 
 ```bash
 set -a && source web-scout/.env && set +a
-python web-scout/smoke.py
+python3 web-scout/smoke.py
 ```
 
 ### Running Python unit tests
 
 ```bash
-python -m pytest web-scout/tests/smoke_test.py -v
+python3 -m pytest web-scout/tests/smoke_test.py -v
 ```
 
 ## Docker logs
