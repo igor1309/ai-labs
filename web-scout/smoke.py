@@ -131,6 +131,9 @@ def make_scout(env, langfuse_client=None, parent_observation_id=None):
             if mcp_search is None:
                 raise ValueError("search tool not found in MCP server")
 
+            # MCPServerAdapter generates a schema with anyOf:[], enum:null,
+            # items:null — invalid JSON Schema that OpenRouter rejects.
+            # Wrap the tool with a clean single-parameter schema.
             from crewai.tools import BaseTool
             from pydantic import BaseModel, Field
 
