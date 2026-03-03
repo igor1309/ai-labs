@@ -30,7 +30,7 @@ function makeMockLangfuse() {
   const span = { end: () => {}, update: () => {} }
   const trace = { span: () => span, update: () => {} }
   const langfuse = { trace: () => trace, flushAsync: async () => {} }
-  return { langfuse, trace, span }
+  return { langfuse, trace }
 }
 
 // --- makeLangfuseClient ---
