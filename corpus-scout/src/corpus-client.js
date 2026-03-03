@@ -18,7 +18,8 @@ export function makeCorpusClient({ root, glob = DEFAULT_GLOB, maxResults = DEFAU
         "--json",
         "--no-messages",
         "-C", "1",
-        "--glob", effectiveGlob
+        "--glob", effectiveGlob,
+        "-m", String(maxResults)
       ]
       if (!options?.caseSensitive) {
         args.push("-i")
