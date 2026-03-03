@@ -1,0 +1,40 @@
+name: LOC Dashboard
+
+# Daily lines-of-code snapshot sent to Telegram.
+# Runs at 06:00 UTC (09:00 Moscow time) — same window as scheduled-health.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loc-dashboard
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run LOC dashboard
+        id: loc
+        run: |
+          output=$(./scripts/loc-dashboard.sh --sort=total)
+          echo "output<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$output" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Send to Telegram
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+          LOC_OUTPUT: ${{ steps.loc.output }}
+        run: |
+          ./scripts/ci/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$LOC_OUTPUT"
