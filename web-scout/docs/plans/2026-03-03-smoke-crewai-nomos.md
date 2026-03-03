@@ -165,12 +165,12 @@ def test_exits_nonzero_whenNomosBaseUrlMissing():
     assert code == 1
 
 
-@pytest.mark.parametrize("scout", [
-    make_scout(raises=True),
-    make_scout(result=""),
-])
-def test_exits_nonzero_whenScoutReturnsNoResult(scout):
-    code = run(**make_deps(scout=scout))
+@pytest.mark.parametrize("raises,result", [
+    (True, VALID_RESULTS_JSON),
+    (False, ""),
+], ids=["raises", "empty_output"])
+def test_exits_nonzero_whenScoutReturnsNoResult(raises, result):
+    code = run(**make_deps(scout=make_scout(raises=raises, result=result)))
     assert code == 1
 
 
