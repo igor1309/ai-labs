@@ -111,3 +111,61 @@ def make_scout(env):
             return output.strip()
 
     return scout
+
+
+def make_judge(env):
+    from crewai import Agent, Task, Crew
+
+    llm = _make_llm(env)
+
+    def judge(query, results_json, logs):
+        agent = Agent(
+            role="Search Result Judge",
+            goal=f'Evaluate web search results for the query "{query}"',
+            backstory="You evaluate search result quality. Begin your response with PASS or FAIL.",
+            tools=[],
+            llm=llm,
+            verbose=False,
+        )
+        task = Task(
+            description=(
+                f'Evaluate these web search results for the query "{query}".\n\n'
+                f'Results JSON:\n{results_json}\n\n'
+                f'Docker logs:\n{logs}\n\n'
+                'Start your answer with PASS or FAIL, then explain why.'
+            ),
+            expected_output="Verdict starting with PASS or FAIL followed by explanation",
+            agent=agent,
+        )
+        crew = Crew(agents=[agent], tasks=[task], verbose=False)
+        return crew.kickoff().raw or ""
+
+    return judge
+
+
+def make_docker_logs():
+    import subprocess
+
+    def docker_logs():
+        result = subprocess.run(
+            ["docker", "logs", "--tail", "50", "searxng"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+
+    return docker_logs
+
+
+if __name__ == "__main__":
+    import sys
+
+    env = dict(os.environ)
+    code = run(
+        scout=make_scout(env),
+        judge=make_judge(env),
+        docker_logs=make_docker_logs(),
+        env=env,
+    )
+    sys.exit(code)
