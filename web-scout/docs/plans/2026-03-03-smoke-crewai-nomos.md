@@ -51,6 +51,7 @@ Expected output: branch is `codex/smoke-crewai-nomos`, cwd is inside `worktrees/
 
 ```
 crewai[tools]>=0.100.0
+mcp>=1.0.0
 pytest>=8.0.0
 ```
 
@@ -164,13 +165,12 @@ def test_exits_nonzero_whenNomosBaseUrlMissing():
     assert code == 1
 
 
-def test_exits_nonzero_whenScoutRaisesException():
-    code = run(**make_deps(scout=make_scout(raises=True)))
-    assert code == 1
-
-
-def test_exits_nonzero_whenScoutReturnsEmptyOutput():
-    code = run(**make_deps(scout=make_scout(result="")))
+@pytest.mark.parametrize("scout", [
+    make_scout(raises=True),
+    make_scout(result=""),
+])
+def test_exits_nonzero_whenScoutReturnsNoResult(scout):
+    code = run(**make_deps(scout=scout))
     assert code == 1
 
 
@@ -224,7 +224,7 @@ def test_exits_zero_whenSearxngRunningAndResultsRelevant():
 python -m pytest web-scout/tests/smoke_test.py -v
 ```
 
-Expected: `ModuleNotFoundError: No module named 'smoke'` or `ImportError`. This confirms the tests are wired up and waiting for the implementation.
+Expected: `ModuleNotFoundError: No module named 'smoke'`. This confirms the tests are wired up and waiting for the implementation.
 
 **Step 3: Commit**
 
@@ -316,7 +316,7 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
 python -m pytest web-scout/tests/smoke_test.py -v
 ```
 
-Expected: all 12 tests pass.
+Expected: all 11 tests pass (parametrized test counts as 2 pytest items but 1 spec test).
 
 **Step 3: Commit**
 
@@ -359,7 +359,7 @@ def make_scout(env):
         mcp_params = StdioServerParameters(
             command="node",
             args=[index_path],
-            env={**env, "SEARXNG_URL": env["SEARXNG_URL"]},
+            env=dict(env),
         )
         with MCPServerAdapter(mcp_params) as mcp:
             search_tools = [t for t in mcp.tools if t.name == "search"]
@@ -391,7 +391,7 @@ def make_scout(env):
 python -m pytest web-scout/tests/smoke_test.py -v
 ```
 
-Expected: all 12 tests still pass (unit tests do not call `make_scout()`).
+Expected: all 11 tests still pass (unit tests do not call `make_scout()`).
 
 **Step 3: Commit**
 
@@ -474,7 +474,7 @@ if __name__ == "__main__":
 python -m pytest web-scout/tests/smoke_test.py -v
 ```
 
-Expected: all 12 tests pass.
+Expected: all 11 tests pass (parametrized test counts as 2 pytest items but 1 spec test).
 
 **Step 3: Commit**
 
@@ -511,7 +511,7 @@ Expected: pass (remaining JS tests cover `searxng-client`, `mcp-server`, `e2e` â
 python -m pytest web-scout/tests/smoke_test.py -v
 ```
 
-Expected: all 12 pass.
+Expected: all 11 tests pass.
 
 **Step 4: Commit**
 
@@ -526,7 +526,7 @@ git commit -m "remove js smoke script and tests (replaced by python)"
 **Step 1: Add log entry to `web-scout/docs/log.md`** (prepend under today's date)
 
 ```
-Migrate smoke script to Python + CrewAI + nomos (v0.0.2): replace Claude Agent SDK JS implementation with Python; LLM calls routed through nomos OpenAI-compatible API; 12 unit tests ported to pytest.
+Migrate smoke script to Python + CrewAI + nomos (v0.0.2): replace Claude Agent SDK JS implementation with Python; LLM calls routed through nomos OpenAI-compatible API; 11 unit tests ported to pytest.
 ```
 
 **Step 2: Move plan to implemented**
@@ -551,7 +551,7 @@ gh pr create --title "smoke script v0.0.2: crewai + nomos" --body "$(cat <<'EOF'
 - Replace Claude Agent SDK (JS) smoke script with Python + CrewAI
 - LLM calls routed through nomos (OpenAI-compatible proxy)
 - Model: openai/gpt-5-nano via nomos (fallback: claude-haiku-4-5)
-- 12 unit tests ported to pytest; cost-limit rules removed (delegated to nomos)
+- 11 unit tests ported to pytest; cost-limit rules removed (delegated to nomos)
 
 ## Test plan
 - [ ] `python -m pytest web-scout/tests/smoke_test.py -v` â€” all 12 pass
