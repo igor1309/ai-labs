@@ -111,7 +111,7 @@ def _make_llm(env):
     )
 
 
-def make_scout(env):
+def make_scout(env, langfuse_client=None, parent_observation_id=None):
     from pathlib import Path
     from crewai import Agent, Task, Crew
     from crewai_tools import MCPServerAdapter
@@ -131,9 +131,6 @@ def make_scout(env):
             if mcp_search is None:
                 raise ValueError("search tool not found in MCP server")
 
-            # MCPServerAdapter generates a schema with anyOf:[], enum:null,
-            # items:null — invalid JSON Schema that OpenRouter rejects.
-            # Wrap the tool with a clean single-parameter schema.
             from crewai.tools import BaseTool
             from pydantic import BaseModel, Field
 
@@ -163,7 +160,16 @@ def make_scout(env):
                 agent=agent,
             )
             crew = Crew(agents=[agent], tasks=[task], verbose=False)
-            output = crew.kickoff().raw
+
+            callbacks = []
+            if langfuse_client is not None and parent_observation_id is not None:
+                from langfuse.callback import LangfuseCallbackHandler
+                callbacks = [LangfuseCallbackHandler(
+                    observation_id=parent_observation_id,
+                    update_stateful_client=False,
+                )]
+
+            output = crew.kickoff(callbacks=callbacks).raw
             if not output or not output.strip():
                 raise ValueError("Scout agent produced empty output")
             return output.strip()
@@ -171,7 +177,7 @@ def make_scout(env):
     return scout
 
 
-def make_judge(env):
+def make_judge(env, langfuse_client=None, parent_observation_id=None):
     from crewai import Agent, Task, Crew
 
     llm = _make_llm(env)
@@ -196,7 +202,16 @@ def make_judge(env):
             agent=agent,
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=False)
-        return crew.kickoff().raw or ""
+
+        callbacks = []
+        if langfuse_client is not None and parent_observation_id is not None:
+            from langfuse.callback import LangfuseCallbackHandler
+            callbacks = [LangfuseCallbackHandler(
+                observation_id=parent_observation_id,
+                update_stateful_client=False,
+            )]
+
+        return crew.kickoff(callbacks=callbacks).raw or ""
 
     return judge
 
@@ -220,10 +235,12 @@ if __name__ == "__main__":
     import sys
 
     env = dict(os.environ)
+    langfuse_client = make_langfuse_client(env)
     code = run(
         scout=make_scout(env),
         judge=make_judge(env),
         docker_logs=make_docker_logs(),
         env=env,
+        langfuse=langfuse_client,
     )
     sys.exit(code)
