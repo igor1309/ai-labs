@@ -65,6 +65,20 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
     return 0
 
 
+def make_langfuse_client(env):
+    """Returns a Langfuse client when keys are present, None otherwise."""
+    secret = env.get("LANGFUSE_SECRET_KEY")
+    public = env.get("LANGFUSE_PUBLIC_KEY")
+    if not secret or not public:
+        return None
+    from langfuse import Langfuse
+    kwargs = {"secret_key": secret, "public_key": public}
+    host = env.get("LANGFUSE_BASE_URL")
+    if host:
+        kwargs["host"] = host
+    return Langfuse(**kwargs)
+
+
 def _make_llm(env):
     from crewai import LLM
     # LiteLLM strips the leading "openai/" provider prefix before forwarding to
