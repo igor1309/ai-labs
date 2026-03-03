@@ -1,7 +1,7 @@
 # web-scout/tests/test_langfuse_integration.py
 #
 # Requires the Langfuse stack to be running:
-#   docker compose -f docker/langfuse/docker-compose.yml --env-file web-scout/.env up -d
+#   docker compose -f docker/langfuse/docker-compose.yml --env-file docker/langfuse/.env up -d
 #
 # Run:
 #   python3 -m pytest web-scout/tests/test_langfuse_integration.py -v -m docker
