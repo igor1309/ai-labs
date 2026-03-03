@@ -12,6 +12,7 @@
 - Require a full test suite pass before declaring completion.
 - Require a full test suite pass for each phase step before moving to the next step.
 - Commit only when tests are passing for the current branch state.
+- `trunk` is a protected branch. Never commit or push directly to `trunk`. All changes must go through a PR from a dedicated branch.
 - PR merge strategy: use merge commit (`--merge`), never squash.
 - Protocols are owned by their client and MUST live in the same module. A protocol without its client is a violation.
 - Keep scope minimal and explicit; avoid scope creep.
