@@ -2,6 +2,7 @@
 
 ## 2026-03-03
 
+promote langfuse stack from `web-scout/docker/langfuse/` to shared `docker/langfuse/`; all projects can now share a single local instance
 web-scout: add `mcp-search` child span to Langfuse smoke tracing (PR #73); complete Langfuse v3 observability for rules 5 and 11; rule 6 (LLM token/cost) documented as blocked by CrewAI OTel provider conflict. All 21 unit tests pass. See `web-scout/docs/log.md`.
 web-scout: migrate smoke script to Python + CrewAI + nomos and get first passing run. Fixes: malformed MCP tool schema causing OpenRouter 502s, LiteLLM model routing through custom base_url, Python venv setup. See `web-scout/docs/log.md`.
 

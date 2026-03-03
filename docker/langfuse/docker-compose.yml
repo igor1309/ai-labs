@@ -1,8 +1,8 @@
-# web-scout/docker/langfuse/docker-compose.yml
+# docker/langfuse/docker-compose.yml
 # Usage:
-#   docker compose -f web-scout/docker/langfuse/docker-compose.yml --env-file web-scout/.env up -d
-#   docker compose -f web-scout/docker/langfuse/docker-compose.yml down
-#   docker compose -f web-scout/docker/langfuse/docker-compose.yml down -v   # full reset
+#   docker compose -f docker/langfuse/docker-compose.yml --env-file docker/langfuse/.env up -d
+#   docker compose -f docker/langfuse/docker-compose.yml down
+#   docker compose -f docker/langfuse/docker-compose.yml down -v   # full reset
 
 services:
   postgres:
