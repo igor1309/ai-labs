@@ -68,13 +68,27 @@ Restart Claude Code. The `search` tool will be available.
 
 ## Smoke script
 
-Verifies the full local stack (SearXNG + MCP server) using two Claude agents. Requires SearXNG running and `ANTHROPIC_API_KEY` set.
+Verifies the full local stack (SearXNG + MCP server) using two CrewAI agents routed through nomos. Requires SearXNG running, nomos running, and the three env vars below set.
 
 ```bash
-SEARXNG_URL=http://localhost:8888 ANTHROPIC_API_KEY=<key> node web-scout/smoke.js
+SEARXNG_URL=http://localhost:8888 NOMOS_API_KEY=<key> NOMOS_BASE_URL=http://nomos:8000 python web-scout/smoke.py
 ```
 
-Exits 0 on PASS, 1 on FAIL. Prints verdict, judge explanation, and both agent costs.
+Exits 0 on PASS, 1 on FAIL. Prints the judge verdict and explanation.
+
+### Smoke script environment variables
+
+| Variable         | Required | Description                                      |
+|------------------|----------|--------------------------------------------------|
+| `SEARXNG_URL`    | yes      | SearXNG instance base URL                        |
+| `NOMOS_API_KEY`  | yes      | API key for nomos OpenAI-compatible proxy        |
+| `NOMOS_BASE_URL` | yes      | nomos root URL (e.g. `http://localhost:8000`); `/v1` is appended internally |
+
+### Running Python unit tests
+
+```bash
+python -m pytest web-scout/tests/smoke_test.py -v
+```
 
 ## Docker logs
 
