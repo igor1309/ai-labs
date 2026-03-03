@@ -63,3 +63,51 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
 
     print_fn(f"PASS\n{judge_result}")
     return 0
+
+
+def _make_llm(env):
+    from crewai import LLM
+    return LLM(
+        model="openai/gpt-5-nano",
+        base_url=env["NOMOS_BASE_URL"] + "/v1",
+        api_key=env["NOMOS_API_KEY"],
+    )
+
+
+def make_scout(env):
+    from pathlib import Path
+    from crewai import Agent, Task, Crew
+    from crewai.tools.mcp_tools import MCPServerAdapter
+    from mcp import StdioServerParameters
+
+    llm = _make_llm(env)
+    index_path = str(Path(__file__).parent / "src" / "index.js")
+
+    def scout(query):
+        mcp_params = StdioServerParameters(
+            command="node",
+            args=[index_path],
+            env=dict(env),
+        )
+        with MCPServerAdapter(mcp_params) as mcp:
+            search_tools = [t for t in mcp.tools if t.name == "search"]
+            agent = Agent(
+                role="Web Scout",
+                goal=f'Search for "{query}" and return the raw JSON result verbatim',
+                backstory="You are a web search agent. Use the search tool and return only the raw JSON result, nothing else.",
+                tools=search_tools,
+                llm=llm,
+                verbose=False,
+            )
+            task = Task(
+                description=f'Use the search tool to search for "{query}" and return only the raw JSON result verbatim, with no other text.',
+                expected_output="Raw JSON string from the search tool",
+                agent=agent,
+            )
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            output = crew.kickoff().raw
+            if not output or not output.strip():
+                raise ValueError("Scout agent produced empty output")
+            return output.strip()
+
+    return scout
