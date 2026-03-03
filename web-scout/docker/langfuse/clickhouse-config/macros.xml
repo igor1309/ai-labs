@@ -1,0 +1,8 @@
+<clickhouse>
+    <!-- Macros required for ReplicatedMergeTree table creation -->
+    <macros>
+        <shard>01</shard>
+        <replica>01</replica>
+        <cluster>default</cluster>
+    </macros>
+</clickhouse>
