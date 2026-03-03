@@ -8,7 +8,7 @@ description: >
   documentation out of sync with the codebase. Detects factual mismatches
   between markdown documentation and code — wrong names, signatures, paths,
   behaviors. Does not rewrite, reformat, or improve docs.
-version: "1.2.0"
+version: "1.3.0"
 author: Igor Malyarov
 ---
 
@@ -55,6 +55,7 @@ Discard any finding that is formatting or style — it is not drift.
 3. Discover markdown files to audit:
    - Use `Glob` with `**/*.md` to find all markdown files.
    - Exclude `node_modules/`, `vendor/`, `.build/`, and similar generated directories.
+   - Exclude `**/implemented/**` and `**/archived/**` directories — these are finished artifacts that describe past state, not current code.
    - Convert all discovered paths to relative paths (relative to the working directory) before presenting or using them. Do not use absolute paths anywhere in this workflow.
    - Present the file list to the user for confirmation. Remove any files the user excludes.
 
