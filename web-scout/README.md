@@ -108,6 +108,30 @@ All four are pre-filled in `web-scout/.env` (gitignored).
 web-scout/.venv/bin/python3 -m pytest web-scout/tests/smoke_test.py -v
 ```
 
+## Langfuse observability (local)
+
+Optional. When `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` are set, each smoke run produces one trace in Langfuse with `scout-agent` and `judge-agent` spans. All three values are pre-filled in `web-scout/.env`.
+
+### Start the stack
+
+```bash
+docker compose -f web-scout/docker/langfuse/docker-compose.yml --env-file web-scout/.env up -d
+```
+
+UI available at `http://localhost:3000`. Sign in with `LANGFUSE_INIT_USER_EMAIL` / `LANGFUSE_INIT_USER_PASSWORD` from `web-scout/.env`.
+
+### Stop the stack
+
+```bash
+docker compose -f web-scout/docker/langfuse/docker-compose.yml down
+```
+
+### Bind-mount warning
+
+Always start the stack from the **same workspace tree where you intend to keep it running**. Bind-mount paths (e.g. `./clickhouse-config`) are resolved relative to the compose file at `docker compose up` time and frozen into the container. If that source path later disappears — for example because the git worktree it lived in was deleted — ClickHouse silently loses its config and falls back to loopback-only on port 8123. The container health check (TCP port 9000) still passes, masking the breakage.
+
+**Teardown order when using worktrees:** stop the stack before removing the worktree, not after.
+
 ## Docker logs
 
 ```bash
