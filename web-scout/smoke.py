@@ -5,7 +5,7 @@ import os
 QUERY = "Python programming language"
 
 
-def run(scout, judge, docker_logs, env=None, print_fn=print):
+def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
     if env is None:
         env = os.environ
 
@@ -19,65 +19,102 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
         print_fn("FAIL: NOMOS_BASE_URL environment variable is required")
         return 1
 
+    trace = langfuse.trace(name="web-scout-smoke") if langfuse is not None else None
     try:
-        result = scout(QUERY)
-    except Exception:
-        print_fn("FAIL: scout agent raised an exception")
-        return 1
+        scout_span = trace.span(name="scout-agent") if trace else None
+        try:
+            result = scout(QUERY)
+        except Exception:
+            if scout_span:
+                scout_span.update(level="ERROR")
+                scout_span.end()
+            if trace:
+                trace.update(level="ERROR")
+            print_fn("FAIL: scout agent raised an exception")
+            return 1  # error recorded on span and trace before exit
+        if scout_span:
+            scout_span.end()
 
-    if not result or not result.strip():
-        print_fn("FAIL: scout agent produced empty output")
-        return 1
-
-    try:
-        parsed = json.loads(result)
-    except (json.JSONDecodeError, ValueError):
-        print_fn("FAIL: scout result is not valid JSON")
-        return 1
-
-    if not isinstance(parsed.get("results"), list) or len(parsed["results"]) == 0:
-        print_fn("FAIL: results array is empty")
-        return 1
-
-    for r in parsed["results"]:
-        if not r.get("title") or not r.get("url"):
-            print_fn("FAIL: result missing non-empty title or url")
+        if not result or not result.strip():
+            print_fn("FAIL: scout agent produced empty output")
             return 1
 
-    try:
-        logs = docker_logs()
-    except Exception:
-        logs = "(unavailable)"
+        try:
+            parsed = json.loads(result)
+        except (json.JSONDecodeError, ValueError):
+            print_fn("FAIL: scout result is not valid JSON")
+            return 1
 
-    judge_result = judge(QUERY, result, logs)
+        if not isinstance(parsed.get("results"), list) or len(parsed["results"]) == 0:
+            print_fn("FAIL: results array is empty")
+            return 1
 
-    words = (judge_result or "").strip().split()
-    first_word = words[0].upper() if words else ""
+        for r in parsed["results"]:
+            if not r.get("title") or not r.get("url"):
+                print_fn("FAIL: result missing non-empty title or url")
+                return 1
 
-    if first_word not in ("PASS", "FAIL"):
-        print_fn("FAIL: judge verdict unparseable (must start with PASS or FAIL)")
-        return 1
-    if first_word == "FAIL":
-        print_fn(f"FAIL\n{judge_result}")
-        return 1
+        try:
+            logs = docker_logs()
+        except Exception:
+            logs = "(unavailable)"
 
-    print_fn(f"PASS\n{judge_result}")
-    return 0
+        judge_span = trace.span(name="judge-agent") if trace else None
+        judge_result = judge(QUERY, result, logs)
+        if judge_span:
+            judge_span.end()
+
+        words = (judge_result or "").strip().split()
+        first_word = words[0].upper() if words else ""
+
+        if first_word not in ("PASS", "FAIL"):
+            print_fn("FAIL: judge verdict unparseable (must start with PASS or FAIL)")
+            return 1
+        if first_word == "FAIL":
+            if trace:
+                trace.update(output=judge_result, level="ERROR")
+            print_fn(f"FAIL\n{judge_result}")
+            return 1
+
+        if trace:
+            trace.update(output=judge_result, level="DEFAULT")
+        print_fn(f"PASS\n{judge_result}")
+        return 0
+    finally:
+        if langfuse is not None:
+            langfuse.flush()
+
+
+def make_langfuse_client(env):
+    """Returns a Langfuse client when keys are present, None otherwise."""
+    secret = env.get("LANGFUSE_SECRET_KEY")
+    public = env.get("LANGFUSE_PUBLIC_KEY")
+    if not secret or not public:
+        return None
+    from langfuse import Langfuse
+    kwargs = {"secret_key": secret, "public_key": public}
+    host = env.get("LANGFUSE_BASE_URL")
+    if host:
+        kwargs["host"] = host
+    return Langfuse(**kwargs)
 
 
 def _make_llm(env):
     from crewai import LLM
+    # LiteLLM strips the leading "openai/" provider prefix before forwarding to
+    # the custom base_url, so "openai/openai/gpt-4o-mini" arrives at nomos as
+    # model="openai/gpt-4o-mini" — the full OpenRouter model ID.
     return LLM(
-        model="openai/gpt-5-nano",
+        model="openai/openai/gpt-4o-mini",
         base_url=env["NOMOS_BASE_URL"] + "/v1",
         api_key=env["NOMOS_API_KEY"],
     )
 
 
-def make_scout(env):
+def make_scout(env, langfuse_client=None, parent_observation_id=None):
     from pathlib import Path
     from crewai import Agent, Task, Crew
-    from crewai.tools.mcp_tools import MCPServerAdapter
+    from crewai_tools import MCPServerAdapter
     from mcp import StdioServerParameters
 
     llm = _make_llm(env)
@@ -90,7 +127,28 @@ def make_scout(env):
             env=dict(env),
         )
         with MCPServerAdapter(mcp_params) as mcp:
-            search_tools = [t for t in mcp.tools if t.name == "search"]
+            mcp_search = next((t for t in mcp if t.name == "search"), None)
+            if mcp_search is None:
+                raise ValueError("search tool not found in MCP server")
+
+            # MCPServerAdapter generates a schema with anyOf:[], enum:null,
+            # items:null — invalid JSON Schema that OpenRouter rejects.
+            # Wrap the tool with a clean single-parameter schema.
+            from crewai.tools import BaseTool
+            from pydantic import BaseModel, Field
+
+            class SearchInput(BaseModel):
+                query: str = Field(..., description="Search query string")
+
+            class SearchTool(BaseTool):
+                name: str = "search"
+                description: str = "Search the web using SearXNG and return JSON results"
+                args_schema: type[BaseModel] = SearchInput
+
+                def _run(self, query: str) -> str:
+                    return mcp_search._run(query=query)
+
+            search_tools = [SearchTool()]
             agent = Agent(
                 role="Web Scout",
                 goal=f'Search for "{query}" and return the raw JSON result verbatim',
@@ -105,7 +163,16 @@ def make_scout(env):
                 agent=agent,
             )
             crew = Crew(agents=[agent], tasks=[task], verbose=False)
-            output = crew.kickoff().raw
+
+            callbacks = []
+            if langfuse_client is not None and parent_observation_id is not None:
+                from langfuse.callback import LangfuseCallbackHandler
+                callbacks = [LangfuseCallbackHandler(
+                    observation_id=parent_observation_id,
+                    update_stateful_client=False,
+                )]
+
+            output = crew.kickoff(callbacks=callbacks).raw
             if not output or not output.strip():
                 raise ValueError("Scout agent produced empty output")
             return output.strip()
@@ -113,7 +180,7 @@ def make_scout(env):
     return scout
 
 
-def make_judge(env):
+def make_judge(env, langfuse_client=None, parent_observation_id=None):
     from crewai import Agent, Task, Crew
 
     llm = _make_llm(env)
@@ -138,7 +205,16 @@ def make_judge(env):
             agent=agent,
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=False)
-        return crew.kickoff().raw or ""
+
+        callbacks = []
+        if langfuse_client is not None and parent_observation_id is not None:
+            from langfuse.callback import LangfuseCallbackHandler
+            callbacks = [LangfuseCallbackHandler(
+                observation_id=parent_observation_id,
+                update_stateful_client=False,
+            )]
+
+        return crew.kickoff(callbacks=callbacks).raw or ""
 
     return judge
 
@@ -162,10 +238,12 @@ if __name__ == "__main__":
     import sys
 
     env = dict(os.environ)
+    langfuse_client = make_langfuse_client(env)
     code = run(
-        scout=make_scout(env),
-        judge=make_judge(env),
+        scout=make_scout(env, langfuse_client=langfuse_client),
+        judge=make_judge(env, langfuse_client=langfuse_client),
         docker_logs=make_docker_logs(),
         env=env,
+        langfuse=langfuse_client,
     )
     sys.exit(code)

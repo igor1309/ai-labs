@@ -68,13 +68,45 @@ Restart Claude Code. The `search` tool will be available.
 
 ## Smoke script
 
-Verifies the full local stack (SearXNG + MCP server) using two Claude agents. Requires SearXNG running and `ANTHROPIC_API_KEY` set.
+Verifies the full local stack (SearXNG + MCP server) using two CrewAI agents routed through nomos. Requires SearXNG running, nomos running, and the three env vars below set.
+
+> **Run all commands from the repo root.** Never `cd` into `web-scout/` — use relative paths from the root.
 
 ```bash
-SEARXNG_URL=http://localhost:8888 ANTHROPIC_API_KEY=<key> node web-scout/smoke.js
+set -a && source web-scout/.env && set +a
+web-scout/.venv/bin/python3 web-scout/smoke.py
 ```
 
-Exits 0 on PASS, 1 on FAIL. Prints verdict, judge explanation, and both agent costs.
+Exits 0 on PASS, 1 on FAIL. Prints the judge verdict and explanation.
+
+### Python setup (one-time)
+
+The smoke script and its unit tests run in an isolated virtualenv. Create it once:
+
+```bash
+python3 -m venv web-scout/.venv
+web-scout/.venv/bin/pip install -r web-scout/requirements.txt "crewai-tools[mcp]"
+```
+
+> **Note:** Use Python 3.11–3.13. Python 3.14+ is not yet supported by all deps.
+> `bare python` may resolve to a broken system shim on macOS — always use `python3` or the full venv path.
+
+### Smoke script environment variables
+
+| Variable                  | Required | Description                                                                                   |
+|---------------------------|----------|-----------------------------------------------------------------------------------------------|
+| `SEARXNG_URL`             | yes      | SearXNG instance base URL                                                                     |
+| `NOMOS_API_KEY`           | yes      | Bearer token for the `web-scout` project registered in nomos (stored in `web-scout/.env`, not committed) |
+| `NOMOS_BASE_URL`          | yes      | `https://nomos.enoa.ai` (production); `/v1` is appended internally                           |
+| `CREWAI_TRACING_ENABLED`  | no       | Set to `false` to suppress CrewAI telemetry connection noise                                  |
+
+All four are pre-filled in `web-scout/.env` (gitignored).
+
+### Running Python unit tests
+
+```bash
+web-scout/.venv/bin/python3 -m pytest web-scout/tests/smoke_test.py -v
+```
 
 ## Docker logs
 

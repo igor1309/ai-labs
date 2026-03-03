@@ -1,5 +1,9 @@
 # Log
 
+## 2026-03-03
+
+web-scout: migrate smoke script to Python + CrewAI + nomos and get first passing run. Fixes: malformed MCP tool schema causing OpenRouter 502s, LiteLLM model routing through custom base_url, Python venv setup. See `web-scout/docs/log.md`.
+
 ## 2026-03-02
 
 web-scout: add structured JSON logging to stderr (startup + per-call), `LOG_LEVEL` env var, and updated README. See `web-scout/docs/log.md`.
