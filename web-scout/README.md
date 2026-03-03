@@ -98,9 +98,29 @@ web-scout/.venv/bin/pip install -r web-scout/requirements.txt "crewai-tools[mcp]
 | `SEARXNG_URL`             | yes      | SearXNG instance base URL                                                                     |
 | `NOMOS_API_KEY`           | yes      | Bearer token for the `web-scout` project registered in nomos (stored in `web-scout/.env`, not committed) |
 | `NOMOS_BASE_URL`          | yes      | `https://nomos.enoa.ai` (production); `/v1` is appended internally                           |
-| `CREWAI_TRACING_ENABLED`  | no       | Set to `false` to suppress CrewAI telemetry connection noise                                  |
+| `CREWAI_DISABLE_TELEMETRY`| no       | Set to `true` to disable CrewAI anonymous OTLP telemetry to `telemetry.crewai.com:4319`      |
+| `CREWAI_TRACING_ENABLED`  | no       | Set to `false` to disable CrewAI Plus tracing to `app.crewai.com` (separate from telemetry)  |
 
-All four are pre-filled in `web-scout/.env` (gitignored).
+All are pre-filled in `web-scout/.env` (gitignored).
+
+### CrewAI telemetry gotchas
+
+CrewAI runs **two independent telemetry systems**. They are controlled by different env vars and fail in different ways.
+
+**System A — anonymous OTLP telemetry** (sends to `telemetry.crewai.com:4319`)
+
+- Uses `BatchSpanProcessor` which retries 3–4 times per crew kickoff on connection failure.
+- Each retry logs at ERROR level, producing the noisy `"Max retries exceeded with url: /v1/traces"` output.
+- Disable with `CREWAI_DISABLE_TELEMETRY=true`.
+- **Timing gotcha**: this env var must be present in `os.environ` _before_ `import crewai` executes. Setting it after the import has no effect — the `Telemetry` singleton initialises on first class instantiation. The recommended run pattern (`set -a && source web-scout/.env && set +a` before launching Python) satisfies this because the env vars reach `os.environ` before Python starts and crewai is imported lazily inside `make_scout`/`make_judge`.
+
+**System B — CrewAI Plus tracing** (sends to `app.crewai.com`)
+
+- Disabled when `CREWAI_TRACING_ENABLED` is absent or not `"true"`/`"1"`, and `trace_consent` is not stored in `~/.local/share/crewai/.crewai_user.json`.
+- Does **not** produce connection noise when blocked — fails silently.
+- `CREWAI_TRACING_ENABLED=false` prevents auto-enabling but does not force-disable if stored consent exists.
+
+**Summary**: `CREWAI_TRACING_ENABLED=false` alone does not suppress the connection noise. `CREWAI_DISABLE_TELEMETRY=true` is the correct fix.
 
 ### Running Python unit tests
 
