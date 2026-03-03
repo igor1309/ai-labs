@@ -93,41 +93,41 @@ export async function runWithLangfuse(langfuse, callTool, query) {
 
 // Main — only runs when this file is the entry point, not when imported as a module
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
-const root = process.env.CORPUS_ROOT
-if (!root) {
-  console.error("CORPUS_ROOT is required")
-  process.exit(1)
-}
+  const root = process.env.CORPUS_ROOT
+  if (!root) {
+    console.error("CORPUS_ROOT is required")
+    process.exit(1)
+  }
 
-const query = process.env.SMOKE_QUERY || "the"
-const langfuseClient = makeLangfuseClient(process.env)
-if (!langfuseClient) {
-  console.error("FAIL: LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY are required")
-  process.exit(1)
-}
+  const query = process.env.SMOKE_QUERY || "the"
+  const langfuseClient = makeLangfuseClient(process.env)
+  if (!langfuseClient) {
+    console.error("FAIL: LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY are required")
+    process.exit(1)
+  }
 
-const transport = new StdioClientTransport({
-  command: "node",
-  args: [new URL("../src/index.js", import.meta.url).pathname],
-  env: { ...process.env, CORPUS_ROOT: root },
-})
-const mcpClient = new Client({ name: "smoke-test", version: "0.0.1" })
+  const transport = new StdioClientTransport({
+    command: "node",
+    args: [new URL("../src/index.js", import.meta.url).pathname],
+    env: { ...process.env, CORPUS_ROOT: root },
+  })
+  const mcpClient = new Client({ name: "smoke-test", version: "0.0.1" })
 
-try {
-  await mcpClient.connect(transport)
-  const callTool = (toolName, args) => mcpClient.callTool({ name: toolName, arguments: args })
-  const result = await runWithLangfuse(langfuseClient, callTool, query)
-  if (result.pass) {
-    console.log(`\nPASS: ${result.summary}`)
-    await mcpClient.close()
-  } else {
-    console.error(`\nFAIL: ${result.summary}`)
+  try {
+    await mcpClient.connect(transport)
+    const callTool = (toolName, args) => mcpClient.callTool({ name: toolName, arguments: args })
+    const result = await runWithLangfuse(langfuseClient, callTool, query)
+    if (result.pass) {
+      console.log(`\nPASS: ${result.summary}`)
+      await mcpClient.close()
+    } else {
+      console.error(`\nFAIL: ${result.summary}`)
+      try { await mcpClient.close() } catch {}
+      process.exit(1)
+    }
+  } catch (err) {
+    console.error(`\nFAIL: ${err.message}`)
     try { await mcpClient.close() } catch {}
     process.exit(1)
   }
-} catch (err) {
-  console.error(`\nFAIL: ${err.message}`)
-  try { await mcpClient.close() } catch {}
-  process.exit(1)
 }
-} // end entry-point guard
