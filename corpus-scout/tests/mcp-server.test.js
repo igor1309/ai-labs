@@ -1,8 +1,12 @@
 import assert from "node:assert/strict"
+import { execFile, spawn } from "node:child_process"
 import test from "node:test"
+import { promisify } from "node:util"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 import { createMcpServer } from "../src/mcp-server.js"
+
+const execFileAsync = promisify(execFile)
 
 // Helpers
 
@@ -215,4 +219,47 @@ test("search_shouldNotWriteLog_whenLogLevelSilent", async () => {
 
   await mcpClient.close()
   await server.close()
+})
+
+// Startup tests
+
+const indexPath = new URL("../src/index.js", import.meta.url).pathname
+
+test("startup_shouldExitWithError_whenCorpusRootMissing", async () => {
+  try {
+    await execFileAsync("node", [indexPath], { env: { ...process.env, CORPUS_ROOT: "" } })
+    assert.fail("expected non-zero exit")
+  } catch (err) {
+    assert.notEqual(err.code, 0)
+    assert.match(err.stderr, /CORPUS_ROOT/)
+  }
+})
+
+test("startup_shouldExitWithError_whenCorpusRootNotADirectory", async () => {
+  try {
+    await execFileAsync("node", [indexPath], { env: { ...process.env, CORPUS_ROOT: "/nonexistent/path" } })
+    assert.fail("expected non-zero exit")
+  } catch (err) {
+    assert.notEqual(err.code, 0)
+    assert.match(err.stderr, /not.*directory|does not exist/i)
+  }
+})
+
+test("startup_shouldWriteStartupLog_toStderr", async () => {
+  const child = spawn("node", [indexPath], { env: { ...process.env, CORPUS_ROOT: process.cwd() }, stdio: ["pipe", "pipe", "pipe"] })
+  const firstLine = await new Promise((resolve, reject) => {
+    let buf = ""
+    child.stderr.on("data", (chunk) => {
+      buf += chunk.toString()
+      const nl = buf.indexOf("\n")
+      if (nl !== -1) resolve(buf.slice(0, nl))
+    })
+    child.on("error", reject)
+    setTimeout(() => reject(new Error("timeout waiting for stderr")), 5000)
+  })
+  child.kill()
+
+  const entry = JSON.parse(firstLine)
+  assert.equal(entry.event, "startup")
+  assert.equal(entry.corpusRoot, process.cwd())
 })
