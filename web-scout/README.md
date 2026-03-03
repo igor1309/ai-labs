@@ -110,7 +110,7 @@ web-scout/.venv/bin/python3 -m pytest web-scout/tests/smoke_test.py -v
 
 ## Langfuse observability (local)
 
-Optional. When `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` are set, each smoke run produces one trace in Langfuse with `scout-agent` and `judge-agent` spans. All three values are pre-filled in `web-scout/.env`.
+Optional. When `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` are set, each smoke run produces one trace in Langfuse with nested spans: `web-scout-smoke → scout-agent → mcp-search` and `web-scout-smoke → judge-agent`. All three values are pre-filled in `web-scout/.env`.
 
 ### Start the stack
 
