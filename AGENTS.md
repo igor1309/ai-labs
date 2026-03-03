@@ -31,6 +31,14 @@ Required sections:
 
 Specs must not contain architecture preamble, future speculation, or implementation details. They describe *what* and *when it fails*, not *how*.
 
+## README Components Table
+
+The `## Components` table in `README.md` lists every component with its type and one-line description. Keep it current:
+
+- Add a row when a new component (product, service, MCP tool, observability) is introduced.
+- Update the Type or Description when a component's role changes.
+- Remove the row when a component is deleted from the repo.
+
 ## Log
 
 - Log entries are in reverse chronological order (newest first).
