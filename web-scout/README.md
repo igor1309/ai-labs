@@ -80,7 +80,7 @@ Restart Claude Code. The `search` tool will be available.
 Structured JSON lines written to `stderr`. Set `LOG_LEVEL=silent` to suppress all output.
 
 ```json
-{"event":"startup","searxngUrl":"http://localhost:8888","timeoutMs":5000,"maxResults":10}
+{"event":"startup","searxngUrl":"http://localhost:8888"}
 {"event":"search","query":"rust async","latencyMs":312,"resultCount":5}
 {"event":"search_error","query":"test","latencyMs":2,"error":"SearXNG down"}
 ```
