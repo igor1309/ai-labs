@@ -81,8 +81,15 @@ Exits 0 on PASS, 1 on FAIL. Prints the judge verdict and explanation.
 | Variable         | Required | Description                                      |
 |------------------|----------|--------------------------------------------------|
 | `SEARXNG_URL`    | yes      | SearXNG instance base URL                        |
-| `NOMOS_API_KEY`  | yes      | API key for nomos OpenAI-compatible proxy        |
-| `NOMOS_BASE_URL` | yes      | nomos root URL (e.g. `http://localhost:8000`); `/v1` is appended internally |
+| `NOMOS_API_KEY`  | yes      | Bearer token for the `web-scout` project registered in nomos (stored in `web-scout/.env`, not committed) |
+| `NOMOS_BASE_URL` | yes      | `https://nomos.enoa.ai` (production); `/v1` is appended internally |
+
+All three are pre-filled in `web-scout/.env` (gitignored). Source it before running:
+
+```bash
+set -a && source web-scout/.env && set +a
+python web-scout/smoke.py
+```
 
 ### Running Python unit tests
 
