@@ -19,8 +19,8 @@ import requests
 pytestmark = pytest.mark.docker
 
 BASE_URL = "http://localhost:3000"
-COMPOSE_FILE = "web-scout/docker/langfuse/docker-compose.yml"
-ENV_FILE = "web-scout/.env"
+COMPOSE_FILE = "docker/langfuse/docker-compose.yml"
+ENV_FILE = "docker/langfuse/.env"
 
 
 def _auth_header():

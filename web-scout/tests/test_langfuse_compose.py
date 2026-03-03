@@ -3,7 +3,7 @@ import re
 import yaml
 from pathlib import Path
 
-COMPOSE_PATH = Path(__file__).parent.parent / "docker" / "langfuse" / "docker-compose.yml"
+COMPOSE_PATH = Path(__file__).parent.parent.parent / "docker" / "langfuse" / "docker-compose.yml"
 
 ENV_VAR_RE = re.compile(r"^\$\{[A-Z_][A-Z0-9_]*\}$")
 SECRET_KEYWORDS = {"password", "secret", "key", "salt", "auth"}
