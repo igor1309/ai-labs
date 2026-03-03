@@ -5,7 +5,7 @@ import os
 QUERY = "Python programming language"
 
 
-def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
+def run(scout, judge, docker_logs, env=None, print_fn=print):
     if env is None:
         env = os.environ
 
@@ -19,72 +19,94 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
         print_fn("FAIL: NOMOS_BASE_URL environment variable is required")
         return 1
 
-    trace = langfuse.start_span(name="web-scout-smoke") if langfuse is not None else None
     try:
-        scout_span = trace.start_span(name="scout-agent") if trace else None
-        try:
-            result = scout(QUERY, scout_span=scout_span)
-        except Exception:
-            if scout_span:
+        result = scout(QUERY)
+    except Exception:
+        print_fn("FAIL: scout agent raised an exception")
+        return 1
+
+    if not result or not result.strip():
+        print_fn("FAIL: scout agent produced empty output")
+        return 1
+
+    try:
+        parsed = json.loads(result)
+    except (json.JSONDecodeError, ValueError):
+        print_fn("FAIL: scout result is not valid JSON")
+        return 1
+
+    if not isinstance(parsed.get("results"), list) or len(parsed["results"]) == 0:
+        print_fn("FAIL: results array is empty")
+        return 1
+
+    for r in parsed["results"]:
+        if not r.get("title") or not r.get("url"):
+            print_fn("FAIL: result missing non-empty title or url")
+            return 1
+
+    try:
+        logs = docker_logs()
+    except Exception:
+        logs = "(unavailable)"
+
+    judge_result = judge(QUERY, result, logs)
+
+    words = (judge_result or "").strip().split()
+    first_word = words[0].upper() if words else ""
+
+    if first_word not in ("PASS", "FAIL"):
+        print_fn("FAIL: judge verdict unparseable (must start with PASS or FAIL)")
+        return 1
+    if first_word == "FAIL":
+        print_fn(f"FAIL\n{judge_result}")
+        return 1
+
+    print_fn(f"PASS\n{judge_result}")
+    return 0
+
+
+def run_with_langfuse(langfuse, scout, judge, docker_logs, env=None, print_fn=print):
+    trace = langfuse.start_span(name="web-scout-smoke")
+    captured_verdict = {}
+
+    try:
+        scout_span = trace.start_span(name="scout-agent")
+
+        original_scout = scout
+        def wrapped_scout(query):
+            mcp_span = scout_span.start_span(name="mcp-search", input={"query": query})
+            try:
+                result = original_scout(query)
+                mcp_span.update(output=result)
+                return result
+            except Exception:
                 scout_span.update(level="ERROR")
-                scout_span.end()
-            if trace:
                 trace.update(level="ERROR")
-            print_fn("FAIL: scout agent raised an exception")
-            return 1  # error recorded on span and trace before exit
-        if scout_span:
-            scout_span.end()
+                raise
+            finally:
+                mcp_span.end()
+                scout_span.end()
 
-        if not result or not result.strip():
-            print_fn("FAIL: scout agent produced empty output")
-            return 1
+        original_judge = judge
+        def wrapped_judge(query, results_json, logs):
+            judge_span = trace.start_span(name="judge-agent")
+            try:
+                result = original_judge(query, results_json, logs)
+                captured_verdict["text"] = result
+                return result
+            finally:
+                judge_span.end()
 
-        try:
-            parsed = json.loads(result)
-        except (json.JSONDecodeError, ValueError):
-            print_fn("FAIL: scout result is not valid JSON")
-            return 1
+        code = run(wrapped_scout, wrapped_judge, docker_logs, env=env, print_fn=print_fn)
 
-        if not isinstance(parsed.get("results"), list) or len(parsed["results"]) == 0:
-            print_fn("FAIL: results array is empty")
-            return 1
+        if "text" in captured_verdict:
+            level = "ERROR" if code != 0 else "DEFAULT"
+            trace.update(output=captured_verdict["text"], level=level)
 
-        for r in parsed["results"]:
-            if not r.get("title") or not r.get("url"):
-                print_fn("FAIL: result missing non-empty title or url")
-                return 1
-
-        try:
-            logs = docker_logs()
-        except Exception:
-            logs = "(unavailable)"
-
-        judge_span = trace.start_span(name="judge-agent") if trace else None
-        judge_result = judge(QUERY, result, logs)
-        if judge_span:
-            judge_span.end()
-
-        words = (judge_result or "").strip().split()
-        first_word = words[0].upper() if words else ""
-
-        if first_word not in ("PASS", "FAIL"):
-            print_fn("FAIL: judge verdict unparseable (must start with PASS or FAIL)")
-            return 1
-        if first_word == "FAIL":
-            if trace:
-                trace.update(output=judge_result, level="ERROR")
-            print_fn(f"FAIL\n{judge_result}")
-            return 1
-
-        if trace:
-            trace.update(output=judge_result, level="DEFAULT")
-        print_fn(f"PASS\n{judge_result}")
-        return 0
+        return code
     finally:
-        if langfuse is not None:
-            if trace is not None:
-                trace.end()
-            langfuse.flush()
+        trace.end()
+        langfuse.flush()
 
 
 def make_langfuse_client(env):
@@ -113,18 +135,6 @@ def _make_llm(env):
     )
 
 
-def _run_with_mcp_span(mcp_search, query, scout_span):
-    mcp_span = scout_span.start_span(name="mcp-search", input={"query": query}) if scout_span else None
-    try:
-        result = mcp_search._run(query=query)
-        if mcp_span:
-            mcp_span.update(output=result)
-        return result
-    finally:
-        if mcp_span:
-            mcp_span.end()
-
-
 def make_scout(env):
     from pathlib import Path
     from crewai import Agent, Task, Crew
@@ -134,7 +144,7 @@ def make_scout(env):
     llm = _make_llm(env)
     index_path = str(Path(__file__).parent / "src" / "index.js")
 
-    def scout(query, scout_span=None):
+    def scout(query):
         mcp_params = StdioServerParameters(
             command="node",
             args=[index_path],
@@ -160,7 +170,7 @@ def make_scout(env):
                 args_schema: type[BaseModel] = SearchInput
 
                 def _run(self, query: str) -> str:
-                    return _run_with_mcp_span(mcp_search, query, scout_span)
+                    return mcp_search._run(query=query)
 
             search_tools = [SearchTool()]
             agent = Agent(
@@ -237,11 +247,12 @@ if __name__ == "__main__":
 
     env = dict(os.environ)
     langfuse_client = make_langfuse_client(env)
-    code = run(
-        scout=make_scout(env),
-        judge=make_judge(env),
-        docker_logs=make_docker_logs(),
-        env=env,
-        langfuse=langfuse_client,
-    )
+    scout = make_scout(env)
+    judge = make_judge(env)
+    docker_logs = make_docker_logs()
+
+    if langfuse_client:
+        code = run_with_langfuse(langfuse_client, scout, judge, docker_logs, env=env)
+    else:
+        code = run(scout, judge, docker_logs, env=env)
     sys.exit(code)
