@@ -1,7 +1,7 @@
 # web-scout/tests/test_langfuse_integration.py
 #
 # Requires the Langfuse stack to be running:
-#   docker compose -f web-scout/docker/langfuse/docker-compose.yml --env-file web-scout/.env up -d
+#   docker compose -f docker/langfuse/docker-compose.yml --env-file web-scout/.env up -d
 #
 # Run:
 #   python3 -m pytest web-scout/tests/test_langfuse_integration.py -v -m docker
@@ -19,8 +19,8 @@ import requests
 pytestmark = pytest.mark.docker
 
 BASE_URL = "http://localhost:3000"
-COMPOSE_FILE = "web-scout/docker/langfuse/docker-compose.yml"
-ENV_FILE = "web-scout/.env"
+COMPOSE_FILE = "docker/langfuse/docker-compose.yml"
+ENV_FILE = "docker/langfuse/.env"
 
 
 def _auth_header():

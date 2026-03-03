@@ -2,6 +2,7 @@
 
 ## 2026-03-03
 
+Split README into three focused docs: `README.md` (MCP server only), `docs/smoke.md` (smoke test setup, run, CrewAI telemetry), `docs/langfuse.md` (optional observability). Add `CREWAI_DISABLE_TELEMETRY=true` to `.env` to suppress OTLP connection noise.
 Add mcp-search child span and complete Langfuse v3 observability: `SearchTool._run` now creates a `mcp-search` child span under `scout-agent` via `_run_with_mcp_span`; span records input query and output result; all 21 unit tests pass. Rule 6 (LLM token/cost) documented as not implemented due to CrewAI OTel provider conflict; tracked as future work. Spec updated with v3 API method names, new test case, and corrected done criteria.
 Fix ClickHouse connectivity in Langfuse stack: stack was previously started from a since-deleted worktree; bind mount for `clickhouse-config` lost its source, causing ClickHouse to fall back to loopback-only on port 8123 while the health check (TCP 9000) still passed; restarted stack from current workspace to restore `0.0.0.0` binding.
 Fix smoke.py for Langfuse v3 API: migrate `.trace()`/`.span()` (v2) to `.start_span()` on both client and span; use `span.update()` on root span for trace-level output and level; remove dead `callbacks` kwarg from `crew.kickoff()` (param removed in current CrewAI); all 20 unit tests updated and passing; live smoke test confirmed PASS with trace visible in Langfuse UI.
