@@ -16,6 +16,12 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { Langfuse } from "langfuse"
 
+// Langfuse labelling — single source of truth for all trace identifiers
+export const TRACE_NAME    = "corpus-scout-smoke"
+export const TRACE_TAGS    = ["smoke", "corpus-scout"]
+export const LEVEL_ERROR   = "ERROR"
+export const LEVEL_DEFAULT = "DEFAULT"
+
 /**
  * Core smoke logic. callTool(toolName, args) must return an MCP tool result.
  * Returns { matchCount, lineCount, truncated, firstFile } on success, throws on failure.
@@ -61,8 +67,8 @@ export function makeLangfuseClient(env, LangfuseClass = Langfuse) {
  */
 export async function runWithLangfuse(langfuse, callTool, query) {
   const trace = langfuse.trace({
-    name: "corpus-scout-smoke",
-    tags: ["smoke", "corpus-scout"],
+    name: TRACE_NAME,
+    tags: TRACE_TAGS,
     input: { query },
   })
 
@@ -73,7 +79,7 @@ export async function runWithLangfuse(langfuse, callTool, query) {
       span.end({ output: result })
       return result
     } catch (err) {
-      span.update({ level: "ERROR" })
+      span.update({ level: LEVEL_ERROR })
       throw err
     }
   }
@@ -81,10 +87,10 @@ export async function runWithLangfuse(langfuse, callTool, query) {
   try {
     const result = await runSmoke(wrappedCallTool, query)
     const summary = `${result.matchCount} matches, ${result.lineCount} lines`
-    trace.update({ output: `PASS: ${summary}`, level: "DEFAULT" })
+    trace.update({ output: `PASS: ${summary}`, level: LEVEL_DEFAULT })
     return { pass: true, summary }
   } catch (err) {
-    trace.update({ output: `FAIL: ${err.message}`, level: "ERROR" })
+    trace.update({ output: `FAIL: ${err.message}`, level: LEVEL_ERROR })
     return { pass: false, summary: err.message }
   } finally {
     await langfuse.flushAsync()
