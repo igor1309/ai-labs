@@ -12,6 +12,7 @@
 - Require a full test suite pass before declaring completion.
 - Require a full test suite pass for each phase step before moving to the next step.
 - Commit only when tests are passing for the current branch state.
+- PR merge strategy: use merge commit (`--merge`), never squash.
 - Protocols are owned by their client and MUST live in the same module. A protocol without its client is a violation.
 - Keep scope minimal and explicit; avoid scope creep.
 - Tests must cover reasonable edge cases for new or changed behavior.
