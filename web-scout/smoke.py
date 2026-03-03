@@ -135,18 +135,6 @@ def _make_llm(env):
     )
 
 
-def _run_with_mcp_span(mcp_search, query, scout_span):
-    mcp_span = scout_span.start_span(name="mcp-search", input={"query": query}) if scout_span else None
-    try:
-        result = mcp_search._run(query=query)
-        if mcp_span:
-            mcp_span.update(output=result)
-        return result
-    finally:
-        if mcp_span:
-            mcp_span.end()
-
-
 def make_scout(env):
     from pathlib import Path
     from crewai import Agent, Task, Crew
@@ -258,10 +246,13 @@ if __name__ == "__main__":
     import sys
 
     env = dict(os.environ)
-    code = run(
-        scout=make_scout(env),
-        judge=make_judge(env),
-        docker_logs=make_docker_logs(),
-        env=env,
-    )
+    langfuse_client = make_langfuse_client(env)
+    scout = make_scout(env)
+    judge = make_judge(env)
+    docker_logs = make_docker_logs()
+
+    if langfuse_client:
+        code = run_with_langfuse(langfuse_client, scout, judge, docker_logs, env=env)
+    else:
+        code = run(scout, judge, docker_logs, env=env)
     sys.exit(code)

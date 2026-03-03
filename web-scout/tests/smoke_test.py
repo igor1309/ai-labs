@@ -1,7 +1,7 @@
 # web-scout/tests/smoke_test.py
 import json
 import pytest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 from smoke import run, run_with_langfuse
 
 VALID_RESULTS_JSON = json.dumps({
