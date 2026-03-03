@@ -1,0 +1,5 @@
+<clickhouse>
+    <!-- Replace default listen hosts (loopback-only) with IPv4 all-interfaces
+         so other containers can connect, and Keeper binds to IPv4 not [::] -->
+    <listen_host replace="true">0.0.0.0</listen_host>
+</clickhouse>

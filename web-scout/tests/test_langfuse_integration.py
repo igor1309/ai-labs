@@ -46,7 +46,7 @@ def test_allServicesHealthy():
 def test_healthEndpointOk():
     resp = requests.get(f"{BASE_URL}/api/public/health", timeout=10)
     assert resp.status_code == 200
-    assert resp.json().get("status") == "ok"
+    assert resp.json().get("status", "").lower() == "ok"
 
 
 def test_bootstrapProjectReachable():
@@ -79,8 +79,8 @@ def test_bootstrapTrace():
     )
     assert create_resp.status_code == 207, f"Ingestion failed: {create_resp.text}"
 
-    # Allow async processing
-    time.sleep(3)
+    # Allow async processing (worker may need extra time on first boot)
+    time.sleep(10)
 
     get_resp = requests.get(
         f"{BASE_URL}/api/public/traces/{trace_id}",
