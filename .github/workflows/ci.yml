@@ -33,6 +33,7 @@ jobs:
       shared: ${{ steps.filter.outputs.shared }}
       release: ${{ steps.filter.outputs.release }}
       web-scout: ${{ steps.filter.outputs.web-scout }}
+      corpus-scout: ${{ steps.filter.outputs.corpus-scout }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,6 +66,8 @@ jobs:
               - "oracle/**"
             web-scout:
               - "web-scout/**"
+            corpus-scout:
+              - "corpus-scout/**"
 
   nomos-core:
     needs: [changes]
@@ -80,6 +83,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.web-scout == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/web-scout-core.yml
+
+  corpus-scout-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.corpus-scout == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/corpus-scout-core.yml
 
   release-validation:
     needs: [changes]
@@ -116,8 +124,8 @@ jobs:
       LLM_API_KEY: ${{ secrets.NOMOS_ORACLE_TOKEN }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, release-validation, real-provider-smoke]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, release-validation, real-provider-smoke]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -128,6 +136,7 @@ jobs:
         nomos-core=${{ needs.nomos-core.result }}
         oracle-core=${{ needs.oracle-core.result }}
         web-scout-core=${{ needs.web-scout-core.result }}
+        corpus-scout-core=${{ needs.corpus-scout-core.result }}
         release-validation=${{ needs.release-validation.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
     secrets:
