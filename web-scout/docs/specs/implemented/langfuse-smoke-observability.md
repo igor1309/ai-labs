@@ -13,7 +13,7 @@ Instrument `smoke.py` with Langfuse tracing so each smoke run produces one trace
 
 ## Public interface
 
-No change to the existing smoke script CLI or exit codes.
+Exit code 1 is now returned when required Langfuse keys are missing (previously the script ran without tracing).
 
 ### Env vars
 
