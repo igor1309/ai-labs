@@ -1,151 +1,38 @@
 ---
 date: 2026-03-03
-model: gpt-5.2
+model: opus-4.6
+description: "Research notes on validating Corpus Scout's deterministic retrieval claim"
 ---
 
-# Determinism Checks (Corpus Scout)
+# Determinism Checks
 
-Objective: Validate “deterministic retrieval primitive” claim.
+## Purpose
 
-Create a small fixed dataset of queries:
-	•	20 known factual lookups
-	•	Expected file + heading match
+Validate the "deterministic retrieval primitive" claim for Corpus Scout by building a corpus-native test suite with measurable acceptance criteria.
 
-Log:
-	•	exact citation set
-	•	response stability across runs
+## Gold Dataset
 
-Add simple evaluation:
-	•	exact_match (boolean)
-	•	citation_precision (manual for now)
+### Scope
 
-Outcome:
-Corpus Scout becomes measurable infrastructure, not “LLM magic.”
+30 queries across four categories:
 
----
+| Category | Count | Description |
+|---|---|---|
+| Direct fact lookups | 10 | Single-answer factual questions |
+| Constraint lookups | 10 | Questions about rules and boundaries |
+| Unresolved threads | 5 | Open questions with known locations |
+| Expansion opportunities | 5 | Areas flagged for future work |
 
-Add rule-based eval:
-	•	web_called_without_corpus_attempt
-	•	corpus_empty_then_web_called
-	•	max_calls_exceeded
+All queries must:
+- Map to a single canonical section.
+- Require heading-bounded extraction.
+- Have a deterministic lexical anchor.
 
-This gives you routing auditability.
+### Schema
 
-⸻
+Versioned YAML stored in the repo:
 
-Stage 5 — Prompt & Strategy Comparison
-
-Now introduce:
-	•	A/B prompt variants
-	•	Different search depth limits
-	•	Different section window sizes
-
-Use Langfuse experiments:
-	•	Compare latency
-	•	Citation count
-	•	Empty result rate
-	•	Manual quality score (1–5)
-
-Now you’re doing infra-level optimization, not vibes.
-
-⸻
-
-Stage 6 — Guardrails & Canon Integrity
-
-Define invariant checks:
-	•	Canon bucket must contain only corpus citations
-	•	External bucket must contain URLs
-	•	No cross-contamination
-
-Add automated evaluation:
-	•	canon_contains_url = false
-	•	external_contains_local_path = false
-
-This is critical for your architecture.
-
-⸻
-
-Stage 7 — Production-Grade Observability
-
-When ready:
-	•	Dataset-driven regression tests
-	•	Replay failing traces
-	•	Drift detection
-	•	Version comparison across MCP builds
-
-At this point Langfuse becomes:
-	•	Debug console
-	•	Evaluation engine
-	•	Architectural validation tool
-
-⸻
-
-Recommended Order (Compressed View)
-	1.	Traces only
-	2.	Metadata discipline
-	3.	Corpus determinism eval
-	4.	Web sourcing eval
-	5.	Routing audit
-	6.	Guardrail checks
-	7.	Experiments & regression
-
-⸻
-
-If useful, next step can be:
-
-A. Concrete Langfuse schema for your scouts (fields + naming)
-B. Minimal code-level integration pattern for Node/Python orchestrator
-C. Evaluation design examples for deterministic retrieval
-
-Pick one.
-You need a corpus-native test suite, not a generic dataset.
-
-Build a “Determinism Pack”
-
-Create:
-	•	20–50 canonical facts
-	•	Each mapped to:
-	•	exact file
-	•	exact heading
-	•	expected citation span
-
-Store as YAML:
-
-- id: F001
-  query: "What is Nomos Gateway design goal?"
-  expected:
-    file: docs/nomos-gateway.md
-    heading: "Design Goal"
-
-This tests:
-	•	Stable lexical matching
-	•	Stable section bounding
-	•	No drift across runs
-	•	No cross-file bleed
-
-⸻
-
-A — Minimal Internal Gold Dataset (Corpus-Native)
-
-1️⃣ Scope
-
-Target: 30 queries
-	•	10 direct fact lookups
-	•	10 constraint lookups
-	•	5 unresolved threads
-	•	5 expansion opportunities
-
-All must:
-	•	Map to a single canonical section
-	•	Require heading-bounded extraction
-	•	Have deterministic lexical anchor
-
-⸻
-
-2️⃣ Dataset Structure
-
-Use YAML (versioned in repo):
-
+```yaml
 version: 1
 corpus_commit: <git-sha>
 
@@ -170,96 +57,122 @@ cases:
       must_contain:
         - "No indexing"
         - "no embeddings"
+```
 
+## Determinism Criteria
 
-⸻
+### Per-case checks (must-pass gates)
 
-3️⃣ Determinism Criteria
+1. **Exact Section Match (ESM)**: expected file AND expected heading are present; no out-of-section headings returned from the same file.
+2. **No Cross-File Bleed (NCFB)**: `files_returned <= max_files` (typically 1).
+3. **Containment (MUST)**: all `must_contain` tokens exist in output.
 
-For each run:
-	•	file_match == expected.file
-	•	heading_match == expected.heading
-	•	must_contain ⊆ output
-	•	files_returned <= max_files
+### Run conditions
 
-Run same suite:
-	•	3 consecutive runs
-	•	After container restart
-	•	After unrelated corpus change
+Execute the full suite under each condition and expect identical result sets:
+- 3 consecutive runs.
+- After container restart.
+- After an unrelated corpus change.
 
-Expect identical result sets.
+### Acceptance bars
 
-⸻
+| Metric | Threshold |
+|---|---|
+| ESM | 100% |
+| NCFB | 100% |
+| MUST | >= 95% (allows minor wording drift from doc edits) |
 
-4️⃣ Langfuse Integration
+Corpus Scout qualifies as a "deterministic primitive" only when all three bars are met with zero run-to-run drift.
 
-For each case log:
+## Aggregate Metrics
 
-Metadata:
-	•	gold_id
-	•	expected_file
-	•	returned_file
-	•	file_match
-	•	heading_match
-	•	extra_files
-	•	token_count
+| Metric | Definition |
+|---|---|
+| Case pass rate | passed / total |
+| Over-retrieval rate | cases where `extra_files > 0` |
+| Heading drift rate | file correct, heading wrong |
+| Empty-hit rate | expected match exists but nothing returned |
 
-Add simple eval:
-	•	exact_section_match (bool)
-	•	over_retrieval (bool)
+### Optional IR-style metrics
 
-Now traces become measurable infra artifacts.
+If expected citation sets include line ranges:
+- **Citation precision** = correct citations / returned citations
+- **Citation recall** = correct citations / expected citations
 
-⸻
+## Perturbation Hardening (Later Stage)
 
-5️⃣ Hardening (Later)
+Apply perturbations to each query and expect the same file and heading:
+- Synonym swap.
+- Word order change.
+- Extra noise words.
+- Plural/singular shifts.
 
-Add perturbations:
-	•	Synonym swap
-	•	Word order change
-	•	Extra noise words
-	•	Plural/singular shifts
+Failures indicate lexical fragility in the retrieval layer.
 
-Expect:
-	•	Same file
-	•	Same heading
+## Routing Auditability
 
-If it breaks → lexical fragility.
+Rule-based eval checks for the web-fallback routing path:
 
-⸻
+| Check | Meaning |
+|---|---|
+| `web_called_without_corpus_attempt` | Web source used before trying corpus |
+| `corpus_empty_then_web_called` | Correct fallback: corpus miss, then web |
+| `max_calls_exceeded` | Call budget violated |
 
-6️⃣ Acceptance Bar
+## Canon Integrity Guardrails
 
-Corpus Scout is “deterministic primitive” only if:
-	•	100% section match
-	•	0 cross-file bleed
-	•	0 run-to-run drift
+Invariant checks ensuring bucket separation:
 
-⸻
+| Check | Expected |
+|---|---|
+| `canon_contains_url` | false |
+| `external_contains_local_path` | false |
 
-A — Script outline to auto-run the suite
+Canon bucket must contain only corpus citations. External bucket must contain only URLs. No cross-contamination.
 
-Goal: run gold.yaml against your Corpus Scout MCP, assert invariants, and emit a machine-readable report (and optional Langfuse trace linking).
+## Langfuse Integration
 
-Shape
-	•	Input: gold.yaml
-	•	For each case:
-	•	call corpus_scout.search(query)
-	•	parse response into:
-	•	files[]
-	•	citations[] (file + heading/line range)
-	•	text
-	•	compute:
-	•	file_match
-	•	heading_match
-	•	must_contain_ok
-	•	extra_files
-	•	Output:
-	•	report.json
-	•	exit code non-zero if any fail (CI-friendly)
+### Per-case trace metadata
 
-Minimal report schema
+- `gold_id`, `expected_file`, `returned_file`
+- `file_match`, `heading_match`
+- `extra_files`, `token_count`
 
+### Trace-level evals
+
+- `exact_section_match` (bool)
+- `over_retrieval` (bool)
+
+### Production-grade observability (later)
+
+- Dataset-driven regression tests.
+- Replay failing traces.
+- Drift detection across runs.
+- Version comparison across MCP builds.
+- A/B prompt variants with latency, citation count, empty-result rate, and manual quality score (1-5) via Langfuse experiments.
+
+## Test Runner
+
+### Location
+
+```
+tools/corpus-scout-evals/
+  gold.yaml
+  run.sh          # thin wrapper
+  runner.(py|ts)
+  report.json     # .gitignore'd
+```
+
+### Flow
+
+1. Read `gold.yaml`.
+2. For each case: call `corpus_scout.search(query)`, parse response into `files[]`, `citations[]`, `text`.
+3. Compute: `file_match`, `heading_match`, `must_contain_ok`, `extra_files`.
+4. Emit `report.json`; exit non-zero if any case fails (CI-friendly).
+
+### Report schema
+
+```json
 {
   "run_id": "2026-03-03T18:10:00Z",
   "corpus_commit": "<sha>",
@@ -280,49 +193,14 @@ Minimal report schema
     }
   ]
 }
+```
 
-Where it lives
-	•	tools/corpus-scout-evals/
-	•	gold.yaml
-	•	run.sh (thin wrapper)
-	•	runner.(py|ts)
-	•	report.json in .gitignore
+## Implementation Order
 
-⸻
-
-B — Scoring model (precision/recall style)
-
-You’re not ranking documents; you’re validating bounded extraction. So score the right things.
-
-Per-case boolean checks (primary)
-	1.	Exact Section Match (ESM)
-true if expected file AND expected heading are present, and no other headings returned from same file outside that section.
-	2.	No Cross-File Bleed (NCFB)
-true if files_returned <= max_files (usually 1).
-	3.	Containment Check (MUST)
-true if all must_contain tokens exist in output.
-
-These become your “must-pass” gates.
-
-Aggregate metrics (secondary)
-	•	Case pass rate: passed / total
-	•	Over-retrieval rate: cases where extra_files > 0
-	•	Heading drift rate: file ok, heading wrong
-	•	Empty-hit rate: expected match exists but returned nothing
-
-Optional “IR-like” metrics (only if you model expected citations as a set)
-
-If you store an expected citation set (line ranges):
-	•	Citation precision = correct_citations / returned_citations
-	•	Citation recall = correct_citations / expected_citations
-
-This is more work, but very clean if you can normalize citations.
-
-⸻
-
-Minimal acceptance bars (suggested)
-	•	ESM: 100%
-	•	NCFB: 100%
-	•	MUST: ≥ 95% (allowing minor wording drift if you edit docs)
-
-⸻
+1. Traces only (basic Langfuse instrumentation).
+2. Metadata discipline (structured trace fields).
+3. Gold dataset + determinism eval.
+4. Routing audit checks.
+5. Canon integrity guardrails.
+6. Perturbation hardening + experiments.
+7. Regression suite + drift detection.
