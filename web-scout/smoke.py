@@ -112,7 +112,7 @@ def make_scout(env):
     llm = _make_llm(env)
     index_path = str(Path(__file__).parent / "src" / "index.js")
 
-    def scout(query, scout_span=None):
+    def scout(query):
         mcp_params = StdioServerParameters(
             command="node",
             args=[index_path],
@@ -138,7 +138,7 @@ def make_scout(env):
                 args_schema: type[BaseModel] = SearchInput
 
                 def _run(self, query: str) -> str:
-                    return _run_with_mcp_span(mcp_search, query, scout_span)
+                    return mcp_search._run(query=query)
 
             search_tools = [SearchTool()]
             agent = Agent(
