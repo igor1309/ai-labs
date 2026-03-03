@@ -19,9 +19,9 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
         print_fn("FAIL: NOMOS_BASE_URL environment variable is required")
         return 1
 
-    trace = langfuse.trace(name="web-scout-smoke") if langfuse is not None else None
+    trace = langfuse.start_span(name="web-scout-smoke") if langfuse is not None else None
     try:
-        scout_span = trace.span(name="scout-agent") if trace else None
+        scout_span = trace.start_span(name="scout-agent") if trace else None
         try:
             result = scout(QUERY)
         except Exception:
@@ -59,7 +59,7 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
         except Exception:
             logs = "(unavailable)"
 
-        judge_span = trace.span(name="judge-agent") if trace else None
+        judge_span = trace.start_span(name="judge-agent") if trace else None
         judge_result = judge(QUERY, result, logs)
         if judge_span:
             judge_span.end()
@@ -82,6 +82,8 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
         return 0
     finally:
         if langfuse is not None:
+            if trace is not None:
+                trace.end()
             langfuse.flush()
 
 
@@ -111,7 +113,7 @@ def _make_llm(env):
     )
 
 
-def make_scout(env, langfuse_client=None, parent_observation_id=None):
+def make_scout(env):
     from pathlib import Path
     from crewai import Agent, Task, Crew
     from crewai_tools import MCPServerAdapter
@@ -164,15 +166,7 @@ def make_scout(env, langfuse_client=None, parent_observation_id=None):
             )
             crew = Crew(agents=[agent], tasks=[task], verbose=False)
 
-            callbacks = []
-            if langfuse_client is not None and parent_observation_id is not None:
-                from langfuse.callback import LangfuseCallbackHandler
-                callbacks = [LangfuseCallbackHandler(
-                    observation_id=parent_observation_id,
-                    update_stateful_client=False,
-                )]
-
-            output = crew.kickoff(callbacks=callbacks).raw
+            output = crew.kickoff().raw
             if not output or not output.strip():
                 raise ValueError("Scout agent produced empty output")
             return output.strip()
@@ -180,7 +174,7 @@ def make_scout(env, langfuse_client=None, parent_observation_id=None):
     return scout
 
 
-def make_judge(env, langfuse_client=None, parent_observation_id=None):
+def make_judge(env):
     from crewai import Agent, Task, Crew
 
     llm = _make_llm(env)
@@ -206,15 +200,7 @@ def make_judge(env, langfuse_client=None, parent_observation_id=None):
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=False)
 
-        callbacks = []
-        if langfuse_client is not None and parent_observation_id is not None:
-            from langfuse.callback import LangfuseCallbackHandler
-            callbacks = [LangfuseCallbackHandler(
-                observation_id=parent_observation_id,
-                update_stateful_client=False,
-            )]
-
-        return crew.kickoff(callbacks=callbacks).raw or ""
+        return crew.kickoff().raw or ""
 
     return judge
 
@@ -240,8 +226,8 @@ if __name__ == "__main__":
     env = dict(os.environ)
     langfuse_client = make_langfuse_client(env)
     code = run(
-        scout=make_scout(env, langfuse_client=langfuse_client),
-        judge=make_judge(env, langfuse_client=langfuse_client),
+        scout=make_scout(env),
+        judge=make_judge(env),
         docker_logs=make_docker_logs(),
         env=env,
         langfuse=langfuse_client,

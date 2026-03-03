@@ -72,8 +72,8 @@ def make_mock_langfuse():
     trace = MagicMock()
     scout_span = MagicMock()
     judge_span = MagicMock()
-    lf.trace.return_value = trace
-    trace.span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
+    lf.start_span.return_value = trace
+    trace.start_span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
     return lf, trace, scout_span, judge_span
 
 
