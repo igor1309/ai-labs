@@ -35,6 +35,6 @@ jobs:
         env:
           CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
           CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
-          LOC_OUTPUT: ${{ steps.loc.output }}
+          LOC_OUTPUT: ${{ steps.loc.outputs.output }}
         run: |
           ./scripts/ci/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$LOC_OUTPUT"
