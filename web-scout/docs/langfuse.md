@@ -24,15 +24,15 @@ When the Langfuse env vars are absent, tracing is skipped with no behavioural ch
 ## Start the stack
 
 ```bash
-docker compose -f web-scout/docker/langfuse/docker-compose.yml --env-file web-scout/.env up -d
+docker compose -f docker/langfuse/docker-compose.yml --env-file docker/langfuse/.env up -d
 ```
 
-UI available at `http://localhost:3000`. Sign in with `LANGFUSE_INIT_USER_EMAIL` / `LANGFUSE_INIT_USER_PASSWORD` from `web-scout/.env`.
+UI available at `http://localhost:3000`. Sign in with `LANGFUSE_INIT_USER_EMAIL` / `LANGFUSE_INIT_USER_PASSWORD` from `docker/langfuse/.env`.
 
 ## Stop the stack
 
 ```bash
-docker compose -f web-scout/docker/langfuse/docker-compose.yml down
+docker compose -f docker/langfuse/docker-compose.yml down
 ```
 
 ## Bind-mount warning
