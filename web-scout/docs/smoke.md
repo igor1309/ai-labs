@@ -13,6 +13,7 @@ Two-agent CrewAI verification of the full local stack (SearXNG + MCP server), ro
 - SearXNG running (`docker ps | grep searxng`)
 - nomos running and reachable
 - Python virtualenv created (see below)
+- (Optional) Langfuse stack running and healthy — see [Langfuse observability](langfuse.md) for setup and verification
 
 ## Python setup (one-time)
 
