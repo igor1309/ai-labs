@@ -18,33 +18,18 @@ No change to the existing smoke script CLI or exit codes.
 
 | Variable | Description |
 |---|---|
-| `LANGFUSE_SECRET_KEY` | Langfuse secret key (`sk-lf-...`) |
-| `LANGFUSE_PUBLIC_KEY` | Langfuse public key (`pk-lf-...`) |
-| `LANGFUSE_BASE_URL` | Langfuse instance URL (default: `https://cloud.langfuse.com`) |
+| `LANGFUSE_SECRET_KEY` | Langfuse secret key for the target project |
+| `LANGFUSE_PUBLIC_KEY` | Langfuse public key for the target project |
+| `LANGFUSE_BASE_URL` | Langfuse instance URL; optional, falls back to the Langfuse cloud endpoint when absent |
 
 If all three are absent, instrumentation is a no-op — the script runs and exits exactly as before.
 
-## Trace structure
-
-One Langfuse trace per `smoke.py` invocation:
-
-```
-trace: smoke-run  (name="web-scout-smoke", input=query)
-  span: scout     (name="scout-agent", input=query, output=results_json)
-    span: search  (name="mcp-search", input=query, output=raw_json)
-    generation: llm-call (model, input_tokens, output_tokens, cost)
-  span: judge     (name="judge-agent", input={query, results_json, logs}, output=verdict)
-    generation: llm-call (model, input_tokens, output_tokens, cost)
-```
-
-- Trace `output` = final verdict string (`PASS …` or `FAIL …`).
-- Trace `level` = `DEFAULT` on PASS, `ERROR` on FAIL.
-- Each `generation` span captures model name, token counts, and cost via Langfuse's built-in cost tracking.
+When using the local Docker stack, set `LANGFUSE_PUBLIC_KEY` = `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` = `LANGFUSE_INIT_PROJECT_SECRET_KEY` from `web-scout/.env`.
 
 ## Behavior rules
 
 1. When Langfuse keys are absent, the script behaves identically to v0.0.2 — no errors, no warnings.
-2. When keys are present, a single trace is created at the start of `run()` and flushed synchronously before `run()` returns (required for short-lived scripts).
+2. When keys are present, a single trace is created at the start of `run()` and all spans are recorded before `run()` returns.
 3. Scout span starts before `scout(query)` is called and ends when it returns (success or exception).
 4. Judge span starts before `judge(query, result, logs)` is called and ends when it returns.
 5. The MCP `search` tool call is captured as a child span of the scout span.
@@ -52,11 +37,13 @@ trace: smoke-run  (name="web-scout-smoke", input=query)
 7. A scout exception is recorded on the scout span (`level=ERROR`) and the trace before re-raising.
 8. A judge FAIL verdict sets trace `level=ERROR`.
 9. `langfuse.flush()` is called exactly once, after `run()` resolves (pass or fail), never on each span.
+10. The trace is named `web-scout-smoke`.
+11. The scout span is named `scout-agent`; the judge span is named `judge-agent`; the MCP tool call span is named `mcp-search`.
 
 ## Tests
 
 1. `noLangfuseKeys_doesNotInstantiateLangfuseClient` — when keys absent, no Langfuse object created
-2. `langfuseKeys_present_clientInstantiated` — when keys present, client created with correct params
+2. `langfuseKeys_present_clientInstantiated` — when all three keys are present, client is created with `secret_key`, `public_key`, and `host` set from the respective env vars
 3. `smokePass_traceFlushed` — `langfuse.flush()` called exactly once on PASS
 4. `smokeFail_traceFlushed` — `langfuse.flush()` called exactly once on FAIL path
 5. `scoutException_spanMarkedError_traceFlushed` — exception path still flushes
