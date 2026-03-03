@@ -2,6 +2,7 @@
 
 ## 2026-03-03
 
+Add Langfuse observability to smoke script (v0.0.3): opt-in tracing via `LANGFUSE_SECRET_KEY`/`LANGFUSE_PUBLIC_KEY`/`LANGFUSE_BASE_URL`; one trace per run with scout-agent, judge-agent spans and trace level; `langfuse.flush()` via try/finally; zero behavioural change when keys absent; 8 new unit tests, all 20 smoke tests pass.
 Fix smoke script for first successful run: sanitize malformed MCPServerAdapter tool schema (`anyOf:[]`/`enum:null` caused OpenRouter 502s) by wrapping with clean `SearchTool(BaseTool)`; fix LiteLLM model routing (double `openai/` prefix needed to pass full OpenRouter model ID through custom base_url); add Python venv setup (`web-scout/.venv`, `crewai-tools[mcp]`); register `web-scout` project in nomos production DB; update README with venv setup instructions and corrected run commands (`python3`, venv path).
 Migrate smoke script to Python + CrewAI + nomos (v0.0.2): replace Claude Agent SDK JS implementation with Python; LLM calls routed through nomos OpenAI-compatible API; 11 unit tests ported to pytest.
 Debug smoke script: `FATAL: Claude Code process exited with code 1` traced to zero API credit balance on `ANTHROPIC_API_KEY`; subprocess and MCP server started cleanly. Confirmed via `DEBUG_CLAUDE_AGENT_SDK=1`.
