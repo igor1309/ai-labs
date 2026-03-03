@@ -31,7 +31,8 @@ jobs:
           # Compact mobile format: name + TOTAL column only (~30 chars wide)
           date_str=$(echo "$output" | awk '/Generated:/{print $2}')
           sep="──────────────────────────────"
-          projects=$(echo "$output" | awk '/^[a-zA-Z]/ && !/^TOTAL/{printf "%-22s %6s\n", $1, $NF}')
+          # Aggregate oracle-* sub-projects into a single "oracle" row; sort by total desc
+          projects=$(echo "$output" | awk '/^[a-zA-Z]/ && !/^TOTAL/{if($1~/^oracle-/)o+=$NF;else print $1,$NF} END{if(o)print "oracle",o}' | sort -k2 -rn | awk '{printf "%-22s %6s\n", $1, $2}')
           total_line=$(echo "$output" | awk '/^TOTAL/{printf "%-22s %6s\n", $1, $NF}')
           ratio=$(echo "$output" | grep -o "test/code ratio: [0-9.]*x" || true)
 
