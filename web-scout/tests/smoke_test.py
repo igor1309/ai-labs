@@ -220,3 +220,9 @@ def test_mcpSearchSpan_recordsInputAndOutput():
     scout_span.start_span.assert_called_once_with(name="mcp-search", input={"query": "Python programming language"})
     mcp_span.update.assert_called_once_with(output=VALID_RESULTS_JSON)
     mcp_span.end.assert_called_once()
+
+
+def test_rootTrace_taggedAsWebScout():
+    lf, trace, *_ = make_mock_langfuse()
+    run_with_langfuse(lf, **make_deps())
+    trace.update_trace.assert_called_once_with(tags=["smoke", "web-scout"])

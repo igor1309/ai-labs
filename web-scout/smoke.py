@@ -67,6 +67,7 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
 
 def run_with_langfuse(langfuse, scout, judge, docker_logs, env=None, print_fn=print):
     trace = langfuse.start_span(name="web-scout-smoke")
+    trace.update_trace(tags=["smoke", "web-scout"])
     captured_verdict = {}
 
     try:
