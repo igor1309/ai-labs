@@ -327,27 +327,32 @@ git commit -m "implement run() — all unit tests green"
 
 ---
 
-## Task 4: Implement `make_scout()` with CrewAI + nomos + MCP
+## Task 4: Implement `_make_llm()` and `make_scout()` with CrewAI + nomos + MCP
 
 **Files:**
-- Modify: `web-scout/smoke.py` — append `make_scout()`
+- Modify: `web-scout/smoke.py` — append shared LLM helper and `make_scout()`
 
-**Step 1: Add `make_scout()` to `smoke.py`**
+**Step 1: Add `_make_llm()` and `make_scout()` to `smoke.py`**
 
 Append after the `run()` function:
 
 ```python
-def make_scout(env):
-    from pathlib import Path
-    from crewai import Agent, Task, Crew, LLM
-    from crewai.tools.mcp_tools import MCPServerAdapter
-    from mcp import StdioServerParameters
-
-    llm = LLM(
+def _make_llm(env):
+    from crewai import LLM
+    return LLM(
         model="openai/gpt-5-nano",
         base_url=env["NOMOS_BASE_URL"] + "/v1",
         api_key=env["NOMOS_API_KEY"],
     )
+
+
+def make_scout(env):
+    from pathlib import Path
+    from crewai import Agent, Task, Crew
+    from crewai.tools.mcp_tools import MCPServerAdapter
+    from mcp import StdioServerParameters
+
+    llm = _make_llm(env)
     index_path = str(Path(__file__).parent / "src" / "index.js")
 
     def scout(query):
@@ -406,13 +411,9 @@ git commit -m "add make_scout() — crewai + nomos + mcp"
 
 ```python
 def make_judge(env):
-    from crewai import Agent, Task, Crew, LLM
+    from crewai import Agent, Task, Crew
 
-    llm = LLM(
-        model="openai/gpt-5-nano",
-        base_url=env["NOMOS_BASE_URL"] + "/v1",
-        api_key=env["NOMOS_API_KEY"],
-    )
+    llm = _make_llm(env)
 
     def judge(query, results_json, logs):
         agent = Agent(
@@ -549,7 +550,7 @@ gh pr create --title "smoke script v0.0.2: crewai + nomos" --body "$(cat <<'EOF'
 ## Summary
 - Replace Claude Agent SDK (JS) smoke script with Python + CrewAI
 - LLM calls routed through nomos (OpenAI-compatible proxy)
-- Model: claude-haiku-4-5 via nomos
+- Model: openai/gpt-5-nano via nomos (fallback: claude-haiku-4-5)
 - 12 unit tests ported to pytest; cost-limit rules removed (delegated to nomos)
 
 ## Test plan
