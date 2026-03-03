@@ -2,7 +2,7 @@
 import json
 import pytest
 from unittest.mock import MagicMock, call, patch
-from smoke import run
+from smoke import run, run_with_langfuse
 
 VALID_RESULTS_JSON = json.dumps({
     "results": [{"title": "Python", "url": "https://python.org"}],
@@ -71,10 +71,12 @@ def make_mock_langfuse():
     lf = MagicMock()
     trace = MagicMock()
     scout_span = MagicMock()
+    mcp_span = MagicMock()
     judge_span = MagicMock()
     lf.start_span.return_value = trace
     trace.start_span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
-    return lf, trace, scout_span, judge_span
+    scout_span.start_span.return_value = mcp_span
+    return lf, trace, scout_span, judge_span, mcp_span
 
 
 # --- Tests ---
@@ -171,63 +173,50 @@ def test_langfuseKeys_present_clientInstantiated():
         assert client is mock_instance
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
 def test_smokePass_traceFlushed():
     lf, *_ = make_mock_langfuse()
-    run(**make_deps(), langfuse=lf)
-    lf.flush.assert_called_once_with()
+    run_with_langfuse(lf, **make_deps())
+    lf.flush.assert_called_once()
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
 def test_smokeFail_traceFlushed():
     lf, *_ = make_mock_langfuse()
-    run(**make_deps(judge=make_judge(result="FAIL not relevant")), langfuse=lf)
-    lf.flush.assert_called_once_with()
+    run_with_langfuse(lf, **make_deps(judge=make_judge(result="FAIL not relevant")))
+    lf.flush.assert_called_once()
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
 def test_scoutException_spanMarkedError_traceFlushed():
-    lf, trace, scout_span, _ = make_mock_langfuse()
-    run(**make_deps(scout=make_scout(raises=True)), langfuse=lf)
+    lf, trace, scout_span, _, _ = make_mock_langfuse()
+    run_with_langfuse(lf, **make_deps(scout=make_scout(raises=True)))
     scout_span.update.assert_any_call(level="ERROR")
     trace.update.assert_any_call(level="ERROR")
-    lf.flush.assert_called_once_with()
+    lf.flush.assert_called_once()
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
 def test_traceOutput_isVerdictString():
     lf, trace, *_ = make_mock_langfuse()
-    run(**make_deps(judge=make_judge(result="PASS results look relevant")), langfuse=lf)
+    run_with_langfuse(lf, **make_deps(judge=make_judge(result="PASS results look relevant")))
     trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
 def test_traceLevelError_onFail():
     lf, trace, *_ = make_mock_langfuse()
-    code = run(**make_deps(judge=make_judge(result="FAIL not relevant")), langfuse=lf)
+    code = run_with_langfuse(lf, **make_deps(judge=make_judge(result="FAIL not relevant")))
     assert code == 1
     trace.update.assert_any_call(output="FAIL not relevant", level="ERROR")
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
 def test_traceLevelDefault_onPass():
     lf, trace, *_ = make_mock_langfuse()
-    code = run(**make_deps(), langfuse=lf)
+    code = run_with_langfuse(lf, **make_deps())
     assert code == 0
     trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
 
 
-@pytest.mark.skip(reason="pending wrapper migration")
-def test_mcpSearch_capturedAsChildOfScoutSpan():
-    from smoke import _run_with_mcp_span
-    mock_mcp = MagicMock()
-    mock_mcp._run.return_value = "search results"
-    scout_span = MagicMock()
-    mcp_span = MagicMock()
-    scout_span.start_span.return_value = mcp_span
-
-    _run_with_mcp_span(mock_mcp, "python", scout_span)
-
-    scout_span.start_span.assert_called_once_with(name="mcp-search", input={"query": "python"})
-    mcp_span.update.assert_called_once_with(output="search results")
-    mcp_span.end.assert_called_once_with()
+def test_mcpSearchSpan_recordsInputAndOutput():
+    lf, trace, scout_span, _, mcp_span = make_mock_langfuse()
+    code = run_with_langfuse(lf, **make_deps())
+    assert code == 0
+    scout_span.start_span.assert_called_once_with(name="mcp-search", input={"query": "Python programming language"})
+    mcp_span.update.assert_called_once_with(output=VALID_RESULTS_JSON)
+    mcp_span.end.assert_called_once()

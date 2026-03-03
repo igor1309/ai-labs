@@ -65,6 +65,50 @@ def run(scout, judge, docker_logs, env=None, print_fn=print):
     return 0
 
 
+def run_with_langfuse(langfuse, scout, judge, docker_logs, env=None, print_fn=print):
+    trace = langfuse.start_span(name="web-scout-smoke")
+    captured_verdict = {}
+
+    try:
+        scout_span = trace.start_span(name="scout-agent")
+
+        original_scout = scout
+        def wrapped_scout(query):
+            mcp_span = scout_span.start_span(name="mcp-search", input={"query": query})
+            try:
+                result = original_scout(query)
+                mcp_span.update(output=result)
+                return result
+            except Exception:
+                scout_span.update(level="ERROR")
+                trace.update(level="ERROR")
+                raise
+            finally:
+                mcp_span.end()
+                scout_span.end()
+
+        original_judge = judge
+        def wrapped_judge(query, results_json, logs):
+            judge_span = trace.start_span(name="judge-agent")
+            try:
+                result = original_judge(query, results_json, logs)
+                captured_verdict["text"] = result
+                return result
+            finally:
+                judge_span.end()
+
+        code = run(wrapped_scout, wrapped_judge, docker_logs, env=env, print_fn=print_fn)
+
+        if "text" in captured_verdict:
+            level = "ERROR" if code != 0 else "DEFAULT"
+            trace.update(output=captured_verdict["text"], level=level)
+
+        return code
+    finally:
+        trace.end()
+        langfuse.flush()
+
+
 def make_langfuse_client(env):
     """Returns a Langfuse client when keys are present, None otherwise."""
     secret = env.get("LANGFUSE_SECRET_KEY")
