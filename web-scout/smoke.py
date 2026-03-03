@@ -237,8 +237,8 @@ if __name__ == "__main__":
     env = dict(os.environ)
     langfuse_client = make_langfuse_client(env)
     code = run(
-        scout=make_scout(env),
-        judge=make_judge(env),
+        scout=make_scout(env, langfuse_client=langfuse_client),
+        judge=make_judge(env, langfuse_client=langfuse_client),
         docker_logs=make_docker_logs(),
         env=env,
         langfuse=langfuse_client,
