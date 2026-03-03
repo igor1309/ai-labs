@@ -2,6 +2,7 @@
 
 ## 2026-03-03
 
+Migrate smoke script to Python + CrewAI + nomos (v0.0.2): replace Claude Agent SDK JS implementation with Python; LLM calls routed through nomos OpenAI-compatible API; 11 unit tests ported to pytest.
 Debug smoke script: `FATAL: Claude Code process exited with code 1` traced to zero API credit balance on `ANTHROPIC_API_KEY`; subprocess and MCP server started cleanly. Confirmed via `DEBUG_CLAUDE_AGENT_SDK=1`.
 Add smoke script (`web-scout/smoke.js`): two-agent local stack verification using Claude Haiku via Agent SDK. Scout agent runs the MCP `search` tool; judge agent evaluates result relevance and docker log health. Exits 0/1 with verdict and agent costs. 13 unit tests added, all passing.
 

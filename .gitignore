@@ -10,3 +10,5 @@ node_modules
 !.dev.vars.example
 worktrees/
 nomos/data/
+__pycache__/
+*.pyc
