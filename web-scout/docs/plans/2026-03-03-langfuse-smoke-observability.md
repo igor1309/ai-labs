@@ -160,20 +160,21 @@ def test_langfuseKeys_present_clientInstantiated():
 def test_smokePass_traceFlushed():
     lf, *_ = make_mock_langfuse()
     run(**make_deps(), langfuse=lf)
-    lf.flush.assert_called_once()
+    lf.flush.assert_called_once_with()
 
 
 def test_smokeFail_traceFlushed():
     lf, *_ = make_mock_langfuse()
     run(**make_deps(judge=make_judge(result="FAIL not relevant")), langfuse=lf)
-    lf.flush.assert_called_once()
+    lf.flush.assert_called_once_with()
 
 
 def test_scoutException_spanMarkedError_traceFlushed():
     lf, trace, scout_span, _ = make_mock_langfuse()
     run(**make_deps(scout=make_scout(raises=True)), langfuse=lf)
     scout_span.update.assert_any_call(level="ERROR")
-    lf.flush.assert_called_once()
+    trace.update.assert_any_call(level="ERROR")
+    lf.flush.assert_called_once_with()
 
 
 def test_traceOutput_isVerdictString():
@@ -308,7 +309,7 @@ def run(scout, judge, docker_logs, env=None, print_fn=print, langfuse=None):
             if trace:
                 trace.update(level="ERROR")
             print_fn("FAIL: scout agent raised an exception")
-            return 1
+            return 1  # spec rule 7 says "before re-raising" but run() never raises — returns 1
         if scout_span:
             scout_span.end()
 
@@ -537,7 +538,7 @@ if __name__ == "__main__":
     sys.exit(code)
 ```
 
-Note: The MCP and LLM spans inside `make_scout()` and `make_judge()` are linked to the trace via the `LangfuseCallbackHandler`. The `parent_observation_id` wiring requires capturing the span IDs from the trace created inside `run()`. If the Langfuse SDK version does not support `observation_id` in `LangfuseCallbackHandler`, remove that parameter and the callbacks will create independent traces (still useful for LLM cost capture). Verify the exact API from the installed version's source or docs before including it.
+**Known limitation — MCP child span nesting (spec rule 5):** The `parent_observation_id` parameter in `make_scout()` and `make_judge()` is never populated from the CLI entry above, because span IDs are created inside `run()` and not exposed. As a result, `LangfuseCallbackHandler` will create independent traces for the CrewAI executions rather than nesting them under the main `web-scout-smoke` trace. LLM cost/token capture still works. Nested MCP span visibility requires either (a) refactoring `run()` to accept `scout_fn_factory` and `judge_fn_factory` so the factories can receive span context after the trace is created, or (b) using Langfuse's thread-local context API if available. This is deferred — the Done Criteria for span nesting is verified manually in the Langfuse UI; if independent traces appear instead, update this task accordingly.
 
 **Step 4: Run full test suite to confirm no regression**
 
