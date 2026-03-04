@@ -152,6 +152,21 @@ Review and improve existing Claude Code skills for signal quality, description e
 
 **Documentation:** See [skill-review/SKILL.md](skill-review/SKILL.md)
 
+### Synopsis
+
+Produce a concise, behavior-focused description of any target — component, module, product, or entire codebase — for a reader with zero project context.
+
+**Key features:**
+- Explores both docs and code before synthesizing
+- Behavior and I/O contract focus, not implementation
+- States key non-features that set expectations
+- ~100 word default budget (adjustable)
+- Output to conversation only — no file writes
+
+**Use when:** You need a concise description of something for outsiders — READMEs, marketplace listings, onboarding docs, or elevator pitches.
+
+**Documentation:** See [synopsis/SKILL.md](synopsis/SKILL.md)
+
 ### Swift Package Manifest
 
 Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK.
@@ -218,6 +233,7 @@ Then install the skills you want:
 /plugin install rpi-research
 /plugin install simulator-settings
 /plugin install skill-review
+/plugin install synopsis
 /plugin install swift-package-manifest
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
@@ -238,12 +254,13 @@ cp -r job-search-strategy ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r simulator-settings ~/.claude/skills/
 cp -r skill-review ~/.claude/skills/
+cp -r synopsis ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review check-domain discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-spec-review check-domain discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -377,6 +394,20 @@ Review my skill and tell me what's signal vs noise.
 Or:
 ```
 Is this skill effective? What should I change?
+```
+
+### Synopsis
+
+Invoke when you need a concise description of a component, module, or product for outsiders.
+
+**Example prompt:**
+```
+/synopsis corpus-scout
+```
+
+Or:
+```
+/synopsis this repo
 ```
 
 ### Swift Package Manifest

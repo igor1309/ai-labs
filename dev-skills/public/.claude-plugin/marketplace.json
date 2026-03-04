@@ -6,12 +6,12 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.21.0"
+    "version": "1.22.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, architecture review, documentation auditing, domain availability checking, Swift packaging, simulator settings, skill review, and job search strategy",
+      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, architecture review, documentation auditing, domain availability checking, Swift packaging, simulator settings, skill review, synopsis generation, and job search strategy",
       "source": "./",
       "strict": false,
       "skills": [
@@ -25,6 +25,7 @@
         "./simulator-settings",
         "./skill-review",
         "./swift-package-manifest",
+        "./synopsis",
         "./tdd-interactive",
         "./tdd-scaffold-review"
       ]

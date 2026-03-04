@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-03-04
+
+### Synopsis v1.0.0 — Behavior-Focused Description Generator
+New skill: produces concise (~100 word) descriptions of components, modules, or products for readers with zero project context. Focuses on behavior and I/O contract, not implementation. Explores both docs and code, includes key non-features. Marketplace v1.22.0.
+
 ## 2026-03-03
 
 ### Doc Drift Audit v1.3.0 — Exclude Implemented/Archived Dirs
