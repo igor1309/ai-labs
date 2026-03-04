@@ -16,6 +16,14 @@ async function makeTempCorpus(files) {
   return root
 }
 
+test("precondition_ripgrepMustBeInstalled", async () => {
+  const { execFile: execFileCb } = await import("node:child_process")
+  const { promisify } = await import("node:util")
+  const execFileAsync = promisify(execFileCb)
+  const { stdout } = await execFileAsync("rg", ["--version"])
+  assert.match(stdout, /ripgrep/, "ripgrep (rg) must be installed — search tests depend on it")
+})
+
 test("search_shouldReturnMatches_withFileAndLine", async () => {
   const root = await makeTempCorpus({
     "doc.md": "line one\nthe dragon sleeps\nline three\n"
