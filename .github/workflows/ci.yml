@@ -123,6 +123,18 @@ jobs:
     secrets:
       LLM_API_KEY: ${{ secrets.NOMOS_ORACLE_TOKEN }}
 
+  report:
+    if: ${{ always() }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, release-validation, real-provider-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          for r in $results; do
+            [ "$r" = "success" ] || [ "$r" = "skipped" ] || exit 1
+          done
+
   notify:
     if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
     needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, release-validation, real-provider-smoke]

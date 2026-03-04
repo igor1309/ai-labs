@@ -2,11 +2,16 @@
 
 Applied AI experiments and systems engineering.
 
-## Projects
+## Components
 
-- **oracle** — AI-powered web application (Cloudflare Workers/Pages).
-- **nomos** — VPS-deployed service with Express, SQLite, and Docker.
-- **loki** — Loki + Grafana logging stack (on hold).
+| Component | Type | Description |
+|-----------|------|-------------|
+| oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
+| nomos | Service | LLM access control proxy — auth, cost budgets, unified API |
+| corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
+| web-scout | MCP tool | Web search via SearXNG |
+| loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
+| docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 
 ## Architecture
 
