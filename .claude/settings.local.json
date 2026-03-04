@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker)",
+      "Bash(git:*)",
+      "Bash(python3:*)",
+      "Bash(web-scout:*)",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "Bash(./scripts/run_silent.sh \"tests\" npm test)",
+      "Bash(./scripts/run_silent.sh \"build\" npx tsc --noEmit)"
+    ]
+  }
+}
