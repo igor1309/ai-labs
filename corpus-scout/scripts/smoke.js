@@ -105,7 +105,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1)
   }
 
-  const query = process.env.SMOKE_QUERY || "the"
+  const query = process.env.SMOKE_QUERY || "балет"
   const langfuseClient = makeLangfuseClient(process.env)
   if (!langfuseClient) {
     console.error("FAIL: LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY are required")

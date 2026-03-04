@@ -101,8 +101,19 @@ Structured JSON lines written to `stderr`. Set `LOG_LEVEL=silent` to suppress al
 
 ## Smoke test
 
+Requires Langfuse keys (`LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`) and a corpus directory. The eval corpus at `tools/evals/corpus/` is in Russian; the default query matches it.
+
+Run from the repo root:
+
 ```bash
-CORPUS_ROOT=/path/to/corpus node corpus-scout/scripts/smoke.js
+set -a && source web-scout/.env && set +a
+CORPUS_ROOT="$(pwd)/corpus-scout/tools/evals/corpus" node corpus-scout/scripts/smoke.js
 ```
 
-Exercises both tools against a real corpus. Exit 0 = PASS, exit 1 = FAIL.
+Override the search query with `SMOKE_QUERY`:
+
+```bash
+SMOKE_QUERY="театр" CORPUS_ROOT=... node corpus-scout/scripts/smoke.js
+```
+
+Exit 0 = PASS, exit 1 = FAIL.
