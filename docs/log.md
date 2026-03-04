@@ -2,6 +2,7 @@
 
 ## 2026-03-04
 
+corpus-scout: improve test coverage per testing doc — add must_contain, no-extra-files, and ripgrep precondition assertions. Document ripgrep dependency in CI workflow.
 corpus-scout: add determinism eval runner (ADR-0002) with adapter, eval engine (ESM/NCFB/MUST gates), reporter, synthetic Russian humanities corpus (12 files), and gold dataset (30 cases). Zero run-to-run drift across consecutive runs. PR #80 merged.
 
 ## 2026-03-03

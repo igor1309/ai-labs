@@ -16,6 +16,14 @@ async function makeTempCorpus(files) {
   return root
 }
 
+test("precondition_ripgrepMustBeInstalled", async () => {
+  const { execFile: execFileCb } = await import("node:child_process")
+  const { promisify } = await import("node:util")
+  const execFileAsync = promisify(execFileCb)
+  const { stdout } = await execFileAsync("rg", ["--version"])
+  assert.match(stdout, /ripgrep/, "ripgrep (rg) must be installed — search tests depend on it")
+})
+
 test("search_shouldReturnMatches_withFileAndLine", async () => {
   const root = await makeTempCorpus({
     "doc.md": "line one\nthe dragon sleeps\nline three\n"
@@ -27,6 +35,39 @@ test("search_shouldReturnMatches_withFileAndLine", async () => {
     assert.equal(results[0].file, "doc.md")
     assert.equal(results[0].line, 2)
     assert.equal(results[0].text, "the dragon sleeps")
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("search_shouldContainQueryToken_inMatchText", async () => {
+  const root = await makeTempCorpus({
+    "doc.md": "the dragon sleeps\nno match here\ndragon flies\n"
+  })
+  try {
+    const client = makeCorpusClient({ root })
+    const results = await client.search("dragon")
+    assert.ok(results.length > 0, "expected at least one result")
+    assert.ok(
+      results.every(($0) => $0.text.toLowerCase().includes("dragon")),
+      `expected all results to contain query token, got: ${results.map(($0) => $0.text)}`
+    )
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
+test("search_shouldReturnOnly_matchingFiles", async () => {
+  const root = await makeTempCorpus({
+    "match.md": "the dragon awakens\n",
+    "decoy.md": "nothing relevant here\n",
+    "also-match.md": "another dragon sighting\n"
+  })
+  try {
+    const client = makeCorpusClient({ root })
+    const results = await client.search("dragon")
+    const files = results.map(($0) => $0.file).sort()
+    assert.deepEqual(files, ["also-match.md", "match.md"])
   } finally {
     await rm(root, { recursive: true })
   }
