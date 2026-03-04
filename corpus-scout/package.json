@@ -6,6 +6,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "js-yaml": "^4.1.1",
+    "langfuse": "^3.38.6",
     "zod": "^4.0.0"
   }
 }
