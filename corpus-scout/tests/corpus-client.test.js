@@ -32,6 +32,23 @@ test("search_shouldReturnMatches_withFileAndLine", async () => {
   }
 })
 
+test("search_shouldContainQueryToken_inMatchText", async () => {
+  const root = await makeTempCorpus({
+    "doc.md": "the dragon sleeps\nno match here\ndragon flies\n"
+  })
+  try {
+    const client = makeCorpusClient({ root })
+    const results = await client.search("dragon")
+    assert.ok(results.length > 0, "expected at least one result")
+    assert.ok(
+      results.every(($0) => $0.text.toLowerCase().includes("dragon")),
+      `expected all results to contain query token, got: ${results.map(($0) => $0.text)}`
+    )
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
 test("search_shouldReturnEmptyArray_onNoMatch", async () => {
   const root = await makeTempCorpus({
     "doc.md": "nothing interesting here\n"
