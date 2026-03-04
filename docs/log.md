@@ -1,5 +1,9 @@
 # Log
 
+## 2026-03-04
+
+corpus-scout: improve test coverage per testing doc — add must_contain, no-extra-files, and ripgrep precondition assertions. Document ripgrep dependency in CI workflow.
+
 ## 2026-03-03
 
 Add `corpus-scout` — reusable MCP server for lexical search and section reading over any local text corpus via ripgrep. Two tools (`search`, `read_section`), configurable via env vars, dedicated CI workflow. Implements ADR-0001 file-first retrieval. PR #76 merged.

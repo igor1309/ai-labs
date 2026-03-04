@@ -2,6 +2,7 @@
 
 ## 2026-03-04
 
+Improve test coverage per testing-corpus-scout.md: add must_contain token assertion, no-extra-files assertion, explicit ripgrep precondition check. 20 corpus-client unit tests, up from 17.
 Add testing corpus scout documentation.
 Implement determinism eval runner (ADR-0002): adapter spawns MCP subprocess and queries via keyword extraction, eval engine computes ESM/NCFB/MUST boolean gates, reporter emits `report.json` per ADR schema. Gold dataset integrity preflight verifies `must_contain` tokens exist in corpus. 27/30 cases pass with zero run-to-run drift across 3 consecutive runs.
 Create synthetic Russian humanities corpus (12 files) and gold dataset (30 cases) for determinism evals. All `must_contain` tokens verified against corpus sections.
