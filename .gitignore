@@ -12,3 +12,4 @@ worktrees/
 nomos/data/
 __pycache__/
 *.pyc
+corpus-scout/tools/evals/report.json
