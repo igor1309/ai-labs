@@ -59,18 +59,18 @@ count_project() {
   code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" \) \
     ! -name "*.test.js" ! -name "*.test.ts" \
     ! -name "*.generated.js" ! -name "*.generated.ts" \
-    ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*")
+    ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*")
   # generated
   local gen
   gen=$(loc_find "$dir" \( -name "*.generated.js" -o -name "*.generated.ts" \) \
-    ! -path "*/node_modules/*")
+    ! -path "*/node_modules/*" ! -path "*/.venv/*")
   # shell scripts
   local sh
   sh=$(loc_find "$dir" -name "*.sh" ! -path "*/node_modules/*")
   # tests
   local tests
   tests=$(loc_find "$dir" \( -name "*.test.js" -o -name "*.test.ts" \) \
-    ! -path "*/node_modules/*")
+    ! -path "*/node_modules/*" ! -path "*/.venv/*")
   echo "$code $gen $sh $tests"
 }
 
@@ -144,6 +144,14 @@ done
 # loki
 read lc lg ls lt < <(count_project "loki")
 emit_row "loki" "$lc" "$lg" "$ls" "$lt" "0"
+
+# corpus-scout
+read cc cg cs ct < <(count_project "corpus-scout")
+emit_row "corpus-scout" "$cc" "$cg" "$cs" "$ct" "0"
+
+# web-scout
+read wc wg ws wt < <(count_project "web-scout")
+emit_row "web-scout" "$wc" "$wg" "$ws" "$wt" "0"
 
 # repo-level rows
 REPO_SH=$(loc_find "scripts" -name "*.sh")
