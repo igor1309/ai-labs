@@ -13,7 +13,10 @@ When publishing skills:
 4. Update repo-root `docs/log.md` (concise entry, reverse chronological order; follow established style)
 5. Stop to commit.
 6. Push to trunk.
-7. After ~1 min, verify the release appeared: `gh release list --repo igor1309/skills --limit 1`
+7. After ~1 min, verify CI and skills repo:
+   - Check CI completed: `gh run list --repo igor1309/skills --limit 1 --json status,conclusion,name`
+   - Verify release version matches marketplace version: `gh release list --repo igor1309/skills --limit 1`
+   - Verify skill exists in skills repo: `gh api repos/igor1309/skills/contents/<skill-name>/SKILL.md --jq '.name'`
 
 ## Alphabetical Ordering
 

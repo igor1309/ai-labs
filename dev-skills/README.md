@@ -36,11 +36,10 @@ They are excluded by `public/.publishignore` and a case-insensitive cleanup step
 
 **Publishing:**
 1. Move skill to `public/<skill-name>/` when ready
-2. Update `public/.claude-plugin/marketplace.json` — add skill entry, bump `version`, update `description` if needed
-3. Update `public/README.md`
-4. Commit and push to `trunk` branch
-5. GitHub Action automatically syncs `public/` → [igor1309/skills](https://github.com/igor1309/skills) (public)
-6. Manual trigger available via workflow dispatch
+2. Update marketplace.json and `public/README.md`
+3. Commit and push to `trunk`
+4. GitHub Action syncs to [igor1309/skills](https://github.com/igor1309/skills)
+5. Verify CI, release version, and skill presence (see `.claude/CLAUDE.md` for details)
 
 ## Public Repository
 
