@@ -49,6 +49,22 @@ test("search_shouldContainQueryToken_inMatchText", async () => {
   }
 })
 
+test("search_shouldReturnOnly_matchingFiles", async () => {
+  const root = await makeTempCorpus({
+    "match.md": "the dragon awakens\n",
+    "decoy.md": "nothing relevant here\n",
+    "also-match.md": "another dragon sighting\n"
+  })
+  try {
+    const client = makeCorpusClient({ root })
+    const results = await client.search("dragon")
+    const files = results.map(($0) => $0.file).sort()
+    assert.deepEqual(files, ["also-match.md", "match.md"])
+  } finally {
+    await rm(root, { recursive: true })
+  }
+})
+
 test("search_shouldReturnEmptyArray_onNoMatch", async () => {
   const root = await makeTempCorpus({
     "doc.md": "nothing interesting here\n"
