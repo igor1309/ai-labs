@@ -1,6 +1,6 @@
 # corpus-scout
 
-MCP stdio server that exposes lexical search and section reading for any local text corpus. Uses ripgrep for fast pattern matching; writes structured JSON logs to `stderr` on startup and per tool call.
+Read-only MCP server that provides lexical search and section reading over a local text corpus (e.g., Markdown files). Exposes two tools: **search** (pattern matching, returns matching lines with context) and **read_section** (extracts file content by heading or line range). Configured via environment variables (`CORPUS_ROOT`, file glob, result limits), it returns deterministic JSON results — same query always yields identical output. No embeddings, no indexing, no corpus mutation. Designed as a reusable retrieval primitive for LLM-driven workflows over any file-based knowledge base.
 
 ## Requirements
 
