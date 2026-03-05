@@ -52,6 +52,39 @@ Create `.claude/settings.local.json` (do not commit):
 
 Restart Claude Code. The `search` and `read_section` tools will be available.
 
+## Using from another repo
+
+To use corpus-scout as an MCP server from a different repo on the same machine, add to that project's `.mcp.json` (do not commit):
+
+```json
+{
+  "mcpServers": {
+    "corpus-scout": {
+      "command": "node",
+      "args": ["/absolute/path/to/ai-labs/corpus-scout/src/index.js"],
+      "env": {
+        "CORPUS_ROOT": "/absolute/path/to/your/corpus"
+      }
+    }
+  }
+}
+```
+
+Then add to `.claude/settings.local.json` (do not commit):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__corpus-scout__search",
+      "mcp__corpus-scout__read_section"
+    ]
+  }
+}
+```
+
+Restart Claude Code. No `npm install` needed in the other repo — the server runs from the ai-labs checkout.
+
 ## Tools
 
 ### `search`
