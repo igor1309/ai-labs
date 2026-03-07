@@ -2,7 +2,10 @@
 import json
 import pytest
 from unittest.mock import MagicMock, patch
-from smoke import run, run_with_langfuse
+from smoke import (
+    run, run_with_langfuse,
+    TRACE_TAGS, SPAN_SCOUT, SPAN_MCP, SPAN_JUDGE, LEVEL_ERROR, LEVEL_DEFAULT,
+)
 
 VALID_RESULTS_JSON = json.dumps({
     "results": [{"title": "Python", "url": "https://python.org"}],
@@ -74,7 +77,7 @@ def make_mock_langfuse():
     mcp_span = MagicMock()
     judge_span = MagicMock()
     lf.start_span.return_value = trace
-    trace.start_span.side_effect = lambda name, **kw: scout_span if name == "scout-agent" else judge_span
+    trace.start_span.side_effect = lambda name, **kw: scout_span if name == SPAN_SCOUT else judge_span
     scout_span.start_span.return_value = mcp_span
     return lf, trace, scout_span, judge_span, mcp_span
 
@@ -188,35 +191,41 @@ def test_smokeFail_traceFlushed():
 def test_scoutException_spanMarkedError_traceFlushed():
     lf, trace, scout_span, _, _ = make_mock_langfuse()
     run_with_langfuse(lf, **make_deps(scout=make_scout(raises=True)))
-    scout_span.update.assert_any_call(level="ERROR")
-    trace.update.assert_any_call(level="ERROR")
+    scout_span.update.assert_any_call(level=LEVEL_ERROR)
+    trace.update.assert_any_call(level=LEVEL_ERROR)
     lf.flush.assert_called_once()
 
 
 def test_traceOutput_isVerdictString():
     lf, trace, *_ = make_mock_langfuse()
     run_with_langfuse(lf, **make_deps(judge=make_judge(result="PASS results look relevant")))
-    trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
+    trace.update.assert_any_call(output="PASS results look relevant", level=LEVEL_DEFAULT)
 
 
 def test_traceLevelError_onFail():
     lf, trace, *_ = make_mock_langfuse()
     code = run_with_langfuse(lf, **make_deps(judge=make_judge(result="FAIL not relevant")))
     assert code == 1
-    trace.update.assert_any_call(output="FAIL not relevant", level="ERROR")
+    trace.update.assert_any_call(output="FAIL not relevant", level=LEVEL_ERROR)
 
 
 def test_traceLevelDefault_onPass():
     lf, trace, *_ = make_mock_langfuse()
     code = run_with_langfuse(lf, **make_deps())
     assert code == 0
-    trace.update.assert_any_call(output="PASS results look relevant", level="DEFAULT")
+    trace.update.assert_any_call(output="PASS results look relevant", level=LEVEL_DEFAULT)
 
 
 def test_mcpSearchSpan_recordsInputAndOutput():
     lf, trace, scout_span, _, mcp_span = make_mock_langfuse()
     code = run_with_langfuse(lf, **make_deps())
     assert code == 0
-    scout_span.start_span.assert_called_once_with(name="mcp-search", input={"query": "Python programming language"})
+    scout_span.start_span.assert_called_once_with(name=SPAN_MCP, input={"query": "Python programming language"})
     mcp_span.update.assert_called_once_with(output=VALID_RESULTS_JSON)
     mcp_span.end.assert_called_once()
+
+
+def test_rootTrace_taggedAsWebScout():
+    lf, trace, *_ = make_mock_langfuse()
+    run_with_langfuse(lf, **make_deps())
+    trace.update_trace.assert_called_once_with(tags=TRACE_TAGS)

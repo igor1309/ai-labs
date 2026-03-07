@@ -1,7 +1,6 @@
 node_modules
 .env
 .wrangler
-.env
 .env.*
 .dev.vars
 .dev.vars.*
@@ -12,3 +11,4 @@ worktrees/
 nomos/data/
 __pycache__/
 *.pyc
+corpus-scout/tools/evals/report.json

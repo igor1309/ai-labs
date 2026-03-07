@@ -1,0 +1,330 @@
+version: 1
+corpus_path: corpus/
+
+cases:
+  # === Fact lookups (10) ===
+
+  - id: F001
+    type: fact
+    query: "Когда провалилась премьера «Чайки»?"
+    expected:
+      file: chekhov-dramaturgy.md
+      heading: "Чайка как манифест"
+      must_contain:
+        - "Александринском театре"
+        - "1896 году провалилась"
+      max_files: 1
+
+  - id: F002
+    type: fact
+    query: "Кто основал New York City Ballet?"
+    expected:
+      file: ballet-history.md
+      heading: "Баланчин и неоклассика"
+      must_contain:
+        - "Георгий Баланчивадзе"
+        - "1948 году"
+      max_files: 1
+
+  - id: F003
+    type: fact
+    query: "Какой фильм получил Золотую пальмовую ветвь от СССР?"
+    expected:
+      file: soviet-cinema.md
+      heading: "Оттепель и новая волна"
+      must_contain:
+        - "Летят журавли"
+        - "Золотую пальмовую ветвь"
+      max_files: 1
+
+  - id: F004
+    type: fact
+    query: "Когда Толстого отлучили от церкви?"
+    expected:
+      file: tolstoy-philosophy.md
+      heading: "Разрыв с церковью"
+      must_contain:
+        - "1901 году"
+        - "Святейший Синод"
+      max_files: 1
+
+  - id: F005
+    type: fact
+    query: "Сколько функций выделил Пропп в волшебной сказке?"
+    expected:
+      file: folk-tales.md
+      heading: "Классификация Проппа"
+      must_contain:
+        - "31 функцию"
+      max_files: 1
+
+  - id: F006
+    type: fact
+    query: "Где был показан «Чёрный квадрат» Малевича?"
+    expected:
+      file: avant-garde-art.md
+      heading: "Супрематизм Малевича"
+      must_contain:
+        - "выставке «0,10»"
+        - "1915 году"
+      max_files: 1
+
+  - id: F007
+    type: fact
+    query: "За сколько дней Достоевский написал «Игрока»?"
+    expected:
+      file: dostoyevsky-novels.md
+      heading: "Игрок и биографический контекст"
+      must_contain:
+        - "26 дней"
+        - "Анне Сниткиной"
+      max_files: 1
+
+  - id: F008
+    type: fact
+    query: "Когда был опубликован манифест акмеизма?"
+    expected:
+      file: russian-poetry-silver-age.md
+      heading: "Акмеизм"
+      must_contain:
+        - "журнале «Аполлон»"
+        - "1913 году"
+      max_files: 1
+
+  - id: F009
+    type: fact
+    query: "Какая статья уничтожила оперу Шостаковича?"
+    expected:
+      file: russian-opera.md
+      heading: "Шостакович и «Леди Макбет»"
+      must_contain:
+        - "Сумбур вместо музыки"
+        - "«Правде»"
+      max_files: 1
+
+  - id: F010
+    type: fact
+    query: "Чем отличается Метод Страсберга от системы Станиславского?"
+    expected:
+      file: theater-stanislavsky.md
+      heading: "Американское наследие"
+      must_contain:
+        - "аффективную память"
+        - "Станиславский отказался"
+      max_files: 1
+
+  # === Constraint lookups (10) ===
+
+  - id: C001
+    type: constraint
+    query: "Можно ли одновременно искать в корпусе и вебе?"
+    expected:
+      file: chekhov-dramaturgy.md
+      heading: "Конфликт без антагониста"
+      must_contain: []
+      max_files: 0
+    note: "Вопрос вне домена корпуса — ожидается пустой результат"
+
+  - id: C002
+    type: constraint
+    query: "Какое правило экономии деталей сформулировал Чехов?"
+    expected:
+      file: chekhov-dramaturgy.md
+      heading: "Ружьё на стене"
+      must_contain:
+        - "если в первом акте на стене висит ружьё"
+        - "оно должно выстрелить"
+      max_files: 1
+
+  - id: C003
+    type: constraint
+    query: "Какие требования акмеисты предъявляли к поэзии?"
+    expected:
+      file: russian-poetry-silver-age.md
+      heading: "Акмеизм"
+      must_contain:
+        - "ясности образа"
+        - "точности слова"
+      max_files: 1
+
+  - id: C004
+    type: constraint
+    query: "Что Тарковский считал угрозой для кино?"
+    expected:
+      file: tarkovsky-cinema.md
+      heading: "Отношение к Голливуду"
+      must_contain:
+        - "коммерческое кино"
+        - "подменяет переживание зрелищем"
+      max_files: 1
+
+  - id: C005
+    type: constraint
+    query: "Почему Толстой отверг собственные романы?"
+    expected:
+      file: tolstoy-philosophy.md
+      heading: "Что такое искусство"
+      must_contain:
+        - "непонятны крестьянину"
+      max_files: 1
+
+  - id: C006
+    type: constraint
+    query: "Какое ограничение наложил соцреализм на художников?"
+    expected:
+      file: avant-garde-art.md
+      heading: "Разгром авангарда"
+      must_contain:
+        - "единственный метод"
+        - "ликвидировала все художественные объединения"
+      max_files: 1
+
+  - id: C007
+    type: constraint
+    query: "Что утверждал Вертов о художественном кино?"
+    expected:
+      file: soviet-cinema.md
+      heading: "Вертов и документальная правда"
+      must_contain:
+        - "опиумом для народа"
+      max_files: 1
+
+  - id: C008
+    type: constraint
+    query: "Какой принцип определяет систему Станиславского?"
+    expected:
+      file: theater-stanislavsky.md
+      heading: "Основной принцип"
+      must_contain:
+        - "переживать, а не изображать"
+      max_files: 1
+
+  - id: C009
+    type: constraint
+    query: "Чем позиция Шестова отличается от рациональной философии?"
+    expected:
+      file: philosophy-existentialism.md
+      heading: "Шестов и бунт против разума"
+      must_contain:
+        - "тиранию «общеобязательных истин»"
+      max_files: 1
+
+  - id: C010
+    type: constraint
+    query: "Почему Писарев отверг Пушкина?"
+    expected:
+      file: literary-criticism.md
+      heading: "Писарев и нигилизм"
+      must_contain:
+        - "бесполезного"
+      max_files: 1
+
+  # === Unresolved threads (5) ===
+
+  - id: U001
+    type: unresolved
+    query: "К какому течению принадлежит Цветаева?"
+    expected:
+      file: russian-poetry-silver-age.md
+      heading: "Нерешённый вопрос: Цветаева"
+      must_contain:
+        - "не принадлежит ни к одному течению"
+        - "до сих пор спорят"
+      max_files: 1
+
+  - id: U002
+    type: unresolved
+    query: "Кто прав — Тарковский или Эйзенштейн?"
+    expected:
+      file: soviet-cinema.md
+      heading: "Нерешённый спор: Тарковский против Эйзенштейна"
+      must_contain:
+        - "кино как язык"
+        - "кино как переживание"
+      max_files: 1
+
+  - id: U003
+    type: unresolved
+    query: "Является ли толстовство анархизмом?"
+    expected:
+      file: tolstoy-philosophy.md
+      heading: "Нерешённый вопрос: Толстой и анархизм"
+      must_contain:
+        - "предмет продолжающейся дискуссии"
+      max_files: 1
+
+  - id: U004
+    type: unresolved
+    query: "Существует ли русская опера после Шостаковича?"
+    expected:
+      file: russian-opera.md
+      heading: "Открытый вопрос: русская опера после Шостаковича"
+      must_contain:
+        - "вопрос без ответа"
+      max_files: 1
+
+  - id: U005
+    type: unresolved
+    query: "Может ли нарративный балет обойтись без пантомимы?"
+    expected:
+      file: ballet-history.md
+      heading: "Открытый вопрос: будущее нарратива"
+      must_contain:
+        - "Вопрос не решён"
+      max_files: 1
+
+  # === Expansion opportunities (5) ===
+
+  - id: E001
+    type: expansion
+    query: "Какое влияние ВХУТЕМАС оказал на мировой дизайн?"
+    expected:
+      file: avant-garde-art.md
+      heading: "Расширение: ВХУТЕМАС и дизайн-образование"
+      must_contain:
+        - "систематически недооценивается"
+        - "не полностью опубликованы"
+      max_files: 1
+
+  - id: E002
+    type: expansion
+    query: "Какое место Бахтин занимает между философией и филологией?"
+    expected:
+      file: philosophy-existentialism.md
+      heading: "Расширение: Бахтин между философией и филологией"
+      must_contain:
+        - "неалиби в бытии"
+        - "остаётся дискуссионным"
+      max_files: 1
+
+  - id: E003
+    type: expansion
+    query: "Что такое семиотика Лотмана?"
+    expected:
+      file: literary-criticism.md
+      heading: "Расширение: Лотман и семиотика"
+      must_contain:
+        - "генератор смыслов"
+        - "Тартуско-московская"
+      max_files: 1
+
+  - id: E004
+    type: expansion
+    query: "Можно ли считать фольклорный текст литературным произведением?"
+    expected:
+      file: folk-tales.md
+      heading: "Открытый вопрос: авторство и вариативность"
+      must_contain:
+        - "вопрос без консенсуса"
+      max_files: 1
+
+  - id: E005
+    type: expansion
+    query: "Какой фильм Тарковский не успел снять?"
+    expected:
+      file: tarkovsky-cinema.md
+      heading: "Незавершённый замысел"
+      must_contain:
+        - "экранизацию «Гамлета»"
+        - "Сохранились только заметки"
+      max_files: 1
