@@ -1,6 +1,6 @@
 # corpus-scout
 
-MCP stdio server that exposes lexical search and section reading for any local text corpus. Uses ripgrep for fast pattern matching; writes structured JSON logs to `stderr` on startup and per tool call.
+Read-only MCP server that provides lexical search and section reading over a local text corpus (e.g., Markdown files). Exposes two tools: **search** (pattern matching, returns matching lines with context) and **read_section** (extracts file content by heading or line range). Configured via environment variables (`CORPUS_ROOT`, file glob, result limits), it returns deterministic JSON results — same query always yields identical output. No embeddings, no indexing, no corpus mutation. Designed as a reusable retrieval primitive for LLM-driven workflows over any file-based knowledge base.
 
 ## Requirements
 
@@ -52,6 +52,39 @@ Create `.claude/settings.local.json` (do not commit):
 
 Restart Claude Code. The `search` and `read_section` tools will be available.
 
+## Using from another repo
+
+To use corpus-scout as an MCP server from a different repo on the same machine, add to that project's `.mcp.json` (do not commit):
+
+```json
+{
+  "mcpServers": {
+    "corpus-scout": {
+      "command": "node",
+      "args": ["/absolute/path/to/ai-labs/corpus-scout/src/index.js"],
+      "env": {
+        "CORPUS_ROOT": "/absolute/path/to/your/corpus"
+      }
+    }
+  }
+}
+```
+
+Then add to `.claude/settings.local.json` (do not commit):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__corpus-scout__search",
+      "mcp__corpus-scout__read_section"
+    ]
+  }
+}
+```
+
+Restart Claude Code. No `npm install` needed in the other repo — the server runs from the ai-labs checkout.
+
 ## Tools
 
 ### `search`
@@ -101,8 +134,19 @@ Structured JSON lines written to `stderr`. Set `LOG_LEVEL=silent` to suppress al
 
 ## Smoke test
 
+Requires Langfuse keys (`LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`) and a corpus directory. The eval corpus at `tools/evals/corpus/` is in Russian; the default query matches it.
+
+Run from the repo root:
+
 ```bash
-CORPUS_ROOT=/path/to/corpus node corpus-scout/scripts/smoke.js
+set -a && source web-scout/.env && set +a
+CORPUS_ROOT="$(pwd)/corpus-scout/tools/evals/corpus" node corpus-scout/scripts/smoke.js
 ```
 
-Exercises both tools against a real corpus. Exit 0 = PASS, exit 1 = FAIL.
+Override the search query with `SMOKE_QUERY`:
+
+```bash
+SMOKE_QUERY="театр" CORPUS_ROOT=... node corpus-scout/scripts/smoke.js
+```
+
+Exit 0 = PASS, exit 1 = FAIL.
