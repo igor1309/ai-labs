@@ -11,5 +11,4 @@ docker compose down
 docker compose up -d
 sleep 5
 docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
-rm -rf /tmp/nomos-deploy
 echo "Production deploy successful"
