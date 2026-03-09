@@ -13,7 +13,5 @@ rm -rf src && cp -r /tmp/nomos-deploy/src .
 rm -rf scripts && cp -r /tmp/nomos-deploy/scripts .
 docker build -t nomos:latest .
 docker compose -f docker-compose.staging.yml down
-docker compose -f docker-compose.staging.yml up -d --build
-sleep 5
-docker exec nomos-staging wget -qO- http://127.0.0.1:8081/health | grep -q '"ok"'
+docker compose -f docker-compose.staging.yml up -d --build --wait
 echo "Staging deploy successful"
