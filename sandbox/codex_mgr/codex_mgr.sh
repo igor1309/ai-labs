@@ -73,12 +73,11 @@ is_profile_active() {
     local profile_dir="$1"
     local profile_account_id="$2"
     local current_account_id="$3"
+    if [[ -f "$AUTH_FILE" && -f "$profile_dir/auth.json" ]] && cmp -s "$AUTH_FILE" "$profile_dir/auth.json"; then
+        return 0
+    fi
     if [[ -n "$current_account_id" && -n "$profile_account_id" ]]; then
         [[ "$profile_account_id" == "$current_account_id" ]]
-        return $?
-    fi
-    if [[ -f "$AUTH_FILE" && -f "$profile_dir/auth.json" ]]; then
-        cmp -s "$AUTH_FILE" "$profile_dir/auth.json"
         return $?
     fi
     return 1
