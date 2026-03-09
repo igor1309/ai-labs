@@ -1,5 +1,8 @@
 # Log
 
+## 2026-03-09
+v0.8.4: add compose-level healthcheck to staging stack, replace deploy script sleep+wget race with --wait flag.
+
 ## 2026-02-28
 v0.8.3: extract deploy scripts to `nomos/scripts/`, add automatic rollback on failed prod deploy, fix github-release gating when staging fails.
 Implement staging environment (ADR-0003): add docker-compose.staging.yml (isolated project, container, volume, port 8081, external network), .env.staging.example template, VPS deployment guide staging section (DNS, Caddyfile, env setup, smoke-test project registration), split deploy-nomos CI job into deploy-nomos-staging → deploy-nomos-prod promotion pipeline with dedicated staging smoke token.
