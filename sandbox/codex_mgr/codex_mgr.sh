@@ -6,6 +6,7 @@ set -euo pipefail
 
 PROFILES_DIR="${CODEX_PROFILES_DIR:-$HOME/.codex-profiles}"
 AUTH_FILE="$HOME/.codex/auth.json"
+ACTIVE_FILE="$PROFILES_DIR/.active"
 VERSION="1.0.0"
 
 # Ensure jq is available
@@ -69,19 +70,6 @@ get_profile_account_id() {
     echo "$account_id"
 }
 
-is_profile_active() {
-    local profile_dir="$1"
-    local profile_account_id="$2"
-    local current_account_id="$3"
-    if [[ -f "$AUTH_FILE" && -f "$profile_dir/auth.json" ]] && cmp -s "$AUTH_FILE" "$profile_dir/auth.json"; then
-        return 0
-    fi
-    if [[ -n "$current_account_id" && -n "$profile_account_id" ]]; then
-        [[ "$profile_account_id" == "$current_account_id" ]]
-        return $?
-    fi
-    return 1
-}
 
 get_profile_dirs() {
     find "$PROFILES_DIR" -maxdepth 1 -type d -not -path "$PROFILES_DIR" | sort
@@ -143,6 +131,7 @@ case "${1:-}" in
         
         # Switch
         cp "$PROFILE_PATH" "$AUTH_FILE"
+        echo "$PROFILE_NAME" > "$ACTIVE_FILE"
         echo "✓ Switched to: $PROFILE_NAME"
         ;;
     
@@ -168,6 +157,12 @@ case "${1:-}" in
                 break
             fi
         done
+        if [[ -z "$active" && -f "$ACTIVE_FILE" ]]; then
+            marker="$(cat "$ACTIVE_FILE")"
+            if [[ -d "$PROFILES_DIR/$marker" ]]; then
+                active="$PROFILES_DIR/$marker"
+            fi
+        fi
         if [[ -z "$active" ]]; then
             for dir in "${dirs[@]}"; do
                 profile_account_id="$(get_profile_account_id "$dir")"
@@ -205,13 +200,29 @@ case "${1:-}" in
         CURRENT_ACCOUNT_ID="$(get_current_account_id)"
         current_index=-1
         for i in "${!profiles[@]}"; do
-            profile_dir="${profiles[$i]}"
-            profile_account_id="$(get_profile_account_id "$profile_dir")"
-            if is_profile_active "$profile_dir" "$profile_account_id" "$CURRENT_ACCOUNT_ID"; then
+            if [[ -f "$AUTH_FILE" && -f "${profiles[$i]}/auth.json" ]] && cmp -s "$AUTH_FILE" "${profiles[$i]}/auth.json"; then
                 current_index="$i"
                 break
             fi
         done
+        if [[ "$current_index" -lt 0 && -f "$ACTIVE_FILE" ]]; then
+            marker="$(cat "$ACTIVE_FILE")"
+            for i in "${!profiles[@]}"; do
+                if [[ "$(basename "${profiles[$i]}")" == "$marker" ]]; then
+                    current_index="$i"
+                    break
+                fi
+            done
+        fi
+        if [[ "$current_index" -lt 0 ]]; then
+            for i in "${!profiles[@]}"; do
+                profile_account_id="$(get_profile_account_id "${profiles[$i]}")"
+                if [[ -n "$CURRENT_ACCOUNT_ID" && -n "$profile_account_id" && "$profile_account_id" == "$CURRENT_ACCOUNT_ID" ]]; then
+                    current_index="$i"
+                    break
+                fi
+            done
+        fi
         if [[ "$current_index" -lt 0 ]]; then
             next_index=0
         else
@@ -222,6 +233,7 @@ case "${1:-}" in
         
         [[ -f "$AUTH_FILE" ]] && cp "$AUTH_FILE" "$AUTH_FILE.backup.$(date +%s)"
         cp "$next_dir/auth.json" "$AUTH_FILE"
+        echo "$next_profile" > "$ACTIVE_FILE"
         echo "✓ Switched to: $next_profile"
         ;;
     
