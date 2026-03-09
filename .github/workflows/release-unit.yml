@@ -75,6 +75,10 @@ jobs:
           node-version-file: .node-version
           cache: npm
 
+      - name: Install ripgrep
+        # Required by corpus-scout tests
+        run: sudo apt-get install -y ripgrep
+
       - name: Install dependencies
         run: npm ci
 
