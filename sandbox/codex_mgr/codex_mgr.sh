@@ -159,10 +159,27 @@ case "${1:-}" in
         
         echo "Codex Profiles"
         echo "--------------"
-        get_profile_dirs | while read -r dir; do
+        dirs=()
+        while IFS= read -r line; do dirs+=("$line"); done < <(get_profile_dirs)
+        active=""
+        for dir in "${dirs[@]}"; do
+            if [[ -f "$AUTH_FILE" && -f "$dir/auth.json" ]] && cmp -s "$AUTH_FILE" "$dir/auth.json"; then
+                active="$dir"
+                break
+            fi
+        done
+        if [[ -z "$active" ]]; then
+            for dir in "${dirs[@]}"; do
+                profile_account_id="$(get_profile_account_id "$dir")"
+                if [[ -n "$CURRENT_ACCOUNT_ID" && -n "$profile_account_id" && "$profile_account_id" == "$CURRENT_ACCOUNT_ID" ]]; then
+                    active="$dir"
+                    break
+                fi
+            done
+        fi
+        for dir in "${dirs[@]}"; do
             profile=$(basename "$dir")
-            profile_account_id="$(get_profile_account_id "$dir")"
-            if is_profile_active "$dir" "$profile_account_id" "$CURRENT_ACCOUNT_ID"; then
+            if [[ "$dir" == "$active" ]]; then
                 echo "  * $profile"
             else
                 echo "    $profile"
