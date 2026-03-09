@@ -1,7 +1,7 @@
 # Log
 
 ## 2026-03-09
-v0.8.4: add compose-level healthcheck to staging stack, replace deploy script sleep+wget race with --wait flag.
+v0.8.4: add compose-level healthcheck to staging stack, replace deploy script sleep+wget race with --wait flag. Fix release-unit core job (install ripgrep for corpus-scout tests). Fix deploy-prod cleanup deleting notify script before notification step runs.
 
 ## 2026-02-28
 v0.8.3: extract deploy scripts to `nomos/scripts/`, add automatic rollback on failed prod deploy, fix github-release gating when staging fails.
