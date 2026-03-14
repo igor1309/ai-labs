@@ -47,16 +47,18 @@ export function formatInsights(row: Record<string, unknown>): string {
 
   const narrative = row.narrative_summary as string | null;
   if (narrative && narrative.length > 0) {
+    const sectionMap: [RegExp, string][] = [
+      [/^What's working:/, "✅ <b>What's working:</b>"],
+      [/^What's hindering[^:]*:/, "⚠️ <b>What's hindering:</b>"],
+      [/^Quick wins to try:/, "💡 <b>Quick wins:</b>"],
+      [/^Ambitious workflows:/, "🚀 <b>Ambitious workflows:</b>"],
+    ];
     const paragraphs = narrative.split("\n\n").filter((p) => p.trim());
     for (const p of paragraphs) {
-      const label = p.startsWith("What's working:")
-        ? "✅ <b>What's working:</b>"
-        : p.startsWith("What's hindering")
-          ? "⚠️ <b>What's hindering:</b>"
-          : "";
-      const body = p.replace(/^What's (working|hindering[^:]*):/, "").trim();
-      if (label) {
-        lines.push(`\n${label}\n<blockquote>${body}</blockquote>`);
+      const match = sectionMap.find(([re]) => re.test(p));
+      if (match) {
+        const body = p.replace(match[0], "").trim();
+        lines.push(`\n${match[1]}\n<blockquote>${body}</blockquote>`);
       } else {
         lines.push(`\n<blockquote>${p}</blockquote>`);
       }

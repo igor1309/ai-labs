@@ -119,8 +119,8 @@ def strip_html_tags(text: str) -> str:
 def extract_narrative(html_path: Path) -> tuple[str, str]:
     """Extract narrative summary and raw HTML from the insights report.
 
-    Returns (narrative_summary, raw_html). Narrative contains the
-    'What's working' and 'What's hindering' sections from At a Glance.
+    Returns (narrative_summary, raw_html). Narrative contains all four
+    At a Glance sections: working, hindering, quick wins, ambitious workflows.
     """
     if not html_path.exists():
         return "", ""
@@ -133,7 +133,7 @@ def extract_narrative(html_path: Path) -> tuple[str, str]:
     )
 
     parts = []
-    for section in sections[:2]:  # What's working + What's hindering
+    for section in sections[:4]:
         # Remove <a> tags before stripping all HTML
         section = re.sub(r"<a[^>]*>.*?</a>", "", section, flags=re.DOTALL)
         text = strip_html_tags(section)
