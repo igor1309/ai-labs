@@ -28,7 +28,7 @@ Set `NOMOS_BASE_URL` and `NOMOS_API_KEY` as Edge Function secrets.
 
 Gate: `supabase secrets list` shows both secrets.
 
-- [ ] done
+- [x] done
 
 ### Step 2: Add LLM call helper to _shared
 
@@ -64,4 +64,4 @@ Gate: `/compare` responds with LLM-generated analysis when 2+ weeks exist.
 
 Gate: bot responds to `/compare` with trend analysis.
 
-- [ ] done
+- [x] done
