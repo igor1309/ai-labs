@@ -3,7 +3,9 @@
 
 import argparse
 import json
+import os
 import sys
+import urllib.request
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +13,8 @@ from pathlib import Path
 USAGE_DIR = Path.home() / ".claude" / "usage-data"
 FACETS_DIR = USAGE_DIR / "facets"
 SESSION_META_DIR = USAGE_DIR / "session-meta"
+SCRIPT_DIR = Path(__file__).resolve().parent
+ENV_FILE = SCRIPT_DIR / ".env"
 
 
 def load_jsons(directory: Path) -> dict[str, dict]:
@@ -103,13 +107,78 @@ def aggregate(facets: dict[str, dict], metas: dict[str, dict]) -> dict:
     }
 
 
+def load_env():
+    """Load .env file from script directory into os.environ."""
+    if not ENV_FILE.exists():
+        return
+    for line in ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+def push_to_supabase(summary: dict) -> None:
+    """Upsert summary into Supabase claude_insights table."""
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        print("Error: SUPABASE_URL and SUPABASE_KEY required (set in .env or environment)", file=sys.stderr)
+        sys.exit(1)
+
+    row = {
+        "week": summary["period"]["from"],
+        "total_sessions": summary["total_sessions"],
+        "total_duration_minutes": summary["total_duration_minutes"],
+        "total_user_messages": summary["total_user_messages"],
+        "lines_added": summary["lines_added"],
+        "lines_removed": summary["lines_removed"],
+        "total_commits": summary["total_commits"],
+        "tools": summary["tools"],
+        "languages": summary["languages"],
+        "goals": summary["goals"],
+        "friction": summary["friction"],
+        "satisfaction": summary["satisfaction"],
+        "outcomes": summary["outcomes"],
+        "helpfulness": summary["helpfulness"],
+        "session_types": summary["session_types"],
+        "projects": summary["projects"],
+    }
+
+    endpoint = f"{url}/rest/v1/claude_insights"
+    data = json.dumps(row).encode()
+    req = urllib.request.Request(
+        endpoint,
+        data=data,
+        method="POST",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            status = resp.status
+        print(f"Pushed to Supabase (week={row['week']}, HTTP {status})", file=sys.stderr)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"Supabase error: HTTP {e.code} — {body}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--days", type=int, default=7, help="Look back N days (default: 7)")
     parser.add_argument("--since", type=str, help="Start date YYYY-MM-DD (overrides --days)")
     parser.add_argument("--until", type=str, help="End date YYYY-MM-DD (default: now)")
     parser.add_argument("--output", "-o", type=str, help="Write JSON to file instead of stdout")
+    parser.add_argument("--push", action="store_true", help="Push summary to Supabase")
     args = parser.parse_args()
+
+    load_env()
 
     now = datetime.now(timezone.utc)
     before = datetime.fromisoformat(args.until + "T00:00:00+00:00") + timedelta(days=1) if args.until else now
@@ -142,6 +211,9 @@ def main():
         print(f"Written to {args.output}", file=sys.stderr)
     else:
         print(output)
+
+    if args.push:
+        push_to_supabase(summary)
 
 
 if __name__ == "__main__":
