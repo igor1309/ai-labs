@@ -67,8 +67,12 @@ Deno.serve(async (req) => {
       await sendTelegram(botToken, chatId, "Not enough data for comparison.");
     } else {
       await sendTelegram(botToken, chatId, `Analyzing ${rows.length} weeks…`);
-      const analysis = await analyzeTrends(rows);
-      await sendTelegram(botToken, chatId, analysis);
+      try {
+        const analysis = await analyzeTrends(rows);
+        await sendTelegram(botToken, chatId, analysis);
+      } catch (err) {
+        await sendTelegram(botToken, chatId, `LLM analysis failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
   }
 
