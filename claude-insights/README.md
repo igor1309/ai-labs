@@ -12,8 +12,9 @@ Aggregates Claude Code usage data (`~/.claude/usage-data/`) into a weekly JSON s
 
 - **claude-insights.py** — aggregates local JSON, extracts narrative from `report.html`, pushes to Supabase
 - **notify-insights** — Supabase Edge Function, called by DB webhook on INSERT/UPDATE, sends Telegram message
-- **telegram-bot** — Supabase Edge Function, Telegram webhook handler, responds to `/latest`
+- **telegram-bot** — Supabase Edge Function, Telegram webhook handler, responds to `/latest` and `/compare`
 - **_shared/format.ts** — shared message formatter (HTML parse mode, narrative in blockquotes)
+- **_shared/llm.ts** — LLM call helper for trend analysis via Nomos
 
 ## Usage
 
@@ -54,6 +55,7 @@ JSON with aggregated metrics:
 
 - `/latest` — fetch the most recent week's summary from Supabase and display it
 - `/start` — same as `/latest`
+- `/compare` — fetch all weekly snapshots and return an LLM-generated trend analysis (via Nomos)
 - **Auto-notification** — triggered by DB webhook on every insert/update to `claude_insights`
 
 Message includes: dashboard numbers (sessions, commits, lines, friction, satisfaction, goals) and narrative sections (what's working, what's hindering, quick wins, ambitious workflows) in blockquotes.
@@ -70,7 +72,7 @@ A macOS launchd agent runs the push every Sunday at 8:40 AM local time:
 - **Table**: `public.claude_insights` (RLS enabled)
 - **DB trigger**: `on_insights_change` → `notify_insights_webhook()` via `pg_net`
 - **Edge Functions**: `notify-insights`, `telegram-bot` (both no-verify-jwt)
-- **Secrets**: `BOT_TOKEN`, `INBOX_CHAT_ID` (set via `supabase secrets`)
+- **Secrets**: `BOT_TOKEN`, `INBOX_CHAT_ID`, `NOMOS_BASE_URL`, `NOMOS_API_KEY` (set via `supabase secrets`)
 - **Local credentials**: `tools/claude-insights/.env` (gitignored)
 
 ## Deploying Edge Functions
@@ -84,4 +86,4 @@ supabase functions deploy telegram-bot --no-verify-jwt --project-ref uvnxjuzofcd
 
 ## Next steps
 
-- Week-over-week comparison queries (`/compare` bot command)
+- Configurable model selection for `/compare` analysis

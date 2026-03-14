@@ -9,7 +9,7 @@ description: "Implementation plan for /compare Telegram bot command — LLM-powe
 Worktree required: yes
 Expected worktree: worktrees/claude-insights-compare
 Expected branch: codex/claude-insights-compare
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Overview
 
@@ -28,7 +28,7 @@ Set `NOMOS_BASE_URL` and `NOMOS_API_KEY` as Edge Function secrets.
 
 Gate: `supabase secrets list` shows both secrets.
 
-- [ ] done
+- [x] done
 
 ### Step 2: Add LLM call helper to _shared
 
@@ -41,7 +41,7 @@ Create `supabase/functions/_shared/llm.ts`:
 
 Gate: function compiles and exports correctly.
 
-- [ ] done
+- [x] done
 
 ### Step 3: Add /compare handler to telegram-bot
 
@@ -54,7 +54,7 @@ In `telegram-bot/index.ts`:
 
 Gate: `/compare` responds with LLM-generated analysis when 2+ weeks exist.
 
-- [ ] done
+- [x] done
 
 ### Step 4: Deploy and verify
 
@@ -64,4 +64,4 @@ Gate: `/compare` responds with LLM-generated analysis when 2+ weeks exist.
 
 Gate: bot responds to `/compare` with trend analysis.
 
-- [ ] done
+- [x] done

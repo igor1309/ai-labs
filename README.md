@@ -11,6 +11,7 @@ Applied AI experiments and systems engineering.
 | corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
 | web-scout | MCP tool | Web search via SearXNG |
 | loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
+| claude-insights | Service | Weekly Claude Code usage aggregator with Telegram bot and LLM trend analysis |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 
 ## Architecture
