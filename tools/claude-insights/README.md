@@ -47,8 +47,16 @@ JSON with aggregated metrics:
 - **satisfaction** — session satisfaction distribution
 - **outcomes/helpfulness** — how sessions resolved
 - **projects** — sessions per repo
-- **narrative_summary** — "What's working" and "What's hindering" from `/insights` report
+- **narrative_summary** — At a Glance sections from `/insights` report (working, hindering, quick wins, ambitious)
 - **raw_html** — full `/insights` report for future comparisons
+
+## Telegram Bot (@ClaudeInsightsBot)
+
+- `/latest` — fetch the most recent week's summary from Supabase and display it
+- `/start` — same as `/latest`
+- **Auto-notification** — triggered by DB webhook on every insert/update to `claude_insights`
+
+Message includes: dashboard numbers (sessions, commits, lines, friction, satisfaction, goals) and narrative sections (what's working, what's hindering, quick wins, ambitious workflows) in blockquotes.
 
 ## Scheduling
 
