@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-03-14
+
+### Claude Insights — Weekly Usage Pipeline
+End-to-end pipeline: Python aggregator reads `~/.claude/usage-data/` (facets + session-meta), outputs JSON, pushes to Supabase. Two Supabase Edge Functions — DB webhook trigger sends Telegram notification on insert/update, bot webhook handles `/latest` on-demand queries via `@ClaudeInsightsBot`. Scheduled via macOS launchd (Sundays 8:40 AM). No external Python dependencies.
+
 ## 2026-03-04
 
 ### Synopsis v1.0.0 — Behavior-Focused Description Generator
