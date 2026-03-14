@@ -45,6 +45,21 @@ export function formatInsights(row: Record<string, unknown>): string {
     lines.push(`\n🎯 *Top goals:* ${top}`);
   }
 
+  const narrative = row.narrative_summary as string | null;
+  if (narrative && narrative.length > 0) {
+    // Split into paragraphs (What's working / What's hindering)
+    const paragraphs = narrative.split("\n\n").filter((p) => p.trim());
+    for (const p of paragraphs) {
+      if (p.startsWith("What's working:")) {
+        lines.push(`\n✅ ${p}`);
+      } else if (p.startsWith("What's hindering")) {
+        lines.push(`\n⚠️ ${p}`);
+      } else {
+        lines.push(`\n${p}`);
+      }
+    }
+  }
+
   return lines.join("\n");
 }
 

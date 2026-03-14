@@ -2,8 +2,10 @@
 """Aggregate Claude Code usage data (facets + session-meta) into a weekly JSON summary."""
 
 import argparse
+import html.parser
 import json
 import os
+import re
 import sys
 import urllib.request
 from collections import Counter
@@ -13,6 +15,7 @@ from pathlib import Path
 USAGE_DIR = Path.home() / ".claude" / "usage-data"
 FACETS_DIR = USAGE_DIR / "facets"
 SESSION_META_DIR = USAGE_DIR / "session-meta"
+REPORT_HTML = USAGE_DIR / "report.html"
 SCRIPT_DIR = Path(__file__).resolve().parent
 ENV_FILE = SCRIPT_DIR / ".env"
 
@@ -107,6 +110,39 @@ def aggregate(facets: dict[str, dict], metas: dict[str, dict]) -> dict:
     }
 
 
+def strip_html_tags(text: str) -> str:
+    """Remove HTML tags and collapse whitespace."""
+    clean = re.sub(r"<[^>]+>", "", text)
+    return re.sub(r"\s+", " ", clean).strip()
+
+
+def extract_narrative(html_path: Path) -> tuple[str, str]:
+    """Extract narrative summary and raw HTML from the insights report.
+
+    Returns (narrative_summary, raw_html). Narrative contains the
+    'What's working' and 'What's hindering' sections from At a Glance.
+    """
+    if not html_path.exists():
+        return "", ""
+
+    raw_html = html_path.read_text()
+
+    # Extract glance-section divs
+    sections = re.findall(
+        r'<div class="glance-section">(.*?)</div>', raw_html, re.DOTALL
+    )
+
+    parts = []
+    for section in sections[:2]:  # What's working + What's hindering
+        # Remove <a> tags before stripping all HTML
+        section = re.sub(r"<a[^>]*>.*?</a>", "", section, flags=re.DOTALL)
+        text = strip_html_tags(section)
+        parts.append(text)
+
+    narrative = "\n\n".join(parts)
+    return narrative, raw_html
+
+
 def load_env():
     """Load .env file from script directory into os.environ."""
     if not ENV_FILE.exists():
@@ -144,6 +180,8 @@ def push_to_supabase(summary: dict) -> None:
         "helpfulness": summary["helpfulness"],
         "session_types": summary["session_types"],
         "projects": summary["projects"],
+        "narrative_summary": summary.get("narrative_summary", ""),
+        "raw_html": summary.get("raw_html", ""),
     }
 
     endpoint = f"{url}/rest/v1/claude_insights"
@@ -199,10 +237,14 @@ def main():
         print(f"No sessions found between {after.date()} and {before.date()}", file=sys.stderr)
         sys.exit(0)
 
+    narrative, raw_html = extract_narrative(REPORT_HTML)
+
     summary = {
         "period": {"from": str(after.date()), "to": str(before.date())},
         "generated_at": now.isoformat(),
         **aggregate(all_facets, metas),
+        "narrative_summary": narrative,
+        "raw_html": raw_html,
     }
 
     output = json.dumps(summary, indent=2)
