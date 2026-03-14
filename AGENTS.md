@@ -193,6 +193,10 @@ When adding a new project with its own dependencies, create a dedicated `<projec
 - The release pipeline (`release.yml`) installs all deps, runs the full `npm test` suite, and adds e2e tests on top.
 - When a new project causes failures in repo-wide tests (e.g. label compliance scanning all compose files), the fix is legitimate but must be called out explicitly as a cross-project integration concern — not silently bundled into the project's commit.
 
+## Nomos API Keys
+
+Each project must have its own Nomos project and API key. Do not reuse Nomos keys across projects.
+
 ## Context-Efficient Commands
 
 Use `scripts/run_silent.sh` to run tests and builds. It suppresses output on success (one-line summary) and only dumps full output on failure. This keeps the context window clean.
