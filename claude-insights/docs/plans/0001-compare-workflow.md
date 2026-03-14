@@ -9,7 +9,7 @@ description: "Implementation plan for /compare Telegram bot command — LLM-powe
 Worktree required: yes
 Expected worktree: worktrees/claude-insights-compare
 Expected branch: codex/claude-insights-compare
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Overview
 
@@ -41,7 +41,7 @@ Create `supabase/functions/_shared/llm.ts`:
 
 Gate: function compiles and exports correctly.
 
-- [ ] done
+- [x] done
 
 ### Step 3: Add /compare handler to telegram-bot
 
@@ -54,7 +54,7 @@ In `telegram-bot/index.ts`:
 
 Gate: `/compare` responds with LLM-generated analysis when 2+ weeks exist.
 
-- [ ] done
+- [x] done
 
 ### Step 4: Deploy and verify
 
