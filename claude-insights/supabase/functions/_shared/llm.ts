@@ -1,7 +1,11 @@
 /** LLM call helper for trend analysis via Nomos. */
 
-const SYSTEM_PROMPT =
-  "Analyze Claude Code usage trends across weeks. Focus on what changed, what improved, what regressed. Be concise.";
+const SYSTEM_PROMPT = [
+  "You are an analyst reviewing weekly Claude Code usage snapshots.",
+  "Each snapshot contains: session count, duration, messages, commits, lines changed, friction points, satisfaction scores, goals, and a narrative summary.",
+  "Compare the weeks chronologically. Focus on what changed, what improved, what regressed.",
+  "Be concise. Use plain text, no markdown — the output goes to a Telegram chat.",
+].join("\n");
 
 /** Send weekly snapshots to the LLM and return a narrative trend analysis. */
 export async function analyzeTrends(
@@ -23,7 +27,10 @@ export async function analyzeTrends(
       model: "anthropic/claude-sonnet-4",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify(rows, null, 2) },
+        {
+          role: "user",
+          content: `Here are ${rows.length} weekly Claude Code usage snapshots (newest first):\n\n${JSON.stringify(rows, null, 2)}`,
+        },
       ],
     }),
   });

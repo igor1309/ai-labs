@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
     if (rows.length < 2) {
       await sendTelegram(botToken, chatId, "Not enough data for comparison.");
     } else {
+      await sendTelegram(botToken, chatId, `Analyzing ${rows.length} weeks…`);
       const analysis = await analyzeTrends(rows);
       await sendTelegram(botToken, chatId, analysis);
     }
