@@ -10,10 +10,10 @@ Aggregates Claude Code usage data (`~/.claude/usage-data/`) into a weekly JSON s
   session-meta/*.json                                     /latest → telegram-bot → query
 ```
 
-- **claude-insights.py** — aggregates local JSON, pushes to Supabase
+- **claude-insights.py** — aggregates local JSON, extracts narrative from `report.html`, pushes to Supabase
 - **notify-insights** — Supabase Edge Function, called by DB webhook on INSERT/UPDATE, sends Telegram message
 - **telegram-bot** — Supabase Edge Function, Telegram webhook handler, responds to `/latest`
-- **_shared/format.ts** — shared message formatter used by both functions
+- **_shared/format.ts** — shared message formatter (HTML parse mode, narrative in blockquotes)
 
 ## Usage
 
@@ -47,6 +47,8 @@ JSON with aggregated metrics:
 - **satisfaction** — session satisfaction distribution
 - **outcomes/helpfulness** — how sessions resolved
 - **projects** — sessions per repo
+- **narrative_summary** — "What's working" and "What's hindering" from `/insights` report
+- **raw_html** — full `/insights` report for future comparisons
 
 ## Scheduling
 
