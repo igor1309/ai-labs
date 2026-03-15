@@ -25,6 +25,7 @@ USAGE:
     codex-mgr load <email>         # Load profile (switches active auth)
     codex-mgr list                 # List profiles with active (*) indicator
     codex-mgr switch               # Switch to next profile in list
+    codex-mgr delete <email>       # Delete a saved profile
     codex-mgr help                # Show this help
 
 EXAMPLES:
@@ -33,6 +34,7 @@ EXAMPLES:
     codex-mgr list
     codex-mgr load work@example.com
     codex-mgr switch
+    codex-mgr delete personal@example.com
 
 CONFIG:
     CODEX_PROFILES_DIR=/path/to/profiles  # Override default ~/.codex-profiles
@@ -237,6 +239,26 @@ case "${1:-}" in
         echo "✓ Switched to: $next_profile"
         ;;
     
+    "delete")
+        if [[ $# -lt 2 ]]; then
+            echo "Error: email required. Usage: codex-mgr delete <email>" >&2
+            exit 1
+        fi
+        PROFILE_NAME="$2"
+        PROFILE_PATH="$PROFILES_DIR/$PROFILE_NAME"
+        if [[ ! -d "$PROFILE_PATH" ]]; then
+            echo "Error: Profile '$PROFILE_NAME' not found." >&2
+            exit 1
+        fi
+        rm -rf "$PROFILE_PATH"
+        if [[ -f "$ACTIVE_FILE" && "$(cat "$ACTIVE_FILE")" == "$PROFILE_NAME" ]]; then
+            rm -f "$ACTIVE_FILE"
+            echo "⚠ Deleted active profile '$PROFILE_NAME'. No profile is now active."
+        else
+            echo "✓ Deleted profile: $PROFILE_NAME"
+        fi
+        ;;
+
     "help"|"-h"|"--help")
         show_help
         ;;

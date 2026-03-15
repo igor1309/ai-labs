@@ -16,6 +16,7 @@ description: "Usage and behavior for the codex-mgr profile manager"
 - `codex-mgr load <email>`
 - `codex-mgr list`
 - `codex-mgr switch`
+- `codex-mgr delete <email>`
 - `codex-mgr help`
 - Email is required and must include `@`
 - Profile name is the email
