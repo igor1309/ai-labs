@@ -246,26 +246,27 @@ private actor AgentLoop {
         defer { isProcessing = false }
         messages.append(.user(input))
         while true {
-            let response: Response
-            do {
-                response = try await self.respond(messages)
-                messages.append(.assistant(response))
-            } catch {
-                messages.append(.error(error.localizedDescription))
-                throw error
-            }
+            let response = try await record({ try await self.respond(messages) }, { .assistant($0) })
             switch response {
             case .text(let text):
                 return text
             case .toolCall(let call):
-                do {
-                    let result = try await execute(call)
-                    messages.append(.tool(result))
-                } catch {
-                    messages.append(.error(error.localizedDescription))
-                    throw error
-                }
+                _ = try await record({ try await self.execute(call) }, { .tool($0) })
             }
+        }
+    }
+
+    private func record<T>(
+        _ operation: () async throws -> T,
+        _ message: (T) -> Message
+    ) async throws -> T {
+        do {
+            let value = try await operation()
+            messages.append(message(value))
+            return value
+        } catch {
+            messages.append(.error(error.localizedDescription))
+            throw error
         }
     }
 }
