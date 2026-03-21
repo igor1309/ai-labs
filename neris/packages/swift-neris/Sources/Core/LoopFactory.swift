@@ -1,13 +1,16 @@
 public final class LoopFactory {
 
     private let reader: Loop.Reader
+    private let filter: Loop.Filter
     private let processor: Loop.Processor
 
     public init(
         inputReader reader: @escaping Loop.Reader,
+        filter: @escaping Loop.Filter,
         processor: @escaping Loop.Processor
     ) {
         self.reader = reader
+        self.filter = filter
         self.processor = processor
     }
 
@@ -15,7 +18,7 @@ public final class LoopFactory {
 
         Loop(
             inputReader: reader,
-            filter: InputFilter().filter,
+            filter: filter,
             processor: processor
         )
     }
