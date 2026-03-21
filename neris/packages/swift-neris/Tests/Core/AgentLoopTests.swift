@@ -6,7 +6,7 @@ final class AgentLoopTests: TestContext {
     @Test func test_process_shouldPassUserMessageToRespond() async throws {
 
         let query = makeSomeString()
-        let (sut, respond, _) = makeSUT()
+        let (sut, respond, _) = makeSUT(respondStubs: [.success(.text(makeSomeString()))])
 
         _ = try await collect(sut.process(query))
 
@@ -16,11 +16,24 @@ final class AgentLoopTests: TestContext {
     @Test func test_process_shouldYieldTextEvent() async throws {
 
         let expected = makeSomeString()
-        let (sut, _, _) = makeSUT(respondStubs: [.success(.toolCall(makeSomeString())), .success(.text(expected))])
+        let (sut, _, _) = makeSUT(respondStubs: [.success(.text(expected))])
 
         let events = try await collect(sut.process(makeSomeString()))
 
-        #expect(events.last == .text(expected))
+        #expect(events == [.text(expected)])
+    }
+
+    @Test func test_process_shouldYieldToolCallAndResultEvents() async throws {
+
+        let (toolCall, toolResult, text) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let (sut, _, _) = makeSUT(
+            respondStubs: [.success(.toolCall(toolCall)), .success(.text(text))],
+            executeStubs: [.success(toolResult)]
+        )
+
+        let events = try await collect(sut.process(makeSomeString()))
+
+        #expect(events == [.toolCall(toolCall), .toolResult(toolResult), .text(text)])
     }
 
     @Test func test_process_shouldCallExecuteWithToolCall() async throws {
@@ -272,9 +285,9 @@ private actor AgentLoop {
     func process(_ input: String) -> EventStream {
 
         AsyncThrowingStream { continuation in
-            Task { [weak self] in
+            Task {
                 do {
-                    try await self?.run(input, continuation: continuation)
+                    try await self.run(input, continuation: continuation)
                 } catch {
                     continuation.finish(throwing: error)
                 }
@@ -303,8 +316,8 @@ private actor AgentLoop {
     }
 
     private func record<T>(
-        _ operation: () async throws -> T,
-        _ message: (T) -> Message
+        _ operation: @Sendable () async throws -> T,
+        _ message: @Sendable (T) -> Message
     ) async throws -> T {
         do {
             let value = try await operation()
