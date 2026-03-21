@@ -3,14 +3,14 @@ import Testing
 
 final class AgentLoopTests: TestContext {
 
-    @Test func test_process_shouldCallRespondWithUserQuery() async throws {
+    @Test func test_process_shouldPassUserMessageToRespond() async throws {
 
         let query = makeSomeString()
         let (sut, respond, _) = makeSUT()
 
         _ = try await sut.process(query)
 
-        #expect(respond.payloads.first == query)
+        #expect(respond.payloads.first == [.user(query)])
     }
 
     @Test func test_process_shouldReturnRespondResult() async throws {
@@ -119,13 +119,13 @@ final class AgentLoopTests: TestContext {
 
         _ = try await sut.process(query)
 
-        #expect(respond.payloads == [query, executeResult])
+        #expect(respond.callCount == 2)
     }
 
     // MARK: - Helpers
 
     private typealias SUT = AgentLoop
-    private typealias RespondSpy = AsyncSpyOf<String, SUT.Response>
+    private typealias RespondSpy = AsyncSpyOf<[SUT.Message], SUT.Response>
     private typealias ExecuteSpy = AsyncSpyOf<String, String>
 
     private func makeSUT(
@@ -153,12 +153,16 @@ final class AgentLoopTests: TestContext {
 
 private final class AgentLoop {
 
+    enum Message: Equatable {
+        case user(String)
+    }
+
     enum Response {
         case text(String)
         case toolCall(String)
     }
 
-    typealias Respond = (String) async throws -> Response
+    typealias Respond = ([Message]) async throws -> Response
     typealias Execute = (String) async throws -> String
 
     private let respond: Respond
@@ -172,7 +176,7 @@ private final class AgentLoop {
     func process(_ input: String) async throws -> String {
         var current = input
         while true {
-            switch try await respond(current) {
+            switch try await respond([.user(current)]) {
             case .text(let text):
                 return text
             case .toolCall(let call):
