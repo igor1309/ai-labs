@@ -1,13 +1,5 @@
 import Foundation
 
-public enum FilterResult: Equatable, Sendable {
-    case skip
-    case quit
-    case input(String)
-}
-
-public typealias InputFiltering = (String) -> FilterResult
-
 public final class InputFilter {
 
     public init() {}
