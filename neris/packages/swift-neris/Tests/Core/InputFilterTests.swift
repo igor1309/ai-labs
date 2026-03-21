@@ -3,12 +3,12 @@ import Testing
 
 final class InputFilterTests: TestContext {
 
-    @Test(arguments: ["", " ", "  ", "\t", " \t "])
+    @Test(arguments: ["", " ", "  ", "\t", " \t ", "\n", "\r", "\r\n"])
     func test_shouldReturnSkip_onEmptyOrWhitespace(_ input: String) {
         #expect(filterResult(input) == .skip)
     }
 
-    @Test(arguments: ["exit", "quit", "q"])
+    @Test(arguments: ["exit", "quit", "q", "EXIT", "eXiT", "Quit", "Q"])
     func test_shouldReturnQuit_onExitInput(_ input: String) {
         #expect(filterResult(input) == .quit)
     }
