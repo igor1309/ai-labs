@@ -160,6 +160,28 @@ final class AgentLoopTests: TestContext {
         ])
     }
 
+    @Test func test_process_shouldRecordError_onExecuteFailure() async throws {
+
+        let (query1, toolCall, query2) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let error = makeSomeError(domain: makeSomeString())
+        let respond = RespondSpy(stubs: [
+            .success(.toolCall(toolCall)),
+            .success(.text(makeSomeString()))
+        ])
+        let execute = ExecuteSpy(stubs: [.failure(error)])
+        let sut = SUT(respond: respond.call(payload:), execute: execute.call(payload:))
+
+        _ = try? await sut.process(query1)
+        _ = try await sut.process(query2)
+
+        #expect(respond.payloads.last == [
+            .user(query1),
+            .assistant(.toolCall(toolCall)),
+            .error(error.localizedDescription),
+            .user(query2)
+        ])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = AgentLoop
@@ -236,7 +258,13 @@ private actor AgentLoop {
             case .text(let text):
                 return text
             case .toolCall(let call):
-                let result = try await execute(call)
+                let result: String
+                do {
+                    result = try await execute(call)
+                } catch {
+                    messages.append(.error(error.localizedDescription))
+                    throw error
+                }
                 messages.append(.tool(result))
             }
         }
