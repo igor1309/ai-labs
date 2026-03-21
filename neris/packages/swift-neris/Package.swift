@@ -4,7 +4,9 @@
 
 let package = Package(
     name: "swift-neris",
+    platforms: [.macOS(.v13)],
     products: .all,
+    dependencies: .all,
     targets: .all
 )
 
@@ -53,6 +55,7 @@ private extension Target {
     static let nerisCLI = Target.executableTarget(
         name: .nerisCLI,
         dependencies: [
+            .argumentParser,
             .nerisCore,
         ],
         path: "Sources/CLI"
@@ -74,9 +77,29 @@ private extension Target {
     )
 }
 
-// MARK: - Target.Dependency
+// MARK: - External Dependencies
+
+private extension Array where Element == Package.Dependency {
+
+    static let all: Self = [
+        .argumentParser,
+    ]
+}
+
+private extension Package.Dependency {
+
+    static let argumentParser = Package.Dependency.package(
+        url: "https://github.com/apple/swift-argument-parser.git",
+        from: "1.5.0"
+    )
+}
 
 private extension Target.Dependency {
+
+    static let argumentParser = Target.Dependency.product(
+        name: "ArgumentParser",
+        package: "swift-argument-parser"
+    )
 
     // MARK: - Core
 
