@@ -19,3 +19,4 @@
 - Production API design comes from tests. Do not decide production code shape independently — let the test define it.
 - Do not create test helpers that duplicate existing spies or abstractions. Use existing test infrastructure (e.g. `CallSpy`, `AsyncSpy`) before inventing new helpers.
 - Run tests before every commit.
+- Test command: `swift test 2>&1 | xcsift --quiet`
