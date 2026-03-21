@@ -109,17 +109,21 @@ final class AgentLoopTests: TestContext {
         }
     }
 
-    @Test func test_process_shouldCallRespondWithExecuteResult() async throws {
+    @Test func test_process_shouldPassToolCallAndResultToRespond() async throws {
 
-        let (query, executeResult) = (makeSomeString(), makeSomeString())
+        let (query, toolCall, toolResult) = (makeSomeString(), makeSomeString(), makeSomeString())
         let (sut, respond, _) = makeSUT(
-            respondStubs: [.toolCall(makeSomeString()), .text(makeSomeString())],
-            executeStubs: [executeResult]
+            respondStubs: [.toolCall(toolCall), .text(makeSomeString())],
+            executeStubs: [toolResult]
         )
 
         _ = try await sut.process(query)
 
-        #expect(respond.callCount == 2)
+        #expect(respond.payloads.last == [
+            .user(query),
+            .assistant(.toolCall(toolCall)),
+            .tool(toolResult)
+        ])
     }
 
     // MARK: - Helpers
@@ -155,9 +159,11 @@ private final class AgentLoop {
 
     enum Message: Equatable {
         case user(String)
+        case assistant(Response)
+        case tool(String)
     }
 
-    enum Response {
+    enum Response: Equatable {
         case text(String)
         case toolCall(String)
     }
@@ -174,13 +180,16 @@ private final class AgentLoop {
     }
 
     func process(_ input: String) async throws -> String {
-        var current = input
+        var messages: [Message] = [.user(input)]
         while true {
-            switch try await respond([.user(current)]) {
+            let response = try await respond(messages)
+            switch response {
             case .text(let text):
                 return text
             case .toolCall(let call):
-                current = try await execute(call)
+                messages.append(.assistant(response))
+                let result = try await execute(call)
+                messages.append(.tool(result))
             }
         }
     }
