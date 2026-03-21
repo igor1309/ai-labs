@@ -55,6 +55,7 @@ private extension Target {
     static let nerisCLI = Target.executableTarget(
         name: .nerisCLI,
         dependencies: [
+            .argumentParser,
             .nerisCore,
         ],
         path: "Sources/CLI"
@@ -64,9 +65,6 @@ private extension Target {
 
     static let nerisCore = Target.target(
         name: .nerisCore,
-        dependencies: [
-            .argumentParser,
-        ],
         path: "Sources/Core"
     )
 
