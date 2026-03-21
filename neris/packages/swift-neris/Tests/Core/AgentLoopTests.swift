@@ -8,19 +8,19 @@ final class AgentLoopTests: TestContext {
         let query = makeSomeString()
         let (sut, respond, _) = makeSUT()
 
-        _ = try await sut.process(query)
+        _ = try await collect(sut.process(query))
 
         #expect(respond.payloads.first == [.user(query)])
     }
 
-    @Test func test_process_shouldReturnRespondResult() async throws {
+    @Test func test_process_shouldYieldTextEvent() async throws {
 
         let expected = makeSomeString()
         let (sut, _, _) = makeSUT(respondStubs: [.success(.toolCall(makeSomeString())), .success(.text(expected))])
 
-        let result = try await sut.process(makeSomeString())
+        let events = try await collect(sut.process(makeSomeString()))
 
-        #expect(result == expected)
+        #expect(events.last == .text(expected))
     }
 
     @Test func test_process_shouldCallExecuteWithToolCall() async throws {
@@ -28,7 +28,7 @@ final class AgentLoopTests: TestContext {
         let toolCall = makeSomeString()
         let (sut, _, execute) = makeSUT(respondStubs: [.success(.toolCall(toolCall)), .success(.text(makeSomeString()))])
 
-        _ = try await sut.process(makeSomeString())
+        _ = try await collect(sut.process(makeSomeString()))
 
         #expect(execute.payloads == [toolCall])
     }
@@ -37,7 +37,7 @@ final class AgentLoopTests: TestContext {
 
         let (sut, _, execute) = makeSUT(respondStubs: [.success(.text(makeSomeString()))])
 
-        _ = try await sut.process(makeSomeString())
+        _ = try await collect(sut.process(makeSomeString()))
 
         #expect(execute.callCount == 0)
     }
@@ -50,7 +50,7 @@ final class AgentLoopTests: TestContext {
             executeStubs: [.success(makeSomeString()), .success(makeSomeString())]
         )
 
-        _ = try await sut.process(makeSomeString())
+        _ = try await collect(sut.process(makeSomeString()))
 
         #expect(execute.payloads == [toolCall1, toolCall2])
     }
@@ -62,50 +62,50 @@ final class AgentLoopTests: TestContext {
             executeStubs: [.success(makeSomeString()), .success(makeSomeString())]
         )
 
-        _ = try await sut.process(makeSomeString())
+        _ = try await collect(sut.process(makeSomeString()))
 
         #expect(execute.callCount == 1)
     }
 
     @Test func test_process_shouldPropagateRespondError() async throws {
 
-        let error = makeSomeError()
+        let error = makeSomeError(domain: makeSomeString())
         let (sut, _, _) = makeSUT(respondStubs: [.failure(error)])
 
         await #expect {
-            _ = try await sut.process(makeSomeString())
+            _ = try await self.collect(sut.process(makeSomeString()))
         } throws: {
-            ($0 as NSError) === (error as NSError)
+            ($0 as NSError).domain == (error as NSError).domain
         }
     }
 
     @Test func test_process_shouldPropagateExecuteError() async throws {
 
-        let error = makeSomeError()
+        let error = makeSomeError(domain: makeSomeString())
         let (sut, _, _) = makeSUT(
             respondStubs: [.success(.toolCall(makeSomeString()))],
             executeStubs: [.failure(error)]
         )
 
         await #expect {
-            _ = try await sut.process(makeSomeString())
+            _ = try await self.collect(sut.process(makeSomeString()))
         } throws: {
-            ($0 as NSError) === (error as NSError)
+            ($0 as NSError).domain == (error as NSError).domain
         }
     }
 
     @Test func test_process_shouldPropagateRespondError_afterExecute() async throws {
 
-        let error = makeSomeError()
+        let error = makeSomeError(domain: makeSomeString())
         let (sut, _, _) = makeSUT(
             respondStubs: [.success(.toolCall(makeSomeString())), .failure(error)],
             executeStubs: [.success(makeSomeString())]
         )
 
         await #expect {
-            _ = try await sut.process(makeSomeString())
+            _ = try await self.collect(sut.process(makeSomeString()))
         } throws: {
-            ($0 as NSError) === (error as NSError)
+            ($0 as NSError).domain == (error as NSError).domain
         }
     }
 
@@ -117,7 +117,7 @@ final class AgentLoopTests: TestContext {
             executeStubs: [.success(toolResult)]
         )
 
-        _ = try await sut.process(query)
+        _ = try await collect(sut.process(query))
 
         #expect(respond.payloads == [
             [.user(query)],
@@ -130,8 +130,8 @@ final class AgentLoopTests: TestContext {
         let (query1, response1, query2) = (makeSomeString(), makeSomeString(), makeSomeString())
         let (sut, respond, _) = makeSUT(respondStubs: [.success(.text(response1)), .success(.text(makeSomeString()))])
 
-        _ = try await sut.process(query1)
-        _ = try await sut.process(query2)
+        _ = try await collect(sut.process(query1))
+        _ = try await collect(sut.process(query2))
 
         #expect(respond.payloads.last == [
             .user(query1),
@@ -149,8 +149,8 @@ final class AgentLoopTests: TestContext {
             executeStubs: [.success(toolResult)]
         )
 
-        _ = try await sut.process(query1)
-        _ = try await sut.process(query2)
+        _ = try await collect(sut.process(query1))
+        _ = try await collect(sut.process(query2))
 
         #expect(respond.payloads.last == [
             .user(query1),
@@ -167,8 +167,8 @@ final class AgentLoopTests: TestContext {
         let error = makeSomeError(domain: makeSomeString())
         let (sut, respond, _) = makeSUT(respondStubs: [.failure(error), .success(.text(makeSomeString()))])
 
-        _ = try? await sut.process(query1)
-        _ = try await sut.process(query2)
+        _ = try? await collect(sut.process(query1))
+        _ = try await collect(sut.process(query2))
 
         #expect(respond.payloads.last == [
             .user(query1),
@@ -186,8 +186,8 @@ final class AgentLoopTests: TestContext {
             executeStubs: [.failure(error)]
         )
 
-        _ = try? await sut.process(query1)
-        _ = try await sut.process(query2)
+        _ = try? await collect(sut.process(query1))
+        _ = try await collect(sut.process(query2))
 
         #expect(respond.payloads.last == [
             .user(query1),
@@ -220,11 +220,26 @@ final class AgentLoopTests: TestContext {
         trackForMemoryLeaks(execute, sourceLocation: sourceLocation)
         return (sut, respond, execute)
     }
+
+    private func collect(_ stream: AsyncThrowingStream<SUT.Event, Error>) async throws -> [SUT.Event] {
+
+        var events = [SUT.Event]()
+        for try await event in stream {
+            events.append(event)
+        }
+        return events
+    }
 }
 
 // MARK: - AgentLoop
 
 private actor AgentLoop {
+
+    enum Event: Equatable {
+        case toolCall(String)
+        case toolResult(String)
+        case text(String)
+    }
 
     enum Message: Equatable {
         case user(String)
@@ -253,7 +268,21 @@ private actor AgentLoop {
         self.execute = execute
     }
 
-    func process(_ input: String) async throws -> String {
+    func process(_ input: String) -> AsyncThrowingStream<Event, Error> {
+
+        AsyncThrowingStream { continuation in
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    try await self.run(input, continuation: continuation)
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func run(_ input: String, continuation: AsyncThrowingStream<Event, Error>.Continuation) async throws {
         guard !isProcessing else { throw ConcurrentAccessError() }
         isProcessing = true
         defer { isProcessing = false }
@@ -262,9 +291,13 @@ private actor AgentLoop {
             let response = try await record({ try await self.respond(messages) }, { .assistant($0) })
             switch response {
             case .text(let text):
-                return text
+                continuation.yield(.text(text))
+                continuation.finish()
+                return
             case .toolCall(let call):
-                _ = try await record({ try await self.execute(call) }, { .tool($0) })
+                continuation.yield(.toolCall(call))
+                let result = try await record({ try await self.execute(call) }, { .tool($0) })
+                continuation.yield(.toolResult(result))
             }
         }
     }
