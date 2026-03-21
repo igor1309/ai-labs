@@ -54,6 +54,18 @@ final class AgentLoopTests: TestContext {
         #expect(execute.payloads == [toolCall1, toolCall2])
     }
 
+    @Test func test_process_shouldStopLooping_onTextResponse() async throws {
+
+        let (sut, _, execute) = makeSUT(
+            respondStubs: [.toolCall(makeSomeString()), .text(makeSomeString()), .toolCall(makeSomeString())],
+            executeStubs: [makeSomeString(), makeSomeString()]
+        )
+
+        _ = try await sut.process(makeSomeString())
+
+        #expect(execute.callCount == 1)
+    }
+
     @Test func test_process_shouldCallRespondWithExecuteResult() async throws {
 
         let (query, executeResult) = (makeSomeString(), makeSomeString())
