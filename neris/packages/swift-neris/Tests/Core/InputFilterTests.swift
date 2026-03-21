@@ -32,7 +32,7 @@ final class InputFilterTests: TestContext {
         return sut
     }
 
-    private func filterResult(_ input: String) -> InputFilter.Result {
+    private func filterResult(_ input: String) -> FilterResult {
         makeSUT().filter(input)
     }
 }

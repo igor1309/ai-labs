@@ -14,4 +14,6 @@
 - Write the test and stop. Do not add production code without a failing test asking for it.
 - Compilation errors are not RED. RED means code compiles and a test fails with an assertion.
 - Do not invent protocols, DI schemes, or abstractions ahead of a test requiring them.
+- Production types start minimal. Dependencies are added only when GREEN demands them.
+- Do not pre-wire dependencies into `makeSUT` — let the failing test drive what the SUT needs.
 - Run tests before every commit.
