@@ -15,7 +15,7 @@ final class AgentLoopTests: TestContext {
     @Test func test_process_shouldReturnRespondResult() async throws {
 
         let expected = makeSomeString()
-        let (sut, _, _) = makeSUT(respondStubs: [makeSomeString(), expected])
+        let (sut, _, _) = makeSUT(respondStubs: [.toolCall(makeSomeString()), .text(expected)])
 
         let result = try await sut.process(makeSomeString())
 
@@ -25,35 +25,44 @@ final class AgentLoopTests: TestContext {
     @Test func test_process_shouldCallExecuteWithToolCall() async throws {
 
         let toolCall = makeSomeString()
-        let (sut, _, execute) = makeSUT(respondStubs: [toolCall, makeSomeString()])
+        let (sut, _, execute) = makeSUT(respondStubs: [.toolCall(toolCall), .text(makeSomeString())])
 
         _ = try await sut.process(makeSomeString())
 
         #expect(execute.payloads == [toolCall])
     }
 
+    @Test func test_process_shouldNotCallExecute_onTextResponse() async throws {
+
+        let (sut, _, execute) = makeSUT(respondStubs: [.text(makeSomeString())])
+
+        _ = try await sut.process(makeSomeString())
+
+        #expect(execute.callCount == 0)
+    }
+
     @Test func test_process_shouldCallRespondAgain_afterExecute() async throws {
 
-        let (query, response) = (makeSomeString(), makeSomeString())
-        let (sut, respond, _) = makeSUT(respondStubs: [response, makeSomeString()])
+        let (query, toolCall) = (makeSomeString(), makeSomeString())
+        let (sut, respond, _) = makeSUT(respondStubs: [.toolCall(toolCall), .text(makeSomeString())])
 
         _ = try await sut.process(query)
 
-        #expect(respond.payloads == [query, response])
+        #expect(respond.payloads == [query, toolCall])
     }
 
     // MARK: - Helpers
 
     private typealias SUT = AgentLoop
-    private typealias RespondSpy = AsyncSpyOf<String, String>
+    private typealias RespondSpy = AsyncSpyOf<String, SUT.Response>
     private typealias ExecuteSpy = AsyncSpy<String, Void, Never>
 
     private func makeSUT(
-        respondStubs: [String]? = nil,
+        respondStubs: [SUT.Response]? = nil,
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, RespondSpy, ExecuteSpy) {
 
-        let stubs = respondStubs ?? [makeSomeString(), makeSomeString()]
+        let stubs = respondStubs ?? [.toolCall(makeSomeString()), .text(makeSomeString())]
         let respond = RespondSpy(stubs: stubs.map { .success($0) })
         let execute = ExecuteSpy()
         let sut = SUT(
@@ -71,7 +80,12 @@ final class AgentLoopTests: TestContext {
 
 private final class AgentLoop {
 
-    typealias Respond = (String) async throws -> String
+    enum Response {
+        case text(String)
+        case toolCall(String)
+    }
+
+    typealias Respond = (String) async throws -> Response
     typealias Execute = (String) async -> Void
 
     private let respond: Respond
@@ -84,7 +98,15 @@ private final class AgentLoop {
 
     func process(_ input: String) async throws -> String {
         let response = try await respond(input)
-        await execute(response)
-        return try await respond(response)
+        switch response {
+        case .text(let text):
+            return text
+        case .toolCall(let call):
+            await execute(call)
+            let next = try await respond(call)
+            return switch next {
+            case .text(let s), .toolCall(let s): s
+            }
+        }
     }
 }
