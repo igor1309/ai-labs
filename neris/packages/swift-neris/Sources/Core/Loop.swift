@@ -1,8 +1,10 @@
-public final class Loop {
+public final class Loop: AsyncSequence {
+
+    public typealias Element = String
 
     typealias Reader = () async -> String?
     typealias Filter = (String) -> FilterResult
-    typealias Processor = (String) async throws -> Void
+    typealias Processor = (String) async throws -> String
 
     private let reader: Reader
     private let filter: Filter
@@ -18,17 +20,38 @@ public final class Loop {
         self.processor = processor
     }
 
-    public func run() async throws {
+    public func makeAsyncIterator() -> Iterator {
+        Iterator(reader: reader, filter: filter, processor: processor)
+    }
+}
 
-        while let line = await reader() {
-            switch filter(line) {
-            case .skip:
-                continue
-            case .quit:
-                return
-            case .input(let value):
-                try await processor(value)
+extension Loop {
+
+    public struct Iterator: AsyncIteratorProtocol {
+
+        private let reader: Reader
+        private let filter: Filter
+        private let processor: Processor
+
+        init(reader: @escaping Reader, filter: @escaping Filter, processor: @escaping Processor) {
+            self.reader = reader
+            self.filter = filter
+            self.processor = processor
+        }
+
+        public mutating func next() async throws -> String? {
+
+            while let line = await reader() {
+                switch filter(line) {
+                case .skip:
+                    continue
+                case .quit:
+                    return nil
+                case .input(let value):
+                    return try await processor(value)
+                }
             }
+            return nil
         }
     }
 }

@@ -3,9 +3,13 @@ import Testing
 
 struct AgentTests {
 
-    @Test func process() async throws {
+    @Test func test_shouldReturnInput() async throws {
 
+        let input = makeSomeString()
         let agent = Agent()
-        try await agent.process("hello")
+
+        let result = try await agent.process(input)
+
+        #expect(result == input)
     }
 }

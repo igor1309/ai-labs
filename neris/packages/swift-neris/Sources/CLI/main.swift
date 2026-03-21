@@ -1,1 +1,0 @@
-NerisCLI.main()

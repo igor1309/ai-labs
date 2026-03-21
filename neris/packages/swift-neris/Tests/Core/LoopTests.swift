@@ -3,6 +3,21 @@ import Testing
 
 final class LoopTests: TestContext {
 
+    @Test func test_shouldYieldProcessorOutput() async throws {
+
+        let input = makeSomeString()
+        let output = makeSomeString()
+        let (sut, _, _) = makeSUT(
+            input: [input],
+            filterResults: [.input(input)],
+            processorResults: [output]
+        )
+
+        let results = try await collect(sut)
+
+        #expect(results == [output])
+    }
+
     @Test func test_shouldCallProcessor_onValidInput() async throws {
 
         let input = makeSomeString()
@@ -11,7 +26,7 @@ final class LoopTests: TestContext {
             filterResults: [.input(input)]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(processor.payloads == [input])
     }
@@ -24,7 +39,7 @@ final class LoopTests: TestContext {
             filterResults: [.skip, .skip, .input(input)]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(processor.payloads == [input])
     }
@@ -36,7 +51,7 @@ final class LoopTests: TestContext {
             filterResults: [.quit]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(processor.payloads.isEmpty)
     }
@@ -49,7 +64,7 @@ final class LoopTests: TestContext {
             filterResults: [.input(input), .quit]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(processor.payloads == [input])
     }
@@ -63,7 +78,7 @@ final class LoopTests: TestContext {
             filterResults: [.skip, .input(first), .skip, .input(second), .quit]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(processor.payloads == [first, second])
     }
@@ -76,7 +91,7 @@ final class LoopTests: TestContext {
             filterResults: [.quit]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(filter.payloads == [input])
     }
@@ -89,7 +104,7 @@ final class LoopTests: TestContext {
             filterResults: [.input(filtered), .quit]
         )
 
-        try await sut.run()
+        _ = try await collect(sut)
 
         #expect(processor.payloads == [filtered])
     }
@@ -99,22 +114,32 @@ final class LoopTests: TestContext {
     private typealias SUT = Loop
     private typealias ReaderSpy = CallSpy<Void, String?>
     private typealias FilterSpy = CallSpy<String, FilterResult>
-    private typealias ProcessorSpy = AsyncSpyOf<String, Void>
+    private typealias ProcessorSpy = AsyncSpyOf<String, String>
 
     private func makeSUT(
         input: [String],
         filterResults: [FilterResult],
+        processorResults: [String]? = nil,
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, FilterSpy, ProcessorSpy) {
 
         let reader = ReaderSpy(stubs: input + [nil])
         let filter = FilterSpy(stubs: filterResults)
-        let processor = ProcessorSpy()
+        let stubs = processorResults ?? input.map { _ in makeSomeString() }
+        let processor = ProcessorSpy(stubs: stubs.map { .success($0) })
         let sut = SUT(inputReader: { reader.call() }, filter: filter.call, processor: processor.call)
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(reader, sourceLocation: sourceLocation)
         trackForMemoryLeaks(filter, sourceLocation: sourceLocation)
         trackForMemoryLeaks(processor, sourceLocation: sourceLocation)
         return (sut, filter, processor)
+    }
+
+    private func collect(_ loop: Loop) async throws -> [String] {
+        var results = [String]()
+        for try await value in loop {
+            results.append(value)
+        }
+        return results
     }
 }
