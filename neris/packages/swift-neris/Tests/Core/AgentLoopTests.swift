@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 final class AgentLoopTests: TestContext {
@@ -64,6 +65,20 @@ final class AgentLoopTests: TestContext {
         _ = try await sut.process(makeSomeString())
 
         #expect(execute.callCount == 1)
+    }
+
+    @Test func test_process_shouldPropagateRespondError() async throws {
+
+        let error = makeSomeError()
+        let respond = RespondSpy(stubs: [.failure(error)])
+        let execute = ExecuteSpy(stubs: [])
+        let sut = SUT(respond: respond.call(payload:), execute: execute.call(payload:))
+
+        await #expect {
+            _ = try await sut.process(makeSomeString())
+        } throws: {
+            ($0 as NSError) === (error as NSError)
+        }
     }
 
     @Test func test_process_shouldCallRespondWithExecuteResult() async throws {
