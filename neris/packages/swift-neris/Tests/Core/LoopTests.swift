@@ -66,6 +66,7 @@ final class LoopTests: TestContext {
     // MARK: - Helpers
 
     private typealias SUT = Loop
+    private typealias ReaderSpy = CallSpy<Void, String?>
     private typealias FilterSpy = CallSpy<String, FilterResult>
     private typealias ProcessorSpy = AsyncSpyOf<String, Void>
 
@@ -75,17 +76,14 @@ final class LoopTests: TestContext {
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, FilterSpy, ProcessorSpy) {
 
+        let reader = ReaderSpy(stubs: input + [nil])
         let filter = FilterSpy(stubs: filterResults)
         let processor = ProcessorSpy()
-        let sut = SUT(inputReader: makeInput(input), filter: filter.call, processor: processor.call)
+        let sut = SUT(inputReader: { reader.call() }, filter: filter.call, processor: processor.call)
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
+        trackForMemoryLeaks(reader, sourceLocation: sourceLocation)
         trackForMemoryLeaks(filter, sourceLocation: sourceLocation)
         trackForMemoryLeaks(processor, sourceLocation: sourceLocation)
         return (sut, filter, processor)
-    }
-
-    private func makeInput(_ lines: [String]) -> () async -> String? {
-        var iterator = lines.makeIterator()
-        return { iterator.next() }
     }
 }
