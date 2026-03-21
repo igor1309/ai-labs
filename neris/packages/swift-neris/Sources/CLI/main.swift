@@ -1,3 +1,4 @@
 import NerisCore
 
-greet()
+let agent = Agent()
+try await agent.greet()
