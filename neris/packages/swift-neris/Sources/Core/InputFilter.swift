@@ -1,10 +1,10 @@
 import Foundation
 
-public final class InputFilter {
+final class InputFilter {
 
-    public init() {}
+    init() {}
 
-    public func filter(_ input: String) -> FilterResult {
+    func filter(_ input: String) -> FilterResult {
 
         let trimmed = input.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty { return .skip }
