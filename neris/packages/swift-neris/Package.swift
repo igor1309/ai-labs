@@ -23,7 +23,7 @@ private extension Array where Element == Product {
 private extension Product {
 
     static let nerisCLI = Product.executable(
-        name: .nerisCLI,
+        name: "neris",
         targets: [
             .nerisCLI,
         ]
