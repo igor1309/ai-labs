@@ -140,6 +140,27 @@ final class AgentLoopTests: TestContext {
         ])
     }
 
+    @Test func test_process_shouldPassToolCallHistory_onSecondCall() async throws {
+
+        let (query1, toolCall, toolResult, textResponse, query2) =
+            (makeSomeString(), makeSomeString(), makeSomeString(), makeSomeString(), makeSomeString())
+        let (sut, respond, _) = makeSUT(
+            respondStubs: [.success(.toolCall(toolCall)), .success(.text(textResponse)), .success(.text(makeSomeString()))],
+            executeStubs: [.success(toolResult)]
+        )
+
+        _ = try await sut.process(query1)
+        _ = try await sut.process(query2)
+
+        #expect(respond.payloads.last == [
+            .user(query1),
+            .assistant(.toolCall(toolCall)),
+            .tool(toolResult),
+            .assistant(.text(textResponse)),
+            .user(query2)
+        ])
+    }
+
     @Test func test_process_shouldRecordError_onRespondFailure() async throws {
 
         let (query1, query2) = (makeSomeString(), makeSomeString())
