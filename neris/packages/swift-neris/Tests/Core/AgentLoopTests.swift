@@ -221,7 +221,7 @@ final class AgentLoopTests: TestContext {
         return (sut, respond, execute)
     }
 
-    private func collect(_ stream: AsyncThrowingStream<SUT.Event, Error>) async throws -> [SUT.Event] {
+    private func collect(_ stream: SUT.EventStream) async throws -> [SUT.Event] {
 
         var events = [SUT.Event]()
         for try await event in stream {
@@ -255,6 +255,7 @@ private actor AgentLoop {
 
     struct ConcurrentAccessError: Error {}
 
+    typealias EventStream = AsyncThrowingStream<Event, Error>
     typealias Respond = @Sendable ([Message]) async throws -> Response
     typealias Execute = @Sendable (String) async throws -> String
 
@@ -268,13 +269,12 @@ private actor AgentLoop {
         self.execute = execute
     }
 
-    func process(_ input: String) -> AsyncThrowingStream<Event, Error> {
+    func process(_ input: String) -> EventStream {
 
         AsyncThrowingStream { continuation in
             Task { [weak self] in
-                guard let self else { return }
                 do {
-                    try await self.run(input, continuation: continuation)
+                    try await self?.run(input, continuation: continuation)
                 } catch {
                     continuation.finish(throwing: error)
                 }
@@ -282,7 +282,7 @@ private actor AgentLoop {
         }
     }
 
-    private func run(_ input: String, continuation: AsyncThrowingStream<Event, Error>.Continuation) async throws {
+    private func run(_ input: String, continuation: EventStream.Continuation) async throws {
         guard !isProcessing else { throw ConcurrentAccessError() }
         isProcessing = true
         defer { isProcessing = false }
