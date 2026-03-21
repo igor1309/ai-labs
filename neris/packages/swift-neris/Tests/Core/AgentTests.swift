@@ -1,4 +1,4 @@
-import NerisCore
+@testable import NerisCore
 import Testing
 
 struct AgentTests {

@@ -1,14 +1,14 @@
-public final class Loop {
+final class Loop {
 
-    public typealias Reader = () async -> String?
-    public typealias Filter = (String) -> FilterResult
-    public typealias Processor = (String) async throws -> Void
+    typealias Reader = () async -> String?
+    typealias Filter = (String) -> FilterResult
+    typealias Processor = (String) async throws -> Void
 
     private let reader: Reader
     private let filter: Filter
     private let processor: Processor
 
-    public init(
+    init(
         inputReader reader: @escaping Reader,
         filter: @escaping Filter,
         processor: @escaping Processor
@@ -18,7 +18,7 @@ public final class Loop {
         self.processor = processor
     }
 
-    public func run() async throws {
+    func run() async throws {
 
         while let line = await reader() {
             switch filter(line) {
