@@ -41,6 +41,18 @@ final class AgentLoopTests: TestContext {
         #expect(execute.callCount == 0)
     }
 
+    @Test func test_process_shouldLoopOnMultipleToolCalls() async throws {
+
+        let (toolCall1, toolCall2) = (makeSomeString(), makeSomeString())
+        let (sut, _, execute) = makeSUT(respondStubs: [
+            .toolCall(toolCall1), .toolCall(toolCall2), .text(makeSomeString()),
+        ])
+
+        _ = try await sut.process(makeSomeString())
+
+        #expect(execute.payloads == [toolCall1, toolCall2])
+    }
+
     @Test func test_process_shouldCallRespondAgain_afterExecute() async throws {
 
         let (query, toolCall) = (makeSomeString(), makeSomeString())
@@ -97,15 +109,14 @@ private final class AgentLoop {
     }
 
     func process(_ input: String) async throws -> String {
-        let response = try await respond(input)
-        switch response {
-        case .text(let text):
-            return text
-        case .toolCall(let call):
-            await execute(call)
-            let next = try await respond(call)
-            return switch next {
-            case .text(let s), .toolCall(let s): s
+        var current = input
+        while true {
+            switch try await respond(current) {
+            case .text(let text):
+                return text
+            case .toolCall(let call):
+                await execute(call)
+                current = call
             }
         }
     }
