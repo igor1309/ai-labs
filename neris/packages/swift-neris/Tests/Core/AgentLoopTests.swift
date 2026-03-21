@@ -54,19 +54,6 @@ final class AgentLoopTests: TestContext {
         #expect(execute.payloads == [toolCall1, toolCall2])
     }
 
-    @Test func test_process_shouldCallRespondAgain_afterExecute() async throws {
-
-        let (query, executeResult) = (makeSomeString(), makeSomeString())
-        let (sut, respond, _) = makeSUT(
-            respondStubs: [.toolCall(makeSomeString()), .text(makeSomeString())],
-            executeStubs: [executeResult]
-        )
-
-        _ = try await sut.process(query)
-
-        #expect(respond.payloads == [query, executeResult])
-    }
-
     @Test func test_process_shouldCallRespondWithExecuteResult() async throws {
 
         let (query, executeResult) = (makeSomeString(), makeSomeString())
