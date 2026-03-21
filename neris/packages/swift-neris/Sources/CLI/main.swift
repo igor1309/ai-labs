@@ -1,3 +1,1 @@
-import NerisCore
-
 NerisCLI.main()

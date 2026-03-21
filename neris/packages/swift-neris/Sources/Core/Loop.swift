@@ -1,4 +1,4 @@
-final class Loop {
+public final class Loop {
 
     typealias Reader = () async -> String?
     typealias Filter = (String) -> FilterResult
@@ -18,7 +18,7 @@ final class Loop {
         self.processor = processor
     }
 
-    func run() async throws {
+    public func run() async throws {
 
         while let line = await reader() {
             switch filter(line) {
@@ -30,5 +30,17 @@ final class Loop {
                 try await processor(value)
             }
         }
+    }
+}
+
+public extension Loop {
+
+    convenience init(inputReader reader: @escaping () async -> String?) {
+        let agent = Agent()
+        self.init(
+            inputReader: reader,
+            filter: FilterResult.init,
+            processor: agent.process
+        )
     }
 }
