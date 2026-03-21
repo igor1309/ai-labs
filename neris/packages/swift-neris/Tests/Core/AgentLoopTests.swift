@@ -95,6 +95,20 @@ final class AgentLoopTests: TestContext {
         }
     }
 
+    @Test func test_process_shouldPropagateRespondError_afterExecute() async throws {
+
+        let error = makeSomeError()
+        let respond = RespondSpy(stubs: [.success(.toolCall(makeSomeString())), .failure(error)])
+        let execute = ExecuteSpy(stubs: [.success(makeSomeString())])
+        let sut = SUT(respond: respond.call(payload:), execute: execute.call(payload:))
+
+        await #expect {
+            _ = try await sut.process(makeSomeString())
+        } throws: {
+            ($0 as NSError) === (error as NSError)
+        }
+    }
+
     @Test func test_process_shouldCallRespondWithExecuteResult() async throws {
 
         let (query, executeResult) = (makeSomeString(), makeSomeString())
