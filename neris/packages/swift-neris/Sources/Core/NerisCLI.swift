@@ -5,13 +5,17 @@ public struct NerisCLI: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
-        let filter = InputFilter()
-        let agent = Agent()
-        let loop = Loop(
+        try await LoopFactory().make().run()
+    }
+}
+
+private extension LoopFactory {
+
+    convenience init() {
+        self.init(
             inputReader: { readLine() },
-            filter: filter.filter,
-            processor: agent.process
+            filter: InputFilter().filter,
+            processor: Agent().process
         )
-        try await loop.run()
     }
 }
