@@ -5,26 +5,28 @@ final class LoopTests: TestContext {
 
     @Test func test_shouldCallProcessor_onValidInput() async throws {
 
+        let input = makeSomeString()
         let (sut, _, processor) = makeSUT(
-            input: ["hello"],
-            filterResults: [.input("hello")]
+            input: [input],
+            filterResults: [.input(input)]
         )
 
         try await sut.run()
 
-        #expect(processor.payloads == ["hello"])
+        #expect(processor.payloads == [input])
     }
 
     @Test func test_shouldSkipBlanks_andProcessValidInput() async throws {
 
+        let input = makeSomeString()
         let (sut, _, processor) = makeSUT(
-            input: ["", " ", "hello"],
-            filterResults: [.skip, .skip, .input("hello")]
+            input: [makeSomeString(), makeSomeString(), input],
+            filterResults: [.skip, .skip, .input(input)]
         )
 
         try await sut.run()
 
-        #expect(processor.payloads == ["hello"])
+        #expect(processor.payloads == [input])
     }
 
     @Test func test_shouldNotCallProcessor_onQuitInput() async throws {
@@ -41,26 +43,55 @@ final class LoopTests: TestContext {
 
     @Test func test_shouldStopProcessing_afterQuit() async throws {
 
+        let input = makeSomeString()
         let (sut, _, processor) = makeSUT(
-            input: ["hello", "q"],
-            filterResults: [.input("hello"), .quit]
+            input: [input, makeSomeString()],
+            filterResults: [.input(input), .quit]
         )
 
         try await sut.run()
 
-        #expect(processor.payloads == ["hello"])
+        #expect(processor.payloads == [input])
     }
 
     @Test func test_shouldProcessMultipleInputs_beforeQuit() async throws {
 
+        let first = makeSomeString()
+        let second = makeSomeString()
         let (sut, _, processor) = makeSUT(
-            input: ["", "hello", " ", "world", "exit"],
-            filterResults: [.skip, .input("hello"), .skip, .input("world"), .quit]
+            input: [makeSomeString(), first, makeSomeString(), second, makeSomeString()],
+            filterResults: [.skip, .input(first), .skip, .input(second), .quit]
         )
 
         try await sut.run()
 
-        #expect(processor.payloads == ["hello", "world"])
+        #expect(processor.payloads == [first, second])
+    }
+
+    @Test func test_shouldPassReaderOutputToFilter() async throws {
+
+        let input = makeSomeString()
+        let (sut, filter, _) = makeSUT(
+            input: [input],
+            filterResults: [.quit]
+        )
+
+        try await sut.run()
+
+        #expect(filter.payloads == [input])
+    }
+
+    @Test func test_shouldPassFilterOutputToProcessor() async throws {
+
+        let filtered = makeSomeString()
+        let (sut, _, processor) = makeSUT(
+            input: [makeSomeString()],
+            filterResults: [.input(filtered), .quit]
+        )
+
+        try await sut.run()
+
+        #expect(processor.payloads == [filtered])
     }
 
     // MARK: - Helpers

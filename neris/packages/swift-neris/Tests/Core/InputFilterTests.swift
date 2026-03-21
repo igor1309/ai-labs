@@ -14,11 +14,15 @@ final class InputFilterTests: TestContext {
     }
 
     @Test func test_shouldReturnInput_onNonExitNonEmpty() {
-        #expect(filterResult("hello") == .input("hello"))
+
+        let input = makeSomeString()
+        #expect(filterResult(input) == .input(input))
     }
 
     @Test func test_shouldTrimWhitespace_onInput() {
-        #expect(filterResult("  hello  ") == .input("hello"))
+
+        let input = makeSomeString()
+        #expect(filterResult("  \(input)  ") == .input(input))
     }
 
     // MARK: - Helpers
