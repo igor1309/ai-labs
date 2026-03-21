@@ -77,7 +77,7 @@ final class LoopTests: TestContext {
 
         let filter = FilterSpy(stubs: filterResults)
         let processor = ProcessorSpy()
-        let sut = SUT(input: makeInput(input), filter: filter.call, processor: processor.call)
+        let sut = SUT(inputReader: makeInput(input), filter: filter.call, processor: processor.call)
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(filter, sourceLocation: sourceLocation)
         trackForMemoryLeaks(processor, sourceLocation: sourceLocation)
