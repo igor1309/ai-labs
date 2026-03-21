@@ -3,9 +3,10 @@ import Testing
 
 struct GreetTests {
 
-    @Test func greet() {
+    @Test func greet() async throws {
 
         // greet() prints to stdout — verifying it compiles and links
-        NerisCore.greet()
+        let agent = Agent()
+        try await agent.greet()
     }
 }
