@@ -1,4 +1,4 @@
-final class AsyncSpy<Payload, Response, Failure: Error> {
+final class AsyncSpy<Payload, Response, Failure: Error>: @unchecked Sendable {
 
     private(set) var payloads = [Payload]()
     private var stubs: [Stub]

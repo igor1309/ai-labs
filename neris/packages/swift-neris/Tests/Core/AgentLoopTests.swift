@@ -171,7 +171,7 @@ final class AgentLoopTests: TestContext {
 
 // MARK: - AgentLoop
 
-private final class AgentLoop {
+private actor AgentLoop {
 
     enum Message: Equatable {
         case user(String)
@@ -184,8 +184,8 @@ private final class AgentLoop {
         case toolCall(String)
     }
 
-    typealias Respond = ([Message]) async throws -> Response
-    typealias Execute = (String) async throws -> String
+    typealias Respond = @Sendable ([Message]) async throws -> Response
+    typealias Execute = @Sendable (String) async throws -> String
 
     private let respond: Respond
     private let execute: Execute
