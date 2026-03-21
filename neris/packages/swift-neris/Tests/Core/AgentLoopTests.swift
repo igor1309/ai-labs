@@ -125,6 +125,23 @@ final class AgentLoopTests: TestContext {
         ])
     }
 
+    @Test func test_process_shouldPassPreviousTurnHistory_onSecondCall() async throws {
+
+        let (query1, response1, query2) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let respond = RespondSpy(stubs: [.success(.text(response1)), .success(.text(makeSomeString()))])
+        let execute = ExecuteSpy(stubs: [])
+        let sut = SUT(respond: respond.call(payload:), execute: execute.call(payload:))
+
+        _ = try await sut.process(query1)
+        _ = try await sut.process(query2)
+
+        #expect(respond.payloads.last == [
+            .user(query1),
+            .assistant(.text(response1)),
+            .user(query2)
+        ])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = AgentLoop
@@ -172,6 +189,7 @@ private final class AgentLoop {
 
     private let respond: Respond
     private let execute: Execute
+    private var messages = [Message]()
 
     init(respond: @escaping Respond, execute: @escaping Execute) {
         self.respond = respond
@@ -179,11 +197,12 @@ private final class AgentLoop {
     }
 
     func process(_ input: String) async throws -> String {
-        var messages: [Message] = [.user(input)]
+        messages.append(.user(input))
         while true {
             let response = try await respond(messages)
             switch response {
             case .text(let text):
+                messages.append(.assistant(response))
                 return text
             case .toolCall(let call):
                 messages.append(.assistant(response))
