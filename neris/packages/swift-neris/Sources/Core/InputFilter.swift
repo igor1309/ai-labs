@@ -6,9 +6,9 @@ final class InputFilter {
 
     func filter(_ input: String) -> FilterResult {
 
-        let trimmed = input.trimmingCharacters(in: .whitespaces)
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return .skip }
-        if ["exit", "quit", "q"].contains(trimmed) { return .quit }
+        if ["exit", "quit", "q"].contains(trimmed.lowercased()) { return .quit }
         return .input(trimmed)
     }
 }
