@@ -249,23 +249,22 @@ private actor AgentLoop {
             let response: Response
             do {
                 response = try await self.respond(messages)
+                messages.append(.assistant(response))
             } catch {
                 messages.append(.error(error.localizedDescription))
                 throw error
             }
-            messages.append(.assistant(response))
             switch response {
             case .text(let text):
                 return text
             case .toolCall(let call):
-                let result: String
                 do {
-                    result = try await execute(call)
+                    let result = try await execute(call)
+                    messages.append(.tool(result))
                 } catch {
                     messages.append(.error(error.localizedDescription))
                     throw error
                 }
-                messages.append(.tool(result))
             }
         }
     }
