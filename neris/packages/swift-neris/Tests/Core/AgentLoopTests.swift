@@ -9,13 +9,13 @@ final class AgentLoopTests: TestContext {
 
         _ = try await sut.process(query)
 
-        #expect(respond.payloads == [query])
+        #expect(respond.payloads.first == query)
     }
 
     @Test func test_process_shouldReturnRespondResult() async throws {
 
         let expected = makeSomeString()
-        let (sut, _, _) = makeSUT(respondStubs: [expected])
+        let (sut, _, _) = makeSUT(respondStubs: [makeSomeString(), expected])
 
         let result = try await sut.process(makeSomeString())
 
@@ -25,11 +25,21 @@ final class AgentLoopTests: TestContext {
     @Test func test_process_shouldCallExecuteWithToolCall() async throws {
 
         let toolCall = makeSomeString()
-        let (sut, _, execute) = makeSUT(respondStubs: [toolCall])
+        let (sut, _, execute) = makeSUT(respondStubs: [toolCall, makeSomeString()])
 
         _ = try await sut.process(makeSomeString())
 
         #expect(execute.payloads == [toolCall])
+    }
+
+    @Test func test_process_shouldCallRespondAgain_afterExecute() async throws {
+
+        let (query, response) = (makeSomeString(), makeSomeString())
+        let (sut, respond, _) = makeSUT(respondStubs: [response, makeSomeString()])
+
+        _ = try await sut.process(query)
+
+        #expect(respond.payloads == [query, response])
     }
 
     // MARK: - Helpers
@@ -43,7 +53,7 @@ final class AgentLoopTests: TestContext {
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, RespondSpy, ExecuteSpy) {
 
-        let stubs = respondStubs ?? [makeSomeString()]
+        let stubs = respondStubs ?? [makeSomeString(), makeSomeString()]
         let respond = RespondSpy(stubs: stubs.map { .success($0) })
         let execute = ExecuteSpy()
         let sut = SUT(
@@ -75,6 +85,6 @@ private final class AgentLoop {
     func process(_ input: String) async throws -> String {
         let response = try await respond(input)
         await execute(response)
-        return response
+        return try await respond(response)
     }
 }
