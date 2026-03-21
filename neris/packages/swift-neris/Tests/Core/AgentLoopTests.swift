@@ -119,10 +119,9 @@ final class AgentLoopTests: TestContext {
 
         _ = try await sut.process(query)
 
-        #expect(respond.payloads.last == [
-            .user(query),
-            .assistant(.toolCall(toolCall)),
-            .tool(toolResult)
+        #expect(respond.payloads == [
+            [.user(query)],
+            [.user(query), .assistant(.toolCall(toolCall)), .tool(toolResult)]
         ])
     }
 
