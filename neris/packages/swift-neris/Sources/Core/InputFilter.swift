@@ -1,4 +1,6 @@
-public struct InputFilter {
+import Foundation
+
+public final class InputFilter {
 
     public init() {}
 

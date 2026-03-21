@@ -1,7 +1,7 @@
 import NerisCore
 import Testing
 
-struct InputFilterTests {
+final class InputFilterTests: TestContext {
 
     @Test(arguments: ["", " ", "  ", "\t", " \t "])
     func test_shouldReturnSkip_onEmptyOrWhitespace(_ input: String) {
@@ -20,16 +20,19 @@ struct InputFilterTests {
     @Test func test_shouldTrimWhitespace_onInput() {
         #expect(filterResult("  hello  ") == .input("hello"))
     }
-}
 
-// MARK: - Helpers
+    // MARK: - Helpers
 
-private typealias SUT = InputFilter
+    private typealias SUT = InputFilter
 
-private func makeSUT() -> SUT {
-    SUT()
-}
+    private func makeSUT(_ sourceLocation: SourceLocation = #_sourceLocation) -> SUT {
 
-private func filterResult(_ input: String) -> InputFilter.Result {
-    makeSUT().filter(input)
+        let sut = SUT()
+        trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
+        return sut
+    }
+
+    private func filterResult(_ input: String) -> InputFilter.Result {
+        makeSUT().filter(input)
+    }
 }
