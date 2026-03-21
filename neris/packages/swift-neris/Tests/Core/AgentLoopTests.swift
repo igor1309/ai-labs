@@ -200,12 +200,11 @@ private final class AgentLoop {
         messages.append(.user(input))
         while true {
             let response = try await respond(messages)
+            messages.append(.assistant(response))
             switch response {
             case .text(let text):
-                messages.append(.assistant(response))
                 return text
             case .toolCall(let call):
-                messages.append(.assistant(response))
                 let result = try await execute(call)
                 messages.append(.tool(result))
             }
