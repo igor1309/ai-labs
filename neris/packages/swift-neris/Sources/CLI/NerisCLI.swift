@@ -1,10 +1,13 @@
 import ArgumentParser
 import NerisCore
 
+@main
 struct NerisCLI: AsyncParsableCommand {
 
     func run() async throws {
-        try await Loop().run()
+        for try await output in Loop() {
+            print(output)
+        }
     }
 }
 
