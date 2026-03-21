@@ -184,12 +184,15 @@ private actor AgentLoop {
         case toolCall(String)
     }
 
+    struct ConcurrentAccessError: Error {}
+
     typealias Respond = @Sendable ([Message]) async throws -> Response
     typealias Execute = @Sendable (String) async throws -> String
 
     private let respond: Respond
     private let execute: Execute
     private var messages = [Message]()
+    private var isProcessing = false
 
     init(respond: @escaping Respond, execute: @escaping Execute) {
         self.respond = respond
@@ -197,6 +200,9 @@ private actor AgentLoop {
     }
 
     func process(_ input: String) async throws -> String {
+        guard !isProcessing else { throw ConcurrentAccessError() }
+        isProcessing = true
+        defer { isProcessing = false }
         messages.append(.user(input))
         while true {
             let response = try await respond(messages)
