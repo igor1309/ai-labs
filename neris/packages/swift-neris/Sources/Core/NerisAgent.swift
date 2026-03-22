@@ -5,10 +5,12 @@ public final class NerisAgent: Sendable {
     public struct Config: Sendable {
         public let apiKey: String
         public let model: String
+        public let systemPrompt: String?
 
-        public init(apiKey: String, model: String) {
+        public init(apiKey: String, model: String, systemPrompt: String? = nil) {
             self.apiKey = apiKey
             self.model = model
+            self.systemPrompt = systemPrompt
         }
     }
 
@@ -30,9 +32,14 @@ public final class NerisAgent: Sendable {
             transport: URLSession.shared.data(for:),
             responseParser: { try parser.parse($0.0, $0.1) }
         )
+        let systemPrompt = config.systemPrompt
         self.agentLoop = AgentLoop(
             respond: { messages in
-                let response = try await client.send(messages.map(\.toOpenRouterMessage))
+                var openRouterMessages = messages.map(\.toOpenRouterMessage)
+                if let systemPrompt {
+                    openRouterMessages.insert(.system(systemPrompt), at: 0)
+                }
+                let response = try await client.send(openRouterMessages)
                 return response.toAgentResponse
             },
             execute: { _ in throw UnsupportedToolError() }
