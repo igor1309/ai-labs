@@ -70,6 +70,15 @@ final class OpenRouterResponseParserTests: TestContext {
         }
     }
 
+    @Test func test_parse_shouldThrow_onErrorFinishReason() {
+
+        let sut = makeSUT()
+
+        #expect(throws: SUT.ServerError.self) {
+            _ = try sut.parse(makeFinishReasonData("error"), makeSomeHTTPURLResponse())
+        }
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterResponseParser
@@ -115,6 +124,17 @@ final class OpenRouterResponseParserTests: TestContext {
         makeJSON([:])
     }
 
+    private func makeFinishReasonData(_ finishReason: String) -> Data {
+
+        makeJSON([
+            "choices": [[
+                "index": 0,
+                "finish_reason": finishReason,
+                "message": ["role": "assistant", "content": makeSomeString()],
+            ] as [String: Any]],
+        ])
+    }
+
     private func makeToolCall() -> SUT.ToolCallResponse {
 
         .init(id: makeSomeString(), name: makeSomeString(), arguments: makeSomeString())
@@ -151,6 +171,8 @@ private class OpenRouterResponseParser {
         case "tool_calls":
             guard let toolCalls = choice.message.toolCalls, !toolCalls.isEmpty else { throw InvalidResponseError() }
             return .toolCalls(toolCalls.map { .init(id: $0.id, name: $0.function.name, arguments: $0.function.arguments) })
+        case "error":
+            throw ServerError()
         default:
             guard let content = choice.message.content else { throw InvalidResponseError() }
             return .text(content)
@@ -158,6 +180,7 @@ private class OpenRouterResponseParser {
     }
 
     struct InvalidResponseError: Error {}
+    struct ServerError: Error {}
 
     struct BadStatusCodeError: Error {
         let statusCode: Int
