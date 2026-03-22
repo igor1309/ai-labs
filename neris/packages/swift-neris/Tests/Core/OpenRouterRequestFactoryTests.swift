@@ -56,6 +56,15 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(request.url == url)
     }
 
+    @Test func test_make_shouldSetHTTPMethodToPost() throws {
+
+        let (sut, _) = makeSUT()
+
+        let request = try sut.make([makeMessage()])
+
+        #expect(request.httpMethod == "POST")
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
@@ -107,7 +116,9 @@ private class OpenRouterRequestFactory {
 
         guard !messages.isEmpty else { throw EmptyMessagesError() }
         let config = try config()
-        return URLRequest(url: config.url)
+        var request = URLRequest(url: config.url)
+        request.httpMethod = "POST"
+        return request
     }
 
     struct EmptyMessagesError: Error {}
