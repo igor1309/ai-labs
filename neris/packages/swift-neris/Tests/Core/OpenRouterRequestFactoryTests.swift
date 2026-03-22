@@ -65,6 +65,15 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(request.httpMethod == "POST")
     }
 
+    @Test func test_make_shouldSetContentTypeHeader() throws {
+
+        let (sut, _) = makeSUT()
+
+        let request = try sut.make([makeMessage()])
+
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    }
+
     @Test func test_make_shouldSetAuthorizationHeader() throws {
 
         let apiKey = makeSomeString()
@@ -130,6 +139,7 @@ private class OpenRouterRequestFactory {
         let config = try config()
         var request = URLRequest(url: config.url)
         request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         return request
     }
