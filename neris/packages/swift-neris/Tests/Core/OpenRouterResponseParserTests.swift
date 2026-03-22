@@ -70,6 +70,16 @@ final class OpenRouterResponseParserTests: TestContext {
         }
     }
 
+    @Test func test_parse_shouldReturnText_onLengthFinishReason() throws {
+
+        let content = makeSomeString()
+        let sut = makeSUT()
+
+        let result = try sut.parse(makeFinishReasonData("length", content: content), makeSomeHTTPURLResponse())
+
+        #expect(result == .text(content))
+    }
+
     @Test func test_parse_shouldThrow_onErrorFinishReason() {
 
         let sut = makeSUT()
@@ -124,13 +134,13 @@ final class OpenRouterResponseParserTests: TestContext {
         makeJSON([:])
     }
 
-    private func makeFinishReasonData(_ finishReason: String) -> Data {
+    private func makeFinishReasonData(_ finishReason: String, content: String = makeSomeString()) -> Data {
 
         makeJSON([
             "choices": [[
                 "index": 0,
                 "finish_reason": finishReason,
-                "message": ["role": "assistant", "content": makeSomeString()],
+                "message": ["role": "assistant", "content": content],
             ] as [String: Any]],
         ])
     }
