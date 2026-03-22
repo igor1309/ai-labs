@@ -215,24 +215,27 @@ private class OpenRouterRequestFactory {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        let serializedMessages = messages.map { message -> [String: String] in
-            switch message {
-            case .assistant(let content):
-                return ["role": "assistant", "content": content]
-            case .system(let content):
-                return ["role": "system", "content": content]
-            case .tool(let content):
-                return ["role": "tool", "content": content]
-            case .user(let content):
-                return ["role": "user", "content": content]
-            }
-        }
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "model": config.model,
-            "messages": serializedMessages,
+            "messages": messages.serialized,
         ])
         return request
     }
 
     struct EmptyMessagesError: Error {}
+}
+
+private extension Array where Element == OpenRouterRequestFactory.Message {
+
+    var serialized: [[String: String]] {
+
+        map { message in
+            switch message {
+            case .assistant(let content): ["role": "assistant", "content": content]
+            case .system(let content): ["role": "system", "content": content]
+            case .tool(let content): ["role": "tool", "content": content]
+            case .user(let content): ["role": "user", "content": content]
+            }
+        }
+    }
 }
