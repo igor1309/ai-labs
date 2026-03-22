@@ -4,9 +4,16 @@ final class OpenRouterRequestFactory {
 
     enum Message {
         case assistant(String)
+        case assistantToolCalls([ToolCall])
         case system(String)
         case tool(toolCallId: String, content: String)
         case user(String)
+    }
+
+    struct ToolCall {
+        let id: String
+        let name: String
+        let arguments: String
     }
 
     struct Config {
@@ -44,11 +51,22 @@ final class OpenRouterRequestFactory {
 
 private extension Array where Element == OpenRouterRequestFactory.Message {
 
-    var serialized: [[String: String]] {
+    var serialized: [[String: Any]] {
 
         map { message in
             switch message {
             case .assistant(let content): ["role": "assistant", "content": content]
+            case .assistantToolCalls(let toolCalls):
+                [
+                    "role": "assistant",
+                    "tool_calls": toolCalls.map {
+                        [
+                            "id": $0.id,
+                            "type": "function",
+                            "function": ["name": $0.name, "arguments": $0.arguments],
+                        ] as [String: Any]
+                    },
+                ] as [String: Any]
             case .system(let content): ["role": "system", "content": content]
             case .tool(let toolCallId, let content): ["role": "tool", "tool_call_id": toolCallId, "content": content]
             case .user(let content): ["role": "user", "content": content]
