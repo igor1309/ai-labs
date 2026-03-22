@@ -158,6 +158,13 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(function?["arguments"] == arguments)
     }
 
+    @Test func test_make_shouldSerializeDeveloperMessageInBody() throws {
+
+        let content = makeSomeString()
+
+        try expectMessages([.developer(content)], serializedAs: [["role": "developer", "content": content]])
+    }
+
     @Test func test_make_shouldSerializeSystemMessageInBody() throws {
 
         let content = makeSomeString()
