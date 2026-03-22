@@ -12,6 +12,15 @@ final class OpenRouterResponseParserTests: TestContext {
         }
     }
 
+    @Test func test_parse_shouldThrow_onNonHTTPResponse() {
+
+        let sut = makeSUT()
+
+        #expect(throws: SUT.InvalidResponseError.self) {
+            _ = try sut.parse(makeValidJSON(), URLResponse())
+        }
+    }
+
     @Test(arguments: [199, 201, 400, 401, 500])
     func test_parse_shouldThrow_onNon200StatusCode(statusCode: Int) {
 
@@ -173,8 +182,9 @@ private class OpenRouterResponseParser {
         case toolCalls([ToolCallResponse])
     }
 
-    func parse(_ data: Data, _ response: HTTPURLResponse) throws -> Response {
-        guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
+    func parse(_ data: Data, _ response: URLResponse) throws -> Response {
+        guard let httpResponse = response as? HTTPURLResponse else { throw InvalidResponseError() }
+        guard httpResponse.statusCode == 200 else { throw BadStatusCodeError(statusCode: httpResponse.statusCode) }
         guard let choice = try? JSONDecoder().decode(Body.self, from: data).choices.first
         else { throw InvalidResponseError() }
         switch choice.finishReason {
