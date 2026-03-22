@@ -24,6 +24,14 @@ Request/response layer for the [OpenRouter Chat Completion API](https://openrout
 - **Stream**: conditionally included when enabled
 - **Auth**: Bearer token via `Authorization` header
 
+## Smoke test
+
+Hits the real OpenRouter endpoint. Requires `OPENROUTER_API_KEY` in `.env` (gitignored). Skips automatically when the key is absent.
+
+```bash
+export $(cat .env) && swift test --filter OpenRouterRespondClient 2>&1 | xcsift --quiet
+```
+
 ## Intentional omissions
 
 Not needed by the agent loop yet. Add when a consumer requires them.
