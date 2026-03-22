@@ -5,6 +5,7 @@ final class OpenRouterRequestFactory {
     enum Message {
         case assistant(String)
         case assistantToolCalls([ToolCall])
+        case developer(String)
         case system(String)
         case tool(toolCallId: String, content: String)
         case user(String)
@@ -90,6 +91,7 @@ private extension Array where Element == OpenRouterRequestFactory.Message {
                         ] as [String: Any]
                     },
                 ] as [String: Any]
+            case .developer(let content): ["role": "developer", "content": content]
             case .system(let content): ["role": "system", "content": content]
             case .tool(let toolCallId, let content): ["role": "tool", "tool_call_id": toolCallId, "content": content]
             case .user(let content): ["role": "user", "content": content]

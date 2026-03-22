@@ -22,19 +22,17 @@ Changed `serialized` return type from `[[String: String]]` to `[[String: Any]]`.
 
 ## Warnings
 
-### 4. No tools field in request body
+### 4. ✅ No tools field in request body
 
-Can't declare available tools. The agent needs this to tell the model what tools are available.
-
-**Fix**: add tools to the body when provided (could come from composition as config/param).
+Added `Tool` struct and `tools` parameter to `make`; serialized into body when non-empty.
 
 ### 5. ✅ No stream field
 
 Added `stream` to `Config` and conditionally serialized into request body.
 
-### 6. No developer role
+### 6. ✅ No developer role
 
-Real API supports `developer` role. Rarely used, not blocking.
+Added `.developer(String)` case to `Message`, serialized as `"role": "developer"`.
 
 ## Source
 
