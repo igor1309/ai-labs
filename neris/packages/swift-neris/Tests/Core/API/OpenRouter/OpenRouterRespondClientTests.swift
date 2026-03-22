@@ -2,7 +2,7 @@ import Foundation
 @testable import NerisCore
 import Testing
 
-final class OpenRouterRespondClientTests {
+final class OpenRouterRespondClientTests: TestContext {
 
     @Test(.enabled(if: ProcessInfo.processInfo.environment["OPENROUTER_API_KEY"] != nil))
     func test_send_shouldReturnTextResponse() async throws {
@@ -22,9 +22,12 @@ final class OpenRouterRespondClientTests {
 
     private typealias SUT = OpenRouterRespondClient
 
-    private func makeSUT(apiKey: String) -> SUT {
+    private func makeSUT(
+        apiKey: String,
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) -> SUT {
 
-        SUT(
+        let sut = SUT(
             config: {
                 .init(
                     apiKey: apiKey,
@@ -35,6 +38,8 @@ final class OpenRouterRespondClientTests {
             },
             transport: URLSession.shared.data(for:)
         )
+        trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
+        return sut
     }
 
 }

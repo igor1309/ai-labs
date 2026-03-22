@@ -216,7 +216,7 @@ final class AgentLoopTests: TestContext {
         ])
     }
 
-    @Test func test_process_shouldExecuteParallelToolCalls() async throws {
+    @Test func test_process_shouldExecuteAllToolCallsFromOneResponse() async throws {
 
         let (call1, call2) = (makeToolCall(), makeToolCall())
         let (result1, result2, text) = (makeSomeString(), makeSomeString(), makeSomeString())
