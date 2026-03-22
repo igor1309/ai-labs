@@ -22,14 +22,14 @@ final class OpenRouterResponseParserTests: TestContext {
         }
     }
 
-    @Test func test_parse_shouldReturnContent() throws {
+    @Test func test_parse_shouldReturnText() throws {
 
         let content = makeSomeString()
         let sut = makeSUT()
 
         let result = try sut.parse(makeResponseData(content: content))
 
-        #expect(result == content)
+        #expect(result == .text(content))
     }
 
     @Test func test_parse_shouldThrow_onMissingContent() {
@@ -69,11 +69,15 @@ final class OpenRouterResponseParserTests: TestContext {
 
 private class OpenRouterResponseParser {
 
-    func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws -> String {
+    enum Response: Equatable {
+        case text(String)
+    }
+
+    func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws -> Response {
         guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
         guard let body = try? JSONDecoder().decode(Body.self, from: data),
               let content = body.choices.first?.message.content else { throw InvalidResponseError() }
-        return content
+        return .text(content)
     }
 
     struct InvalidResponseError: Error {}
