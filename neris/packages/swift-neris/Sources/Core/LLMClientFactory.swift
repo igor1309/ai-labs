@@ -2,7 +2,7 @@ import Foundation
 
 class LLMClientFactory {
 
-    typealias Transport = @Sendable ([String]) async throws -> Void
+    typealias Transport = @Sendable ([LLMClient.Message]) async throws -> Void
 
     private let transport: Transport
 

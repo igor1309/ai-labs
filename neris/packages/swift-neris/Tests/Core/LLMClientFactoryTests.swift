@@ -4,20 +4,20 @@ import Testing
 
 final class LLMClientFactoryTests: TestContext {
 
-    @Test func test_respond_shouldPassMessagesToTransport() async throws {
+    @Test func test_respond_shouldPassUserMessageToTransport() async throws {
 
-        let message = makeSomeString()
+        let content = makeSomeString()
         let (client, spy) = makeSUT()
 
-        _ = try await client.respond([message])
+        _ = try await client.respond([.user(content)])
 
-        #expect(spy.payloads == [[message]])
+        #expect(spy.payloads == [[.user(content)]])
     }
 
     // MARK: - Helpers
 
     private typealias SUT = LLMClientFactory
-    private typealias TransportSpy = AsyncSpyOf<[String], Void>
+    private typealias TransportSpy = AsyncSpyOf<[LLMClient.Message], Void>
 
     private func makeSUT(
         _ sourceLocation: SourceLocation = #_sourceLocation
