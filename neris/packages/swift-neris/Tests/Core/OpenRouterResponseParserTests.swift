@@ -71,10 +71,8 @@ private class OpenRouterResponseParser {
 
     func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws -> String {
         guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let choices = json?["choices"] as? [[String: Any]]
-        let message = choices?.first?["message"] as? [String: Any]
-        guard let content = message?["content"] as? String else { throw InvalidResponseError() }
+        guard let body = try? JSONDecoder().decode(Body.self, from: data),
+              let content = body.choices.first?.message.content else { throw InvalidResponseError() }
         return content
     }
 
@@ -82,5 +80,17 @@ private class OpenRouterResponseParser {
 
     struct BadStatusCodeError: Error {
         let statusCode: Int
+    }
+
+    private struct Body: Decodable {
+        let choices: [Choice]
+    }
+
+    private struct Choice: Decodable {
+        let message: Message
+    }
+
+    private struct Message: Decodable {
+        let content: String
     }
 }
