@@ -13,16 +13,26 @@ final class NetworkClientTests: TestContext {
         #expect(spy.payloads == [input])
     }
 
+    @Test func test_send_shouldThrow_onRequestFactoryError() throws {
+
+        let (sut, _) = makeSUT(requestFactoryStubs: [.failure(makeSomeError())])
+
+        #expect(throws: (any Error).self) {
+            _ = try sut.send(makeInput())
+        }
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = NetworkClient<Input>
-    private typealias RequestFactorySpy = CallSpy<Input, Void>
+    private typealias RequestFactorySpy = CallSpy<Input, Result<Void, Error>>
 
     private func makeSUT(
+        requestFactoryStubs: [Result<Void, Error>] = [.success(())],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, RequestFactorySpy) {
 
-        let spy = RequestFactorySpy()
+        let spy = RequestFactorySpy(stubs: requestFactoryStubs)
         let sut = SUT(requestFactory: spy.call)
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(spy, sourceLocation: sourceLocation)
@@ -55,6 +65,6 @@ private class NetworkClient<Input> {
 
     func send(_ input: Input) throws {
 
-        try? requestFactory(input)
+        try requestFactory(input)
     }
 }
