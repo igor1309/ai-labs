@@ -26,15 +26,10 @@ final class OpenRouterResponseAdapterTests: TestContext {
             OpenRouterResponseParser.ToolCallResponse(id: makeSomeString(), name: makeSomeString(), arguments: makeSomeString())
         )
 
-        let result = makeResponse(.toolCalls([first, second]))
-
-        guard case .toolCalls(let calls) = result else {
-            Issue.record("Expected .toolCalls, got \(result)")
-            return
-        }
-        #expect(calls.map(\.id) == [first.id, second.id])
-        #expect(calls.map(\.name) == [first.name, second.name])
-        #expect(calls.map(\.arguments) == [first.arguments, second.arguments])
+        #expect(makeResponse(.toolCalls([first, second])) == .toolCalls([
+            .init(id: first.id, name: first.name, arguments: first.arguments),
+            .init(id: second.id, name: second.name, arguments: second.arguments),
+        ]))
     }
 
     // MARK: - Helpers

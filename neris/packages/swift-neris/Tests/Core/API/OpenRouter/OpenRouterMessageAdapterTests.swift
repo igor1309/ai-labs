@@ -39,7 +39,7 @@ final class OpenRouterMessageAdapterTests: TestContext {
 
         let content = makeSomeString()
 
-        #expect(makeMessage(.error(content)) == .user(content))
+        #expect(makeMessage(.error(content)) == .system(content))
     }
 
     @Test func test_toOpenRouterMessages_shouldMapMultiple() {
@@ -68,7 +68,7 @@ extension AgentLoop.Message {
         case .assistant(.text(let content)): .assistant(content)
         case .assistant(.toolCalls(let calls)): .assistantToolCalls(calls.map { .init(id: $0.id, name: $0.name, arguments: $0.arguments) })
         case .tool(let id, let content): .tool(toolCallId: id, content: content)
-        case .error(let content): .user(content)
+        case .error(let content): .system(content)
         }
     }
 }
