@@ -1,3 +1,4 @@
+@testable import NerisCore
 import Foundation
 import Testing
 
@@ -150,34 +151,5 @@ final class NetworkClientTests: TestContext {
     ) -> Output {
 
         return .init(value: value)
-    }
-}
-
-private class NetworkClient<Input, Output> {
-
-    typealias RequestFactory = (Input) throws -> URLRequest
-    typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
-    typealias ResponseParser = ((Data, URLResponse)) throws -> Output
-
-    private let requestFactory: RequestFactory
-    private let transport: Transport
-    private let responseParser: ResponseParser
-
-    init(
-        requestFactory: @escaping RequestFactory,
-        transport: @escaping Transport,
-        responseParser: @escaping ResponseParser
-    ) {
-
-        self.requestFactory = requestFactory
-        self.transport = transport
-        self.responseParser = responseParser
-    }
-
-    func send(_ input: Input) async throws -> Output {
-
-        let request = try requestFactory(input)
-        let result = try await transport(request)
-        return try responseParser(result)
     }
 }
