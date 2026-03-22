@@ -32,6 +32,15 @@ final class OpenRouterResponseParserTests: TestContext {
         #expect(result == content)
     }
 
+    @Test func test_parse_shouldThrow_onMissingContent() {
+
+        let sut = makeSUT()
+
+        #expect(throws: SUT.InvalidResponseError.self) {
+            _ = try sut.parse(makeValidJSON())
+        }
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterResponseParser
