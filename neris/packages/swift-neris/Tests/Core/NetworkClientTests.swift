@@ -60,6 +60,15 @@ final class NetworkClientTests: TestContext {
         #expect(spies.responseParser.payloads.map(\.0) == [data])
     }
 
+    @Test func test_send_shouldThrow_onResponseParserError() async throws {
+
+        let (sut, _) = makeSUT(responseParserStubs: [.failure(makeSomeError())])
+
+        await #expect(throws: (any Error).self) {
+            _ = try await sut.send(makeInput())
+        }
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = NetworkClient<Input>
@@ -67,7 +76,7 @@ final class NetworkClientTests: TestContext {
     private typealias RequestFactorySpy = CallSpy<Input, RequestFactoryResult>
     private typealias TransportResult = (Data, URLResponse)
     private typealias TransportSpy = AsyncSpyOf<URLRequest, TransportResult>
-    private typealias ResponseParserSpy = CallSpy<TransportResult, Void>
+    private typealias ResponseParserSpy = CallSpy<TransportResult, Result<Void, Error>>
 
     private struct Spies {
         let requestFactory: RequestFactorySpy
@@ -78,16 +87,17 @@ final class NetworkClientTests: TestContext {
     private func makeSUT(
         requestFactoryStubs: [RequestFactoryResult] = [.success(makeSomeRequest())],
         transportStubs: [TransportSpy.Stub] = [.success(makeTransportResult())],
+        responseParserStubs: [Result<Void, Error>] = [.success(())],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (sut: SUT, spies: Spies) {
 
         let requestFactory = RequestFactorySpy(stubs: requestFactoryStubs)
         let transport = TransportSpy(stubs: transportStubs)
-        let responseParser = ResponseParserSpy()
+        let responseParser = ResponseParserSpy(stubs: responseParserStubs)
         let sut = SUT(
             requestFactory: requestFactory.call,
             transport: transport.call(payload:),
-            responseParser: responseParser.call(payload:)
+            responseParser: responseParser.call
         )
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(requestFactory, sourceLocation: sourceLocation)
@@ -118,7 +128,7 @@ private class NetworkClient<Input> {
 
     typealias RequestFactory = (Input) throws -> URLRequest
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
-    typealias ResponseParser = ((Data, URLResponse)) -> Void
+    typealias ResponseParser = ((Data, URLResponse)) throws -> Void
 
     private let requestFactory: RequestFactory
     private let transport: Transport
@@ -139,6 +149,6 @@ private class NetworkClient<Input> {
 
         let request = try requestFactory(input)
         let result = try await transport(request)
-        responseParser(result)
+        try responseParser(result)
     }
 }
