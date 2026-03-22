@@ -46,23 +46,40 @@ final class OpenRouterRequestFactoryTests: TestContext {
         }
     }
 
+    @Test func test_make_shouldSetURL() throws {
+
+        let url = makeSomeURL()
+        let (sut, _) = makeSUT(configStubs: [.success(makeConfig(url: url))])
+
+        let request = try sut.make([makeMessage()])
+
+        #expect(request.url == url)
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
     private typealias Message = String
-    private typealias ConfigSpy = CallSpy<Void, Result<Void, Error>>
+    private typealias ConfigSpy = CallSpy<Void, Result<SUT.Config, Error>>
 
     private func makeSUT(
-        configStubs: [Result<Void, Error>]? = nil,
+        configStubs: [Result<SUT.Config, Error>]? = nil,
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (sut: SUT, config: ConfigSpy) {
 
-        let configStubs = configStubs ?? [.success(())]
+        let configStubs = configStubs ?? [.success(makeConfig())]
         let config = ConfigSpy(stubs: configStubs)
         let sut = SUT(config: { try config.call().get() })
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(config, sourceLocation: sourceLocation)
         return (sut, config)
+    }
+
+    private func makeConfig(
+        url: URL = makeSomeURL()
+    ) -> SUT.Config {
+
+        .init(url: url)
     }
 
     private func makeMessage() -> Message {
@@ -73,17 +90,24 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
 private class OpenRouterRequestFactory {
 
-    private let config: () throws -> Void
+    struct Config {
+        let url: URL
+    }
 
-    init(config: @escaping () throws -> Void) {
+    typealias ConfigProvider = () throws -> Config
+
+    private let config: ConfigProvider
+
+    init(config: @escaping ConfigProvider) {
 
         self.config = config
     }
 
-    func make(_ messages: [String]) throws {
+    func make(_ messages: [String]) throws -> URLRequest {
 
         guard !messages.isEmpty else { throw EmptyMessagesError() }
-        try config()
+        let config = try config()
+        return URLRequest(url: config.url)
     }
 
     struct EmptyMessagesError: Error {}
