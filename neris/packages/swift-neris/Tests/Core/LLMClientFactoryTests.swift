@@ -14,6 +14,16 @@ final class LLMClientFactoryTests: TestContext {
         #expect(spy.payloads == [[.user(content)]])
     }
 
+    @Test func test_respond_shouldReturnTransportResponse() async throws {
+
+        let expected = makeSomeString()
+        let (client, _) = makeSUT(transportStubs: [.success(expected)])
+
+        let result = try await client.respond([.user(makeSomeString())])
+
+        #expect(result == expected)
+    }
+
     @Test func test_respond_shouldThrow_onTransportError() async throws {
 
         let (client, _) = makeSUT(transportStubs: [.failure(makeSomeError())])
@@ -26,10 +36,10 @@ final class LLMClientFactoryTests: TestContext {
     // MARK: - Helpers
 
     private typealias SUT = LLMClientFactory
-    private typealias TransportSpy = AsyncSpyOf<[LLMClient.Message], Void>
+    private typealias TransportSpy = AsyncSpyOf<[LLMClient.Message], LLMClient.Response>
 
     private func makeSUT(
-        transportStubs: [TransportSpy.Stub] = [.success(())],
+        transportStubs: [TransportSpy.Stub] = [.success(makeSomeString())],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (LLMClient, TransportSpy) {
 

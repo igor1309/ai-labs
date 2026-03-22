@@ -9,7 +9,8 @@ struct LLMClient {
         case tool(String)
         case user(String)
     }
-    typealias Respond = @Sendable ([Message]) async throws -> Void
+    typealias Response = String
+    typealias Respond = @Sendable ([Message]) async throws -> Response
 
     let respond: Respond
 }
