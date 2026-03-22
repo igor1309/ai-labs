@@ -89,11 +89,9 @@ final class OpenRouterRequestFactoryTests: TestContext {
         let model = makeSomeString()
         let (sut, _) = makeSUT(configStubs: [.success(makeConfig(model: model))])
 
-        let request = try sut.make([makeMessage()])
-        let body = try #require(request.httpBody)
-        let json = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+        let json = try makeBodyJSON(sut: sut)
 
-        #expect(json?["model"] as? String == model)
+        #expect(json["model"] as? String == model)
     }
 
     // MARK: - Helpers
@@ -122,6 +120,16 @@ final class OpenRouterRequestFactoryTests: TestContext {
     ) -> SUT.Config {
 
         .init(apiKey: apiKey, model: model, url: url)
+    }
+
+    private func makeBodyJSON(
+        sut: SUT,
+        messages: [Message] = [makeSomeString()]
+    ) throws -> [String: Any] {
+
+        let request = try sut.make(messages)
+        let body = try #require(request.httpBody)
+        return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
     }
 
     private func makeMessage() -> Message {
