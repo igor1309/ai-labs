@@ -14,6 +14,9 @@ struct NerisCLI: AsyncParsableCommand {
 private extension Loop {
 
     convenience init() {
-        self.init(inputReader: { readLine() })
+        self.init(inputReader: {
+            print("neris> ", terminator: "")
+            return readLine()
+        })
     }
 }
