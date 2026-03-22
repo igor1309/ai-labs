@@ -33,6 +33,9 @@ python3 tools/claude-insights/claude-insights.py -o weekly.json
 
 # push to Supabase (triggers Telegram notification)
 python3 tools/claude-insights/claude-insights.py --days 7 --push
+
+# refresh cache first (runs `claude -p /insights --bare`), then push
+python3 tools/claude-insights/claude-insights.py --days 7 --push --refresh
 ```
 
 ## Output
@@ -62,7 +65,7 @@ Message includes: dashboard numbers (sessions, commits, lines, friction, satisfa
 
 ## Scheduling
 
-A macOS launchd agent runs the push every Sunday at 8:40 AM local time:
+A macOS launchd agent runs the push every Sunday at 8:40 AM local time. Use `--refresh` to ensure the cache is fresh before collecting (requires `claude` CLI in PATH):
 
 `~/Library/LaunchAgents/com.igormalyarov.claude-insights.weekly.plist`
 
