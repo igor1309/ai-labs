@@ -34,12 +34,12 @@ final class OpenRouterResponseParserTests: TestContext {
 
     @Test func test_parse_shouldReturnToolCall() throws {
 
-        let (id, name) = (makeSomeString(), makeSomeString())
+        let (id, name, arguments) = (makeSomeString(), makeSomeString(), makeSomeString())
         let sut = makeSUT()
 
-        let result = try sut.parse(makeToolCallData(id: id, name: name))
+        let result = try sut.parse(makeToolCallData(id: id, name: name, arguments: arguments))
 
-        #expect(result == .toolCall(.init(id: id, name: name)))
+        #expect(result == .toolCall(.init(id: id, name: name, arguments: arguments)))
     }
 
     @Test func test_parse_shouldThrow_onMissingContent() {
@@ -62,10 +62,10 @@ final class OpenRouterResponseParserTests: TestContext {
         """.utf8)
     }
 
-    private func makeToolCallData(id: String = makeSomeString(), name: String) -> Data {
+    private func makeToolCallData(id: String = makeSomeString(), name: String, arguments: String = makeSomeString()) -> Data {
 
         Data("""
-        {"choices":[{"message":{"role":"assistant","tool_calls":[{"id":"\(id)","type":"function","function":{"name":"\(name)","arguments":"{}"}}]}}]}
+        {"choices":[{"message":{"role":"assistant","tool_calls":[{"id":"\(id)","type":"function","function":{"name":"\(name)","arguments":"\(arguments)"}}]}}]}
         """.utf8)
     }
 
@@ -89,6 +89,7 @@ private class OpenRouterResponseParser {
     struct ToolCallResponse: Equatable {
         let id: String
         let name: String
+        let arguments: String
     }
 
     enum Response: Equatable {
@@ -101,7 +102,7 @@ private class OpenRouterResponseParser {
         guard let message = try? JSONDecoder().decode(Body.self, from: data).choices.first?.message
         else { throw InvalidResponseError() }
         if let toolCall = message.toolCalls?.first {
-            return .toolCall(.init(id: toolCall.id, name: toolCall.function.name))
+            return .toolCall(.init(id: toolCall.id, name: toolCall.function.name, arguments: toolCall.function.arguments))
         }
         guard let content = message.content else { throw InvalidResponseError() }
         return .text(content)
@@ -138,5 +139,6 @@ private class OpenRouterResponseParser {
 
     private struct Function: Decodable {
         let name: String
+        let arguments: String
     }
 }
