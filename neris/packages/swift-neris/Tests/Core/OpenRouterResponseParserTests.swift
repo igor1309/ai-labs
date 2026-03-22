@@ -27,7 +27,7 @@ final class OpenRouterResponseParserTests: TestContext {
         let content = makeSomeString()
         let sut = makeSUT()
 
-        let result = try sut.parse(makeResponseData(content: content), makeSomeHTTPURLResponse())
+        let result = try sut.parse(makeTextResponseData(content: content), makeSomeHTTPURLResponse())
 
         #expect(result == .text(content))
     }
@@ -66,9 +66,7 @@ final class OpenRouterResponseParserTests: TestContext {
         let sut = makeSUT()
 
         #expect(throws: SUT.InvalidResponseError.self) {
-            _ = try sut.parse(Data("""
-            {"choices":[]}
-            """.utf8), makeSomeHTTPURLResponse())
+            _ = try sut.parse(makeJSON(["choices": []]), makeSomeHTTPURLResponse())
         }
     }
 
@@ -76,28 +74,45 @@ final class OpenRouterResponseParserTests: TestContext {
 
     private typealias SUT = OpenRouterResponseParser
 
-    private func makeResponseData(content: String) -> Data {
+    private func makeTextResponseData(content: String) -> Data {
 
-        Data("""
-        {"choices":[{"message":{"role":"assistant","content":"\(content)"}}]}
-        """.utf8)
+        makeJSON([
+            "choices": [[
+                "index": 0,
+                "finish_reason": "stop",
+                "message": ["role": "assistant", "content": content],
+            ]],
+        ])
     }
 
     private func makeToolCallData(_ toolCalls: SUT.ToolCallResponse...) -> Data {
 
-        let serialized = toolCalls.map {
-            """
-            {"id":"\($0.id)","type":"function","function":{"name":"\($0.name)","arguments":"\($0.arguments)"}}
-            """
-        }.joined(separator: ",")
-        return Data("""
-        {"choices":[{"message":{"role":"assistant","tool_calls":[\(serialized)]}}]}
-        """.utf8)
+        makeJSON([
+            "choices": [[
+                "index": 0,
+                "finish_reason": "tool_calls",
+                "message": [
+                    "role": "assistant",
+                    "tool_calls": toolCalls.map {
+                        [
+                            "id": $0.id,
+                            "type": "function",
+                            "function": ["name": $0.name, "arguments": $0.arguments],
+                        ] as [String: Any]
+                    },
+                ] as [String: Any],
+            ] as [String: Any]],
+        ])
+    }
+
+    private func makeJSON(_ object: [String: Any]) -> Data {
+
+        try! JSONSerialization.data(withJSONObject: object)
     }
 
     private func makeValidJSON() -> Data {
 
-        Data("{}".utf8)
+        makeJSON([:])
     }
 
     private func makeToolCall() -> SUT.ToolCallResponse {
@@ -130,13 +145,16 @@ private class OpenRouterResponseParser {
 
     func parse(_ data: Data, _ response: HTTPURLResponse) throws -> Response {
         guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
-        guard let message = try? JSONDecoder().decode(Body.self, from: data).choices.first?.message
+        guard let choice = try? JSONDecoder().decode(Body.self, from: data).choices.first
         else { throw InvalidResponseError() }
-        if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+        switch choice.finishReason {
+        case "tool_calls":
+            guard let toolCalls = choice.message.toolCalls, !toolCalls.isEmpty else { throw InvalidResponseError() }
             return .toolCalls(toolCalls.map { .init(id: $0.id, name: $0.function.name, arguments: $0.function.arguments) })
+        default:
+            guard let content = choice.message.content else { throw InvalidResponseError() }
+            return .text(content)
         }
-        guard let content = message.content else { throw InvalidResponseError() }
-        return .text(content)
     }
 
     struct InvalidResponseError: Error {}
@@ -151,6 +169,12 @@ private class OpenRouterResponseParser {
 
     private struct Choice: Decodable {
         let message: Message
+        let finishReason: String
+
+        enum CodingKeys: String, CodingKey {
+            case message
+            case finishReason = "finish_reason"
+        }
     }
 
     private struct Message: Decodable {
