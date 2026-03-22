@@ -1,14 +1,14 @@
 import Foundation
 
-actor AgentLoop {
+public actor AgentLoop {
 
-    struct ToolCall: Equatable {
-        let id: String
-        let name: String
-        let arguments: String
+    public struct ToolCall: Equatable, Sendable {
+        public let id: String
+        public let name: String
+        public let arguments: String
     }
 
-    enum Event: Equatable {
+    public enum Event: Equatable, Sendable {
         case toolCall(ToolCall)
         case toolResult(String)
         case text(String)

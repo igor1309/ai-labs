@@ -1,6 +1,6 @@
 import Foundation
 
-public final class NetworkClient<Input, Output> {
+public final class NetworkClient<Input, Output>: @unchecked Sendable {
 
     public typealias RequestFactory = (Input) throws -> URLRequest
     public typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
