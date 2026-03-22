@@ -34,3 +34,17 @@ User Input → [REPL Loop] → [Agent Loop] → Event Stream → [Presentation] 
 ```
 
 The REPL loop handles the lifecycle (read, filter, quit). The Agent loop handles the intelligence (converse, use tools, respond). Neither knows about the other's internals.
+
+## Next
+
+Four independent directions, unprioritized:
+
+- **Streaming (SSE)** — switch from batch responses to server-sent events. Touches transport, parser, and AgentLoop layers. Enables incremental text rendering across all consumers (CLI, GUI).
+- **Skills and tools** — expand the tool set beyond `read_file` (write_file, run_command, grep, etc.). Define skills that compose tools into higher-level capabilities.
+- **Observability and prompt comparison** — capture interactions (input, events, latency, model, system prompt) and compare runs across configurations. Cross-cutting concern — design the observation contract before the codebase grows.
+- **CLI UI polish** — non-functional improvements to terminal output formatting and interaction.
+- **AgentLoop refactor** — replace `AsyncThrowingStream` + `Task` with proper `AsyncSequence`/`AsyncIteratorProtocol`.
+- **Configuration** — model selection, config file or CLI flags. Currently hardcoded in CLI.
+- **Conversation persistence** — messages are in-memory only. Persisting enables replay, comparison, and continuity.
+- **NerisAgent test coverage** — system prompt prepending and tool dispatch have real logic worth testing.
+- **Error messages** — improve user-facing error output beyond `localizedDescription`.
