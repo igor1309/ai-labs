@@ -6,6 +6,8 @@ import html.parser
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import urllib.request
 from collections import Counter
@@ -155,6 +157,24 @@ def load_env():
         os.environ.setdefault(key.strip(), value.strip())
 
 
+def refresh_insights() -> bool:
+    """Run 'claude -p /insights --bare' to refresh the usage-data cache."""
+    claude = shutil.which("claude")
+    if not claude:
+        print("Error: claude CLI not found in PATH", file=sys.stderr)
+        return False
+    print("Refreshing insights cache via claude CLI...", file=sys.stderr)
+    result = subprocess.run(
+        [claude, "-p", "/insights", "--bare"],
+        capture_output=True, text=True, timeout=600,
+    )
+    if result.returncode != 0:
+        print(f"claude /insights failed (exit {result.returncode}): {result.stderr[:500]}", file=sys.stderr)
+        return False
+    print("Insights cache refreshed", file=sys.stderr)
+    return True
+
+
 def push_to_supabase(summary: dict) -> None:
     """Upsert summary into Supabase claude_insights table."""
     url = os.environ.get("SUPABASE_URL")
@@ -214,9 +234,14 @@ def main():
     parser.add_argument("--until", type=str, help="End date YYYY-MM-DD (default: now)")
     parser.add_argument("--output", "-o", type=str, help="Write JSON to file instead of stdout")
     parser.add_argument("--push", action="store_true", help="Push summary to Supabase")
+    parser.add_argument("--refresh", action="store_true", help="Run claude /insights to refresh cache before collecting")
     args = parser.parse_args()
 
     load_env()
+
+    if args.refresh:
+        if not refresh_insights():
+            sys.exit(1)
 
     now = datetime.now(timezone.utc)
     before = datetime.fromisoformat(args.until + "T00:00:00+00:00") + timedelta(days=1) if args.until else now
