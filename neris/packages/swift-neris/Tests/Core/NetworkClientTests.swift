@@ -3,6 +3,14 @@ import Testing
 
 final class NetworkClientTests: TestContext {
 
+    @Test func test_init_shouldNotCallCollaborators() {
+
+        let (_, spies) = makeSUT()
+
+        #expect(spies.requestFactory.callCount == 0)
+        #expect(spies.transport.callCount == 0)
+    }
+
     @Test func test_send_shouldPassInputToRequestFactory() async throws {
 
         let input = makeInput()
@@ -89,6 +97,6 @@ private class NetworkClient<Input> {
     func send(_ input: Input) async throws {
 
         let request = try requestFactory(input)
-        try await transport(request)
+        try? await transport(request)
     }
 }
