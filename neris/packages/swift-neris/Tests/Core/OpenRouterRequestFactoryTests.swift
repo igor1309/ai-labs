@@ -94,10 +94,21 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(json["model"] as? String == model)
     }
 
+    @Test func test_make_shouldSerializeUserMessageInBody() throws {
+
+        let content = makeSomeString()
+        let (sut, _) = makeSUT()
+
+        let json = try makeBodyJSON(sut: sut, messages: [.user(content)])
+        let messages = json["messages"] as? [[String: String]]
+
+        #expect(messages == [["role": "user", "content": content]])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
-    private typealias Message = String
+    private typealias Message = SUT.Message
     private typealias ConfigSpy = CallSpy<Void, Result<SUT.Config, Error>>
 
     private func makeSUT(
@@ -124,7 +135,7 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
     private func makeBodyJSON(
         sut: SUT,
-        messages: [Message] = [makeSomeString()],
+        messages: [Message] = [.user(makeSomeString())],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> [String: Any] {
 
@@ -135,11 +146,15 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
     private func makeMessage() -> Message {
 
-        makeSomeString()
+        .user(makeSomeString())
     }
 }
 
 private class OpenRouterRequestFactory {
+
+    enum Message {
+        case user(String)
+    }
 
     struct Config {
         let apiKey: String
@@ -156,7 +171,7 @@ private class OpenRouterRequestFactory {
         self.config = config
     }
 
-    func make(_ messages: [String]) throws -> URLRequest {
+    func make(_ messages: [Message]) throws -> URLRequest {
 
         guard !messages.isEmpty else { throw EmptyMessagesError() }
         let config = try config()
@@ -164,7 +179,16 @@ private class OpenRouterRequestFactory {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["model": config.model])
+        let serializedMessages = messages.map { message -> [String: String] in
+            switch message {
+            case .user(let content):
+                return ["role": "user", "content": content]
+            }
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "model": config.model,
+            "messages": serializedMessages,
+        ])
         return request
     }
 
