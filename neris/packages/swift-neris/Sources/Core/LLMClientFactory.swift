@@ -2,9 +2,11 @@ import Foundation
 
 class LLMClientFactory {
 
-    private let transport: @Sendable ([String]) async throws -> Void
+    typealias Transport = @Sendable ([String]) async throws -> Void
 
-    init(transport: @escaping @Sendable ([String]) async throws -> Void) {
+    private let transport: Transport
+
+    init(transport: @escaping Transport) {
 
         self.transport = transport
     }
