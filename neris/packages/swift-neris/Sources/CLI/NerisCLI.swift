@@ -1,4 +1,5 @@
 import ArgumentParser
+import Darwin
 import Foundation
 import NerisCore
 
@@ -52,11 +53,16 @@ private final class Spinner: @unchecked Sendable {
     private var active = false
 
     func start() {
+        guard !active else { return }
         active = true
-        print("thinking...")
+        print("thinking...", terminator: "")
+        fflush(stdout)
     }
 
     func stop() {
+        guard active else { return }
         active = false
+        print("\r           \r", terminator: "")
+        fflush(stdout)
     }
 }
