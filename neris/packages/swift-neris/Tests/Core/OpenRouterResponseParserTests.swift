@@ -34,29 +34,22 @@ final class OpenRouterResponseParserTests: TestContext {
 
     @Test func test_parse_shouldReturnToolCall() throws {
 
-        let (id, name, arguments) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let toolCall = makeToolCall()
         let sut = makeSUT()
 
-        let result = try sut.parse(makeToolCallData(id: id, name: name, arguments: arguments))
+        let result = try sut.parse(makeToolCallData(toolCall))
 
-        #expect(result == .toolCalls([.init(id: id, name: name, arguments: arguments)]))
+        #expect(result == .toolCalls([toolCall]))
     }
 
     @Test func test_parse_shouldReturnMultipleToolCalls() throws {
 
-        let (id1, name1, args1) = (makeSomeString(), makeSomeString(), makeSomeString())
-        let (id2, name2, args2) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let (first, second) = (makeToolCall(), makeToolCall())
         let sut = makeSUT()
-        let data = Data("""
-        {"choices":[{"message":{"role":"assistant","tool_calls":[{"id":"\(id1)","type":"function","function":{"name":"\(name1)","arguments":"\(args1)"}},{"id":"\(id2)","type":"function","function":{"name":"\(name2)","arguments":"\(args2)"}}]}}]}
-        """.utf8)
 
-        let result = try sut.parse(data)
+        let result = try sut.parse(makeToolCallData(first, second))
 
-        #expect(result == .toolCalls([
-            .init(id: id1, name: name1, arguments: args1),
-            .init(id: id2, name: name2, arguments: args2),
-        ]))
+        #expect(result == .toolCalls([first, second]))
     }
 
     @Test func test_parse_shouldThrow_onMissingContent() {
@@ -79,16 +72,26 @@ final class OpenRouterResponseParserTests: TestContext {
         """.utf8)
     }
 
-    private func makeToolCallData(id: String = makeSomeString(), name: String, arguments: String = makeSomeString()) -> Data {
+    private func makeToolCallData(_ toolCalls: SUT.ToolCallResponse...) -> Data {
 
-        Data("""
-        {"choices":[{"message":{"role":"assistant","tool_calls":[{"id":"\(id)","type":"function","function":{"name":"\(name)","arguments":"\(arguments)"}}]}}]}
+        let serialized = toolCalls.map {
+            """
+            {"id":"\($0.id)","type":"function","function":{"name":"\($0.name)","arguments":"\($0.arguments)"}}
+            """
+        }.joined(separator: ",")
+        return Data("""
+        {"choices":[{"message":{"role":"assistant","tool_calls":[\(serialized)]}}]}
         """.utf8)
     }
 
     private func makeValidJSON() -> Data {
 
         Data("{}".utf8)
+    }
+
+    private func makeToolCall() -> SUT.ToolCallResponse {
+
+        .init(id: makeSomeString(), name: makeSomeString(), arguments: makeSomeString())
     }
 
     private func makeSUT(
