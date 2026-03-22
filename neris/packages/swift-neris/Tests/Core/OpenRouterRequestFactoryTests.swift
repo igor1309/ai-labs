@@ -84,6 +84,18 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer \(apiKey)")
     }
 
+    @Test func test_make_shouldSetModelInBody() throws {
+
+        let model = makeSomeString()
+        let (sut, _) = makeSUT(configStubs: [.success(makeConfig(model: model))])
+
+        let request = try sut.make([makeMessage()])
+        let body = try #require(request.httpBody)
+        let json = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+
+        #expect(json?["model"] as? String == model)
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
@@ -105,10 +117,11 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
     private func makeConfig(
         apiKey: String = makeSomeString(),
+        model: String = makeSomeString(),
         url: URL = makeSomeURL()
     ) -> SUT.Config {
 
-        .init(apiKey: apiKey, url: url)
+        .init(apiKey: apiKey, model: model, url: url)
     }
 
     private func makeMessage() -> Message {
@@ -121,6 +134,7 @@ private class OpenRouterRequestFactory {
 
     struct Config {
         let apiKey: String
+        let model: String
         let url: URL
     }
 
@@ -141,6 +155,7 @@ private class OpenRouterRequestFactory {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["model": config.model])
         return request
     }
 
