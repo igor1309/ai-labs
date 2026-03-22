@@ -1,5 +1,4 @@
 import ArgumentParser
-import Darwin
 import Foundation
 import NerisCore
 
@@ -50,25 +49,14 @@ struct NerisCLI: AsyncParsableCommand {
 
 private final class Spinner: @unchecked Sendable {
 
-    private var task: Task<Void, Never>?
-    private let frames = ["thinking.", "thinking..", "thinking..."]
+    private var active = false
 
     func start() {
-        task = Task { [frames] in
-            var index = 0
-            while !Task.isCancelled {
-                print("\r\(frames[index % frames.count])   ", terminator: "")
-                fflush(stdout)
-                index += 1
-                try? await Task.sleep(for: .milliseconds(300))
-            }
-        }
+        active = true
+        print("thinking...")
     }
 
     func stop() {
-        task?.cancel()
-        task = nil
-        print("\r\(String(repeating: " ", count: 20))\r", terminator: "")
-        fflush(stdout)
+        active = false
     }
 }
