@@ -26,9 +26,10 @@ final class AgentLoopTests: TestContext {
 
     @Test func test_process_shouldYieldToolCallAndResultEvents() async throws {
 
-        let (toolCall, toolResult, text) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let toolCall = makeToolCall()
+        let (toolResult, text) = (makeSomeString(), makeSomeString())
         let (sut, _, _) = makeSUT(
-            respondStubs: [.success(.toolCall(toolCall)), .success(.text(text))],
+            respondStubs: [.success(.toolCalls([toolCall])), .success(.text(text))],
             executeStubs: [.success(toolResult)]
         )
 
@@ -39,8 +40,8 @@ final class AgentLoopTests: TestContext {
 
     @Test func test_process_shouldCallExecuteWithToolCall() async throws {
 
-        let toolCall = makeSomeString()
-        let (sut, _, execute) = makeSUT(respondStubs: [.success(.toolCall(toolCall)), .success(.text(makeSomeString()))])
+        let toolCall = makeToolCall()
+        let (sut, _, execute) = makeSUT(respondStubs: [.success(.toolCalls([toolCall])), .success(.text(makeSomeString()))])
 
         _ = try await collect(sut.process(makeSomeString()))
 
@@ -58,9 +59,9 @@ final class AgentLoopTests: TestContext {
 
     @Test func test_process_shouldLoopOnMultipleToolCalls() async throws {
 
-        let (toolCall1, toolCall2) = (makeSomeString(), makeSomeString())
+        let (toolCall1, toolCall2) = (makeToolCall(), makeToolCall())
         let (sut, _, execute) = makeSUT(
-            respondStubs: [.success(.toolCall(toolCall1)), .success(.toolCall(toolCall2)), .success(.text(makeSomeString()))],
+            respondStubs: [.success(.toolCalls([toolCall1])), .success(.toolCalls([toolCall2])), .success(.text(makeSomeString()))],
             executeStubs: [.success(makeSomeString()), .success(makeSomeString())]
         )
 
@@ -72,7 +73,7 @@ final class AgentLoopTests: TestContext {
     @Test func test_process_shouldStopLooping_onTextResponse() async throws {
 
         let (sut, _, execute) = makeSUT(
-            respondStubs: [.success(.toolCall(makeSomeString())), .success(.text(makeSomeString())), .success(.toolCall(makeSomeString()))],
+            respondStubs: [.success(.toolCalls([makeToolCall()])), .success(.text(makeSomeString())), .success(.toolCalls([makeToolCall()]))],
             executeStubs: [.success(makeSomeString()), .success(makeSomeString())]
         )
 
@@ -97,7 +98,7 @@ final class AgentLoopTests: TestContext {
 
         let error = makeSomeError(domain: makeSomeString())
         let (sut, _, _) = makeSUT(
-            respondStubs: [.success(.toolCall(makeSomeString()))],
+            respondStubs: [.success(.toolCalls([makeToolCall()]))],
             executeStubs: [.failure(error)]
         )
 
@@ -112,7 +113,7 @@ final class AgentLoopTests: TestContext {
 
         let error = makeSomeError(domain: makeSomeString())
         let (sut, _, _) = makeSUT(
-            respondStubs: [.success(.toolCall(makeSomeString())), .failure(error)],
+            respondStubs: [.success(.toolCalls([makeToolCall()])), .failure(error)],
             executeStubs: [.success(makeSomeString())]
         )
 
@@ -125,9 +126,11 @@ final class AgentLoopTests: TestContext {
 
     @Test func test_process_shouldPassToolCallAndResultToRespond() async throws {
 
-        let (query, toolCall, toolResult) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let query = makeSomeString()
+        let toolCall = makeToolCall()
+        let toolResult = makeSomeString()
         let (sut, respond, _) = makeSUT(
-            respondStubs: [.success(.toolCall(toolCall)), .success(.text(makeSomeString()))],
+            respondStubs: [.success(.toolCalls([toolCall])), .success(.text(makeSomeString()))],
             executeStubs: [.success(toolResult)]
         )
 
@@ -135,7 +138,7 @@ final class AgentLoopTests: TestContext {
 
         #expect(respond.payloads == [
             [.user(query)],
-            [.user(query), .assistant(.toolCall(toolCall)), .tool(toolResult)]
+            [.user(query), .assistant(.toolCalls([toolCall])), .tool(id: toolCall.id, content: toolResult)]
         ])
     }
 
@@ -156,10 +159,11 @@ final class AgentLoopTests: TestContext {
 
     @Test func test_process_shouldPassToolCallHistory_onSecondCall() async throws {
 
-        let (query1, toolCall, toolResult, textResponse, query2) =
-            (makeSomeString(), makeSomeString(), makeSomeString(), makeSomeString(), makeSomeString())
+        let toolCall = makeToolCall()
+        let (query1, toolResult, textResponse, query2) =
+            (makeSomeString(), makeSomeString(), makeSomeString(), makeSomeString())
         let (sut, respond, _) = makeSUT(
-            respondStubs: [.success(.toolCall(toolCall)), .success(.text(textResponse)), .success(.text(makeSomeString()))],
+            respondStubs: [.success(.toolCalls([toolCall])), .success(.text(textResponse)), .success(.text(makeSomeString()))],
             executeStubs: [.success(toolResult)]
         )
 
@@ -168,8 +172,8 @@ final class AgentLoopTests: TestContext {
 
         #expect(respond.payloads.last == [
             .user(query1),
-            .assistant(.toolCall(toolCall)),
-            .tool(toolResult),
+            .assistant(.toolCalls([toolCall])),
+            .tool(id: toolCall.id, content: toolResult),
             .assistant(.text(textResponse)),
             .user(query2)
         ])
@@ -193,10 +197,11 @@ final class AgentLoopTests: TestContext {
 
     @Test func test_process_shouldRecordError_onExecuteFailure() async throws {
 
-        let (query1, toolCall, query2) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let toolCall = makeToolCall()
+        let (query1, query2) = (makeSomeString(), makeSomeString())
         let error = makeSomeError(domain: makeSomeString())
         let (sut, respond, _) = makeSUT(
-            respondStubs: [.success(.toolCall(toolCall)), .success(.text(makeSomeString()))],
+            respondStubs: [.success(.toolCalls([toolCall])), .success(.text(makeSomeString()))],
             executeStubs: [.failure(error)]
         )
 
@@ -205,9 +210,28 @@ final class AgentLoopTests: TestContext {
 
         #expect(respond.payloads.last == [
             .user(query1),
-            .assistant(.toolCall(toolCall)),
+            .assistant(.toolCalls([toolCall])),
             .error(error.localizedDescription),
             .user(query2)
+        ])
+    }
+
+    @Test func test_process_shouldExecuteParallelToolCalls() async throws {
+
+        let (call1, call2) = (makeToolCall(), makeToolCall())
+        let (result1, result2, text) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let (sut, _, execute) = makeSUT(
+            respondStubs: [.success(.toolCalls([call1, call2])), .success(.text(text))],
+            executeStubs: [.success(result1), .success(result2)]
+        )
+
+        let events = try await collect(sut.process(makeSomeString()))
+
+        #expect(execute.payloads == [call1, call2])
+        #expect(events == [
+            .toolCall(call1), .toolResult(result1),
+            .toolCall(call2), .toolResult(result2),
+            .text(text)
         ])
     }
 
@@ -215,7 +239,7 @@ final class AgentLoopTests: TestContext {
 
     private typealias SUT = AgentLoop
     private typealias RespondSpy = AsyncSpyOf<[SUT.Message], SUT.Response>
-    private typealias ExecuteSpy = AsyncSpyOf<String, String>
+    private typealias ExecuteSpy = AsyncSpyOf<SUT.ToolCall, String>
 
     private func makeSUT(
         respondStubs: [RespondSpy.Stub]? = nil,
@@ -223,7 +247,7 @@ final class AgentLoopTests: TestContext {
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, RespondSpy, ExecuteSpy) {
 
-        let respond = RespondSpy(stubs: respondStubs ?? [.success(.toolCall(makeSomeString())), .success(.text(makeSomeString()))])
+        let respond = RespondSpy(stubs: respondStubs ?? [.success(.toolCalls([makeToolCall()])), .success(.text(makeSomeString()))])
         let execute = ExecuteSpy(stubs: executeStubs ?? [.success(makeSomeString())])
         let sut = SUT(
             respond: respond.call(payload:),
@@ -242,5 +266,10 @@ final class AgentLoopTests: TestContext {
             events.append(event)
         }
         return events
+    }
+
+    private func makeToolCall() -> SUT.ToolCall {
+
+        .init(id: makeSomeString(), name: makeSomeString(), arguments: makeSomeString())
     }
 }
