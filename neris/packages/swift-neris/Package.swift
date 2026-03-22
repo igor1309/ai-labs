@@ -65,7 +65,8 @@ private extension Target {
 
     static let nerisCore = Target.target(
         name: .nerisCore,
-        path: "Sources/Core"
+        path: "Sources/Core",
+        exclude: ["API/OpenRouter/README.md"]
     )
 
     static let nerisCoreTests = Target.testTarget(
