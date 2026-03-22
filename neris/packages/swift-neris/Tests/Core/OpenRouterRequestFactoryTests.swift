@@ -10,6 +10,15 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(config.callCount == 0)
     }
 
+    @Test func test_make_shouldThrow_onEmptyMessages() {
+
+        let (sut, _) = makeSUT()
+
+        #expect(throws: SUT.EmptyMessagesError.self) {
+            _ = try sut.make([String]())
+        }
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
@@ -29,6 +38,17 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
 private class OpenRouterRequestFactory {
 
+    private let config: () -> Void
+
     init(config: @escaping () -> Void) {
+
+        self.config = config
     }
+
+    func make(_ messages: [String]) throws {
+
+        guard !messages.isEmpty else { throw EmptyMessagesError() }
+    }
+
+    struct EmptyMessagesError: Error {}
 }
