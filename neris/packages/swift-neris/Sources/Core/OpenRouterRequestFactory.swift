@@ -26,6 +26,7 @@ final class OpenRouterRequestFactory {
         let apiKey: String
         let model: String
         let url: URL
+        let stream: Bool
     }
 
     typealias ConfigProvider = () throws -> Config
@@ -49,6 +50,9 @@ final class OpenRouterRequestFactory {
             "model": config.model,
             "messages": messages.serialized,
         ]
+        if config.stream {
+            body["stream"] = true
+        }
         if !tools.isEmpty {
             body["tools"] = tools.map {
                 [

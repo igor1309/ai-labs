@@ -101,6 +101,15 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(Set(json.keys) == ["model", "messages"])
     }
 
+    @Test func test_make_shouldSetStreamInBody() throws {
+
+        let (sut, _) = makeSUT(configStubs: [.success(makeConfig(stream: true))])
+
+        let json = try makeBodyJSON(sut: sut)
+
+        #expect(json["stream"] as? Bool == true)
+    }
+
     @Test func test_make_shouldIncludeToolsInBody() throws {
 
         let (name, description) = (makeSomeString(), makeSomeString())
@@ -202,10 +211,11 @@ final class OpenRouterRequestFactoryTests: TestContext {
     private func makeConfig(
         apiKey: String = makeSomeString(),
         model: String = makeSomeString(),
-        url: URL = makeSomeURL()
+        url: URL = makeSomeURL(),
+        stream: Bool = false
     ) -> SUT.Config {
 
-        .init(apiKey: apiKey, model: model, url: url)
+        .init(apiKey: apiKey, model: model, url: url, stream: stream)
     }
 
     private func makeBodyJSON(

@@ -28,9 +28,9 @@ Can't declare available tools. The agent needs this to tell the model what tools
 
 **Fix**: add tools to the body when provided (could come from composition as config/param).
 
-### 5. No stream field
+### 5. ✅ No stream field
 
-Defaults to `false` on OpenRouter side. Fine for non-streaming.
+Added `stream` to `Config` and conditionally serialized into request body.
 
 ### 6. No developer role
 
