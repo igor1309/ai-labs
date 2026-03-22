@@ -17,6 +17,7 @@
 - Production types start minimal. Dependencies may be added as params to satisfy the compiler, but must not be retained (stored) or wired until the failing assertion demands it.
 - Do not pre-wire dependencies into `makeSUT` — let the failing test drive what the SUT needs.
 - Production API design comes from tests. Do not decide production code shape independently — let the test define it.
+- Spy types and production type shapes (enum vs typealias, return types) are driven by test assertions, not by specs or anticipated final design.
 - Do not create test helpers that duplicate existing spies or abstractions. Use existing test infrastructure (e.g. `CallSpy`, `AsyncSpy`) before inventing new helpers.
 - Run tests before every commit.
 - Test command: `swift test 2>&1 | xcsift --quiet`
