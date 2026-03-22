@@ -14,7 +14,7 @@ struct NerisCLI: AsyncParsableCommand {
     }
 }
 
-private extension Loop {
+private extension Loop where Element == String {
 
     convenience init() {
         self.init(inputReader: {

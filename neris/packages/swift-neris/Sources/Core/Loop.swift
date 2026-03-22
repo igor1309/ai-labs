@@ -1,10 +1,8 @@
-public final class Loop: AsyncSequence {
-
-    public typealias Element = String
+public final class Loop<Element: Sendable>: AsyncSequence {
 
     typealias Reader = () async -> String?
     typealias Filter = (String) -> FilterResult
-    typealias Processor = (String) async throws -> String
+    typealias Processor = (String) async throws -> AsyncThrowingStream<Element, Error>
 
     private let reader: Reader
     private let filter: Filter
@@ -32,6 +30,7 @@ extension Loop {
         private let reader: Reader
         private let filter: Filter
         private let processor: Processor
+        private var innerIterator: AsyncThrowingStream<Element, Error>.AsyncIterator?
 
         init(reader: @escaping Reader, filter: @escaping Filter, processor: @escaping Processor) {
             self.reader = reader
@@ -39,31 +38,44 @@ extension Loop {
             self.processor = processor
         }
 
-        public mutating func next() async throws -> String? {
+        public mutating func next() async throws -> Element? {
 
-            while let line = await reader() {
+            while true {
+                if var inner = innerIterator {
+                    if let element = try await inner.next() {
+                        innerIterator = inner
+                        return element
+                    }
+                    innerIterator = nil
+                }
+
+                guard let line = await reader() else { return nil }
+
                 switch filter(line) {
                 case .skip:
                     continue
                 case .quit:
                     return nil
                 case .input(let value):
-                    return try await processor(value)
+                    let stream = try await processor(value)
+                    innerIterator = stream.makeAsyncIterator()
                 }
             }
-            return nil
         }
     }
 }
 
-public extension Loop {
+public extension Loop where Element == String {
 
     convenience init(inputReader reader: @escaping () async -> String?) {
         let agent = Agent()
         self.init(
             inputReader: reader,
             filter: FilterResult.init,
-            processor: agent.process
+            processor: { input in
+                let result = try await agent.process(input)
+                return AsyncThrowingStream { $0.yield(result); $0.finish() }
+            }
         )
     }
 }
