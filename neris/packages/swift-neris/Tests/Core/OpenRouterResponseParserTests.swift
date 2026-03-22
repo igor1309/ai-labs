@@ -7,8 +7,8 @@ final class OpenRouterResponseParserTests: TestContext {
 
         let sut = makeSUT()
 
-        #expect(throws: (any Error).self) {
-            try sut.parse(makeSomeData())
+        #expect(throws: SUT.InvalidResponseError.self) {
+            _ = try sut.parse(makeSomeData(), makeSomeHTTPURLResponse())
         }
     }
 
@@ -17,8 +17,8 @@ final class OpenRouterResponseParserTests: TestContext {
 
         let sut = makeSUT()
 
-        #expect(throws: (any Error).self) {
-            try sut.parse(makeValidJSON(), makeSomeHTTPURLResponse(statusCode: statusCode))
+        #expect(throws: SUT.BadStatusCodeError.self) {
+            _ = try sut.parse(makeValidJSON(), makeSomeHTTPURLResponse(statusCode: statusCode))
         }
     }
 
@@ -27,7 +27,7 @@ final class OpenRouterResponseParserTests: TestContext {
         let content = makeSomeString()
         let sut = makeSUT()
 
-        let result = try sut.parse(makeResponseData(content: content))
+        let result = try sut.parse(makeResponseData(content: content), makeSomeHTTPURLResponse())
 
         #expect(result == .text(content))
     }
@@ -37,7 +37,7 @@ final class OpenRouterResponseParserTests: TestContext {
         let toolCall = makeToolCall()
         let sut = makeSUT()
 
-        let result = try sut.parse(makeToolCallData(toolCall))
+        let result = try sut.parse(makeToolCallData(toolCall), makeSomeHTTPURLResponse())
 
         #expect(result == .toolCalls([toolCall]))
     }
@@ -47,7 +47,7 @@ final class OpenRouterResponseParserTests: TestContext {
         let (first, second) = (makeToolCall(), makeToolCall())
         let sut = makeSUT()
 
-        let result = try sut.parse(makeToolCallData(first, second))
+        let result = try sut.parse(makeToolCallData(first, second), makeSomeHTTPURLResponse())
 
         #expect(result == .toolCalls([first, second]))
     }
@@ -57,7 +57,18 @@ final class OpenRouterResponseParserTests: TestContext {
         let sut = makeSUT()
 
         #expect(throws: SUT.InvalidResponseError.self) {
-            _ = try sut.parse(makeValidJSON())
+            _ = try sut.parse(makeValidJSON(), makeSomeHTTPURLResponse())
+        }
+    }
+
+    @Test func test_parse_shouldThrow_onEmptyChoices() {
+
+        let sut = makeSUT()
+
+        #expect(throws: SUT.InvalidResponseError.self) {
+            _ = try sut.parse(Data("""
+            {"choices":[]}
+            """.utf8), makeSomeHTTPURLResponse())
         }
     }
 
@@ -117,7 +128,7 @@ private class OpenRouterResponseParser {
         case toolCalls([ToolCallResponse])
     }
 
-    func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws -> Response {
+    func parse(_ data: Data, _ response: HTTPURLResponse) throws -> Response {
         guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
         guard let message = try? JSONDecoder().decode(Body.self, from: data).choices.first?.message
         else { throw InvalidResponseError() }
