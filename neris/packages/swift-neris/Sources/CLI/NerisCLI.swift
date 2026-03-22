@@ -19,22 +19,29 @@ struct NerisCLI: AsyncParsableCommand {
             model: "nvidia/nemotron-3-super-120b-a12b:free"
         ))
         let spinner = Spinner()
+        let reader = { print("neris> ", terminator: ""); return readLine() }
+        let processor = { (input: String) in
+            spinner.start()
+            return await agent.process(input)
+        }
         print("neris v\(Self.configuration.version)")
-        for try await event in Loop(
-            inputReader: { print("neris> ", terminator: ""); return readLine() },
-            processor: { input in
-                spinner.start()
-                return await agent.process(input)
-            }
-        ) {
-            spinner.stop()
-            switch event {
-            case .text(let text):
-                print(text)
-            case .toolCall(let call):
-                print("tool: \(call.name)")
-            case .toolResult(let result):
-                print("result: \(result)")
+        while true {
+            do {
+                for try await event in Loop(inputReader: reader, processor: processor) {
+                    spinner.stop()
+                    switch event {
+                    case .text(let text):
+                        print(text)
+                    case .toolCall(let call):
+                        print("tool: \(call.name)")
+                    case .toolResult(let result):
+                        print("result: \(result)")
+                    }
+                }
+                break
+            } catch {
+                spinner.stop()
+                print("error: \(error.localizedDescription)")
             }
         }
     }
