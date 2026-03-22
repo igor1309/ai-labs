@@ -2,8 +2,14 @@ import Foundation
 
 actor AgentLoop {
 
+    struct ToolCall: Equatable {
+        let id: String
+        let name: String
+        let arguments: String
+    }
+
     enum Event: Equatable {
-        case toolCall(String)
+        case toolCall(ToolCall)
         case toolResult(String)
         case text(String)
     }
@@ -11,20 +17,20 @@ actor AgentLoop {
     enum Message: Equatable {
         case user(String)
         case assistant(Response)
-        case tool(String)
+        case tool(id: String, content: String)
         case error(String)
     }
 
     enum Response: Equatable {
         case text(String)
-        case toolCall(String)
+        case toolCalls([ToolCall])
     }
 
     struct ConcurrentAccessError: Error {}
 
     typealias EventStream = AsyncThrowingStream<Event, Error>
     typealias Respond = @Sendable ([Message]) async throws -> Response
-    typealias Execute = @Sendable (String) async throws -> String
+    typealias Execute = @Sendable (ToolCall) async throws -> String
 
     private let respond: Respond
     private let execute: Execute
@@ -61,10 +67,15 @@ actor AgentLoop {
                 continuation.yield(.text(text))
                 continuation.finish()
                 return
-            case .toolCall(let call):
-                continuation.yield(.toolCall(call))
-                let result = try await record({ try await self.execute(call) }, { .tool($0) })
-                continuation.yield(.toolResult(result))
+            case .toolCalls(let calls):
+                for call in calls {
+                    continuation.yield(.toolCall(call))
+                    let result = try await record(
+                        { try await self.execute(call) },
+                        { .tool(id: call.id, content: $0) }
+                    )
+                    continuation.yield(.toolResult(result))
+                }
             }
         }
     }
