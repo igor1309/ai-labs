@@ -30,6 +30,15 @@ final class NetworkClientTests: TestContext {
         }
     }
 
+    @Test func test_send_shouldThrow_onTransportError() async throws {
+
+        let (sut, _) = makeSUT(transportStubs: [.failure(makeSomeError())])
+
+        await #expect(throws: (any Error).self) {
+            _ = try await sut.send(makeInput())
+        }
+    }
+
     @Test func test_send_shouldPassRequestToTransport() async throws {
 
         let request = makeSomeRequest()
@@ -54,11 +63,12 @@ final class NetworkClientTests: TestContext {
 
     private func makeSUT(
         requestFactoryStubs: [RequestFactoryResult] = [.success(makeSomeRequest())],
+        transportStubs: [TransportSpy.Stub] = [.success(())],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (sut: SUT, spies: Spies) {
 
         let requestFactory = RequestFactorySpy(stubs: requestFactoryStubs)
-        let transport = TransportSpy()
+        let transport = TransportSpy(stubs: transportStubs)
         let sut = SUT(requestFactory: requestFactory.call, transport: transport.call(payload:))
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(requestFactory, sourceLocation: sourceLocation)
@@ -97,6 +107,6 @@ private class NetworkClient<Input> {
     func send(_ input: Input) async throws {
 
         let request = try requestFactory(input)
-        try? await transport(request)
+        try await transport(request)
     }
 }
