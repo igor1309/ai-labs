@@ -124,12 +124,13 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
     private func makeBodyJSON(
         sut: SUT,
-        messages: [Message] = [makeSomeString()]
+        messages: [Message] = [makeSomeString()],
+        _ sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> [String: Any] {
 
         let request = try sut.make(messages)
-        let body = try #require(request.httpBody)
-        return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let body = try #require(request.httpBody, sourceLocation: sourceLocation)
+        return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any], sourceLocation: sourceLocation)
     }
 
     private func makeMessage() -> Message {
