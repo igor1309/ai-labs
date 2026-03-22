@@ -39,7 +39,24 @@ final class OpenRouterResponseParserTests: TestContext {
 
         let result = try sut.parse(makeToolCallData(id: id, name: name, arguments: arguments))
 
-        #expect(result == .toolCall(.init(id: id, name: name, arguments: arguments)))
+        #expect(result == .toolCalls([.init(id: id, name: name, arguments: arguments)]))
+    }
+
+    @Test func test_parse_shouldReturnMultipleToolCalls() throws {
+
+        let (id1, name1, args1) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let (id2, name2, args2) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let sut = makeSUT()
+        let data = Data("""
+        {"choices":[{"message":{"role":"assistant","tool_calls":[{"id":"\(id1)","type":"function","function":{"name":"\(name1)","arguments":"\(args1)"}},{"id":"\(id2)","type":"function","function":{"name":"\(name2)","arguments":"\(args2)"}}]}}]}
+        """.utf8)
+
+        let result = try sut.parse(data)
+
+        #expect(result == .toolCalls([
+            .init(id: id1, name: name1, arguments: args1),
+            .init(id: id2, name: name2, arguments: args2),
+        ]))
     }
 
     @Test func test_parse_shouldThrow_onMissingContent() {
@@ -94,15 +111,15 @@ private class OpenRouterResponseParser {
 
     enum Response: Equatable {
         case text(String)
-        case toolCall(ToolCallResponse)
+        case toolCalls([ToolCallResponse])
     }
 
     func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws -> Response {
         guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
         guard let message = try? JSONDecoder().decode(Body.self, from: data).choices.first?.message
         else { throw InvalidResponseError() }
-        if let toolCall = message.toolCalls?.first {
-            return .toolCall(.init(id: toolCall.id, name: toolCall.function.name, arguments: toolCall.function.arguments))
+        if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+            return .toolCalls(toolCalls.map { .init(id: $0.id, name: $0.function.name, arguments: $0.function.arguments) })
         }
         guard let content = message.content else { throw InvalidResponseError() }
         return .text(content)
