@@ -20,5 +20,8 @@
 - Spy types and production type shapes (enum vs typealias, return types) are driven by test assertions, not by specs or anticipated final design.
 - Closure dependencies use named typealiases (see `Loop` for the pattern: `typealias Transport = ...`, then `private let transport: Transport`, then `init(transport: @escaping Transport)`).
 - Do not create test helpers that duplicate existing spies or abstractions. Use existing test infrastructure (e.g. `CallSpy`, `AsyncSpy`) before inventing new helpers.
+- Every type, generic parameter, and return type must trace to a specific `#expect(...)`. If no assertion breaks without it, remove it.
+- Start new behavior with production failure. When a test introduces a new dependency or return path, make production code explicitly fail (`try?`, discard result) so RED has a real failing assertion. Do not wire the happy path during RED.
+- Check `_Helpers/` before inlining factory calls. If a reusable `makeSome*` helper exists or should exist, use or create it.
 - Run tests before every commit.
 - Test command: `swift test 2>&1 | xcsift --quiet`
