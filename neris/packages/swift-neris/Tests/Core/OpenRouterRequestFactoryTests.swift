@@ -39,10 +39,13 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
     @Test func test_make_shouldThrow_onConfigError() {
 
-        let (sut, _) = makeSUT(configStubs: [.failure(makeSomeError())])
+        let error = makeSomeError()
+        let (sut, _) = makeSUT(configStubs: [.failure(error)])
 
-        #expect(throws: (any Error).self) {
+        #expect {
             _ = try sut.make([makeMessage()])
+        } throws: {
+            ($0 as NSError) === (error as NSError)
         }
     }
 
@@ -58,18 +61,14 @@ final class OpenRouterRequestFactoryTests: TestContext {
 
     @Test func test_make_shouldSetHTTPMethodToPost() throws {
 
-        let (sut, _) = makeSUT()
-
-        let request = try sut.make([makeMessage()])
+        let request = try makeSUT().sut.make([makeMessage()])
 
         #expect(request.httpMethod == "POST")
     }
 
     @Test func test_make_shouldSetContentTypeHeader() throws {
 
-        let (sut, _) = makeSUT()
-
-        let request = try sut.make([makeMessage()])
+        let request = try makeSUT().sut.make([makeMessage()])
 
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
     }
@@ -94,48 +93,52 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(json["model"] as? String == model)
     }
 
+    @Test func test_make_shouldOnlyContainModelAndMessagesInBody() throws {
+
+        let json = try makeBodyJSON(sut: makeSUT().sut)
+
+        #expect(Set(json.keys) == ["model", "messages"])
+    }
+
     @Test func test_make_shouldSerializeUserMessageInBody() throws {
 
         let content = makeSomeString()
-        let (sut, _) = makeSUT()
 
-        let json = try makeBodyJSON(sut: sut, messages: [.user(content)])
-        let messages = json["messages"] as? [[String: String]]
-
-        #expect(messages == [["role": "user", "content": content]])
+        try expectMessages([.user(content)], serializedAs: [["role": "user", "content": content]])
     }
 
     @Test func test_make_shouldSerializeAssistantMessageInBody() throws {
 
         let content = makeSomeString()
-        let (sut, _) = makeSUT()
 
-        let json = try makeBodyJSON(sut: sut, messages: [.assistant(content)])
-        let messages = json["messages"] as? [[String: String]]
-
-        #expect(messages == [["role": "assistant", "content": content]])
+        try expectMessages([.assistant(content)], serializedAs: [["role": "assistant", "content": content]])
     }
 
     @Test func test_make_shouldSerializeSystemMessageInBody() throws {
 
         let content = makeSomeString()
-        let (sut, _) = makeSUT()
 
-        let json = try makeBodyJSON(sut: sut, messages: [.system(content)])
-        let messages = json["messages"] as? [[String: String]]
+        try expectMessages([.system(content)], serializedAs: [["role": "system", "content": content]])
+    }
 
-        #expect(messages == [["role": "system", "content": content]])
+    @Test func test_make_shouldSerializeTwoMessagesInOrder() throws {
+
+        let (first, second) = (makeSomeString(), makeSomeString())
+
+        try expectMessages(
+            [.user(first), .assistant(second)],
+            serializedAs: [
+                ["role": "user", "content": first],
+                ["role": "assistant", "content": second],
+            ]
+        )
     }
 
     @Test func test_make_shouldSerializeToolMessageInBody() throws {
 
         let content = makeSomeString()
-        let (sut, _) = makeSUT()
 
-        let json = try makeBodyJSON(sut: sut, messages: [.tool(content)])
-        let messages = json["messages"] as? [[String: String]]
-
-        #expect(messages == [["role": "tool", "content": content]])
+        try expectMessages([.tool(content)], serializedAs: [["role": "tool", "content": content]])
     }
 
     // MARK: - Helpers
@@ -175,6 +178,18 @@ final class OpenRouterRequestFactoryTests: TestContext {
         let request = try sut.make(messages)
         let body = try #require(request.httpBody, sourceLocation: sourceLocation)
         return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any], sourceLocation: sourceLocation)
+    }
+
+    private func expectMessages(
+        _ messages: [Message],
+        serializedAs expected: [[String: String]],
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+
+        let (sut, _) = makeSUT()
+        let json = try makeBodyJSON(sut: sut, messages: messages, sourceLocation)
+        let actual = json["messages"] as? [[String: String]]
+        #expect(actual == expected, sourceLocation: sourceLocation)
     }
 
     private func makeMessage() -> Message {
