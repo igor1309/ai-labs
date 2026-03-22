@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-03-22
+- Wire full composition: NerisAgent composer, read_file tool, system prompt, CLI error recovery, thinking spinner. Delete Agent stub.
 - Make Loop generic (`Loop<Element>`) with streaming processor. Revert accidental public exposure of Core types. CLI UX: version message, input prompt.
 - Evolve AgentLoop to structured tool calls (ToolCall with id/name/arguments, multi-call per response). Add bidirectional adapters between AgentLoop and OpenRouter types. Smoke test against real OpenRouter endpoint with free model.
 - Align OpenRouter components with real API: add developer role, stream flag, tools field, tool_call_id, assistantToolCalls. Organize under Sources/Core/API/OpenRouter with README documenting covered surface and intentional omissions.
