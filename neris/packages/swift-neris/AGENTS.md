@@ -1,3 +1,7 @@
+## Versioning
+
+The CLI version is defined in `Sources/CLI/NerisCLI.swift` via `CommandConfiguration(version:)`. Update it on every release. This is the single source of truth for `neris --version` and the startup message.
+
 ## Testing
 
 ### Test Structure
