@@ -2,7 +2,7 @@ import Foundation
 
 final class OpenRouterRequestFactory {
 
-    enum Message {
+    enum Message: Equatable {
         case assistant(String)
         case assistantToolCalls([ToolCall])
         case developer(String)
@@ -11,7 +11,7 @@ final class OpenRouterRequestFactory {
         case user(String)
     }
 
-    struct ToolCall {
+    struct ToolCall: Equatable {
         let id: String
         let name: String
         let arguments: String
