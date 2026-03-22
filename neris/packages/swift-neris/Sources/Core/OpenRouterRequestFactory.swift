@@ -16,6 +16,12 @@ final class OpenRouterRequestFactory {
         let arguments: String
     }
 
+    struct Tool {
+        let name: String
+        let description: String
+        let parameters: [String: Any]
+    }
+
     struct Config {
         let apiKey: String
         let model: String
@@ -31,7 +37,7 @@ final class OpenRouterRequestFactory {
         self.config = config
     }
 
-    func make(_ messages: [Message]) throws -> URLRequest {
+    func make(_ messages: [Message], tools: [Tool] = []) throws -> URLRequest {
 
         guard !messages.isEmpty else { throw EmptyMessagesError() }
         let config = try config()
@@ -39,10 +45,23 @@ final class OpenRouterRequestFactory {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
+        var body: [String: Any] = [
             "model": config.model,
             "messages": messages.serialized,
-        ])
+        ]
+        if !tools.isEmpty {
+            body["tools"] = tools.map {
+                [
+                    "type": "function",
+                    "function": [
+                        "name": $0.name,
+                        "description": $0.description,
+                        "parameters": $0.parameters,
+                    ] as [String: Any],
+                ] as [String: Any]
+            }
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }
 

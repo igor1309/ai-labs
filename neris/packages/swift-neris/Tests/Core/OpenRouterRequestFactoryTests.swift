@@ -101,6 +101,21 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(Set(json.keys) == ["model", "messages"])
     }
 
+    @Test func test_make_shouldIncludeToolsInBody() throws {
+
+        let (name, description) = (makeSomeString(), makeSomeString())
+        let tool = SUT.Tool(name: name, description: description, parameters: [:])
+        let (sut, _) = makeSUT()
+
+        let json = try makeBodyJSON(sut: sut, tools: [tool])
+        let tools = json["tools"] as? [[String: Any]]
+        let function = tools?.first?["function"] as? [String: Any]
+
+        #expect(tools?.first?["type"] as? String == "function")
+        #expect(function?["name"] as? String == name)
+        #expect(function?["description"] as? String == description)
+    }
+
     @Test func test_make_shouldSerializeUserMessageInBody() throws {
 
         let content = makeSomeString()
@@ -196,10 +211,11 @@ final class OpenRouterRequestFactoryTests: TestContext {
     private func makeBodyJSON(
         sut: SUT,
         messages: [Message] = [.user(makeSomeString())],
+        tools: [SUT.Tool] = [],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> [String: Any] {
 
-        let request = try sut.make(messages)
+        let request = try sut.make(messages, tools: tools)
         let body = try #require(request.httpBody, sourceLocation: sourceLocation)
         return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any], sourceLocation: sourceLocation)
     }
