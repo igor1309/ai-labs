@@ -4,7 +4,10 @@ import NerisCore
 @main
 struct NerisCLI: AsyncParsableCommand {
 
+    static let version = "0.1.0"
+
     func run() async throws {
+        print("neris v\(Self.version)")
         for try await output in Loop() {
             print(output)
         }
