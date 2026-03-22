@@ -39,15 +39,3 @@ final class OpenRouterResponseAdapterTests: TestContext {
         response.toAgentResponse
     }
 }
-
-// MARK: - Adapter
-
-extension OpenRouterResponseParser.Response {
-
-    var toAgentResponse: AgentLoop.Response {
-        switch self {
-        case .text(let content): .text(content)
-        case .toolCalls(let toolCalls): .toolCalls(toolCalls.map { .init(id: $0.id, name: $0.name, arguments: $0.arguments) })
-        }
-    }
-}

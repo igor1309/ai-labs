@@ -65,17 +65,12 @@ extension Loop {
     }
 }
 
-public extension Loop where Element == String {
+public extension Loop {
 
-    convenience init(inputReader reader: @escaping () async -> String?) {
-        let agent = Agent()
-        self.init(
-            inputReader: reader,
-            filter: FilterResult.init,
-            processor: { input in
-                let result = try await agent.process(input)
-                return AsyncThrowingStream { $0.yield(result); $0.finish() }
-            }
-        )
+    convenience init(
+        inputReader reader: @escaping () async -> String?,
+        processor: @escaping (String) async throws -> AsyncThrowingStream<Element, Error>
+    ) {
+        self.init(inputReader: reader, filter: FilterResult.init, processor: processor)
     }
 }
