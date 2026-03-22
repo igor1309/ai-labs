@@ -22,9 +22,26 @@ final class OpenRouterResponseParserTests: TestContext {
         }
     }
 
+    @Test func test_parse_shouldReturnContent() throws {
+
+        let content = makeSomeString()
+        let sut = makeSUT()
+
+        let result = try sut.parse(makeResponseData(content: content))
+
+        #expect(result == content)
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterResponseParser
+
+    private func makeResponseData(content: String) -> Data {
+
+        Data("""
+        {"choices":[{"message":{"role":"assistant","content":"\(content)"}}]}
+        """.utf8)
+    }
 
     private func makeValidJSON() -> Data {
 
@@ -43,13 +60,18 @@ final class OpenRouterResponseParserTests: TestContext {
 
 private class OpenRouterResponseParser {
 
-    func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws {
-        guard response.statusCode == 200 else { throw BadStatusCodeError(response.statusCode) }
-        _ = try JSONSerialization.jsonObject(with: data)
+    func parse(_ data: Data, _ response: HTTPURLResponse = makeSomeHTTPURLResponse()) throws -> String {
+        guard response.statusCode == 200 else { throw BadStatusCodeError(statusCode: response.statusCode) }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let choices = json?["choices"] as? [[String: Any]]
+        let message = choices?.first?["message"] as? [String: Any]
+        guard let content = message?["content"] as? String else { throw InvalidResponseError() }
+        return content
     }
+
+    struct InvalidResponseError: Error {}
 
     struct BadStatusCodeError: Error {
         let statusCode: Int
-        init(_ statusCode: Int) { self.statusCode = statusCode }
     }
 }
