@@ -5,7 +5,7 @@ final class OpenRouterRequestFactory {
     enum Message {
         case assistant(String)
         case system(String)
-        case tool(String)
+        case tool(toolCallId: String, content: String)
         case user(String)
     }
 
@@ -50,7 +50,7 @@ private extension Array where Element == OpenRouterRequestFactory.Message {
             switch message {
             case .assistant(let content): ["role": "assistant", "content": content]
             case .system(let content): ["role": "system", "content": content]
-            case .tool(let content): ["role": "tool", "content": content]
+            case .tool(let toolCallId, let content): ["role": "tool", "tool_call_id": toolCallId, "content": content]
             case .user(let content): ["role": "user", "content": content]
             }
         }

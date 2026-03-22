@@ -135,11 +135,15 @@ final class OpenRouterRequestFactoryTests: TestContext {
         )
     }
 
-    @Test func test_make_shouldSerializeToolMessageInBody() throws {
+    @Test func test_make_shouldSerializeToolMessageWithToolCallId() throws {
 
-        let content = makeSomeString()
+        let (toolCallId, content) = (makeSomeString(), makeSomeString())
+        let (sut, _) = makeSUT()
 
-        try expectMessages([.tool(content)], serializedAs: [["role": "tool", "content": content]])
+        let json = try makeBodyJSON(sut: sut, messages: [.tool(toolCallId: toolCallId, content: content)])
+        let messages = json["messages"] as? [[String: String]]
+
+        #expect(messages == [["role": "tool", "tool_call_id": toolCallId, "content": content]])
     }
 
     // MARK: - Helpers
