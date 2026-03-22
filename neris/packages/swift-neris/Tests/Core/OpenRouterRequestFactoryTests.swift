@@ -116,6 +116,17 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(messages == [["role": "assistant", "content": content]])
     }
 
+    @Test func test_make_shouldSerializeSystemMessageInBody() throws {
+
+        let content = makeSomeString()
+        let (sut, _) = makeSUT()
+
+        let json = try makeBodyJSON(sut: sut, messages: [.system(content)])
+        let messages = json["messages"] as? [[String: String]]
+
+        #expect(messages == [["role": "system", "content": content]])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
@@ -165,6 +176,7 @@ private class OpenRouterRequestFactory {
 
     enum Message {
         case assistant(String)
+        case system(String)
         case user(String)
     }
 
@@ -195,6 +207,8 @@ private class OpenRouterRequestFactory {
             switch message {
             case .assistant(let content):
                 return ["role": "assistant", "content": content]
+            case .system(let content):
+                return ["role": "system", "content": content]
             case .user(let content):
                 return ["role": "user", "content": content]
             }
