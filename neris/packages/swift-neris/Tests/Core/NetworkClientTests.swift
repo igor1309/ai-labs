@@ -7,8 +7,7 @@ final class NetworkClientTests: TestContext {
 
         let (_, spies) = makeSUT()
 
-        #expect(spies.requestFactory.callCount == 0)
-        #expect(spies.transport.callCount == 0)
+        #expect(spies.callCount == 0)
     }
 
     @Test func test_send_shouldPassInputToRequestFactory() async throws {
@@ -51,13 +50,14 @@ final class NetworkClientTests: TestContext {
 
     @Test func test_send_shouldPassTransportResultToResponseParser() async throws {
 
-        let data = Data("transport".utf8)
-        let response = URLResponse()
+        let data = makeSomeData()
+        let response = makeSomeHTTPURLResponse()
         let (sut, spies) = makeSUT(transportStubs: [.success((data, response))])
 
         _ = try await sut.send(makeInput())
 
         #expect(spies.responseParser.payloads.map(\.0) == [data])
+        #expect(spies.responseParser.payloads.map(\.1) == [response])
     }
 
     @Test func test_send_shouldThrow_onResponseParserError() async throws {
@@ -69,30 +69,47 @@ final class NetworkClientTests: TestContext {
         }
     }
 
+    @Test func test_send_shouldReturnResponseParserResult() async throws {
+
+        let output = makeOutput()
+        let (sut, _) = makeSUT(responseParserStubs: [.success(output)])
+
+        let result = try await sut.send(makeInput())
+
+        #expect(result == output)
+    }
+
     // MARK: - Helpers
 
-    private typealias SUT = NetworkClient<Input>
+    private typealias SUT = NetworkClient<Input, Output>
     private typealias RequestFactoryResult = Result<URLRequest, Error>
     private typealias RequestFactorySpy = CallSpy<Input, RequestFactoryResult>
     private typealias TransportResult = (Data, URLResponse)
     private typealias TransportSpy = AsyncSpyOf<URLRequest, TransportResult>
-    private typealias ResponseParserSpy = CallSpy<TransportResult, Result<Void, Error>>
+    private typealias ResponseParserSpy = CallSpy<TransportResult, Result<Output, Error>>
 
     private struct Spies {
         let requestFactory: RequestFactorySpy
         let transport: TransportSpy
         let responseParser: ResponseParserSpy
+
+        var callCount: Int {
+            requestFactory.callCount + transport.callCount + responseParser.callCount
+        }
     }
 
     private func makeSUT(
-        requestFactoryStubs: [RequestFactoryResult] = [.success(makeSomeRequest())],
-        transportStubs: [TransportSpy.Stub] = [.success(makeTransportResult())],
-        responseParserStubs: [Result<Void, Error>] = [.success(())],
+        requestFactoryStubs: [RequestFactoryResult]? = nil,
+        transportStubs: [TransportSpy.Stub]? = nil,
+        responseParserStubs: [Result<Output, Error>]? = nil,
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (sut: SUT, spies: Spies) {
 
+        let requestFactoryStubs = requestFactoryStubs ?? [.success(makeSomeRequest())]
         let requestFactory = RequestFactorySpy(stubs: requestFactoryStubs)
+        let transportStubs = transportStubs ?? [.success((makeSomeData(), makeSomeHTTPURLResponse()))]
         let transport = TransportSpy(stubs: transportStubs)
+        let responseParserStubs = responseParserStubs ?? [.success(makeOutput())]
         let responseParser = ResponseParserSpy(stubs: responseParserStubs)
         let sut = SUT(
             requestFactory: requestFactory.call,
@@ -103,7 +120,12 @@ final class NetworkClientTests: TestContext {
         trackForMemoryLeaks(requestFactory, sourceLocation: sourceLocation)
         trackForMemoryLeaks(transport, sourceLocation: sourceLocation)
         trackForMemoryLeaks(responseParser, sourceLocation: sourceLocation)
-        return (sut, Spies(requestFactory: requestFactory, transport: transport, responseParser: responseParser))
+        return (
+            sut,
+            Spies(
+                requestFactory: requestFactory, transport: transport, responseParser: responseParser
+            )
+        )
     }
 
     private struct Input: Equatable {
@@ -118,17 +140,24 @@ final class NetworkClientTests: TestContext {
         return .init(value: value)
     }
 
-    private static func makeTransportResult() -> TransportResult {
+    private struct Output: Equatable {
 
-        return (Data(), URLResponse())
+        let value: String
+    }
+
+    private func makeOutput(
+        _ value: String = makeSomeString()
+    ) -> Output {
+
+        return .init(value: value)
     }
 }
 
-private class NetworkClient<Input> {
+private class NetworkClient<Input, Output> {
 
     typealias RequestFactory = (Input) throws -> URLRequest
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
-    typealias ResponseParser = ((Data, URLResponse)) throws -> Void
+    typealias ResponseParser = ((Data, URLResponse)) throws -> Output
 
     private let requestFactory: RequestFactory
     private let transport: Transport
@@ -145,10 +174,10 @@ private class NetworkClient<Input> {
         self.responseParser = responseParser
     }
 
-    func send(_ input: Input) async throws {
+    func send(_ input: Input) async throws -> Output {
 
         let request = try requestFactory(input)
         let result = try await transport(request)
-        try responseParser(result)
+        return try responseParser(result)
     }
 }
