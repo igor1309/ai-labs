@@ -105,6 +105,17 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(messages == [["role": "user", "content": content]])
     }
 
+    @Test func test_make_shouldSerializeAssistantMessageInBody() throws {
+
+        let content = makeSomeString()
+        let (sut, _) = makeSUT()
+
+        let json = try makeBodyJSON(sut: sut, messages: [.assistant(content)])
+        let messages = json["messages"] as? [[String: String]]
+
+        #expect(messages == [["role": "assistant", "content": content]])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
@@ -153,6 +164,7 @@ final class OpenRouterRequestFactoryTests: TestContext {
 private class OpenRouterRequestFactory {
 
     enum Message {
+        case assistant(String)
         case user(String)
     }
 
@@ -181,6 +193,8 @@ private class OpenRouterRequestFactory {
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         let serializedMessages = messages.map { message -> [String: String] in
             switch message {
+            case .assistant(let content):
+                return ["role": "assistant", "content": content]
             case .user(let content):
                 return ["role": "user", "content": content]
             }
