@@ -115,6 +115,25 @@ final class OpenRouterRequestFactoryTests: TestContext {
         try expectMessages([.assistant(content)], serializedAs: [["role": "assistant", "content": content]])
     }
 
+    @Test func test_make_shouldSerializeAssistantToolCallMessageInBody() throws {
+
+        let (id, name, arguments) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let (sut, _) = makeSUT()
+        let toolCall = SUT.ToolCall(id: id, name: name, arguments: arguments)
+
+        let json = try makeBodyJSON(sut: sut, messages: [.assistantToolCalls([toolCall])])
+        let messages = json["messages"] as? [[String: Any]]
+        let first = messages?.first
+        let toolCalls = first?["tool_calls"] as? [[String: Any]]
+        let function = toolCalls?.first?["function"] as? [String: String]
+
+        #expect(first?["role"] as? String == "assistant")
+        #expect(toolCalls?.first?["id"] as? String == id)
+        #expect(toolCalls?.first?["type"] as? String == "function")
+        #expect(function?["name"] == name)
+        #expect(function?["arguments"] == arguments)
+    }
+
     @Test func test_make_shouldSerializeSystemMessageInBody() throws {
 
         let content = makeSomeString()
