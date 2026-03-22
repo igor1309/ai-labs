@@ -1,6 +1,6 @@
 import Foundation
 
-func anyURL(
+func makeSomeURL(
     _ urlString: String = makeSomeString()
 ) -> URL {
 
