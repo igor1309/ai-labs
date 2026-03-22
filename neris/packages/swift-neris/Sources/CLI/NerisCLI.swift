@@ -16,7 +16,8 @@ struct NerisCLI: AsyncParsableCommand {
         }
         let agent = NerisAgent(config: .init(
             apiKey: apiKey,
-            model: "nvidia/nemotron-3-super-120b-a12b:free"
+            model: "nvidia/nemotron-3-super-120b-a12b:free",
+            systemPrompt: "You are neris, a helpful assistant. Be concise."
         ))
         let spinner = Spinner()
         let reader = { print("neris> ", terminator: ""); return readLine() }
