@@ -1,12 +1,12 @@
 import Foundation
 
-public enum FilterResult: Equatable, Sendable {
+enum FilterResult: Equatable, Sendable {
     case skip
     case quit
     case input(String)
 }
 
-public extension FilterResult {
+extension FilterResult {
 
     init(_ rawInput: String) {
         let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)

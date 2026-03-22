@@ -1,8 +1,8 @@
-public final class Agent {
+final class Agent {
 
-    public init() {}
+    init() {}
 
-    public func process(_ input: String) async throws -> String {
+    func process(_ input: String) async throws -> String {
         input
     }
 }

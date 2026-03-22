@@ -2,15 +2,15 @@ public final class Loop: AsyncSequence {
 
     public typealias Element = String
 
-    public typealias Reader = () async -> String?
-    public typealias Filter = (String) -> FilterResult
-    public typealias Processor = (String) async throws -> String
+    typealias Reader = () async -> String?
+    typealias Filter = (String) -> FilterResult
+    typealias Processor = (String) async throws -> String
 
     private let reader: Reader
     private let filter: Filter
     private let processor: Processor
 
-    public init(
+    init(
         inputReader reader: @escaping Reader,
         filter: @escaping Filter,
         processor: @escaping Processor
