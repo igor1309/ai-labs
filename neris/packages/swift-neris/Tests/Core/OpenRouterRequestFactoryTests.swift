@@ -15,13 +15,32 @@ final class OpenRouterRequestFactoryTests: TestContext {
         let (sut, _) = makeSUT()
 
         #expect(throws: SUT.EmptyMessagesError.self) {
-            _ = try sut.make([String]())
+            _ = try sut.make([Message]())
         }
+    }
+
+    @Test func test_make_shouldCallConfig_onOneMessage() throws {
+
+        let (sut, config) = makeSUT()
+
+        _ = try sut.make([makeMessage()])
+
+        #expect(config.callCount == 1)
+    }
+
+    @Test func test_make_shouldCallConfig_onTwoMessages() throws {
+
+        let (sut, config) = makeSUT()
+
+        _ = try sut.make([makeMessage(), makeMessage()])
+
+        #expect(config.callCount == 1)
     }
 
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
+    private typealias Message = String
     private typealias ConfigSpy = CallSpy<Void, Void>
 
     private func makeSUT(
@@ -33,6 +52,11 @@ final class OpenRouterRequestFactoryTests: TestContext {
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(config, sourceLocation: sourceLocation)
         return (sut, config)
+    }
+
+    private func makeMessage() -> Message {
+
+        makeSomeString()
     }
 }
 
@@ -48,6 +72,7 @@ private class OpenRouterRequestFactory {
     func make(_ messages: [String]) throws {
 
         guard !messages.isEmpty else { throw EmptyMessagesError() }
+        config()
     }
 
     struct EmptyMessagesError: Error {}
