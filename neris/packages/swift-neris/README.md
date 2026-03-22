@@ -11,7 +11,7 @@ neris uses two cooperating loops with distinct responsibilities.
 
 ### REPL Loop (outer)
 
-The REPL loop owns the input/output cycle. It reads user input, filters it (skip blanks, detect quit commands), passes valid input to a processor, and yields output. It is an `AsyncSequence` with a proper `AsyncIteratorProtocol` — idiomatic structured concurrency, no manual tasks or continuations.
+The REPL loop owns the input/output cycle. It reads user input, filters it (skip blanks, detect quit commands), passes valid input to a processor, and yields elements from the processor's event stream. `Loop<Element>` is generic — the element type is determined by the processor. It is an `AsyncSequence` with a proper `AsyncIteratorProtocol` — idiomatic structured concurrency, no manual tasks or continuations.
 
 The REPL loop is platform-agnostic. A CLI reads from stdin. A GUI reads from a text field. The loop doesn't know or care.
 
@@ -25,7 +25,7 @@ The Agent loop emits an event stream. Each UI consumes this stream and decides h
 
 ### How They Compose
 
-The REPL loop's processor calls the Agent loop. The Agent loop returns an event stream. The presentation layer (CLI, GUI) maps events to output. The REPL loop yields the final result.
+The REPL loop's processor calls the Agent loop. The Agent loop returns an event stream. The REPL loop drains that stream and yields each element to the consumer. A CLI iterates `Loop<AgentLoop.Event>` and renders each event (print text, show spinner, format tool calls). A SwiftUI view does the same with published state.
 
 ```
 User Input → [REPL Loop] → [Agent Loop] → Event Stream → [Presentation] → Output

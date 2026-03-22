@@ -10,7 +10,7 @@ final class LoopTests: TestContext {
         let (sut, _, _) = makeSUT(
             input: [input],
             filterResults: [.input(input)],
-            processorResults: [output]
+            processorResults: [.single(output)]
         )
 
         let results = try await collect(sut)
@@ -109,25 +109,67 @@ final class LoopTests: TestContext {
         #expect(processor.payloads == [filtered])
     }
 
+    @Test func test_shouldYieldMultipleElements_fromSingleInput() async throws {
+
+        let input = makeSomeString()
+        let elements = [makeSomeString(), makeSomeString(), makeSomeString()]
+        let (sut, _, _) = makeSUT(
+            input: [input],
+            filterResults: [.input(input)],
+            processorResults: [.many(elements)]
+        )
+
+        let results = try await collect(sut)
+
+        #expect(results == elements)
+    }
+
     // MARK: - Helpers
 
-    private typealias SUT = Loop
+    private typealias SUT = Loop<String>
     private typealias ReaderSpy = CallSpy<Void, String?>
     private typealias FilterSpy = CallSpy<String, FilterResult>
-    private typealias ProcessorSpy = AsyncSpyOf<String, String>
+    private typealias ProcessorSpy = AsyncSpyOf<String, AsyncThrowingStream<String, Error>>
+
+    private enum StreamStub {
+        case single(String)
+        case many([String])
+
+        func toStream() -> AsyncThrowingStream<String, Error> {
+            switch self {
+            case .single(let value):
+                AsyncThrowingStream {
+                    $0.yield(value)
+                    $0.finish()
+                }
+            case .many(let values):
+                AsyncThrowingStream { c in
+                    for value in values { c.yield(value) }
+                    c.finish()
+                }
+            }
+        }
+    }
 
     private func makeSUT(
         input: [String],
         filterResults: [FilterResult],
-        processorResults: [String]? = nil,
+        processorResults: [StreamStub]? = nil,
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, FilterSpy, ProcessorSpy) {
 
         let reader = ReaderSpy(stubs: input + [nil])
         let filter = FilterSpy(stubs: filterResults)
-        let stubs = processorResults ?? input.map { _ in makeSomeString() }
-        let processor = ProcessorSpy(stubs: stubs.map { .success($0) })
-        let sut = SUT(inputReader: { reader.call() }, filter: filter.call, processor: processor.call)
+        let stubs = (processorResults ?? input.map { _ in .single(makeSomeString()) })
+            .map { stub -> Result<AsyncThrowingStream<String, Error>, Error> in
+                .success(stub.toStream())
+            }
+        let processor = ProcessorSpy(stubs: stubs)
+        let sut = SUT(
+            inputReader: { reader.call() },
+            filter: filter.call,
+            processor: { try await processor.call(payload: $0) }
+        )
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(reader, sourceLocation: sourceLocation)
         trackForMemoryLeaks(filter, sourceLocation: sourceLocation)
@@ -135,7 +177,7 @@ final class LoopTests: TestContext {
         return (sut, filter, processor)
     }
 
-    private func collect(_ loop: Loop) async throws -> [String] {
+    private func collect(_ loop: SUT) async throws -> [String] {
         var results = [String]()
         for try await value in loop {
             results.append(value)
@@ -143,3 +185,4 @@ final class LoopTests: TestContext {
         return results
     }
 }
+
