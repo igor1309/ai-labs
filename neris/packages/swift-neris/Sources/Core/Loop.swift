@@ -49,9 +49,9 @@ extension Loop {
                     innerIterator = nil
                 }
 
-                guard let line = await reader() else { return nil }
+                guard let input = await reader() else { return nil }
 
-                switch filter(line) {
+                switch filter(input) {
                 case .skip:
                     continue
                 case .quit:
