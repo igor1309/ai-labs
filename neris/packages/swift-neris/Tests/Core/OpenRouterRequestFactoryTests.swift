@@ -65,6 +65,16 @@ final class OpenRouterRequestFactoryTests: TestContext {
         #expect(request.httpMethod == "POST")
     }
 
+    @Test func test_make_shouldSetAuthorizationHeader() throws {
+
+        let apiKey = makeSomeString()
+        let (sut, _) = makeSUT(configStubs: [.success(makeConfig(apiKey: apiKey))])
+
+        let request = try sut.make([makeMessage()])
+
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer \(apiKey)")
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = OpenRouterRequestFactory
@@ -85,10 +95,11 @@ final class OpenRouterRequestFactoryTests: TestContext {
     }
 
     private func makeConfig(
+        apiKey: String = makeSomeString(),
         url: URL = makeSomeURL()
     ) -> SUT.Config {
 
-        .init(url: url)
+        .init(apiKey: apiKey, url: url)
     }
 
     private func makeMessage() -> Message {
@@ -100,6 +111,7 @@ final class OpenRouterRequestFactoryTests: TestContext {
 private class OpenRouterRequestFactory {
 
     struct Config {
+        let apiKey: String
         let url: URL
     }
 
@@ -118,6 +130,7 @@ private class OpenRouterRequestFactory {
         let config = try config()
         var request = URLRequest(url: config.url)
         request.httpMethod = "POST"
+        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         return request
     }
 
