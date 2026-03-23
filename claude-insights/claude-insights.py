@@ -175,6 +175,29 @@ def refresh_insights() -> bool:
     return True
 
 
+def ping_supabase() -> None:
+    """Lightweight SELECT to prevent Supabase free-tier auto-pause."""
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return
+    endpoint = f"{url}/rest/v1/claude_insights?select=week&limit=1"
+    req = urllib.request.Request(
+        endpoint,
+        method="GET",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            resp.read()
+        print("Supabase keep-alive ping OK", file=sys.stderr)
+    except urllib.error.HTTPError as e:
+        print(f"Supabase keep-alive ping failed: HTTP {e.code}", file=sys.stderr)
+
+
 def push_to_supabase(summary: dict) -> None:
     """Upsert summary into Supabase claude_insights table."""
     url = os.environ.get("SUPABASE_URL")
@@ -249,6 +272,9 @@ def main():
         after = datetime.fromisoformat(args.since + "T00:00:00+00:00")
     else:
         after = now - timedelta(days=args.days)
+
+    if args.push:
+        ping_supabase()
 
     if not FACETS_DIR.is_dir() or not SESSION_META_DIR.is_dir():
         print(f"Error: usage data not found at {USAGE_DIR}", file=sys.stderr)
