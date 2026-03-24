@@ -12,6 +12,16 @@ final class RouterTests: TestContext {
         #expect(spy.values == [Output.repl(event)])
     }
 
+    @Test func test_shouldRouteToControl_onInputWhenExpectingControl() async throws {
+        let event = makeUIEvent()
+        let (input, spy) = makeSUT(expectsControl: { true })
+
+        input.send(event)
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [Output.control(event)])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = Router<UIEvent>
