@@ -39,7 +39,7 @@ final class SessionLoopTests: TestContext {
         await control.signal()
 
         await spy.waitForFinish()
-        #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text("result")])
+        #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text(""), TurnOutput.text("result")])
         #expect(spy.isFinished)
     }
 
@@ -52,15 +52,25 @@ final class SessionLoopTests: TestContext {
 
         await control.signal()
 
-        await spy.waitForEvents(2)
-        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.escalation("second?")])
+        await spy.waitForEvents(3)
+        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.text(""), TurnOutput.escalation("second?")])
         #expect(!spy.isFinished)
 
         await control.signal()
 
         await spy.waitForFinish()
-        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.escalation("second?"), TurnOutput.text("done")])
+        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.text(""), TurnOutput.escalation("second?"), TurnOutput.text(""), TurnOutput.text("done")])
         #expect(spy.isFinished)
+    }
+
+    @Test func test_shouldDeliverControlResponse_onEscalation() async throws {
+        let (control, spy) = makeSUT(steps: [.escalation("approve?")])
+
+        await spy.waitForEvents(1)
+        await control.signal("granted")
+
+        await spy.waitForEvents(2)
+        #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text("granted")])
     }
 
     @Test func test_shouldStillSuspend_onControlSignalSentBeforeEscalation() async throws {
@@ -119,7 +129,8 @@ private struct ScriptedTurn {
                 for step in steps {
                     continuation.yield(step)
                     if case .escalation = step {
-                        await gate.wait()
+                        let response = await gate.wait()
+                        continuation.yield(.text(response))
                     }
                 }
                 continuation.finish()
@@ -130,14 +141,14 @@ private struct ScriptedTurn {
 
 private actor Gate {
 
-    private var continuation: CheckedContinuation<Void, Never>?
+    private var continuation: CheckedContinuation<String, Never>?
 
-    func wait() async {
+    func wait() async -> String {
         await withCheckedContinuation { continuation = $0 }
     }
 
-    func signal() {
-        continuation?.resume()
+    func signal(_ response: String = "") {
+        continuation?.resume(returning: response)
         continuation = nil
     }
 }
