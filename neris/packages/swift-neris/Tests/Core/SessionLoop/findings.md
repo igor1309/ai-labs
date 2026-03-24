@@ -44,6 +44,16 @@ Text output finishes without suspending. The stream completes naturally.
 - Router is generic over input type — no knowledge of what events contain.
 - The complexity lives in *who provides* `expectsControl`, not in the Router itself.
 
+## Proven: StateEnvelope (stream-to-sync bridge)
+
+- Envelope takes an `AsyncStream<Event>` and a reduce function, exposes `query() -> State` synchronously.
+- Generic over both `Event` and `State` — the envelope doesn't know what state means.
+- Default state is caller-provided via `initial` parameter.
+- State survives stream termination — last reduced value is retained.
+- Shared mutable state protected by `Mutex` (Synchronization framework).
+- Wires directly to Router: `{ envelope.query() }` as `expectsControl` closure.
+- Composition test proves envelope + router work together: stream state change flips routing.
+
 ## Key primitives
 
 ### Gate\<Response\>
@@ -63,6 +73,10 @@ Stream decorator. Wraps each event as `.repl(Input)` or `.control(Input)` based 
 ### REPL\<Response\>
 
 Outer loop. Reads input stream, invokes parameterized turn closure, forwards turn output to a single output stream.
+
+### StateEnvelope\<Event, State\>
+
+Stream-to-sync bridge. Consumes a stream, reduces each event to a `State` value via injected function, serves current state synchronously via `query()`. State protected by `Mutex`. Generic over both event and state types.
 
 ### InputChannel\<Input\>
 
@@ -85,8 +99,13 @@ Test observer for `AsyncStream`. Collects values, tracks completion, timeout-bas
 - **REPL does not relay control** — initial attempt to make REPL relay escalation responses was architecturally wrong. The design notes are explicit: control goes Router → AgentLoop directly. REPL handles task input only.
 - **Router is trivially simple** — a boolean closure is sufficient to classify input. The Router doesn't need to know about agent states, escalation types, or control protocols. It just asks "expecting control?" and tags the event.
 
+## Lessons learned (continued)
+
+- **Mutex over NSLock in async contexts** — `NSLock.lock()` is unavailable from async contexts in Swift 6. `Mutex` from `Synchronization` framework works but requires macOS 15+ and `@unchecked Sendable` on the owning class (because `Mutex` is non-copyable and `Task` optional makes the class mutable).
+- **Composition is trivially proven** — the envelope→router wiring test passed on first try with no new production code. When components have clean interfaces, integration tests confirm glue, not behavior.
+
 ## Not yet tested
 
 - AgentLoop as stateful component — owns control stream, exposes observable state (idle/running/suspended)
-- Composition wiring — Router output split to REPL and AgentLoop
+- Full composition — REPL + Router + Envelope + AgentLoop wired together
 - Turn protocol extraction
