@@ -49,7 +49,7 @@ final class CompositionTests: TestContext {
     ) -> (Loop, MessageChannel, StreamSpy<AgentEvent>) {
         let agentLoop = Loop(events: events)
         let input = MessageChannel()
-        let repl = REPL(input: input.stream, agentLoop: agentLoop)
+        let repl = agentLoop.compose(input: input.stream)
         return (agentLoop, input, StreamSpy(repl.run()))
     }
 
@@ -94,10 +94,10 @@ private protocol AgentLoop<Input, Event> {
     func run(input: Input) -> AsyncStream<Event>
 }
 
-extension REPL {
+extension AgentLoop where Self: Sendable {
 
-    fileprivate init<A: AgentLoop & Sendable>(input: AsyncStream<Input>, agentLoop: A) where A.Input == Input, A.Event == Event {
-        self.init(input: input, turn: { agentLoop.run(input: $0) })
+    func compose(input: AsyncStream<Input>) -> REPL<Input, Event> {
+        REPL(input: input, turn: { self.run(input: $0) })
     }
 }
 
@@ -116,7 +116,7 @@ extension ControllableAgentLoop where Control == Input, Control: Equatable, Self
         let (replStream, replContinuation) = AsyncStream.makeStream(of: Control.self)
         let (controlStream, controlContinuation) = AsyncStream.makeStream(of: Control.self)
 
-        let repl = REPL(input: replStream, agentLoop: self)
+        let repl = compose(input: replStream)
         let envelope = StateEnvelope(initial: initial, stream: repl.run(), map: map)
         let router = Router(events: uiEvents, expectsControl: { envelope.query() })
 
