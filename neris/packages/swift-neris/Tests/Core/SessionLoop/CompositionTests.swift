@@ -26,12 +26,7 @@ final class CompositionTests: TestContext {
 
     @Test func test_shouldDeliverControlToAgentLoop_onControlRoute() async throws {
         let control = makeSomeString()
-        let agentLoop = ControllableAgentLoopSpy()
-        let envelope = StateEnvelope(initial: true, stream: agentLoop.events) { _ in true }
-        let uiInput = InputChannel<String>()
-        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
-
-        agentLoop.start(observing: router.controlStream())
+        let (agentLoop, uiInput) = makeSUT(expectsControl: true)
 
         uiInput.send(control)
 
@@ -51,6 +46,18 @@ final class CompositionTests: TestContext {
         let input = InputChannel<String>()
         let sut = SUT(input: input.stream, agentLoop: agentLoop)
         return (agentLoop, input, StreamSpy(sut.run()))
+    }
+
+    private func makeSUT(
+        expectsControl: Bool,
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) -> (ControllableAgentLoopSpy, InputChannel<String>) {
+        let agentLoop = ControllableAgentLoopSpy()
+        let envelope = StateEnvelope(initial: expectsControl, stream: agentLoop.events) { _ in expectsControl }
+        let uiInput = InputChannel<String>()
+        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
+        agentLoop.start(observing: router.controlStream())
+        return (agentLoop, uiInput)
     }
 }
 
