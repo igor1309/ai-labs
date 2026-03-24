@@ -106,6 +106,6 @@ Test observer for `AsyncStream`. Collects values, tracks completion, timeout-bas
 
 ## Not yet tested
 
-- AgentLoop as stateful component — owns control stream, exposes observable state (idle/running/suspended)
+- AgentLoop event shape — events must carry enough information for the envelope's reduce function to derive "awaiting control" vs "not"
 - Full composition — REPL + Router + Envelope + AgentLoop wired together
 - Turn protocol extraction
