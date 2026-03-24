@@ -24,11 +24,7 @@ final class StateEnvelopeTests: TestContext {
     }
 
     @Test func test_shouldDriveRouterRouting_onStreamStateChange() async throws {
-        let (envelope, stateInput) = makeSUT()
-
-        let uiInput = InputChannel<String>()
-        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
-        let spy = StreamSpy(router.run())
+        let (envelope, stateInput, uiInput, spy) = makeEnvelopeRoutedSUT()
 
         uiInput.send("task")
         await spy.waitForEvents(1)
@@ -52,6 +48,15 @@ final class StateEnvelopeTests: TestContext {
         let input = InputChannel<Event>()
         let sut = SUT(stream: input.stream) { $0.isAwaiting }
         return (sut, input)
+    }
+
+    private func makeEnvelopeRoutedSUT(
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) -> (SUT, InputChannel<Event>, InputChannel<String>, StreamSpy<RouterEvent<String>>) {
+        let (envelope, stateInput) = makeSUT(sourceLocation)
+        let uiInput = InputChannel<String>()
+        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
+        return (envelope, stateInput, uiInput, StreamSpy(router.run()))
     }
 
     private struct Event: Sendable {
