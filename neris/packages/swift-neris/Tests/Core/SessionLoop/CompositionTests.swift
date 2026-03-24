@@ -59,7 +59,7 @@ final class CompositionTests: TestContext {
     ) -> (ControllableLoop, ControlChannel, Envelope) {
         let agentLoop = ControllableLoop()
         let uiInput = ControlChannel()
-        let envelope = agentLoop.compose(uiEvents: uiInput.stream, events: agentLoop.events, initial: expectsControl, map: { _ in expectsControl })
+        let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: expectsControl, map: { _ in expectsControl })
         return (agentLoop, uiInput, envelope)
     }
 
@@ -106,34 +106,33 @@ private protocol ControllableAgentLoop<Control>: AgentLoop {
     func start(observing: AsyncStream<Control>)
 }
 
-extension Router {
-
-    func controlStream() -> AsyncStream<Input> {
-        let source = run()
-        return AsyncStream { continuation in
-            Task {
-                for await event in source {
-                    if case .control(let value) = event {
-                        continuation.yield(value)
-                    }
-                }
-                continuation.finish()
-            }
-        }
-    }
-}
-
-extension ControllableAgentLoop where Control: Equatable {
+extension ControllableAgentLoop where Control == Input, Control: Equatable, Self: Sendable {
 
     func compose(
         uiEvents: AsyncStream<Control>,
-        events: AsyncStream<Event>,
         initial: Bool = false,
         map: @escaping @Sendable (Event) -> Bool
     ) -> StateEnvelope<Event, Bool> {
-        let envelope = StateEnvelope(initial: initial, stream: events, map: map)
+        let (replStream, replContinuation) = AsyncStream.makeStream(of: Control.self)
+        let (controlStream, controlContinuation) = AsyncStream.makeStream(of: Control.self)
+
+        let repl = REPL(input: replStream, agentLoop: self)
+        let envelope = StateEnvelope(initial: initial, stream: repl.run(), map: map)
         let router = Router(events: uiEvents, expectsControl: { envelope.query() })
-        start(observing: router.controlStream())
+
+        start(observing: controlStream)
+
+        Task {
+            for await routerEvent in router.run() {
+                switch routerEvent {
+                case .repl(let input): replContinuation.yield(input)
+                case .control(let control): controlContinuation.yield(control)
+                }
+            }
+            replContinuation.finish()
+            controlContinuation.finish()
+        }
+
         return envelope
     }
 }
@@ -141,8 +140,6 @@ extension ControllableAgentLoop where Control: Equatable {
 private final class ControllableAgentLoopSpy<C: Equatable & Sendable, E: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
 
     private(set) var receivedControls = [C]()
-    private let eventChannel = InputChannel<E>()
-    var events: AsyncStream<E> { eventChannel.stream }
 
     func run(input: C) -> AsyncStream<E> {
         AsyncStream { $0.finish() }
