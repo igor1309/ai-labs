@@ -23,7 +23,7 @@ final class SessionLoopTests: TestContext {
         await spy.waitForEvents(1)
         #expect(!spy.isFinished)
 
-        control.yield()
+        await control.signal()
 
         await spy.waitForFinish()
         #expect(spy.isFinished)
@@ -36,7 +36,7 @@ final class SessionLoopTests: TestContext {
         #expect(spy.values == [TurnOutput.escalation("approve?")])
         #expect(!spy.isFinished)
 
-        control.yield()
+        await control.signal()
 
         await spy.waitForFinish()
         #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text("result")])
@@ -50,17 +50,30 @@ final class SessionLoopTests: TestContext {
         #expect(spy.values == [TurnOutput.escalation("first?")])
         #expect(!spy.isFinished)
 
-        control.yield()
+        await control.signal()
 
         await spy.waitForEvents(2)
         #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.escalation("second?")])
         #expect(!spy.isFinished)
 
-        control.yield()
+        await control.signal()
 
         await spy.waitForFinish()
         #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.escalation("second?"), TurnOutput.text("done")])
         #expect(spy.isFinished)
+    }
+
+    @Test func test_shouldStillSuspend_onControlSignalSentBeforeEscalation() async throws {
+        let (control, spy) = makeSUT(steps: [.escalation("approve?")])
+
+        await control.signal()
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [TurnOutput.escalation("approve?")])
+
+        await spy.waitForEvents(2, timeout: .milliseconds(100))
+        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(!spy.isFinished)
     }
 
     @Test func test_shouldSuspend_onEscalation() async throws {
@@ -76,16 +89,15 @@ final class SessionLoopTests: TestContext {
 
     // MARK: - Helpers
 
-    private typealias ControlStream = AsyncStream<Void>
     private typealias TurnSpy = StreamSpy<TurnOutput>
 
     private func makeSUT(
         steps: [TurnOutput],
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (ControlStream.Continuation, TurnSpy) {
-        let (controlStream, controlContinuation) = ControlStream.makeStream()
-        let turn = ScriptedTurn(steps: steps, controlInput: controlStream)
-        return (controlContinuation, TurnSpy(turn.run()))
+    ) -> (Gate, TurnSpy) {
+        let gate = Gate()
+        let turn = ScriptedTurn(steps: steps, gate: gate)
+        return (gate, TurnSpy(turn.run()))
     }
 }
 
@@ -97,23 +109,36 @@ private enum TurnOutput: Equatable, Sendable {
 private struct ScriptedTurn {
 
     let steps: [TurnOutput]
-    let controlInput: AsyncStream<Void>
+    let gate: Gate
 
     func run() -> AsyncStream<TurnOutput> {
         let steps = steps
-        let controlInput = controlInput
+        let gate = gate
         return AsyncStream { continuation in
             Task {
                 for step in steps {
                     continuation.yield(step)
                     if case .escalation = step {
-                        var iterator = controlInput.makeAsyncIterator()
-                        _ = await iterator.next()
+                        await gate.wait()
                     }
                 }
                 continuation.finish()
             }
         }
+    }
+}
+
+private actor Gate {
+
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func signal() {
+        continuation?.resume()
+        continuation = nil
     }
 }
 
