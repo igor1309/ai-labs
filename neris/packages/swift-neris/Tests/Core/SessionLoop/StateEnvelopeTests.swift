@@ -12,7 +12,7 @@ final class StateEnvelopeTests: TestContext {
         let (sut, input) = makeSUT()
 
         input.send(Event(isAwaiting: true))
-        await sut.waitForState(true)
+        await waitForState(true, on: sut)
 
         #expect(sut.query())
     }
@@ -21,10 +21,10 @@ final class StateEnvelopeTests: TestContext {
         let (sut, input) = makeSUT()
 
         input.send(Event(isAwaiting: true))
-        await sut.waitForState(true)
+        await waitForState(true, on: sut)
 
         input.send(Event(isAwaiting: false))
-        await sut.waitForState(false)
+        await waitForState(false, on: sut)
 
         #expect(!sut.query())
     }
@@ -33,7 +33,7 @@ final class StateEnvelopeTests: TestContext {
         let (sut, input) = makeSUT()
 
         input.send(Event(isAwaiting: true))
-        await sut.waitForState(true)
+        await waitForState(true, on: sut)
 
         input.finish()
         await Task.yield()
@@ -49,7 +49,7 @@ final class StateEnvelopeTests: TestContext {
         await spy.waitForEvents(1)
 
         stateInput.send(Event(isAwaiting: true))
-        await envelope.waitForState(true)
+        await waitForState(true, on: envelope)
 
         uiInput.send(control)
         await spy.waitForEvents(2)
@@ -78,6 +78,17 @@ final class StateEnvelopeTests: TestContext {
         return (envelope, stateInput, uiInput, StreamSpy(router.run()))
     }
 
+    private func waitForState(
+        _ expected: Bool,
+        on sut: SUT,
+        timeout: Duration = .seconds(2)
+    ) async {
+        let deadline = ContinuousClock.now + timeout
+        while sut.query() != expected, ContinuousClock.now < deadline {
+            await Task.yield()
+        }
+    }
+
     private struct Event: Sendable {
         let isAwaiting: Bool
     }
@@ -102,13 +113,4 @@ private final class StateEnvelope<Event: Sendable, State: Sendable>: @unchecked 
     }
 
     deinit { task?.cancel() }
-}
-
-extension StateEnvelope where State: Equatable {
-    func waitForState(_ expected: State, timeout: Duration = .seconds(2)) async {
-        let deadline = ContinuousClock.now + timeout
-        while state != expected, ContinuousClock.now < deadline {
-            await Task.yield()
-        }
-    }
 }
