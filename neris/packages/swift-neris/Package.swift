@@ -4,7 +4,7 @@
 
 let package = Package(
     name: "swift-neris",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v15)],
     products: .all,
     dependencies: .all,
     targets: .all
