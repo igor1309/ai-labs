@@ -127,23 +127,22 @@ final class SessionLoopTests: TestContext {
     // MARK: - REPL
 
     @Test func test_repl_shouldForwardTurnOutput_onInput() async throws {
-        let input = InputChannel()
-        let repl = REPL<ControlResponse>(input: input.stream) { _ in
+        let (input, spy) = makeREPL { _ in
             AsyncStream { $0.yield(.text("response")); $0.finish() }
         }
-        let spy = StreamSpy<Output>(repl.run())
 
         input.send("hello")
         input.finish()
 
         await spy.waitForFinish()
-        #expect(spy.values == [Output.text("response")])
+        #expect(spy.values == [REPLOutput.text("response")])
     }
 
     // MARK: - Helpers
 
     private typealias SUT = ScriptedTurn<ControlResponse>
     private typealias Output = TurnOutput<ControlResponse>
+    private typealias REPLOutput = TurnOutput<String>
     private typealias TurnSpy = StreamSpy<Output>
 
     private func makeSUT(
@@ -153,6 +152,15 @@ final class SessionLoopTests: TestContext {
         let gate = Gate<ControlResponse>()
         let turn = SUT(steps: steps, gate: gate)
         return (gate, TurnSpy(turn.run()))
+    }
+
+    private func makeREPL(
+        turn: @escaping @Sendable (String) -> AsyncStream<REPLOutput>,
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) -> (InputChannel, StreamSpy<REPLOutput>) {
+        let input = InputChannel()
+        let repl = REPL<String>(input: input.stream, turn: turn)
+        return (input, StreamSpy<REPLOutput>(repl.run()))
     }
 
     private struct ControlResponse: Equatable, Sendable {
