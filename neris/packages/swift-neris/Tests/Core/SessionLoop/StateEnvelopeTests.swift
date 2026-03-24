@@ -59,13 +59,13 @@ final class StateEnvelopeTests: TestContext {
 
     // MARK: - Helpers
 
-    private typealias SUT = StateEnvelope<Event>
+    private typealias SUT = StateEnvelope<Event, Bool>
 
     private func makeSUT(
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, InputChannel<Event>) {
         let input = InputChannel<Event>()
-        let sut = SUT(stream: input.stream) { $0.isAwaiting }
+        let sut = SUT(initial: false, stream: input.stream) { $0.isAwaiting }
         return (sut, input)
     }
 
@@ -83,12 +83,13 @@ final class StateEnvelopeTests: TestContext {
     }
 }
 
-private final class StateEnvelope<Event: Sendable>: @unchecked Sendable {
+private final class StateEnvelope<Event: Sendable, State: Sendable>: @unchecked Sendable {
 
-    private var state = false
+    private var state: State
     private var task: Task<Void, Never>?
 
-    init(stream: AsyncStream<Event>, reduce: @escaping @Sendable (Event) -> Bool) {
+    init(initial: State, stream: AsyncStream<Event>, reduce: @escaping @Sendable (Event) -> State) {
+        state = initial
         task = Task { [weak self] in
             for await event in stream {
                 self?.state = reduce(event)
@@ -96,16 +97,18 @@ private final class StateEnvelope<Event: Sendable>: @unchecked Sendable {
         }
     }
 
-    func query() -> Bool {
+    func query() -> State {
         state
     }
 
-    func waitForState(_ expected: Bool, timeout: Duration = .seconds(2)) async {
+    deinit { task?.cancel() }
+}
+
+extension StateEnvelope where State: Equatable {
+    func waitForState(_ expected: State, timeout: Duration = .seconds(2)) async {
         let deadline = ContinuousClock.now + timeout
         while state != expected, ContinuousClock.now < deadline {
             await Task.yield()
         }
     }
-
-    deinit { task?.cancel() }
 }
