@@ -1,5 +1,6 @@
 import Synchronization
 import Testing
+@testable import NerisCore
 
 final class StateEnvelopeTests: TestContext {
 
