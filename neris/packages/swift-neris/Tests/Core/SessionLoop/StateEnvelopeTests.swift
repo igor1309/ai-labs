@@ -2,6 +2,12 @@ import Testing
 
 final class StateEnvelopeTests: TestContext {
 
+    @Test func test_shouldReportFalse_beforeAnyEvent() async throws {
+        let (sut, _) = makeSUT()
+
+        #expect(!sut.query())
+    }
+
     @Test func test_shouldReportTrue_onEventMappingToTrue() async throws {
         let (sut, input) = makeSUT()
 
@@ -21,6 +27,18 @@ final class StateEnvelopeTests: TestContext {
         await sut.waitForState(false)
 
         #expect(!sut.query())
+    }
+
+    @Test func test_shouldRetainLastState_onStreamTermination() async throws {
+        let (sut, input) = makeSUT()
+
+        input.send(Event(isAwaiting: true))
+        await sut.waitForState(true)
+
+        input.finish()
+        await Task.yield()
+
+        #expect(sut.query())
     }
 
     @Test func test_shouldDriveRouterRouting_onStreamStateChange() async throws {
