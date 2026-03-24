@@ -3,22 +3,35 @@ import Testing
 final class SessionLoopTests: TestContext {
 
     @Test func test_shouldCaptureEscalation_onTurnRequestingApproval() async throws {
-        let spy = makeSUT(steps: [.escalation("approve tool X?")])
+        let (_, spy) = makeSUT(steps: [.escalation("approve tool X?")])
 
         await spy.waitForEvents(1)
         #expect(spy.values == [TurnOutput.escalation("approve tool X?")])
     }
 
+    @Test func test_shouldSuspend_onEscalation() async throws {
+        let (_, spy) = makeSUT(steps: [.escalation("approve?")])
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [TurnOutput.escalation("approve?")])
+
+        await spy.waitForEvents(2, timeout: .milliseconds(100))
+        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(!spy.isFinished)
+    }
+
     // MARK: - Helpers
 
+    private typealias ControlStream = AsyncStream<Void>
     private typealias TurnSpy = StreamSpy<TurnOutput>
 
     private func makeSUT(
         steps: [TurnOutput],
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> TurnSpy {
-        let turn = ScriptedTurn(steps: steps)
-        return TurnSpy(turn.run())
+    ) -> (ControlStream.Continuation, TurnSpy) {
+        let (controlStream, controlContinuation) = ControlStream.makeStream()
+        let turn = ScriptedTurn(steps: steps, controlInput: controlStream)
+        return (controlContinuation, TurnSpy(turn.run()))
     }
 }
 
@@ -29,13 +42,22 @@ private enum TurnOutput: Equatable, Sendable {
 private struct ScriptedTurn {
 
     let steps: [TurnOutput]
+    let controlInput: AsyncStream<Void>
 
     func run() -> AsyncStream<TurnOutput> {
-        AsyncStream { continuation in
-            for step in steps {
-                continuation.yield(step)
+        let steps = steps
+        let controlInput = controlInput
+        return AsyncStream { continuation in
+            Task {
+                for step in steps {
+                    continuation.yield(step)
+                    if case .escalation = step {
+                        var iterator = controlInput.makeAsyncIterator()
+                        _ = await iterator.next()
+                    }
+                }
+                continuation.finish()
             }
-            continuation.finish()
         }
     }
 }
@@ -44,6 +66,7 @@ private struct ScriptedTurn {
 private final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendable {
 
     private(set) var values = [Element]()
+    private(set) var isFinished = false
     private var task: Task<Void, Never>?
 
     init(_ stream: AsyncStream<Element>) {
@@ -51,6 +74,7 @@ private final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendabl
             for await value in stream {
                 self?.values.append(value)
             }
+            self?.isFinished = true
         }
     }
 
