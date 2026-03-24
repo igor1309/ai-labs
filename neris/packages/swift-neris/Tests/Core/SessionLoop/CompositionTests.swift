@@ -39,13 +39,15 @@ final class CompositionTests: TestContext {
 
     private typealias Loop = AgentLoopSpy<Message, AgentEvent>
     private typealias ControllableLoop = ControllableAgentLoopSpy<Control, AgentEvent>
+    private typealias MessageChannel = InputChannel<Message>
+    private typealias ControlChannel = InputChannel<Control>
 
     private func makeSUT(
         events: [AgentEvent],
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (Loop, InputChannel<Message>, StreamSpy<AgentEvent>) {
+    ) -> (Loop, MessageChannel, StreamSpy<AgentEvent>) {
         let agentLoop = Loop(events: events)
-        let input = InputChannel<Message>()
+        let input = MessageChannel()
         let repl = REPL(input: input.stream, agentLoop: agentLoop)
         return (agentLoop, input, StreamSpy(repl.run()))
     }
@@ -53,10 +55,10 @@ final class CompositionTests: TestContext {
     private func makeSUT(
         expectsControl: Bool,
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (ControllableLoop, InputChannel<Control>) {
+    ) -> (ControllableLoop, ControlChannel) {
         let agentLoop = ControllableLoop()
         let envelope = StateEnvelope(initial: expectsControl, stream: agentLoop.events) { _ in expectsControl }
-        let uiInput = InputChannel<Control>()
+        let uiInput = ControlChannel()
         let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
         agentLoop.start(observing: router.controlStream())
         return (agentLoop, uiInput)
