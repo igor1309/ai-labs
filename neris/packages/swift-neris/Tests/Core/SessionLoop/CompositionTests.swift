@@ -37,8 +37,8 @@ final class CompositionTests: TestContext {
 
     // MARK: - Helpers
 
-    private typealias Loop = AgentLoopSpyOf<Message, AgentEvent>
-    private typealias ControllableLoop = ControllableAgentLoopSpyOf<Control, AgentEvent>
+    private typealias Loop = AgentLoopSpy<Message, AgentEvent>
+    private typealias ControllableLoop = ControllableAgentLoopSpy<Control, AgentEvent>
 
     private func makeSUT(
         events: [AgentEvent],
@@ -122,7 +122,7 @@ extension Router {
     }
 }
 
-private final class ControllableAgentLoopSpyOf<C: Equatable & Sendable, E: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
+private final class ControllableAgentLoopSpy<C: Equatable & Sendable, E: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
 
     private(set) var receivedControls = [C]()
     private let eventChannel = InputChannel<E>()
@@ -148,7 +148,7 @@ private final class ControllableAgentLoopSpyOf<C: Equatable & Sendable, E: Equat
     }
 }
 
-private final class AgentLoopSpyOf<I: Equatable & Sendable, E: Equatable & Sendable>: AgentLoop, @unchecked Sendable {
+private final class AgentLoopSpy<I: Equatable & Sendable, E: Equatable & Sendable>: AgentLoop, @unchecked Sendable {
 
     let events: [E]
     private(set) var receivedInputs = [I]()
