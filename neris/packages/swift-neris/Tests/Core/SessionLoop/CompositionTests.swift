@@ -168,17 +168,17 @@ extension ControllableAgentLoop where Control == Input, Control: Equatable, Self
     }
 }
 
-private final class ControllableAgentLoopSpy<C: Equatable & Sendable, E: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
+private final class ControllableAgentLoopSpy<Input: Equatable & Sendable, Event: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
 
-    private let events: [E]
-    private(set) var receivedInputs = [C]()
-    private(set) var receivedControls = [C]()
+    private let events: [Event]
+    private(set) var receivedInputs = [Input]()
+    private(set) var receivedControls = [Input]()
 
-    init(events: [E] = []) {
+    init(events: [Event] = []) {
         self.events = events
     }
 
-    func run(input: C) -> AsyncStream<E> {
+    func run(input: Input) -> AsyncStream<Event> {
         receivedInputs.append(input)
         let events = events
         return AsyncStream { continuation in
@@ -189,7 +189,7 @@ private final class ControllableAgentLoopSpy<C: Equatable & Sendable, E: Equatab
         }
     }
 
-    func start(observing stream: AsyncStream<C>) {
+    func start(observing stream: AsyncStream<Input>) {
         Task { [weak self] in
             for await control in stream {
                 self?.receivedControls.append(control)
@@ -205,16 +205,16 @@ private final class ControllableAgentLoopSpy<C: Equatable & Sendable, E: Equatab
     }
 }
 
-private final class AgentLoopSpy<I: Equatable & Sendable, E: Equatable & Sendable>: AgentLoop, @unchecked Sendable {
+private final class AgentLoopSpy<Input: Equatable & Sendable, Event: Equatable & Sendable>: AgentLoop, @unchecked Sendable {
 
-    let events: [E]
-    private(set) var receivedInputs = [I]()
+    let events: [Event]
+    private(set) var receivedInputs = [Input]()
 
-    init(events: [E]) {
+    init(events: [Event]) {
         self.events = events
     }
 
-    func run(input: I) -> AsyncStream<E> {
+    func run(input: Input) -> AsyncStream<Event> {
         receivedInputs.append(input)
         let events = events
         return AsyncStream { continuation in
