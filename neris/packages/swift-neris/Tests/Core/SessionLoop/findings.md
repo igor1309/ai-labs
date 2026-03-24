@@ -27,6 +27,13 @@ Text output finishes without suspending. The stream completes naturally.
 - Cancellation is a control signal, not Task cancellation.
 - Turn checks `gate.isCancelled` between steps — actor hop as cooperative checkpoint.
 - `Task.sleep` between steps models real async work, creating genuine suspension points.
+- Cancellation during escalation: `gate.wait()` returns `nil`, turn breaks without emitting remaining steps.
+
+## Proven: REPL (outer loop)
+
+- REPL reads from input stream, invokes turn closure, forwards turn output.
+- Multiple inputs are processed sequentially — each turn completes before the next starts.
+- `for await` over input stream gives the loop behavior for free.
 
 ## Key primitives
 
@@ -34,11 +41,19 @@ Text output finishes without suspending. The stream completes naturally.
 
 Actor. Unbuffered, typed signaling between controller and turn.
 
-- `wait()` — suspends turn until response arrives.
+- `wait() -> Response?` — suspends turn until response arrives. Returns `nil` on cancellation.
 - `signal(_ response:)` — delivers response and resumes turn.
-- `cancel()` / `isCancelled` — cooperative cancellation flag.
+- `cancel()` / `isCancelled` — cooperative cancellation. Unblocks pending `wait()` with `nil`.
 
 Unbuffered by design: signals sent before `wait()` are dropped.
+
+### REPL\<Response\>
+
+Outer loop. Reads input stream, invokes parameterized turn closure, forwards turn output to a single output stream.
+
+### InputChannel
+
+Test helper. Wraps `AsyncStream.makeStream` for programmatic input delivery in tests.
 
 ### ScriptedTurn\<Response\>
 
@@ -57,7 +72,8 @@ Test observer for `AsyncStream`. Collects values, tracks completion, timeout-bas
 
 ## Not yet tested
 
-- Cancellation during escalation (`gate.wait()` hangs when cancel arrives)
-- Session loop (REPL) — outer loop, lifecycle management
+- REPL escalation relay — REPL holds the gate, relays control response back to the turn
+- REPL cancellation relay — REPL forwards cancel to running turn
+- REPL state exposure — idle / running / suspended (needed by Router)
 - Router — input classification based on agent loop state
 - Turn protocol extraction
