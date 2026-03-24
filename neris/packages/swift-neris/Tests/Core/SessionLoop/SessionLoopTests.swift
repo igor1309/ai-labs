@@ -174,7 +174,7 @@ final class SessionLoopTests: TestContext {
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (InputChannel<String>, StreamSpy<REPLOutput>) {
         let input = InputChannel<String>()
-        let repl = REPL<String>(input: input.stream, turn: turn)
+        let repl = REPL<String, REPLOutput>(input: input.stream, turn: turn)
         return (input, StreamSpy<REPLOutput>(repl.run()))
     }
 
@@ -242,12 +242,12 @@ private actor Gate<Response: Sendable> {
     }
 }
 
-private struct REPL<Response: Equatable & Sendable> {
+struct REPL<Input: Sendable, Event: Sendable> {
 
-    let input: AsyncStream<String>
-    let turn: @Sendable (String) -> AsyncStream<TurnOutput<Response>>
+    let input: AsyncStream<Input>
+    let turn: @Sendable (Input) -> AsyncStream<Event>
 
-    func run() -> AsyncStream<TurnOutput<Response>> {
+    func run() -> AsyncStream<Event> {
         let input = input
         let turn = turn
         return AsyncStream { continuation in
