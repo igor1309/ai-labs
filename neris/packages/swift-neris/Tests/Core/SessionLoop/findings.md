@@ -133,6 +133,10 @@ Extends AgentLoop with `start(observing: AsyncStream<Control>)` for control stre
 - **compose must own its event stream** — early version passed `events: AsyncStream<Event>` as a parameter, asking the caller to hand the agent loop its own output back. The agent loop produces events via `run(input:)` — compose should wire that internally, not receive it from outside.
 - **Reuse primitives in composition** — compose initially reimplemented REPL's turn iteration inline. The fix: call `AgentLoop.compose` (which returns REPL) and let REPL handle the turn loop. The routing Task only splits router output into two continuations.
 
-## Not yet tested
+## PoC status: complete
 
-- Turn protocol extraction
+24 tests across 4 suites. Each primitive is proven in isolation; composition tests prove wiring at two levels (AgentLoop.compose and ControllableAgentLoop.compose). Turn uses a closure shape `(Input) -> AsyncStream<Event>` — no protocol needed.
+
+### Not proven in compose
+
+- Routing switch through compose: events from `run(input:)` updating envelope state mid-stream, causing subsequent input to route differently. The feedback loop (input → run → event → state change → routing flip) is proven in parts (StateEnvelope + Router test) but not end-to-end through `compose`.
