@@ -127,28 +127,30 @@ final class SessionLoopTests: TestContext {
     // MARK: - REPL
 
     @Test func test_repl_shouldForwardTurnOutput_onInput() async throws {
+        let text = makeSomeString()
         let (input, spy) = makeREPL { _ in
-            AsyncStream { $0.yield(.text("response")); $0.finish() }
+            AsyncStream { $0.yield(.text(text)); $0.finish() }
         }
 
-        input.send("hello")
+        input.send(makeSomeString())
         input.finish()
 
         await spy.waitForFinish()
-        #expect(spy.values == [REPLOutput.text("response")])
+        #expect(spy.values == [REPLOutput.text(text)])
     }
 
     @Test func test_repl_shouldProcessEachInput_onMultipleInputs() async throws {
+        let (first, second) = (makeSomeString(),  makeSomeString())
         let (input, spy) = makeREPL { message in
             AsyncStream { $0.yield(.text("re: \(message)")); $0.finish() }
         }
 
-        input.send("first")
-        input.send("second")
+        input.send(first)
+        input.send(second)
         input.finish()
 
         await spy.waitForFinish()
-        #expect(spy.values == [REPLOutput.text("re: first"), REPLOutput.text("re: second")])
+        #expect(spy.values == [REPLOutput.text("re: \(first)"), REPLOutput.text("re: \(second)")])
     }
 
     // MARK: - Helpers
