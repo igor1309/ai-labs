@@ -1,11 +1,18 @@
 ---
 date: 2026-03-24
-version: 0.0.2
+model: opus-4.6
+version: 0.0.3
 title: Session Loop as Architectural Primitive for Agent Systems
 format: design-note
 ---
 
 # Design Note: Session Loop as Architectural Primitive for Agent Systems
+
+## Executive Summary
+
+**Session-Turn Architecture** — a session-scoped loop parameterized by a controllable, suspendable turn with a control channel alongside the input channel, composed through protocol boundaries, applied to agent systems.
+
+This is not a novel pattern. It is a deliberate composition of established architectural ideas: session-oriented architecture for lifecycle management, hexagonal architecture (Ports and Adapters) for the protocol-defined turn boundary, the game loop pattern for the outer read-process-output structure, structured concurrency for cooperative control and cancellation, and the decorator pattern for stream-level concerns like routing. The assembly — and its application to agent systems — is what this note describes.
 
 ## Scope
 
