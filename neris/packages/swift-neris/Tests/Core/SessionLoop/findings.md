@@ -137,6 +137,8 @@ Extends AgentLoop with `start(observing: AsyncStream<Control>)` for control stre
 
 24 tests across 4 suites. Each primitive is proven in isolation; composition tests prove wiring at two levels (AgentLoop.compose and ControllableAgentLoop.compose). Turn uses a closure shape `(Input) -> AsyncStream<Event>` — no protocol needed.
 
-### Feedback loop proven end-to-end
+### Feedback loop proven end-to-end (both directions)
 
-Input → `run(input:)` → event → envelope state flip → next input routes to control. The full cycle through `compose`: first message routes to `.repl`, agent produces event that flips envelope to `true`, second message routes to `.control` and reaches the agent loop's control stream.
+- **Forward flip**: input → `run(input:)` → escalation event → envelope flips to `true` → next input routes to `.control`.
+- **Reverse flip**: control delivered → `start(observing:)` signals turn resume → turn emits done event → envelope flips to `false` → next input routes back to `.repl`.
+- The spy models turn suspension: `run(input:)` emits pre-control events, waits for control delivery signal, then emits post-control events through the same stream. This mirrors real turn behavior where escalation suspends and control resumes.
