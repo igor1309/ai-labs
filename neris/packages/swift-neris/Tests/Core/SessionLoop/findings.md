@@ -137,6 +137,6 @@ Extends AgentLoop with `start(observing: AsyncStream<Control>)` for control stre
 
 24 tests across 4 suites. Each primitive is proven in isolation; composition tests prove wiring at two levels (AgentLoop.compose and ControllableAgentLoop.compose). Turn uses a closure shape `(Input) -> AsyncStream<Event>` — no protocol needed.
 
-### Not proven in compose
+### Feedback loop proven end-to-end
 
-- Routing switch through compose: events from `run(input:)` updating envelope state mid-stream, causing subsequent input to route differently. The feedback loop (input → run → event → state change → routing flip) is proven in parts (StateEnvelope + Router test) but not end-to-end through `compose`.
+Input → `run(input:)` → event → envelope state flip → next input routes to control. The full cycle through `compose`: first message routes to `.repl`, agent produces event that flips envelope to `true`, second message routes to `.control` and reaches the agent loop's control stream.

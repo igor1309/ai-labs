@@ -35,6 +35,24 @@ final class CompositionTests: TestContext {
         #expect(agentLoop.receivedControls == [control])
     }
 
+    @Test func test_shouldSwitchToControlRouting_onAgentEventFlippingState() async throws {
+        let message = makeControl()
+        let control = makeControl()
+        let event = makeAgentEvent()
+        let agentLoop = ControllableLoop(events: [event])
+        let uiInput = ControlChannel()
+        let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: false, map: { _ in true })
+
+        uiInput.send(message)
+        await waitForState(true, on: envelope)
+
+        uiInput.send(control)
+        await agentLoop.waitForControl(1)
+
+        #expect(agentLoop.receivedInputs == [message])
+        #expect(agentLoop.receivedControls == [control])
+    }
+
     // MARK: - Helpers
 
     private typealias Loop = AgentLoopSpy<Message, AgentEvent>
@@ -61,6 +79,19 @@ final class CompositionTests: TestContext {
         let uiInput = ControlChannel()
         let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: expectsControl, map: { _ in expectsControl })
         return (agentLoop, uiInput, envelope)
+    }
+
+    private func waitForState(
+        _ expected: Bool,
+        on envelope: Envelope,
+        timeout: Duration = .seconds(2),
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) async {
+        let deadline = ContinuousClock.now + timeout
+        while envelope.query() != expected, ContinuousClock.now < deadline {
+            await Task.yield()
+        }
+        #expect(envelope.query() == expected, sourceLocation: sourceLocation)
     }
 
     private struct Message: Equatable, Sendable {
@@ -139,10 +170,23 @@ extension ControllableAgentLoop where Control == Input, Control: Equatable, Self
 
 private final class ControllableAgentLoopSpy<C: Equatable & Sendable, E: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
 
+    private let events: [E]
+    private(set) var receivedInputs = [C]()
     private(set) var receivedControls = [C]()
 
+    init(events: [E] = []) {
+        self.events = events
+    }
+
     func run(input: C) -> AsyncStream<E> {
-        AsyncStream { $0.finish() }
+        receivedInputs.append(input)
+        let events = events
+        return AsyncStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
+            continuation.finish()
+        }
     }
 
     func start(observing stream: AsyncStream<C>) {
