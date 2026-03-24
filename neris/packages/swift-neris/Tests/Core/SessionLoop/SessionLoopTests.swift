@@ -172,8 +172,8 @@ final class SessionLoopTests: TestContext {
     private func makeREPL(
         turn: @escaping @Sendable (String) -> AsyncStream<REPLOutput>,
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (InputChannel, StreamSpy<REPLOutput>) {
-        let input = InputChannel()
+    ) -> (InputChannel<String>, StreamSpy<REPLOutput>) {
+        let input = InputChannel<String>()
         let repl = REPL<String>(input: input.stream, turn: turn)
         return (input, StreamSpy<REPLOutput>(repl.run()))
     }
@@ -242,8 +242,7 @@ private actor Gate<Response: Sendable> {
     }
 }
 
-// TODO: move to helpers after battle tested
-private final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendable {
+final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendable {
 
     private(set) var values = [Element]()
     private(set) var isFinished = false
@@ -275,18 +274,18 @@ private final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendabl
     deinit { task?.cancel() }
 }
 
-private struct InputChannel {
+struct InputChannel<Input: Sendable> {
 
-    let stream: AsyncStream<String>
-    private let continuation: AsyncStream<String>.Continuation
+    let stream: AsyncStream<Input>
+    private let continuation: AsyncStream<Input>.Continuation
 
     init() {
-        let (stream, continuation) = AsyncStream.makeStream(of: String.self)
+        let (stream, continuation) = AsyncStream.makeStream(of: Input.self)
         self.stream = stream
         self.continuation = continuation
     }
 
-    func send(_ value: String) {
+    func send(_ value: Input) {
         continuation.yield(value)
     }
 
