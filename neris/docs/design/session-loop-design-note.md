@@ -1,8 +1,7 @@
 ---
 date: 2026-03-24
-model: opus 4.6
-version: 0.0.1
-title: Design Note: Session Loop as Architectural Primitive for Agent Systems
+version: 0.0.2
+title: Session Loop as Architectural Primitive for Agent Systems
 format: design-note
 ---
 
@@ -28,8 +27,6 @@ This separation is the architectural value: the session loop is the stable skele
 
 ## The Agent Turn Contract
 
-The turn is a dependency of the session loop. Since the session loop is a generic component, the turn must conform to a protocol — a contract that defines what the session loop can expect.
-
 The turn contract has three possible outcomes:
 
 - **Completion** — the turn produces a result and optional state mutations.
@@ -40,7 +37,7 @@ The turn does not know about I/O, the user, or the session lifecycle. It receive
 
 ## Component Architecture
 
-Four components, each defined by protocol-based interfaces. No component knows the concrete type of any dependency.
+Four components, each defined by protocol-based interfaces.
 
 ### UI
 
@@ -48,11 +45,11 @@ Thin. Emits a stream of untyped text events (user input). Consumes a stream of o
 
 ### Router
 
-Consumes the UI event stream. Observes agent loop state (read-only). Produces two output streams: one directed to the REPL (new turn input), one directed to the AgentLoop (control signals and escalation responses).
+Consumes the UI event stream. Observes agent loop state (read-only). Produces two directed streams: one for the REPL (new turn input), one for the AgentLoop (control signals and escalation responses).
 
-This component exists because user input is inherently untyped — "use supabase" could be a fresh instruction or a permission grant, and only the current system state disambiguates. The router is the single place where this classification happens. Its sole responsibility is: given the current agent loop state and an incoming UI event, decide who receives it.
+User input is inherently untyped — "use supabase" could be a fresh instruction or a permission grant. Only current system state disambiguates. This classification must happen somewhere, and the Router exists to keep that knowledge out of the UI. The system-level dependency on agent loop state is real and irreducible, but it belongs to the Router, not the UI. The Router is effectively a decorator on the UI's output stream: it wraps the raw event stream with state-aware direction. The UI remains a thin, stateless stream.
 
-The router does not manage turns, handle escalations, or forward output. It classifies and directs.
+The Router does not manage turns, handle escalations, or forward output. It classifies and directs.
 
 ### REPL
 
@@ -68,7 +65,7 @@ The agent loop does not know about the UI, the router, or the REPL. It depends o
 
 ## Wiring
 
-All connections are established at the composition root. Each component declares its dependencies as protocol-typed properties or constructor parameters. The composition root creates concrete instances and injects them.
+All connections are established at the composition root. Each component declares its dependencies as protocol-typed constructor parameters.
 
 - UI event stream → Router input
 - AgentLoop published state → Router observation
@@ -77,7 +74,15 @@ All connections are established at the composition root. Each component declares
 - AgentLoop output stream → UI output (via REPL or directly, depending on design)
 - AgentLoop continuation → REPL (wired at construction)
 
-Every component is testable in isolation with protocol-conforming stubs. The topology is explicit at the composition root and invisible to the components themselves.
+## Cooperative Interruptibility
+
+For control actions like `stop` to feel responsive, the agent turn must be cooperatively interruptible. This is an architectural constraint on turn implementation: turns should consist of small steps with frequent cancellation checkpoints at natural suspension points (before the next LLM call, before tool execution, between planning steps). Long uninterruptible sections should be avoided where possible.
+
+Without this, `stop` means "stop at next checkpoint" — which may be acceptable, but the latency is a product decision that should be made explicitly, not discovered at runtime.
+
+## Companion Note
+
+See *Agent Loop, REPL, and Control Routing* for a complementary perspective focused on the bidirectional contract between loop and UI, and the architectural necessity of the state dependency.
 
 ## Key Design Decisions Left Open
 
