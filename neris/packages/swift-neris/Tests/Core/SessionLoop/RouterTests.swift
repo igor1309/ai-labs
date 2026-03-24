@@ -22,6 +22,25 @@ final class RouterTests: TestContext {
         #expect(spy.values == [Output.control(event)])
     }
 
+    @Test func test_shouldSwitchRouting_onStateChange() async throws {
+        let (task, control, resumed) = (makeUIEvent(), makeUIEvent(), makeUIEvent())
+        let state = StateStub()
+        let (input, spy) = makeSUT(expectsControl: { state.expectsControl })
+
+        input.send(task)
+        await spy.waitForEvents(1)
+
+        state.expectsControl = true
+        input.send(control)
+        await spy.waitForEvents(2)
+
+        state.expectsControl = false
+        input.send(resumed)
+        await spy.waitForEvents(3)
+
+        #expect(spy.values == [Output.repl(task), Output.control(control), Output.repl(resumed)])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = Router<UIEvent>
@@ -38,6 +57,10 @@ final class RouterTests: TestContext {
 
     private struct UIEvent: Equatable, Sendable {
         let value: String
+    }
+
+    private final class StateStub: @unchecked Sendable {
+        var expectsControl = false
     }
 
     private func makeUIEvent(
@@ -63,11 +86,7 @@ private struct Router<Input: Equatable & Sendable> {
         return AsyncStream { continuation in
             Task {
                 for await event in events {
-                    if expectsControl() {
-                        continuation.yield(.control(event))
-                    } else {
-                        continuation.yield(.repl(event))
-                    }
+                    continuation.yield(expectsControl() ? .control(event) : .repl(event))
                 }
                 continuation.finish()
             }
