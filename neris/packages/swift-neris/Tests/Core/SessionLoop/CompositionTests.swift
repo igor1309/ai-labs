@@ -1,6 +1,6 @@
 import Testing
 
-final class AgentLoopProtocolTests: TestContext {
+final class CompositionTests: TestContext {
 
     @Test func test_shouldCallRunAndForwardEvents_onInput() async throws {
         let (event, message) = (makeSomeString(), makeSomeString())
