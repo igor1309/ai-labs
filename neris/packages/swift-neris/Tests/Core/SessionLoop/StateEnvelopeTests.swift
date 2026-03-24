@@ -24,18 +24,19 @@ final class StateEnvelopeTests: TestContext {
     }
 
     @Test func test_shouldDriveRouterRouting_onStreamStateChange() async throws {
+        let (task, control) = (makeSomeString(), makeSomeString())
         let (envelope, stateInput, uiInput, spy) = makeSUT()
 
-        uiInput.send("task")
+        uiInput.send(task)
         await spy.waitForEvents(1)
 
         stateInput.send(Event(isAwaiting: true))
         await envelope.waitForState(true)
 
-        uiInput.send("control")
+        uiInput.send(control)
         await spy.waitForEvents(2)
 
-        #expect(spy.values == [RouterEvent.repl("task"), RouterEvent.control("control")])
+        #expect(spy.values == [RouterEvent.repl(task), RouterEvent.control(control)])
     }
 
     // MARK: - Helpers
