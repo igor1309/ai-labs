@@ -27,7 +27,7 @@ final class CompositionTests: TestContext {
 
     @Test func test_shouldDeliverControlToAgentLoop_onControlRoute() async throws {
         let control = makeControl()
-        let (agentLoop, uiInput) = makeSUT(expectsControl: true)
+        let (agentLoop, uiInput, _) = makeSUT(expectsControl: true)
 
         uiInput.send(control)
 
@@ -41,6 +41,7 @@ final class CompositionTests: TestContext {
     private typealias ControllableLoop = ControllableAgentLoopSpy<Control, AgentEvent>
     private typealias MessageChannel = InputChannel<Message>
     private typealias ControlChannel = InputChannel<Control>
+    private typealias Envelope = StateEnvelope<AgentEvent, Bool>
 
     private func makeSUT(
         events: [AgentEvent],
@@ -55,21 +56,11 @@ final class CompositionTests: TestContext {
     private func makeSUT(
         expectsControl: Bool,
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (ControllableLoop, ControlChannel) {
+    ) -> (ControllableLoop, ControlChannel, Envelope) {
         let agentLoop = ControllableLoop()
         let uiInput = ControlChannel()
-        compose(agentLoop: agentLoop, uiInput: uiInput, expectsControl: expectsControl)
-        return (agentLoop, uiInput)
-    }
-
-    private func compose(
-        agentLoop: ControllableLoop,
-        uiInput: ControlChannel,
-        expectsControl: Bool
-    ) {
-        let envelope = StateEnvelope(initial: expectsControl, stream: agentLoop.events) { _ in expectsControl }
-        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
-        agentLoop.start(observing: router.controlStream())
+        let envelope = agentLoop.compose(uiEvents: uiInput.stream, events: agentLoop.events, initial: expectsControl, map: { _ in expectsControl })
+        return (agentLoop, uiInput, envelope)
     }
 
     private struct Message: Equatable, Sendable {
@@ -129,6 +120,21 @@ extension Router {
                 continuation.finish()
             }
         }
+    }
+}
+
+extension ControllableAgentLoop where Control: Equatable {
+
+    func compose(
+        uiEvents: AsyncStream<Control>,
+        events: AsyncStream<Event>,
+        initial: Bool = false,
+        map: @escaping @Sendable (Event) -> Bool
+    ) -> StateEnvelope<Event, Bool> {
+        let envelope = StateEnvelope(initial: initial, stream: events, map: map)
+        let router = Router(events: uiEvents, expectsControl: { envelope.query() })
+        start(observing: router.controlStream())
+        return envelope
     }
 }
 
