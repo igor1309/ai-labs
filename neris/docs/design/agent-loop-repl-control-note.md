@@ -1,7 +1,7 @@
 ---
 date: 2026-03-24
 model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 title: Agent Loop, REPL, and Control Routing
 format: architecture-note
 ---
@@ -18,9 +18,9 @@ This note captures the simplified architectural conclusion for a multi-turn agen
 
 ## Core conclusion
 
-UI depends on inner loop state/output.
+The routing layer depends on inner loop state/output, and decorates the UI stream accordingly.
 
-That dependency is real and necessary because otherwise UI cannot:
+That dependency is real and necessary because otherwise the system cannot:
 
 - present a control request
 - know that approval is pending
@@ -68,14 +68,14 @@ running -> awaiting_control -> running
 ## Architectural shape
 
 ```text
-AgentLoop --emits--> state/events --> UI
-UI --routes--> REPL input ----------> AgentLoop
-UI --routes--> control actions -----> AgentLoop
+AgentLoop --emits--> state/events --> Routing layer --> decorated UI stream --> UI
+UI/user actions --------------------> Routing layer --> REPL input ----------> AgentLoop
+UI/user actions --------------------> Routing layer --> control input -------> AgentLoop
 ```
 
 ## Important implication
 
-Because UI must render pending control requests, UI necessarily observes state/events originating from the running loop.
+Because the system must render pending control requests, the routing layer necessarily observes state/events originating from the running loop and decorates the UI stream accordingly.
 
 Therefore:
 
@@ -96,12 +96,12 @@ It owns loop state such as:
 
 It emits state/events outward.
 
-UI observes those emissions and decides what interaction to present.
+A routing layer observes those emissions and decides what interaction to present by decorating the UI stream.
 
 That means the dependency chain is explicit:
 
 ```text
-inner loop state -> UI affordance -> user action routing
+inner loop state -> routing layer -> UI affordance -> user action routing
 ```
 
 ## Tight-leash control
@@ -122,14 +122,15 @@ Otherwise `stop` means “stop at next checkpoint”, not truly immediate stop.
 1. REPL handles task input, not control.
 2. Control is a separate class of interaction.
 3. Agent escalation keeps the loop alive and waiting.
-4. UI depends on inner loop state/output in order to present and route control.
+4. The routing layer depends on inner loop state/output in order to decorate the UI stream and route control.
 5. That dependency is architectural and cannot be eliminated by relabeling.
 
 ## Compact formulation
 
-A multi-turn agent loop with escalation requires a bidirectional contract with UI:
+A multi-turn agent loop with escalation requires a bidirectional contract mediated by a routing layer:
 
-- loop informs UI what kind of interaction is currently needed
-- UI routes user action back accordingly
+- loop informs the routing layer what kind of interaction is currently needed
+- the routing layer decorates the UI stream accordingly
+- user action is routed back through that layer
 
 That is the correct simplification.
