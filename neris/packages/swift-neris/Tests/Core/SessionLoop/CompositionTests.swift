@@ -39,12 +39,7 @@ final class CompositionTests: TestContext {
         let message = makeControl()
         let control = makeControl()
         let resumed = makeControl()
-        let (agentLoop, uiInput, envelope) = makeSUT(
-            events: [makeAgentEvent("escalation")],
-            postControlEvents: [makeAgentEvent("done")],
-            initial: false,
-            map: { $0.value == "escalation" }
-        )
+        let (agentLoop, uiInput, envelope) = makeSUTWithEscalation()
 
         uiInput.send(message)
         await waitForState(true, on: envelope)
@@ -88,6 +83,18 @@ final class CompositionTests: TestContext {
         let uiInput = ControlChannel()
         let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: initial, map: map)
         return (agentLoop, uiInput, envelope)
+    }
+
+    private func makeSUTWithEscalation(
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) -> (ControllableLoop, ControlChannel, Envelope) {
+        let escalation = makeAgentEvent()
+        return makeSUT(
+            events: [escalation],
+            postControlEvents: [makeAgentEvent()],
+            initial: false,
+            map: { $0 == escalation }
+        )
     }
 
     private func waitForState(
