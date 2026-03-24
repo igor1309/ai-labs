@@ -3,7 +3,7 @@ import Testing
 final class StateEnvelopeTests: TestContext {
 
     @Test func test_shouldReportTrue_onEventMappingToTrue() async throws {
-        let (input, sut) = makeSUT()
+        let (sut, input) = makeSUT()
 
         input.send(Event(isAwaiting: true))
         await sut.waitForState(true)
@@ -12,7 +12,7 @@ final class StateEnvelopeTests: TestContext {
     }
 
     @Test func test_shouldReportFalse_onEventMappingToFalse() async throws {
-        let (input, sut) = makeSUT()
+        let (sut, input) = makeSUT()
 
         input.send(Event(isAwaiting: true))
         await sut.waitForState(true)
@@ -24,7 +24,7 @@ final class StateEnvelopeTests: TestContext {
     }
 
     @Test func test_shouldDriveRouterRouting_onStreamStateChange() async throws {
-        let (stateInput, envelope) = makeSUT()
+        let (envelope, stateInput) = makeSUT()
 
         let uiInput = InputChannel<String>()
         let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
@@ -48,10 +48,10 @@ final class StateEnvelopeTests: TestContext {
 
     private func makeSUT(
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (InputChannel<Event>, SUT) {
+    ) -> (SUT, InputChannel<Event>) {
         let input = InputChannel<Event>()
         let sut = SUT(stream: input.stream) { $0.isAwaiting }
-        return (input, sut)
+        return (sut, input)
     }
 
     private struct Event: Sendable {
