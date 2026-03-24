@@ -1,12 +1,12 @@
 ---
 date: 2026-03-24
 model: opus-4.6
-description: "Findings from the session-loop turn primitive proof-of-concept"
+description: "Findings from the session-loop architecture proof-of-concept"
 ---
 
-# Session Loop PoC: Turn Primitive Findings
+# Session Loop PoC Findings
 
-Proof-of-concept validation of the turn contract described in the design notes. All tests use scripted turns — no real LLM, UI, or network.
+Proof-of-concept validation of the session-loop architecture described in the design notes. All tests use scripted turns — no real LLM, UI, or network.
 
 ## Proven: all three turn outcomes
 
@@ -34,6 +34,15 @@ Text output finishes without suspending. The stream completes naturally.
 - REPL reads from input stream, invokes turn closure, forwards turn output.
 - Multiple inputs are processed sequentially — each turn completes before the next starts.
 - `for await` over input stream gives the loop behavior for free.
+- REPL does NOT relay control — that goes Router → AgentLoop directly.
+
+## Proven: Router (stream decorator)
+
+- Router wraps each UI event as `.repl` or `.control` based on a `() -> Bool` dependency.
+- State changes between events are picked up correctly (both directions).
+- Implementation is a single-line ternary per event — the Router classifies and directs, nothing else.
+- Router is generic over input type — no knowledge of what events contain.
+- The complexity lives in *who provides* `expectsControl`, not in the Router itself.
 
 ## Key primitives
 
@@ -47,13 +56,17 @@ Actor. Unbuffered, typed signaling between controller and turn.
 
 Unbuffered by design: signals sent before `wait()` are dropped.
 
+### Router\<Input\>
+
+Stream decorator. Wraps each event as `.repl(Input)` or `.control(Input)` based on an `expectsControl` closure. One line of logic.
+
 ### REPL\<Response\>
 
 Outer loop. Reads input stream, invokes parameterized turn closure, forwards turn output to a single output stream.
 
-### InputChannel
+### InputChannel\<Input\>
 
-Test helper. Wraps `AsyncStream.makeStream` for programmatic input delivery in tests.
+Test helper. Generic wrapper around `AsyncStream.makeStream` for programmatic input delivery in tests.
 
 ### ScriptedTurn\<Response\>
 
@@ -69,11 +82,11 @@ Test observer for `AsyncStream`. Collects values, tracks completion, timeout-bas
 - **Task cancellation races** — `Task.isCancelled` and `Task.yield()` don't guarantee visibility between synchronous steps. Actor-based cancellation with `Task.sleep` checkpoint is reliable.
 - **Cancellation is a control signal** — flows through the same channel (Gate), not a side-channel Task kill.
 - **Generic response boundary** — turn and gate are generic over response type. `ControlResponse` is test-scoped.
+- **REPL does not relay control** — initial attempt to make REPL relay escalation responses was architecturally wrong. The design notes are explicit: control goes Router → AgentLoop directly. REPL handles task input only.
+- **Router is trivially simple** — a boolean closure is sufficient to classify input. The Router doesn't need to know about agent states, escalation types, or control protocols. It just asks "expecting control?" and tags the event.
 
 ## Not yet tested
 
-- REPL escalation relay — REPL holds the gate, relays control response back to the turn
-- REPL cancellation relay — REPL forwards cancel to running turn
-- REPL state exposure — idle / running / suspended (needed by Router)
-- Router — input classification based on agent loop state
+- AgentLoop as stateful component — owns control stream, exposes observable state (idle/running/suspended)
+- Composition wiring — Router output split to REPL and AgentLoop
 - Turn protocol extraction
