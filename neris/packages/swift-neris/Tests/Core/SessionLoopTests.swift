@@ -12,7 +12,7 @@ final class SessionLoopTests: TestContext {
     @Test func test_shouldFinishWithoutSuspending_onTextOutput() async throws {
         let (_, spy) = makeSUT(steps: [.text("hello")])
 
-        await spy.waitForEvents(1)
+        await spy.waitForFinish()
         #expect(spy.values == [Output.text("hello")])
         #expect(spy.isFinished)
     }
@@ -90,6 +90,16 @@ final class SessionLoopTests: TestContext {
         #expect(!spy.isFinished)
     }
 
+    @Test func test_shouldStopEmitting_onCancellation() async throws {
+        let (control, spy) = makeSUT(steps: [.text("first"), .text("second"), .text("third")])
+
+        await spy.waitForEvents(1)
+        await control.cancel()
+
+        await spy.waitForFinish()
+        #expect(spy.values == [Output.text("first")])
+    }
+
     @Test func test_shouldSuspend_onEscalation() async throws {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
@@ -144,11 +154,13 @@ private struct ScriptedTurn<Response: Equatable & Sendable> {
         return AsyncStream { continuation in
             Task {
                 for step in steps {
+                    guard await !gate.isCancelled else { break }
                     continuation.yield(step)
                     if case .escalation = step {
                         let response = await gate.wait()
                         continuation.yield(.response(response))
                     }
+                    try? await Task.sleep(for: .milliseconds(10))
                 }
                 continuation.finish()
             }
@@ -159,6 +171,7 @@ private struct ScriptedTurn<Response: Equatable & Sendable> {
 private actor Gate<Response: Sendable> {
 
     private var continuation: CheckedContinuation<Response, Never>?
+    private(set) var isCancelled = false
 
     func wait() async -> Response {
         await withCheckedContinuation { continuation = $0 }
@@ -167,6 +180,10 @@ private actor Gate<Response: Sendable> {
     func signal(_ response: Response) {
         continuation?.resume(returning: response)
         continuation = nil
+    }
+
+    func cancel() {
+        isCancelled = true
     }
 }
 
