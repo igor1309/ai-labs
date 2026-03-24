@@ -1,4 +1,4 @@
-extension AgentLoop.Message {
+extension ToolUseLoop.Message {
 
     var toOpenRouterMessage: OpenRouterRequestFactory.Message {
         switch self {
@@ -13,7 +13,7 @@ extension AgentLoop.Message {
 
 extension OpenRouterResponseParser.Response {
 
-    var toAgentResponse: AgentLoop.Response {
+    var toAgentResponse: ToolUseLoop.Response {
         switch self {
         case .text(let content): .text(content)
         case .toolCalls(let toolCalls): .toolCalls(toolCalls.map { .init(id: $0.id, name: $0.name, arguments: $0.arguments) })

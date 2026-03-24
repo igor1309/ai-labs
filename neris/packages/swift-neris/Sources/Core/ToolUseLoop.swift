@@ -1,6 +1,6 @@
 import Foundation
 
-public actor AgentLoop {
+public actor ToolUseLoop {
 
     public struct ToolCall: Equatable, Sendable {
         public let id: String
