@@ -57,11 +57,19 @@ final class CompositionTests: TestContext {
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (ControllableLoop, ControlChannel) {
         let agentLoop = ControllableLoop()
-        let envelope = StateEnvelope(initial: expectsControl, stream: agentLoop.events) { _ in expectsControl }
         let uiInput = ControlChannel()
+        compose(agentLoop: agentLoop, uiInput: uiInput, expectsControl: expectsControl)
+        return (agentLoop, uiInput)
+    }
+
+    private func compose(
+        agentLoop: ControllableLoop,
+        uiInput: ControlChannel,
+        expectsControl: Bool
+    ) {
+        let envelope = StateEnvelope(initial: expectsControl, stream: agentLoop.events) { _ in expectsControl }
         let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
         agentLoop.start(observing: router.controlStream())
-        return (agentLoop, uiInput)
     }
 
     private struct Message: Equatable, Sendable {
