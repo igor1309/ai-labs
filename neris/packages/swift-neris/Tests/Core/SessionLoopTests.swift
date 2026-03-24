@@ -43,6 +43,26 @@ final class SessionLoopTests: TestContext {
         #expect(spy.isFinished)
     }
 
+    @Test func test_shouldSuspendAndResumeEachEscalation_onMultipleEscalations() async throws {
+        let (control, spy) = makeSUT(steps: [.escalation("first?"), .escalation("second?"), .text("done")])
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [TurnOutput.escalation("first?")])
+        #expect(!spy.isFinished)
+
+        control.yield()
+
+        await spy.waitForEvents(2)
+        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.escalation("second?")])
+        #expect(!spy.isFinished)
+
+        control.yield()
+
+        await spy.waitForFinish()
+        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.escalation("second?"), TurnOutput.text("done")])
+        #expect(spy.isFinished)
+    }
+
     @Test func test_shouldSuspend_onEscalation() async throws {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
