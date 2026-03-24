@@ -138,6 +138,19 @@ final class SessionLoopTests: TestContext {
         #expect(spy.values == [REPLOutput.text("response")])
     }
 
+    @Test func test_repl_shouldProcessEachInput_onMultipleInputs() async throws {
+        let (input, spy) = makeREPL { message in
+            AsyncStream { $0.yield(.text("re: \(message)")); $0.finish() }
+        }
+
+        input.send("first")
+        input.send("second")
+        input.finish()
+
+        await spy.waitForFinish()
+        #expect(spy.values == [REPLOutput.text("re: first"), REPLOutput.text("re: second")])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = ScriptedTurn<ControlResponse>
