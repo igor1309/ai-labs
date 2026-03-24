@@ -50,6 +50,32 @@ final class CompositionTests: TestContext {
         #expect(agentLoop.receivedControls == [control])
     }
 
+    @Test func test_shouldSwitchBackToReplRouting_onPostControlEventRestoringState() async throws {
+        let message = makeControl()
+        let control = makeControl()
+        let resumed = makeControl()
+        let escalation = makeAgentEvent("escalation")
+        let done = makeAgentEvent("done")
+        let (agentLoop, uiInput, envelope) = makeSUT(
+            events: [escalation],
+            postControlEvents: [done],
+            initial: false,
+            map: { $0.value == "escalation" }
+        )
+
+        uiInput.send(message)
+        await waitForState(true, on: envelope)
+
+        uiInput.send(control)
+        await waitForState(false, on: envelope)
+
+        uiInput.send(resumed)
+        await agentLoop.waitForInput(2)
+
+        #expect(agentLoop.receivedInputs == [message, resumed])
+        #expect(agentLoop.receivedControls == [control])
+    }
+
     // MARK: - Helpers
 
     private typealias Loop = AgentLoopSpy<Message, AgentEvent>
@@ -70,11 +96,12 @@ final class CompositionTests: TestContext {
 
     private func makeSUT(
         events: [AgentEvent] = [],
+        postControlEvents: [AgentEvent] = [],
         initial: Bool,
         map: @escaping @Sendable (AgentEvent) -> Bool = { _ in true },
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (ControllableLoop, ControlChannel, Envelope) {
-        let agentLoop = ControllableLoop(events: events)
+        let agentLoop = ControllableLoop(events: events, postControlEvents: postControlEvents)
         let uiInput = ControlChannel()
         let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: initial, map: map)
         return (agentLoop, uiInput, envelope)
@@ -170,21 +197,34 @@ extension ControllableAgentLoop where Control == Input, Control: Equatable, Self
 private final class ControllableAgentLoopSpy<Input: Equatable & Sendable, Event: Equatable & Sendable>: ControllableAgentLoop, @unchecked Sendable {
 
     private let events: [Event]
+    private let postControlEvents: [Event]
+    private let resumeStream: AsyncStream<Void>
+    private let resumeContinuation: AsyncStream<Void>.Continuation
     private(set) var receivedInputs = [Input]()
     private(set) var receivedControls = [Input]()
 
-    init(events: [Event] = []) {
+    init(events: [Event] = [], postControlEvents: [Event] = []) {
         self.events = events
+        self.postControlEvents = postControlEvents
+        let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
+        self.resumeStream = stream
+        self.resumeContinuation = continuation
     }
 
     func run(input: Input) -> AsyncStream<Event> {
         receivedInputs.append(input)
-        let events = events
+        let pre = events
+        let post = postControlEvents
+        let resume = resumeStream
         return AsyncStream { continuation in
-            for event in events {
-                continuation.yield(event)
+            Task {
+                for event in pre { continuation.yield(event) }
+                if !post.isEmpty {
+                    for await _ in resume { break }
+                    for event in post { continuation.yield(event) }
+                }
+                continuation.finish()
             }
-            continuation.finish()
         }
     }
 
@@ -192,6 +232,7 @@ private final class ControllableAgentLoopSpy<Input: Equatable & Sendable, Event:
         Task { [weak self] in
             for await control in stream {
                 self?.receivedControls.append(control)
+                self?.resumeContinuation.yield(())
             }
         }
     }
@@ -199,6 +240,13 @@ private final class ControllableAgentLoopSpy<Input: Equatable & Sendable, Event:
     func waitForControl(_ count: Int, timeout: Duration = .seconds(2)) async {
         let deadline = ContinuousClock.now + timeout
         while receivedControls.count < count, ContinuousClock.now < deadline {
+            await Task.yield()
+        }
+    }
+
+    func waitForInput(_ count: Int, timeout: Duration = .seconds(2)) async {
+        let deadline = ContinuousClock.now + timeout
+        while receivedInputs.count < count, ContinuousClock.now < deadline {
             await Task.yield()
         }
     }
