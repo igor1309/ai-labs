@@ -36,16 +36,14 @@ final class CompositionTests: TestContext {
 
     // MARK: - Helpers
 
-    private typealias SUT = REPL<String, String>
-
     private func makeSUT(
         events: [String],
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (AgentLoopSpy, InputChannel<String>, StreamSpy<String>) {
         let agentLoop = AgentLoopSpy(events: events)
         let input = InputChannel<String>()
-        let sut = SUT(input: input.stream, agentLoop: agentLoop)
-        return (agentLoop, input, StreamSpy(sut.run()))
+        let repl = REPL(input: input.stream, agentLoop: agentLoop)
+        return (agentLoop, input, StreamSpy(repl.run()))
     }
 
     private func makeSUT(
