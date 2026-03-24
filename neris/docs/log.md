@@ -1,5 +1,8 @@
 # Log
 
+## 2026-03-24
+Add **Session Loop** design notes.
+
 ## 2026-03-22
 - Wire full composition: NerisAgent composer, read_file tool, system prompt, CLI error recovery, thinking spinner. Delete Agent stub.
 - Make Loop generic (`Loop<Element>`) with streaming processor. Revert accidental public exposure of Core types. CLI UX: version message, input prompt.
