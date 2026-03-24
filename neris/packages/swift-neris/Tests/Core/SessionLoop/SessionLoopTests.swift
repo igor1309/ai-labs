@@ -100,6 +100,19 @@ final class SessionLoopTests: TestContext {
         #expect(spy.values == [Output.text("first")])
     }
 
+    @Test func test_shouldStopWithoutRemainingOutput_onCancellationDuringEscalation() async throws {
+        let (control, spy) = makeSUT(steps: [.escalation("approve?"), .text("after")])
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [Output.escalation("approve?")])
+
+        await control.cancel()
+
+        await spy.waitForFinish()
+        #expect(spy.values == [Output.escalation("approve?")])
+        #expect(spy.isFinished)
+    }
+
     @Test func test_shouldSuspend_onEscalation() async throws {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
@@ -157,7 +170,7 @@ private struct ScriptedTurn<Response: Equatable & Sendable> {
                     guard await !gate.isCancelled else { break }
                     continuation.yield(step)
                     if case .escalation = step {
-                        let response = await gate.wait()
+                        guard let response = await gate.wait() else { break }
                         continuation.yield(.response(response))
                     }
                     try? await Task.sleep(for: .milliseconds(10))
@@ -170,11 +183,12 @@ private struct ScriptedTurn<Response: Equatable & Sendable> {
 
 private actor Gate<Response: Sendable> {
 
-    private var continuation: CheckedContinuation<Response, Never>?
+    private var continuation: CheckedContinuation<Response?, Never>?
     private(set) var isCancelled = false
 
-    func wait() async -> Response {
-        await withCheckedContinuation { continuation = $0 }
+    func wait() async -> Response? {
+        if isCancelled { return nil }
+        return await withCheckedContinuation { continuation = $0 }
     }
 
     func signal(_ response: Response) {
@@ -184,6 +198,8 @@ private actor Gate<Response: Sendable> {
 
     func cancel() {
         isCancelled = true
+        continuation?.resume(returning: nil)
+        continuation = nil
     }
 }
 
