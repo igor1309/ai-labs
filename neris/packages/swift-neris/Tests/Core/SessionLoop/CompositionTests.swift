@@ -3,7 +3,8 @@ import Testing
 final class CompositionTests: TestContext {
 
     @Test func test_shouldCallRunAndForwardEvents_onInput() async throws {
-        let (event, message) = (makeSomeString(), makeSomeString())
+        let event = makeAgentEvent()
+        let message = makeMessage()
         let (_, input, spy) = makeSUT(events: [event])
 
         input.send(message)
@@ -14,8 +15,8 @@ final class CompositionTests: TestContext {
     }
 
     @Test func test_shouldPassInputToAgentLoop_onInput() async throws {
-        let message = makeSomeString()
-        let (agentLoop, input, spy) = makeSUT(events: [makeSomeString()])
+        let message = makeMessage()
+        let (agentLoop, input, spy) = makeSUT(events: [makeAgentEvent()])
 
         input.send(message)
         input.finish()
@@ -25,7 +26,7 @@ final class CompositionTests: TestContext {
     }
 
     @Test func test_shouldDeliverControlToAgentLoop_onControlRoute() async throws {
-        let control = makeSomeString()
+        let control = makeControl()
         let (agentLoop, uiInput) = makeSUT(expectsControl: true)
 
         uiInput.send(control)
@@ -36,12 +37,24 @@ final class CompositionTests: TestContext {
 
     // MARK: - Helpers
 
+    private func makeMessage(_ value: String = makeSomeString()) -> Message {
+        .init(value: value)
+    }
+
+    private func makeAgentEvent(_ value: String = makeSomeString()) -> AgentEvent {
+        .init(value: value)
+    }
+
+    private func makeControl(_ value: String = makeSomeString()) -> Control {
+        .init(value: value)
+    }
+
     private func makeSUT(
-        events: [String],
+        events: [AgentEvent],
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (AgentLoopSpy, InputChannel<String>, StreamSpy<String>) {
+    ) -> (AgentLoopSpy, InputChannel<Message>, StreamSpy<AgentEvent>) {
         let agentLoop = AgentLoopSpy(events: events)
-        let input = InputChannel<String>()
+        let input = InputChannel<Message>()
         let repl = REPL(input: input.stream, agentLoop: agentLoop)
         return (agentLoop, input, StreamSpy(repl.run()))
     }
@@ -49,14 +62,26 @@ final class CompositionTests: TestContext {
     private func makeSUT(
         expectsControl: Bool,
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (ControllableAgentLoopSpy, InputChannel<String>) {
+    ) -> (ControllableAgentLoopSpy, InputChannel<Control>) {
         let agentLoop = ControllableAgentLoopSpy()
         let envelope = StateEnvelope(initial: expectsControl, stream: agentLoop.events) { _ in expectsControl }
-        let uiInput = InputChannel<String>()
+        let uiInput = InputChannel<Control>()
         let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
         agentLoop.start(observing: router.controlStream())
         return (agentLoop, uiInput)
     }
+}
+
+private struct Message: Equatable, Sendable {
+    let value: String
+}
+
+private struct AgentEvent: Equatable, Sendable {
+    let value: String
+}
+
+private struct Control: Equatable, Sendable {
+    let value: String
 }
 
 private protocol AgentLoop<Input, Event> {
@@ -96,15 +121,15 @@ extension Router {
 
 private final class ControllableAgentLoopSpy: ControllableAgentLoop, @unchecked Sendable {
 
-    private(set) var receivedControls = [String]()
-    private let eventChannel = InputChannel<String>()
-    var events: AsyncStream<String> { eventChannel.stream }
+    private(set) var receivedControls = [Control]()
+    private let eventChannel = InputChannel<AgentEvent>()
+    var events: AsyncStream<AgentEvent> { eventChannel.stream }
 
-    func run(input: String) -> AsyncStream<String> {
+    func run(input: Control) -> AsyncStream<AgentEvent> {
         AsyncStream { $0.finish() }
     }
 
-    func start(observing stream: AsyncStream<String>) {
+    func start(observing stream: AsyncStream<Control>) {
         Task { [weak self] in
             for await control in stream {
                 self?.receivedControls.append(control)
@@ -122,14 +147,14 @@ private final class ControllableAgentLoopSpy: ControllableAgentLoop, @unchecked 
 
 private final class AgentLoopSpy: AgentLoop, @unchecked Sendable {
 
-    let events: [String]
-    private(set) var receivedInputs = [String]()
+    let events: [AgentEvent]
+    private(set) var receivedInputs = [Message]()
 
-    init(events: [String]) {
+    init(events: [AgentEvent]) {
         self.events = events
     }
 
-    func run(input: String) -> AsyncStream<String> {
+    func run(input: Message) -> AsyncStream<AgentEvent> {
         receivedInputs.append(input)
         let events = events
         return AsyncStream { continuation in
