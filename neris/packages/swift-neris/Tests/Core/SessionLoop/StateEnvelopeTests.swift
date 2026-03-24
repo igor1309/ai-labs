@@ -1,3 +1,4 @@
+import Synchronization
 import Testing
 
 final class StateEnvelopeTests: TestContext {
@@ -96,20 +97,20 @@ final class StateEnvelopeTests: TestContext {
 
 private final class StateEnvelope<Event: Sendable, State: Sendable>: @unchecked Sendable {
 
-    private var state: State
+    private let state: Mutex<State>
     private var task: Task<Void, Never>?
 
     init(initial: State, stream: AsyncStream<Event>, reduce: @escaping @Sendable (Event) -> State) {
-        state = initial
+        state = Mutex(initial)
         task = Task { [weak self] in
             for await event in stream {
-                self?.state = reduce(event)
+                self?.state.withLock { $0 = reduce(event) }
             }
         }
     }
 
     func query() -> State {
-        state
+        state.withLock { $0 }
     }
 
     deinit { task?.cancel() }
