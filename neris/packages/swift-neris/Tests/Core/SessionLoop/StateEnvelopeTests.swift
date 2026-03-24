@@ -24,7 +24,7 @@ final class StateEnvelopeTests: TestContext {
     }
 
     @Test func test_shouldDriveRouterRouting_onStreamStateChange() async throws {
-        let (envelope, stateInput, uiInput, spy) = makeEnvelopeRoutedSUT()
+        let (envelope, stateInput, uiInput, spy) = makeSUT()
 
         uiInput.send("task")
         await spy.waitForEvents(1)
@@ -50,7 +50,7 @@ final class StateEnvelopeTests: TestContext {
         return (sut, input)
     }
 
-    private func makeEnvelopeRoutedSUT(
+    private func makeSUT(
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, InputChannel<Event>, InputChannel<String>, StreamSpy<RouterEvent<String>>) {
         let (envelope, stateInput) = makeSUT(sourceLocation)
