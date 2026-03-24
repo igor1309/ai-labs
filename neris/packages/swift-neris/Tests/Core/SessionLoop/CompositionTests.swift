@@ -37,18 +37,6 @@ final class CompositionTests: TestContext {
 
     // MARK: - Helpers
 
-    private func makeMessage(_ value: String = makeSomeString()) -> Message {
-        .init(value: value)
-    }
-
-    private func makeAgentEvent(_ value: String = makeSomeString()) -> AgentEvent {
-        .init(value: value)
-    }
-
-    private func makeControl(_ value: String = makeSomeString()) -> Control {
-        .init(value: value)
-    }
-
     private func makeSUT(
         events: [AgentEvent],
         _ sourceLocation: SourceLocation = #_sourceLocation
@@ -81,6 +69,18 @@ final class CompositionTests: TestContext {
 
     private struct Control: Equatable, Sendable {
         let value: String
+    }
+
+    private func makeMessage(_ value: String = makeSomeString()) -> Message {
+        .init(value: value)
+    }
+
+    private func makeAgentEvent(_ value: String = makeSomeString()) -> AgentEvent {
+        .init(value: value)
+    }
+
+    private func makeControl(_ value: String = makeSomeString()) -> Control {
+        .init(value: value)
     }
 }
 
