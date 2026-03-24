@@ -70,12 +70,12 @@ final class RouterTests: TestContext {
     }
 }
 
-private enum RouterEvent<Input: Equatable & Sendable>: Equatable, Sendable {
+enum RouterEvent<Input: Equatable & Sendable>: Equatable, Sendable {
     case repl(Input)
     case control(Input)
 }
 
-private struct Router<Input: Equatable & Sendable> {
+struct Router<Input: Equatable & Sendable> {
 
     let events: AsyncStream<Input>
     let expectsControl: @Sendable () -> Bool

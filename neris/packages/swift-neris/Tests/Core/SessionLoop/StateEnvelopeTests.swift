@@ -25,6 +25,26 @@ final class StateEnvelopeTests: TestContext {
         #expect(!sut.query())
     }
 
+    @Test func test_shouldDriveRouterRouting_onStreamStateChange() async throws {
+        let stateInput = InputChannel<Event>()
+        let envelope = StateEnvelope(stream: stateInput.stream) { $0.isAwaiting }
+
+        let uiInput = InputChannel<String>()
+        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
+        let spy = StreamSpy(router.run())
+
+        uiInput.send("task")
+        await spy.waitForEvents(1)
+
+        stateInput.send(Event(isAwaiting: true))
+        await envelope.waitForState(true)
+
+        uiInput.send("control")
+        await spy.waitForEvents(2)
+
+        #expect(spy.values == [RouterEvent.repl("task"), RouterEvent.control("control")])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = StateEnvelope<Event>
