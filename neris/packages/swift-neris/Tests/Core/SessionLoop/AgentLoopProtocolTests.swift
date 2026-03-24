@@ -4,7 +4,7 @@ final class AgentLoopProtocolTests: TestContext {
 
     @Test func test_shouldCallRunAndForwardEvents_onInput() async throws {
         let (event, message) = (makeSomeString(), makeSomeString())
-        let (input, spy) = makeSUT(events: [event])
+        let (_, input, spy) = makeSUT(events: [event])
 
         input.send(message)
         input.finish()
@@ -27,16 +27,6 @@ final class AgentLoopProtocolTests: TestContext {
     // MARK: - Helpers
 
     private typealias SUT = REPL<String, String>
-
-    private func makeSUT(
-        events: [String],
-        _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (InputChannel<String>, StreamSpy<String>) {
-        let agentLoop = AgentLoopSpy(events: events)
-        let input = InputChannel<String>()
-        let sut = SUT(input: input.stream, agentLoop: agentLoop)
-        return (input, StreamSpy(sut.run()))
-    }
 
     private func makeSUT(
         events: [String],
