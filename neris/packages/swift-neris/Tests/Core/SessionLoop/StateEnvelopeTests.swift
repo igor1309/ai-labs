@@ -82,12 +82,14 @@ final class StateEnvelopeTests: TestContext {
     private func waitForState(
         _ expected: Bool,
         on sut: SUT,
-        timeout: Duration = .seconds(2)
+        timeout: Duration = .seconds(2),
+        _ sourceLocation: SourceLocation = #_sourceLocation
     ) async {
         let deadline = ContinuousClock.now + timeout
         while sut.query() != expected, ContinuousClock.now < deadline {
             await Task.yield()
         }
+        #expect(sut.query() == expected, sourceLocation: sourceLocation)
     }
 
     private struct Event: Sendable {
