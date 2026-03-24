@@ -102,11 +102,11 @@ private final class StateEnvelope<Event: Sendable, State: Sendable>: @unchecked 
     private let state: Mutex<State>
     private var task: Task<Void, Never>?
 
-    init(initial: State, stream: AsyncStream<Event>, reduce: @escaping @Sendable (Event) -> State) {
+    init(initial: State, stream: AsyncStream<Event>, map: @escaping @Sendable (Event) -> State) {
         state = Mutex(initial)
         task = Task { [weak self] in
             for await event in stream {
-                self?.state.withLock { $0 = reduce(event) }
+                self?.state.withLock { $0 = map(event) }
             }
         }
     }
