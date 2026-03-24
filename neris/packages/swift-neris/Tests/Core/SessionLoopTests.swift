@@ -29,6 +29,20 @@ final class SessionLoopTests: TestContext {
         #expect(spy.isFinished)
     }
 
+    @Test func test_shouldEmitRemainingOutput_onControlSignalAfterEscalation() async throws {
+        let (control, spy) = makeSUT(steps: [.escalation("approve?"), .text("result")])
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(!spy.isFinished)
+
+        control.yield()
+
+        await spy.waitForFinish()
+        #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text("result")])
+        #expect(spy.isFinished)
+    }
+
     @Test func test_shouldSuspend_onEscalation() async throws {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
