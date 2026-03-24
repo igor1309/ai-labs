@@ -9,6 +9,14 @@ final class SessionLoopTests: TestContext {
         #expect(spy.values == [TurnOutput.escalation("approve tool X?")])
     }
 
+    @Test func test_shouldFinishWithoutSuspending_onTextOutput() async throws {
+        let (_, spy) = makeSUT(steps: [.text("hello")])
+
+        await spy.waitForEvents(1)
+        #expect(spy.values == [TurnOutput.text("hello")])
+        #expect(spy.isFinished)
+    }
+
     @Test func test_shouldSuspend_onEscalation() async throws {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
@@ -37,6 +45,7 @@ final class SessionLoopTests: TestContext {
 
 private enum TurnOutput: Equatable, Sendable {
     case escalation(String)
+    case text(String)
 }
 
 private struct ScriptedTurn {
