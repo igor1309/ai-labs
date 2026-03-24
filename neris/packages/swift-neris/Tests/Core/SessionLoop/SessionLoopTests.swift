@@ -124,6 +124,22 @@ final class SessionLoopTests: TestContext {
         #expect(!spy.isFinished)
     }
 
+    // MARK: - REPL
+
+    @Test func test_repl_shouldForwardTurnOutput_onInput() async throws {
+        let input = InputChannel()
+        let repl = REPL<ControlResponse>(input: input.stream) { _ in
+            AsyncStream { $0.yield(.text("response")); $0.finish() }
+        }
+        let spy = StreamSpy<Output>(repl.run())
+
+        input.send("hello")
+        input.finish()
+
+        await spy.waitForFinish()
+        #expect(spy.values == [Output.text("response")])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = ScriptedTurn<ControlResponse>
@@ -234,4 +250,45 @@ private final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendabl
     }
 
     deinit { task?.cancel() }
+}
+
+private struct InputChannel {
+
+    let stream: AsyncStream<String>
+    private let continuation: AsyncStream<String>.Continuation
+
+    init() {
+        let (stream, continuation) = AsyncStream.makeStream(of: String.self)
+        self.stream = stream
+        self.continuation = continuation
+    }
+
+    func send(_ value: String) {
+        continuation.yield(value)
+    }
+
+    func finish() {
+        continuation.finish()
+    }
+}
+
+private struct REPL<Response: Equatable & Sendable> {
+
+    let input: AsyncStream<String>
+    let turn: @Sendable (String) -> AsyncStream<TurnOutput<Response>>
+
+    func run() -> AsyncStream<TurnOutput<Response>> {
+        let input = input
+        let turn = turn
+        return AsyncStream { continuation in
+            Task {
+                for await message in input {
+                    for await output in turn(message) {
+                        continuation.yield(output)
+                    }
+                }
+                continuation.finish()
+            }
+        }
+    }
 }
