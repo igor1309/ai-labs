@@ -34,7 +34,7 @@ final class OpenRouterResponseAdapterTests: TestContext {
 
     // MARK: - Helpers
 
-    private func makeResponse(_ response: OpenRouterResponseParser.Response) -> AgentLoop.Response {
+    private func makeResponse(_ response: OpenRouterResponseParser.Response) -> ToolUseLoop.Response {
 
         response.toAgentResponse
     }

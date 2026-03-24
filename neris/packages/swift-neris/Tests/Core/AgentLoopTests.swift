@@ -237,7 +237,7 @@ final class AgentLoopTests: TestContext {
 
     // MARK: - Helpers
 
-    private typealias SUT = AgentLoop
+    private typealias SUT = ToolUseLoop
     private typealias RespondSpy = AsyncSpyOf<[SUT.Message], SUT.Response>
     private typealias ExecuteSpy = AsyncSpyOf<SUT.ToolCall, String>
 

@@ -21,7 +21,7 @@ final class OpenRouterMessageAdapterTests: TestContext {
     @Test func test_toOpenRouterMessage_shouldMapAssistantToolCalls() {
 
         let (id, name, arguments) = (makeSomeString(), makeSomeString(), makeSomeString())
-        let toolCall = AgentLoop.ToolCall(id: id, name: name, arguments: arguments)
+        let toolCall = ToolUseLoop.ToolCall(id: id, name: name, arguments: arguments)
 
         let result = makeMessage(.assistant(.toolCalls([toolCall])))
 
@@ -45,14 +45,14 @@ final class OpenRouterMessageAdapterTests: TestContext {
     @Test func test_toOpenRouterMessages_shouldMapMultiple() {
 
         let (query, response) = (makeSomeString(), makeSomeString())
-        let messages: [AgentLoop.Message] = [.user(query), .assistant(.text(response))]
+        let messages: [ToolUseLoop.Message] = [.user(query), .assistant(.text(response))]
 
         #expect(messages.map(\.toOpenRouterMessage) == [.user(query), .assistant(response)])
     }
 
     // MARK: - Helpers
 
-    private func makeMessage(_ message: AgentLoop.Message) -> OpenRouterRequestFactory.Message {
+    private func makeMessage(_ message: ToolUseLoop.Message) -> OpenRouterRequestFactory.Message {
 
         message.toOpenRouterMessage
     }

@@ -1,96 +1,48 @@
-import Foundation
+public protocol AgentLoop<Input, Event> {
+    associatedtype Input: Sendable
+    associatedtype Event: Sendable
+    func run(input: Input) -> AsyncStream<Event>
+}
 
-public actor AgentLoop {
+extension AgentLoop where Self: Sendable {
 
-    public struct ToolCall: Equatable, Sendable {
-        public let id: String
-        public let name: String
-        public let arguments: String
+    public func compose(input: AsyncStream<Input>) -> REPL<Input, Event> {
+        REPL(input: input, turn: { self.run(input: $0) })
     }
+}
 
-    public enum Event: Equatable, Sendable {
-        case toolCall(ToolCall)
-        case toolResult(String)
-        case text(String)
-    }
+public protocol ControllableAgentLoop<Control>: AgentLoop {
+    associatedtype Control: Sendable
+    func start(observing: AsyncStream<Control>)
+}
 
-    enum Message: Equatable {
-        case user(String)
-        case assistant(Response)
-        case tool(id: String, content: String)
-        case error(String)
-    }
+extension ControllableAgentLoop where Control == Input, Control: Equatable, Self: Sendable {
 
-    enum Response: Equatable {
-        case text(String)
-        case toolCalls([ToolCall])
-    }
+    public func compose(
+        uiEvents: AsyncStream<Control>,
+        initial: Bool = false,
+        map: @escaping @Sendable (Event) -> Bool
+    ) -> StateEnvelope<Event, Bool> {
+        let (replStream, replContinuation) = AsyncStream.makeStream(of: Control.self)
+        let (controlStream, controlContinuation) = AsyncStream.makeStream(of: Control.self)
 
-    struct ConcurrentAccessError: Error {}
+        let repl = compose(input: replStream)
+        let envelope = StateEnvelope(initial: initial, stream: repl.run(), map: map)
+        let router = Router(events: uiEvents, expectsControl: { envelope.query() })
 
-    typealias EventStream = AsyncThrowingStream<Event, Error>
-    typealias Respond = @Sendable ([Message]) async throws -> Response
-    typealias Execute = @Sendable (ToolCall) async throws -> String
+        start(observing: controlStream)
 
-    private let respond: Respond
-    private let execute: Execute
-    private var messages = [Message]()
-    private var isProcessing = false
-
-    init(respond: @escaping Respond, execute: @escaping Execute) {
-        self.respond = respond
-        self.execute = execute
-    }
-
-    func process(_ input: String) -> EventStream {
-
-        AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    try await self.run(input, continuation: continuation)
-                } catch {
-                    continuation.finish(throwing: error)
+        Task {
+            for await routerEvent in router.run() {
+                switch routerEvent {
+                case .repl(let input): replContinuation.yield(input)
+                case .control(let control): controlContinuation.yield(control)
                 }
             }
+            replContinuation.finish()
+            controlContinuation.finish()
         }
-    }
 
-    private func run(_ input: String, continuation: EventStream.Continuation) async throws {
-        guard !isProcessing else { throw ConcurrentAccessError() }
-        isProcessing = true
-        defer { isProcessing = false }
-        messages.append(.user(input))
-        while true {
-            let response = try await record({ try await self.respond(messages) }, { .assistant($0) })
-            switch response {
-            case .text(let text):
-                continuation.yield(.text(text))
-                continuation.finish()
-                return
-            case .toolCalls(let calls):
-                for call in calls {
-                    continuation.yield(.toolCall(call))
-                    let result = try await record(
-                        { try await self.execute(call) },
-                        { .tool(id: call.id, content: $0) }
-                    )
-                    continuation.yield(.toolResult(result))
-                }
-            }
-        }
-    }
-
-    private func record<T>(
-        _ operation: @Sendable () async throws -> T,
-        _ message: @Sendable (T) -> Message
-    ) async throws -> T {
-        do {
-            let value = try await operation()
-            messages.append(message(value))
-            return value
-        } catch {
-            messages.append(.error(error.localizedDescription))
-            throw error
-        }
+        return envelope
     }
 }

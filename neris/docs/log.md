@@ -1,7 +1,11 @@
 # Log
 
+## 2026-03-25
+- Promote SessionLoop PoC types to production: REPL, Gate, Router/RouterEvent, StateEnvelope, AgentLoop/ControllableAgentLoop protocols. Rename AgentLoop actor to ToolUseLoop. Delete Loop/FilterResult. Rewire CLI to REPL.
+
 ## 2026-03-24
-Add **Session Loop** design notes.
+- Prove SessionLoop architecture through isolated PoC test suite: REPL (sequential input processing), Gate (unbuffered escalation signaling), Router (state-aware input demux), StateEnvelope (async-to-sync Mutex bridge), AgentLoop/ControllableAgentLoop protocols with compose extensions, full bidirectional feedback loop (forward + reverse routing flip). 22 tests across 4 suites.
+- Add **Session Loop** design notes.
 
 ## 2026-03-22
 - Wire full composition: NerisAgent composer, read_file tool, system prompt, CLI error recovery, thinking spinner. Delete Agent stub.
