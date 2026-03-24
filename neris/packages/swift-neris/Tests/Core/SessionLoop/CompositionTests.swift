@@ -35,30 +35,13 @@ final class CompositionTests: TestContext {
         #expect(agentLoop.receivedControls == [control])
     }
 
-    @Test func test_shouldSwitchToControlRouting_onAgentEventFlippingState() async throws {
-        let message = makeControl()
-        let control = makeControl()
-        let (agentLoop, uiInput, envelope) = makeSUT(events: [makeAgentEvent()], initial: false)
-
-        uiInput.send(message)
-        await waitForState(true, on: envelope)
-
-        uiInput.send(control)
-        await agentLoop.waitForControl(1)
-
-        #expect(agentLoop.receivedInputs == [message])
-        #expect(agentLoop.receivedControls == [control])
-    }
-
-    @Test func test_shouldSwitchBackToReplRouting_onPostControlEventRestoringState() async throws {
+    @Test func test_shouldRouteInputThroughFullFeedbackLoop() async throws {
         let message = makeControl()
         let control = makeControl()
         let resumed = makeControl()
-        let escalation = makeAgentEvent("escalation")
-        let done = makeAgentEvent("done")
         let (agentLoop, uiInput, envelope) = makeSUT(
-            events: [escalation],
-            postControlEvents: [done],
+            events: [makeAgentEvent("escalation")],
+            postControlEvents: [makeAgentEvent("done")],
             initial: false,
             map: { $0.value == "escalation" }
         )
