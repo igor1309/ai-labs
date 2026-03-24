@@ -24,6 +24,21 @@ final class CompositionTests: TestContext {
         #expect(agentLoop.receivedInputs == [message])
     }
 
+    @Test func test_shouldDeliverControlToAgentLoop_onControlRoute() async throws {
+        let control = makeSomeString()
+        let agentLoop = ControllableAgentLoopSpy()
+        let envelope = StateEnvelope(initial: true, stream: agentLoop.events) { _ in true }
+        let uiInput = InputChannel<String>()
+        let router = Router(events: uiInput.stream, expectsControl: { envelope.query() })
+
+        agentLoop.start(observing: router.controlStream())
+
+        uiInput.send(control)
+
+        await agentLoop.waitForControl(1)
+        #expect(agentLoop.receivedControls == [control])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = REPL<String, String>
@@ -49,6 +64,54 @@ extension REPL {
 
     fileprivate init<A: AgentLoop & Sendable>(input: AsyncStream<Input>, agentLoop: A) where A.Input == Input, A.Event == Event {
         self.init(input: input, turn: { agentLoop.run(input: $0) })
+    }
+}
+
+private protocol ControllableAgentLoop<Control>: AgentLoop {
+    associatedtype Control: Sendable
+    func start(observing: AsyncStream<Control>)
+}
+
+extension Router {
+
+    func controlStream() -> AsyncStream<Input> {
+        let source = run()
+        return AsyncStream { continuation in
+            Task {
+                for await event in source {
+                    if case .control(let value) = event {
+                        continuation.yield(value)
+                    }
+                }
+                continuation.finish()
+            }
+        }
+    }
+}
+
+private final class ControllableAgentLoopSpy: ControllableAgentLoop, @unchecked Sendable {
+
+    private(set) var receivedControls = [String]()
+    private let eventChannel = InputChannel<String>()
+    var events: AsyncStream<String> { eventChannel.stream }
+
+    func run(input: String) -> AsyncStream<String> {
+        AsyncStream { $0.finish() }
+    }
+
+    func start(observing stream: AsyncStream<String>) {
+        Task { [weak self] in
+            for await control in stream {
+                self?.receivedControls.append(control)
+            }
+        }
+    }
+
+    func waitForControl(_ count: Int, timeout: Duration = .seconds(2)) async {
+        let deadline = ContinuousClock.now + timeout
+        while receivedControls.count < count, ContinuousClock.now < deadline {
+            await Task.yield()
+        }
     }
 }
 

@@ -97,7 +97,7 @@ final class StateEnvelopeTests: TestContext {
     }
 }
 
-private final class StateEnvelope<Event: Sendable, State: Sendable>: @unchecked Sendable {
+final class StateEnvelope<Event: Sendable, State: Sendable>: @unchecked Sendable {
 
     private let state: Mutex<State>
     private var task: Task<Void, Never>?
