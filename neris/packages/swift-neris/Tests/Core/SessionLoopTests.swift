@@ -17,6 +17,18 @@ final class SessionLoopTests: TestContext {
         #expect(spy.isFinished)
     }
 
+    @Test func test_shouldResumeAndFinish_onControlSignalAfterEscalation() async throws {
+        let (control, spy) = makeSUT(steps: [.escalation("approve?")])
+
+        await spy.waitForEvents(1)
+        #expect(!spy.isFinished)
+
+        control.yield()
+
+        await spy.waitForFinish()
+        #expect(spy.isFinished)
+    }
+
     @Test func test_shouldSuspend_onEscalation() async throws {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
@@ -84,6 +96,13 @@ private final class StreamSpy<Element: Sendable & Equatable>: @unchecked Sendabl
                 self?.values.append(value)
             }
             self?.isFinished = true
+        }
+    }
+
+    func waitForFinish(timeout: Duration = .seconds(2)) async {
+        let deadline = ContinuousClock.now + timeout
+        while !isFinished, ContinuousClock.now < deadline {
+            await Task.yield()
         }
     }
 
