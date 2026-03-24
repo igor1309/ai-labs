@@ -27,7 +27,7 @@ final class CompositionTests: TestContext {
 
     @Test func test_shouldDeliverControlToAgentLoop_onControlRoute() async throws {
         let control = makeControl()
-        let (agentLoop, uiInput, _) = makeSUT(expectsControl: true)
+        let (agentLoop, uiInput, _) = makeSUT(initial: true)
 
         uiInput.send(control)
 
@@ -38,10 +38,7 @@ final class CompositionTests: TestContext {
     @Test func test_shouldSwitchToControlRouting_onAgentEventFlippingState() async throws {
         let message = makeControl()
         let control = makeControl()
-        let event = makeAgentEvent()
-        let agentLoop = ControllableLoop(events: [event])
-        let uiInput = ControlChannel()
-        let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: false, map: { _ in true })
+        let (agentLoop, uiInput, envelope) = makeSUT(events: [makeAgentEvent()], initial: false)
 
         uiInput.send(message)
         await waitForState(true, on: envelope)
@@ -72,12 +69,14 @@ final class CompositionTests: TestContext {
     }
 
     private func makeSUT(
-        expectsControl: Bool,
+        events: [AgentEvent] = [],
+        initial: Bool,
+        map: @escaping @Sendable (AgentEvent) -> Bool = { _ in true },
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (ControllableLoop, ControlChannel, Envelope) {
-        let agentLoop = ControllableLoop()
+        let agentLoop = ControllableLoop(events: events)
         let uiInput = ControlChannel()
-        let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: expectsControl, map: { _ in expectsControl })
+        let envelope = agentLoop.compose(uiEvents: uiInput.stream, initial: initial, map: map)
         return (agentLoop, uiInput, envelope)
     }
 
