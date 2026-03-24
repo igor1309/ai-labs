@@ -6,14 +6,14 @@ final class SessionLoopTests: TestContext {
         let (_, spy) = makeSUT(steps: [.escalation("approve tool X?")])
 
         await spy.waitForEvents(1)
-        #expect(spy.values == [TurnOutput.escalation("approve tool X?")])
+        #expect(spy.values == [Output.escalation("approve tool X?")])
     }
 
     @Test func test_shouldFinishWithoutSuspending_onTextOutput() async throws {
         let (_, spy) = makeSUT(steps: [.text("hello")])
 
         await spy.waitForEvents(1)
-        #expect(spy.values == [TurnOutput.text("hello")])
+        #expect(spy.values == [Output.text("hello")])
         #expect(spy.isFinished)
     }
 
@@ -23,7 +23,7 @@ final class SessionLoopTests: TestContext {
         await spy.waitForEvents(1)
         #expect(!spy.isFinished)
 
-        await control.signal()
+        await control.signal(makeControlResponse())
 
         await spy.waitForFinish()
         #expect(spy.isFinished)
@@ -33,13 +33,14 @@ final class SessionLoopTests: TestContext {
         let (control, spy) = makeSUT(steps: [.escalation("approve?"), .text("result")])
 
         await spy.waitForEvents(1)
-        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(spy.values == [Output.escalation("approve?")])
         #expect(!spy.isFinished)
 
-        await control.signal()
+        let response = makeControlResponse()
+        await control.signal(response)
 
         await spy.waitForFinish()
-        #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text(""), TurnOutput.text("result")])
+        #expect(spy.values == [Output.escalation("approve?"), Output.response(response), Output.text("result")])
         #expect(spy.isFinished)
     }
 
@@ -47,42 +48,45 @@ final class SessionLoopTests: TestContext {
         let (control, spy) = makeSUT(steps: [.escalation("first?"), .escalation("second?"), .text("done")])
 
         await spy.waitForEvents(1)
-        #expect(spy.values == [TurnOutput.escalation("first?")])
+        #expect(spy.values == [Output.escalation("first?")])
         #expect(!spy.isFinished)
 
-        await control.signal()
+        let response1 = makeControlResponse()
+        await control.signal(response1)
 
         await spy.waitForEvents(3)
-        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.text(""), TurnOutput.escalation("second?")])
+        #expect(spy.values == [Output.escalation("first?"), Output.response(response1), Output.escalation("second?")])
         #expect(!spy.isFinished)
 
-        await control.signal()
+        let response2 = makeControlResponse()
+        await control.signal(response2)
 
         await spy.waitForFinish()
-        #expect(spy.values == [TurnOutput.escalation("first?"), TurnOutput.text(""), TurnOutput.escalation("second?"), TurnOutput.text(""), TurnOutput.text("done")])
+        #expect(spy.values == [Output.escalation("first?"), Output.response(response1), Output.escalation("second?"), Output.response(response2), Output.text("done")])
         #expect(spy.isFinished)
     }
 
     @Test func test_shouldDeliverControlResponse_onEscalation() async throws {
+        let response = makeControlResponse()
         let (control, spy) = makeSUT(steps: [.escalation("approve?")])
 
         await spy.waitForEvents(1)
-        await control.signal("granted")
+        await control.signal(response)
 
         await spy.waitForEvents(2)
-        #expect(spy.values == [TurnOutput.escalation("approve?"), TurnOutput.text("granted")])
+        #expect(spy.values == [Output.escalation("approve?"), Output.response(response)])
     }
 
     @Test func test_shouldStillSuspend_onControlSignalSentBeforeEscalation() async throws {
         let (control, spy) = makeSUT(steps: [.escalation("approve?")])
 
-        await control.signal()
+        await control.signal(makeControlResponse())
 
         await spy.waitForEvents(1)
-        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(spy.values == [Output.escalation("approve?")])
 
         await spy.waitForEvents(2, timeout: .milliseconds(100))
-        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(spy.values == [Output.escalation("approve?")])
         #expect(!spy.isFinished)
     }
 
@@ -90,38 +94,51 @@ final class SessionLoopTests: TestContext {
         let (_, spy) = makeSUT(steps: [.escalation("approve?")])
 
         await spy.waitForEvents(1)
-        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(spy.values == [Output.escalation("approve?")])
 
         await spy.waitForEvents(2, timeout: .milliseconds(100))
-        #expect(spy.values == [TurnOutput.escalation("approve?")])
+        #expect(spy.values == [Output.escalation("approve?")])
         #expect(!spy.isFinished)
     }
 
     // MARK: - Helpers
 
-    private typealias TurnSpy = StreamSpy<TurnOutput>
+    private typealias SUT = ScriptedTurn<ControlResponse>
+    private typealias Output = TurnOutput<ControlResponse>
+    private typealias TurnSpy = StreamSpy<Output>
 
     private func makeSUT(
-        steps: [TurnOutput],
+        steps: [Output],
         _ sourceLocation: SourceLocation = #_sourceLocation
-    ) -> (Gate, TurnSpy) {
-        let gate = Gate()
-        let turn = ScriptedTurn(steps: steps, gate: gate)
+    ) -> (Gate<ControlResponse>, TurnSpy) {
+        let gate = Gate<ControlResponse>()
+        let turn = SUT(steps: steps, gate: gate)
         return (gate, TurnSpy(turn.run()))
+    }
+
+    private struct ControlResponse: Equatable, Sendable {
+        let value: String
+    }
+
+    private func makeControlResponse(
+        _ value: String = makeSomeString()
+    ) -> ControlResponse {
+        .init(value: value)
     }
 }
 
-private enum TurnOutput: Equatable, Sendable {
+private enum TurnOutput<Response: Equatable & Sendable>: Equatable, Sendable {
     case escalation(String)
+    case response(Response)
     case text(String)
 }
 
-private struct ScriptedTurn {
+private struct ScriptedTurn<Response: Equatable & Sendable> {
 
-    let steps: [TurnOutput]
-    let gate: Gate
+    let steps: [TurnOutput<Response>]
+    let gate: Gate<Response>
 
-    func run() -> AsyncStream<TurnOutput> {
+    func run() -> AsyncStream<TurnOutput<Response>> {
         let steps = steps
         let gate = gate
         return AsyncStream { continuation in
@@ -130,7 +147,7 @@ private struct ScriptedTurn {
                     continuation.yield(step)
                     if case .escalation = step {
                         let response = await gate.wait()
-                        continuation.yield(.text(response))
+                        continuation.yield(.response(response))
                     }
                 }
                 continuation.finish()
@@ -139,15 +156,15 @@ private struct ScriptedTurn {
     }
 }
 
-private actor Gate {
+private actor Gate<Response: Sendable> {
 
-    private var continuation: CheckedContinuation<String, Never>?
+    private var continuation: CheckedContinuation<Response, Never>?
 
-    func wait() async -> String {
+    func wait() async -> Response {
         await withCheckedContinuation { continuation = $0 }
     }
 
-    func signal(_ response: String = "") {
+    func signal(_ response: Response) {
         continuation?.resume(returning: response)
         continuation = nil
     }
