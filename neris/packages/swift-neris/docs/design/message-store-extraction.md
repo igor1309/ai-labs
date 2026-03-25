@@ -1,7 +1,7 @@
 ---
-date: 2026-03-22
+date: 2026-03-25
 model: claude-opus-4-6
-description: "Extract message history from ToolUseLoop into a synchronous MessageStore"
+description: "Extract message state from ToolUseLoop into an injected Store protocol"
 ---
 
 # MessageStore Extraction
@@ -9,13 +9,11 @@ description: "Extract message history from ToolUseLoop into a synchronous Messag
 ## Context
 
 `ToolUseLoop` is currently a Swift `actor` whose sole mutable state is a private
-`[Message]` array. Actor isolation was the mechanism protecting that array from
-concurrent access.
+`[Message]` array. Actor isolation protects that array from concurrent access.
 
 ## Problem
 
-Keeping messages as private state inside `ToolUseLoop` blocks three desirable
-capabilities:
+Keeping messages as private state inside `ToolUseLoop` blocks three capabilities:
 
 1. **Session persistence** — no hook point to write history to disk.
 2. **Conversation compaction** — no way to summarise or trim old messages
@@ -23,85 +21,48 @@ capabilities:
 3. **Testability** — the message array cannot be inspected or seeded from
    outside the actor.
 
-Attempting to fix this by making `MessageStore` an `actor` protocol introduces
-a worse problem: every `await store.append()` call inside `ToolUseLoop` is a
-suspension point. Because Swift actors are re-entrant by default, another
-`process()` call can be scheduled between an `append` and the following
-`respond`, leaving message history in an inconsistent state mid-loop.
+Making `MessageStore` an `actor` protocol would be worse: every `await store.append()`
+is a suspension point, and Swift actors are re-entrant by default — another
+`process()` call can be scheduled between an `append` and the following `respond`,
+leaving message history in an inconsistent state mid-loop.
 
-## Decision
+## Decisions
 
-Extract messages into a concrete `MessageStore` that uses `Mutex` for internal
-synchronisation. All access from `ToolUseLoop` is **synchronous** — no
-suspension point, no re-entrancy window.
-
-`Mutex` is the right primitive — synchronous access prevents the re-entrancy
-gap that an actor-based store would reintroduce. `Mutex` is preferred over
-`NSLock` as it is available from async contexts in Swift 6 and is the same
-primitive used by `StateEnvelope`.
-
-## Consequences
-
-- `MessageStore` owns all mutable state. `ToolUseLoop` becomes stateless —
-  a plain `final class: Sendable`, no longer an actor.
-- The `isProcessing` guard moves out of `ToolUseLoop` since it was protecting
-  the same state.
-- The synchronous contract enables decorator composition: persistence and
-  compaction layers wrap `MessageStore` without modifying `ToolUseLoop`.
+1. **`ToolUseLoop` owns a `Store` protocol** with `append` and a read-all method.
+   This is the loop's declared interface — what it needs, not how it's fulfilled.
+2. **`InMemoryStore<Message>` conforms to `Store`** at the composition layer.
+   The loop does not know the concrete type.
+3. **`ToolUseLoop` becomes `final class: Sendable`**, no longer an actor.
+   All store access is synchronous via `Mutex` — no suspension point, no
+   re-entrancy window.
+4. **`isProcessing` guard is dropped.** The session layer already serializes access.
+5. **No decorator stores.** `PersistingMessageStore`, `CompactingMessageStore`,
+   etc. get their own design docs when needed.
+6. **No new `ToolUseLoop` tests.** Existing tests verify the behavioral contract
+   through `respond.payloads`. Store population and seeding are composition
+   concerns.
+7. **`record` helper stays** as an internal method that calls `store.append` on
+   success or appends `.error` on failure.
 
 ## Resulting Shape
 
 | Layer | Responsibility |
 |---|---|
-| `MessageStore` | Thread-safe message history (`Mutex`) |
-| `PersistingMessageStore` | Write-through to disk on each append |
-| `CompactingMessageStore` | Summarise tail when count exceeds threshold |
-| `ToolUseLoop` | Loop logic only, stateless |
-| `NerisAgent` | Composition root |
+| `ToolUseLoop.Store` | Protocol owned by `ToolUseLoop` — append + read-all |
+| `InMemoryStore` | Existing generic, conforms to `Store` at composition |
+| `ToolUseLoop` | `final class: Sendable`, stateless loop logic |
+| `NerisAgent` | Wires `InMemoryStore<Message>` into the loop |
 
----
-
-## Implementation Notes
+## Implementation Steps
 
 > Drop this section after implementation.
 
-### MessageStore
-
-```swift
-import Synchronization
-
-final class MessageStore: @unchecked Sendable {
-    private let messages: Mutex<[ToolUseLoop.Message]> = Mutex([])
-
-    func append(_ message: ToolUseLoop.Message) {
-        messages.withLock { $0.append(message) }
-    }
-
-    func all() -> [ToolUseLoop.Message] {
-        messages.withLock { $0 }
-    }
-}
-```
-
-### ToolUseLoop after extraction
-
-```swift
-public final class ToolUseLoop: Sendable {
-    private let respond: Respond
-    private let execute: Execute
-    private let store: MessageStore
-}
-```
-
-### Composition diagram
-
-```
-MessageStore (Mutex, owns [Message])
-    ↑ wrapped by
-PersistingMessageStore   — write-through to disk on each append
-CompactingMessageStore   — summarises tail when count exceeds threshold
-    ↑ injected into
-ToolUseLoop (stateless, pure loop logic)
-    ↑ injected into
-NerisAgent (wires HTTP client + store + loop)
-```
+1. Add `Store` protocol to `ToolUseLoop` (append + read-all).
+2. Add `Store` parameter to designated `init`; add convenience `init` that
+   passes a null/no-op store so existing clients and tests stay green.
+3. TDD store calls via spy: append on respond success, append on execute
+   success, append `.error` on failure.
+4. Once green — drop `messages` array, drop `isProcessing`, change `actor`
+   to `final class: Sendable`, switch `respond` to read from store.
+5. Conform `InMemoryStore` to `Store`, wire in `NerisAgent`, remove
+   convenience init with null store.
