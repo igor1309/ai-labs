@@ -59,7 +59,7 @@ final class ToolUseLoopTests: TestContext {
 
     @Test func test_process_shouldLoopOnMultipleToolCalls() async throws {
 
-        let (toolCall1, toolCall2) = (makeToolCall(), makeToolCall())
+        let (toolCall1, toolCall2) = make2ToolCalls()
         let (sut, _, execute) = makeSUT(
             respondStubs: [.success(.toolCalls([toolCall1])), .success(.toolCalls([toolCall2])), .success(.text(makeSomeString()))],
             executeStubs: [.success(makeSomeString()), .success(makeSomeString())]
@@ -84,7 +84,7 @@ final class ToolUseLoopTests: TestContext {
 
     @Test func test_process_shouldPropagateRespondError() async throws {
 
-        let error = makeSomeError(domain: makeSomeString())
+        let error = makeSomeError()
         let (sut, _, _) = makeSUT(respondStubs: [.failure(error)])
 
         await #expect {
@@ -96,7 +96,7 @@ final class ToolUseLoopTests: TestContext {
 
     @Test func test_process_shouldPropagateExecuteError() async throws {
 
-        let error = makeSomeError(domain: makeSomeString())
+        let error = makeSomeError()
         let (sut, _, _) = makeSUT(
             respondStubs: [.success(.toolCalls([makeToolCall()]))],
             executeStubs: [.failure(error)]
@@ -111,7 +111,7 @@ final class ToolUseLoopTests: TestContext {
 
     @Test func test_process_shouldPropagateRespondError_afterExecute() async throws {
 
-        let error = makeSomeError(domain: makeSomeString())
+        let error = makeSomeError()
         let (sut, _, _) = makeSUT(
             respondStubs: [.success(.toolCalls([makeToolCall()])), .failure(error)],
             executeStubs: [.success(makeSomeString())]
@@ -182,7 +182,7 @@ final class ToolUseLoopTests: TestContext {
     @Test func test_process_shouldRecordError_onRespondFailure() async throws {
 
         let (query1, query2) = (makeSomeString(), makeSomeString())
-        let error = makeSomeError(domain: makeSomeString())
+        let error = makeSomeError()
         let (sut, respond, _) = makeSUT(respondStubs: [.failure(error), .success(.text(makeSomeString()))])
 
         _ = try? await collect(sut.process(query1))
@@ -199,7 +199,7 @@ final class ToolUseLoopTests: TestContext {
 
         let toolCall = makeToolCall()
         let (query1, query2) = (makeSomeString(), makeSomeString())
-        let error = makeSomeError(domain: makeSomeString())
+        let error = makeSomeError()
         let (sut, respond, _) = makeSUT(
             respondStubs: [.success(.toolCalls([toolCall])), .success(.text(makeSomeString()))],
             executeStubs: [.failure(error)]
@@ -218,7 +218,7 @@ final class ToolUseLoopTests: TestContext {
 
     @Test func test_process_shouldAppendAllMessages_onTextResponse() async throws {
 
-        let (query, text) = (makeSomeString(), makeSomeString())
+        let (query, text) = make2Strings()
         let (sut, store) = makeSUT(respondStubs: [.success(.text(text))])
 
         _ = try await collect(sut.process(query))
@@ -226,10 +226,133 @@ final class ToolUseLoopTests: TestContext {
         #expect(store.messages == [.user(query), .assistant(.text(text))])
     }
 
+    @Test func test_process_shouldAppendAllMessages_onToolCallResponse() async throws {
+
+        let toolCall = makeToolCall()
+        let (query, toolResult, text) = make3Strings()
+        let (sut, store) = makeSUT(
+            respondStubs: [.success(.toolCalls([toolCall])), .success(.text(text))],
+            executeStubs: [.success(toolResult)]
+        )
+
+        _ = try await collect(sut.process(query))
+
+        #expect(store.messages == [
+            .user(query),
+            .assistant(.toolCalls([toolCall])),
+            .tool(id: toolCall.id, content: toolResult),
+            .assistant(.text(text))
+        ])
+    }
+
+    @Test func test_process_shouldAppendError_onRespondFailure() async throws {
+
+        let query = makeSomeString()
+        let error = makeSomeError()
+        let (sut, store) = makeSUT(respondStubs: [.failure(error)])
+
+        _ = try? await collect(sut.process(query))
+
+        #expect(store.messages == [.user(query), .error(error.localizedDescription)])
+    }
+
+    @Test func test_process_shouldAppendError_onExecuteFailure() async throws {
+
+        let toolCall = makeToolCall()
+        let query = makeSomeString()
+        let error = makeSomeError()
+        let (sut, store) = makeSUT(
+            respondStubs: [.success(.toolCalls([toolCall]))],
+            executeStubs: [.failure(error)]
+        )
+
+        _ = try? await collect(sut.process(query))
+
+        #expect(store.messages == [
+            .user(query),
+            .assistant(.toolCalls([toolCall])),
+            .error(error.localizedDescription)
+        ])
+    }
+
+    @Test func test_process_shouldAppendAllMessages_onMultipleToolCalls() async throws {
+
+        let (call1, call2) = make2ToolCalls()
+        let (query, result1, result2, text) = make4Strings()
+        let (sut, store) = makeSUT(
+            respondStubs: [.success(.toolCalls([call1, call2])), .success(.text(text))],
+            executeStubs: [.success(result1), .success(result2)]
+        )
+
+        _ = try await collect(sut.process(query))
+
+        #expect(store.messages == [
+            .user(query),
+            .assistant(.toolCalls([call1, call2])),
+            .tool(id: call1.id, content: result1),
+            .tool(id: call2.id, content: result2),
+            .assistant(.text(text))
+        ])
+    }
+
+    @Test func test_process_shouldAppendAllMessages_onMultipleLoopIterations() async throws {
+
+        let (call1, call2) = make2ToolCalls()
+        let (query, result1, result2, text) = make4Strings()
+        let (sut, store) = makeSUT(
+            respondStubs: [.success(.toolCalls([call1])), .success(.toolCalls([call2])), .success(.text(text))],
+            executeStubs: [.success(result1), .success(result2)]
+        )
+
+        _ = try await collect(sut.process(query))
+
+        #expect(store.messages == [
+            .user(query),
+            .assistant(.toolCalls([call1])),
+            .tool(id: call1.id, content: result1),
+            .assistant(.toolCalls([call2])),
+            .tool(id: call2.id, content: result2),
+            .assistant(.text(text))
+        ])
+    }
+
+    @Test func test_process_shouldAccumulateMessages_onSecondCall() async throws {
+
+        let (query1, response1, query2, response2) = make4Strings()
+        let (sut, store) = makeSUT(respondStubs: [.success(.text(response1)), .success(.text(response2))])
+
+        _ = try await collect(sut.process(query1))
+        _ = try await collect(sut.process(query2))
+
+        #expect(store.messages == [
+            .user(query1),
+            .assistant(.text(response1)),
+            .user(query2),
+            .assistant(.text(response2))
+        ])
+    }
+
+    @Test func test_process_shouldAccumulateMessages_onSecondCallAfterError() async throws {
+
+        let (query1, query2, response2) = make3Strings()
+        let error = makeSomeError()
+        let (sut, store) = makeSUT(respondStubs: [.failure(error), .success(.text(response2))])
+
+        _ = try? await collect(sut.process(query1))
+        _ = try await collect(sut.process(query2))
+
+        #expect(store.messages == [
+            .user(query1),
+            .error(error.localizedDescription),
+            .user(query2),
+            .assistant(.text(response2))
+        ])
+    }
+
     @Test func test_process_shouldExecuteAllToolCallsFromOneResponse() async throws {
 
-        let (call1, call2) = (makeToolCall(), makeToolCall())
-        let (result1, result2, text) = (makeSomeString(), makeSomeString(), makeSomeString())
+        let (call1, call2) = make2ToolCalls()
+        let (result1, result2, text) = make3Strings()
         let (sut, _, execute) = makeSUT(
             respondStubs: [.success(.toolCalls([call1, call2])), .success(.text(text))],
             executeStubs: [.success(result1), .success(result2)]
@@ -299,9 +422,24 @@ final class ToolUseLoopTests: TestContext {
         return (sut, store)
     }
 
-    private func makeToolCall() -> SUT.ToolCall {
+    private func make2Strings() -> (String, String) {
+        (makeSomeString(), makeSomeString())
+    }
 
+    private func make3Strings() -> (String, String, String) {
+        (makeSomeString(), makeSomeString(), makeSomeString())
+    }
+
+    private func make4Strings() -> (String, String, String, String) {
+        (makeSomeString(), makeSomeString(), makeSomeString(), makeSomeString())
+    }
+
+    private func makeToolCall() -> SUT.ToolCall {
         .init(id: makeSomeString(), name: makeSomeString(), arguments: makeSomeString())
+    }
+
+    private func make2ToolCalls() -> (SUT.ToolCall, SUT.ToolCall) {
+        (makeToolCall(), makeToolCall())
     }
 }
 
