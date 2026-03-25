@@ -8,6 +8,7 @@
 - Add GateTests (6 tests) and REPLCLITests (7 tests).
 - Add design decisions policy to AGENTS.md and static factories rule.
 - Record REPL non-throwing design decision in docs/design/.
+- Add InMemoryStore\<Element\> generic Mutex-based store in Core/Infra/ with seeded init. 5 tests.
 
 ## 2026-03-24
 - Prove SessionLoop architecture through isolated PoC test suite: REPL (sequential input processing), Gate (unbuffered escalation signaling), Router (state-aware input demux), StateEnvelope (async-to-sync Mutex bridge), AgentLoop/ControllableAgentLoop protocols with compose extensions, full bidirectional feedback loop (forward + reverse routing flip). 22 tests across 4 suites.
