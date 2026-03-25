@@ -1,6 +1,6 @@
 ---
-date: 2026-03-24
-model: gpt-5.4
+date: 2026-03-25
+model: claude-opus-4-6
 description: "Usage notes for the ccswitch limits reporting script."
 ---
 
@@ -23,12 +23,15 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 ## Behavior
 
 - reads accounts from `~/.claude-switch-backup/sequence.json`
-- reads per-account tokens from Keychain
-- falls back to `Claude Code-credentials` for the active account
+- reads per-account OAuth tokens from Keychain (`Claude Code-Account-N-email`)
+- for the active account, also reads the `Claude Code-credentials` token
+- tries the per-account token first; if the API call fails (e.g. stale/expired token), retries with the active credentials token
 - formats reset times as `HH:mm DD.MM`
 - uses the Mac local timezone when available, otherwise `Europe/Moscow`
 
 ## Notes
 
 - requires `jq`, `curl`, `security`, and `claude`
-- if tokens are missing, the script prints `OAuth token not found`
+- if no token is found for an account, prints `OAuth token not found`
+- if the API rejects all available tokens, prints `usage request failed`
+- inactive accounts with expired tokens cannot be queried until switched to

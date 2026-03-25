@@ -184,6 +184,7 @@ __READLINK__
 run_scenario() {
     scenario_name=$1
     readlink_mode=$2
+    mock_variant=${3:-standard}
     temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-${scenario_name}.XXXXXX")
     trap 'rm -rf "$temp_dir"' EXIT HUP INT TERM
 
@@ -195,8 +196,17 @@ run_scenario() {
     mkdir -p "$mock_bin_dir"
     write_sequence_file "$home_dir"
     write_claude_mock "$mock_bin_dir"
-    write_security_mock "$mock_bin_dir"
-    write_curl_mock "$mock_bin_dir"
+
+    case "$mock_variant" in
+        standard)
+            write_security_mock "$mock_bin_dir"
+            write_curl_mock "$mock_bin_dir"
+            ;;
+        stale)
+            write_security_stale_active_mock "$mock_bin_dir"
+            write_curl_stale_mock "$mock_bin_dir"
+            ;;
+    esac
 
     case "$readlink_mode" in
         local)
@@ -255,5 +265,129 @@ EOF
 __EXPECTED__
 )
 
-assert_equal "$expected_result" "$(run_scenario local local)"
-assert_equal "$expected_result" "$(run_scenario fallback fallback)"
+write_security_stale_active_mock() {
+    mock_bin_dir=$1
+
+    cat <<'__SECURITY__' >"$mock_bin_dir/security"
+#!/bin/sh
+set -eu
+
+printf 'security %s\n' "$*" >>"$COMMAND_LOG_PATH"
+
+if [ "$#" -ne 4 ] || [ "$1" != "find-generic-password" ] || [ "$2" != "-s" ] || [ "$4" != "-w" ]; then
+    printf 'unexpected security invocation: %s\n' "$*" >&2
+    exit 1
+fi
+
+case "$3" in
+    "Claude Code-Account-3-first@example.com")
+        printf '{"claudeAiOauth":{"accessToken":"token-3"}}'
+        ;;
+    "Claude Code-Account-4-active@example.com")
+        printf '{"claudeAiOauth":{"accessToken":"token-4-stale"}}'
+        ;;
+    "Claude Code-credentials")
+        printf '{"claudeAiOauth":{"accessToken":"token-active"}}'
+        ;;
+    "Claude Code-Account-5-missing@example.com")
+        exit 44
+        ;;
+    *)
+        printf 'unexpected keychain service: %s\n' "$3" >&2
+        exit 1
+        ;;
+esac
+__SECURITY__
+}
+
+write_curl_stale_mock() {
+    mock_bin_dir=$1
+
+    cat <<'__CURL__' >"$mock_bin_dir/curl"
+#!/bin/sh
+set -eu
+
+url=''
+authorization=''
+user_agent=''
+beta=''
+accept=''
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -fsS)
+            shift
+            ;;
+        -H)
+            case "$2" in
+                Authorization:*)
+                    authorization=$2
+                    ;;
+                User-Agent:*)
+                    user_agent=$2
+                    ;;
+                anthropic-beta:*)
+                    beta=$2
+                    ;;
+                Accept:*)
+                    accept=$2
+                    ;;
+            esac
+            shift 2
+            ;;
+        *)
+            url=$1
+            shift
+            ;;
+    esac
+done
+
+printf 'curl %s | %s | %s | %s | %s\n' "$url" "$authorization" "$user_agent" "$beta" "$accept" >>"$COMMAND_LOG_PATH"
+
+case "$authorization" in
+    "Authorization: Bearer token-3")
+        printf '{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59.943648+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59.943679+00:00"}}'
+        ;;
+    "Authorization: Bearer token-4-stale")
+        exit 22
+        ;;
+    "Authorization: Bearer token-active")
+        printf '{"five_hour":{"utilization":12.0,"resets_at":"2026-03-25T00:00:00.000000+00:00"},"seven_day":{"utilization":40.0,"resets_at":"2026-03-28T00:00:00.000000+00:00"}}'
+        ;;
+    *)
+        printf 'unexpected authorization header: %s\n' "$authorization" >&2
+        exit 1
+        ;;
+esac
+__CURL__
+}
+
+expected_stale_result=$(cat <<'__EXPECTED__'
+exit=0
+output<<EOF
+Account 3: first@example.com
+  five_hour:   6% used, resets 22:59 24.03
+  seven_day:  35% used, resets 06:59 27.03
+
+Account 4: active@example.com (active)
+  five_hour:  12% used, resets 03:00 25.03
+  seven_day:  40% used, resets 03:00 28.03
+
+Account 5: missing@example.com
+  unavailable: OAuth token not found
+EOF
+log<<EOF
+security find-generic-password -s Claude Code-Account-3-first@example.com -w
+curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
+security find-generic-password -s Claude Code-Account-4-active@example.com -w
+security find-generic-password -s Claude Code-credentials -w
+curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-4-stale | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
+curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-active | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
+security find-generic-password -s Claude Code-Account-5-missing@example.com -w
+EOF
+__EXPECTED__
+)
+
+assert_equal "$expected_result" "$(run_scenario local local standard)"
+assert_equal "$expected_result" "$(run_scenario fallback fallback standard)"
+assert_equal "$expected_stale_result" "$(run_scenario stale_active local stale)"

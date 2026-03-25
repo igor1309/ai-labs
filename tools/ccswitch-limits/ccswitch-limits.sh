@@ -20,29 +20,6 @@ extract_access_token() {
     printf '%s' "$credentials_payload" | jq -r '.claudeAiOauth.accessToken // empty'
 }
 
-lookup_access_token() {
-    account_number=$1
-    account_email=$2
-    is_active_account=$3
-    account_service_name="Claude Code-Account-${account_number}-${account_email}"
-    account_payload=$(read_keychain_service "$account_service_name")
-    account_token=$(extract_access_token "$account_payload")
-
-    if [ -n "$account_token" ]; then
-        printf '%s' "$account_token"
-        return 0
-    fi
-
-    if [ "$is_active_account" = "yes" ]; then
-        active_payload=$(read_keychain_service "Claude Code-credentials")
-        active_token=$(extract_access_token "$active_payload")
-
-        if [ -n "$active_token" ]; then
-            printf '%s' "$active_token"
-        fi
-    fi
-}
-
 resolve_user_agent() {
     claude_version=$(claude --version 2>/dev/null | awk 'NR == 1 { print $1 }')
 
@@ -178,16 +155,28 @@ while IFS="$tab_character" read -r account_number active_account_number account_
 
     printf '%s\n' "$account_header"
 
-    access_token=$(lookup_access_token "$account_number" "$account_email" "$is_active_account")
-    if [ -z "$access_token" ]; then
+    account_token=$(extract_access_token "$(read_keychain_service "Claude Code-Account-${account_number}-${account_email}")")
+    active_token=""
+    if [ "$is_active_account" = "yes" ]; then
+        active_token=$(extract_access_token "$(read_keychain_service "Claude Code-credentials")")
+    fi
+
+    if [ -z "$account_token" ] && [ -z "$active_token" ]; then
         printf '  unavailable: OAuth token not found\n'
         continue
     fi
 
-    usage_payload=$(query_usage_limits "$access_token" "$user_agent") || {
+    usage_payload=""
+    if [ -n "$account_token" ]; then
+        usage_payload=$(query_usage_limits "$account_token" "$user_agent") || true
+    fi
+    if [ -z "$usage_payload" ] && [ -n "$active_token" ] && [ "$active_token" != "$account_token" ]; then
+        usage_payload=$(query_usage_limits "$active_token" "$user_agent") || true
+    fi
+    if [ -z "$usage_payload" ]; then
         printf '  unavailable: usage request failed\n'
         continue
-    }
+    fi
 
     formatted_usage=$(format_usage_limits "$usage_payload") || {
         printf '  unavailable: usage response was invalid\n'
