@@ -1,5 +1,3 @@
-import Foundation
-
 public extension REPL where Input == String {
 
     static func cli(
@@ -8,10 +6,11 @@ public extension REPL where Input == String {
     ) -> REPL {
         let input = AsyncStream<String> {
             while let raw = await reader() {
-                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                if trimmed.isEmpty { continue }
-                if ["exit", "quit", "q"].contains(trimmed.lowercased()) { return nil }
-                return trimmed
+                switch FilterResult(raw) {
+                case .skip: continue
+                case .quit: return nil
+                case .input(let value): return value
+                }
             }
             return nil
         }
