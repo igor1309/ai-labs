@@ -67,6 +67,7 @@ public actor ToolUseLoop {
         isProcessing = true
         defer { isProcessing = false }
         messages.append(.user(input))
+        store.append(.user(input))
         while true {
             let response = try await record({ try await self.respond(messages) }, { .assistant($0) })
             switch response {
@@ -93,10 +94,13 @@ public actor ToolUseLoop {
     ) async throws -> T {
         do {
             let value = try await operation()
-            messages.append(message(value))
+            let msg = message(value)
+            messages.append(msg)
+            store.append(msg)
             return value
         } catch {
             messages.append(.error(error.localizedDescription))
+            store.append(.error(error.localizedDescription))
             throw error
         }
     }

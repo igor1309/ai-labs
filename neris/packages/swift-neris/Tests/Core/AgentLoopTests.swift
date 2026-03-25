@@ -216,6 +216,16 @@ final class ToolUseLoopTests: TestContext {
         ])
     }
 
+    @Test func test_process_shouldAppendAllMessages_onTextResponse() async throws {
+
+        let (query, text) = (makeSomeString(), makeSomeString())
+        let (sut, store) = makeSUT(respondStubs: [.success(.text(text))])
+
+        _ = try await collect(sut.process(query))
+
+        #expect(store.messages == [.user(query), .assistant(.text(text))])
+    }
+
     @Test func test_process_shouldExecuteAllToolCallsFromOneResponse() async throws {
 
         let (call1, call2) = (makeToolCall(), makeToolCall())
@@ -268,8 +278,39 @@ final class ToolUseLoopTests: TestContext {
         return events
     }
 
+    private func makeSUT(
+        respondStubs: [RespondSpy.Stub]? = nil,
+        executeStubs: [ExecuteSpy.Stub]? = nil,
+        _ sourceLocation: SourceLocation = #_sourceLocation
+    ) -> (SUT, StoreSpy) {
+
+        let store = StoreSpy()
+        let respond = RespondSpy(stubs: respondStubs ?? [.success(.toolCalls([makeToolCall()])), .success(.text(makeSomeString()))])
+        let execute = ExecuteSpy(stubs: executeStubs ?? [.success(makeSomeString())])
+        let sut = SUT(
+            respond: respond.call(payload:),
+            execute: execute.call(payload:),
+            store: store
+        )
+        trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
+        trackForMemoryLeaks(respond, sourceLocation: sourceLocation)
+        trackForMemoryLeaks(execute, sourceLocation: sourceLocation)
+        trackForMemoryLeaks(store, sourceLocation: sourceLocation)
+        return (sut, store)
+    }
+
     private func makeToolCall() -> SUT.ToolCall {
 
         .init(id: makeSomeString(), name: makeSomeString(), arguments: makeSomeString())
     }
+}
+
+private final class StoreSpy: ToolUseLoop.Store, @unchecked Sendable {
+    private(set) var messages = [ToolUseLoop.Message]()
+
+    func append(_ message: ToolUseLoop.Message) {
+        messages.append(message)
+    }
+
+    func all() -> [ToolUseLoop.Message] { [] }
 }
