@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-03-25
+- Extract message state from ToolUseLoop into injected Store protocol. ToolUseLoop is now a stateless `final class: Sendable`. InMemoryStore conforms at composition layer. 8 new store spec tests.
 - Promote session loop PoC types to production: REPL, Gate, Router/RouterEvent, StateEnvelope, AgentLoop/ControllableAgentLoop protocols with compose extensions. All public.
 - Add REPL.cli static factory with FilterResult-based input filtering. Replace Loop with REPL.cli in CLI. Delete Loop and LoopTests.
 - Rename AgentLoop actor to ToolUseLoop to free the name for the protocol.

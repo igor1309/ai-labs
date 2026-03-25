@@ -2,8 +2,8 @@
 
 Swift package with two modules:
 
-- **NerisCore** — library that holds all the real logic.
-- **NerisCLI** — thin executable that wires things together.
+- **NerisCore** — domain logic, API integration, session primitives.
+- **NerisCLI** — composition root executable.
 
 ## Architecture
 
@@ -21,7 +21,21 @@ Generic, reusable stream machinery with no domain knowledge:
 
 ### ToolUseLoop (`Sources/Core/ToolUseLoop.swift`)
 
-Actor implementing multi-turn tool-use conversation. Given a user message, calls the model, handles tool call/result cycles, yields events. Maintains message history across turns.
+Stateless `final class` implementing multi-turn tool-use conversation. Given a user message, calls injected `respond`/`execute` closures, handles tool call/result cycles, yields events. Message history is owned by an injected `Store` protocol — `InMemoryStore` conforms at the composition layer.
+
+### Infrastructure (`Sources/Core/Infra/`)
+
+- **InMemoryStore\<Element\>** — generic thread-safe collection backed by `Mutex`. Conforms to `ToolUseLoop.Store` at the composition layer.
+
+### API (`Sources/Core/API/OpenRouter/`)
+
+- **OpenRouterRequestFactory** — builds `URLRequest`s for the OpenRouter chat completions API.
+- **OpenRouterResponseParser** — parses chat completion responses (text, parallel tool calls, status codes, finish reasons).
+- **NetworkClient\<Input, Output\>** — generic 3-dep pipeline (request factory, transport, response parser).
+
+### NerisAgent (`Sources/Core/NerisAgent.swift`)
+
+Composition root that wires `NetworkClient`, `OpenRouter` adapters, `InMemoryStore`, and `ToolUseLoop` into a working agent with system prompt and tool dispatch.
 
 ### Composition
 
@@ -45,6 +59,6 @@ UI Events → [Router] → .repl → [REPL] → [AgentLoop] → events → [Stat
 - **Skills and tools** — expand beyond `read_file`.
 - **Observability** — capture interactions for comparison across configurations.
 - **Configuration** — model selection via config file or CLI flags.
-- **Conversation persistence** — messages are in-memory only.
+- **Conversation persistence** — messages stored via `InMemoryStore`; disk persistence not yet implemented.
 - **NerisAgent test coverage** — system prompt and tool dispatch logic.
 - **Error messages** — improve user-facing error output.
