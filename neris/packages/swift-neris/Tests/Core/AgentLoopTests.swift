@@ -2,7 +2,7 @@ import Foundation
 @testable import NerisCore
 import Testing
 
-final class AgentLoopTests: TestContext {
+final class ToolUseLoopTests: TestContext {
 
     @Test func test_process_shouldPassUserMessageToRespond() async throws {
 
@@ -237,7 +237,7 @@ final class AgentLoopTests: TestContext {
 
     // MARK: - Helpers
 
-    private typealias SUT = AgentLoop
+    private typealias SUT = ToolUseLoop
     private typealias RespondSpy = AsyncSpyOf<[SUT.Message], SUT.Response>
     private typealias ExecuteSpy = AsyncSpyOf<SUT.ToolCall, String>
 

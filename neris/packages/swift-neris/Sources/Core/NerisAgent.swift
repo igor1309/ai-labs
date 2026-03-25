@@ -14,7 +14,7 @@ public final class NerisAgent: Sendable {
         }
     }
 
-    private let agentLoop: AgentLoop
+    private let agentLoop: ToolUseLoop
 
     public init(config: Config) {
 
@@ -49,7 +49,7 @@ public final class NerisAgent: Sendable {
             responseParser: { try parser.parse($0.0, $0.1) }
         )
         let systemPrompt = config.systemPrompt
-        self.agentLoop = AgentLoop(
+        self.agentLoop = ToolUseLoop(
             respond: { messages in
                 var openRouterMessages = messages.map(\.toOpenRouterMessage)
                 if let systemPrompt {
@@ -64,11 +64,11 @@ public final class NerisAgent: Sendable {
         )
     }
 
-    public func process(_ input: String) async -> AsyncThrowingStream<AgentLoop.Event, Error> {
+    public func process(_ input: String) async -> AsyncThrowingStream<ToolUseLoop.Event, Error> {
         await agentLoop.process(input)
     }
 
-    private static func execute(_ call: AgentLoop.ToolCall) throws -> String {
+    private static func execute(_ call: ToolUseLoop.ToolCall) throws -> String {
 
         guard call.name == "read_file" else { throw UnsupportedToolError(name: call.name) }
         guard let args = try? JSONDecoder().decode(ReadFileArgs.self, from: Data(call.arguments.utf8)),
