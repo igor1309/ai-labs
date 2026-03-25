@@ -39,7 +39,7 @@ public final class ToolUseLoop: Sendable {
     private let execute: Execute
     private let store: any Store
 
-    init(respond: @escaping Respond, execute: @escaping Execute, store: any Store = NullStore()) {
+    init(respond: @escaping Respond, execute: @escaping Execute, store: any Store) {
         self.respond = respond
         self.execute = execute
         self.store = store
@@ -93,9 +93,4 @@ public final class ToolUseLoop: Sendable {
             throw error
         }
     }
-}
-
-private struct NullStore: ToolUseLoop.Store {
-    func append(_ message: ToolUseLoop.Message) {}
-    func all() -> [ToolUseLoop.Message] { [] }
 }

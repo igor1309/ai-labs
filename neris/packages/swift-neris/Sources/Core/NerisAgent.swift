@@ -60,7 +60,8 @@ public final class NerisAgent: Sendable {
             },
             execute: { call in
                 try Self.execute(call)
-            }
+            },
+            store: InMemoryStore<ToolUseLoop.Message>()
         )
     }
 
@@ -90,3 +91,5 @@ struct InvalidArgumentsError: Error {
     let tool: String
     let arguments: String
 }
+
+extension InMemoryStore: ToolUseLoop.Store where Element == ToolUseLoop.Message {}
