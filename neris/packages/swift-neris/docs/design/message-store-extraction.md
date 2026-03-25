@@ -58,11 +58,11 @@ leaving message history in an inconsistent state mid-loop.
 > Drop this section after implementation.
 
 1. Add `Store` protocol to `ToolUseLoop` (append + read-all).
-2. Add `Store` parameter to designated `init`; add convenience `init` that
-   passes a null/no-op store so existing clients and tests stay green.
+2. Add `Store` parameter to `init` with a default `NullStore()` (actors
+   cannot have convenience inits) so existing clients and tests stay green.
 3. TDD store calls via spy: append on respond success, append on execute
    success, append `.error` on failure.
 4. Once green — drop `messages` array, drop `isProcessing`, change `actor`
    to `final class: Sendable`, switch `respond` to read from store.
 5. Conform `InMemoryStore` to `Store`, wire in `NerisAgent`, remove
-   convenience init with null store.
+   default `NullStore` parameter.

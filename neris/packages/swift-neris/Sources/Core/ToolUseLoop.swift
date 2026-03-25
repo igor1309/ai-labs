@@ -2,6 +2,11 @@ import Foundation
 
 public actor ToolUseLoop {
 
+    protocol Store: Sendable {
+        func append(_ message: Message)
+        func all() -> [Message]
+    }
+
     public struct ToolCall: Equatable, Sendable {
         public let id: String
         public let name: String
@@ -34,12 +39,14 @@ public actor ToolUseLoop {
 
     private let respond: Respond
     private let execute: Execute
+    private let store: any Store
     private var messages = [Message]()
     private var isProcessing = false
 
-    init(respond: @escaping Respond, execute: @escaping Execute) {
+    init(respond: @escaping Respond, execute: @escaping Execute, store: any Store = NullStore()) {
         self.respond = respond
         self.execute = execute
+        self.store = store
     }
 
     func process(_ input: String) -> EventStream {
@@ -93,4 +100,9 @@ public actor ToolUseLoop {
             throw error
         }
     }
+}
+
+private struct NullStore: ToolUseLoop.Store {
+    func append(_ message: ToolUseLoop.Message) {}
+    func all() -> [ToolUseLoop.Message] { [] }
 }
