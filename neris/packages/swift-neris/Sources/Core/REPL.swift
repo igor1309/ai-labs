@@ -1,5 +1,3 @@
-import Foundation
-
 public struct REPL<Input: Sendable, Event: Sendable> {
 
     public let input: AsyncStream<Input>

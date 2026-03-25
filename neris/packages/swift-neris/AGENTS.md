@@ -1,3 +1,11 @@
+## Design Decisions
+
+Design decisions live in `docs/design/`. Record decisions there, not in agent memory. Each file uses front-matter (`date`, `model`, `description`) and covers Context, Decision, and Rationale.
+
+## Static Factories
+
+Static factory methods must not be declared in the type body. Declare them in an extension, in a separate `<Type>+<factory>.swift` file (e.g., `REPL+cli.swift`).
+
 ## Versioning
 
 The CLI version is defined in `Sources/CLI/NerisCLI.swift` via `CommandConfiguration(version:)`. Update it on every release. This is the single source of truth for `neris --version` and the startup message.
