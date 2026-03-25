@@ -1,5 +1,14 @@
 # Log
 
+## 2026-03-25
+- Promote session loop PoC types to production: REPL, Gate, Router/RouterEvent, StateEnvelope, AgentLoop/ControllableAgentLoop protocols with compose extensions. All public.
+- Add REPL.cli static factory with FilterResult-based input filtering. Replace Loop with REPL.cli in CLI. Delete Loop and LoopTests.
+- Rename AgentLoop actor to ToolUseLoop to free the name for the protocol.
+- Organize Sources/Core into Session/ subdirectory for generic stream primitives. Rename Tests/Core/SessionLoop to Tests/Core/Session.
+- Add GateTests (6 tests) and REPLCLITests (7 tests).
+- Add design decisions policy to AGENTS.md and static factories rule.
+- Record REPL non-throwing design decision in docs/design/.
+
 ## 2026-03-24
 - Prove SessionLoop architecture through isolated PoC test suite: REPL (sequential input processing), Gate (unbuffered escalation signaling), Router (state-aware input demux), StateEnvelope (async-to-sync Mutex bridge), AgentLoop/ControllableAgentLoop protocols with compose extensions, full bidirectional feedback loop (forward + reverse routing flip). 22 tests across 4 suites.
 Add **Session Loop** design notes.

@@ -5,46 +5,46 @@ Swift package with two modules:
 - **NerisCore** — library that holds all the real logic.
 - **NerisCLI** — thin executable that wires things together.
 
-## Dual-Loop Design
+## Architecture
 
-neris uses two cooperating loops with distinct responsibilities.
+### Session primitives (`Sources/Core/Session/`)
 
-### REPL Loop (outer)
+Generic, reusable stream machinery with no domain knowledge:
 
-The REPL loop owns the input/output cycle. It reads user input, filters it (skip blanks, detect quit commands), passes valid input to a processor, and yields elements from the processor's event stream. `Loop<Element>` is generic — the element type is determined by the processor. It is an `AsyncSequence` with a proper `AsyncIteratorProtocol` — idiomatic structured concurrency, no manual tasks or continuations.
+- **REPL\<Input, Event\>** — reads an input stream, invokes a turn closure per input, forwards turn output. Non-throwing by design — errors are the turn's concern, not the loop's.
+- **REPL.cli** — static factory that builds a REPL from a pull-based reader with `FilterResult`-based input filtering (skip blanks, quit commands, trim whitespace).
+- **Gate\<Response\>** — unbuffered actor for cooperative suspend/resume signaling. Turns suspend at escalations via `wait()`, controllers resume via `signal()` or `cancel()`.
+- **Router\<Input\>** — classifies each event as `.repl` or `.control` based on an `expectsControl` closure.
+- **StateEnvelope\<Event, State\>** — reduces an async event stream to a synchronously queryable state via `Mutex`.
+- **AgentLoop protocol** — `run(input:) -> AsyncStream<Event>` with a `compose(input:)` extension that wires a REPL.
+- **ControllableAgentLoop protocol** — extends AgentLoop with `start(observing:)` for control delivery. `compose(uiEvents:initial:map:)` builds the full feedback loop: Router → REPL + StateEnvelope + control stream.
 
-The REPL loop is platform-agnostic. A CLI reads from stdin. A GUI reads from a text field. The loop doesn't know or care.
+### ToolUseLoop (`Sources/Core/ToolUseLoop.swift`)
 
-### Agent Loop (inner)
+Actor implementing multi-turn tool-use conversation. Given a user message, calls the model, handles tool call/result cycles, yields events. Maintains message history across turns.
 
-The Agent loop owns the multi-turn conversation. Given a user message, it calls the model, handles tool call/result cycles, and yields a stream of events (text, tool calls, tool results). One user input may produce many events across multiple model round-trips.
-
-The Agent loop emits an event stream. Each UI consumes this stream and decides how to render each event — a CLI prints text and shows a spinner, a SwiftUI view updates published state, etc.
-
-> **TODO:** Refactor AgentLoop from `AsyncThrowingStream` with internal `Task` to a proper `AsyncSequence` with `AsyncIteratorProtocol`, matching the REPL loop's pattern.
-
-### How They Compose
-
-The REPL loop's processor calls the Agent loop. The Agent loop returns an event stream. The REPL loop drains that stream and yields each element to the consumer. A CLI iterates `Loop<AgentLoop.Event>` and renders each event (print text, show spinner, format tool calls). A SwiftUI view does the same with published state.
+### Composition
 
 ```
-User Input → [REPL Loop] → [Agent Loop] → Event Stream → [Presentation] → Output
-                  ↑                                                          |
-                  └──────────────────────────────────────────────────────────┘
+User Input → [REPL] → [ToolUseLoop] → Event Stream → [Presentation] → Output
+                 ↑                                                       |
+                 └───────────────────────────────────────────────────────┘
 ```
 
-The REPL loop handles the lifecycle (read, filter, quit). The Agent loop handles the intelligence (converse, use tools, respond). Neither knows about the other's internals.
+For controllable sessions (escalation/approval flows):
+
+```
+UI Events → [Router] → .repl → [REPL] → [AgentLoop] → events → [StateEnvelope]
+                    └→ .control → [AgentLoop.start(observing:)]        ↓
+                         ↑                                      query() → Router
+```
 
 ## Next
 
-Four independent directions, unprioritized:
-
-- **Streaming (SSE)** — switch from batch responses to server-sent events. Touches transport, parser, and AgentLoop layers. Enables incremental text rendering across all consumers (CLI, GUI).
-- **Skills and tools** — expand the tool set beyond `read_file` (write_file, run_command, grep, etc.). Define skills that compose tools into higher-level capabilities.
-- **Observability and prompt comparison** — capture interactions (input, events, latency, model, system prompt) and compare runs across configurations. Cross-cutting concern — design the observation contract before the codebase grows.
-- **CLI UI polish** — non-functional improvements to terminal output formatting and interaction.
-- **AgentLoop refactor** — replace `AsyncThrowingStream` + `Task` with proper `AsyncSequence`/`AsyncIteratorProtocol`.
-- **Configuration** — model selection, config file or CLI flags. Currently hardcoded in CLI.
-- **Conversation persistence** — messages are in-memory only. Persisting enables replay, comparison, and continuity.
-- **NerisAgent test coverage** — system prompt prepending and tool dispatch have real logic worth testing.
-- **Error messages** — improve user-facing error output beyond `localizedDescription`.
+- **Streaming (SSE)** — server-sent events for incremental text rendering.
+- **Skills and tools** — expand beyond `read_file`.
+- **Observability** — capture interactions for comparison across configurations.
+- **Configuration** — model selection via config file or CLI flags.
+- **Conversation persistence** — messages are in-memory only.
+- **NerisAgent test coverage** — system prompt and tool dispatch logic.
+- **Error messages** — improve user-facing error output.

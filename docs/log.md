@@ -8,6 +8,10 @@ claude-insights: `/compare` now accepts an optional week count (`/compare 3`), d
 
 claude-insights: fixed a cluster of reliability issues — Supabase keep-alive now works end-to-end from the weekly LaunchAgent (wrong CLI flag, SSL crash, and non-fatal refresh); `/compare` no longer 413s (payload trimmed to LLM-relevant fields + capped narrative). PRs #103–108.
 
+## 2026-03-25
+
+neris: promote session loop PoC types (REPL, Gate, Router, StateEnvelope, AgentLoop/ControllableAgentLoop protocols) to production. Add REPL.cli factory with FilterResult-based input filtering. Rename AgentLoop actor to ToolUseLoop. Replace Loop with REPL in CLI. Organize Sources/Core into Session/ subdirectory.
+
 ## 2026-03-14
 
 claude-insights: add `/compare` bot command — LLM-powered week-over-week trend analysis via Nomos. New `_shared/llm.ts` helper, Nomos project registered, secrets set, function deployed. Add Nomos key isolation rule to AGENTS.md. PR #96.
