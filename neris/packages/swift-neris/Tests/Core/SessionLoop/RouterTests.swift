@@ -1,3 +1,4 @@
+import NerisCore
 import Testing
 
 final class RouterTests: TestContext {
@@ -67,29 +68,5 @@ final class RouterTests: TestContext {
         _ value: String = makeSomeString()
     ) -> UIEvent {
         .init(value: value)
-    }
-}
-
-enum RouterEvent<Input: Equatable & Sendable>: Equatable, Sendable {
-    case repl(Input)
-    case control(Input)
-}
-
-struct Router<Input: Equatable & Sendable> {
-
-    let events: AsyncStream<Input>
-    let expectsControl: @Sendable () -> Bool
-
-    func run() -> AsyncStream<RouterEvent<Input>> {
-        let events = events
-        let expectsControl = expectsControl
-        return AsyncStream { continuation in
-            Task {
-                for await event in events {
-                    continuation.yield(expectsControl() ? .control(event) : .repl(event))
-                }
-                continuation.finish()
-            }
-        }
     }
 }
