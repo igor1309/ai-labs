@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-03-24
+- Prove SessionLoop architecture through isolated PoC test suite: REPL (sequential input processing), Gate (unbuffered escalation signaling), Router (state-aware input demux), StateEnvelope (async-to-sync Mutex bridge), AgentLoop/ControllableAgentLoop protocols with compose extensions, full bidirectional feedback loop (forward + reverse routing flip). 22 tests across 4 suites.
 Add **Session Loop** design notes.
 
 ## 2026-03-22
