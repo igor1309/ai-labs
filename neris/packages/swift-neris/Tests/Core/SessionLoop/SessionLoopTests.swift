@@ -221,25 +221,3 @@ private struct ScriptedTurn<Response: Equatable & Sendable> {
     }
 }
 
-private actor Gate<Response: Sendable> {
-
-    private var continuation: CheckedContinuation<Response?, Never>?
-    private(set) var isCancelled = false
-
-    func wait() async -> Response? {
-        if isCancelled { return nil }
-        return await withCheckedContinuation { continuation = $0 }
-    }
-
-    func signal(_ response: Response) {
-        continuation?.resume(returning: response)
-        continuation = nil
-    }
-
-    func cancel() {
-        isCancelled = true
-        continuation?.resume(returning: nil)
-        continuation = nil
-    }
-}
-
