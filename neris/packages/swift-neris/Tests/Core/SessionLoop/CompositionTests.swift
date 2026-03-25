@@ -1,3 +1,4 @@
+import NerisCore
 import Testing
 
 final class CompositionTests: TestContext {

@@ -1,3 +1,4 @@
+import NerisCore
 import Testing
 
 final class SessionLoopTests: TestContext {
@@ -242,23 +243,3 @@ private actor Gate<Response: Sendable> {
     }
 }
 
-struct REPL<Input: Sendable, Event: Sendable> {
-
-    let input: AsyncStream<Input>
-    let turn: @Sendable (Input) -> AsyncStream<Event>
-
-    func run() -> AsyncStream<Event> {
-        let input = input
-        let turn = turn
-        return AsyncStream { continuation in
-            Task {
-                for await message in input {
-                    for await output in turn(message) {
-                        continuation.yield(output)
-                    }
-                }
-                continuation.finish()
-            }
-        }
-    }
-}
