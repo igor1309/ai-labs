@@ -1,6 +1,6 @@
 import Foundation
 
-public actor ToolUseLoop {
+public final class ToolUseLoop: Sendable {
 
     protocol Store: Sendable {
         func append(_ message: Message)
@@ -31,8 +31,6 @@ public actor ToolUseLoop {
         case toolCalls([ToolCall])
     }
 
-    struct ConcurrentAccessError: Error {}
-
     typealias EventStream = AsyncThrowingStream<Event, Error>
     typealias Respond = @Sendable ([Message]) async throws -> Response
     typealias Execute = @Sendable (ToolCall) async throws -> String
@@ -40,8 +38,6 @@ public actor ToolUseLoop {
     private let respond: Respond
     private let execute: Execute
     private let store: any Store
-    private var messages = [Message]()
-    private var isProcessing = false
 
     init(respond: @escaping Respond, execute: @escaping Execute, store: any Store = NullStore()) {
         self.respond = respond
@@ -63,13 +59,9 @@ public actor ToolUseLoop {
     }
 
     private func run(_ input: String, continuation: EventStream.Continuation) async throws {
-        guard !isProcessing else { throw ConcurrentAccessError() }
-        isProcessing = true
-        defer { isProcessing = false }
-        messages.append(.user(input))
         store.append(.user(input))
         while true {
-            let response = try await record({ try await self.respond(messages) }, { .assistant($0) })
+            let response = try await record({ try await self.respond(self.store.all()) }, { .assistant($0) })
             switch response {
             case .text(let text):
                 continuation.yield(.text(text))
@@ -94,12 +86,9 @@ public actor ToolUseLoop {
     ) async throws -> T {
         do {
             let value = try await operation()
-            let msg = message(value)
-            messages.append(msg)
-            store.append(msg)
+            store.append(message(value))
             return value
         } catch {
-            messages.append(.error(error.localizedDescription))
             store.append(.error(error.localizedDescription))
             throw error
         }

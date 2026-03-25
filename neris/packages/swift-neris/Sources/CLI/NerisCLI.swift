@@ -29,7 +29,7 @@ struct NerisCLI: AsyncParsableCommand {
             return AsyncStream { continuation in
                 Task {
                     do {
-                        for try await event in await agent.process(input) {
+                        for try await event in agent.process(input) {
                             continuation.yield(event)
                         }
                     } catch {

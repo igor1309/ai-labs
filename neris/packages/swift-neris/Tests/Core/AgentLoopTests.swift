@@ -380,15 +380,18 @@ final class ToolUseLoopTests: TestContext {
         _ sourceLocation: SourceLocation = #_sourceLocation
     ) -> (SUT, RespondSpy, ExecuteSpy) {
 
+        let store = StoreSpy()
         let respond = RespondSpy(stubs: respondStubs ?? [.success(.toolCalls([makeToolCall()])), .success(.text(makeSomeString()))])
         let execute = ExecuteSpy(stubs: executeStubs ?? [.success(makeSomeString())])
         let sut = SUT(
             respond: respond.call(payload:),
-            execute: execute.call(payload:)
+            execute: execute.call(payload:),
+            store: store
         )
         trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
         trackForMemoryLeaks(respond, sourceLocation: sourceLocation)
         trackForMemoryLeaks(execute, sourceLocation: sourceLocation)
+        trackForMemoryLeaks(store, sourceLocation: sourceLocation)
         return (sut, respond, execute)
     }
 
@@ -450,5 +453,5 @@ private final class StoreSpy: ToolUseLoop.Store, @unchecked Sendable {
         messages.append(message)
     }
 
-    func all() -> [ToolUseLoop.Message] { [] }
+    func all() -> [ToolUseLoop.Message] { messages }
 }

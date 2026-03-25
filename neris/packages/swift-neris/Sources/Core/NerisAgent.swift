@@ -64,8 +64,8 @@ public final class NerisAgent: Sendable {
         )
     }
 
-    public func process(_ input: String) async -> AsyncThrowingStream<ToolUseLoop.Event, Error> {
-        await agentLoop.process(input)
+    public func process(_ input: String) -> AsyncThrowingStream<ToolUseLoop.Event, Error> {
+        agentLoop.process(input)
     }
 
     private static func execute(_ call: ToolUseLoop.ToolCall) throws -> String {
