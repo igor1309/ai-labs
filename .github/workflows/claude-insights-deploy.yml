@@ -6,6 +6,7 @@ on:
       - trunk
     paths:
       - "claude-insights/supabase/functions/**"
+      - ".github/workflows/claude-insights-deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -17,6 +18,7 @@ jobs:
     outputs:
       notify-insights: ${{ steps.filter.outputs.notify-insights }}
       telegram-bot: ${{ steps.filter.outputs.telegram-bot }}
+      workflow-file: ${{ steps.filter.outputs.workflow-file }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,10 +36,12 @@ jobs:
             telegram-bot:
               - "claude-insights/supabase/functions/telegram-bot/**"
               - "claude-insights/supabase/functions/_shared/**"
+            workflow-file:
+              - ".github/workflows/claude-insights-deploy.yml"
 
   deploy-notify-insights:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notify-insights == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notify-insights == 'true' || needs.changes.outputs.workflow-file == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,7 +64,7 @@ jobs:
 
   deploy-telegram-bot:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.telegram-bot == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.telegram-bot == 'true' || needs.changes.outputs.workflow-file == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
