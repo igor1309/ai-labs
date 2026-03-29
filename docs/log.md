@@ -2,6 +2,7 @@
 
 ## 2026-03-29
 
+claude-insights: fix `/compare` 413 error — project only LLM-relevant fields in `analyzeTrends`, dropping `raw_html` and other large columns before sending to Nomos.
 claude-insights: fix `--refresh` command — use `claude --print /insights` instead of `claude -p /insights --bare`; the latter caused "Not logged in" in headless/LaunchAgent context. Verified working end-to-end.
 claude-insights: make `--refresh` failure non-fatal — script warns and continues so the Supabase keep-alive ping always fires.
 claude-insights: fix `ping_supabase` crash on SSL/network errors — catch `URLError` in addition to `HTTPError`.
