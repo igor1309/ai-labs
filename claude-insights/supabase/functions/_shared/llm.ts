@@ -21,11 +21,13 @@ type Snapshot = {
   narrative_summary: unknown;
 };
 
-const NARRATIVE_MAX_CHARS = 500;
+function narrativeMaxChars(snapshotCount: number): number {
+  return Math.max(200, Math.floor(1000 / snapshotCount));
+}
 
-function projectSnapshot(row: Record<string, unknown>): Snapshot {
+function projectSnapshot(row: Record<string, unknown>, maxChars: number): Snapshot {
   const narrative = typeof row.narrative_summary === "string"
-    ? row.narrative_summary.slice(0, NARRATIVE_MAX_CHARS)
+    ? row.narrative_summary.slice(0, maxChars)
     : row.narrative_summary;
   return {
     week: row.week,
@@ -52,7 +54,8 @@ export async function analyzeTrends(
     throw new Error("Missing NOMOS_BASE_URL or NOMOS_API_KEY");
   }
 
-  const snapshots = rows.map(projectSnapshot);
+  const maxChars = narrativeMaxChars(rows.length);
+  const snapshots = rows.map((r) => projectSnapshot(r, maxChars));
 
   const resp = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
