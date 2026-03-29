@@ -34,7 +34,7 @@ python3 tools/claude-insights/claude-insights.py -o weekly.json
 # push to Supabase (triggers Telegram notification)
 python3 tools/claude-insights/claude-insights.py --days 7 --push
 
-# refresh cache first (runs `claude -p /insights --bare`), then push
+# refresh cache first (runs `claude --print /insights`), then push
 python3 tools/claude-insights/claude-insights.py --days 7 --push --refresh
 ```
 
