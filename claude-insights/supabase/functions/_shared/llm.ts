@@ -7,6 +7,36 @@ const SYSTEM_PROMPT = [
   "Be concise. Use plain text, no markdown — the output goes to a Telegram chat.",
 ].join("\n");
 
+type Snapshot = {
+  week: unknown;
+  total_sessions: unknown;
+  total_duration_minutes: unknown;
+  total_user_messages: unknown;
+  total_commits: unknown;
+  lines_added: unknown;
+  lines_removed: unknown;
+  friction: unknown;
+  satisfaction: unknown;
+  goals: unknown;
+  narrative_summary: unknown;
+};
+
+function projectSnapshot(row: Record<string, unknown>): Snapshot {
+  return {
+    week: row.week,
+    total_sessions: row.total_sessions,
+    total_duration_minutes: row.total_duration_minutes,
+    total_user_messages: row.total_user_messages,
+    total_commits: row.total_commits,
+    lines_added: row.lines_added,
+    lines_removed: row.lines_removed,
+    friction: row.friction,
+    satisfaction: row.satisfaction,
+    goals: row.goals,
+    narrative_summary: row.narrative_summary,
+  };
+}
+
 /** Send weekly snapshots to the LLM and return a narrative trend analysis. */
 export async function analyzeTrends(
   rows: Record<string, unknown>[],
@@ -16,6 +46,8 @@ export async function analyzeTrends(
   if (!baseUrl || !apiKey) {
     throw new Error("Missing NOMOS_BASE_URL or NOMOS_API_KEY");
   }
+
+  const snapshots = rows.map(projectSnapshot);
 
   const resp = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -29,7 +61,7 @@ export async function analyzeTrends(
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Here are ${rows.length} weekly Claude Code usage snapshots (newest first):\n\n${JSON.stringify(rows, null, 2)}`,
+          content: `Here are ${snapshots.length} weekly Claude Code usage snapshots (newest first):\n\n${JSON.stringify(snapshots, null, 2)}`,
         },
       ],
     }),
