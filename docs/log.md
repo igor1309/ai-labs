@@ -2,8 +2,9 @@
 
 ## 2026-03-29
 
-claude-insights: make `--refresh` failure non-fatal — script now warns and continues so the Supabase keep-alive ping always fires even when `claude /insights` is unavailable headlessly.
-claude-insights: fix `ping_supabase` crash on SSL/network errors — catch `URLError` in addition to `HTTPError` so transient network failures don't abort the script.
+claude-insights: fix `--refresh` command — use `claude --print /insights` instead of `claude -p /insights --bare`; the latter caused "Not logged in" in headless/LaunchAgent context. Verified working end-to-end.
+claude-insights: make `--refresh` failure non-fatal — script warns and continues so the Supabase keep-alive ping always fires.
+claude-insights: fix `ping_supabase` crash on SSL/network errors — catch `URLError` in addition to `HTTPError`.
 
 ## 2026-03-14
 

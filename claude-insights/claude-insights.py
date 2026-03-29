@@ -158,18 +158,18 @@ def load_env():
 
 
 def refresh_insights() -> bool:
-    """Run 'claude -p /insights --bare' to refresh the usage-data cache."""
+    """Run 'claude --print /insights' to refresh the usage-data cache."""
     claude = shutil.which("claude")
     if not claude:
         print("Error: claude CLI not found in PATH", file=sys.stderr)
         return False
     print("Refreshing insights cache via claude CLI...", file=sys.stderr)
     result = subprocess.run(
-        [claude, "-p", "/insights", "--bare"],
+        [claude, "--print", "/insights"],
         capture_output=True, text=True, timeout=600,
     )
     if result.returncode != 0:
-        print(f"claude /insights failed (exit {result.returncode}): {result.stderr[:500]}", file=sys.stderr)
+        print(f"claude /insights failed (exit {result.returncode}): {result.stdout[:200] or result.stderr[:200]}", file=sys.stderr)
         return False
     print("Insights cache refreshed", file=sys.stderr)
     return True
