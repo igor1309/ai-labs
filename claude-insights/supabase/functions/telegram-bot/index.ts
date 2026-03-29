@@ -46,8 +46,10 @@ Deno.serve(async (req) => {
       const message = formatInsights(rows[0]);
       await sendTelegram(botToken, chatId, message);
     }
-  } else if (text === "/compare") {
-    const url = `${supabaseUrl}/rest/v1/claude_insights?order=week.desc`;
+  } else if (text === "/compare" || text.startsWith("/compare ")) {
+    const parts = text.split(/\s+/);
+    const weeks = Math.max(2, parseInt(parts[1] ?? "") || 2);
+    const url = `${supabaseUrl}/rest/v1/claude_insights?order=week.desc&limit=${weeks}`;
     const resp = await fetch(url, {
       headers: {
         apikey: supabaseKey,
