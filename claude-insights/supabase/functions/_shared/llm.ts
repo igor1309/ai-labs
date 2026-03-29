@@ -21,7 +21,12 @@ type Snapshot = {
   narrative_summary: unknown;
 };
 
+const NARRATIVE_MAX_CHARS = 500;
+
 function projectSnapshot(row: Record<string, unknown>): Snapshot {
+  const narrative = typeof row.narrative_summary === "string"
+    ? row.narrative_summary.slice(0, NARRATIVE_MAX_CHARS)
+    : row.narrative_summary;
   return {
     week: row.week,
     total_sessions: row.total_sessions,
@@ -33,7 +38,7 @@ function projectSnapshot(row: Record<string, unknown>): Snapshot {
     friction: row.friction,
     satisfaction: row.satisfaction,
     goals: row.goals,
-    narrative_summary: row.narrative_summary,
+    narrative_summary: narrative,
   };
 }
 
