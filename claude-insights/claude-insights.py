@@ -264,7 +264,7 @@ def main():
 
     if args.refresh:
         if not refresh_insights():
-            sys.exit(1)
+            print("Warning: refresh failed, continuing with existing cache", file=sys.stderr)
 
     now = datetime.now(timezone.utc)
     before = datetime.fromisoformat(args.until + "T00:00:00+00:00") + timedelta(days=1) if args.until else now

@@ -1,5 +1,9 @@
 # Log
 
+## 2026-03-29
+
+claude-insights: make `--refresh` failure non-fatal — script now warns and continues so the Supabase keep-alive ping always fires even when `claude /insights` is unavailable headlessly.
+
 ## 2026-03-14
 
 claude-insights: add `/compare` bot command — LLM-powered week-over-week trend analysis via Nomos. New `_shared/llm.ts` helper, Nomos project registered, secrets set, function deployed. Add Nomos key isolation rule to AGENTS.md. PR #96.
