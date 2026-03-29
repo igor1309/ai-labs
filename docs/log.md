@@ -2,11 +2,7 @@
 
 ## 2026-03-29
 
-claude-insights: fix `/compare` 413 error (follow-up) — truncate `narrative_summary` to 500 chars per snapshot; raw_html removal alone wasn't enough.
-claude-insights: fix `/compare` 413 error — project only LLM-relevant fields in `analyzeTrends`, dropping `raw_html` and other large columns before sending to Nomos.
-claude-insights: fix `--refresh` command — use `claude --print /insights` instead of `claude -p /insights --bare`; the latter caused "Not logged in" in headless/LaunchAgent context. Verified working end-to-end.
-claude-insights: make `--refresh` failure non-fatal — script warns and continues so the Supabase keep-alive ping always fires.
-claude-insights: fix `ping_supabase` crash on SSL/network errors — catch `URLError` in addition to `HTTPError`.
+claude-insights: fixed a cluster of reliability issues — Supabase keep-alive now works end-to-end from the weekly LaunchAgent (wrong CLI flag, SSL crash, and non-fatal refresh); `/compare` no longer 413s (payload trimmed to LLM-relevant fields + capped narrative). PRs #103–108.
 
 ## 2026-03-14
 
