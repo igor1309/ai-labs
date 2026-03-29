@@ -3,6 +3,7 @@
 ## 2026-03-29
 
 claude-insights: make `--refresh` failure non-fatal — script now warns and continues so the Supabase keep-alive ping always fires even when `claude /insights` is unavailable headlessly.
+claude-insights: fix `ping_supabase` crash on SSL/network errors — catch `URLError` in addition to `HTTPError` so transient network failures don't abort the script.
 
 ## 2026-03-14
 

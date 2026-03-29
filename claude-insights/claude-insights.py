@@ -196,6 +196,8 @@ def ping_supabase() -> None:
         print("Supabase keep-alive ping OK", file=sys.stderr)
     except urllib.error.HTTPError as e:
         print(f"Supabase keep-alive ping failed: HTTP {e.code}", file=sys.stderr)
+    except urllib.error.URLError as e:
+        print(f"Supabase keep-alive ping failed: {e.reason}", file=sys.stderr)
 
 
 def push_to_supabase(summary: dict) -> None:
