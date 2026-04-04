@@ -57,12 +57,16 @@ Example:
 
 ### Collaboration Testing
 
+When an effect handler has **multiple collaborators**, use a single test with a combined call count — never one test per collaborator:
+
 ```swift
 func test_init_shouldNotCallCollaborators() {
-    let (sut, wiggle) = makeSUT()
-    XCTAssertEqual(wiggle.callCount, 0)
+    let (_, spies) = makeSUT()
+    XCTAssertEqual(spies.callCounts, 0)  // sum of all spy callCounts
 }
 ```
+
+`Spies.callCounts` is a computed property that sums all spy `callCount` values. This ensures no collaborator is called prematurely, with a single readable assertion.
 
 Tests that dependencies aren't called prematurely.
 
@@ -98,6 +102,57 @@ Tests that completion callbacks dispatch the correct events using expect() helpe
 
 The Effect Handler pattern focuses on interaction testing rather than state mutation testing.
 
+### Struct Boundaries For Collaborator Interfaces
+
+When a reducer effect or handler closure has more than 2 domain parameters, extract a struct. But keep **two separate structs**: one for the effect payload (owned by the effect enum) and one for the handler's collaborator closure.
+
+The handler's collaborator struct must contain **only what the collaborator needs** — never internal dispatching state (e.g., item `UUID` used only to route the response back):
+
+```swift
+// Effect payload — full context including id for routing
+extension AttachmentsEffect {
+    struct Upload: Equatable {
+        let id: UUID          // used by handler to dispatch result back
+        let requestID: String
+        let url: URL
+        let fileName: String
+    }
+}
+
+// Handler collaborator — only what the upload API needs
+extension AttachmentsEffectHandler {
+    struct UploadRequest: Equatable {
+        let requestID: String
+        let url: URL
+        let fileName: String
+    }
+    typealias Upload = (UploadRequest, @escaping (Result<FileID, Error>) -> Void) -> Void
+}
+```
+
+Add a mapping helper on the effect struct, placed **immediately below its call site** (not in a distant extension):
+
+```swift
+private extension AttachmentsEffect.Upload {
+    var uploadRequest: AttachmentsEffectHandler.UploadRequest {
+        .init(requestID: requestID, url: url, fileName: fileName)
+    }
+}
+```
+
+### Typealias Scoping
+
+Domain typealiases (e.g., `FileID`, `RequestID`) must be scoped to the type that primarily uses them — never at global/module level:
+
+```swift
+extension AttachmentsEffectHandler {
+    typealias FileID = Int          // scoped here, not global
+    typealias Delete = (FileID) -> Void
+}
+```
+
+Reference them via the owning type alias (`SUT.FileID`) inside test helpers.
+
 ### Builder Pattern for Test Data
 
 ```swift
@@ -132,5 +187,35 @@ This pattern ensures complete behavioral coverage with readable, maintainable te
 
 ### Test Naming Convention
 
-- `test_<event>_should<Action>_on<Condition>()`
-- `test_<event>_shouldNot<Action>_on<Condition>()`
+Both reducer and effect handler tests lead with the **operation name** (event case or effect case), never trailing it as an `_on<X>` condition.
+
+#### Reducer Tests
+
+Reducer tests lead with the **event case name**:
+
+- `test_<eventCase>_should<Action>()`
+- `test_<eventCase>_should<Action>_on<Condition>()` — when the same event has multiple outcomes
+
+Examples:
+- `test_addItems_shouldNotChangeState_onEmptyItems`
+- `test_stagingCompleted_shouldSetUploadingStatus_onValidDraft`
+- `test_stagingCompleted_shouldDeliverNoEffect_onInvalidDraft`
+- `test_uploadCompleted_shouldSetUploadedStatus_onSuccess`
+- `test_delete_shouldDeliverDeleteFileEffect_onUploadedItem`
+
+Not: `test_shouldSetUploadingStatus_onStagingCompletedWithValidDraft` — event trailing as condition is backwards.
+
+#### Effect Handler Tests
+
+Effect handler tests lead with the **effect case name**:
+
+- `test_<effectCase>_should<Action>()`
+- `test_<effectCase>_shouldDispatch<EventName>()`
+- `test_<effectCase>_should<Action>_on<ResultCondition>()` — when the same effect has multiple outcomes
+
+Examples:
+- `test_upload_shouldCallUploadWithRequest`
+- `test_upload_shouldDispatchUploadCompletedWithSuccess_onSuccess`
+- `test_upload_shouldDispatchUploadCompletedWithFailure_onFailure`
+
+Not: `test_shouldCallUpload_onUploadEffect` — effect trailing as condition is backwards.
