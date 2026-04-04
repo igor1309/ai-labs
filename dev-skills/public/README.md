@@ -49,6 +49,20 @@ Check domain name availability and find alternatives. Runs on a fast, cheap mode
 
 **Documentation:** See [check-domain/SKILL.md](check-domain/SKILL.md)
 
+### Cold Start Checkpoint
+
+Session-start checkpoint that pauses the agent on the first message of every new session to replay its understanding before executing. Prevents misinterpretation of vague or ambiguous prompts.
+
+**Key features:**
+- No-tools summary of the user's request before any file reads or commands
+- Structured checkpoint: understanding, assumptions, Go/Clarify/Restate options
+- Minimal overhead for clear prompts — one-sentence summary, fast path to Go
+- Companion hook (`~/.claude/hooks/cold-start-checkpoint.sh`) fires every prompt; agent decides if it's the first message
+
+**Use when:** Automatically triggered on the first message of a new session via the companion hook.
+
+**Documentation:** See [cold-start-checkpoint/SKILL.md](cold-start-checkpoint/SKILL.md)
+
 ### Discuss
 
 Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
@@ -241,6 +255,7 @@ Then install the skills you want:
 /plugin install arch-reviewer
 /plugin install arch-spec-review
 /plugin install check-domain
+/plugin install cold-start-checkpoint
 /plugin install discuss
 /plugin install doc-drift-audit
 /plugin install intake
@@ -263,6 +278,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
+cp -r cold-start-checkpoint ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r intake ~/.claude/skills/
@@ -276,7 +292,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-reviewer arch-spec-review check-domain discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -324,6 +340,17 @@ Or:
 ```
 /check-domain coolstartup
 ```
+
+### Cold Start Checkpoint
+
+Triggered automatically by the companion hook on the first message of every session.
+
+**Example prompt:**
+```
+fix that caching thing
+```
+
+The agent will pause, summarize its understanding, list assumptions, and ask you to confirm before proceeding.
 
 ### Discuss
 

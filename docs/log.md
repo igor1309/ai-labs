@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-04
 
+### Cold Start Checkpoint v1.1.0 — Session-Start Understanding Replay
+New skill + companion hook: pauses the agent on the first message of every session to replay understanding before execution. Hook fires every prompt (stateless); agent decides if it's the first message. Fallback for missing skill: inline summary + confirm. Marketplace v1.24.0.
+
 ### Arch Reviewer v1.0.0 — Architecture Sketch Evaluator
 New skill: detached, structured evaluation of architectural sketches for clarity, coherence, and intent. Five-dimension output (impression, strengths, concerns, blind spots, next steps). Transformed from `guides/arch-reviewer.md`. Marketplace v1.23.0.
 
