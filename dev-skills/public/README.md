@@ -4,6 +4,20 @@ Custom skills for Claude Code, focusing on interactive development workflows and
 
 ## Skills
 
+### Architecture Reviewer
+
+Structured, detached evaluation of component or system architecture clarity and intent.
+
+**Key features:**
+- Objective distance — evaluates what's there, not what it could have been
+- Assesses clarity, coherence, boundaries, cohesion, and rationale
+- Five-dimension output: Overall Impression, Strengths, Concerns, Blind Spots, Next Steps
+- No rewrites or alternative proposals — directions for clarification only
+
+**Use when:** Reviewing medium-fidelity design docs, component boundaries, or system flow sketches to assess whether they communicate ownership, direction, and rationale clearly.
+
+**Documentation:** See [arch-reviewer/SKILL.md](arch-reviewer/SKILL.md)
+
 ### Architecture Specification Review
 
 Review architecture specifications for completeness, appropriate abstraction level, and separation of concerns.
@@ -224,6 +238,7 @@ Add this marketplace to Claude Code:
 Then install the skills you want:
 
 ```
+/plugin install arch-reviewer
 /plugin install arch-spec-review
 /plugin install check-domain
 /plugin install discuss
@@ -245,6 +260,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 
 ```bash
 # Install individual skills
+cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
@@ -260,12 +276,26 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-spec-review check-domain discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-reviewer arch-spec-review check-domain discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
 
 Claude Code will automatically load skills from the skills directory.
+
+### Architecture Reviewer
+
+Invoke when reviewing architectural sketches for clarity, coherence, and intent.
+
+**Example prompt:**
+```
+Review this architectural sketch for clarity and coherence.
+```
+
+Or:
+```
+Evaluate whether this component design communicates its boundaries and rationale clearly.
+```
 
 ### Architecture Specification Review
 

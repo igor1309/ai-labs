@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-04
+
+### Arch Reviewer v1.0.0 — Architecture Sketch Evaluator
+New skill: detached, structured evaluation of architectural sketches for clarity, coherence, and intent. Five-dimension output (impression, strengths, concerns, blind spots, next steps). Transformed from `guides/arch-reviewer.md`. Marketplace v1.23.0.
+
 ## 2026-03-14
 
 ### Claude Insights — Weekly Usage Pipeline
