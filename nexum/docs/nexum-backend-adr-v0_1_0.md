@@ -2,7 +2,7 @@
 title: "ADR: Nexum Backend Architecture"
 date: 2026-04-05
 model: opus-4.6
-version: 0.2.0
+version: 0.3.0
 status: accepted
 type: adr
 ---
@@ -59,9 +59,13 @@ All three are protocols. Concrete implementations are wired at the composition r
 
 ### Pure Functions
 
-**SnapshotBuilder** — takes repo entries + metadata in, produces the snapshot blob out. No dependencies, no protocols. Tested with plain data.
+**SnapshotBuilder** — merges repo entry data with metadata into the snapshot blob. No dependencies, no protocols. Tested with plain data.
 
 **normalizeUrl** — lowercase, strip trailing slash, strip `.git`. A domain rule, not a storage concern. Tested independently.
+
+### Write Gating
+
+Both write operations (POST, PATCH) gate on GitHub metadata fetch success. If the fetch fails, the entire operation fails — neither the repo entry nor the snapshot is updated. This guarantees that every entry in the snapshot has valid metadata.
 
 ### Use Cases
 
@@ -69,22 +73,23 @@ One per endpoint. Each orchestrates the async collaborators and pure functions, 
 
 **AddRepo(repoStore, metadataSource, snapshotStore)**
 1. Normalize URL
-2. Add entry via RepoStore (rejects duplicate)
-3. Fetch metadata via MetadataSource
-4. List all entries via RepoStore
-5. Build snapshot via SnapshotBuilder
+2. Fetch metadata via MetadataSource — fail = fail the operation
+3. Add entry via RepoStore (rejects duplicate)
+4. Read existing snapshot via SnapshotStore
+5. Append new entry with metadata via SnapshotBuilder
 6. Write snapshot via SnapshotStore
 7. Return snapshot
 
 **GetRepos(snapshotStore)**
 Pure read. Returns current snapshot from SnapshotStore. No side effects.
 
-**EditNote(repoStore, snapshotStore)**
-1. Update note via RepoStore
-2. List all entries via RepoStore
-3. Build snapshot via SnapshotBuilder
-4. Write snapshot via SnapshotStore
-5. Return snapshot
+**EditNote(repoStore, metadataSource, snapshotStore)**
+1. Fetch metadata via MetadataSource for this entry — fail = fail the operation
+2. Update note via RepoStore
+3. Read existing snapshot via SnapshotStore
+4. Update entry in snapshot: new note + fresh metadata via SnapshotBuilder
+5. Write snapshot via SnapshotStore
+6. Return snapshot
 
 ### Routing
 
@@ -106,7 +111,7 @@ ConcreteHTTPClient
 
 AddRepo(repoStore, metadataSource, snapshotStore)
 GetRepos(snapshotStore)
-EditNote(repoStore, snapshotStore)
+EditNote(repoStore, metadataSource, snapshotStore)
 
 Router(addRepo, getRepos, editNote)
 ```
@@ -121,6 +126,7 @@ The backend is built and deployed independently. The composition root constructs
 
 - **Client owns interfaces.** The frontend's OpenAPI schema defines the inbound contract. The backend defines the outbound protocols it needs from the database and GitHub.
 - **Purely reactive.** No cron, no background jobs. All behavior is triggered by inbound requests.
+- **Write-gates on external fetch.** Repo and snapshot are updated only on GitHub success. No entry ever exists without valid metadata.
 - **Dependency inversion.** Use cases depend on protocols, not implementations. RepoStore, SnapshotStore, MetadataSource are protocols — concrete implementations are wired at the composition root.
 - **Pure functions for domain logic.** Snapshot assembly and URL normalization are pure, stateless, dependency-free. Tested independently.
 - **Single responsibility.** Use cases orchestrate. Stores persist. MetadataSource reads external data. Routing maps HTTP to use cases. Each has one reason to change.
