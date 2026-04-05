@@ -59,26 +59,7 @@ Router(authVerifier, addRepo, getRepos, editNote)
 
 The router calls `authVerifier` on every inbound request before dispatching to a use case. Auth verification is not middleware magic or an implicit framework feature — it is an explicit dependency of the router, injected at the composition root.
 
-### Composition root revised
-
-```
-ConcreteDBClient
-       │
-       ├──▶ RepoStore(dbClient)
-       └──▶ SnapshotStore(dbClient)
-
-ConcreteHTTPClient
-       │
-       └──▶ MetadataSource(httpClient)
-
-AuthVerifier ← concrete implementation wired here
-
-AddRepo(repoStore, metadataSource, snapshotStore)
-GetRepos(snapshotStore)
-EditNote(repoStore, metadataSource, snapshotStore)
-
-Router(authVerifier, addRepo, getRepos, editNote)
-```
+`nexum-review-amendments-v0_2_0.md` further amended the router to add the `Login` use case and the `POST /auth/login` route, which bypasses `authVerifier`. The current authoritative composition root is in `nexum-backend-adr-v0_3_0.md`.
 
 ## Key Principles
 

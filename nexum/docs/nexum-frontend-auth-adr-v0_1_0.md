@@ -60,7 +60,7 @@ Persistence (reading/writing tokens to a persistent store) is a cross-cutting co
 
 ## Token Cache
 
-In-memory store. The auth state machine writes to it on session obtained (whether from boot resolution, login, or refresh). The async token provider closure reads from it. This is the single source of the current token.
+In-memory store. The auth state machine writes to it on session obtained (whether from boot resolution or login). The async token provider closure reads from it. This is the single source of the current token.
 
 ## Amendments to Frontend ADR
 
