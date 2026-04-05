@@ -1,0 +1,219 @@
+openapi: 3.1.0
+info:
+  title: Nexum API
+  version: 1.0.0
+  description: Private single-user repo memory system.
+
+paths:
+  /repos:
+    post:
+      operationId: addRepo
+      summary: Add a new repo entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - repoUrl
+                - note
+              properties:
+                repoUrl:
+                  type: string
+                  description: GitHub repository URL. Normalized server-side (lowercase, strip trailing slash, strip .git).
+                note:
+                  type: string
+                  description: Personal note for the repo. May be empty.
+      responses:
+        "201":
+          description: Repo added successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+        "409":
+          description: Duplicate repo. Entry already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateError"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      operationId: getRepos
+      summary: Read the current snapshot
+      responses:
+        "200":
+          description: Full snapshot array.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - repos
+                properties:
+                  repos:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RepoEntry"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /repos/{id}/note:
+    patch:
+      operationId: editNote
+      summary: Edit the note for a repo entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - note
+              properties:
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Note updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+        "404":
+          description: Repo entry not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    RepoEntry:
+      type: object
+      required:
+        - id
+        - repoUrl
+        - name
+        - stars
+        - description
+        - note
+        - addedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        repoUrl:
+          type: string
+        name:
+          type: string
+        stars:
+          type: integer
+        description:
+          type: string
+          nullable: true
+        note:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+        lastRefreshedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Absent until first refresh.
+        refreshStatus:
+          type: string
+          enum:
+            - success
+            - failure
+          nullable: true
+          description: Absent until first refresh.
+
+    Error:
+      type: object
+      required:
+        - error
+        - code
+        - message
+      properties:
+        error:
+          type: boolean
+          const: true
+        code:
+          type: string
+          description: Machine-readable error code.
+        message:
+          type: string
+          description: Human-readable error description.
+
+    DuplicateError:
+      type: object
+      required:
+        - error
+        - code
+        - message
+        - existingId
+      properties:
+        error:
+          type: boolean
+          const: true
+        code:
+          type: string
+          const: duplicate
+        message:
+          type: string
+        existingId:
+          type: string
+          format: uuid
+          description: ID of the existing entry for this repo.
