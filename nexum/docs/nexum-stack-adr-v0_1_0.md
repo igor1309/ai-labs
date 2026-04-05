@@ -6,8 +6,8 @@ version: 0.1.0
 status: accepted
 type: adr
 amends:
-  - nexum-backend-adr-v0_1_0.md
-  - nexum-frontend-adr-v0_1_0.md
+  - nexum-backend-adr-v0_3_0.md
+  - nexum-frontend-adr-v0_2_0.md
 ---
 
 # ADR: Nexum Technology Stack
