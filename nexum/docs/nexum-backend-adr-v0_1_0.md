@@ -2,7 +2,7 @@
 title: "ADR: Nexum Backend Architecture"
 date: 2026-04-05
 model: opus-4.6
-version: 0.1.0
+version: 0.2.0
 status: accepted
 type: adr
 ---
@@ -20,10 +20,12 @@ Nexum is a private single-user repo memory system. The backend is one of two sep
 The backend is purely reactive. It responds to three REST endpoints defined by the locked OpenAPI schema (`nexum-openapi-v1.yaml`):
 
 - `POST /repos` — add a new repo entry
-- `GET /repos` — read the full snapshot array
+- `GET /repos` — read the current snapshot
 - `PATCH /repos/{id}/note` — edit a repo's note
 
-There are no scheduled jobs, cron triggers, or other inbound interfaces. All behavior — including metadata refresh — is a side effect of inbound requests.
+There are no scheduled jobs, cron triggers, or other inbound interfaces.
+
+All three endpoints return the full snapshot on success. Write operations (POST, PATCH) rebuild the snapshot as part of their flow.
 
 ### Outbound
 
@@ -63,27 +65,26 @@ All three are protocols. Concrete implementations are wired at the composition r
 
 ### Use Cases
 
-One per endpoint. Each orchestrates the async collaborators and pure functions.
+One per endpoint. Each orchestrates the async collaborators and pure functions, and returns the snapshot on success.
 
 **AddRepo(repoStore, metadataSource, snapshotStore)**
 1. Normalize URL
-2. Call RepoStore to persist (rejects duplicate)
-3. Call MetadataSource to fetch metadata
-4. Call SnapshotBuilder to assemble blob
-5. Call SnapshotStore to write
+2. Add entry via RepoStore (rejects duplicate)
+3. Fetch metadata via MetadataSource
+4. List all entries via RepoStore
+5. Build snapshot via SnapshotBuilder
+6. Write snapshot via SnapshotStore
+7. Return snapshot
 
-**GetRepos(repoStore, metadataSource, snapshotStore)**
-1. Call SnapshotStore to read current blob (return immediately for rendering)
-2. Call RepoStore to list entries
-3. Call MetadataSource to fetch metadata per entry
-4. Call SnapshotBuilder to assemble updated blob
-5. Call SnapshotStore to write
-6. Return updated blob
+**GetRepos(snapshotStore)**
+Pure read. Returns current snapshot from SnapshotStore. No side effects.
 
 **EditNote(repoStore, snapshotStore)**
-1. Call RepoStore to update note
-2. Call SnapshotBuilder to assemble updated blob
-3. Call SnapshotStore to write
+1. Update note via RepoStore
+2. List all entries via RepoStore
+3. Build snapshot via SnapshotBuilder
+4. Write snapshot via SnapshotStore
+5. Return snapshot
 
 ### Routing
 
@@ -104,7 +105,7 @@ ConcreteHTTPClient
        └──▶ MetadataSource(httpClient)
 
 AddRepo(repoStore, metadataSource, snapshotStore)
-GetRepos(repoStore, metadataSource, snapshotStore)
+GetRepos(snapshotStore)
 EditNote(repoStore, snapshotStore)
 
 Router(addRepo, getRepos, editNote)

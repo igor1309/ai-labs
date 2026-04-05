@@ -2,7 +2,7 @@
 title: "ADR: Nexum Frontend Architecture"
 date: 2026-04-05
 model: opus-4.6
-version: 0.1.0
+version: 0.2.0
 status: accepted
 type: adr
 ---
@@ -20,12 +20,13 @@ The frontend consumes a REST API with three endpoints. The OpenAPI schema (`nexu
 ### Endpoints
 
 - `POST /repos` — add a new repo entry (repoUrl + note)
-- `GET /repos` — read the full snapshot array
+- `GET /repos` — read the current snapshot
 - `PATCH /repos/{id}/note` — edit a repo's note
 
 ### Response Conventions
 
-- `POST` and `PATCH` return `{ ok: true }` on success. The frontend re-reads via `GET` to update the table.
+All three endpoints return the same success shape: the full snapshot array. Any successful call gives the frontend the complete current state. The frontend never orchestrates multi-call sequences (no POST-then-GET).
+
 - `POST` returns `409` with `{ existingId }` on duplicate.
 - All errors use a uniform envelope: `{ error: true, code, message }`.
 
@@ -45,22 +46,24 @@ The state machine is the core of the frontend. All state lives here.
 
 **State:**
 
-- `repoTable` — the snapshot data (array of repo entries from last `GET`)
+- `repoTable` — the snapshot data (array of repo entries from the last successful response)
 - `fetchState` — `GET` operation status (idle / loading / success / error)
 - `postState` — `POST` or `PATCH` operation status (idle / loading / success / error)
 - `query` — current search string and sort parameters
 
-**Reducer:** Pure synchronous function. Handles all state transitions — user typed in search, toggled sort column, toggled sort direction, cleared an error, received a response.
+Since all three endpoints return the snapshot on success, the reducer has one path for updating `repoTable`: replace it with the snapshot from any successful response.
 
-**Effect handler:** Handles async transitions. Triggered by actions like "add repo" or "load table." Dispatches results back into the reducer. Does not know how async work is performed — it calls injected collaborators.
+**Reducer:** Pure synchronous function. Handles all state transitions — user typed in search, toggled sort column, toggled sort direction, cleared an error, received a successful response (replace repoTable), received an error.
+
+**Effect handler:** Handles async transitions. Triggered by actions like "add repo," "load table," or "save note." Dispatches results back into the reducer. Does not know how async work is performed — it calls injected collaborators.
 
 ### Effect Handler Collaborators
 
 The effect handler depends on three protocol-level collaborators:
 
-- `addRepo(url, note)` → success / duplicate(existingId) / error
+- `addRepo(url, note)` → [RepoEntry] / duplicate(existingId) / error
 - `getRepos()` → [RepoEntry] / error
-- `editNote(id, note)` → success / error
+- `editNote(id, note)` → [RepoEntry] / error
 
 These are the effect handler's entire async surface. It does not know about HTTP, network, or auth.
 

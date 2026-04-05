@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Nexum API
-  version: 1.0.0
+  version: 1.1.0
   description: Private single-user repo memory system.
 
 paths:
@@ -27,17 +27,11 @@ paths:
                   description: Personal note for the repo. May be empty.
       responses:
         "201":
-          description: Repo added successfully.
+          description: Repo added successfully. Returns updated snapshot.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - ok
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
+                $ref: "#/components/schemas/SnapshotResponse"
         "409":
           description: Duplicate repo. Entry already exists.
           content:
@@ -62,18 +56,11 @@ paths:
       summary: Read the current snapshot
       responses:
         "200":
-          description: Full snapshot array.
+          description: Current snapshot. Pure read, no side effects.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - repos
-                properties:
-                  repos:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/RepoEntry"
+                $ref: "#/components/schemas/SnapshotResponse"
         "401":
           description: Unauthorized.
           content:
@@ -105,17 +92,11 @@ paths:
                   type: string
       responses:
         "200":
-          description: Note updated successfully.
+          description: Note updated successfully. Returns updated snapshot.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - ok
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
+                $ref: "#/components/schemas/SnapshotResponse"
         "404":
           description: Repo entry not found.
           content:
@@ -139,6 +120,16 @@ components:
       scheme: bearer
 
   schemas:
+    SnapshotResponse:
+      type: object
+      required:
+        - repos
+      properties:
+        repos:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepoEntry"
+
     RepoEntry:
       type: object
       required:
