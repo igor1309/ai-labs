@@ -17,15 +17,16 @@ Nexum is a private single-user repo memory system. The backend is one of two sep
 
 ### Inbound
 
-The backend is purely reactive. It responds to three REST endpoints defined by the locked OpenAPI schema (`nexum-openapi-v1.yaml`):
+The backend is purely reactive. It responds to four REST endpoints defined by the locked OpenAPI schema (`nexum-openapi-v1.yml`):
 
+- `POST /auth/login` — authenticate and obtain a bearer token (unauthenticated)
 - `POST /repos` — add a new repo entry
 - `GET /repos` — read the current snapshot
 - `PATCH /repos/{id}/note` — edit a repo's note
 
 There are no scheduled jobs, cron triggers, or other inbound interfaces.
 
-All three endpoints return the full snapshot on success. Write operations (POST, PATCH) commit the user's change first, then perform a full snapshot rebuild with best-effort metadata.
+The repo endpoints return the full snapshot on success. Write operations (POST, PATCH) commit the user's change first, then perform a full snapshot rebuild with best-effort metadata.
 
 ### Outbound
 
@@ -58,6 +59,18 @@ Three protocol-level collaborators handle all async work:
 
 All three are protocols. Concrete implementations are wired at the composition root.
 
+### Auth Collaborators
+
+Two stateless protocol-level collaborators support the login use case:
+
+**CredentialVerifier** — verifies a username/password pair against the configured account.
+- verify(username, password) → verified / rejected
+
+**TokenIssuer** — issues a signed JWT for a verified identity.
+- issue(identity) → token, expiresAt
+
+Both are protocols. Concrete implementations are wired at the composition root. The concrete `CredentialVerifier` reads `AUTH_USERNAME` and `AUTH_PASSWORD_HASH` (bcrypt) from configuration and performs the bcrypt comparison. The concrete `TokenIssuer` signs a HS256 JWT using `JWT_SECRET` with a 24-hour expiry.
+
 ### Pure Functions
 
 **SnapshotBuilder** — builds the complete snapshot from the entry list, per-entry metadata fetch results (success or failure), and the previous snapshot for fallback on failed fetches. No dependencies, no protocols. Tested with plain data.
@@ -79,6 +92,11 @@ Write operations separate the user transaction from the snapshot rebuild.
 ### Use Cases
 
 One per endpoint. Each orchestrates the async collaborators and pure functions, and returns the snapshot on success.
+
+**Login(credentialVerifier, tokenIssuer)**
+1. Verify credentials via CredentialVerifier — fail = 401
+2. Issue token via TokenIssuer
+3. Return { token, expiresAt }
 
 **AddRepo(repoStore, metadataSource, snapshotStore)**
 1. Normalize URL
@@ -104,6 +122,8 @@ Pure read. Returns current snapshot from SnapshotStore. No side effects.
 
 Maps inbound HTTP requests to use cases. Handles request parsing, auth verification, and response serialization (including the uniform error envelope). Contains no business logic.
 
+Auth verification (`authVerifier`) is applied to every route **except** `POST /auth/login`. The login route is explicitly unauthenticated — it is the endpoint that produces the token. The router dispatches it to the `Login` use case directly, without calling `authVerifier`.
+
 ### Composition Root
 
 The app entry point wires everything:
@@ -118,11 +138,17 @@ ConcreteHTTPClient
        │
        └──▶ MetadataSource(httpClient)
 
+CredentialVerifier(config)   ← reads AUTH_USERNAME, AUTH_PASSWORD_HASH
+TokenIssuer(config)          ← reads JWT_SECRET
+
+AuthVerifier(config)         ← reads JWT_SECRET, verifies HS256 signature + expiry
+
+Login(credentialVerifier, tokenIssuer)
 AddRepo(repoStore, metadataSource, snapshotStore)
 GetRepos(snapshotStore)
 EditNote(repoStore, metadataSource, snapshotStore)
 
-Router(addRepo, getRepos, editNote)
+Router(authVerifier, login, addRepo, getRepos, editNote)
 ```
 
 Cross-cutting concerns (logging, error mapping, auth verification) are composed here — as collaborator decorators, use case wrappers, or router middleware.

@@ -6,11 +6,12 @@ version: 0.2.0
 status: applied
 type: adr
 amends:
-  - nexum-backend-adr-v0_3_0.md
-  - nexum-frontend-adr-v0_2_0.md
-  - nexum-frontend-auth-adr-v0_1_0.md
-  - nexum-backend-auth-adr-v0_1_0.md
-  - nexum-stack-adr-v0_1_0.md
+  - nexum-backend-adr-v0_3_0.md        # inline: deployment, inbound list, auth collaborators, Login use case, routing auth-bypass, composition root
+  - nexum-frontend-adr-v0_2_0.md       # amendment-doc only: rendering layer
+  - nexum-frontend-auth-adr-v0_1_0.md  # inline: remove TokenRefresher, simplify HTTP chain, update composition root
+  - nexum-backend-auth-adr-v0_1_0.md   # inline: fix stale Supabase reference, add concrete AuthVerifier note
+  - nexum-openapi-v1.yml               # inline: add POST /auth/login path and AuthResponse schema, version 1.6.0
+  - nexum-stack-adr-v0_1_0.md          # inline: clarify "Combine (current RxViewModel)" wording
 references:
   - implementation-readiness-review-v0_2_0.md
   - nexum-review-amendments-v0_1_0.md
@@ -49,7 +50,7 @@ The web UI rendering layer is **JavaScriptKit** with a thin JavaScript shim for 
 
 ### Amended document
 
-`nexum-frontend-adr-v0_2_0.md` — add to "Web UI" section: rendering layer is JavaScriptKit + thin JS shim. UI layer calls state machine actions and reads state machine state for rendering; no other framework.
+`nexum-frontend-adr-v0_2_0.md` — add to "Web UI" section: rendering layer is JavaScriptKit + thin JS shim. UI layer calls state machine actions and reads state machine state for rendering; no other framework. _(amendment-doc only; not applied inline)_
 
 ---
 

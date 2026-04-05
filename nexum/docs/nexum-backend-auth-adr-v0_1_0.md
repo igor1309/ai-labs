@@ -43,9 +43,9 @@ Single-user enforcement is a deployment concern: only one account exists in the 
 
 The auth verifier's contract is provider-agnostic. It takes a token string and returns a result. It does not name a specific auth provider, JWT library, or secret source.
 
-The concrete implementation — what algorithm, what secret, what claims are checked — is a composition root decision. The backend ADR names Supabase for deployment. Auth provider specificity stays at that level, not in the architectural contract.
+The concrete implementation — algorithm, secret source, claims checked — is a composition root decision. The verifier contract has no knowledge of these details. This is consistent with the frontend auth ADR, which keeps the frontend at Bearer-token level, and with the supersession note, which explicitly removed Supabase Auth as a normative cross-system assumption.
 
-This is consistent with the frontend auth ADR, which keeps the frontend at Bearer-token level, and with the supersession note, which explicitly removed Supabase Auth as a normative cross-system assumption.
+The concrete `AuthVerifier` for v1 uses HS256 with a secret read from the `JWT_SECRET` environment variable and verifies the `exp` claim. This is a composition root detail, not a contract detail.
 
 ## Amendment to Backend ADR
 
