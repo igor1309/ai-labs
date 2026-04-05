@@ -46,11 +46,9 @@ For server-side Swift, the choice matters: PostgreSQL (via PostgresNIO), SQLite 
 
 **Fix:** Decide and document the database.
 
-### 1.4 CLI component — New, Gap
+### 1.4 CLI component — Resolved
 
-The stack ADR introduces a CLI component: "Swift. Depends on the frontend core package." No prior doc mentions a CLI. There is no spec, no ADR, no defined scope.
-
-**Fix:** Either (a) add a brief scope statement to the stack ADR ("CLI provides [specific commands] for [specific use case]"), or (b) defer CLI to a future ADR and remove it from the stack ADR to avoid scope creep.
+The CLI mirrors the web UI's full command set (add, list, edit note, search). It depends on the frontend core package. See 5.8.
 
 ### ~~1.5 Backend deployment model~~ — Retracted
 
@@ -136,11 +134,11 @@ All captured in `nexum-ux-spec-v1.md`.
 
 Created `nexum-ux-spec-v1.md` capturing surviving product decisions. Referenced from the frontend ADR.
 
-### 5.8 CLI UX — New, Gap
+### 5.8 CLI UX — Resolved
 
-The CLI is a new surface. What commands does it support? Does it mirror the web UI's full feature set (add, list, edit, search)? Or is it a subset?
+The CLI mirrors the web UI's full command set: add, list, edit note, and search. Specific CLI ergonomics (output format, flags) are implementation details, not architecture decisions.
 
-**Fix:** Blocked on 1.4 (CLI scope definition).
+This also resolves 1.4 (CLI scope): the CLI depends on the frontend core package and exposes the same operations as the web UI.
 
 ---
 
@@ -222,7 +220,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 | Auth provider + method | **Blocked** | **Blocked** | 2.1 |
 | Database engine | Gap | Gap | 1.3 |
 | DB schema | Gap | Gap | 3.1 |
-| CLI scope | — | **New Gap** | 1.4 |
+| CLI scope | — | **Resolved** | — |
 | UX specification | Gap | **Resolved** | — |
 | Error codes | Gap | Gap | 6.1 |
 | URL validation | Gap | Gap | 4.1 |
@@ -236,7 +234,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 
 **Should resolve before implementation begins:**
 2. Decide database engine (1.3)
-3. Define CLI scope or defer it (1.4)
+3. ~~Define CLI scope or defer it (1.4)~~ — Resolved
 4. Fix contradicted backend ADR deployment section (9.3)
 
 **Should resolve before UI work begins:**

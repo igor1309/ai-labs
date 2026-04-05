@@ -28,7 +28,7 @@ Swift package. State machines, reducers, effect handler, services — all Swift.
 
 ### CLI
 
-Swift. Depends on the frontend core package.
+Swift. Depends on the frontend core package. Mirrors the web UI's full command set: add, list, edit note, search.
 
 ### Web UI
 
