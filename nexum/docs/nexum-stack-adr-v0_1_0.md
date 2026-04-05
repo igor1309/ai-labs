@@ -39,7 +39,7 @@ This path requires the reactive layer to use Observation, not Combine. Combine i
 ## What This Changes
 
 - **Backend deployment**: Supabase Edge Function → self-hosted server-side Swift. DB and auth provider choices remain open (Supabase services can still be consumed as external dependencies).
-- **Frontend reactive layer**: Combine (current RxViewModel) → Observation. This is a prerequisite for WASM compilation.
+- **Frontend reactive layer**: Combine (previously considered reactive layer pattern) → Observation. This is a prerequisite for WASM compilation. No existing production code uses Combine; this records a design pattern choice, not a migration.
 
 ## What This Does Not Change
 

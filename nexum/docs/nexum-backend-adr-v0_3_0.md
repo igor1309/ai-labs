@@ -129,11 +129,30 @@ Cross-cutting concerns (logging, error mapping, auth verification) are composed 
 
 ### Deployment
 
-The backend is a single Supabase Edge Function. The composition root runs once at module load time — the wired dependency graph lives for the lifetime of the deployed instance. The internal router maps requests to use cases.
+The backend is a long-running server-side Swift process managed by the host OS (e.g. systemd on Linux). The composition root runs once at process start — the wired dependency graph lives for the lifetime of the process. The internal router maps HTTP requests to use cases via Hummingbird 2's routing layer.
 
-The function is served at Supabase's base URL (`/functions/v1/<function-name>`). The OpenAPI contract paths (`/repos`, `/repos/{id}/note`) are relative to this base. The base URL is frontend configuration, not a backend concern.
+The backend listens on the port specified by the `PORT` environment variable (default `8080`). It is served behind a reverse proxy (nginx or Caddy) which terminates TLS and routes requests from the public URL to the backend process. Web UI and backend are served from the same origin — no CORS headers are required.
 
-Pipeline: merge → GitHub Actions runs tests → build artifact → deploy to Supabase. CI/CD conventions inherited from the ai-labs monorepo.
+The OpenAPI contract paths (`/repos`, `/repos/{id}/note`, `/auth/login`) are relative to the backend's base URL. The base URL is frontend configuration, not a backend concern.
+
+**Database**: SQLite file at the path specified by `DATABASE_PATH`. Accessed via `SQLite.swift`.
+
+**Environment variables**:
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_PATH` | Yes | Absolute path to the SQLite file |
+| `JWT_SECRET` | Yes | HS256 signing secret, minimum 32 bytes |
+| `AUTH_USERNAME` | Yes | Login username for the single account |
+| `AUTH_PASSWORD_HASH` | Yes | bcrypt hash of the account password |
+| `PORT` | No | Listen port; default `8080` |
+| `GITHUB_TOKEN` | No | GitHub PAT for MetadataSource; unauthenticated rate limit applies if absent |
+
+The backend refuses to start if any required variable is absent or malformed.
+
+**GitHub metadata**: `MetadataSource` calls `GET /repos/{owner}/{repo}` on the GitHub REST API. If `GITHUB_TOKEN` is set, requests are authenticated (`Authorization: Bearer {token}`); otherwise unauthenticated (60 req/hour). The token is read at construction by the concrete `GitHubMetadataSource`; the `MetadataSource` protocol has no knowledge of it.
+
+CI/CD: merge to trunk → CI runs tests → artifact built → deployed to self-hosted VPS. Pipeline specifics are implementation detail.
 
 ## Key Principles
 
