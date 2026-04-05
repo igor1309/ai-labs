@@ -32,7 +32,7 @@ Swift. Depends on the frontend core package. Mirrors the web UI's full command s
 
 ### Web UI
 
-Swift compiled to WebAssembly via the mainline Swift toolchain (6.1+). The frontend core runs in the browser. UI rendering layer on top — framework TBD (ElementaryUI, JavaScriptKit + thin JS, or similar).
+Swift compiled to WebAssembly via the mainline Swift toolchain (6.1+). The frontend core runs in the browser. UI rendering layer: JavaScriptKit with a thin JavaScript shim for browser API access. No additional framework.
 
 This path requires the reactive layer to use Observation, not Combine. Combine is not available on the WASM target.
 

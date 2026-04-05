@@ -7,7 +7,7 @@ status: applied
 type: adr
 amends:
   - nexum-backend-adr-v0_3_0.md        # inline: inbound list, auth collaborators, Login use case, routing auth-bypass, composition root, deployment section
-  - nexum-frontend-adr-v0_2_0.md       # amendment-doc only: rendering layer (1.1)
+  - nexum-frontend-adr-v0_2_0.md       # amendment-doc only: rendering layer (1.1; applied inline to nexum-stack-adr-v0_1_0.md)
   - nexum-frontend-auth-adr-v0_1_0.md  # inline: remove TokenRefresher, simplify HTTP chain and composition root
   - nexum-backend-auth-adr-v0_1_0.md   # inline: remove stale Supabase reference, add concrete AuthVerifier note
   - nexum-openapi-v1.yml               # inline: add POST /auth/login and AuthResponse schema; version → 1.6.0
@@ -44,7 +44,7 @@ Closes all 16 open findings from `implementation-readiness-review-v0_2_0.md`. De
 
 | Finding | Decision | Applied in |
 |---|---|---|
-| 1.1 Web UI rendering layer | JavaScriptKit + thin JS shim | amendment-doc only |
+| 1.1 Web UI rendering layer | JavaScriptKit + thin JS shim | `nexum-stack-adr-v0_1_0.md` |
 | 1.3 Database engine | SQLite via `SQLite.swift` | `nexum-backend-adr-v0_3_0.md` |
 | 2.1 Auth provider + method | Self-hosted; single configured account via `AUTH_USERNAME` / `AUTH_PASSWORD_HASH` (bcrypt); backend issues HS256 JWT on `POST /auth/login` | `nexum-backend-adr-v0_3_0.md`, `nexum-openapi-v1.yml` |
 | 2.2 JWT verification | HS256, `JWT_SECRET` env var (min 32 bytes), 24 h lifetime, `sub` / `iat` / `exp` claims | `nexum-backend-adr-v0_3_0.md`, `nexum-backend-auth-adr-v0_1_0.md` |
