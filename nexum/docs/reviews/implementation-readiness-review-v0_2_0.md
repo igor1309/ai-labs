@@ -144,9 +144,9 @@ This also resolves 1.4 (CLI scope): the CLI depends on the frontend core package
 
 ## 6. Error Contract
 
-### 6.1 Error codes not enumerated — Gap
+### 6.1 Error codes not enumerated — Resolved
 
-Unchanged from v0.1.0.
+Error `code` field in the OpenAPI `Error` schema now has an enum: `invalid_input` (400), `unauthorized` (401), `not_found` (404), `internal_error` (500). `DuplicateError` already pins `duplicate` (409).
 
 ---
 
@@ -222,7 +222,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 | DB schema | Gap | Gap | 3.1 |
 | CLI scope | — | **Resolved** | — |
 | UX specification | Gap | **Resolved** | — |
-| Error codes | Gap | Gap | 6.1 |
+| Error codes | Gap | **Resolved** | — |
 | URL validation | Gap | Gap | 4.1 |
 | Ops / config | Gap | Gap (changed) | 7.1–7.3 |
 | Doc consistency | — | **fail** (1 item) | 9.3 |
@@ -243,7 +243,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 
 **Should resolve (high-value, prevents implementer guessing):**
 8. Add logical DB schema to backend ADR (3.1)
-9. Add error code table (6.1)
+9. ~~Add error code table (6.1)~~ — Resolved
 10. Decide URL validation rule (4.1)
 11. Decide GitHub API auth for MetadataSource (7.3)
 

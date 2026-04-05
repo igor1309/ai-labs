@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Nexum API
-  version: 1.4.0
+  version: 1.5.0
   description: Private single-user repo memory system.
 
 paths:
@@ -171,6 +171,11 @@ components:
         code:
           type: string
           description: Machine-readable error code.
+          enum:
+            - invalid_input
+            - unauthorized
+            - not_found
+            - internal_error
         message:
           type: string
           description: Human-readable error description.
