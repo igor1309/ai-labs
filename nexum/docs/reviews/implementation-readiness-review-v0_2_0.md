@@ -172,13 +172,13 @@ Unchanged from v0.1.0.
 
 ## 8. Minor Ambiguities
 
-### 8.1 `findByUrl` vs `add` for duplicate detection — Ambiguity
+### 8.1 `findByUrl` vs `add` for duplicate detection — Resolved
 
-Unchanged from v0.1.0.
+Removed the separate duplicate-check step from AddRepo. Step 2 is now "Add entry via RepoStore — rejects duplicate with existingId = 409." `findByUrl` remains on the RepoStore protocol for other potential use but is not called in AddRepo.
 
-### 8.2 EditNote needs entry URL for metadata fetch — Ambiguity
+### 8.2 EditNote needs entry URL for metadata fetch — Resolved
 
-Unchanged from v0.1.0.
+RepoStore protocol description now states: "An entry contains at minimum: `id`, `repoUrl`, `note`, `addedAt`."
 
 ---
 
@@ -250,7 +250,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 **Nice to have (minor polish):**
 12. Clarify `addedAt` ownership (3.3)
 13. Clarify `schemaVersion` status (3.2)
-14. Clarify RepoStore entry shape (8.2)
-15. Clarify duplicate detection mechanism (8.1)
+14. ~~Clarify RepoStore entry shape (8.2)~~ — Resolved
+15. ~~Clarify duplicate detection mechanism (8.1)~~ — Resolved
 16. Clarify Rejection shape (2.3)
 17. Clarify "current RxViewModel" reference (9.4)

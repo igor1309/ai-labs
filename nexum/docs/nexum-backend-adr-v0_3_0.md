@@ -42,7 +42,7 @@ Per "client owns interfaces," the backend defines the protocols it needs from ea
 
 Three protocol-level collaborators handle all async work:
 
-**RepoStore** — stateful, persistence.
+**RepoStore** — stateful, persistence. An entry contains at minimum: `id`, `repoUrl`, `note`, `addedAt`.
 - add(url, note) → entry / duplicate(existingId)
 - findById(id) → entry / not found
 - findByUrl(url) → entry / not found
@@ -82,15 +82,14 @@ One per endpoint. Each orchestrates the async collaborators and pure functions, 
 
 **AddRepo(repoStore, metadataSource, snapshotStore)**
 1. Normalize URL
-2. Check for duplicate via RepoStore — fail = 409
-3. Add entry via RepoStore (URL, note, addedAt)
-4. Rebuild snapshot:
+2. Add entry via RepoStore (normalized URL, note, addedAt) — rejects duplicate with existingId = 409
+3. Rebuild snapshot:
    a. Read previous snapshot via SnapshotStore
    b. List all entries via RepoStore
    c. Fetch metadata for each entry via MetadataSource (best-effort; fall back to previous snapshot per entry; null if no previous metadata)
    d. Build complete snapshot via SnapshotBuilder
    e. Write snapshot via SnapshotStore
-5. Return snapshot
+4. Return snapshot
 
 **GetRepos(snapshotStore)**
 Pure read. Returns current snapshot from SnapshotStore. No side effects.
