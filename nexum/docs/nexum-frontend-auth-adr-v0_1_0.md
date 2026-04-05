@@ -103,7 +103,7 @@ Construct the auth state machine and its dependencies (persistent store, `Sessio
 
 **Phase 2 — on entering authenticated:**
 
-Construct the app dependency graph: HTTP client chain (with refresh decorator, signing adapter, auth interceptor), services, effect handler, app state machine, UI. The factory builds and returns the fully wired app state machine. The caller dispatches `.load` on the returned object, triggering the initial `GET /repos` fetch.
+Construct the app dependency graph: HTTP client chain (signing adapter, auth interceptor), services, effect handler, app state machine, UI. The factory builds and returns the fully wired app state machine. The caller dispatches `.load` on the returned object, triggering the initial `GET /repos` fetch.
 
 The app graph only exists inside the authenticated state. On session lost, the app graph tears down entirely.
 
@@ -157,4 +157,4 @@ All principles from the frontend ADR apply. Additionally:
 - **Auth is a state machine, not a utility.** It has observable state, defined transitions, and its own effect handler with protocol-level collaborators.
 - **The backend is the arbiter of token validity.** The frontend does not preemptively invalidate sessions on refresh failure. A 401 is the authoritative signal.
 - **Composition is two-phase.** The auth graph exists first. The app graph is constructed on entering authenticated and destroyed on leaving it.
-- **Cross-cutting concerns are decorators.** Persistence decorates auth collaborators. Refresh decorates the token provider. Auth interception decorates the HTTP client. Nothing is ambient.
+- **Cross-cutting concerns are decorators.** Persistence decorates auth collaborators. Auth interception decorates the HTTP client. Nothing is ambient.
