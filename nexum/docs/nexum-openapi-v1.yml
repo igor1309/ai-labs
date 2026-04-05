@@ -1,10 +1,43 @@
 openapi: 3.1.0
 info:
   title: Nexum API
-  version: 1.5.0
+  version: 1.6.0
   description: Private single-user repo memory system.
 
 paths:
+  /auth/login:
+    post:
+      operationId: login
+      summary: Authenticate and obtain a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Authentication successful. Returns bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /repos:
     post:
       operationId: addRepo
@@ -179,6 +212,20 @@ components:
         message:
           type: string
           description: Human-readable error description.
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - expiresAt
+      properties:
+        token:
+          type: string
+          description: Bearer token for use in Authorization header on subsequent requests.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Token expiry time (ISO 8601). Tokens are valid for 24 hours.
 
     DuplicateError:
       type: object

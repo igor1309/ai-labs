@@ -3,7 +3,8 @@ date: 2026-04-06
 model: opus-4.6
 description: "Implementation readiness review of the nexum architecture doc set (revised after stack ADR)"
 version: 0.2.0
-status: open
+status: closed
+closed-by: nexum-review-amendments-v0_2_0.md
 type: review
 supersedes:
   - implementation-readiness-review-v0_1_0.md

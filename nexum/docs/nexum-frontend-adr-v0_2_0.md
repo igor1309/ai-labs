@@ -19,7 +19,7 @@ Nexum is a private single-user repo memory system. The frontend is one of two se
 
 ## External Contract
 
-The frontend consumes a REST API with three endpoints. The OpenAPI schema (`nexum-openapi-v1.yaml`) is the locked contract definition.
+The frontend consumes a REST API with three endpoints. The OpenAPI schema (`nexum-openapi-v1.yml`) is the locked contract definition.
 
 ### Endpoints
 
