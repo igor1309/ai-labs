@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Nexum API
-  version: 1.3.0
+  version: 1.4.0
   description: Private single-user repo memory system.
 
 paths:
@@ -135,12 +135,8 @@ components:
       required:
         - id
         - repoUrl
-        - name
-        - stars
-        - description
         - note
         - addedAt
-        - metadataFetchedAt
       properties:
         id:
           type: string
@@ -149,8 +145,10 @@ components:
           type: string
         name:
           type: string
+          nullable: true
         stars:
           type: integer
+          nullable: true
         description:
           type: string
           nullable: true
@@ -159,10 +157,6 @@ components:
         addedAt:
           type: string
           format: date-time
-        metadataFetchedAt:
-          type: string
-          format: date-time
-          description: Timestamp of the last successful metadata fetch from GitHub.
 
     Error:
       type: object

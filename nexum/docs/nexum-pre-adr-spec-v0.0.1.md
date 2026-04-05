@@ -3,7 +3,7 @@ title: Nexum — Pre-ADR Spec
 date: 2026-04-05
 model: opus-4.6
 version: 0.0.2
-status: draft
+status: superseded
 type: pre-adr-spec
 ---
 

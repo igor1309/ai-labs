@@ -3,11 +3,11 @@ title: "ADR: Nexum Architecture Review Amendments"
 date: 2026-04-05
 model: opus-4.6
 version: 0.1.0
-status: accepted
+status: applied
 type: adr
 amends:
-  - nexum-backend-adr-v0_1_0.md
-  - nexum-frontend-adr-v0_1_0.md
+  - nexum-backend-adr-v0_3_0.md
+  - nexum-frontend-adr-v0_2_0.md
   - nexum-openapi-v1.yml
 references:
   - nexum-frontend-auth-adr-v0_1_0.md
@@ -38,7 +38,7 @@ findById(id) → entry / not found
 
 ### Amended document
 
-`nexum-backend-adr-v0_1_0.md` — RepoStore protocol surface.
+`nexum-backend-adr-v0_3_0.md` — RepoStore protocol surface.
 
 ---
 
@@ -101,7 +101,7 @@ The backend ADR's principle "Write-gates on external fetch" is removed. It no lo
 
 ### Amended document
 
-`nexum-backend-adr-v0_1_0.md` — use case descriptions, removal of write-gating principle.
+`nexum-backend-adr-v0_3_0.md` — use case descriptions, removal of write-gating principle.
 
 ---
 
@@ -148,7 +148,7 @@ When `GET /repos` arrives and no snapshot row exists (first use, or after a data
 
 ### Amended documents
 
-`nexum-frontend-adr-v0_1_0.md` — state machine initialization.
+`nexum-frontend-adr-v0_2_0.md` — state machine initialization.
 `nexum-frontend-auth-adr-v0_1_0.md` — phase 2 composition root behavior.
 
 ---

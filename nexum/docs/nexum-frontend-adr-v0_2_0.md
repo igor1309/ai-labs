@@ -57,6 +57,8 @@ Since all three endpoints return the snapshot on success, the reducer has one pa
 
 **Effect handler:** Handles async transitions. Triggered by actions like "add repo," "load table," or "save note." Dispatches results back into the reducer. Does not know how async work is performed — it calls injected collaborators.
 
+**Initial load:** The state machine starts with an empty `repoTable` and `fetchState: loading`. On construction, the caller dispatches `.load`, which triggers the standard effect handler path: `getRepos()` → `GET /repos` → response replaces `repoTable`. The UI renders an empty table with a loading indicator until the first response arrives.
+
 ### Effect Handler Collaborators
 
 The effect handler depends on three protocol-level collaborators:

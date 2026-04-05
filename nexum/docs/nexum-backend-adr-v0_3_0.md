@@ -25,7 +25,7 @@ The backend is purely reactive. It responds to three REST endpoints defined by t
 
 There are no scheduled jobs, cron triggers, or other inbound interfaces.
 
-All three endpoints return the full snapshot on success. Write operations (POST, PATCH) rebuild the snapshot as part of their flow.
+All three endpoints return the full snapshot on success. Write operations (POST, PATCH) commit the user's change first, then perform a full snapshot rebuild with best-effort metadata.
 
 ### Outbound
 
@@ -44,6 +44,7 @@ Three protocol-level collaborators handle all async work:
 
 **RepoStore** — stateful, persistence.
 - add(url, note) → entry / duplicate(existingId)
+- findById(id) → entry / not found
 - findByUrl(url) → entry / not found
 - updateNote(id, note) → success / not found
 - list() → [entry]
@@ -59,13 +60,21 @@ All three are protocols. Concrete implementations are wired at the composition r
 
 ### Pure Functions
 
-**SnapshotBuilder** — merges repo entry data with metadata into the snapshot blob. No dependencies, no protocols. Tested with plain data.
+**SnapshotBuilder** — builds the complete snapshot from the entry list, per-entry metadata fetch results (success or failure), and the previous snapshot for fallback on failed fetches. No dependencies, no protocols. Tested with plain data.
 
 **normalizeUrl** — lowercase, strip trailing slash, strip `.git`. A domain rule, not a storage concern. Tested independently.
 
-### Write Gating
+### Write Model
 
-Both write operations (POST, PATCH) gate on GitHub metadata fetch success. If the fetch fails, the entire operation fails — neither the repo entry nor the snapshot is updated. This guarantees that every entry in the snapshot has valid metadata.
+Write operations separate the user transaction from the snapshot rebuild.
+
+**User transaction.** The user's action is "persist this repo URL and note" (AddRepo) or "update this note" (EditNote). This is the transaction boundary. It either commits or fails. GitHub availability has no bearing on it.
+
+**Snapshot rebuild.** After the user transaction commits, a full snapshot rebuild follows. All entries are fetched from RepoStore. Metadata is fetched per-entry from MetadataSource on a best-effort basis:
+
+- Successful fetch → fresh metadata in snapshot.
+- Failed fetch → last-known metadata from the previous snapshot is preserved for that entry.
+- No previous metadata (new entry, first fetch failed) → metadata fields are null in the snapshot.
 
 ### Use Cases
 
@@ -73,23 +82,24 @@ One per endpoint. Each orchestrates the async collaborators and pure functions, 
 
 **AddRepo(repoStore, metadataSource, snapshotStore)**
 1. Normalize URL
-2. Fetch metadata via MetadataSource — fail = fail the operation
-3. Add entry via RepoStore (rejects duplicate)
-4. Read existing snapshot via SnapshotStore
-5. Append new entry with metadata via SnapshotBuilder
-6. Write snapshot via SnapshotStore
-7. Return snapshot
+2. Check for duplicate via RepoStore — fail = 409
+3. Add entry via RepoStore (URL, note, addedAt)
+4. Rebuild snapshot:
+   a. Read previous snapshot via SnapshotStore
+   b. List all entries via RepoStore
+   c. Fetch metadata for each entry via MetadataSource (best-effort; fall back to previous snapshot per entry; null if no previous metadata)
+   d. Build complete snapshot via SnapshotBuilder
+   e. Write snapshot via SnapshotStore
+5. Return snapshot
 
 **GetRepos(snapshotStore)**
 Pure read. Returns current snapshot from SnapshotStore. No side effects.
 
 **EditNote(repoStore, metadataSource, snapshotStore)**
-1. Fetch metadata via MetadataSource for this entry — fail = fail the operation
+1. Find entry by ID via RepoStore — fail = 404
 2. Update note via RepoStore
-3. Read existing snapshot via SnapshotStore
-4. Update entry in snapshot: new note + fresh metadata via SnapshotBuilder
-5. Write snapshot via SnapshotStore
-6. Return snapshot
+3. Rebuild snapshot (same as AddRepo step 4)
+4. Return snapshot
 
 ### Routing
 
@@ -130,7 +140,7 @@ Pipeline: merge → GitHub Actions runs tests → build artifact → deploy to S
 
 - **Client owns interfaces.** The frontend's OpenAPI schema defines the inbound contract. The backend defines the outbound protocols it needs from the database and GitHub.
 - **Purely reactive.** No cron, no background jobs. All behavior is triggered by inbound requests.
-- **Write-gates on external fetch.** Repo and snapshot are updated only on GitHub success. No entry ever exists without valid metadata.
+- **User transaction separate from snapshot rebuild.** The user's write (add/edit) commits independently of GitHub. The snapshot rebuild is best-effort — failed metadata falls back to the previous snapshot or null.
 - **Dependency inversion.** Use cases depend on protocols, not implementations. RepoStore, SnapshotStore, MetadataSource are protocols — concrete implementations are wired at the composition root.
 - **Pure functions for domain logic.** Snapshot assembly and URL normalization are pure, stateless, dependency-free. Tested independently.
 - **Single responsibility.** Use cases orchestrate. Stores persist. MetadataSource reads external data. Routing maps HTTP to use cases. Each has one reason to change.

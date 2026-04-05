@@ -8,8 +8,8 @@ type: adr
 supersedes:
   - nexum-pre-adr-spec-v0.0.1.md
 references:
-  - nexum-frontend-adr-v0_1_0.md
-  - nexum-backend-adr-v0_1_0.md
+  - nexum-frontend-adr-v0_2_0.md
+  - nexum-backend-adr-v0_3_0.md
   - nexum-openapi-v1.yml
 ---
 
@@ -39,8 +39,8 @@ The pre-ADR is superseded as an architectural source of truth.
 
 For implementation and future architectural decisions, the normative sources are:
 
-1. `nexum-frontend-adr-v0_1_0.md`
-2. `nexum-backend-adr-v0_1_0.md`
+1. `nexum-frontend-adr-v0_2_0.md`
+2. `nexum-backend-adr-v0_3_0.md`
 3. `nexum-openapi-v1.yml`
 
 The pre-ADR may still be retained as historical context for early intent, but it must not be used as the current architectural baseline.
@@ -133,11 +133,11 @@ May remain in the old pre-ADR, but only as background context.
 
 ### Current frontend architecture
 
-Owned by `nexum-frontend-adr-v0_1_0.md`.
+Owned by `nexum-frontend-adr-v0_2_0.md`.
 
 ### Current backend architecture
 
-Owned by `nexum-backend-adr-v0_1_0.md`.
+Owned by `nexum-backend-adr-v0_3_0.md`.
 
 ### System contract
 

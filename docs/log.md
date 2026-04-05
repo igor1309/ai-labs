@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-06
+
+nexum: complete architecture doc set — pre-ADR spec, frontend ADR (v0.2.0), backend ADR (v0.3.0), OpenAPI contract (v1.4.0), frontend auth ADR, backend auth ADR, architecture review amendments, supersession note, component architecture approach, and naming brief. Review amendments applied to all target documents (separate user txn from snapshot rebuild, nullable metadata fields, `findById` on RepoStore, initial load, Identity type). File naming normalized, cross-references aligned.
+
 ## 2026-03-14
 
 claude-insights: add `/compare` bot command — LLM-powered week-over-week trend analysis via Nomos. New `_shared/llm.ts` helper, Nomos project registered, secrets set, function deployed. Add Nomos key isolation rule to AGENTS.md. PR #96.

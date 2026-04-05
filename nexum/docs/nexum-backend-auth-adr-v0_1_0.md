@@ -6,9 +6,9 @@ version: 0.1.0
 status: accepted
 type: adr
 amends:
-  - nexum-backend-adr-v0_1_0.md
+  - nexum-backend-adr-v0_3_0.md
 references:
-  - nexum-backend-adr-v0_1_0.md
+  - nexum-backend-adr-v0_3_0.md
   - nexum-frontend-auth-adr-v0_1_0.md
   - nexum-openapi-v1.yml
 ---
@@ -17,7 +17,7 @@ references:
 
 ## Context
 
-The backend ADR (`nexum-backend-adr-v0_1_0.md`) mentions auth verification as part of routing — "handles request parsing, auth verification, and response serialization" — but does not define the auth component as a dependency with a clear contract. Every other async boundary in the backend has a named protocol or pure function with a defined surface. Auth verification does not.
+The backend ADR (`nexum-backend-adr-v0_3_0.md`) mentions auth verification as part of routing — "handles request parsing, auth verification, and response serialization" — but does not define the auth component as a dependency with a clear contract. Every other async boundary in the backend has a named protocol or pure function with a defined surface. Auth verification does not.
 
 This ADR introduces the backend auth component and amends the backend ADR accordingly.
 
@@ -32,6 +32,12 @@ async (token) → Identity | Rejection
 It receives the Bearer token from the inbound request, verifies it, and returns either a validated identity or a rejection. The router calls it before dispatching to any use case. On rejection, the router returns 401 using the uniform error envelope. Use cases never run without a verified identity.
 
 The verifier is async. Today's implementation (JWT signature and expiry check) is pure compute with no I/O. The async contract avoids closing the door if verification ever requires an external call.
+
+### Identity
+
+`Identity` carries the `sub` claim from the JWT. The router does not check it against an allowed-user list. Any valid JWT issued by the configured auth provider is sufficient to access all endpoints.
+
+Single-user enforcement is a deployment concern: only one account exists in the auth provider. The application does not enforce it. If Nexum ever moves to multi-user, `Identity.sub` is already available for authorization checks.
 
 ## Provider Independence
 

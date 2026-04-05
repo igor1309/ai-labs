@@ -6,9 +6,9 @@ version: 0.1.0
 status: accepted
 type: adr
 amends:
-  - nexum-frontend-adr-v0_1_0.md
+  - nexum-frontend-adr-v0_2_0.md
 references:
-  - nexum-frontend-adr-v0_1_0.md
+  - nexum-frontend-adr-v0_2_0.md
   - nexum-openapi-v1.yml
 ---
 
@@ -16,7 +16,7 @@ references:
 
 ## Context
 
-The frontend ADR (`nexum-frontend-adr-v0_1_0.md`) defines the app state machine, services, effect handler, and composition root. It acknowledges auth (Bearer token via `SigningAdapter`) but does not define the auth component — its state, lifecycle, collaborators, or composition boundaries.
+The frontend ADR (`nexum-frontend-adr-v0_2_0.md`) defines the app state machine, services, effect handler, and composition root. It acknowledges auth (Bearer token via `SigningAdapter`) but does not define the auth component — its state, lifecycle, collaborators, or composition boundaries.
 
 This ADR introduces the frontend auth component and amends the frontend ADR where the auth component changes existing decisions.
 
@@ -107,7 +107,7 @@ Construct the auth state machine and its dependencies (persistent store, `Sessio
 
 **Phase 2 — on entering authenticated:**
 
-Construct the app dependency graph: HTTP client chain (with refresh decorator, signing adapter, auth interceptor), services, effect handler, app state machine, UI.
+Construct the app dependency graph: HTTP client chain (with refresh decorator, signing adapter, auth interceptor), services, effect handler, app state machine, UI. The factory builds and returns the fully wired app state machine. The caller dispatches `.load` on the returned object, triggering the initial `GET /repos` fetch.
 
 The app graph only exists inside the authenticated state. On session lost, the app graph tears down entirely.
 
