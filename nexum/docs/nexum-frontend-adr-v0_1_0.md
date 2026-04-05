@@ -1,6 +1,7 @@
 ---
 title: "ADR: Nexum Frontend Architecture"
 date: 2026-04-05
+model: opus-4.6
 version: 0.1.0
 status: accepted
 type: adr
