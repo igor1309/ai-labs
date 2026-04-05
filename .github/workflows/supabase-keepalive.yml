@@ -1,0 +1,48 @@
+name: Supabase Keep-Alive
+
+# Ping Supabase REST API every 3 days to prevent free-tier auto-pause (7-day inactivity limit).
+# Runs at 07:00 UTC (10:00 Moscow time).
+
+on:
+  schedule:
+    - cron: "0 7 */3 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          set -e
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            "${SUPABASE_URL}/rest/v1/claude_insights?select=week&limit=1")
+          echo "Supabase ping: HTTP ${HTTP_CODE}"
+          [ "${HTTP_CODE}" = "200" ] || { echo "Keep-alive failed"; exit 1; }
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.ping.result == 'failure' }}
+    needs: [ping]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Supabase Keep-Alive"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        ping=${{ needs.ping.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
