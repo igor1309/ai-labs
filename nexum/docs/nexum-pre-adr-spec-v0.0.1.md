@@ -1,8 +1,8 @@
 ---
 title: Nexum — Pre-ADR Spec
 date: 2026-04-05
-model: GPT-5.4 Thinking
-version: 0.0.1
+model: opus-4.6
+version: 0.0.2
 status: draft
 type: pre-adr-spec
 ---
@@ -211,92 +211,18 @@ The following points are settled for pre-ADR purposes:
 - current snapshot stays visible during refresh
 - separate runtimes in v1
 - Supabase Auth is used for auth
+- per-repo optional refresh result (timestamp + success/failure); absent until first refresh
+- stale-on-error: last good metadata preserved on refresh failure
+- snapshot is a fully denormalized flat array stored as a single JSON blob with `schemaVersion`
+- search is case-insensitive substring over name, description, note; client-side filter; current sort preserved
+- note is the only inline-editable field; click/tap to edit; explicit save/cancel
+- frontend on Vercel; backend on Supabase (DB + Auth + Edge Functions)
+- GitHub metadata fetch via Supabase Edge Function
+- CI/CD via GitHub Actions, inherited from ai-labs monorepo conventions
+- `repos` table: UUID PK, normalized `repoUrl` (unique), `note`, `addedAt`
+- `snapshot` table: single-row JSON blob with `schemaVersion`
+- repoUrl normalized on write: lowercase, strip trailing slash, strip `.git`
 
-## 15. Explicit open questions
-
-### 15.1 Snapshot status/result shape
-
-Known:
-
-- snapshot has an update result/status field
-- loader is shown during refresh
-- success/error message is shown after refresh
-
-Still open:
-
-- exact state model
-- whether status includes timestamps
-- how partial success is encoded
-- whether error details are stored and at what level
-
-### 15.2 Exact snapshot structure
-
-Known:
-
-- snapshot is page-level
-- snapshot is used for render and search
-
-Still open:
-
-- exact internal shape
-- normalized vs denormalized representation inside snapshot
-- whether snapshot carries a version/schema marker
-
-### 15.3 Search semantics
-
-Known:
-
-- one free-text search over snapshot + note
-
-Still open:
-
-- exact matching model
-- ranking/order behavior
-- DB-native full-text vs simpler matching approach
-
-### 15.4 Inline edit behavior
-
-Known:
-
-- inline edit exists in table
-
-Still open:
-
-- exact interaction design
-- save semantics
-- whether editing is immediate, explicit-save, or blur-based
-
-### 15.5 Runtime/deployment specifics
-
-Known:
-
-- separate runtimes
-
-Still open:
-
-- which platform hosts UI
-- which platform hosts backend
-- deployment topology details
-
-### 15.6 GitHub Actions role
-
-Initially listed in the idea, but not part of the resolved core architecture.
-
-Still open:
-
-- whether GitHub Actions are used in v1 at all
-- whether they are deferred to later automation/maintenance workflows only
-
-### 15.7 Schema shape
-
-Conceptual data ownership is clear.
-
-Still open:
-
-- exact DB tables/collections
-- uniqueness key beyond practical repo URL handling
-- whether snapshot is stored purely as one blob, projected tables, or both
-
-## 16. Pre-ADR direction in one sentence
+## 15. Pre-ADR direction in one sentence
 
 A private single-user repo memory app with canonical repo entries, DB-owned personal context, GitHub-owned metadata, and a page-level snapshot read model that powers table rendering and search and is refreshed on repo add, manual refresh, and page open.
