@@ -120,7 +120,11 @@ Cross-cutting concerns (logging, error mapping, auth verification) are composed 
 
 ### Deployment
 
-The backend is built and deployed independently. The composition root constructs the full dependency graph on each invocation. The runtime environment (long-lived server, serverless function, edge function) is a deployment decision — the architecture does not depend on it. If the chosen runtime supports the composition pattern, it works. If not, the deployment choice is reconsidered, not the architecture.
+The backend is a single Supabase Edge Function. The composition root runs once at module load time — the wired dependency graph lives for the lifetime of the deployed instance. The internal router maps requests to use cases.
+
+The function is served at Supabase's base URL (`/functions/v1/<function-name>`). The OpenAPI contract paths (`/repos`, `/repos/{id}/note`) are relative to this base. The base URL is frontend configuration, not a backend concern.
+
+Pipeline: merge → GitHub Actions runs tests → build artifact → deploy to Supabase. CI/CD conventions inherited from the ai-labs monorepo.
 
 ## Key Principles
 
