@@ -36,10 +36,6 @@ Swift compiled to WebAssembly via the mainline Swift toolchain (6.1+). The front
 
 This path requires the reactive layer to use Observation, not Combine. Combine is not available on the WASM target.
 
-### Shared Domain Types
-
-One language across all targets enables shared types: `RepoEntry`, URL normalization, error types, API contract types — defined once, used by backend, frontend core, CLI, and web UI.
-
 ## What This Changes
 
 - **Backend deployment**: Supabase Edge Function → self-hosted server-side Swift. DB and auth provider choices remain open (Supabase services can still be consumed as external dependencies).
