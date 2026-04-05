@@ -13,6 +13,10 @@ type: adr
 
 Nexum is a private single-user repo memory system. The frontend is one of two separately built and deployed components. This ADR locks the frontend's external contract and internal architecture.
 
+## References
+
+- `nexum-ux-spec-v1.md` — product-level UX decisions (table columns, sort, search, inline editing, duplicate handling)
+
 ## External Contract
 
 The frontend consumes a REST API with three endpoints. The OpenAPI schema (`nexum-openapi-v1.yaml`) is the locked contract definition.

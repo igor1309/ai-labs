@@ -124,17 +124,17 @@ Unchanged from v0.1.0.
 
 ## 5. UX Decisions in Limbo
 
-### 5.1 Duplicate handling UX — Gap
+### 5.1 Duplicate handling UX — Resolved
 
-Unchanged from v0.1.0.
+Covered in `nexum-ux-spec-v1.md`: UI highlights the existing entry using `existingId`.
 
-### 5.2–5.6 Table columns, search, sort, inline editing, empty note — Gap
+### 5.2–5.6 Table columns, search, sort, inline editing, empty note — Resolved
 
-Unchanged from v0.1.0. These product-level UX decisions are still only in the superseded pre-ADR.
+All captured in `nexum-ux-spec-v1.md`.
 
-### 5.7 Recommended fix
+### 5.7 Recommended fix — Resolved
 
-Unchanged: create `nexum-ux-spec-v1.md` capturing surviving product decisions.
+Created `nexum-ux-spec-v1.md` capturing surviving product decisions. Referenced from the frontend ADR.
 
 ### 5.8 CLI UX — New, Gap
 
@@ -223,7 +223,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 | Database engine | Gap | Gap | 1.3 |
 | DB schema | Gap | Gap | 3.1 |
 | CLI scope | — | **New Gap** | 1.4 |
-| UX specification | Gap | Gap | 5.1–5.6 |
+| UX specification | Gap | **Resolved** | — |
 | Error codes | Gap | Gap | 6.1 |
 | URL validation | Gap | Gap | 4.1 |
 | Ops / config | Gap | Gap (changed) | 7.1–7.3 |
@@ -241,7 +241,7 @@ Renamed to `nexum-stack-adr-v0_1_0.md`.
 
 **Should resolve before UI work begins:**
 6. Decide web rendering layer (1.1)
-7. Create `nexum-ux-spec-v1.md` (5.7)
+7. ~~Create `nexum-ux-spec-v1.md` (5.7)~~ — Resolved
 
 **Should resolve (high-value, prevents implementer guessing):**
 8. Add logical DB schema to backend ADR (3.1)
