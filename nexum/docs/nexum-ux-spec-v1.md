@@ -8,8 +8,6 @@ type: spec
 references:
   - nexum-frontend-adr-v0_2_0.md
   - nexum-openapi-v1.yml
-closes-review-findings:
-  - implementation-readiness-review-v0_2_0.md: 5.1, 5.2–5.6, 5.7
 ---
 
 # Nexum UX Spec v1
