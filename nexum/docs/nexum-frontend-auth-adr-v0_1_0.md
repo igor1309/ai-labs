@@ -62,6 +62,12 @@ Persistence (reading/writing tokens to a persistent store) is a cross-cutting co
 
 In-memory store. The auth state machine writes to it on session obtained (whether from boot resolution or login). The async token provider closure reads from it. This is the single source of the current token.
 
+## Token Persistent Storage
+
+Web: `localStorage` via JavaScriptKit interop, key `nexum_auth_token`. CLI: OS keychain, with permissions-restricted dotfile as fallback.
+
+Persistence is a decorator on collaborators (see Auth State Machine / Effects above) — the storage mechanism is a composition root decision.
+
 ## Amendments to Frontend ADR
 
 ### Token provider is async
