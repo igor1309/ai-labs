@@ -8,6 +8,6 @@ description: "Nexum backlog items"
 
 - Add load balancer/rate limiter
 
-- Close review gaps
+- create implementation plans that could be implemented in parallel
 
-- create implementation plans that could be implemented 
+- port RxViewModel to Observation
