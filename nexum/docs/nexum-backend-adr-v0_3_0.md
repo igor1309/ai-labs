@@ -75,7 +75,7 @@ Both are protocols. Concrete implementations are wired at the composition root. 
 
 **SnapshotBuilder** — builds the complete snapshot from the entry list, per-entry metadata fetch results (success or failure), and the previous snapshot for fallback on failed fetches. No dependencies, no protocols. Tested with plain data.
 
-**normalizeUrl** — lowercase, strip trailing slash, strip `.git`. A domain rule, not a storage concern. Tested independently.
+**normalizeUrl** — validates and normalizes a GitHub repository URL. Validation: must match `https://github.com/{owner}/{repo}` after normalization (lowercase scheme+host, strip trailing slash, strip `.git`). Exactly two non-empty path segments required. No query or fragment allowed. Rejects with 400 on failure. A domain rule, not a storage concern. Tested independently.
 
 ### Write Model
 
@@ -175,6 +175,20 @@ The OpenAPI contract paths (`/repos`, `/repos/{id}/note`, `/auth/login`) are rel
 | `GITHUB_TOKEN` | No | GitHub PAT for MetadataSource; unauthenticated rate limit applies if absent |
 
 The backend refuses to start if any required variable is absent or malformed.
+
+### Database Schema
+
+`repos` table:
+- `id` — UUID, primary key
+- `repo_url` — TEXT, UNIQUE NOT NULL (normalized)
+- `note` — TEXT, NOT NULL, DEFAULT ''
+- `added_at` — TEXT, NOT NULL (ISO 8601, set server-side at insert time)
+
+`snapshot` table (singleton row):
+- `id` — INTEGER, primary key (always 1)
+- `data` — TEXT (JSON blob)
+- `schema_version` — INTEGER (internal to SQLiteSnapshotStore; not exposed in API response)
+- `updated_at` — TEXT (ISO 8601)
 
 **GitHub metadata**: `MetadataSource` calls `GET /repos/{owner}/{repo}` on the GitHub REST API. If `GITHUB_TOKEN` is set, requests are authenticated (`Authorization: Bearer {token}`); otherwise unauthenticated (60 req/hour). The token is read at construction by the concrete `GitHubMetadataSource`; the `MetadataSource` protocol has no knowledge of it.
 
