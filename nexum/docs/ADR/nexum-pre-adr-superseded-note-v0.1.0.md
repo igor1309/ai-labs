@@ -6,7 +6,7 @@ version: 0.1.0
 status: accepted
 type: adr
 supersedes:
-  - nexum-pre-adr-spec-v0.0.1.md
+  - ../nexum-pre-adr-spec-v0.0.1.md
 references:
   - nexum-frontend-adr-v0_2_0.md
   - nexum-backend-adr-v0_3_0.md

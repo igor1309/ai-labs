@@ -15,7 +15,7 @@ Nexum is a private single-user repo memory system. The frontend is one of two se
 
 ## References
 
-- `nexum-ux-spec-v1.md` — product-level UX decisions (table columns, sort, search, inline editing, duplicate handling)
+- `../nexum-ux-spec-v1.md` — product-level UX decisions (table columns, sort, search, inline editing, duplicate handling)
 
 ## External Contract
 

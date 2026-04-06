@@ -6,8 +6,8 @@ version: 1.0.0
 status: accepted
 type: spec
 references:
-  - nexum-frontend-adr-v0_2_0.md
-  - nexum-openapi-v1.yml
+  - ADR/nexum-frontend-adr-v0_2_0.md
+  - ADR/nexum-openapi-v1.yml
 ---
 
 # Nexum UX Spec v1
