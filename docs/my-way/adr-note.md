@@ -2,8 +2,7 @@
 title: ADR
 date: 2026-04-12
 author: Igor Malyarov
-model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -90,6 +89,22 @@ It captures something that is stable enough to be worth recording, not a transie
 ### 5. Explicit consequences
 
 It acknowledges what the decision enables, restricts, or makes more expensive later.
+
+## Review
+
+Review is a first-class stage. It is adversarial by design: it challenges assumptions, probes for hidden tradeoffs, and tests whether boundaries hold under pressure.
+
+Each ADR undergoes a review cycle with model rotation (GPT / Claude). Review checks:
+
+- intent integrity, boundary clarity, cross-decision consistency, decision stability, explicit consequences (the quality criteria above)
+- pre-existing drifts and contradictions across accepted ADRs, implementation code, and tests
+- explicit use of design principles — SOLID, dependency inversion, design patterns — where they materially influenced the decision or its boundaries
+
+Model rotation reduces blind spots inherent to any single model's reasoning style.
+
+## Supersession
+
+An accepted ADR is not edited to reverse its decision. If a decision must change, a new ADR is written that explicitly supersedes the original, references it, and explains what changed and why. The original ADR remains in the repository as historical record.
 
 ## Exit criteria
 
