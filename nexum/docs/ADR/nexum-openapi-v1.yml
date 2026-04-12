@@ -1,0 +1,249 @@
+openapi: 3.1.0
+info:
+  title: Nexum API
+  version: 1.6.0
+  description: Private single-user repo memory system.
+
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      summary: Authenticate and obtain a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Authentication successful. Returns bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /repos:
+    post:
+      operationId: addRepo
+      summary: Add a new repo entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - repoUrl
+                - note
+              properties:
+                repoUrl:
+                  type: string
+                  description: GitHub repository URL. Normalized server-side (lowercase, strip trailing slash, strip .git).
+                note:
+                  type: string
+                  description: Personal note for the repo. May be empty.
+      responses:
+        "201":
+          description: Repo added successfully. Returns updated snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SnapshotResponse"
+        "409":
+          description: Duplicate repo. Entry already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateError"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      operationId: getRepos
+      summary: Read the current snapshot
+      responses:
+        "200":
+          description: Current snapshot. Pure read, no side effects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SnapshotResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /repos/{id}/note:
+    patch:
+      operationId: editNote
+      summary: Edit the note for a repo entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - note
+              properties:
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Note updated successfully. Returns updated snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SnapshotResponse"
+        "404":
+          description: Repo entry not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    SnapshotResponse:
+      type: object
+      required:
+        - repos
+      properties:
+        repos:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepoEntry"
+
+    RepoEntry:
+      type: object
+      required:
+        - id
+        - repoUrl
+        - note
+        - addedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        repoUrl:
+          type: string
+        name:
+          type: string
+          nullable: true
+        stars:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        note:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - error
+        - code
+        - message
+      properties:
+        error:
+          type: boolean
+          const: true
+        code:
+          type: string
+          description: Machine-readable error code.
+          enum:
+            - invalid_input
+            - unauthorized
+            - not_found
+            - internal_error
+        message:
+          type: string
+          description: Human-readable error description.
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - expiresAt
+      properties:
+        token:
+          type: string
+          description: Bearer token for use in Authorization header on subsequent requests.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Token expiry time (ISO 8601). Tokens are valid for 24 hours.
+
+    DuplicateError:
+      type: object
+      required:
+        - error
+        - code
+        - message
+        - existingId
+      properties:
+        error:
+          type: boolean
+          const: true
+        code:
+          type: string
+          const: duplicate
+        message:
+          type: string
+        existingId:
+          type: string
+          format: uuid
+          description: ID of the existing entry for this repo.
