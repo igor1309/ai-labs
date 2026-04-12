@@ -37,6 +37,16 @@ ADR is not:
 
 If the decision is still genuinely open, the work belongs in pre-ADR or another exploratory format, not in ADR.
 
+## How to create
+
+1. Review the pre-ADR and identify the decision that has emerged from exploration.
+2. State the decision unambiguously — one clear sentence of what was chosen.
+3. Record the reasoning: why this direction over the alternatives considered.
+4. Define boundaries: what this decision governs and what it explicitly does not.
+5. State consequences: what the decision enables, restricts, or makes more expensive later.
+6. Check cross-decision consistency against existing accepted ADRs.
+7. Submit for adversarial review. Fix issues and re-review until clean.
+
 ## Inputs
 
 Typical inputs include:
@@ -94,13 +104,7 @@ It acknowledges what the decision enables, restricts, or makes more expensive la
 
 Review is a first-class stage. It is adversarial by design: it challenges assumptions, probes for hidden tradeoffs, and tests whether boundaries hold under pressure.
 
-Each ADR undergoes a review cycle with model rotation (GPT / Claude). Review checks:
-
-- intent integrity, boundary clarity, cross-decision consistency, decision stability, explicit consequences (the quality criteria above)
-- pre-existing drifts and contradictions across accepted ADRs, implementation code, and tests
-- explicit use of design principles — SOLID, dependency inversion, design patterns — where they materially influenced the decision or its boundaries
-
-Model rotation reduces blind spots inherent to any single model's reasoning style.
+Review is a specialized concern with its own knowledge and method. It is encapsulated in a dedicated review skill appropriate to the artifact type. The review skill carries the specific checks (intent integrity, boundary clarity, cross-decision consistency, design principle usage, drift detection, etc.) so they are applied consistently and do not need to be reinvented each time.
 
 ## Supersession
 

@@ -37,6 +37,16 @@ Implementation plan is not:
 
 If the core architecture or behavior is still unclear, the work is not ready for implementation planning.
 
+## How to create
+
+1. Start from the accepted spec. Identify the foundational slice — the smallest piece of work that makes the rest possible.
+2. Layer dependent work on top, ordered by dependency structure and risk.
+3. For each slice, define: objective, key work items, dependencies, risks, validation approach, and completion signal.
+4. Move high-risk or uncertain slices earlier in the sequence to avoid late-stage collapse.
+5. Attach a validation gate to every slice — no slice is complete without a test/check pass.
+6. Review the plan against the spec and ADRs for drift or scope leakage.
+7. Submit for adversarial review. Fix issues and re-review until clean.
+
 ## Inputs
 
 Typical inputs include:
@@ -152,7 +162,7 @@ The implementation plan undergoes two review cycles before execution begins.
 
 **Self-review.** The author checks the plan against the accepted spec, ADRs, and existing codebase for alignment, gaps, and contradictions. Issues found are fixed before external review.
 
-**Adversarial review with model rotation.** A different AI model (GPT / Claude) reviews the plan. The review is adversarial by design: it challenges sequencing assumptions, probes for hidden dependencies, tests whether step boundaries respect architecture, and checks for drifts against existing ADRs, code, and tests. Issues found are fixed and re-reviewed until clean.
+**Adversarial review.** Review is a specialized concern with its own knowledge and method. It is encapsulated in a dedicated review skill appropriate to the artifact type. The review skill carries the specific checks (sequencing assumptions, hidden dependencies, architecture boundary respect, drift detection, etc.) so they are applied consistently and do not need to be reinvented each time. Issues found are fixed and re-reviewed until clean.
 
 ## Summary
 

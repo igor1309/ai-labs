@@ -55,6 +55,16 @@ The process is iterative and interactive: ongoing discussion with different AI m
 
 For that reason, a pre-ADR should be understood not merely as a document, but as the result of design interaction. The document captures the current state of that interaction in a form that can be reviewed, challenged, and refined.
 
+## How to create
+
+1. Start from research artifacts and the open questions they surfaced.
+2. Identify candidate architectural directions — at least two plausible options.
+3. For each candidate, discuss tradeoffs via Q&A with an AI assistant. Rotate models across candidates to reduce reasoning blind spots.
+4. Compare options against constraints. Eliminate weak directions explicitly, stating why.
+5. Sharpen emerging boundaries and responsibilities as the discussion converges.
+6. Capture remaining open questions — these feed directly into the ADR stage.
+7. Take a deliberate break before moving to ADR. This refreshes perspective and avoids carrying momentum-driven assumptions into the commitment stage.
+
 ## Inputs
 
 Typical inputs include:
@@ -90,7 +100,7 @@ The output should make the eventual ADR easier to write and more defensible.
 
 Review at the pre-ADR stage serves a different purpose than at later stages. Its primary role is to surface gaps and mark them as explicit open questions rather than to enforce correctness of a committed decision.
 
-A deliberate break is often taken between completing the pre-ADR and starting the ADR. This allows perspective to refresh and avoids carrying momentum-driven assumptions directly into the commitment stage.
+Review is a specialized concern with its own knowledge and method. It is encapsulated in a dedicated review skill appropriate to the artifact type.
 
 ## Exit criteria
 

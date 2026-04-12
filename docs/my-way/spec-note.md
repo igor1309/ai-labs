@@ -37,6 +37,16 @@ Spec is not:
 
 If the central question is still “how should the system be structured?”, the work is not yet at the spec stage.
 
+## How to create
+
+1. Start from accepted ADRs — list the architectural decisions being operationalized.
+2. Define the public interface: function signatures, input/output shapes.
+3. Write behavior rules: validation, error handling, state transitions, edge cases.
+4. Enumerate test cases that cover the behavior rules — each rule should have at least one test.
+5. Define done criteria: what "finished" means in terms of interface and tests.
+6. Verify boundary discipline: the spec must not quietly redefine architectural decisions from the ADR.
+7. Submit for adversarial review. Fix issues and re-review until clean.
+
 ## Inputs
 
 Typical inputs include:
@@ -109,15 +119,9 @@ A spec is not complete merely because the main flow has been described.
 
 ## Review
 
-Each spec undergoes adversarial review with model rotation (GPT / Claude). Review checks:
-
-- behavioral clarity — are flows, states, and contracts specific enough to be implemented without private interpretation?
-- boundary discipline — does the spec respect accepted ADRs without quietly redefining them?
-- edge-case coverage — are failure, absence, invalid input, and timing scenarios addressed?
-- contract completeness — are interfaces and obligations between components explicit?
-- drifts and contradictions against existing ADRs, code, and tests
-
 Review targets the spec's completeness as an implementation reference, not its prose quality.
+
+Review is a specialized concern with its own knowledge and method. It is encapsulated in a dedicated review skill appropriate to the artifact type. The review skill carries the specific checks (behavioral clarity, boundary discipline, edge-case coverage, contract completeness, drift detection, etc.) so they are applied consistently and do not need to be reinvented each time.
 
 ## Common mistakes
 

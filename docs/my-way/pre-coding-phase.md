@@ -166,7 +166,7 @@ Defines execution order and delivery path.
 
 AI assistants are used heavily throughout the pre-coding phase — not as a convenience layer, but as thinking partners. Different models (GPT, Claude, and others) are rotated deliberately across stages and review cycles to reduce blind spots inherent to any single model's reasoning style.
 
-Each artifact goes through review. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial: it challenges assumptions, probes for hidden tradeoffs, tests whether boundaries hold under pressure, checks for drifts and contradictions across existing ADRs, code, and tests, and verifies explicit use of design principles (SOLID, dependency inversion, design patterns) where they materially influenced the decision.
+Each artifact goes through review. Review is a specialized concern with its own knowledge and method, encapsulated in dedicated review skills appropriate to the artifact type. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial by design.
 
 ## Artifacts commit
 

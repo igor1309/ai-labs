@@ -56,6 +56,15 @@ AI assistants are used constantly throughout research — Perplexity for search 
 
 Q&A is a primary working mode. Rather than reading linearly, research often proceeds through directed question-and-answer cycles: asking pointed questions, evaluating answers, and following up on weak or surprising responses. This interactive style produces sharper outputs than accumulating material and summarizing later.
 
+## How to create
+
+1. Start from a concrete question, tension, or area of uncertainty. Without a specific starting point, exploration drifts.
+2. Open a Q&A session with an AI assistant. Ask pointed questions about the problem space — constraints, risks, terminology, precedents.
+3. Follow up on weak, surprising, or contradictory responses. Each follow-up should narrow the uncertainty.
+4. Rotate models (GPT / Claude) to reduce blind spots in a single model's reasoning.
+5. Capture findings into the output structure below — framing, constraints, risks, candidate directions, open questions.
+6. Check decision-value: does this output sharpen the next conversation (usually pre-ADR)? If not, the research is not yet useful.
+
 ## Outputs
 
 Research should produce a compact, decision-useful output such as:
@@ -70,6 +79,12 @@ Research should produce a compact, decision-useful output such as:
 - assumptions requiring validation
 
 The output should make later design discussion sharper. It should not attempt to replace that discussion.
+
+## Review
+
+Review at the research stage surfaces gaps and marks them as explicit open questions. It does not enforce correctness of a committed decision — there is none yet.
+
+Review is a specialized concern with its own knowledge and method. It is encapsulated in a dedicated review skill appropriate to the artifact type.
 
 ## Exit criteria
 
