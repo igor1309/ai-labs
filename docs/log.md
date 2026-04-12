@@ -8,6 +8,14 @@ nexum: reviewed and fixed
 
 nexum: complete architecture doc set — pre-ADR spec, frontend ADR (v0.2.0), backend ADR (v0.3.0), OpenAPI contract (v1.4.0), frontend auth ADR, backend auth ADR, architecture review amendments, supersession note, component architecture approach, and naming brief.
 
+## 2026-03-29
+
+claude-insights: add `claude-insights-deploy.yml` — trunk-only CI workflow that detects changed Supabase Edge Functions (`notify-insights`, `telegram-bot`) and deploys only those affected; `_shared/**` changes trigger both. Issue #110.
+
+claude-insights: `/compare` now accepts an optional week count (`/compare 3`), defaults to 2 weeks; narrative trim scales inversely with snapshot count (more chars per row for fewer rows). Issue #109.
+
+claude-insights: fixed a cluster of reliability issues — Supabase keep-alive now works end-to-end from the weekly LaunchAgent (wrong CLI flag, SSL crash, and non-fatal refresh); `/compare` no longer 413s (payload trimmed to LLM-relevant fields + capped narrative). PRs #103–108.
+
 ## 2026-03-14
 
 claude-insights: add `/compare` bot command — LLM-powered week-over-week trend analysis via Nomos. New `_shared/llm.ts` helper, Nomos project registered, secrets set, function deployed. Add Nomos key isolation rule to AGENTS.md. PR #96.

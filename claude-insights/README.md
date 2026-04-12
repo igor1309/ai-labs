@@ -10,7 +10,7 @@ Aggregates Claude Code usage data (`~/.claude/usage-data/`) into a weekly JSON s
   session-meta/*.json                                     /latest → telegram-bot → query
 ```
 
-- **claude-insights.py** — aggregates local JSON, extracts narrative from `report.html`, pushes to Supabase
+- **claude-insights.py** — aggregates local JSON, extracts narrative from `report.html`, pushes to Supabase (with `--push`, also pings the DB to prevent free-tier auto-pause)
 - **notify-insights** — Supabase Edge Function, called by DB webhook on INSERT/UPDATE, sends Telegram message
 - **telegram-bot** — Supabase Edge Function, Telegram webhook handler, responds to `/latest` and `/compare`
 - **_shared/format.ts** — shared message formatter (HTML parse mode, narrative in blockquotes)
@@ -33,6 +33,9 @@ python3 tools/claude-insights/claude-insights.py -o weekly.json
 
 # push to Supabase (triggers Telegram notification)
 python3 tools/claude-insights/claude-insights.py --days 7 --push
+
+# refresh cache first (runs `claude --print /insights`), then push
+python3 tools/claude-insights/claude-insights.py --days 7 --push --refresh
 ```
 
 ## Output
@@ -62,7 +65,7 @@ Message includes: dashboard numbers (sessions, commits, lines, friction, satisfa
 
 ## Scheduling
 
-A macOS launchd agent runs the push every Sunday at 8:40 AM local time:
+A macOS launchd agent runs the push every Sunday at 8:40 AM local time. Use `--refresh` to ensure the cache is fresh before collecting (requires `claude` CLI in PATH):
 
 `~/Library/LaunchAgents/com.igormalyarov.claude-insights.weekly.plist`
 
