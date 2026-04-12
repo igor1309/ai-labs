@@ -1,13 +1,8 @@
-Add
-- heavy use of different ai assistants
-- artifacts commit
-
 ---
 title: Pre-Coding Phase
 date: 2026-04-12
 author: Igor Malyarov
-model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -42,7 +37,7 @@ Its purpose is to:
 - identify unstable assumptions early
 - gather material needed for design discussion
 
-This stage is not yet about commitment. It is about input gathering and problem framing.
+This stage is not yet about commitment. It is about input gathering and problem framing. Research proceeds primarily through directed Q&A cycles with AI assistants rather than passive reading.
 
 Typical output may include:
 
@@ -75,7 +70,7 @@ Typical characteristics:
 - room for architecture sketches, questions, and emerging constraints
 - usefulness even when later replaced by sharper documents
 
-Its function is not authority. Its function is design digestion.
+Its function is not authority. Its function is design digestion. A deliberate break is often taken before moving to ADR, allowing perspective to refresh.
 
 ### 3. ADR
 
@@ -141,6 +136,7 @@ Typical output may include:
 - slices or phases
 - dependency notes
 - validation strategy
+- per-step test/validation gates with commit-on-green discipline
 - rollout or migration notes where needed
 
 By this stage, the main architectural thinking should already be done.
@@ -161,6 +157,16 @@ Defines expected behavior and contract shape.
 
 ### Implementation plan
 Defines execution order and delivery path.
+
+## AI assistants
+
+AI assistants are used heavily throughout the pre-coding phase — not as a convenience layer, but as thinking partners. Different models (GPT, Claude, and others) are rotated deliberately across stages and review cycles to reduce blind spots inherent to any single model's reasoning style.
+
+Each artifact goes through adversarial review. Review is not a rubber stamp: it challenges assumptions, probes for hidden tradeoffs, tests whether boundaries hold under pressure, and checks for drifts and contradictions across existing ADRs, code, and tests.
+
+## Artifacts commit
+
+Pre-coding artifacts are committed to the repository as they are produced. Research notes, pre-ADRs, ADRs, specs, and implementation plans are version-controlled alongside the code they govern. This makes the decision history inspectable, reviewable, and traceable — not buried in chat logs or lost between sessions.
 
 ## Biases in this approach
 
