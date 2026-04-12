@@ -1,12 +1,8 @@
-Add:
-- Review cycle with model rotation
-
 ---
 title: Spec
 date: 2026-04-12
 author: Igor Malyarov
-model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -110,6 +106,18 @@ A spec is complete when:
 - testing and review can meaningfully use the document as a reference
 
 A spec is not complete merely because the main flow has been described.
+
+## Review
+
+Each spec undergoes adversarial review with model rotation (GPT / Claude). Review checks:
+
+- behavioral clarity — are flows, states, and contracts specific enough to be implemented without private interpretation?
+- boundary discipline — does the spec respect accepted ADRs without quietly redefining them?
+- edge-case coverage — are failure, absence, invalid input, and timing scenarios addressed?
+- contract completeness — are interfaces and obligations between components explicit?
+- drifts and contradictions against existing ADRs, code, and tests
+
+Review targets the spec's completeness as an implementation reference, not its prose quality.
 
 ## Common mistakes
 
