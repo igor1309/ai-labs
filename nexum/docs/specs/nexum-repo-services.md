@@ -12,7 +12,7 @@ Three services implement the effect handler's collaborator protocols (`AddRepo`,
 
 ## Public interface
 
-### HTTPClient protocol (owned by services)
+### HTTPClient protocol (owned by services, shared with auth services)
 
 ```swift
 protocol HTTPClient {
