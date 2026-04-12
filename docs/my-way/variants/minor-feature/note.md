@@ -38,7 +38,7 @@ If the change materially alters responsibilities, contracts, or system boundarie
 
 ## Typical sequence
 
-A minor feature addition typically moves through three steps:
+A minor feature addition typically moves through two or three steps:
 
 1. **Targeted research (optional)** — only when a specific unknown blocks the delta; not a broad exploration.
 2. **Delta or mini-spec** — what is being added, what behavior changes, what stays the same, and which existing contracts are touched.
@@ -87,15 +87,6 @@ It stays focused on the actual delta instead of ballooning into unnecessary rede
 
 It makes clear that the change fits within current boundaries rather than quietly bending them.
 
-Concrete escalation triggers:
-
-- the change requires a new module boundary
-- the change introduces a new protocol or contract owner
-- the change introduces a new dependency direction
-- the change contradicts an existing ADR
-
-When any of these is true, the work is no longer a minor feature addition and belongs in the full pre-coding sequence.
-
 ### 3. Behavioral clarity
 
 It defines the feature addition precisely enough that implementation is not guesswork.
@@ -107,6 +98,17 @@ It distinguishes clearly between what changes and what does not.
 ### 5. Lightweight sufficiency
 
 It is intentionally smaller than the full path, but still explicit enough to support review and testing.
+
+### 6. Escalation discipline
+
+When the change outgrows the lite path, escalation is made explicit rather than ignored. Concrete triggers:
+
+- the change requires a new module boundary
+- the change introduces a new protocol or contract owner
+- the change introduces a new dependency direction
+- the change contradicts an existing ADR
+
+When any of these is true, the work is no longer a minor feature addition and belongs in the full pre-coding sequence.
 
 ## Exit criteria
 

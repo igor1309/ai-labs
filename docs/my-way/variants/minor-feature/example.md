@@ -14,4 +14,4 @@ An `example.md` is only useful when it is a real, condensed, anonymized minor-fe
 
 This file will be populated the first time a real minor-feature note exists that is worth condensing into example form. Until then, the absence is deliberate, not an oversight.
 
-For the artifact shape in the meantime, see [structure.md](structure.md).
+For the artifact shape in the meantime, see [structure.md](structure.md). For the methodology, see [note.md](note.md).

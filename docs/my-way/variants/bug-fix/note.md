@@ -99,9 +99,7 @@ The work includes a clear view of how recurrence will be detected or prevented. 
 
 ### 5. Escalation discipline
 
-When the bug reveals deeper ambiguity or architectural weakness, that escalation is made explicit rather than ignored.
-
-Concrete escalation triggers:
+When the bug reveals deeper issues, escalation is made explicit rather than ignored. Concrete triggers:
 
 - expected behavior was never defined → escalate to a spec update
 - the defect violates an invariant that no ADR covers → escalate to a pre-ADR

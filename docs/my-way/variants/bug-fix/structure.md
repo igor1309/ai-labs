@@ -30,7 +30,7 @@ One to three sentences. What was observed, where, and under what conditions. No 
 
 ### `## Reproduction`
 
-Concrete steps, inputs, environment, and the observed outgoing behavior. If reproduction is partial or intermittent, say so explicitly and describe the conditions under which the defect has been seen.
+Concrete steps, inputs, environment, and the observed actual outcome. If reproduction is partial or intermittent, say so explicitly and describe the conditions under which the defect has been seen.
 
 ### `## Root cause`
 
