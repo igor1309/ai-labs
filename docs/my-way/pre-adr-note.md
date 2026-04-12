@@ -100,6 +100,8 @@ The output should make the eventual ADR easier to write and more defensible.
 
 Review at the pre-ADR stage serves a different purpose than at later stages. Its primary role is to surface gaps and mark them as explicit open questions rather than to enforce correctness of a committed decision.
 
+A deliberate break is often taken between completing the pre-ADR and starting the ADR. This allows perspective to refresh and avoids carrying momentum-driven assumptions directly into the commitment stage.
+
 Review is a specialized concern with its own knowledge and method. It is encapsulated in a dedicated review skill appropriate to the artifact type.
 
 ## Exit criteria
