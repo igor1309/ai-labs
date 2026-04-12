@@ -45,8 +45,10 @@ Typical output may include:
 - candidate approaches
 - constraints
 - risks
+- key tradeoffs
 - terminology
 - open questions
+- assumptions requiring validation
 
 The practical value of this stage is that it avoids fake certainty.
 
@@ -89,6 +91,7 @@ In this approach, ADRs are not ceremony. They are decision records. Their qualit
 - boundary clarity
 - consistency with other decisions
 - stability of the chosen direction
+- explicit consequences
 
 An ADR should not read like brainstorming. It should read like resolved architecture.
 
@@ -136,8 +139,9 @@ Typical output may include:
 - slices or phases
 - dependency notes
 - validation strategy
-- per-step test/validation gates with commit-on-green discipline
 - rollout or migration notes where needed
+
+A quality property of the plan is commit discipline: each step has mandatory test runs, and commits happen only on green.
 
 By this stage, the main architectural thinking should already be done.
 
@@ -162,7 +166,7 @@ Defines execution order and delivery path.
 
 AI assistants are used heavily throughout the pre-coding phase — not as a convenience layer, but as thinking partners. Different models (GPT, Claude, and others) are rotated deliberately across stages and review cycles to reduce blind spots inherent to any single model's reasoning style.
 
-Each artifact goes through adversarial review. Review is not a rubber stamp: it challenges assumptions, probes for hidden tradeoffs, tests whether boundaries hold under pressure, and checks for drifts and contradictions across existing ADRs, code, and tests.
+Each artifact goes through review. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial: it challenges assumptions, probes for hidden tradeoffs, tests whether boundaries hold under pressure, checks for drifts and contradictions across existing ADRs, code, and tests, and verifies explicit use of design principles (SOLID, dependency inversion, design patterns) where they materially influenced the decision.
 
 ## Artifacts commit
 
