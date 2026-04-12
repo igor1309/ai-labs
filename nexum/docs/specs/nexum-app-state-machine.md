@@ -193,6 +193,7 @@ The caller dispatches `.load` immediately after construction.
 16. `searchText` is non-empty → case-insensitive substring match across `name`, `description`, and `note`; entries where none of the three fields contains the term are excluded.
 17. Nil fields (`name`, `description`) are treated as empty strings for matching.
 18. Sort is applied after filtering; result order is deterministic for equal values.
+19. Sort nil handling: nil `name` and `description` are treated as empty string for comparison; nil `stars` is treated as 0.
 
 ## Tests (required)
 
@@ -237,6 +238,8 @@ The caller dispatches `.load` immediately after construction.
 28. Nil `name` and nil `description` — only `note` participates in match.
 29. Sort `.addedAt` descending → newest `addedAt` first.
 30. Sort `.name` ascending → alphabetical order (nil name treated as "").
+31. Sort `.stars` ascending → nil stars sorted as 0 (before positive values).
+32. Sort `.description` ascending → nil description sorted as empty string.
 
 ## Done criteria
 
