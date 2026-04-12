@@ -17,31 +17,37 @@ Server-side Swift process that exposes four REST endpoints defined by `nexum-ope
 #### RepoStore
 
 ```swift
-func add(url: String, note: String, addedAt: Date) async -> Result<RepoEntry, AddRepoError>
-func findById(_ id: UUID) async -> RepoEntry?
-func findByUrl(_ url: String) async -> RepoEntry?
-func updateNote(id: UUID, note: String) async -> Result<Void, NotFoundError>
-func list() async -> [RepoEntry]
+func add(url: String, note: String, addedAt: Date) async throws -> Result<RepoEntry, AddRepoError>
+func findById(_ id: UUID) async throws -> RepoEntry?
+func findByUrl(_ url: String) async throws -> RepoEntry?
+func updateNote(id: UUID, note: String) async throws -> Result<Void, NotFoundError>
+func list() async throws -> [RepoEntry]
 ```
 
-`RepoEntry`: `{ id: UUID, repoUrl: String, note: String, addedAt: Date }`.
+`Result` types carry domain errors (`AddRepoError`, `NotFoundError`). Thrown errors represent infrastructure failures (database unavailable, I/O errors).
+
+`RepoEntry` (store model — distinct from the OpenAPI `RepoEntry` which adds metadata fields merged by `SnapshotBuilder`): `{ id: UUID, repoUrl: String, note: String, addedAt: Date }`.
 
 `AddRepoError`: `.duplicate(existingId: UUID)`.
 
 #### SnapshotStore
 
 ```swift
-func read() async -> SnapshotBlob?
-func write(_ blob: SnapshotBlob) async
+func read() async throws -> SnapshotBlob?
+func write(_ blob: SnapshotBlob) async throws
 ```
+
+`nil` from `read` means no snapshot exists yet. Thrown errors represent infrastructure failures.
 
 `SnapshotBlob` is the JSON-serializable form of the `SnapshotResponse` schema.
 
 #### MetadataSource
 
 ```swift
-func fetch(url: String) async -> Result<RepoMetadata, Error>
+func fetch(url: String) async throws -> RepoMetadata
 ```
+
+Thrown errors represent fetch failures (network, API errors). Use cases treat these as best-effort failures for the snapshot fallback cascade.
 
 `RepoMetadata`: `{ name: String, stars: Int, description: String? }`.
 
@@ -58,6 +64,16 @@ func issue(username: String) -> TokenResult
 ```
 
 `TokenResult`: `{ token: String, expiresAt: Date }`.
+
+#### AuthVerifier
+
+```swift
+func verify(token: String) async throws -> Identity
+```
+
+`Identity`: `{ sub: String }`.
+
+Throws `AuthError.invalidToken` on missing, malformed, expired, or incorrectly signed tokens.
 
 ### Pure Functions
 
@@ -112,11 +128,15 @@ All responses use `Content-Type: application/json`.
 
 ### CredentialVerifier
 
+The protocol contract is algorithm-agnostic: `verify(username, password) → Bool`. Rules 13–15 describe the v1 concrete implementation.
+
 13. Returns `true` only when `username` matches the configured account username AND `password` matches the configured password hash via bcrypt comparison.
 14. Returns `false` on any mismatch, including a correct username with a wrong password, or vice versa.
 15. Returns `false` for empty username or empty password.
 
 ### TokenIssuer
+
+The protocol contract is algorithm-agnostic: `issue(username) → TokenResult`. Rules 16–18 describe the v1 concrete implementation.
 
 16. Issues a signed JWT (HS256) using the configured secret.
 17. Token expiry is exactly 24 hours from issuance time.
@@ -160,13 +180,18 @@ All responses use `Content-Type: application/json`.
 ### Error envelope
 
 39. All error responses use `{ error: true, code: string, message: string }`.
-40. `409` duplicate responses include `existingId: UUID` in addition to the standard error fields.
+40. `409` duplicate responses use `{ error: true, code: "duplicate", message: string, existingId: UUID }` (the `DuplicateError` schema in the OpenAPI contract).
+
+### Infrastructure failures
+
+41. Any unhandled infrastructure error (database unavailable, unexpected I/O failure) during a use case → `500` with `code: "internal_error"`.
+42. For write operations (AddRepo, EditNote): if the user transaction committed but snapshot rebuild fails with an infrastructure error, the committed entry is preserved and the response is `500` with `code: "internal_error"`.
 
 ### Startup
 
-41. The process refuses to start if any required environment variable is absent or empty: `DATABASE_PATH`, `JWT_SECRET`, `AUTH_USERNAME`, `AUTH_PASSWORD_HASH`.
-42. `PORT` is optional; defaults to `8080` when absent.
-43. `GITHUB_TOKEN` is optional; when absent, `MetadataSource` uses unauthenticated GitHub API requests.
+43. The process refuses to start if any required environment variable is absent or empty: `DATABASE_PATH`, `JWT_SECRET`, `AUTH_USERNAME`, `AUTH_PASSWORD_HASH`.
+44. `PORT` is optional; defaults to `8080` when absent.
+45. `GITHUB_TOKEN` is optional; when absent, `MetadataSource` uses unauthenticated GitHub API requests.
 
 ## Tests (required)
 
@@ -183,6 +208,7 @@ All responses use `Content-Type: application/json`.
 - Three or more path segments → error.
 - Empty path segments (e.g. `https://github.com//repo`) → error.
 - Non-GitHub host → error.
+- `http` scheme on GitHub host (`http://github.com/owner/repo`) → error.
 - Empty string input → error.
 
 ### SnapshotBuilder
@@ -206,6 +232,13 @@ All responses use `Content-Type: application/json`.
 
 - Issued token decodes to correct HS256 JWT with the expected identity claim.
 - `expiresAt` is approximately 24 hours from issuance (within 1 second tolerance).
+
+### AuthVerifier
+
+- Valid, non-expired token → returns `Identity` with correct `sub` claim.
+- Expired token → throws `AuthError.invalidToken`.
+- Malformed token (not a valid JWT) → throws `AuthError.invalidToken`.
+- Token signed with wrong secret → throws `AuthError.invalidToken`.
 
 ### Login use case
 
@@ -252,7 +285,7 @@ All responses use `Content-Type: application/json`.
 
 ## Done criteria
 
-- All five protocols (`RepoStore`, `SnapshotStore`, `MetadataSource`, `CredentialVerifier`, `TokenIssuer`) are defined in the nexum backend module and owned by that module.
+- All six protocols (`RepoStore`, `SnapshotStore`, `MetadataSource`, `CredentialVerifier`, `TokenIssuer`, `AuthVerifier`) are defined in the nexum backend module and owned by that module.
 - `normalizeUrl` and `SnapshotBuilder` are pure functions with no external dependencies and no async surface.
 - All four use cases (`Login`, `AddRepo`, `GetRepos`, `EditNote`) are implemented and pass their listed tests.
 - HTTP response shapes match `nexum-openapi-v1.yml` for all four endpoints.
