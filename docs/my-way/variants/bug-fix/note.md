@@ -1,8 +1,7 @@
 ---
 title: Bug Fix
 date: 2026-04-12
-author: ChatGPT
-model: GPT-5.4 Thinking
+author: Igor Malyarov
 version: 0.0.1
 format: note
 ---
@@ -36,6 +35,18 @@ Bug fix is not:
 - automatically exempt from deeper design work
 
 If a bug exposes missing contracts, unclear expected behavior, or architectural weakness, the work may need to expand into spec updates or architectural discussion.
+
+## Typical sequence
+
+A bug fix typically moves through five steps:
+
+1. **Symptom** — what was observed, where, and under what conditions.
+2. **Reproduction** — a reliable way to trigger the defect, or an explicit acknowledgement that reproduction is partial and why.
+3. **Root cause** — the underlying reason the system diverges from expected behavior, not just the visible failure.
+4. **Fix strategy** — the narrowest change that addresses the cause, with known risks.
+5. **Regression test** — an automated check that fails on the unfixed system and passes after the fix.
+
+The best practice is to write the regression test first, observe it fail against the bug, and only then apply the fix. A red test is the strongest evidence that the defect is understood and that the fix actually addresses it. This is a recommendation, not a strict procedural rule.
 
 ## Inputs
 
@@ -72,7 +83,7 @@ A strong bug-fix path has several properties.
 
 ### 1. Reproducibility
 
-The defect is described in a way that allows it to be observed and checked, not merely asserted.
+The defect is described in a way that allows it to be observed and checked, not merely asserted. Intermittent or environment-dependent defects still need structured evidence and explicit uncertainty about the conditions under which they manifest.
 
 ### 2. Root-cause orientation
 
@@ -84,11 +95,17 @@ The chosen remediation is as narrow as possible while still addressing the real 
 
 ### 4. Regression awareness
 
-The work includes a clear view of how recurrence will be detected or prevented.
+The work includes a clear view of how recurrence will be detected or prevented. A failing test written before the fix is the preferred form of this awareness.
 
 ### 5. Escalation discipline
 
 When the bug reveals deeper ambiguity or architectural weakness, that escalation is made explicit rather than ignored.
+
+Concrete escalation triggers:
+
+- expected behavior was never defined → escalate to a spec update
+- the defect violates an invariant that no ADR covers → escalate to a pre-ADR
+- the fix would require a new boundary, protocol, or dependency direction → escalate to the full pre-coding sequence
 
 ## Exit criteria
 

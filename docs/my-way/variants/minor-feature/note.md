@@ -1,8 +1,7 @@
 ---
 title: Minor Feature Addition
 date: 2026-04-12
-author: ChatGPT
-model: GPT-5.4 Thinking
+author: Igor Malyarov
 version: 0.0.1
 format: note
 ---
@@ -36,6 +35,16 @@ Minor feature addition is not:
 - an excuse to skip clarification where behavior is still unclear
 
 If the change materially alters responsibilities, contracts, or system boundaries, it likely belongs in the fuller design path.
+
+## Typical sequence
+
+A minor feature addition typically moves through three steps:
+
+1. **Targeted research (optional)** — only when a specific unknown blocks the delta; not a broad exploration.
+2. **Delta or mini-spec** — what is being added, what behavior changes, what stays the same, and which existing contracts are touched.
+3. **Short implementation plan** — ordered slices, validation strategy, and test impact, kept proportional to the change.
+
+These steps can collapse into a single compact note when the change is small enough that separating them would be ceremony.
 
 ## Inputs
 
@@ -78,6 +87,15 @@ It stays focused on the actual delta instead of ballooning into unnecessary rede
 
 It makes clear that the change fits within current boundaries rather than quietly bending them.
 
+Concrete escalation triggers:
+
+- the change requires a new module boundary
+- the change introduces a new protocol or contract owner
+- the change introduces a new dependency direction
+- the change contradicts an existing ADR
+
+When any of these is true, the work is no longer a minor feature addition and belongs in the full pre-coding sequence.
+
 ### 3. Behavioral clarity
 
 It defines the feature addition precisely enough that implementation is not guesswork.
@@ -97,6 +115,7 @@ A minor feature addition is ready for implementation when:
 - the added behavior is explicit
 - the affected area is known
 - the change fits existing architecture
+- no existing ADR is contradicted by the change
 - any touched contracts are understood
 - implementation order is clear enough
 - validation or test impact is known
