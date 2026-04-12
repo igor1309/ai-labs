@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-04-12
+- Add backend spec v1 (`docs/specs/nexum-backend-spec-v1.md`): protocols, pure functions, use cases, routing, startup, and required tests.
 - Add frontend component specs: app state machine, auth state machine, repo services, HTTP client chain.
 
 ## 2026-04-06
