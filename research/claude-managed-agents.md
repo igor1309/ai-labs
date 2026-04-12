@@ -4,11 +4,13 @@ model: perplexity
 sources: 
   - https://claude.com/blog/claude-managed-agents
   - https://www.anthropic.com/engineering/managed-agents
-version: 0.0.1
+tags: agent, architecture
 ---
 
 **1. Overview of Claude Managed Agents (claude.com/blog)**  
 **Claude Managed Agents** is a public beta suite of APIs on the **Claude Platform**, launched April 8, 2026, enabling developers to build and deploy production-grade, cloud-hosted AI agents 10x faster by offloading infrastructure like secure sandboxing, authentication, tool execution, state management, and error recovery.  Key features include **long-running sessions** (autonomous for hours, persistent across disconnections), **multi-agent coordination** (research preview), **trusted governance** (scoped permissions, identity management, tracing), and optimizations for **Claude** models like self-evaluation against outcomes (research preview).  It supports coding agents, productivity tools, finance/legal processors, with adopters like **Notion**, **Rakuten**, **Asana**, **Vibecode**, and **Sentry** shipping faster. Pricing: standard token rates + **$0.08 per session-hour**.[1]
+
+> We virtualized the components of an agent: a session (the append-only log of everything that happened), a harness (the loop that calls Claude and routes Claude’s tool calls to the relevant infrastructure), and a sandbox (an execution environment where Claude can run code and edit files). This allows the implementation of each to be swapped without disturbing the others. We’re opinionated about the shape of these interfaces, not about what runs behind them.
 
 **2. Engineering Behind Managed Agents (anthropic.com/engineering)**  
 The engineering post details **Managed Agents** as a hosted service decoupling the "**brain**" (**Claude** + harness) from "**hands**" (sandboxes/tools) and **sessions** (durable event logs), creating stable interfaces like `execute(name, input) → string` for future-proof scalability.  This "meta-harness" treats components as "cattle" (interchangeable), enabling recovery from failures, VPC connectivity, multi-brain/hand support, reduced **TTFT** (60% p50 drop), and security (credentials vaulted outside sandboxes).  It addresses issues like **context anxiety**, stale harness assumptions, and pet-like containers, virtualizing for evolving models.[2]
