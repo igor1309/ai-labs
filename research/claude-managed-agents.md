@@ -4,7 +4,7 @@ model: perplexity
 sources: 
   - https://claude.com/blog/claude-managed-agents
   - https://www.anthropic.com/engineering/managed-agents
-version: 0.0.1
+tags: agent, architecture
 ---
 
 **1. Overview of Claude Managed Agents (claude.com/blog)**  
