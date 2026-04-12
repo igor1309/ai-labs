@@ -1,14 +1,8 @@
-Add: 
-- often a break is taken between pre-adr and adr for brain to settle down and pov refresh
-- review is mostly used to mark gaps as explicit open questions
-- iterative and interactive - ongoing discussion with different models (gpt/claude) to close gaps
-
 ---
 title: Pre-ADR
 date: 2026-04-12
 author: Igor Malyarov
-model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -57,6 +51,8 @@ That process often includes:
 - iterative reframing of the problem
 - gradual sharpening of boundaries and responsibilities
 
+The process is iterative and interactive: ongoing discussion with different AI models (GPT / Claude) is used to close gaps, challenge assumptions, and refine the emerging architecture. Model rotation reduces blind spots inherent to any single model's reasoning style.
+
 For that reason, a pre-ADR should be understood not merely as a document, but as the result of design interaction. The document captures the current state of that interaction in a form that can be reviewed, challenged, and refined.
 
 ## Inputs
@@ -89,6 +85,12 @@ A pre-ADR should produce a compact but useful design artifact such as:
 - areas that already appear stable enough to carry forward
 
 The output should make the eventual ADR easier to write and more defensible.
+
+## Review
+
+Review at the pre-ADR stage serves a different purpose than at later stages. Its primary role is to surface gaps and mark them as explicit open questions rather than to enforce correctness of a committed decision.
+
+A deliberate break is often taken between completing the pre-ADR and starting the ADR. This allows perspective to refresh and avoids carrying momentum-driven assumptions directly into the commitment stage.
 
 ## Exit criteria
 
