@@ -162,6 +162,26 @@ Defines expected behavior and contract shape.
 ### Implementation plan
 Defines execution order and delivery path.
 
+## Scope variants
+
+The full sequence above is built for net-new architectural work. Two common cases do not justify the full funnel and follow lighter, alternative paths. They are escape hatches with explicit escalation rules back into the full sequence — that escalation is what keeps the lite paths honest.
+
+### Minor feature / sub-feature
+
+A localized capability extension that fits within already-established architecture. No new boundaries, no decision to record. The honest shape is *(optional) targeted research → delta or mini-spec → short implementation plan*, often collapsed into a single change note.
+
+Escalates to the full sequence if the change requires a new module boundary, a new protocol, a new dependency direction, or contradicts an existing ADR.
+
+See [variants/minor-feature/note.md](variants/minor-feature/note.md).
+
+### Bug fix
+
+Corrective work whose goal is to remove a defect safely and prevent recurrence. The thinking is not "what should we build" but "why does reality diverge from intent." The shape is *symptom → reproduction → root cause → fix strategy → regression test*.
+
+Escalates to a spec update if expected behavior was never defined, and to a pre-ADR if the defect violates an invariant no ADR covers.
+
+See [variants/bug-fix/note.md](variants/bug-fix/note.md).
+
 ## AI assistants
 
 AI assistants are used heavily throughout the pre-coding phase — not as a convenience layer, but as thinking partners. Different models (GPT, Claude, and others) are rotated deliberately across stages and review cycles to reduce blind spots inherent to any single model's reasoning style.
