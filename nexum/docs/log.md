@@ -1,5 +1,8 @@
 # Log
 
+## 2026-04-12
+- Add frontend component specs: app state machine, auth state machine, repo services, HTTP client chain.
+
 ## 2026-04-06
 - Clean up doc tree: extract implementation notes from review amendments, fold orphaned design decisions (DB schema, URL validation, token storage) into ADRs, delete `reviews/` directory.
 - Move ADRs into `docs/ADR/`, fix cross-directory references.
