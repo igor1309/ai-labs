@@ -1,11 +1,8 @@
-Add perplexity, chat gpt, Claude@iPhone as constantly used tools; active use of Q&A
-
 ---
 title: Research
 date: 2026-04-12
 author: Igor Malyarov
-model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -52,6 +49,12 @@ Typical inputs include:
 - major unknowns and assumptions
 
 Research should start from a concrete question, tension, or area of uncertainty. Without that, it easily degrades into unfocused reading.
+
+## Tools and process
+
+AI assistants are used constantly throughout research — Perplexity for search and synthesis, ChatGPT and Claude (including mobile) for rapid Q&A and assumption testing. These are not passive lookup tools; they are active conversation partners used to probe the problem space, challenge framing, and surface gaps faster than solo reading allows.
+
+Q&A is a primary working mode. Rather than reading linearly, research often proceeds through directed question-and-answer cycles: asking pointed questions, evaluating answers, and following up on weak or surprising responses. This interactive style produces sharper outputs than accumulating material and summarizing later.
 
 ## Outputs
 
