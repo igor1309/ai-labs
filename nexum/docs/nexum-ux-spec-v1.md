@@ -4,7 +4,7 @@ model: opus-4.6
 description: "Product-level UX decisions for Nexum v1 web UI"
 version: 1.0.0
 status: accepted
-type: spec
+type: product-spec
 references:
   - ADR/nexum-frontend-adr-v0_2_0.md
   - ADR/nexum-openapi-v1.yml
@@ -51,7 +51,7 @@ Product-level UX decisions for the Nexum web UI. These are product rules, not ar
 ## Add Flow
 
 - Input: repo URL + note.
-- Both fields are required, with one exception: an empty note is allowed only with explicit user confirmation ("Save without note?" or equivalent).
+- Both fields must have non-empty values, with one exception: an empty note is allowed only with explicit user confirmation ("Save without note?" or equivalent).
 - Save is explicit (not automatic on paste).
 
 ## Duplicate Handling

@@ -8,14 +8,14 @@ description: "Spec: HTTP client chain — SigningAdapter and AuthInterceptor as 
 
 ## Goal
 
-`SigningAdapter` injects a Bearer token into every outgoing request and `AuthInterceptor` fires a session-lost callback on 401 responses; both conform to `HTTPClient` (defined in the Repo Services spec) so that services see a single `HTTPClient` with no knowledge of signing or auth interception; defined in `nexum-frontend-auth-adr-v0_1_0.md`.
+`SigningAdapter` injects a Bearer token into every outgoing request and `AuthInterceptor` fires a session-lost callback on 401 responses; both conform to `HTTPClient` (defined in the Repo Services spec) so that services see a single `HTTPClient` with no knowledge of signing or auth interception; defined in `nexum-frontend-auth-adr-v0_1_0.md`. Both types are composition-root-level decorators and do not belong to the auth module or the services module.
 
 ## Public interface
 
 ```swift
 struct SigningAdapter: HTTPClient {
-    /// `tokenProvider` is the async closure `{ tokenCache.read() }` wired at the composition root.
-    init(client: HTTPClient, tokenProvider: @escaping () async -> Token?)
+    /// `tokenProvider` is the async closure `{ tokenCache.read()?.value }` wired at the composition root.
+    init(client: HTTPClient, tokenProvider: @escaping () async -> String?)
     func send(_ request: HTTPRequest) async -> HTTPResult
 }
 
@@ -31,7 +31,7 @@ Both types are composed at the composition root in this order (services receive 
 ```
 ConcreteHTTPClient
        ↓
-SigningAdapter(client: concreteClient, tokenProvider: { tokenCache.read() })
+SigningAdapter(client: concreteClient, tokenProvider: { tokenCache.read()?.value })
        ↓
 AuthInterceptor(client: signedClient, onSessionLost: { authMachine.dispatch(.sessionLost) })
        ↓
@@ -42,12 +42,12 @@ Services
 
 ### SigningAdapter
 
-1. On every `send(_:)` call: awaits `tokenProvider()` to obtain the current token.
-2. If `tokenProvider()` returns a token: injects `"Authorization": "Bearer \(token.value)"` into the request headers before forwarding.
+1. On every `send(_:)` call: awaits `tokenProvider()` to obtain the current token string.
+2. If `tokenProvider()` returns a value: injects `"Authorization": "Bearer \(value)"` into the request headers before forwarding.
 3. If `tokenProvider()` returns nil: forwards the request without an `Authorization` header (the server will respond 401; `AuthInterceptor` handles the consequence).
 4. Forwards the (possibly modified) request to the wrapped client unchanged in all other fields.
 5. Returns the wrapped client's `HTTPResult` unchanged.
-6. Calls `tokenProvider` on every request; does not cache the token value between calls.
+6. Calls `tokenProvider` on every request; does not cache the returned value between calls.
 
 ### AuthInterceptor
 
@@ -64,10 +64,10 @@ Using `HTTPClient` fakes that capture received requests and return configured re
 
 ### SigningAdapter
 
-1. Request sent to spy has `Authorization: Bearer {token.value}` header when provider returns a token.
+1. Request sent to spy has `Authorization: Bearer {value}` header when provider returns a value.
 2. Request sent to spy has no `Authorization` header when provider returns nil.
 3. All other request fields (method, path, body) are forwarded unchanged.
-4. `tokenProvider` is called once per `send` invocation (not cached): two sequential calls with different provider values produce two different headers.
+4. `tokenProvider` is called once per `send` invocation (not cached): two sequential calls with different provider return values produce two different headers.
 5. Returns the spy's `HTTPResult` unchanged (pass-through for success response).
 6. Returns the spy's `HTTPResult` unchanged (pass-through for network failure).
 
@@ -84,5 +84,5 @@ Using `HTTPClient` fakes that capture received requests and return configured re
 
 - `SigningAdapter` and `AuthInterceptor` both conform to `HTTPClient` as defined in the Repo Services spec.
 - Neither type references auth state machine types directly; `onSessionLost` is a plain closure.
-- `SigningAdapter` does not import or reference `TokenCache` directly; it receives a `() async -> Token?` closure.
+- `SigningAdapter` does not import or reference `TokenCache` or `Token` directly; it receives a `() async -> String?` closure.
 - All listed tests pass.

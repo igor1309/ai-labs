@@ -41,17 +41,7 @@ enum HTTPClientError {
 
 ### AppError
 
-```swift
-enum AppError: Equatable {
-    case unauthorized
-    case invalidInput
-    case notFound
-    case network
-    case unexpectedResponse
-    case duplicate(existingId: UUID)
-    case serverError(String)
-}
-```
+`AppError` is defined in the App State Machine spec and owned by that module. Services use it via the collaborator result types (`AddRepoResult`, `GetReposResult`, `EditNoteResult`).
 
 ### Service types
 
@@ -92,7 +82,7 @@ Error            { error: true, code: String, message: String }
 2. `200` + valid `SnapshotResponse` JSON → returns `.success(repos)`.
 3. `200` + invalid or unparseable JSON → returns `.failure(.unexpectedResponse)`.
 4. `401` → returns `.failure(.unauthorized)`.
-5. Any other `4xx` or `5xx` → returns `.failure(.serverError(message))` where `message` is decoded from the error envelope if present, otherwise empty.
+5. Any other `4xx` or `5xx` → returns `.failure(.serverError(message))` where `message` is decoded from the OpenAPI `Error` schema envelope (`{ error, code, message }`) if present, otherwise empty.
 6. `HTTPClientError` (network or invalid response) → returns `.failure(.network)`.
 
 ### AddRepoService

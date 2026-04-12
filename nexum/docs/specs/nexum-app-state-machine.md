@@ -29,6 +29,26 @@ enum OperationState: Equatable {
     case error(AppError)
 }
 
+enum AppError: Equatable {
+    case unauthorized
+    case invalidInput
+    case notFound
+    case network
+    case unexpectedResponse
+    case duplicate(existingId: UUID)
+    case serverError(String)
+}
+
+struct RepoEntry: Equatable {
+    var id: UUID
+    var repoUrl: String
+    var name: String?
+    var stars: Int?
+    var description: String?
+    var note: String
+    var addedAt: Date
+}
+
 struct QueryState: Equatable {
     var searchText: String           // default: ""
     var sortColumn: SortColumn       // default: .addedAt
@@ -155,6 +175,7 @@ The caller dispatches `.load` immediately after construction.
    - Replaces `repoTable` with `repos`.
    - If `fetchState == .loading` → sets `fetchState: .success`.
    - If `postState == .loading` → sets `postState: .success`.
+   - If both `fetchState` and `postState` are `.loading`, both transition to `.success`.
 8. `.fetchFailed(error)` → sets `fetchState: .error(error)`.
 9. `.postFailed(error)` → sets `postState: .error(error)`.
 10. `.duplicateDetected(existingId)` → sets `postState: .error(.duplicate(existingId))`.
@@ -219,7 +240,8 @@ The caller dispatches `.load` immediately after construction.
 
 ## Done criteria
 
+- `AppError` and `RepoEntry` are defined in this module.
 - Reducer is a pure function with no side effects; all transitions match the rules above.
-- Effect handler is a concrete type; collaborators are injected via protocols.
+- Effect handler conforms to `AppEffectHandler` protocol; collaborators are injected via their own protocols.
 - `AddRepo`, `GetRepos`, `EditNote` protocols live in the same module as the effect handler.
 - All listed tests pass.

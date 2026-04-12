@@ -78,7 +78,7 @@ func reduce(state: AuthState, action: AuthAction) -> (AuthState, AuthEffect?)
 
 ```swift
 protocol AuthEffectHandler {
-    func handle(_ effect: AuthEffect) async -> AuthAction
+    func handle(_ effect: AuthEffect) async -> AuthAction?
 }
 ```
 
@@ -110,7 +110,7 @@ protocol TokenCache {
 }
 ```
 
-The async token provider consumed by `SigningAdapter` is `{ tokenCache.read() }` — a plain closure over the cache; not a separate type.
+The async token provider consumed by `SigningAdapter` is `{ tokenCache.read()?.value }` — a plain closure over the cache that returns the token string; not a separate type.
 
 ## Behavior rules
 
@@ -129,9 +129,9 @@ The async token provider consumed by `SigningAdapter` is `{ tokenCache.read() }`
 
 ### Effect handler
 
-11. `.resolveSession` → calls `sessionResolver.resolve()`; if token returned dispatches `.sessionObtained(token)`; if nil dispatches `.resolutionFailed`.
+11. `.resolveSession` → calls `sessionResolver.resolve()`; if token returned, writes token to cache, then dispatches `.sessionObtained(token)`; if nil dispatches `.resolutionFailed`.
 12. `.authenticate(u, p)` → calls `authenticator.authenticate(u, p)`; on `.success(token)` writes token to cache then dispatches `.sessionObtained(token)`; on `.failure(e)` dispatches `.authFailed(e)`.
-13. `.clearToken` → clears the token cache; returns no further action (state is already updated by the reducer).
+13. `.clearToken` → clears the token cache; returns nil (state is already updated by the reducer).
 14. `SessionResolver` reads `expiresAt` from the stored token; if `expiresAt <= Date.now` it returns nil without a network call.
 15. Persistence (reading/writing tokens to `localStorage` or keychain) is a decorator on `SessionResolver` and `Authenticator`; the collaborators themselves do not know about storage.
 
@@ -161,12 +161,12 @@ The async token provider consumed by `SigningAdapter` is `{ tokenCache.read() }`
 
 ### Effect handler (with fakes)
 
-12. `.resolveSession` — resolver returns valid token → dispatches `.sessionObtained(token)`.
-13. `.resolveSession` — resolver returns nil (no session) → dispatches `.resolutionFailed`.
-14. `.resolveSession` — resolver returns nil (expired token, `expiresAt` in past) → dispatches `.resolutionFailed`.
+12. `.resolveSession` — resolver returns valid token → token written to cache, dispatches `.sessionObtained(token)`.
+13. `.resolveSession` — resolver returns nil (no session) → cache not written, dispatches `.resolutionFailed`.
+14. `.resolveSession` — resolver returns nil (expired token, `expiresAt` in past) → cache not written, dispatches `.resolutionFailed`.
 15. `.authenticate(u, p)` — authenticator returns `.success(token)` → token written to cache, dispatches `.sessionObtained(token)`.
 16. `.authenticate(u, p)` — authenticator returns `.failure(e)` → cache not written, dispatches `.authFailed(e)`.
-17. `.clearToken` → cache `clear()` called; no action dispatched.
+17. `.clearToken` → cache `clear()` called; returns nil.
 
 ### Token cache
 
@@ -175,9 +175,16 @@ The async token provider consumed by `SigningAdapter` is `{ tokenCache.read() }`
 20. `write(token2)` after `write(token1)` → `read()` returns `token2`.
 21. `clear()` after `write(token)` → `read()` returns nil.
 
+### SessionResolver
+
+22. Stored token with `expiresAt` in the future → returns token.
+23. Stored token with `expiresAt` in the past → returns nil.
+24. No stored token → returns nil.
+
 ## Done criteria
 
 - Reducer is pure; all transitions and ignored-action rules match exactly.
+- Effect handler conforms to `AuthEffectHandler` protocol; collaborators are injected via their own protocols.
 - `SessionResolver` and `Authenticator` protocols live in the same module as the auth effect handler.
-- `TokenCache` lives in the auth module; `SigningAdapter` receives a `() -> Token?` closure, not the cache directly.
+- `TokenCache` lives in the auth module; `SigningAdapter` receives a `() async -> String?` closure, not the cache directly.
 - All listed tests pass.
