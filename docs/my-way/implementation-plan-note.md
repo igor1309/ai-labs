@@ -1,15 +1,8 @@
-Add
-- Self review and fix cycle
-- Adversarial review and fix cycle with model rotation
-- must have steps/stages with mandatory test runs before commits, commit on green only
-- Must reference appropriate skills/guides for implementation details (stores/state machines/layers/etc)
-
 ---
 title: Implementation Plan
 date: 2026-04-12
 author: Igor Malyarov
-model: GPT-5.4 Thinking
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -98,6 +91,10 @@ The plan follows the architecture and spec instead of quietly redesigning them t
 
 The plan acknowledges how correctness will be checked, not only how code will be written.
 
+### 6. Commit discipline
+
+Each step or stage has mandatory test runs. Commits happen only on green. No step is considered complete until its tests pass.
+
 ## Exit criteria
 
 An implementation plan is complete when:
@@ -107,6 +104,7 @@ An implementation plan is complete when:
 - important dependencies are visible
 - the riskiest work is not hidden at the end
 - validation approach is known
+- each step has an explicit test/validation gate before commit
 - implementation can begin without improvising the whole path
 
 An implementation plan is not complete merely because a list of tasks exists.
@@ -144,10 +142,27 @@ A practical implementation plan often includes:
 - risks
 - validation notes
 - completion signal
+- skill/guide references for implementation details (stores, state machines, layers, composition patterns, etc.)
 
 The exact shape can vary, but the essential property is execution clarity.
 
-## Example grouped test names
+## Review
+
+The implementation plan undergoes two review cycles before execution begins.
+
+**Self-review.** The author checks the plan against the accepted spec, ADRs, and existing codebase for alignment, gaps, and contradictions. Issues found are fixed before external review.
+
+**Adversarial review with model rotation.** A different AI model (GPT / Claude) reviews the plan. The review is adversarial by design: it challenges sequencing assumptions, probes for hidden dependencies, tests whether step boundaries respect architecture, and checks for drifts against existing ADRs, code, and tests. Issues found are fixed and re-reviewed until clean.
+
+## Summary
+
+The implementation plan is the execution bridge between spec and coding.
+
+It organizes delivery into an explicit path with sequence, dependencies, risk handling, and validation in view. Its value is practical: implementation starts with a known route rather than with ad hoc motion.
+
+---
+
+## Appendix: example grouped test names
 
 Below is a structured example of test naming aligned with the pattern:
 
@@ -192,9 +207,3 @@ Below is a structured example of test naming aligned with the pattern:
 - `test_completePlan_shouldFail_onHiddenCriticalDependency`
 - `test_completePlan_shouldFail_onUndefinedValidationApproach`
 - `test_completePlan_shouldRemainReviewable_onMultiSlicePlan`
-
-## Summary
-
-The implementation plan is the execution bridge between spec and coding.
-
-It organizes delivery into an explicit path with sequence, dependencies, risk handling, and validation in view. Its value is practical: implementation starts with a known route rather than with ad hoc motion.
