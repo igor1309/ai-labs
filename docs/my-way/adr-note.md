@@ -1,8 +1,3 @@
-Add:
-- Review cycle with model - gpt/claude - rotation
-- Review includes pre-existing adr/code/test drifts and contradictions
-- Solid, dependency inversion, clear use of design patterns
-
 ---
 title: ADR
 date: 2026-04-12
