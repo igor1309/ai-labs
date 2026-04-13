@@ -12,6 +12,38 @@ Implements the five frontend specs (`nexum-app-state-machine.md`, `nexum-auth-st
 
 Deliver the complete Nexum frontend: a Swift package containing state machines, services, and HTTP client chain (tested natively), plus a Swift-to-WASM web UI composed via a two-phase composition root. The result is a working single-page web application that authenticates, displays the repo table, supports search/sort/inline-edit, and handles duplicates — all against the locked OpenAPI contract.
 
+## State machine runtime
+
+Both state machines (app and auth) use `ObservableModel<State, Event, Effect>` from `IMRxObservation` ([swift-imrx](https://github.com/igor1309/swift-imrx)) as their reactive runtime. ObservableModel provides:
+
+- `@Observable` macro — the reactivity layer required by the stack ADR (not Combine).
+- Reducer signature `(State, Event) -> (State, Effect?)` — matches the spec reducer signatures exactly.
+- Effect handler signature `(Effect) -> AsyncStream<Event>` — a thin adapter over the spec's `async -> Action` collaborator pattern; each collaborator call yields one event and finishes.
+- Event serialization via `AsyncStream` + `for await` in a single `Task` — no custom serialization needed.
+- `@unchecked Sendable`, no `@MainActor` — general-purpose, not tied to UI.
+- No Combine dependency — WASM-compatible.
+
+The spec-defined collaborator protocols (`AddRepo`, `GetRepos`, `EditNote`, `SessionResolver`, `Authenticator`) remain unchanged. The effect handler closure wraps collaborator calls:
+
+```swift
+// Example: app effect handler as ObservableModel.HandleEffect closure
+func handleAppEffect(_ effect: AppEffect) -> AsyncStream<AppAction> {
+    AsyncStream { continuation in
+        Task {
+            let action: AppAction = switch effect {
+            case .getRepos: await mapGetRepos()
+            case .addRepo(let url, let note): await mapAddRepo(url, note)
+            case .editNote(let id, let note): await mapEditNote(id, note)
+            }
+            continuation.yield(action)
+            continuation.finish()
+        }
+    }
+}
+```
+
+Test infrastructure: `withMainSerialExecutor` from `swift-concurrency-extras` for deterministic async tests; `Task.megaYield()` for settling the event loop.
+
 ## Execution lock
 
 Worktree required: yes
@@ -28,6 +60,7 @@ Preflight check: [ ] done
 - No detail page (v1 is table-only per UX spec).
 - All service tests use HTTPClient fakes/spies — no real network calls.
 - No changes to the OpenAPI contract or any ADR.
+- No modifications to `swift-imrx` — use `IMRxObservation` as-is.
 
 ## Phase 1 — Swift Package Setup & Toolchain Validation
 
@@ -35,11 +68,12 @@ Preflight check: [ ] done
 
 **Key work items**:
 - Create `nexum/frontend/` as a Swift package with targets: `NexumCore` (library), `NexumCoreTests` (tests), `NexumWeb` (executable, WASM target).
+- Add `swift-imrx` (`IMRxObservation` product) as a dependency for `NexumCore`. Add `swift-concurrency-extras` as a test dependency for `NexumCoreTests`.
 - Configure `Package.swift` with JavaScriptKit dependency for the WASM target.
 - Add a minimal "hello world" that compiles to both native (for `swift test`) and WASM.
 - Verify `swift test` runs natively for `NexumCoreTests`.
 - Verify WASM compilation produces a working `.wasm` artifact.
-- Establish module boundaries: `NexumCore` has no WASM/JavaScriptKit dependency; `NexumWeb` depends on both `NexumCore` and `JavaScriptKit`.
+- Establish module boundaries: `NexumCore` depends on `IMRxObservation` (no Combine, no WASM issues); `NexumWeb` depends on both `NexumCore` and `JavaScriptKit`.
 
 **Dependencies**: none (first phase).
 
@@ -57,15 +91,15 @@ Spec: `nexum-app-state-machine.md`
 
 **Key work items**:
 - Define types: `RepoEntry`, `AppError`, `OperationState`, `QueryState`, `SortColumn`, `SortDirection`, `AppState`, `AppAction`, `AppEffect`.
-- Implement the pure `reduce(state:action:)` function (behavior rules 1–10 from spec).
+- Implement the pure `reduce(state:action:)` function matching `ObservableModel.Reduce` signature: `(AppState, AppAction) -> (AppState, AppEffect?)` (behavior rules 1–10 from spec).
 - Define collaborator protocols: `AddRepo`, `GetRepos`, `EditNote` with their result types — owned by the effect handler, living in the same module.
-- Implement `AppEffectHandler` conforming to the protocol, delegating to injected collaborators (behavior rules 11–14).
+- Implement the app effect handler as a function matching `ObservableModel.HandleEffect` signature: `(AppEffect) -> AsyncStream<AppAction>`. Delegates to injected collaborators, yields the resulting action, and finishes the stream (behavior rules 11–14).
 - Implement `filteredAndSorted(entries:query:)` pure function (behavior rules 15–19).
-- Write all 32 tests enumerated in the spec.
+- Write all 32 tests enumerated in the spec. Reducer tests are pure (no async). Effect handler tests use `withMainSerialExecutor` + `Task.megaYield()` for determinism.
 
-**Dependencies**: Phase 1 (package structure).
+**Dependencies**: Phase 1 (package structure, `IMRxObservation` dependency).
 
-**Risks**: None significant — pure Swift with no external dependencies.
+**Risks**: None significant — pure Swift with no external dependencies beyond `IMRxObservation`.
 
 **Validation**: All 32 spec tests pass via `swift test`. Reducer is pure (no side effects). Collaborator protocols live in the same module as the effect handler.
 
@@ -79,16 +113,16 @@ Spec: `nexum-auth-state-machine.md`
 
 **Key work items**:
 - Define types: `AuthState`, `AuthPhase`, `AuthResult`, `AuthError`, `Token`, `AuthAction`, `AuthEffect`.
-- Implement the pure `reduce(state:action:)` function (behavior rules 1–10 from spec).
+- Implement the pure `reduce(state:action:)` function matching `ObservableModel.Reduce` signature: `(AuthState, AuthAction) -> (AuthState, AuthEffect?)` (behavior rules 1–10 from spec).
 - Define collaborator protocols: `SessionResolver`, `Authenticator` with `AuthenticateResult` — owned by the auth effect handler, living in the same module.
-- Implement `AuthEffectHandler` conforming to the protocol (behavior rules 11–15).
+- Implement the auth effect handler as a function matching `ObservableModel.HandleEffect` signature: `(AuthEffect) -> AsyncStream<AuthAction>`. Delegates to injected collaborators (behavior rules 11–15). `.clearToken` yields no event (returns empty stream).
 - Define `TokenCache` protocol and `InMemoryTokenCache` implementation (behavior rules 16–20).
 - Wire the token provider as `{ tokenCache.read()?.value }` — a plain closure, not a separate type.
-- Write all 24 tests enumerated in the spec (reducer: 11, effect handler: 6, token cache: 4, session resolver: 3).
+- Write all 24 tests enumerated in the spec (reducer: 11, effect handler: 6, token cache: 4, session resolver: 3). Effect handler tests use `withMainSerialExecutor` + `Task.megaYield()`.
 
-**Dependencies**: Phase 1 (package structure). Independent of Phase 2 — no shared types between app and auth state machines.
+**Dependencies**: Phase 1 (package structure, `IMRxObservation` dependency). Independent of Phase 2 — no shared types between app and auth state machines.
 
-**Risks**: None significant — pure Swift, no external dependencies.
+**Risks**: Auth effect handler's `.clearToken` returns `nil` in the spec but ObservableModel expects `AsyncStream<Event>` — use an empty stream (finish immediately, no yield). Straightforward adaptation.
 
 **Validation**: All 24 spec tests pass via `swift test`. Reducer is pure. Collaborator protocols live in the same module as the auth effect handler. TokenCache lives in the auth module.
 
@@ -161,21 +195,21 @@ Spec: `nexum-http-client-chain.md`
 Spec: `nexum-ux-spec-v1.md`, ADR: `nexum-frontend-adr-v0_2_0.md` (UI section), `nexum-frontend-auth-adr-v0_1_0.md` (UI section)
 
 **Key work items**:
-- Auth-driven routing: `resolving` → loading/splash, `unauthenticated`/`authenticating` → login surface, `authenticated` → app surface.
-- Login screen: username/password fields, submit, error display from `AuthResult`.
-- Repo table: 5 columns (Name as link, Stars, Description, Note, Added), all sortable.
-- Sort: single active column, tap inactive → ascending, tap active → toggle direction, default Added descending.
-- Search: single free-text input, client-side filter (case-insensitive substring across Name, Description, Note).
-- Add repo form: URL + note inputs, explicit save, empty-note confirmation prompt.
-- Inline note editing: click note cell to activate, explicit save/cancel controls.
-- Duplicate handling: on `postState: .error(.duplicate(existingId))`, scroll to and highlight the existing entry.
+- Auth-driven routing: observe `authModel.state.phase` — `resolving` → loading/splash, `unauthenticated`/`authenticating` → login surface, `authenticated` → app surface.
+- Login screen: username/password fields, submit dispatches `authModel.event(.credentialsSubmitted(...))`, error display derived from `authModel.state.result`.
+- Repo table: observe `appModel.state` — 5 columns (Name as link, Stars, Description, Note, Added), all sortable. Display uses `filteredAndSorted(entries:query:)` over `appModel.state.repoTable` and `appModel.state.query`.
+- Sort: dispatch `appModel.event(.toggleSortColumn(...))` on column header tap.
+- Search: dispatch `appModel.event(.updateQuery(...))` on text input.
+- Add repo form: URL + note inputs, explicit save dispatches `appModel.event(.addRepo(...))`, empty-note confirmation prompt.
+- Inline note editing: click note cell to activate, explicit save/cancel controls, save dispatches `appModel.event(.editNote(...))`.
+- Duplicate handling: on `appModel.state.postState == .error(.duplicate(existingId))`, scroll to and highlight the existing entry.
 - Empty states: no entries → prompt to add first repo; search with no results → "No matches" with query echoed.
-- Async indicators: loading/error for reads (`fetchState`) and writes (`postState`).
-- Observation-based reactivity (not Combine — per stack ADR).
+- Async indicators: loading/error derived from `appModel.state.fetchState` and `appModel.state.postState`.
+- Reactivity is automatic: `ObservableModel` is `@Observable`, so JavaScriptKit rendering code observes `model.state` changes directly.
 
 **Dependencies**: Phase 2 (app state machine types/actions), Phase 3 (auth state machine types/actions), Phase 1 (WASM/JavaScriptKit target).
 
-**Risks**: JavaScriptKit DOM manipulation API may require workarounds. Observation framework behavior on WASM target may differ from native. This is the highest-risk phase — but Phase 1 de-risked the toolchain, and domain logic is already tested in Phases 2–6.
+**Risks**: JavaScriptKit DOM manipulation API may require workarounds. `@Observable` tracking behavior on WASM target may differ from native — Phase 1 de-risked the toolchain, and domain logic is already tested in Phases 2–6.
 
 **Validation**: Manual browser testing of all UX spec behaviors. Automated tests where feasible (rendering logic that doesn't require a browser).
 
@@ -188,11 +222,11 @@ Spec: `nexum-ux-spec-v1.md`, ADR: `nexum-frontend-adr-v0_2_0.md` (UI section), `
 ADR: `nexum-frontend-auth-adr-v0_1_0.md` (Composition Root section)
 
 **Key work items**:
-- **Phase 1 (boot)**: construct auth state machine, `SessionResolver` (with localStorage persistence decorator via JavaScriptKit), `Authenticator` (LoginService with bare `HTTPClient`). Dispatch `.boot`.
-- **Phase 2 (on authenticated)**: construct `ConcreteHTTPClient` (fetch-based via JavaScriptKit), `SigningAdapter(httpClient, { tokenCache.read()?.value })`, `AuthInterceptor(signedClient, { authMachine.dispatch(.sessionLost) })`, three repo services, app effect handler, app state machine. Dispatch `.load` on the returned app state machine.
+- **Phase 1 (boot)**: construct `InMemoryTokenCache`, auth collaborators (`SessionResolver` with localStorage persistence decorator, `LoginService` with bare `HTTPClient`), auth effect handler closure, auth `ObservableModel<AuthState, AuthAction, AuthEffect>`. Dispatch `authModel.event(.boot)`.
+- **Phase 2 (on authenticated)**: construct `ConcreteHTTPClient` (fetch-based via JavaScriptKit), `SigningAdapter(httpClient, { tokenCache.read()?.value })`, `AuthInterceptor(signedClient, { authModel.event(.sessionLost) })`, three repo services, app effect handler closure, app `ObservableModel<AppState, AppAction, AppEffect>`. Dispatch `appModel.event(.load)` on the returned model.
 - Implement `ConcreteHTTPClient` using JavaScriptKit's `fetch` API.
 - Implement localStorage persistence decorators for `SessionResolver` and `Authenticator`.
-- Wire app graph teardown on session lost (authenticated → unauthenticated destroys app graph).
+- Wire app graph teardown on session lost (authenticated → unauthenticated destroys app `ObservableModel` and all its dependencies).
 - Define in-flight request behavior on session teardown (per implementation note: choose cancel or discard, document the choice).
 - Integration test: boot → resolve session → authenticated → load repos → render table (using test doubles for network layer).
 
