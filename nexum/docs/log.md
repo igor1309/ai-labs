@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-04-13
+- Implement Nexum backend v1 in Swift: add package scaffold, domain/use-case/auth/persistence/router/startup modules, and 65 passing Swift tests for backend behavior and server bootstrap.
 - Add backend implementation plan (`docs/plans/nexum-backend-plan.md`): six-phase execution plan from package scaffold through composition root, traced back to backend ADR invariants.
 - Add frontend implementation plan (`docs/plans/nexum-frontend-plan.md`): eight-phase execution plan covering `ObservableModel`-based state machines, shared services, HTTP client chain, WASM UI, and composition root wiring.
 

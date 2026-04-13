@@ -17,7 +17,7 @@ Deliver a working server-side Swift backend that exposes the four REST endpoints
 Worktree required: yes
 Expected worktree: worktrees/nexum-backend
 Expected branch: codex/nexum-backend
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
