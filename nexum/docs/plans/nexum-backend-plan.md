@@ -29,20 +29,25 @@ Preflight check: [ ] done
 - Docker/container setup is deferred.
 - The `MetadataSource` concrete implementation calls GitHub REST API but does not implement retry or circuit-breaker logic — best-effort only.
 
-## ADR traceability matrix
+## ADR and spec traceability
 
-| ADR invariant | Phase |
-|---|---|
-| Full Swift stack, Hummingbird 2 | Phase 1 |
-| Client owns interfaces — protocols defined by backend | Phase 2 |
-| Dependency inversion — use cases depend on protocols | Phase 3 |
-| Pure functions for domain logic (normalizeUrl, SnapshotBuilder) | Phase 2 |
-| User transaction separate from snapshot rebuild | Phase 3 |
-| Auth is explicit router dependency, not middleware | Phase 5 |
-| Provider-agnostic auth contract, async by contract | Phase 2, 4 |
-| Composition over configuration — all wiring at composition root | Phase 6 |
-| Startup fail-fast on missing env vars | Phase 6 |
-| DB unique constraint for duplicate detection (impl note) | Phase 4 |
+| Capability | Source | Phase |
+|---|---|---|
+| Swift package with Hummingbird 2 backend target layout | `nexum-stack-adr-v0_1_0.md`; `nexum-backend-adr-v0_3_0.md` deployment/routing sections | Phase 1 |
+| Backend-owned protocols: `RepoStore`, `SnapshotStore`, `MetadataSource`, `CredentialVerifier`, `TokenIssuer`, `AuthVerifier` | Backend ADR internal architecture; auth ADR; spec protocol section | Phase 2 |
+| Pure `normalizeUrl` contract and edge cases | Backend ADR pure functions; spec rules 1–6 | Phase 2 |
+| Pure `SnapshotBuilder` contract and fallback cascade | Backend ADR pure functions/write model; spec rules 7–12 | Phase 2 |
+| Login use case behavior | Backend ADR use cases; spec rules 19–21 | Phase 3 |
+| AddRepo use case, duplicate handling, server-assigned `addedAt` | Backend ADR write model/use cases; spec rules 22–27 | Phase 3 |
+| GetRepos use case and empty snapshot behavior | Backend ADR use cases; spec rules 28–30 | Phase 3 |
+| EditNote use case behavior | Backend ADR use cases; spec rules 31–34 | Phase 3 |
+| bcrypt credential verification | Spec rules 13–15 | Phase 4 |
+| HS256 JWT issuance and verification | Auth ADR provider independence/async contract; spec rules 16–18 and 35–37 | Phase 4 |
+| SQLite repo uniqueness and snapshot persistence | Backend ADR database schema/write model; implementation note; spec `RepoStore` and `SnapshotStore` contracts | Phase 4 |
+| Explicit router auth dependency and login bypass | Auth ADR; spec rules 35–38 | Phase 5 |
+| Uniform error envelope, duplicate error shape, and HTTP response mapping | Backend ADR routing; spec rules 39–42 | Phase 5 |
+| Startup env validation and `PORT` default | Backend ADR deployment/env table; spec rules 43–44 | Phase 6 |
+| GitHub metadata source with optional token | Backend ADR outbound/deployment; spec rule 45 | Phase 6 |
 
 ## Phase 1 — Swift package scaffold and domain models
 
@@ -122,16 +127,16 @@ Preflight check: [ ] done
 - Snapshot rebuild logic shared between `AddRepo` and `EditNote`: extract to a helper or inline — keep it minimal.
 - Ensure user transaction commits before snapshot rebuild (rules 25, 42).
 - Write all spec-listed tests:
-  - Login: 3 tests (valid creds, invalid creds, no auth header required).
-  - AddRepo: 7 tests (success+metadata, success+fail metadata no prev, success+fail metadata with prev, duplicate, malformed URL, missing token, server-assigned addedAt).
-  - GetRepos: 3 tests (snapshot exists, empty store, missing token).
-  - EditNote: 4 tests (success, empty note, not found, missing token).
+  - Login: 2 tests (valid creds, invalid creds).
+  - AddRepo: 6 tests (success+metadata, success+fail metadata no prev, success+fail metadata with prev, duplicate, malformed URL, server-assigned addedAt).
+  - GetRepos: 2 tests (snapshot exists, empty store).
+  - EditNote: 3 tests (success, empty note, not found).
 
 **Dependencies**: Phase 2 (protocols, pure functions).
 
 **Risks**: Snapshot rebuild orchestration complexity — multiple async calls with fallback logic. Mitigated by testing each metadata fallback path independently.
 
-**Validation**: All 17 use case tests pass. Full test suite green (35 tests total: 18 pure + 17 use case).
+**Validation**: All 13 use case tests pass. Full test suite green (31 tests total: 18 pure + 13 use case).
 
 **Completion signal**: All four use cases implemented and tested against fakes. Core business logic is validated.
 
@@ -184,7 +189,13 @@ Preflight check: [ ] done
 - Error envelope (rule 39-40): `{ error: true, code, message }` for all errors; `DuplicateError` adds `existingId`.
 - Infrastructure error catch-all (rules 41-42): unhandled errors → `500` with `code: "internal_error"`.
 - Write spec-listed router/auth tests:
-  - 5 router/auth verification tests (valid token, expired, missing header, malformed header, login bypasses auth).
+  - Valid non-expired token on a guarded endpoint → request proceeds.
+  - Missing `Authorization` header on `POST /repos` → `401`.
+  - Missing `Authorization` header on `GET /repos` → `401`.
+  - Missing `Authorization` header on `PATCH /repos/{id}/note` → `401`.
+  - Expired token on a guarded endpoint → `401`.
+  - Malformed `Authorization` header or truncated token on a guarded endpoint → `401`.
+  - `POST /auth/login` with no `Authorization` header bypasses auth verification.
 - Write HTTP-level integration tests for each endpoint using Hummingbird's test utilities (in-process HTTP testing if available, or actual HTTP requests against a test server).
 
 **Dependencies**: Phase 3 (use cases), Phase 4 (auth verifier concrete implementation for integration tests; in-memory fakes for unit tests).
@@ -213,6 +224,7 @@ Preflight check: [ ] done
   - Returns `RepoMetadata` on success, throws on failure.
 - Write spec-listed tests:
   - Startup: 3 tests (all vars present → starts, missing required var → exits, PORT absent → 8080).
+  - Startup/schema idempotency: initialize against a new SQLite path, then initialize again against the same path with no schema error; existing repo and snapshot data remain intact after the repeated startup.
   - MetadataSource: test with mock HTTP client (success → metadata, failure → throws).
 - Run full test suite as final gate.
 
@@ -220,9 +232,9 @@ Preflight check: [ ] done
 
 **Risks**: Environment variable handling edge cases (empty string vs absent). Mitigated by explicit tests. GitHub API response shape changes — mitigated by testing against recorded/mocked responses.
 
-**Validation**: Startup tests pass. MetadataSource tests pass. Full test suite green. `swift build` succeeds.
+**Validation**: Startup tests pass, including repeated startup against the same SQLite path with no schema errors and preserved data. MetadataSource tests pass. Full test suite green. `swift build` succeeds.
 
-**Completion signal**: The server binary starts, validates env vars, and serves all four endpoints with real SQLite persistence and JWT auth.
+**Completion signal**: The server binary starts, validates env vars, survives repeated startup against an already-initialized database, and serves all four endpoints with real SQLite persistence and JWT auth.
 
 ## Done criteria
 
