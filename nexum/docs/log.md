@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-04-13
+- Implement frontend Phase 4 repo services: add shared `HTTPClient` contract plus `GetReposService`, `AddRepoService`, and `EditNoteService` with full spec coverage (20 tests) and verified native/WASM builds.
 - Add backend implementation plan (`docs/plans/nexum-backend-plan.md`): six-phase execution plan from package scaffold through composition root, traced back to backend ADR invariants.
 - Add frontend implementation plan (`docs/plans/nexum-frontend-plan.md`): eight-phase execution plan covering `ObservableModel`-based state machines, shared services, HTTP client chain, WASM UI, and composition root wiring.
 

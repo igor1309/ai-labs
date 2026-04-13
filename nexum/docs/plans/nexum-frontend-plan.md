@@ -90,6 +90,17 @@ Every phase is executed one at a time and must satisfy all of the following befo
 - The plan tracker is updated with verified completion evidence.
 - Work stops for review approval before the next phase begins.
 
+## Phase status
+
+- [x] Phase 1 — Swift Package Setup & Toolchain Validation
+- [x] Phase 2 — App State Machine
+- [x] Phase 3 — Auth State Machine
+- [x] Phase 4 — HTTPClient Protocol & Repo Services
+- [ ] Phase 5 — Auth Services
+- [ ] Phase 6 — HTTP Client Chain
+- [ ] Phase 7 — UI Layer
+- [ ] Phase 8 — Composition Root & Integration
+
 ## Parallelization note
 
 Primary execution remains sequential by phase and gate.
