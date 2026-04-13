@@ -115,6 +115,7 @@ Spec: `nexum-auth-state-machine.md`
 - Define types: `AuthState`, `AuthPhase`, `AuthResult`, `AuthError`, `Token`, `AuthAction`, `AuthEffect`.
 - Implement the pure `reduce(state:action:)` function matching `ObservableModel.Reduce` signature: `(AuthState, AuthAction) -> (AuthState, AuthEffect?)` (behavior rules 1–10 from spec).
 - Define collaborator protocols: `SessionResolver`, `Authenticator` with `AuthenticateResult` — owned by the auth effect handler, living in the same module.
+- Implement concrete `SessionResolver` that checks `expiresAt` against current time: valid token → return token, expired or missing → return nil (behavior rule 14, spec tests 22–24). Persistence decoration is deferred to Phase 8.
 - Implement the auth effect handler as a function matching `ObservableModel.HandleEffect` signature: `(AuthEffect) -> AsyncStream<AuthAction>`. Delegates to injected collaborators (behavior rules 11–15). `.clearToken` yields no event (returns empty stream).
 - Define `TokenCache` protocol and `InMemoryTokenCache` implementation (behavior rules 16–20).
 - Wire the token provider as `{ tokenCache.read()?.value }` — a plain closure, not a separate type.
@@ -205,7 +206,7 @@ Spec: `nexum-ux-spec-v1.md`, ADR: `nexum-frontend-adr-v0_2_0.md` (UI section), `
 - Duplicate handling: on `appModel.state.postState == .error(.duplicate(existingId))`, scroll to and highlight the existing entry.
 - Empty states: no entries → prompt to add first repo; search with no results → "No matches" with query echoed.
 - Async indicators: loading/error derived from `appModel.state.fetchState` and `appModel.state.postState`.
-- Reactivity is automatic: `ObservableModel` is `@Observable`, so JavaScriptKit rendering code observes `model.state` changes directly.
+- Render loop: `ObservableModel` is `@Observable` but JavaScriptKit is imperative, not SwiftUI. The UI layer uses `withObservationTracking` to bridge: read state and render DOM, re-register on the `onChange` callback to schedule the next render pass. This is the standard pattern for consuming `@Observable` outside SwiftUI.
 
 **Dependencies**: Phase 2 (app state machine types/actions), Phase 3 (auth state machine types/actions), Phase 1 (WASM/JavaScriptKit target).
 
@@ -227,12 +228,12 @@ ADR: `nexum-frontend-auth-adr-v0_1_0.md` (Composition Root section)
 - Implement `ConcreteHTTPClient` using JavaScriptKit's `fetch` API.
 - Implement localStorage persistence decorators for `SessionResolver` and `Authenticator`.
 - Wire app graph teardown on session lost (authenticated → unauthenticated destroys app `ObservableModel` and all its dependencies).
-- Define in-flight request behavior on session teardown (per implementation note: choose cancel or discard, document the choice).
+- In-flight request teardown: discard. On session lost, the app `ObservableModel` deinits — its internal `Task` is cancelled and the continuation finishes. Late-arriving responses have nowhere to dispatch. No special handling required.
 - Integration test: boot → resolve session → authenticated → load repos → render table (using test doubles for network layer).
 
 **Dependencies**: all prior phases (2–7).
 
-**Risks**: Two-phase composition wiring is the integration point where all module boundaries meet. Mitigated by each module being independently tested. In-flight request teardown behavior needs an explicit decision.
+**Risks**: Two-phase composition wiring is the integration point where all module boundaries meet. Mitigated by each module being independently tested.
 
 **Validation**: Integration test passing. End-to-end manual test: fresh load (no token) → login → table loads → add repo → edit note → search/sort → logout → re-login → session persists across reload.
 
