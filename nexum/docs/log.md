@@ -1,6 +1,12 @@
 # Log
 
+## 2026-04-13
+- Add backend implementation plan (`docs/plans/nexum-backend-plan.md`): six-phase execution plan from package scaffold through composition root, traced back to backend ADR invariants.
+- Add frontend implementation plan (`docs/plans/nexum-frontend-plan.md`): eight-phase execution plan covering `ObservableModel`-based state machines, shared services, HTTP client chain, WASM UI, and composition root wiring.
+
 ## 2026-04-12
+- Tighten Nexum specs after review: clarify backend protocol boundaries and infrastructure-failure rules, align frontend state-machine and HTTP-chain ownership rules, and sharpen UX validation language.
+- Add auth services spec (`docs/specs/nexum-auth-services.md`): lock `LoginService` request/response mapping over the shared `HTTPClient` against `POST /auth/login`.
 - Add backend spec v1 (`docs/specs/nexum-backend-spec-v1.md`): protocols, pure functions, use cases, routing, startup, and required tests.
 - Add frontend component specs: app state machine, auth state machine, repo services, HTTP client chain.
 
