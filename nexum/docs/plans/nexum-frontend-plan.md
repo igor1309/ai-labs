@@ -6,7 +6,7 @@ description: "Implementation plan: Nexum frontend core — state machines, servi
 
 # Nexum Frontend Implementation Plan
 
-Implements the five frontend specs (`nexum-app-state-machine.md`, `nexum-auth-state-machine.md`, `nexum-repo-services.md`, `nexum-auth-services.md`, `nexum-http-client-chain.md`) and the UX spec (`nexum-ux-spec-v1.md`) against the architecture defined in the frontend ADR (`nexum-frontend-adr-v0_2_0.md`), auth ADR (`nexum-frontend-auth-adr-v0_1_0.md`), and stack ADR (`nexum-stack-adr-v0_1_0.md`).
+Implements the five frontend specs (`nexum/docs/specs/nexum-app-state-machine.md`, `nexum/docs/specs/nexum-auth-state-machine.md`, `nexum/docs/specs/nexum-repo-services.md`, `nexum/docs/specs/nexum-auth-services.md`, `nexum/docs/specs/nexum-http-client-chain.md`) and the UX spec (`nexum/docs/nexum-ux-spec-v1.md`) against the architecture defined in the frontend ADR (`nexum/docs/ADR/nexum-frontend-adr-v0_2_0.md`), auth ADR (`nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md`), and stack ADR (`nexum/docs/ADR/nexum-stack-adr-v0_1_0.md`).
 
 ## Goal
 
@@ -62,6 +62,45 @@ Preflight check: [ ] done
 - No changes to the OpenAPI contract or any ADR.
 - No modifications to `swift-imrx` — use `IMRxObservation` as-is.
 
+## ADR traceability matrix
+
+| ADR invariant | Source | Phase |
+|---|---|---|
+| Frontend core is a Swift package | `nexum/docs/ADR/nexum-stack-adr-v0_1_0.md` | Phase 1 |
+| Web UI is Swift-to-WASM with JavaScriptKit and no additional framework | `nexum/docs/ADR/nexum-stack-adr-v0_1_0.md` | Phase 1, 7, 8 |
+| Observation replaces Combine for the reactive layer | `nexum/docs/ADR/nexum-stack-adr-v0_1_0.md` | Phase 1, 2, 3, 7 |
+| Reducers are pure; effect handlers own async orchestration | `nexum/docs/ADR/nexum-frontend-adr-v0_2_0.md` | Phase 2, 3 |
+| Client-owned collaborator protocols define the async surface | `nexum/docs/ADR/nexum-frontend-adr-v0_2_0.md`, `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` | Phase 2, 3 |
+| Services depend only on `HTTPClient` | `nexum/docs/ADR/nexum-frontend-adr-v0_2_0.md` | Phase 4, 5 |
+| Signing and auth interception are `HTTPClient` decorators | `nexum/docs/ADR/nexum-frontend-adr-v0_2_0.md`, `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` | Phase 6, 8 |
+| Auth is a top-level state machine and the app machine exists inside authenticated state | `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` | Phase 3, 7, 8 |
+| Token persistence is a decorator, not collaborator responsibility | `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` | Phase 8 |
+| Composition root is two-phase | `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` | Phase 8 |
+| No token refresh in v1 | `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` | Scope guardrails, Phase 6, 8 |
+
+## Execution gates
+
+Every phase is executed one at a time and must satisfy all of the following before the next phase starts:
+
+- Preflight passes in the required separate worktree and branch.
+- Phase-specific automated checks pass.
+- The full frontend test suite is green before advancing.
+- Self-review against the approved specs, ADRs, and this plan passes.
+- The phase ends with an independent commit boundary.
+- The plan tracker is updated with verified completion evidence.
+- Work stops for review approval before the next phase begins.
+
+## Parallelization note
+
+Primary execution remains sequential by phase and gate.
+
+Independent implementation work may proceed in parallel only after prerequisite phases are green:
+
+- Phase 2 and Phase 3 can proceed in parallel after Phase 1.
+- Phase 5 can proceed after Phase 3 and Phase 4 are green.
+- Phase 6 can proceed after Phase 4 is green.
+- Phase 7 and Phase 8 remain sequential integration phases.
+
 ## Phase 1 — Swift Package Setup & Toolchain Validation
 
 **Objective**: Establish the Swift package structure for the frontend core and validate that the WASM compilation target works end-to-end with JavaScriptKit. De-risk the stack ADR's WASM premise before writing any domain code.
@@ -87,7 +126,7 @@ Preflight check: [ ] done
 
 **Objective**: Implement the app state machine — all types, pure reducer, effect handler with collaborator protocols, and the filtered/sorted view function. This is the core domain model that everything else plugs into.
 
-Spec: `nexum-app-state-machine.md`
+Spec: `nexum/docs/specs/nexum-app-state-machine.md`
 
 **Key work items**:
 - Define types: `RepoEntry`, `AppError`, `OperationState`, `QueryState`, `SortColumn`, `SortDirection`, `AppState`, `AppAction`, `AppEffect`.
@@ -109,7 +148,7 @@ Spec: `nexum-app-state-machine.md`
 
 **Objective**: Implement the auth state machine — auth types, pure reducer, effect handler with collaborator protocols, and the in-memory token cache. The auth state machine is the top-level state machine; the app state machine lives inside its `authenticated` phase.
 
-Spec: `nexum-auth-state-machine.md`
+Spec: `nexum/docs/specs/nexum-auth-state-machine.md`
 
 **Key work items**:
 - Define types: `AuthState`, `AuthPhase`, `AuthResult`, `AuthError`, `Token`, `AuthAction`, `AuthEffect`.
@@ -133,7 +172,7 @@ Spec: `nexum-auth-state-machine.md`
 
 **Objective**: Define the `HTTPClient` protocol (the shared async surface for all services) and implement the three repo services that map collaborator protocol calls to REST endpoints.
 
-Spec: `nexum-repo-services.md`
+Spec: `nexum/docs/specs/nexum-repo-services.md`
 
 **Key work items**:
 - Define `HTTPClient` protocol: `HTTPRequest`, `HTTPMethod`, `HTTPResult`, `HTTPClientError` — owned by the services module.
@@ -155,7 +194,7 @@ Spec: `nexum-repo-services.md`
 
 **Objective**: Implement `LoginService` — the single auth service that maps the `Authenticator` protocol to `POST /auth/login`.
 
-Spec: `nexum-auth-services.md`
+Spec: `nexum/docs/specs/nexum-auth-services.md`
 
 **Key work items**:
 - Implement `LoginService` conforming to `Authenticator` (behavior rules 1–10).
@@ -174,7 +213,7 @@ Spec: `nexum-auth-services.md`
 
 **Objective**: Implement `SigningAdapter` and `AuthInterceptor` as `HTTPClient`-conforming decorators. These are composition-root-level types, not part of the auth or services modules.
 
-Spec: `nexum-http-client-chain.md`
+Spec: `nexum/docs/specs/nexum-http-client-chain.md`
 
 **Key work items**:
 - Implement `SigningAdapter`: injects Bearer token via async `tokenProvider` closure (behavior rules 1–6).
@@ -193,7 +232,7 @@ Spec: `nexum-http-client-chain.md`
 
 **Objective**: Build the web UI using JavaScriptKit and Observation. The UI renders auth and app state machine states and dispatches actions — it knows nothing about services, effects, or the network.
 
-Spec: `nexum-ux-spec-v1.md`, ADR: `nexum-frontend-adr-v0_2_0.md` (UI section), `nexum-frontend-auth-adr-v0_1_0.md` (UI section)
+Spec: `nexum/docs/nexum-ux-spec-v1.md`, ADR: `nexum/docs/ADR/nexum-frontend-adr-v0_2_0.md` (UI section), `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` (UI section)
 
 **Key work items**:
 - Auth-driven routing: observe `authModel.state.phase` — `resolving` → loading/splash, `unauthenticated`/`authenticating` → login surface, `authenticated` → app surface.
@@ -212,15 +251,18 @@ Spec: `nexum-ux-spec-v1.md`, ADR: `nexum-frontend-adr-v0_2_0.md` (UI section), `
 
 **Risks**: JavaScriptKit DOM manipulation API may require workarounds. `@Observable` tracking behavior on WASM target may differ from native — Phase 1 de-risked the toolchain, and domain logic is already tested in Phases 2–6.
 
-**Validation**: Manual browser testing of all UX spec behaviors. Automated tests where feasible (rendering logic that doesn't require a browser).
+**Validation**:
+- Automated browser-level tests cover auth routing, login submit and error handling, repo table render, sort, search, add repo, inline note edit, duplicate highlight, and empty states.
+- Automated UI-level tests cover rendering helpers and DOM-state mapping that do not require a browser runtime.
+- Manual browser testing is supplemental smoke validation only after automated checks are green.
 
-**Completion signal**: All UX spec behaviors verified in a browser: login → table renders → search/sort works → add repo → inline edit → duplicate highlight → empty states.
+**Completion signal**: UX-critical automated browser tests pass, supporting UI-level tests pass, and optional manual smoke validation matches expected behavior.
 
 ## Phase 8 — Composition Root & Integration
 
 **Objective**: Wire the two-phase composition root that assembles all components and validates the end-to-end flow.
 
-ADR: `nexum-frontend-auth-adr-v0_1_0.md` (Composition Root section)
+ADR: `nexum/docs/ADR/nexum-frontend-auth-adr-v0_1_0.md` (Composition Root section)
 
 **Key work items**:
 - **Phase 1 (boot)**: construct `InMemoryTokenCache`, auth collaborators (`SessionResolver` with localStorage persistence decorator, `LoginService` with bare `HTTPClient`), auth effect handler closure, auth `ObservableModel<AuthState, AuthAction, AuthEffect>`. Dispatch `authModel.event(.boot)`.
@@ -235,14 +277,17 @@ ADR: `nexum-frontend-auth-adr-v0_1_0.md` (Composition Root section)
 
 **Risks**: Two-phase composition wiring is the integration point where all module boundaries meet. Mitigated by each module being independently tested.
 
-**Validation**: Integration test passing. End-to-end manual test: fresh load (no token) → login → table loads → add repo → edit note → search/sort → logout → re-login → session persists across reload.
+**Validation**:
+- Automated integration tests cover boot with no persisted token, boot with a valid persisted token, login flow, initial repo load, session-lost teardown on 401, and app graph rebuild after re-authentication.
+- Full frontend test suite is green in CI.
+- Manual end-to-end browser testing is supplemental only.
 
-**Completion signal**: Full test suite green (`swift test`). WASM build succeeds. End-to-end flow verified in browser.
+**Completion signal**: Integration and browser tests pass, the full frontend suite is green, and the WASM build succeeds.
 
 ## Done criteria
 
 - All five frontend specs are fully implemented with every enumerated test passing.
-- All UX spec behaviors are verified in a browser.
+- UX-critical flows are enforced by automated browser and integration tests, with manual browser checks limited to smoke validation.
 - `swift test` passes (full native test suite).
 - WASM build succeeds and the app loads in a browser.
 - Two-phase composition root wires all components per the auth ADR.
