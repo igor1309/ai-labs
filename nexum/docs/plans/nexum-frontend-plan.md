@@ -49,7 +49,7 @@ Test infrastructure: `withMainSerialExecutor` from `swift-concurrency-extras` fo
 Worktree required: yes
 Expected worktree: worktrees/nexum-frontend
 Expected branch: codex/nexum-frontend
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
