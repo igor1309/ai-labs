@@ -12,6 +12,9 @@ category: adr
 ## Status
 Accepted.
 
+## Executive Summary
+The capture system is split into four layers: ingress adapter, capture service, storage interface, and storage implementation. Telegram is the first ingress; GitHub and Supabase are storage implementations. The capture service MUST NOT be coupled to transport or storage specifics. Read, edit, and reader-client flows are explicitly out of scope.
+
 ## Context
 The system starts with Telegram as the first ingress and a GitHub-backed inbox repository as the first concrete persistence target.
 
@@ -28,6 +31,11 @@ Future expansion is expected:
 - tags
 - other storage implementations
 - possible reader/editor clients decoupled from capture
+
+### Rejected alternatives
+- **Capture service owns GitHub concerns**: rejected because it couples the domain to one storage representation.
+- **Markdown as the canonical artifact**: rejected because markdown is only one possible representation.
+- **Storage identity as part of the canonical item**: rejected because identity belongs to storage implementation, not capture semantics.
 
 ## Decision
 The system is split conceptually into the following parts:
@@ -86,7 +94,7 @@ The item supports at least:
 - common captured fields at top level
 - source-specific captured fields nested under a source-specific block
 
-The item does not include:
+The item MUST NOT include:
 - storage identity
 - markdown representation
 - GitHub commit data
@@ -96,7 +104,7 @@ The item does not include:
 ## URL handling
 Primary URL handling:
 - only canonical URL is stored
-- transport junk such as `utm_*` should be removed
+- transport junk such as `utm_*` MUST be removed
 - semantically meaningful query components should be preserved
 
 Secondary URLs inside note text:
@@ -111,7 +119,7 @@ Rules:
 - GitHub repository root links receive repository-oriented enrichment
 - non-root GitHub links fall back to generic web handling
 - generic web links may capture title and short description if trivially available
-- if enrichment fails, persistence still proceeds
+- if enrichment fails, persistence MUST still proceed
 - enrichment outcome must be recorded explicitly
 
 ## Persistence semantics
@@ -136,12 +144,9 @@ No deduplication or update behavior is required.
 - projection differences across storage implementations may need separate tests
 - minimal Telegram parsing still needs careful edge-case handling
 
-## Rejected directions
-### Capture service owns GitHub concerns
-Rejected because it couples the domain to one storage representation.
-
-### Markdown as the canonical artifact
-Rejected because markdown is only one possible representation.
-
-### Storage identity as part of the canonical item
-Rejected because identity belongs to storage implementation, not capture semantics.
+## Non-Goals
+- Read, search, filter, or editor flows for captured items.
+- Tag modeling or item categorization beyond the capture act.
+- Deduplication or update semantics in v1.
+- Markdown as a domain artifact.
+- Structured modeling of secondary URLs in v1.

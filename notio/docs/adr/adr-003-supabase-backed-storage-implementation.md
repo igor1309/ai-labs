@@ -12,7 +12,12 @@ category: adr
 ## Status
 Accepted.
 
+## Executive Summary
+Supabase is adopted as a concrete storage adapter behind the storage interface defined in ADR-001. The adapter owns schema, identity, row mapping, and vendor semantics; the capture service MUST NOT know Supabase specifics. V1 uses one main table with common fields as columns and source-specific data as JSON.
+
 ## Context
+> This ADR supersedes `pre-adr-supabase-storage-implementation.md`, retained for historical context.
+
 The capture service depends on a storage interface and submits a canonical captured item for persistence.
 For the capture flow, the service requires only a success-or-failure outcome.
 It does not perform reads as part of capture.
@@ -42,6 +47,13 @@ The v1 persistence model uses:
 
 The canonical item remains the semantic source of truth for what is being stored.
 The database schema is an implementation detail of the adapter.
+
+## Rules / Invariants
+- The capture service MUST NOT know table layout, Supabase APIs, identity generation, query semantics, or migration concerns.
+- The storage adapter MUST expose only success or failure to the capture service.
+- Storage identity MUST NOT appear in the canonical captured item.
+- The canonical item MUST remain the semantic source of truth; schema is an adapter implementation detail.
+- Source-specific JSON payload MUST NOT silently grow new top-level keys; additions MUST be reviewed before use.
 
 ## Why this shape
 ### Keep the service boundary clean

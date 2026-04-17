@@ -9,6 +9,8 @@ category: pre-adr
 
 # Pre-ADR: Supabase-Backed Storage Implementation
 
+> Superseded by [ADR-003](adr-003-supabase-backed-storage-implementation.md). Retained for historical context only.
+
 ## Context
 The capture service depends on a storage interface.
 The service submits a canonical captured item and only needs success or failure for the capture flow.

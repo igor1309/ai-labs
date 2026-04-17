@@ -9,15 +9,8 @@ category: spec
 
 # Capture Message and Canonical Item Schema
 
-## Purpose
-This note defines:
-- the ingress message schema
-- normalization rules
-- the canonical captured item shape produced by the capture service
-
-This is a domain/specification note.
-It is not a storage representation spec.
-It does not define markdown layout, GitHub file layout, or database schema.
+## Goal
+Define the ingress message schema, normalization rules, and canonical captured item shape produced by the capture service; this spec excludes storage representation, markdown layout, GitHub file layout, and database schema.
 
 ## 1. Ingress message schema
 
@@ -131,6 +124,8 @@ For link items, `source_type` is determined from the primary URL.
 Initial values:
 - `github_repo`
 - `web_page`
+
+New `source_type` values MUST be added to this list before use in implementation.
 
 GitHub non-root links are accepted but treated as generic web links unless explicitly handled later.
 
@@ -253,3 +248,20 @@ Storage implementations may map the canonical item into:
 - markdown files in GitHub
 - rows/documents in Supabase
 - another representation later
+
+## Tests
+- Note-only message: `primary_url: null`, `note: <full text>`
+- Link-only message: `primary_url: <url>`, `note: null`
+- Link-with-note message: first URL → `primary_url`, remaining text → `note`
+- Message with multiple URLs: first URL → `primary_url`, remaining URLs stay inline in `note`
+- URLs with `utm_*` params stripped from `primary_url`
+- Semantically meaningful query params preserved in `primary_url`
+- `kind: note` when no primary URL; `kind: link` when primary URL present
+- `source_type: github_repo` for GitHub repository root URL; `source_type: web_page` otherwise
+- Enrichment failure sets `enrichment: failed`; item is still submitted to storage
+- Note-only item: `enrichment: none`, `source_type: null`, `source: {}`
+
+## Done criteria
+- Ingress message parsing implements all normalization rules in section 2
+- Canonical item shape matches the schema definition in section 3
+- All enumerated test cases pass
