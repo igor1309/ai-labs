@@ -61,10 +61,13 @@ When an effect handler has **multiple collaborators**, use a single test with a 
 
 ```swift
 func test_init_shouldNotCallCollaborators() {
-    let (_, spies) = makeSUT()
+    let (sut, spies) = makeSUT()
+    XCTAssertNotNil(sut)
     XCTAssertEqual(spies.callCounts, 0)  // sum of all spy callCounts
 }
 ```
+
+Use `XCTAssertNotNil(sut)` to retain the SUT for the duration of the test — without it, ARC may deallocate the SUT before assertions run, defeating `trackForMemoryLeaks`. When there is a single spy (no `Spies` struct), the same pattern applies:
 
 `Spies.callCounts` is a computed property that sums all spy `callCount` values. This ensures no collaborator is called prematurely, with a single readable assertion.
 
@@ -101,6 +104,56 @@ Tests that completion callbacks dispatch the correct events using expect() helpe
 - **Effect Handler**: Tests side effects and asynchronous collaborations using spy objects and expectations
 
 The Effect Handler pattern focuses on interaction testing rather than state mutation testing.
+
+### Spy Typealiases
+
+Define a private typealias for every spy type. This makes the `Spies` struct readable and clarifies each collaborator's contract at a glance:
+
+```swift
+private typealias RequestVerificationCodeSpy = Spy<Void, Event.Completion.VerificationCode>
+private typealias CreateFeedbackApplicationSpy = Spy<(Digest, String), Event.Completion.CreateFeedbackApplication>
+private typealias NotifyIncorrectOTPSpy = CallSpy<(Verification, String), Void>
+```
+
+### `Spy` vs `CallSpy`
+
+- `Spy<Payload, Response>` — async collaborator with a captured completion. Tests control when the completion fires via `complete(with:)`. Use when the handler dispatches an event in the completion callback.
+- `CallSpy<Payload, Response>` — synchronous collaborator that returns immediately. Use for fire-and-forget effects or collaborators whose return value is consumed inline.
+
+The choice follows from the domain: if there is a matching completion event, the collaborator is async (`Spy`). If the effect has no completion event, the collaborator is fire-and-forget (`CallSpy`).
+
+### Fire-and-Forget Effects
+
+When an effect has no corresponding completion event in the domain, the collaborator is synchronous — use `CallSpy`, not `Spy`. The handler calls the collaborator and returns without dispatching. Test coverage is a single "shouldCall" test verifying the payload:
+
+```swift
+func test_notifyIncorrectOTP_shouldCallNotifyIncorrectOTP() {
+
+    let verification = makeVerification()
+    let message = anyMessage()
+    let (sut, spies) = makeSUT()
+
+    sut.handleEffect(.notifyIncorrectOTP(verification: verification, message: message)) { _ in }
+
+    XCTAssertNoDiff(spies.notifyIncorrectOTP.payloads.map(\.0), [verification])
+    XCTAssertNoDiff(spies.notifyIncorrectOTP.payloads.map(\.1), [message])
+}
+```
+
+### Hide What the Test Doesn't Assert On
+
+If a test asserts on `digest`, the `otp` parameter should come from a randomized default (`anyMessage()`), not a named variable. Factory helpers with randomized defaults achieve this — tests read as "given X, expect Y" with no noise:
+
+```swift
+// good — only the asserted value is named
+let verification = makeVerification()
+sut.handleEffect(.notifyIncorrectOTP(verification: verification, message: anyMessage())) { _ in }
+
+// bad — unnecessary named variable adds noise
+let verification = makeVerification()
+let message = anyMessage()  // not asserted on, shouldn't be named
+sut.handleEffect(.notifyIncorrectOTP(verification: verification, message: message)) { _ in }
+```
 
 ### Struct Boundaries For Collaborator Interfaces
 
