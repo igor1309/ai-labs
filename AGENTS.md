@@ -263,6 +263,10 @@ This applies to: Dockerfile changes, .dockerignore changes, Package.swift/Packag
 
 Do not push changes that affect the Docker path without a local `docker build` pass. CI deploys cost time and money — catch failures locally first.
 
+## Swift on Linux: ByteBuffer ≠ Data
+
+Foundation APIs (`JSONSerialization`, `JSONDecoder`, etc.) do not accept `ByteBuffer` on Linux. macOS may bridge implicitly, but Linux will not — this causes Docker build failures. Always convert via `Data(ByteBufferView(buffer))`. Do not use `NIOFoundationCompat`.
+
 ## Infrastructure Topology
 
 Do not assume that services share or do not share a VPS, ports, or any other infrastructure. If topology matters for the task (e.g., port selection, deploy targets, shared filesystems), verify from docs/ADRs or ask — never presume.
