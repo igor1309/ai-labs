@@ -60,7 +60,7 @@ Trigger strict TDD mode when the user explicitly asks for TDD, RED/GREEN, or equ
 - Stop after RED and wait for explicit user approval to continue to GREEN, unless the user explicitly asks to auto-continue.
 - GREEN means minimum production code only for the current failing test.
 - Do not add extra behavior, scaffolding, defaults, or refactors in GREEN unless required by the failing test.
-- Run tests via `./scripts/run_silent.sh "tests" npm test`.
+- Run tests via the changed unit's native test command. Use `./scripts/run_silent.sh "tests" npm test` for Node/TypeScript scopes covered by the root suite.
 
 ## No-Junk Scope Lock
 
@@ -78,7 +78,9 @@ Before each commit:
 
 1. Verify every changed file is directly tied to the current step.
 2. Verify no out-of-scope files were added.
-3. Run `./scripts/run_silent.sh "tests" npm test`.
+3. Run the required verification for the changed scope:
+   - `./scripts/run_silent.sh "tests" npm test` for Node/TypeScript or repo-wide integration changes covered by the root suite
+   - native unit checks such as `swift test` / `swift build` for Swift-only scopes
 
 ## Step closeout protocol
 
@@ -130,13 +132,17 @@ When creating implementation plans (especially from review findings), the plan m
 2. Start from a new separate git worktree with a dedicated branch when required by the plan.
 3. Require preflight verification before Step 1; if preflight fails, halt immediately.
 4. Execute one step at a time with a green gate per step.
-5. For each step, run required targeted tests and full suite `./scripts/run_silent.sh "tests" npm test`.
+5. For each step, run the required targeted verification for the changed unit.
+   - Use `./scripts/run_silent.sh "tests" npm test` when the step changes Node/TypeScript scope covered by the root suite or cross-project integration covered by that suite.
+   - Use native unit verification such as `swift test` / `swift build` for Swift-only scopes.
 6. Proceed only if green; if tests fail, fix first and re-run until green.
 7. Commit step changes only after green.
 8. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
 9. Mark implemented step status in the plan and commit the plan status update.
 10. Repeat the same process for each next step.
-11. At completion, run final gates: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
+11. At completion, run the final gates required by the changed scope.
+   - Node/TypeScript or cross-project integration touching the root suite: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`
+   - Swift-only scope: native final gates such as `swift build` and `swift test`
 12. Move completed plan from `docs/plans/` to `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/` for project-scoped plans), commit the move, and create a PR.
 
 ## Release Process
@@ -160,7 +166,9 @@ Release policy is outcome-based, per-unit, and governed by ADR-000 through ADR-0
 - **Release notes**: add exactly one new top entry in the release-scope log (`docs/log.md` for repo-level releases, `<project>/docs/log.md` for project releases) at the top of the current date section, if present, scoped to that reviewed delta.
 - **Version consistency**: canonical version in the unit's metadata file and the release tag `<basename>_v<version>` must match.
 - **Push safety**: push only `trunk` and the explicit release tag; never `git push --tags`.
-- **Pre-push gate**: run BOTH `./scripts/run_silent.sh "build" npx tsc --noEmit` AND `./scripts/run_silent.sh "tests" npm test` before tagging.
+- **Pre-push gate**: run the release unit's required build and test verification before tagging.
+  - Node/TypeScript units or root-suite integration releases: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`
+  - Swift-only units: native verification such as `swift build` and `swift test`
 - **Deployment gate**: releases deploy via CI on tag push after tests pass.
 - **Post-push verification**: after pushing the tag, watch the Release Unit workflow with `gh run list` or `gh run watch`. Confirm CI and release-unit jobs pass before declaring the release complete.
 - **CI trigger**: `.github/workflows/release-unit.yml` is a post-tag pipeline that verifies, tests, and deploys. Release detection (`detect-releases.js`) and tag creation (`create-tags.js`) are operator-run scripts.
@@ -199,19 +207,19 @@ Each project must have its own Nomos project and API key. Do not reuse Nomos key
 
 ## Context-Efficient Commands
 
-Use `scripts/run_silent.sh` to run tests and builds. It suppresses output on success (one-line summary) and only dumps full output on failure. This keeps the context window clean.
+Use `scripts/run_silent.sh` for Node/TypeScript tests and builds covered by the root suite. It suppresses output on success (one-line summary) and only dumps full output on failure. This keeps the context window clean.
 
 `scripts/run_silent.sh` is a stable local wrapper that delegates to `vendor/ci-shared/scripts/run_silent.sh`, pinned to a specific `ci-shared` commit.
 
 ```bash
-# Tests
+# Node/TypeScript tests
 ./scripts/run_silent.sh "tests" npm test
 
-# Build / typecheck
+# Node/TypeScript build / typecheck
 ./scripts/run_silent.sh "build" npx tsc --noEmit
 ```
 
-Do NOT run `npm test` or `npx tsc` directly — always use the wrapper.
+Do NOT run `npm test` or `npx tsc` directly — always use the wrapper for Node/TypeScript scopes. Use the unit's native toolchain commands for non-Node scopes such as Swift.
 
 ## Composition Root
 
