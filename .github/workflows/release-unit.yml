@@ -277,7 +277,7 @@ jobs:
           host: ${{ secrets.NOTIO_VPS_HOST }}
           username: ${{ secrets.NOTIO_VPS_USER }}
           key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
-          source: "notio/.dockerignore,notio/Dockerfile,notio/Package.swift,notio/Package.resolved,notio/Sources,notio/docker-compose.yml,notio/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
+          source: "notio/.dockerignore,notio/Dockerfile,notio/Package.swift,notio/Package.resolved,notio/Sources,notio/Tests,notio/docker-compose.yml,notio/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
           target: /tmp/notio-deploy
           strip_components: 1
 
