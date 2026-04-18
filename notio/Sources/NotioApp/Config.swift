@@ -1,12 +1,12 @@
 import Foundation
 
-struct Config {
-    let port: Int
-    let version: String
-    let webhookPath: String
-    let diagnosticMode: DiagnosticMode?
+public struct Config: Sendable {
+    public let port: Int
+    public let version: String
+    public let webhookPath: String
+    public let diagnosticMode: DiagnosticMode?
 
-    init(
+    public init(
         port: Int = 8080,
         version: String = "dev",
         webhookPath: String,
@@ -18,7 +18,7 @@ struct Config {
         self.diagnosticMode = diagnosticMode
     }
 
-    static func fromEnvironment() -> Config {
+    public static func fromEnvironment() -> Config {
         let port = Int(ProcessInfo.processInfo.environment["NOTIO_PORT"] ?? "") ?? 8080
         let version = ProcessInfo.processInfo.environment["NOTIO_VERSION"] ?? "dev"
         let webhookPath = ProcessInfo.processInfo.environment["NOTIO_WEBHOOK_PATH"] ?? "webhook"
@@ -29,10 +29,10 @@ struct Config {
     }
 }
 
-enum DiagnosticMode: Equatable {
+public enum DiagnosticMode: Equatable, Sendable {
     case ack
 
-    init?(rawValue: String) {
+    public init?(rawValue: String) {
         switch rawValue {
         case "ack": self = .ack
         default: return nil

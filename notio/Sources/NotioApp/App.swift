@@ -1,7 +1,7 @@
 import Hummingbird
 import Logging
 
-func buildApp(config: Config) -> some ApplicationProtocol {
+public func buildApp(config: Config) -> some ApplicationProtocol {
     let logger = makeLogger(label: "notio")
     let router = Router()
     addHealthRoute(to: router)
