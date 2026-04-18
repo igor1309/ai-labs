@@ -12,7 +12,7 @@ struct HealthRouteTests {
         try await app.test(.router) { client in
             try await client.execute(uri: "/health", method: .get) { response in
                 #expect(response.status == .ok)
-                let body = try JSONDecoder().decode(HealthResponse.self, from: Data(buffer: response.body))
+                let body = try JSONDecoder().decode(HealthResponse.self, from: Data(response.body.readableBytesView))
                 #expect(body.status == "ok")
             }
         }
