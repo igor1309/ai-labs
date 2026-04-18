@@ -2,6 +2,8 @@
 
 ## 2026-04-18
 
+- Added `notio-core.yml` CI workflow and wired it into `ci.yml` path-filter dispatch — notio tests now run on PRs in a `swift:6.1` Linux container, catching platform-specific failures before merge.
+
 - Split shared `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` CI secrets into per-project `NOMOS_VPS_*` and `NOTIO_VPS_*` in `release-unit.yml` — nomos deploys to 95.164.53.144, notio deploys to 107.172.143.196.
 
 ## 2026-04-06
