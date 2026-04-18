@@ -91,6 +91,26 @@ targets: [.core, .thisFeature, .tests]
   - `byName()` for internal targets
   - `product()` for external packages
 
+## Known Pitfall: `Package.Dependency` circular reference
+
+Inside `private extension Package.Dependency`, calling `package(url:from:)` causes a **circular reference** compiler error because Swift resolves `package` as the global `let package = Package(...)` variable rather than the static factory method.
+
+**Fix:** use fully-qualified `Package.Dependency.package(url:from:)`:
+
+```swift
+// ❌ Circular reference — `package` resolves to the global `let package`
+private extension Package.Dependency {
+    static let alamofire = package(url: "https://...", from: "5.8.0")
+}
+
+// ✅ Correct — explicit type qualification forces static method resolution
+private extension Package.Dependency {
+    static let alamofire = Package.Dependency.package(url: "https://...", from: "5.8.0")
+}
+```
+
+This applies to all `Package.Dependency` factory variants: `package(url:from:)`, `package(url:exact:)`, `package(path:)`, etc.
+
 ## Templates
 
 ### Single Product Package
