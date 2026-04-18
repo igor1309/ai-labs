@@ -20,49 +20,70 @@ version: 0.0.1
 | Invariant | Source | Step |
 |---|---|---|
 | Tag format `notio_v<version>` on trunk | ADR-005 (notio), ADR-003 (repo) | verify (existing) |
-| Tests before artifact | ADR-005 (notio) | 2 |
-| No deploy on red | ADR-005 (notio) | 2, 3 |
-| Docker image tagged with `<version>` and `<git-sha>` | ADR-006 (repo) | 3 |
-| Build and tag locally on VPS | ADR-006 (repo) | 3 |
-| Deploy via SSH | ADR-005 (notio) | 3 |
-| Verify health + version == tag | ADR-005 (notio), bring-up plan | 3 |
-| Telegram notification on failure | existing pattern | 4 |
+| Tests before artifact | ADR-005 (notio) | 3 |
+| No deploy on red | ADR-005 (notio) | 3, 4 |
+| Docker image tagged with `<version>` and `<git-sha>` | ADR-005 (notio), ADR-006 (repo) | 1, 4 |
+| Build and tag locally on VPS | ADR-005 (notio), ADR-006 (repo) | 1, 4 |
+| Deploy via SSH | ADR-005 (notio) | 4 |
+| Verify health + version == tag | ADR-005 (notio), bring-up plan | 4 |
+| Telegram notification on failure | existing pattern | 5 |
 
 ## Decisions (confirmed)
 
 1. **Dedicated `test-notio` job** conditional on `basename == 'notio'`; skip the Node `core` job for notio tags.
 2. **Build Docker on VPS** — SCP source, build locally, no registry. Per ADR-006 ("Registry publishing is deferred; current deployment builds and tags images locally on the VPS").
 3. **No staging** — single deploy target for the first bring-up. Staging can be added later.
+4. **ADR alignment first** — update notio ADR-005 to match the repo-level ADR-006 policy and the existing nomos release-unit deployment shape before changing the workflow plan.
 
 ## Steps
 
-### Step 1: Add notio deploy script and docker-compose
+### Step 1: Align ADR-005 with the chosen deploy shape
 
-Create `notio/scripts/deploy.sh` and `notio/docker-compose.yml` for VPS deployment.
+Update `notio/docs/adr/adr-005-tag-driven-cicd-to-vps.md` so the notio release contract matches the repo-level Docker release policy and the existing nomos implementation pattern in `.github/workflows/release-unit.yml`.
+
+- Replace the registry-based wording with the actual release shape: CI runs tests, copies deploy context to the VPS, builds and tags the Docker image locally on the VPS, deploys over SSH, then verifies health and version.
+- Cite ADR-006 for `<version>` and `<git-sha>` image tags.
+- Cite the existing nomos release-unit workflow as the precedent for this repo.
+
+**Verification:** Manual doc review confirms ADR-005 is internally consistent and no longer contradicts ADR-006 or the planned notio workflow.
+
+**Commit:** `align notio adr-005 with vps-local image build policy`
+
+---
+
+### Step 2: Add notio deploy script, docker-compose, and env example
+
+Create `notio/scripts/deploy.sh`, `notio/docker-compose.yml`, and `notio/.env.example` for VPS deployment.
 
 **`notio/docker-compose.yml`** — single service, no reverse proxy (Cloudflare Tunnel handles ingress, wired in step 5):
 - Service `notio` built from Dockerfile with `VERSION` build arg
 - Container name `notio`
 - Restart policy `unless-stopped`
-- Env file `.env`
+- Runtime config stays environment-driven; compose reads `.env` so `NOTIO_WEBHOOK_PATH` and future overrides come from the environment
 - Publish port 8080 on host (`ports: ["8080:8080"]`) so CI can verify from host
 - Logging labels
+
+**`notio/.env.example`** — documents the required runtime environment and supports local compose validation without real secrets:
+- Includes placeholder but structurally valid values for required keys, at minimum `NOTIO_WEBHOOK_PATH=test-webhook`
+- May include optional documented overrides such as `NOTIO_PORT=8080`
+- VPS operators copy this shape to `/opt/notio/.env` and replace placeholders before the first real deploy
 
 **`notio/scripts/deploy.sh`** — called via SSH on VPS, expects env vars `NOTIO_VERSION` and `NOTIO_GIT_SHA`:
 - Creates `/opt/notio` if missing
 - Copies files from `/tmp/notio-deploy` to `/opt/notio`
 - Builds Docker image with version arg: `docker build --build-arg VERSION=$NOTIO_VERSION -t notio:$NOTIO_VERSION -t notio:$NOTIO_GIT_SHA .`
 - Tags current running image as `notio:rollback` before replacing
+- Fails fast with a clear error if `/opt/notio/.env` is missing on the VPS
 - Runs `docker compose down && docker compose up -d`
 - Waits and checks health
 
-**Verification:** Script is syntactically valid (`bash -n`), compose validates (`docker compose config`).
+**Verification:** Script is syntactically valid (`bash -n`), compose validates against a local copy of `.env.example` (`cp notio/.env.example notio/.env && docker compose -f notio/docker-compose.yml config`), then remove the temporary `notio/.env`.
 
 **Commit:** `add notio deploy script and docker-compose for VPS`
 
 ---
 
-### Step 2: Add `test-notio` job to `release-unit.yml`
+### Step 3: Add `test-notio` job to `release-unit.yml`
 
 Add a new job to `.github/workflows/release-unit.yml`:
 
@@ -97,7 +118,7 @@ core:
 
 ---
 
-### Step 3: Add `deploy-notio` job to `release-unit.yml`
+### Step 4: Add `deploy-notio` job to `release-unit.yml`
 
 Add the deploy job, conditional on `basename == 'notio'`, depending on `test-notio` and `verify`:
 
@@ -179,7 +200,7 @@ Notes:
 
 ---
 
-### Step 4: Update `github-release` and `notify` job conditions
+### Step 5: Update `github-release` and `notify` job conditions
 
 Update the downstream jobs to include notio:
 
@@ -190,6 +211,7 @@ github-release:
   needs: [core, verify, test-notio, deploy-nomos-staging, deploy-nomos-prod, deploy-notio]
   if: >-
     ${{ always() && !cancelled()
+    && needs.verify.result == 'success'
     && (needs.core.result == 'success' || needs.core.result == 'skipped')
     && (needs.test-notio.result == 'success' || needs.test-notio.result == 'skipped')
     && needs.deploy-nomos-staging.result != 'failure'
@@ -213,6 +235,15 @@ notify:
     || needs.deploy-notio.result == 'failure'
     || needs.github-release.result == 'failure')
     }}
+  with:
+    job_results: |
+      verify=${{ needs.verify.result }}
+      core=${{ needs.core.result }}
+      test-notio=${{ needs.test-notio.result }}
+      deploy-nomos-staging=${{ needs.deploy-nomos-staging.result }}
+      deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
+      deploy-notio=${{ needs.deploy-notio.result }}
+      github-release=${{ needs.github-release.result }}
 ```
 
 **Verification:** Workflow YAML is valid.
@@ -225,7 +256,7 @@ notify:
 
 - [ ] Workflow YAML validates (actionlint or manual review)
 - [ ] `swift test` passes locally for notio
-- [ ] All changed files are scoped to: `notio/scripts/`, `notio/docker-compose.yml`, `.github/workflows/release-unit.yml`
+- [ ] All changed files are scoped to: `notio/docs/adr/adr-005-tag-driven-cicd-to-vps.md`, `notio/scripts/`, `notio/docker-compose.yml`, `notio/.env.example`, `.github/workflows/release-unit.yml`
 - [ ] Plan moved to `notio/docs/plans/implemented/`
 - [ ] Log updated
 - [ ] PR created against trunk
@@ -233,7 +264,7 @@ notify:
 ## Open Questions
 
 1. **VPS directory** — Deploy target is `/opt/notio`. The deploy script creates it if missing (`mkdir -p`).
-2. **`.env` file on VPS** — The docker-compose references `env_file: .env`. This file must be manually placed at `/opt/notio/.env` before first deploy. Contents TBD (at minimum: any Telegram secrets needed later). Could use `env_file` with `required: false` in compose to avoid failure on first deploy if no env vars are needed yet.
+2. **Runtime env ownership** — Step 4 should document the required env shape in `notio/.env.example`, but the real `/opt/notio/.env` on the VPS must still be provisioned before the first deploy because `NOTIO_WEBHOOK_PATH` is required at runtime.
 
 ## Not in Scope
 

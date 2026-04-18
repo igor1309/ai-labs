@@ -16,7 +16,7 @@ Accepted
 ## Executive Summary
 
 Releases are triggered by a `notio_v<version>` Git tag, consistent with the repo-level per-unit release model (`docs/adr/release/`).
-CI runs tests, builds a Docker image on green, pushes to registry, deploys to VPS over SSH, and verifies the running service reports the exact release version.
+CI runs tests, copies the deploy context to the VPS, builds and tags the Docker image locally on the VPS on green, deploys over SSH, and verifies the running service reports the exact release version.
 The success condition is the deployed service reporting the expected version — not merely a successful container restart.
 Scope: notio release pipeline only — registry choice, rollback strategy, and secret management are not fixed here.
 
@@ -36,16 +36,19 @@ The required check is not merely that a container restarted or that an image exi
 
 The service is intended to run as a containerized workload on a VPS. The deployment target is a real runtime environment, not a separate test surface.
 
+The repo already uses this general shape for `nomos` in `.github/workflows/release-unit.yml`: CI copies deploy inputs to the VPS and the VPS performs the Docker build and tagging locally. Notio should follow that established release-unit pattern.
+
 ## Decision
 
 Use a tag-driven CI/CD pipeline with the following shape:
 
 1. a Git tag triggers the release workflow
 2. CI runs tests
-3. on green, CI builds a Docker image for the service
-4. CI pushes the image to a container registry
-5. CI connects to the VPS over SSH and deploys the tagged image
-6. CI verifies:
+3. on green, CI copies the deploy context to the VPS over SSH
+4. the VPS builds the Docker image for the service locally
+5. the VPS tags the image with the release version and git SHA
+6. CI deploys the newly tagged image on the VPS over SSH
+7. CI verifies:
    - the service is running
    - the service is reachable
    - the service reports a version equal to the triggering tag
@@ -79,30 +82,29 @@ The tag MUST follow the format `notio_v<version>` (e.g., `notio_v0.1.0`), consis
 
 ### Build gate
 
-The workflow must run tests before building and publishing the deployable artifact.
+The workflow must run tests before building and tagging the deployable artifact.
 
 If tests fail:
 
-- no artifact is published
+- no artifact is built or tagged
 - no deployment happens
 
 ### Artifact
 
 The deployable artifact is a Docker image.
 
-The image is tagged with the Git tag that triggered the workflow.
+The image is tagged locally on the VPS with:
 
-### Registry
+- the release version
+- the git SHA for the triggering revision
 
-CI pushes the built image to the selected container registry.
-
-The registry choice is an implementation detail. The ADR does not require a specific registry, only a versioned container image addressable by tag.
+This follows the repo-level Docker tagging policy in `docs/adr/release/ADR-006-docker-image-tagging-policy.md`.
 
 ### Deploy
 
 CI deploys to the VPS over SSH.
 
-The VPS updates to the newly tagged image and restarts the service.
+CI copies the deploy inputs to the VPS, invokes the VPS-local build and deploy script, and the VPS updates to the newly tagged image and restarts the service.
 
 Exact commands are implementation details, but the deployment must result in the VPS running the image corresponding to the triggering tag.
 
@@ -148,6 +150,7 @@ The version returned by the service must equal the Git tag that triggered the re
 - runtime verification confirms the actually running version
 - the release contract is simple and auditable
 - VPS state is validated from CI, not assumed
+- aligns with the existing `nomos` release-unit deployment shape in this repo
 
 ### Negative
 
@@ -155,6 +158,7 @@ The version returned by the service must equal the Git tag that triggered the re
 - the build/deploy pipeline must carry version information consistently into the running service
 - CI requires SSH-based deploy access to the VPS
 - the pipeline is responsible for rollout verification, not just artifact publication
+- the VPS must have Docker build capability because registry publishing is deferred
 
 ## Options considered
 
@@ -203,9 +207,9 @@ CI deploys to the VPS and checks container/process state, but does not verify th
 ## Rules / Invariants
 
 - The release workflow MUST be triggered only by a `notio_v<version>` Git tag on the trunk branch.
-- CI MUST run tests before building or publishing any artifact.
-- If tests fail, artifacts MUST NOT be published and deployment MUST NOT occur.
-- The Docker image MUST be tagged with the Git tag that triggered the workflow.
+- CI MUST run tests before building or tagging any artifact.
+- If tests fail, artifacts MUST NOT be built or tagged and deployment MUST NOT occur.
+- The Docker image MUST be tagged on the VPS with the release version and the git SHA for the triggering revision, consistent with ADR-006.
 - CI MUST verify that the deployed service is reachable and reports a version equal to the triggering tag.
 - The service MUST expose a health endpoint and a version endpoint to support deployment verification.
 - The version reported by the service MUST equal the triggering Git tag.
@@ -215,7 +219,6 @@ CI deploys to the VPS and checks container/process state, but does not verify th
 This ADR does not define:
 
 - exact CI provider workflow syntax
-- exact registry choice
 - exact Dockerfile structure
 - exact VPS deploy commands
 - rollback strategy
@@ -227,7 +230,7 @@ The selected release contract is:
 
 - tag triggers CI
 - CI runs tests
-- on green, CI builds and publishes the Docker image
+- on green, CI copies deploy inputs to the VPS and the VPS builds and tags the Docker image locally
 - CI deploys the tagged image to the VPS
 - CI verifies that the service is running and reports a version equal to the triggering tag
 
