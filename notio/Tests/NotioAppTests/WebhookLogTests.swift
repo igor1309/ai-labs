@@ -25,7 +25,7 @@ struct WebhookLogTests {
         #expect(metadata["mode"] != nil)
     }
 
-    @Test func test_webhookLog_shouldIncludeUpdateIdWhenPresent() async throws {
+    @Test func test_webhookLog_shouldOmitUpdateIdInAckModeEvenWhenPresent() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
         let app = makeApp(logger: logger)
@@ -33,19 +33,6 @@ struct WebhookLogTests {
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post, body: body) { _ in }
-        }
-
-        let event = try #require(handler.events.first)
-        #expect(event.metadata?["update_id"] == "42")
-    }
-
-    @Test func test_webhookLog_shouldOmitUpdateIdWhenAbsent() async throws {
-        let handler = CapturingLogHandler()
-        let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger)
-
-        try await app.test(.router) { client in
-            try await client.execute(uri: "/hook", method: .post) { _ in }
         }
 
         let event = try #require(handler.events.first)

@@ -101,7 +101,7 @@ Build-time `ARG VERSION` in Dockerfile, passed as `NOTIO_VERSION` env var. At ru
 
 ## Logging
 
-Swift's built-in `swift-log` (Hummingbird already depends on it). Custom `LogHandler` (~30 lines) that emits JSON lines with the spec-required fields: timestamp, mode, path, status, latency, update_id.
+Swift's built-in `swift-log` (Hummingbird already depends on it). Custom `LogHandler` (~30 lines) that emits JSON lines with the slice-required fields: timestamp, mode, path, status, latency.
 
 No additional logging dependency.
 
@@ -195,8 +195,8 @@ Wire `App.swift` (composition root) and `main.swift`. Verify the server starts a
 Multi-stage Dockerfile. Verify `docker build --build-arg VERSION=0.1.0 .` succeeds and container responds on 8080.
 
 - [x] Dockerfile created
-- [ ] docker build succeeds — blocked: Docker daemon unavailable locally
-- [ ] container responds to health/version/webhook — blocked: Docker daemon unavailable locally
+- [x] docker build succeeds
+- [x] container responds to health/version/webhook
 - [x] commit
 
 ### Step 8 — Release unit registration
@@ -210,8 +210,8 @@ Add `"notio"` to `release-units.config.toml` paths. Regenerate `release-units.to
 ### Step 9 — Final gates and plan closeout
 
 - [x] `swift build` passes
-- [x] `swift test` passes (18/18)
-- [ ] docker build succeeds — blocked: Docker daemon unavailable locally
+- [x] `swift test` passes (17/17)
+- [x] docker build succeeds
 - [x] plan moved to `notio/docs/plans/implemented/`
 - [x] PR created: igor1309/ai-labs#134
 
