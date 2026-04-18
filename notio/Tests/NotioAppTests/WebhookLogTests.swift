@@ -25,18 +25,45 @@ struct WebhookLogTests {
         #expect(metadata["mode"] != nil)
     }
 
-    @Test func test_webhookLog_shouldOmitUpdateIdInAckModeEvenWhenPresent() async throws {
+    @Test func test_normalMode_shouldLogUpdateId() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
         let app = makeApp(logger: logger)
-        let body = ByteBuffer(string: #"{"update_id":42}"#)
+        let body = ByteBuffer(string: #"{"update_id":42,"message":{"message_id":1,"chat":{"id":123},"date":0,"text":"hi"}}"#)
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post, body: body) { _ in }
         }
 
         let event = try #require(handler.events.first)
-        #expect(event.metadata?["update_id"] == nil)
+        #expect(event.metadata?["update_id"] == .string("42"))
+    }
+
+    @Test func test_normalMode_shouldLogChatId() async throws {
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let app = makeApp(logger: logger)
+        let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":456},"date":0,"text":"hi"}}"#)
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { _ in }
+        }
+
+        let event = try #require(handler.events.first)
+        #expect(event.metadata?["chat_id"] == .string("456"))
+    }
+
+    @Test func test_normalMode_shouldHandleInvalidJson() async throws {
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let app = makeApp(logger: logger)
+        let body = ByteBuffer(string: "not json")
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                #expect(response.status == .ok)
+            }
+        }
     }
 
     @Test func test_inspectMode_shouldReturn200() async throws {
