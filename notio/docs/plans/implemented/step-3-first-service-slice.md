@@ -2,7 +2,7 @@
 date: 2026-04-18
 model: claude-opus-4-6
 description: "Implementation plan for Step 3: first real Swift/Hummingbird service slice"
-status: draft
+status: implemented
 type: plan
 ---
 
@@ -133,7 +133,7 @@ Expose 8080. `ARG VERSION` → `ENV NOTIO_VERSION`.
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-step-3`
 - Expected branch: `codex/notio-step-3`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Steps
 
@@ -141,26 +141,26 @@ Expose 8080. `ARG VERSION` → `ENV NOTIO_VERSION`.
 
 Create `Package.swift` (use `swift-package-manifest` skill), empty `NotioServer` and `NotioApp` targets. Verify `swift build` compiles.
 
-- [ ] `Package.swift` created
-- [ ] `swift build` passes
-- [ ] commit
+- [x] `Package.swift` created
+- [x] `swift build` passes
+- [x] commit
 
 ### Step 2 — Config and version endpoint
 
 Implement `Config` (env-driven) and `GET /version` route. Test that version endpoint returns the configured version.
 
-- [ ] `Config.swift` implemented
-- [ ] `VersionRoute.swift` implemented
-- [ ] `VersionRouteTests.swift` passes
-- [ ] commit
+- [x] `Config.swift` implemented
+- [x] `VersionRoute.swift` implemented
+- [x] `VersionRouteTests.swift` passes
+- [x] commit
 
 ### Step 3 — Health endpoint
 
 Implement `GET /health`. Test response.
 
-- [ ] `HealthRoute.swift` implemented
-- [ ] `HealthRouteTests.swift` passes
-- [ ] commit
+- [x] `HealthRoute.swift` implemented
+- [x] `HealthRouteTests.swift` passes
+- [x] commit
 
 ### Step 4 — Webhook ack endpoint
 
@@ -169,51 +169,51 @@ Implement `POST /<secret-webhook-path>` with fast 200 `ok` ack. Test that:
 - unknown POST paths return 404
 - webhook path is config-driven
 
-- [ ] `WebhookRoute.swift` implemented
-- [ ] `WebhookRouteTests.swift` passes
-- [ ] commit
+- [x] `WebhookRoute.swift` implemented
+- [x] `WebhookRouteTests.swift` passes
+- [x] commit
 
 ### Step 5 — Structured logging
 
 Implement JSON `LogHandler`. Wire into `App`. Verify log output includes required fields on webhook requests.
 
-- [ ] `StructuredLogger.swift` implemented
-- [ ] logging verified in tests
-- [ ] commit
+- [x] `StructuredLogger.swift` implemented
+- [x] logging verified in tests
+- [x] commit
 
 ### Step 6 — App composition and entry point
 
 Wire `App.swift` (composition root) and `main.swift`. Verify the server starts and responds on port 8080.
 
-- [ ] `App.swift` wires routes and config
-- [ ] `main.swift` boots the server
-- [ ] manual or integration test confirms startup
-- [ ] commit
+- [x] `App.swift` wires routes and config
+- [x] `main.swift` boots the server
+- [x] manual or integration test confirms startup
+- [x] commit
 
 ### Step 7 — Dockerfile
 
 Multi-stage Dockerfile. Verify `docker build --build-arg VERSION=0.1.0 .` succeeds and container responds on 8080.
 
-- [ ] Dockerfile created
-- [ ] docker build succeeds
-- [ ] container responds to health/version/webhook
-- [ ] commit
+- [x] Dockerfile created
+- [ ] docker build succeeds — blocked: Docker daemon unavailable locally
+- [ ] container responds to health/version/webhook — blocked: Docker daemon unavailable locally
+- [x] commit
 
 ### Step 8 — Release unit registration
 
 Add `"notio"` to `release-units.config.toml` paths. Regenerate `release-units.toml`. Add `notio` to root `package.json` test script glob (if applicable — Swift tests run via `swift test`, not npm).
 
-- [ ] release unit registered
-- [ ] manifest regenerated
-- [ ] commit
+- [x] release unit registered
+- [x] manifest regenerated
+- [x] commit
 
 ### Step 9 — Final gates and plan closeout
 
-- [ ] `swift build` passes
-- [ ] `swift test` passes
-- [ ] docker build succeeds
-- [ ] plan moved to `notio/docs/plans/implemented/`
-- [ ] PR created
+- [x] `swift build` passes
+- [x] `swift test` passes (18/18)
+- [ ] docker build succeeds — blocked: Docker daemon unavailable locally
+- [x] plan moved to `notio/docs/plans/implemented/`
+- [x] PR created: igor1309/ai-labs#134
 
 ## Tests
 
