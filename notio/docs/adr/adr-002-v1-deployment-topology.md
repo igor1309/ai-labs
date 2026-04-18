@@ -12,6 +12,12 @@ category: adr
 ## Status
 Accepted.
 
+## Executive Summary
+
+v1 deploys as a single VPS-hosted process behind Cloudflare Tunnel, using Telegram webhook delivery at `inbox.enoa.ai`.
+The ingress adapter and capture service are logically separate but may run in one process.
+Scope: deployment topology and runtime shape for v1 only — no separate process boundaries required yet.
+
 ## Context
 The first ingress is a Telegram bot.
 The chosen delivery mode is webhook, not polling.
@@ -59,14 +65,15 @@ A single VPS is sufficient.
 The ingress adapter and capture service remain separate in design.
 They may still be deployed as one process in v1 to keep operations simple.
 
-## Constraints
-- Telegram webhook endpoint must be public HTTPS.
-- A secret webhook path should be used.
-- The application must tolerate enrichment and persistence failures cleanly.
-- Structured logging is required.
-- Secrets for Telegram and storage backends must be isolated from source code and deployment config where appropriate.
+## Rules / Invariants
 
-## Out of scope for this ADR
+- The Telegram webhook endpoint MUST be public HTTPS.
+- A secret webhook path MUST be used.
+- The application MUST tolerate enrichment and persistence failures cleanly.
+- Structured logging MUST be present.
+- Secrets for Telegram and storage backends MUST be isolated from source code and deployment config.
+
+## Non-Goals
 This ADR does not fix:
 - specific Swift server framework
 - exact Cloudflare Tunnel configuration

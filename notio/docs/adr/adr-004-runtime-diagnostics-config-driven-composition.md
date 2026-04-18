@@ -13,6 +13,12 @@ type: adr
 
 Accepted
 
+## Executive Summary
+
+Diagnostic behavior (ack, inspect, delay, fail) is controlled through config-driven composition in the same service and on the same ingress surface as production.
+No separate diagnostic service or endpoint is deployed; the real Telegram → Cloudflare → Tunnel → VPS → service path is always the path under test.
+Scope: service-level diagnostic composition for infrastructure validation — not a testing framework or separate deployment.
+
 ## Context
 
 The system is exposed through a single Telegram webhook ingress path:
@@ -75,6 +81,15 @@ It also keeps the application architecture coherent:
 - one composition model
 - one real runtime path
 - explicit composition choices
+
+## Rules / Invariants
+
+- The real Telegram → Cloudflare → Tunnel → VPS → service path MUST be the path used for infrastructure validation.
+- A separate deployed diagnostic service or separate diagnostic endpoint MUST NOT be used as the primary validation surface.
+- Diagnostic behavior MUST NOT be enabled by default; it MUST require an explicit configuration change to activate.
+- The composition root MUST be the only place where diagnostic behavior is injected.
+- Diagnostic modes MUST NOT affect behavior outside the explicitly configured boundary.
+- Deliberate fail or delay modes MUST be explicitly gated and MUST require intentional operator action to enable.
 
 ## Consequences
 
@@ -223,3 +238,11 @@ The selected approach is:
 - config-driven composition as the source of truth for runtime diagnostic behavior
 
 This keeps the Telegram -> Cloudflare -> Tunnel -> VPS -> service path as the actual path under test while avoiding a separate diagnostic silo.
+
+## Non-Goals
+
+- A testing framework or automated test suite.
+- Separate diagnostic deployments or endpoints.
+- Simulation of Telegram message content (diagnostics operate at the ingress boundary only).
+- Replacing external fault injection for infrastructure-path validation (e.g., stopping the tunnel).
+- Persistent fault-injection infrastructure.

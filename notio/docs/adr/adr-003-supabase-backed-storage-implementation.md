@@ -12,6 +12,13 @@ category: adr
 ## Status
 Accepted.
 
+## Executive Summary
+
+Supabase is adopted as the v1 concrete storage implementation behind the capture service's write-only storage interface.
+The adapter owns the schema, identity, row mapping, and all vendor-specific concerns.
+The capture service contract remains: submit canonical item, receive success or failure.
+Scope: persistence shape for v1 — no read/query APIs for the capture service.
+
 ## Context
 The capture service depends on a storage interface and submits a canonical captured item for persistence.
 For the capture flow, the service requires only a success-or-failure outcome.
@@ -62,6 +69,15 @@ Supabase is a good fit for:
 ### Avoid premature fragmentation
 A single main table plus JSON for source-specific data is sufficient for v1 and avoids over-modeling source families too early.
 
+## Rules / Invariants
+
+- The Supabase adapter MUST NOT expose Supabase-specific semantics to the capture service.
+- The capture service MUST interact with storage only through the write-only interface (`save(item)` → success | failure).
+- The adapter MUST own: schema, generated identity, row mapping, serialization, and vendor error handling.
+- The canonical item MUST remain the semantic source of truth; the DB schema is an implementation detail.
+- Storage identity MUST NOT appear in the canonical item.
+- The v1 persistence model MUST use one main table with common canonical fields as columns and source-specific data as JSON.
+
 ## Consequences
 ### Positive
 - clean fit with the current write-only storage contract
@@ -74,7 +90,7 @@ A single main table plus JSON for source-specific data is sufficient for v1 and 
 - migrations will matter once common fields change
 - DB-level capabilities may tempt future coupling if not kept behind the storage boundary
 
-## Deliberately not decided here
+## Non-Goals
 This ADR does not fix:
 - exact table or column names
 - exact index set

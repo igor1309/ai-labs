@@ -12,6 +12,13 @@ category: adr
 ## Status
 Accepted.
 
+## Executive Summary
+
+The system is divided into four parts: ingress adapter (Telegram), capture service, storage interface, and storage implementation.
+The capture service owns parsing, normalization, enrichment orchestration, and canonical item production.
+Storage is a write-only async dependency; identity and representation belong to the storage adapter.
+Scope: v1 capture flow only — no reads, deduplication, or reader/editor clients.
+
 ## Context
 The system starts with Telegram as the first ingress and a GitHub-backed inbox repository as the first concrete persistence target.
 
@@ -112,7 +119,7 @@ Rules:
 - non-root GitHub links fall back to generic web handling
 - generic web links may capture title and short description if trivially available
 - if enrichment fails, persistence still proceeds
-- enrichment outcome must be recorded explicitly
+- enrichment outcome MUST be recorded as one of: `full`, `partial`, `failed`, `none`
 
 ## Persistence semantics
 For the capture flow:
@@ -122,6 +129,18 @@ For the capture flow:
 
 v1 persistence is append-only from the capture service point of view.
 No deduplication or update behavior is required.
+
+## Rules / Invariants
+
+- The ingress adapter MUST NOT own enrichment, canonical modeling, markdown rendering, or storage behavior.
+- The capture service MUST NOT depend on storage-specific APIs, identity, or schema.
+- Every inbound message MUST be treated as capture content; no explicit capture command is required in v1.
+- The first URL in a message MUST be treated as the primary source; remaining URLs are note content.
+- The canonical item MUST include: `kind`, `captured_at` (UTC), and `enrichment` status.
+- `enrichment` status MUST be one of: `full`, `partial`, `failed`, `none`.
+- Persistence MUST proceed even when enrichment fails.
+- The capture service MUST NOT perform reads as part of the capture flow.
+- Storage identity MUST NOT appear in the canonical item.
 
 ## Consequences
 ### Positive
@@ -145,3 +164,11 @@ Rejected because markdown is only one possible representation.
 
 ### Storage identity as part of the canonical item
 Rejected because identity belongs to storage implementation, not capture semantics.
+
+## Non-Goals
+
+- Reader, editor, or query flows.
+- Deduplication or update semantics in v1.
+- Telegram transport metadata as first-class domain concepts.
+- Storage-specific schema details (table layout, file paths, commit structure).
+- Enrichment implementation details beyond best-effort status recording.
