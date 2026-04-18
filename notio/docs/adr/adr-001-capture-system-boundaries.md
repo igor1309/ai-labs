@@ -20,14 +20,14 @@ Storage is a write-only async dependency; identity and representation belong to 
 Scope: v1 capture flow only — no reads, deduplication, or reader/editor clients.
 
 ## Context
-The system starts with Telegram as the first ingress. The concrete storage implementation behind the write-only storage interface is fixed by ADR-003 (Supabase-backed storage for v1); this ADR is deliberately neutral about the specific backend.
+The system starts with Telegram as the first ingress. Persistence is a concrete implementation behind a write-only storage interface; the specific backend is out of scope for this ADR.
 
 The initial use cases are:
 - note only
 - link only
 - link with note
 
-The design must not couple the capture core to Telegram message semantics beyond the minimum needed for parsing, and must not couple the service to GitHub-specific storage details.
+The design must not couple the capture core to Telegram message semantics beyond the minimum needed for parsing, and must not couple the service to any one storage backend's details.
 
 Future expansion is expected:
 - more source types
