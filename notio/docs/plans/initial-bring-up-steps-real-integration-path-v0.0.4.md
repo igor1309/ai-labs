@@ -22,7 +22,7 @@ Bring up the real Telegram ingress path end to end through the real release and 
 1. ✅ Select the VPS.
 2. ✅ Set up `inbox.enoa.ai` in Cloudflare.
 3. ✅ Implement the first real service slice.
-4. Wire tag-driven CI/CD for the service.
+4. ✅ Wire tag-driven CI/CD for the service.
 5. Configure Cloudflare Tunnel from `inbox.enoa.ai` to the service on the VPS.
 6. Tag a release.
 7. Run CI:

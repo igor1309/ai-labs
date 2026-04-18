@@ -60,6 +60,7 @@ jobs:
         run: node scripts/release/validate-manifest.js
 
   core:
+    if: ${{ needs.verify.outputs.basename != 'notio' }}
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -87,6 +88,23 @@ jobs:
 
       - name: Run tests
         run: ./scripts/run_silent.sh "tests" npm test
+
+  test-notio:
+    if: ${{ needs.verify.outputs.basename == 'notio' }}
+    needs: [verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: swift:6.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Run tests
+        working-directory: notio
+        run: swift test
 
   deploy-nomos-staging:
     if: ${{ needs.verify.outputs.basename == 'nomos' }}
@@ -242,9 +260,83 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: bash /opt/nomos/scripts/rollback-prod.sh
 
+  deploy-notio:
+    if: ${{ needs.verify.outputs.basename == 'notio' }}
+    needs: [test-notio, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Copy source files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "notio/.dockerignore,notio/Dockerfile,notio/Package.swift,notio/Package.resolved,notio/Sources,notio/docker-compose.yml,notio/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
+          target: /tmp/notio-deploy
+          strip_components: 1
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1
+        env:
+          NOTIO_GIT_SHA: ${{ github.sha }}
+          NOTIO_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: NOTIO_VERSION,NOTIO_GIT_SHA
+          script: bash /tmp/notio-deploy/scripts/deploy.sh
+
+      - name: Verify deployed version
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            RESPONSE=$(curl -fsS http://127.0.0.1:8080/version)
+            echo "Version response: $RESPONSE"
+            echo "$RESPONSE" | grep -q "\"version\":\"${EXPECTED_VERSION}\""
+            echo "Version verified: ${EXPECTED_VERSION}"
+
+      - name: Notify deploy success
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: CI_BOT_TOKEN,CI_CHAT_ID,EXPECTED_VERSION
+          script: |
+            set -e
+            TEXT=$(printf "✅ notio v%s deployed\nversion verified" "$EXPECTED_VERSION")
+            bash /tmp/notio-deploy/ci-shared/scripts/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$TEXT"
+            rm -rf /tmp/notio-deploy
+
   github-release:
-    needs: [core, verify, deploy-nomos-staging, deploy-nomos-prod]
-    if: ${{ always() && !cancelled() && needs.core.result == 'success' && needs.deploy-nomos-staging.result != 'failure' && needs.deploy-nomos-prod.result != 'failure' }}
+    needs: [core, verify, test-notio, deploy-nomos-staging, deploy-nomos-prod, deploy-notio]
+    if: >-
+      ${{ always() && !cancelled()
+      && needs.verify.result == 'success'
+      && (needs.core.result == 'success' || needs.core.result == 'skipped')
+      && (needs.test-notio.result == 'success' || needs.test-notio.result == 'skipped')
+      && needs.deploy-nomos-staging.result != 'failure'
+      && needs.deploy-nomos-prod.result != 'failure'
+      && needs.deploy-notio.result != 'failure'
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -265,8 +357,17 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.deploy-nomos-staging.result == 'failure' || needs.deploy-nomos-prod.result == 'failure' || needs.github-release.result == 'failure') }}
-    needs: [verify, core, deploy-nomos-staging, deploy-nomos-prod, github-release]
+    if: >-
+      ${{ always() && !cancelled()
+      && (needs.verify.result == 'failure'
+      || needs.core.result == 'failure'
+      || needs.test-notio.result == 'failure'
+      || needs.deploy-nomos-staging.result == 'failure'
+      || needs.deploy-nomos-prod.result == 'failure'
+      || needs.deploy-notio.result == 'failure'
+      || needs.github-release.result == 'failure')
+      }}
+    needs: [verify, core, test-notio, deploy-nomos-staging, deploy-nomos-prod, deploy-notio, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -275,8 +376,10 @@ jobs:
       job_results: |
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
+        test-notio=${{ needs.test-notio.result }}
         deploy-nomos-staging=${{ needs.deploy-nomos-staging.result }}
         deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
+        deploy-notio=${{ needs.deploy-notio.result }}
         github-release=${{ needs.github-release.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
