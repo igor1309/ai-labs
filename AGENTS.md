@@ -242,6 +242,10 @@ Bind-mount paths in a compose file are resolved relative to the compose file's l
 - **Container healthy ≠ all ports reachable.** A health check that probes one port (e.g. ClickHouse TCP 9000 via `clickhouse-client`) does not verify other ports (e.g. HTTP 8123). When a service is unreachable from sibling containers, inspect mount sources and listen addresses before assuming the health check is authoritative.
 - **Long-lived shared stacks** (e.g. local Langfuse) should be started from a stable workspace, not a feature worktree, to avoid the bind-mount source disappearing mid-work.
 
+## Infrastructure Topology
+
+Do not assume that services share or do not share a VPS, ports, or any other infrastructure. If topology matters for the task (e.g., port selection, deploy targets, shared filesystems), verify from docs/ADRs or ask — never presume.
+
 ## Dependency API Versions in Specs
 
 When a spec pins a dependency with a floor version (`>=X.0.0`), the implementation must verify the actual installed API — especially across major versions. A version floor does not guarantee API compatibility.
