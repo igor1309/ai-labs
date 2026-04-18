@@ -1,7 +1,9 @@
 ---
 title: ADR-002 V1 Deployment Topology
-date: 2026-04-17
-version: 0.0.1
+date: 2026-04-18
+model: gpt-5.4
+description: "Defines the v1 Notio deployment topology and the fixed implementation stack for the first deployed service."
+version: 0.0.2
 status: accepted
 author: OpenAI GPT-5.4 Thinking
 type: adr
@@ -33,6 +35,7 @@ The v1 system is deployed with:
 - Cloudflare at the edge
 - Cloudflare Tunnel from the public hostname to the VPS-hosted application
 - application running on a VPS
+- application implemented as a Swift server app using Hummingbird
 - logical separation between ingress adapter and capture service even if deployed together in one process
 
 ## Runtime shape
@@ -45,6 +48,9 @@ The application contains, at minimum:
 - capture service
 - enrichment clients/dependencies
 - configured storage implementation
+
+For the first deployed service slice, the service app is implemented in Swift using Hummingbird.
+That stack choice is fixed for v1 bring-up and is not revisited per step.
 
 ## Why this topology
 ### Telegram webhook over polling
@@ -75,7 +81,6 @@ They may still be deployed as one process in v1 to keep operations simple.
 
 ## Non-Goals
 This ADR does not fix:
-- specific Swift server framework
 - exact Cloudflare Tunnel configuration
 - exact retry/backoff policy
 - exact storage backend choice

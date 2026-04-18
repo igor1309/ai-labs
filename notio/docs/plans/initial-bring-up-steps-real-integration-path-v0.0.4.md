@@ -1,6 +1,8 @@
 ---
 title: Initial Bring-Up Steps — Real Integration Path
 date: 2026-04-18
+model: gpt-5.4
+description: "Defines the ordered bring-up steps for the real Notio integration path and locks the Step 3 service slice."
 version: 0.0.4
 author: OpenAI GPT-5.4 Thinking
 status: draft
@@ -39,10 +41,41 @@ Bring up the real Telegram ingress path end to end through the real release and 
 
 The first deployed slice should include:
 
+- a Swift server app using Hummingbird
 - webhook handler
 - health endpoint
 - version endpoint
 - minimal structured logging
+
+### Fixed constraints for Step 3
+
+Step 3 is not a stack-selection step.
+
+For this slice, the implementation stack is fixed:
+
+- language: Swift
+- server framework: Hummingbird
+- runtime shape: one deployable service
+
+The required routes are:
+
+- `GET /health`
+- `GET /version`
+- `POST /<secret-webhook-path>`
+
+The webhook path must acknowledge quickly.
+The slice must produce a Docker artifact.
+The slice must expose runtime version information so CI can verify that the running service version matches the triggering tag.
+
+### Open implementation details for Step 3
+
+These details remain open for implementation design:
+
+- exact Swift package and module layout
+- exact runtime configuration shape
+- exact version injection mechanism
+- exact logging library choice
+- whether diagnostic modes are implemented in this slice or deferred to a later step
 
 ## CI/CD requirements for bring-up
 
