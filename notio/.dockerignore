@@ -2,3 +2,5 @@
 .swiftpm/
 .env
 .DS_Store
+Tests/
+docs/
