@@ -19,3 +19,9 @@ This means `Tests/` must survive the full deploy path: SCP source list (`release
 The deploy script (`scripts/deploy.sh`) copies fresh `Sources/` and `scripts/` to `/opt/notio/` but must also clean any directories that are no longer shipped. If a directory was previously deployed and is later removed from the SCP source list, it persists on the VPS and gets picked up by `COPY . .` in the Dockerfile.
 
 **Rule:** when removing a directory from the SCP source list in `release-unit.yml`, add a corresponding `rm -rf` to `deploy.sh`.
+
+## Swift stdout buffering in Docker
+
+`print()` buffers stdout in release builds. Docker captures stdout/stderr but buffered output from short-lived request handlers never flushes — logs silently disappear. Swift 6.1 strict concurrency also rejects `stderr`/`stdout` globals as non-sendable.
+
+**Rule:** use `write(STDERR_FILENO, ...)` for log output. `STDERR_FILENO` is an `Int32` constant (concurrency-safe) and stderr is unbuffered.

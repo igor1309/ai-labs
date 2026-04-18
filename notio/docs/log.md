@@ -2,7 +2,7 @@
 
 ## 2026-04-18
 
-- Completed full bring-up path: VPS health/version verified (Step 8), public reachability via `inbox.enoa.ai` confirmed (Step 9), Telegram bot `@NotioInboxBot` webhook configured and end-to-end delivery verified (Steps 10–12). Known issue: structured webhook logging produces no output — to be investigated separately.
+- Completed full bring-up path (all 12 steps): VPS health/version verified (Step 8), public reachability via `inbox.enoa.ai` confirmed (Step 9), Telegram bot `@NotioInboxBot` webhook configured (Steps 10–11), end-to-end delivery verified with structured JSON logging after `notio_v0.1.1` fix (Step 12).
 
 - Released `notio_v0.1.0`: first tag-driven release through the full CI/CD pipeline. Tests pass on Linux (swift:6.1 container), Docker image built and deployed on VPS, version verified, GitHub release created. Fixed deploy: SwiftPM 6.1 requires `Tests/` in the build context for source discovery even when building a single product; added `Tests/` to SCP source list and deploy script (Steps 6–7 complete).
 
