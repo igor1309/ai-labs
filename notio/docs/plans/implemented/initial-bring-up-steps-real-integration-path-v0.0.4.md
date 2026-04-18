@@ -5,7 +5,7 @@ model: gpt-5.4
 description: "Defines the ordered bring-up steps for the real Notio integration path and locks the Step 3 service slice."
 version: 0.0.4
 author: OpenAI GPT-5.4 Thinking
-status: draft
+status: complete
 type: note
 ---
 
@@ -31,11 +31,11 @@ Bring up the real Telegram ingress path end to end through the real release and 
    - deploy to VPS
    - verify running health
    - verify running version equals tag
-8. Verify the service locally on the VPS.
-9. Verify public reachability through `inbox.enoa.ai` via Cloudflare and Tunnel.
-10. Set up the Telegram bot.
-11. Configure the Telegram webhook to the secret webhook path on `inbox.enoa.ai`.
-12. Verify end-to-end delivery from Telegram to the deployed service.
+8. ✅ Verify the service locally on the VPS.
+9. ✅ Verify public reachability through `inbox.enoa.ai` via Cloudflare and Tunnel.
+10. ✅ Set up the Telegram bot.
+11. ✅ Configure the Telegram webhook to the secret webhook path on `inbox.enoa.ai`.
+12. ✅ Verify end-to-end delivery from Telegram to the deployed service.
 
 ## First service slice
 
