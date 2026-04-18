@@ -3,14 +3,14 @@ title: ADR-003 Supabase-Backed Storage Implementation
 date: 2026-04-17
 version: 0.0.1
 status: accepted
-model: GPT-5.4 Thinking
-category: adr
+author: OpenAI GPT-5.4 Thinking
+type: adr
 ---
 
 # ADR-003: Supabase-Backed Storage Implementation
 
 ## Status
-Accepted.
+Accepted
 
 ## Executive Summary
 
