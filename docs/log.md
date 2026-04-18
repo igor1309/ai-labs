@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-18
+
+- Split shared `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` CI secrets into per-project `NOMOS_VPS_*` and `NOTIO_VPS_*` in `release-unit.yml` — nomos deploys to 95.164.53.144, notio deploys to 107.172.143.196.
+
 ## 2026-04-06
 
 nexum: reviewed and fixed
