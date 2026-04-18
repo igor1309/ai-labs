@@ -38,10 +38,12 @@ public struct Config: Sendable {
 
 public enum DiagnosticMode: Equatable, Sendable {
     case ack
+    case inspect
 
     public init?(rawValue: String) {
         switch rawValue {
         case "ack": self = .ack
+        case "inspect": self = .inspect
         default: return nil
         }
     }

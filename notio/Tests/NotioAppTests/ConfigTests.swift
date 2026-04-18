@@ -39,4 +39,12 @@ struct ConfigTests {
         let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret", "NOTIO_VERSION": "1.2.3"])
         #expect(config.version == "1.2.3")
     }
+
+    @Test func test_fromEnvironment_shouldParseInspectMode() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_DIAGNOSTIC_MODE": "inspect",
+        ])
+        #expect(config.diagnosticMode == .inspect)
+    }
 }
