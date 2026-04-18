@@ -120,9 +120,9 @@ jobs:
       - name: Copy source files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml,nomos/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
           target: /tmp/nomos-deploy
           strip_components: 1
@@ -130,9 +130,9 @@ jobs:
       - name: Deploy staging on VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /tmp/nomos-deploy/scripts/deploy-staging.sh
 
       - name: Verify staging version
@@ -140,9 +140,9 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: EXPECTED_VERSION
           script: |
             set -e
@@ -157,9 +157,9 @@ jobs:
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: NOMOS_STAGING_SMOKE_TOKEN,OPENROUTER_CI_MODEL
           script: |
             set -e
@@ -184,9 +184,9 @@ jobs:
       - name: Deploy production on VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /tmp/nomos-deploy/scripts/deploy-prod.sh
 
       - name: Verify production version
@@ -194,9 +194,9 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: EXPECTED_VERSION
           script: |
             set -e
@@ -211,9 +211,9 @@ jobs:
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: NOMOS_SMOKE_TOKEN,OPENROUTER_CI_MODEL
           script: |
             set -e
@@ -238,9 +238,9 @@ jobs:
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: CI_BOT_TOKEN,CI_CHAT_ID,EXPECTED_VERSION,OPENROUTER_CI_MODEL
           script: |
             set -e
@@ -255,9 +255,9 @@ jobs:
         if: failure()
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /opt/nomos/scripts/rollback-prod.sh
 
   deploy-notio:
@@ -274,9 +274,9 @@ jobs:
       - name: Copy source files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
           source: "notio/.dockerignore,notio/Dockerfile,notio/Package.swift,notio/Package.resolved,notio/Sources,notio/docker-compose.yml,notio/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
           target: /tmp/notio-deploy
           strip_components: 1
@@ -287,9 +287,9 @@ jobs:
           NOTIO_GIT_SHA: ${{ github.sha }}
           NOTIO_VERSION: ${{ needs.verify.outputs.version }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
           envs: NOTIO_VERSION,NOTIO_GIT_SHA
           script: bash /tmp/notio-deploy/scripts/deploy.sh
 
@@ -298,9 +298,9 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
           envs: EXPECTED_VERSION
           script: |
             set -e
@@ -316,9 +316,9 @@ jobs:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
           envs: CI_BOT_TOKEN,CI_CHAT_ID,EXPECTED_VERSION
           script: |
             set -e
