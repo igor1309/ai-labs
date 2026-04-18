@@ -12,22 +12,14 @@ struct JSONLogHandler: LogHandler {
         set { metadata[key] = newValue }
     }
 
-    func log(
-        level: Logger.Level,
-        message: Logger.Message,
-        metadata: Logger.Metadata?,
-        source: String,
-        file: String,
-        function: String,
-        line: UInt
-    ) {
+    func log(event: LogEvent) {
         var merged = self.metadata
-        metadata?.forEach { merged[$0.key] = $0.value }
+        event.metadata?.forEach { merged[$0.key] = $0.value }
 
         var record: [String: Any] = [
             "timestamp": Date().ISO8601Format(),
-            "level": level.rawValue,
-            "message": message.description,
+            "level": event.level.rawValue,
+            "message": event.message.description,
         ]
         merged.forEach { record[$0.key] = $0.value.description }
 
