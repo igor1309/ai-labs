@@ -3,14 +3,14 @@ title: ADR-001 Capture System Boundaries
 date: 2026-04-17
 version: 0.0.1
 status: accepted
-model: GPT-5.4 Thinking
-category: adr
+author: OpenAI GPT-5.4 Thinking
+type: adr
 ---
 
 # ADR-001: Capture System Boundaries
 
 ## Status
-Accepted.
+Accepted
 
 ## Executive Summary
 
@@ -20,7 +20,7 @@ Storage is a write-only async dependency; identity and representation belong to 
 Scope: v1 capture flow only — no reads, deduplication, or reader/editor clients.
 
 ## Context
-The system starts with Telegram as the first ingress and a GitHub-backed inbox repository as the first concrete persistence target.
+The system starts with Telegram as the first ingress. The concrete storage implementation behind the write-only storage interface is fixed by ADR-003 (Supabase-backed storage for v1); this ADR is deliberately neutral about the specific backend.
 
 The initial use cases are:
 - note only

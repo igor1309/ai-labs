@@ -204,7 +204,7 @@ CI deploys to the VPS and checks container/process state, but does not verify th
 
 - The release workflow MUST be triggered only by a `notio_v<version>` Git tag on the trunk branch.
 - CI MUST run tests before building or publishing any artifact.
-- No artifact MUST be published and no deployment MUST occur if tests fail.
+- If tests fail, artifacts MUST NOT be published and deployment MUST NOT occur.
 - The Docker image MUST be tagged with the Git tag that triggered the workflow.
 - CI MUST verify that the deployed service is reachable and reports a version equal to the triggering tag.
 - The service MUST expose a health endpoint and a version endpoint to support deployment verification.
