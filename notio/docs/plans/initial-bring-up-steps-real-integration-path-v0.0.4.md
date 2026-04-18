@@ -31,10 +31,10 @@ Bring up the real Telegram ingress path end to end through the real release and 
    - deploy to VPS
    - verify running health
    - verify running version equals tag
-8. Verify the service locally on the VPS.
-9. Verify public reachability through `inbox.enoa.ai` via Cloudflare and Tunnel.
-10. Set up the Telegram bot.
-11. Configure the Telegram webhook to the secret webhook path on `inbox.enoa.ai`.
+8. ✅ Verify the service locally on the VPS.
+9. ✅ Verify public reachability through `inbox.enoa.ai` via Cloudflare and Tunnel.
+10. ✅ Set up the Telegram bot.
+11. ✅ Configure the Telegram webhook to the secret webhook path on `inbox.enoa.ai`.
 12. Verify end-to-end delivery from Telegram to the deployed service.
 
 ## First service slice
