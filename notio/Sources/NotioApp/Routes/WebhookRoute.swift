@@ -14,9 +14,10 @@ func addWebhookRoute(to router: Router<some RequestContext>, config: Config, log
             "mode": .string(mode.map { "\($0)" } ?? "normal"),
         ]
 
+        let buf = try? await request.body.collect(upTo: 1_048_576)
+        let bodyData = buf.flatMap { Data(ByteBufferView($0)) }
+
         if mode == .inspect {
-            let buf = try? await request.body.collect(upTo: 1_048_576)
-            let bodyData = buf.flatMap { Data(ByteBufferView($0)) }
             if let bodyData,
                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             {
@@ -30,6 +31,15 @@ func addWebhookRoute(to router: Router<some RequestContext>, config: Config, log
                     if let text = message["text"] as? String {
                         metadata["text"] = .string(String(text.prefix(100)))
                     }
+                }
+            }
+        } else if mode == nil || mode == .ack {
+            if let bodyData,
+               let update = try? JSONDecoder().decode(TelegramUpdate.self, from: bodyData)
+            {
+                metadata["update_id"] = .string("\(update.updateId)")
+                if let chatId = update.message?.chat.id {
+                    metadata["chat_id"] = .string("\(chatId)")
                 }
             }
         }
