@@ -1,5 +1,9 @@
 # AGENTS
 
+## Disabled skills
+
+`pfw-*` skills (Point-Free) are not used in this repo. Never invoke any `pfw-*` skill.
+
 ## Collaboration preferences
 
 - Latest direct user instruction is the highest-priority source of truth for current scope.
