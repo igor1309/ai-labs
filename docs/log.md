@@ -1,5 +1,13 @@
 # Log
 
+## 2026-04-06
+
+nexum: reviewed and fixed
+
+## 2026-04-05
+
+nexum: complete architecture doc set — pre-ADR spec, frontend ADR (v0.2.0), backend ADR (v0.3.0), OpenAPI contract (v1.4.0), frontend auth ADR, backend auth ADR, architecture review amendments, supersession note, component architecture approach, and naming brief.
+
 ## 2026-03-29
 
 claude-insights: add `claude-insights-deploy.yml` — trunk-only CI workflow that detects changed Supabase Edge Functions (`notify-insights`, `telegram-bot`) and deploys only those affected; `_shared/**` changes trigger both. Issue #110.

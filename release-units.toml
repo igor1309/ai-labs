@@ -8,3 +8,10 @@ path = "nomos"
 metadata = "package.json"
 version = "0.8.4"
 docker = true
+
+[[units]]
+basename = "notio"
+path = "notio"
+metadata = "release.toml"
+version = "0.1.0"
+docker = true
