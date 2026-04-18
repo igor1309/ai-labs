@@ -25,16 +25,16 @@ struct JSONLogHandler: LogHandler {
         metadata?.forEach { merged[$0.key] = $0.value }
 
         var record: [String: Any] = [
-            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "timestamp": Date().ISO8601Format(),
             "level": level.rawValue,
             "message": message.description,
         ]
         merged.forEach { record[$0.key] = $0.value.description }
 
         guard let data = try? JSONSerialization.data(withJSONObject: record),
-              let line = String(data: data, encoding: .utf8)
+              let output = String(data: data, encoding: .utf8)
         else { return }
-        print(line)
+        print(output)
     }
 }
 
