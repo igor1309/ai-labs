@@ -3,7 +3,7 @@ title: "Diagnostic Modes: inspect, delay, fail"
 date: 2026-04-19
 model: claude-opus-4-6
 description: "Implement remaining diagnostic modes per ADR-004 and the webhook adapter spec"
-status: draft
+status: complete
 type: note
 ---
 
