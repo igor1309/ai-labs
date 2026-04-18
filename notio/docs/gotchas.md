@@ -6,11 +6,13 @@ description: "Known pitfalls and gotchas for the notio project"
 
 # notio — Gotchas
 
-## SwiftPM on Linux: test target source discovery
+## SwiftPM: test target source discovery requires Tests/ directory
 
-SwiftPM 6.1 on Linux requires the `Tests/<TargetName>/` directory to exist even when building a specific product (`--product NotioServer`). If the directory is missing (e.g. excluded via `.dockerignore`), SwiftPM falls back to scanning `Sources/` for the test target and reports "overlapping sources."
+SwiftPM 6.1 requires the `Tests/<TargetName>/` directory to exist even when building a specific product (`--product NotioServer`). If the directory is missing, SwiftPM falls back to scanning `Sources/` for the test target and reports "overlapping sources." Reproduces on both macOS and Linux.
 
-**Rule:** never exclude `Tests/` from the Docker build context.
+This means `Tests/` must survive the full deploy path: SCP source list (`release-unit.yml`) → deploy script (`scripts/deploy.sh`) → `.dockerignore` → Dockerfile `COPY . .`.
+
+**Rule:** never exclude `Tests/` from any layer of the deploy pipeline.
 
 ## Deploy script: stale directories on VPS
 
