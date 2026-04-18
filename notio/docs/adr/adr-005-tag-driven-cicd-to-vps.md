@@ -13,6 +13,13 @@ type: adr
 
 Accepted
 
+## Executive Summary
+
+Releases are triggered by a `notio_v<version>` Git tag, consistent with the repo-level per-unit release model (`docs/adr/release/`).
+CI runs tests, builds a Docker image on green, pushes to registry, deploys to VPS over SSH, and verifies the running service reports the exact release version.
+The success condition is the deployed service reporting the expected version — not merely a successful container restart.
+Scope: notio release pipeline only — registry choice, rollback strategy, and secret management are not fixed here.
+
 ## Context
 
 The service is developed in a Git repository and deployed to a VPS.
@@ -67,6 +74,8 @@ It also keeps the deployment contract simple and strict:
 ### Trigger
 
 A Git tag starts the workflow.
+
+The tag MUST follow the format `notio_v<version>` (e.g., `notio_v0.1.0`), consistent with the repo-level per-unit release tag convention (`docs/adr/release/`).
 
 ### Build gate
 
@@ -191,7 +200,17 @@ CI deploys to the VPS and checks container/process state, but does not verify th
 - insufficient for the required guarantee
 - does not prove that the correct version is serving traffic
 
-## Non-goals
+## Rules / Invariants
+
+- The release workflow MUST be triggered only by a `notio_v<version>` Git tag on the trunk branch.
+- CI MUST run tests before building or publishing any artifact.
+- No artifact MUST be published and no deployment MUST occur if tests fail.
+- The Docker image MUST be tagged with the Git tag that triggered the workflow.
+- CI MUST verify that the deployed service is reachable and reports a version equal to the triggering tag.
+- The service MUST expose a health endpoint and a version endpoint to support deployment verification.
+- The version reported by the service MUST equal the triggering Git tag.
+
+## Non-Goals
 
 This ADR does not define:
 
