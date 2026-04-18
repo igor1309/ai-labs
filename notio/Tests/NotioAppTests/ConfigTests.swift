@@ -47,4 +47,38 @@ struct ConfigTests {
         ])
         #expect(config.diagnosticMode == .inspect)
     }
+
+    @Test func test_fromEnvironment_shouldParseDelayModeWithDefault() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_DIAGNOSTIC_MODE": "delay",
+        ])
+        #expect(config.diagnosticMode == .delay(milliseconds: 5000))
+    }
+
+    @Test func test_fromEnvironment_shouldParseDelayModeWithCustomMs() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_DIAGNOSTIC_MODE": "delay",
+            "NOTIO_DIAGNOSTIC_DELAY_MS": "2000",
+        ])
+        #expect(config.diagnosticMode == .delay(milliseconds: 2000))
+    }
+
+    @Test func test_fromEnvironment_shouldParseFailModeWithDefault() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_DIAGNOSTIC_MODE": "fail",
+        ])
+        #expect(config.diagnosticMode == .fail(status: 500))
+    }
+
+    @Test func test_fromEnvironment_shouldParseFailModeWithCustomStatus() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_DIAGNOSTIC_MODE": "fail",
+            "NOTIO_DIAGNOSTIC_FAIL_STATUS": "503",
+        ])
+        #expect(config.diagnosticMode == .fail(status: 503))
+    }
 }

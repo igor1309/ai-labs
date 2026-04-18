@@ -33,7 +33,18 @@ func addWebhookRoute(to router: Router<some RequestContext>, config: Config, log
             }
         }
 
-        let response = Response(status: .ok, body: .init(byteBuffer: ByteBuffer(string: "ok")))
+        if case .delay(let ms) = mode {
+            try await Task.sleep(for: .milliseconds(ms))
+        }
+
+        let status: HTTPResponse.Status
+        if case .fail(let code) = mode {
+            status = .init(code: code)
+        } else {
+            status = .ok
+        }
+
+        let response = Response(status: status, body: .init(byteBuffer: ByteBuffer(string: "ok")))
         let latencyMs = Date().timeIntervalSince(start) * 1000
         metadata["status"] = .string("\(response.status.code)")
         metadata["latency_ms"] = .string(String(format: "%.2f", latencyMs))

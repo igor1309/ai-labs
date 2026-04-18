@@ -31,7 +31,13 @@ public struct Config: Sendable {
         }
         let port = Int(env["NOTIO_PORT"] ?? "") ?? 8080
         let version = env["NOTIO_VERSION"] ?? "dev"
-        let diagnosticMode = DiagnosticMode(rawValue: env["NOTIO_DIAGNOSTIC_MODE"] ?? "")
+        var diagnosticMode = DiagnosticMode(rawValue: env["NOTIO_DIAGNOSTIC_MODE"] ?? "")
+        if case .delay = diagnosticMode, let ms = Int(env["NOTIO_DIAGNOSTIC_DELAY_MS"] ?? "") {
+            diagnosticMode = .delay(milliseconds: ms)
+        }
+        if case .fail = diagnosticMode, let status = Int(env["NOTIO_DIAGNOSTIC_FAIL_STATUS"] ?? "") {
+            diagnosticMode = .fail(status: status)
+        }
         return Config(port: port, version: version, webhookPath: webhookPath, diagnosticMode: diagnosticMode)
     }
 }
@@ -39,11 +45,15 @@ public struct Config: Sendable {
 public enum DiagnosticMode: Equatable, Sendable {
     case ack
     case inspect
+    case delay(milliseconds: Int)
+    case fail(status: Int)
 
     public init?(rawValue: String) {
         switch rawValue {
         case "ack": self = .ack
         case "inspect": self = .inspect
+        case "delay": self = .delay(milliseconds: 5000)
+        case "fail": self = .fail(status: 500)
         default: return nil
         }
     }
