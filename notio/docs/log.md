@@ -2,6 +2,8 @@
 
 ## 2026-04-18
 
+- Released `notio_v0.1.0`: first tag-driven release through the full CI/CD pipeline. Tests pass on Linux (swift:6.1 container), Docker image built and deployed on VPS, version verified, GitHub release created. Fixed deploy: SwiftPM 6.1 requires `Tests/` in the build context for source discovery even when building a single product; added `Tests/` to SCP source list and deploy script (Steps 6–7 complete).
+
 - Configured Cloudflare Tunnel (`inbox`) from `inbox.enoa.ai` to `localhost:8080` on VPS 107.172.143.196; `cloudflared.service` enabled and running, returns 502 until the service is deployed (Step 5 complete).
 
 - Wired notio tag-driven CI/CD on the release-unit path: added `test-notio` and `deploy-notio` jobs, VPS-local Docker build/tag (`<version>` + `<git-sha>`), host-level version verification, and notio deploy assets (`docker-compose.yml`, `.env.example`, `scripts/deploy.sh`) to make Step 4 release/deploy verification operational.
