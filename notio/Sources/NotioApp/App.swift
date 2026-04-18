@@ -3,6 +3,7 @@ import Logging
 
 func buildApp(config: Config) -> some ApplicationProtocol {
     let router = Router()
+    addHealthRoute(to: router)
     addVersionRoute(to: router, config: config)
     return Application(
         router: router,
