@@ -1,6 +1,7 @@
 import Foundation
 import Hummingbird
 import HummingbirdTesting
+import NIOCore
 import Testing
 @testable import NotioApp
 
@@ -11,7 +12,7 @@ struct VersionRouteTests {
         try await app.test(.router) { client in
             try await client.execute(uri: "/version", method: .get) { response in
                 #expect(response.status == .ok)
-                let body = try JSONDecoder().decode(VersionResponse.self, from: response.body)
+                let body = try JSONDecoder().decode(VersionResponse.self, from: Data(buffer: response.body))
                 #expect(body.version == "1.2.3")
             }
         }
