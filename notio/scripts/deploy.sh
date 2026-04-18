@@ -28,6 +28,7 @@ cp "$deploy_tmp_dir/Package.resolved" "$deploy_dir/Package.resolved"
 cp "$deploy_tmp_dir/docker-compose.yml" "$deploy_dir/docker-compose.yml"
 rm -rf "$deploy_dir/Sources" "$deploy_dir/scripts" "$deploy_dir/Tests"
 cp -r "$deploy_tmp_dir/Sources" "$deploy_dir/Sources"
+cp -r "$deploy_tmp_dir/Tests" "$deploy_dir/Tests"
 cp -r "$deploy_tmp_dir/scripts" "$deploy_dir/scripts"
 
 cd "$deploy_dir"

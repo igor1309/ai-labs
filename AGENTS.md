@@ -242,6 +242,15 @@ Bind-mount paths in a compose file are resolved relative to the compose file's l
 - **Container healthy ≠ all ports reachable.** A health check that probes one port (e.g. ClickHouse TCP 9000 via `clickhouse-client`) does not verify other ports (e.g. HTTP 8123). When a service is unreachable from sibling containers, inspect mount sources and listen addresses before assuming the health check is authoritative.
 - **Long-lived shared stacks** (e.g. local Langfuse) should be started from a stable workspace, not a feature worktree, to avoid the bind-mount source disappearing mid-work.
 
+## Deploy Fix Discipline
+
+When fixing deploy failures, trace the full deploy path end-to-end before committing a fix — do not fix one layer and hope the rest works.
+
+- Read the entire flow: SCP source list (`release-unit.yml`) → deploy script → Dockerfile → `docker build`.
+- Test with `docker build` locally before pushing.
+- Check for stale state on the target (VPS directories not cleaned by the deploy script).
+- A single deploy fix PR should address all layers; multiple fix-tag-retry cycles waste CI time and money.
+
 ## Infrastructure Topology
 
 Do not assume that services share or do not share a VPS, ports, or any other infrastructure. If topology matters for the task (e.g., port selection, deploy targets, shared filesystems), verify from docs/ADRs or ask — never presume.
