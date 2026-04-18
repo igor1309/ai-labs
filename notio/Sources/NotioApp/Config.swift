@@ -18,13 +18,20 @@ public struct Config: Sendable {
         self.diagnosticMode = diagnosticMode
     }
 
-    public static func fromEnvironment() -> Config {
-        let port = Int(ProcessInfo.processInfo.environment["NOTIO_PORT"] ?? "") ?? 8080
-        let version = ProcessInfo.processInfo.environment["NOTIO_VERSION"] ?? "dev"
-        let webhookPath = ProcessInfo.processInfo.environment["NOTIO_WEBHOOK_PATH"] ?? "webhook"
-        let diagnosticMode = DiagnosticMode(
-            rawValue: ProcessInfo.processInfo.environment["NOTIO_DIAGNOSTIC_MODE"] ?? ""
-        )
+    public enum ConfigError: Error, Equatable {
+        case missingWebhookPath
+    }
+
+    /// Reads config from the given environment dictionary.
+    /// Throws ``ConfigError/missingWebhookPath`` when `NOTIO_WEBHOOK_PATH` is absent or empty.
+    public static func fromEnvironment(_ env: [String: String] = ProcessInfo.processInfo.environment) throws -> Config {
+        let webhookPath = env["NOTIO_WEBHOOK_PATH"] ?? ""
+        guard !webhookPath.isEmpty else {
+            throw ConfigError.missingWebhookPath
+        }
+        let port = Int(env["NOTIO_PORT"] ?? "") ?? 8080
+        let version = env["NOTIO_VERSION"] ?? "dev"
+        let diagnosticMode = DiagnosticMode(rawValue: env["NOTIO_DIAGNOSTIC_MODE"] ?? "")
         return Config(port: port, version: version, webhookPath: webhookPath, diagnosticMode: diagnosticMode)
     }
 }
