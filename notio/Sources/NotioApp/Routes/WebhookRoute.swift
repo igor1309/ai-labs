@@ -15,9 +15,10 @@ func addWebhookRoute(to router: Router<some RequestContext>, config: Config, log
         ]
 
         if mode == .inspect {
-            let body = try? await request.body.collect(upTo: 1_048_576)
-            if let body,
-               let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
+            let buf = try? await request.body.collect(upTo: 1_048_576)
+            let bodyData = buf.flatMap { Data(ByteBufferView($0)) }
+            if let bodyData,
+               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             {
                 if let updateId = json["update_id"] {
                     metadata["update_id"] = .string("\(updateId)")
