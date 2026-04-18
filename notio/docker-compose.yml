@@ -13,7 +13,7 @@ services:
     environment:
       NOTIO_VERSION: ${NOTIO_VERSION:-dev}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     labels:
       com.logging.project: notio
       com.logging.service: api
