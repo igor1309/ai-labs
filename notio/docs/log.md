@@ -1,5 +1,9 @@
 # notio — Change Log
 
+## 2026-04-19
+
+- Implemented diagnostic modes (inspect, delay, fail) per ADR-004 and webhook adapter spec. Inspect logs bounded payload subset (update_id, chat_id, truncated text); delay sleeps configurable ms; fail returns configurable HTTP status. 31 tests, local Docker build verified.
+
 ## 2026-04-18
 
 - Completed full bring-up path (all 12 steps): VPS health/version verified (Step 8), public reachability via `inbox.enoa.ai` confirmed (Step 9), Telegram bot `@NotioInboxBot` webhook configured (Steps 10–11), end-to-end delivery verified with structured JSON logging after `notio_v0.1.1` fix (Step 12).

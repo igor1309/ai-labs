@@ -251,6 +251,22 @@ When fixing deploy failures, trace the full deploy path end-to-end before commit
 - Check for stale state on the target (VPS directories not cleaned by the deploy script).
 - A single deploy fix PR should address all layers; multiple fix-tag-retry cycles waste CI time and money.
 
+## Local Docker Verification for Docker Units
+
+For any change that could affect the Docker build or runtime behavior of a Docker-producing unit, run a local Docker verification before pushing:
+
+1. `docker build` — confirms the image builds (catches Dockerfile, .dockerignore, SwiftPM source discovery issues).
+2. `docker run` with health/version check — confirms the container starts and responds correctly.
+3. If the change affects logging or request handling, send a test request to the running container and verify the expected output in `docker logs`.
+
+This applies to: Dockerfile changes, .dockerignore changes, Package.swift/Package.resolved changes, deploy script changes, source file additions/removals, and any change to structured logging or request handling.
+
+Do not push changes that affect the Docker path without a local `docker build` pass. CI deploys cost time and money — catch failures locally first.
+
+## Swift on Linux: ByteBuffer ≠ Data
+
+Foundation APIs (`JSONSerialization`, `JSONDecoder`, etc.) do not accept `ByteBuffer` on Linux. macOS may bridge implicitly, but Linux will not — this causes Docker build failures. Always convert via `Data(ByteBufferView(buffer))`. Do not use `NIOFoundationCompat`.
+
 ## Infrastructure Topology
 
 Do not assume that services share or do not share a VPS, ports, or any other infrastructure. If topology matters for the task (e.g., port selection, deploy targets, shared filesystems), verify from docs/ADRs or ask — never presume.
