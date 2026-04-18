@@ -26,7 +26,10 @@ struct JSONLogHandler: LogHandler {
         guard let data = try? JSONSerialization.data(withJSONObject: record),
               let output = String(data: data, encoding: .utf8)
         else { return }
-        print(output)
+        var line = output + "\n"
+        line.withUTF8 { buf in
+            _ = write(STDERR_FILENO, buf.baseAddress, buf.count)
+        }
     }
 }
 
