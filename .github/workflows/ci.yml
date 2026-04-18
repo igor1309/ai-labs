@@ -70,7 +70,7 @@ jobs:
 
   notio-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/notio-core.yml
 
   nomos-core:
