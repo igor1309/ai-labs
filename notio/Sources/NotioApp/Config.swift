@@ -29,7 +29,7 @@ struct Config {
     }
 }
 
-enum DiagnosticMode {
+enum DiagnosticMode: Equatable {
     case ack
 
     init?(rawValue: String) {
