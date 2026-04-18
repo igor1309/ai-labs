@@ -12,7 +12,7 @@ struct VersionRouteTests {
         try await app.test(.router) { client in
             try await client.execute(uri: "/version", method: .get) { response in
                 #expect(response.status == .ok)
-                let body = try JSONDecoder().decode(VersionResponse.self, from: Data(buffer: response.body))
+                let body = try JSONDecoder().decode(VersionResponse.self, from: Data(response.body.readableBytesView))
                 #expect(body.version == "1.2.3")
             }
         }
