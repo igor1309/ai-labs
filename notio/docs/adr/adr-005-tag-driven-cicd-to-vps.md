@@ -36,7 +36,7 @@ The required check is not merely that a container restarted or that an image exi
 
 The service is intended to run as a containerized workload on a VPS. The deployment target is a real runtime environment, not a separate test surface.
 
-The repo already uses this general shape for `nomos` in `.github/workflows/release-unit.yml`: CI copies deploy inputs to the VPS and the VPS performs the Docker build and tagging locally. Notio should follow that established release-unit pattern.
+The repo already uses this general shape for `nomos` in `.github/workflows/release-unit.yml`: CI copies deploy inputs to the VPS and the VPS performs the Docker build and tagging locally. Notio follows that established release-unit pattern for consistency and lower operational variance.
 
 ## Decision
 
@@ -53,7 +53,7 @@ Use a tag-driven CI/CD pipeline with the following shape:
    - the service is reachable
    - the service reports a version equal to the triggering tag
 
-The release artifact is a Docker image tagged with the Git tag.
+The release artifact is a Docker image tagged on the VPS with `<version>` and `<git-sha>` as required by `docs/adr/release/ADR-006-docker-image-tagging-policy.md`.
 
 The post-deploy source of truth is the running application version exposed by the service.
 
@@ -99,6 +99,7 @@ The image is tagged locally on the VPS with:
 - the git SHA for the triggering revision
 
 This follows the repo-level Docker tagging policy in `docs/adr/release/ADR-006-docker-image-tagging-policy.md`.
+Registry publishing is intentionally deferred at this stage; the VPS-local build/tag flow is the active release path.
 
 ### Deploy
 

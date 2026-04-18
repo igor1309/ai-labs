@@ -2,7 +2,7 @@
 date: 2026-04-18
 model: claude-opus-4-6
 description: "Implementation plan for wiring tag-driven CI/CD for the notio service (step 4 of Initial Bring-Up Steps)."
-status: draft
+status: implemented
 version: 0.0.1
 ---
 
@@ -13,7 +13,7 @@ version: 0.0.1
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-step-4`
 - Expected branch: `codex/notio-step-4`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## ADR Traceability Matrix
 
@@ -254,11 +254,11 @@ notify:
 
 ## Final Gates
 
-- [ ] Workflow YAML validates (actionlint or manual review)
-- [ ] `swift test` passes locally for notio
-- [ ] All changed files are scoped to: `notio/docs/adr/adr-005-tag-driven-cicd-to-vps.md`, `notio/scripts/`, `notio/docker-compose.yml`, `notio/.env.example`, `.github/workflows/release-unit.yml`
-- [ ] Plan moved to `notio/docs/plans/implemented/`
-- [ ] Log updated
+- [x] Workflow YAML validates (manual review + Python YAML parse; `actionlint` unavailable locally)
+- [x] `swift test` passes locally for notio
+- [x] All changed files are scoped to: `notio/docs/adr/adr-005-tag-driven-cicd-to-vps.md`, `notio/scripts/`, `notio/docker-compose.yml`, `notio/.env.example`, `.github/workflows/release-unit.yml`, `notio/docs/log.md`, `notio/docs/plans/step-4-wire-tag-driven-cicd.md` -> `notio/docs/plans/implemented/step-4-wire-tag-driven-cicd.md`
+- [x] Plan moved to `notio/docs/plans/implemented/`
+- [x] Log updated
 - [ ] PR created against trunk
 
 ## Open Questions
