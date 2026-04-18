@@ -22,6 +22,7 @@ if [ ! -f "$deploy_dir/.env" ]; then
 fi
 
 cp "$deploy_tmp_dir/Dockerfile" "$deploy_dir/Dockerfile"
+cp "$deploy_tmp_dir/.dockerignore" "$deploy_dir/.dockerignore"
 cp "$deploy_tmp_dir/Package.swift" "$deploy_dir/Package.swift"
 cp "$deploy_tmp_dir/Package.resolved" "$deploy_dir/Package.resolved"
 cp "$deploy_tmp_dir/docker-compose.yml" "$deploy_dir/docker-compose.yml"
