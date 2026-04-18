@@ -30,6 +30,7 @@ jobs:
       web-scout: ${{ steps.filter.outputs.web-scout }}
       corpus-scout: ${{ steps.filter.outputs.corpus-scout }}
       notio: ${{ steps.filter.outputs.notio }}
+      notio-ci: ${{ steps.filter.outputs.notio-ci }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,10 +68,12 @@ jobs:
               - "corpus-scout/**"
             notio:
               - "notio/**"
+            notio-ci:
+              - ".github/workflows/notio-core.yml"
 
   notio-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' || needs.changes.outputs.notio-ci == 'true' }}
     uses: ./.github/workflows/notio-core.yml
 
   nomos-core:
