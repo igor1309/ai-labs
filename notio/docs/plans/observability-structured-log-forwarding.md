@@ -3,7 +3,7 @@ title: "Observability: Structured Log Forwarding"
 date: 2026-04-19
 model: claude-opus-4-6
 description: "Wire notio structured JSON logs to Loki for persistent observability before building the capture pipeline"
-status: draft
+status: deferred
 type: note
 ---
 
