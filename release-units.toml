@@ -13,5 +13,5 @@ docker = true
 basename = "notio"
 path = "notio"
 metadata = "release.toml"
-version = "0.1.0"
+version = "0.1.1"
 docker = true
