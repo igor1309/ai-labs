@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- Deployed `notio_v0.2.0`: full capture pipeline live on VPS. End-to-end verified — notes, private repo links (enrichment: failed/expected), and public repo links (enrichment: partial) all persisted to Supabase. Fixed deploy timeout (ssh `command_timeout` increased to 15m for VPS Docker build).
+
 - Release prep for `notio_v0.2.0`: updated README status and env vars table, cleaned up future directions. 116 tests.
 
 - Enrichment pipeline: link items are enriched with title/description before persistence. WebPageEnricher (HTML metadata extraction), GitHubRepoEnricher (API-based), CompositeEnricher (source-type routing), CaptureService (parse → enrich → save orchestration). Supabase schema migration for `captured_title`/`captured_description` columns.
