@@ -80,6 +80,13 @@ Do not add anything not required by current scope or the current failing test.
 
 Use the `process-gates` skill. See `.claude/skills/process-gates/SKILL.md`.
 
+Repo-specific details:
+- Pre-commit/pre-push verification for Node/TypeScript: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
+- Swift-only scopes: `swift test` / `swift build`.
+- Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
+- Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
+- Worktree convention: `worktrees/<slug>` with branch `codex/<slug>`.
+
 ## Release Process
 
 Use the `release-process` skill. See `.claude/skills/release-process/SKILL.md`.

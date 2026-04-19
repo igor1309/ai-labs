@@ -12,11 +12,9 @@ Before each commit:
 
 1. Verify every changed file is directly tied to the current step.
 2. Verify no out-of-scope files were added.
-3. Run the required verification for the changed scope:
-   - `./scripts/run_silent.sh "tests" npm test` for Node/TypeScript or repo-wide integration changes covered by the root suite
-   - native unit checks such as `swift test` / `swift build` for Swift-only scopes
+3. Run the required verification for the changed scope (project-specific test/build commands).
 
-## Step closeout protocol
+## Step Closeout Protocol
 
 Mandatory after each implementation step:
 
@@ -33,10 +31,10 @@ Mandatory after each implementation step:
 
 Before pushing a branch or creating a PR, verify ALL of the following. Do not push until every item passes:
 
-1. **Log updated**: relevant `docs/log.md` or `<project>/docs/log.md` reflects what changed.
+1. **Log updated**: relevant changelog reflects what changed.
 2. **Plan updated**: active plan checkboxes match completed work.
 3. **No leftover changes**: `git status` is clean — no uncommitted docs, config, or code changes that belong in this branch.
-4. **Docker verified**: for Docker-producing units, `docker build` must pass (see "Local Docker Verification").
+4. **Docker verified**: for Docker-producing units, `docker build` must pass.
 5. **Tests pass**: full test suite for the changed scope is green.
 
 If any item fails, fix it and commit before pushing. Do not push code and leave docs for a follow-up commit.
@@ -50,8 +48,8 @@ Before any implementation action (editing files, running implementation tests, o
 3. Capture current worktree path and branch.
 4. Emit a preflight status line:
    - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
-   - `separate_worktree=pass` means the current worktree is a newly created, non-root worktree (typically under `worktrees/<slug>`) and the branch is the dedicated work branch (typically `codex/<slug>`).
-5. If separate worktree is required and preflight is `fail`, create a new separate worktree and rerun preflight until it is `pass` (do not implement from the root worktree). Example: `git worktree add -b codex/<slug> worktrees/<slug> trunk`
+   - `separate_worktree=pass` means the current worktree is a newly created, non-root worktree and the branch is the dedicated work branch.
+5. If separate worktree is required and preflight is `fail`, create a new separate worktree and rerun preflight until it is `pass` (do not implement from the root worktree).
 6. If any preflight item fails, no file edits are allowed.
 
 ## Process Discipline Hard Gates
@@ -79,14 +77,21 @@ When creating implementation plans (especially from review findings), the plan m
 3. Require preflight verification before Step 1; if preflight fails, halt immediately.
 4. Execute one step at a time with a green gate per step.
 5. For each step, run the required targeted verification for the changed unit.
-   - Use `./scripts/run_silent.sh "tests" npm test` when the step changes Node/TypeScript scope covered by the root suite or cross-project integration covered by that suite.
-   - Use native unit verification such as `swift test` / `swift build` for Swift-only scopes.
 6. Proceed only if green; if tests fail, fix first and re-run until green.
 7. Commit step changes only after green.
 8. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
 9. Mark implemented step status in the plan and commit the plan status update.
 10. Repeat the same process for each next step.
 11. At completion, run the final gates required by the changed scope.
-   - Node/TypeScript or cross-project integration touching the root suite: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`
-   - Swift-only scope: native final gates such as `swift build` and `swift test`
-12. Move completed plan from `docs/plans/` to `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/` for project-scoped plans), commit the move, and create a PR.
+12. Move completed plan to the implemented plans directory, commit the move, and create a PR.
+
+## Completion Verification
+
+After an implementation step or plan completion, verify:
+
+- [ ] Every changed file is tied to the current step (no scope creep).
+- [ ] Tests pass for the changed scope.
+- [ ] Plan tracker checkboxes match completed work.
+- [ ] `git status` is clean before push.
+- [ ] Preflight passed before any edits (if required by plan).
+- [ ] No gate was skipped without explicit user override.
