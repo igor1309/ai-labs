@@ -117,4 +117,15 @@ struct CapturedItemTests {
         #expect(enriched.capturedDescription == nil)
         #expect(enriched.enrichment == .failed)
     }
+
+    @Test func test_applying_shouldPreserveNoteItem() {
+        let item = CapturedItem(from: IngressResult(primaryURL: nil, note: "just a note"))
+        let enrichment = EnrichmentResult(title: "Ignored", description: "Ignored", status: .full)
+
+        let result = item.applying(enrichment)
+
+        #expect(result.enrichment == .none)
+        #expect(result.capturedTitle == nil)
+        #expect(result.capturedDescription == nil)
+    }
 }

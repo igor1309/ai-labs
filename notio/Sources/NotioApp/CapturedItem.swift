@@ -5,6 +5,12 @@ public struct EnrichmentResult: Equatable, Sendable {
     public let title: String?
     public let description: String?
     public let status: CapturedItem.Enrichment
+
+    public init(title: String?, description: String?, status: CapturedItem.Enrichment) {
+        self.title = title
+        self.description = description
+        self.status = status
+    }
 }
 
 public protocol Enricher: Sendable {
@@ -54,7 +60,8 @@ public struct CapturedItem: Equatable, Sendable {
     }
 
     public func applying(_ result: EnrichmentResult) -> CapturedItem {
-        CapturedItem(
+        guard kind == .link, url != nil else { return self }
+        return CapturedItem(
             kind: kind,
             sourceType: sourceType,
             capturedAt: capturedAt,
