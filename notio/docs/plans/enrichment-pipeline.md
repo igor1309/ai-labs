@@ -55,10 +55,10 @@ Create `EnrichmentResult` struct and `Enricher` protocol per spec. Add a method 
 
 Create a pure function that extracts `<title>` and `<meta name="description">` from HTML string/data. No HTTP — just parsing. This is the unit-testable core of web enrichment.
 
-- [ ] `HTMLMetadataExtractor.extract(from:)` → `(title: String?, description: String?)`
-- [ ] Tests: title extraction, description extraction, both present, neither present, malformed HTML (spec tests #8, #9)
-- [ ] `swift test` passes
-- [ ] Per-step closeout complete
+- [x] `HTMLMetadataExtractor.extract(from:)` → `(title: String?, description: String?)`
+- [x] Tests: title extraction, description extraction, both present, neither present, malformed HTML (spec tests #8, #9)
+- [x] `swift test` passes
+- [x] Per-step closeout complete
 
 ### Step 4 — Web page enricher implementation
 
