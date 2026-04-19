@@ -101,12 +101,7 @@ Repo-specific details:
 
 ## ADR Governance
 
-Architecture Decision Records (ADRs) live in `docs/adr/` organized by domain (e.g., `docs/adr/release/`, `docs/adr/governance/`).
-
-- ADR structure follows the template in `docs/adr/governance/adr-structure-template.md` (6-section progressive disclosure: Executive Summary, Context, Decision, Rules/Invariants, Consequences, Non-Goals).
-- ADR review follows the standard in `docs/adr/governance/adr-review-standard.md` (4 dimensions: Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision Stability).
-- Implementation plans derived from ADRs must include an ADR Traceability Matrix mapping each invariant to its implementation phase.
-- Planner requirements for ADR-based plans are defined in `docs/adr/governance/implementation-plan-planner-requirements.md`.
+Use the `adr-governance` skill. See `.claude/skills/adr-governance/SKILL.md`.
 
 ## "protocol owned by client" rule
 
