@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: promoted `ai-coder/dev-skills/` to root `dev-skills/` and fixed the workflow drift this created by switching `sync-skills-public.yml` from `ai-coder/dev-skills/public/**` to `dev-skills/public/**` and adding `dev-skills/**` back to `ci.yml` `paths-ignore`.
+
 - absorb-ai-coder: promoted `ai-coder/guides/` to `migrate-to-skills/guides/` and fixed the workflow drift that surfaced from the new root destination by adding `migrate-to-skills/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/guides` or `migrate-to-skills/guides`.
 
 - absorb-ai-coder: promoted `ai-coder/prompts/` to root `prompts/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/prompts`, and the move does not change the existing CI behavior for these assets.
