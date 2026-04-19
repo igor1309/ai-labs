@@ -1,0 +1,5 @@
+- [Умный выбор домена: MCP-Server + Cursor. Как я перестал перебирать занятые имена / Хабр](https://habr.com/ru/articles/1001624/)
+- [AI Генератор Доменов - AI Founders](https://dname.tech)
+- [найди mcp для проверки домена если mcp нет или некачественные дай семь...](https://www.perplexity.ai/search/naidi-mcp-dlia-proverki-domena-yPb7mXDcTj67rSbQx.Fl1w#0)
+- [Domain Checker MCP Server | MCP Servers · LobeHub](https://lobehub.com/mcp/ajot-domain-checker-mcp-server)
+- [Domain Name Search MCP Server for Claude, Cursor & ChatGPT](https://instantdomainsearch.com/mcp)

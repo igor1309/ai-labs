@@ -1,8 +1,10 @@
 ---
 title: Pre-Coding Phase
-date: 2026-04-12
+date: 2026-04-19
+model: gpt-5.4
+description: "Personal note describing the pre-coding phase as a judgment-driven, iterative part of software development."
 author: Igor Malyarov
-version: 0.0.2
+version: 0.0.3
 format: note
 ---
 
@@ -24,7 +26,17 @@ The pre-coding phase exists to reduce ambiguity before implementation starts. It
 
 This is not documentation for its own sake. It is a way to improve decision quality and reduce avoidable churn.
 
+## Choosing the starting point
+
+The work does not begin by selecting a document template. It begins by understanding the situation: what kind of field this is, what is already known, what is already decided, what remains unstable, and what kind of uncertainty is actually blocking progress.
+
+The starting point is therefore a judgment call. In one case, a green-field effort may begin with exploration because the problem space itself is still unclear. In another case, a brownfield change may begin directly at spec-level thinking because the architectural decisions are already settled and the missing piece is behavioral clarity. In yet another case, a team may discover that implementation cannot proceed without revisiting architectural commitment, which means returning to ADR-level thinking before more detailed work continues.
+
+What matters is not choosing the "correct document" first. What matters is recognizing which layer of thinking is currently load-bearing, then producing or refining the corresponding artifact as a result of that work.
+
 ## Typical sequence
+
+What follows is a common full path, not a deterministic recipe. The actual entry point may differ, some layers may be omitted, and some may be revisited multiple times depending on the case.
 
 ### 1. Research
 
@@ -162,6 +174,16 @@ Defines expected behavior and contract shape.
 ### Implementation plan
 Defines execution order and delivery path.
 
+## Iteration
+
+Software development is iterative.
+
+Movement across these layers is not strictly linear and not one-way. Work may move forward, pause, return to an earlier layer, or revisit several layers multiple times as coding, debugging, validation, and release expose new information.
+
+Revisiting an earlier layer is not a sign that the process failed. It is part of keeping the work honest against reality. If implementation reveals that a design decision is still unstable, the work may return to ADR-level thinking. If the design still holds but expected behavior is unclear, the work may return to the spec. If the decision and behavior remain sound but execution detail is missing, the work may return to the implementation plan.
+
+The same judgment applies when choosing where to return. The first re-entry point may turn out not to be the right one, and that is acceptable. A revisit that confirms an earlier artifact still holds is still useful because it narrows the problem and protects lower-level work from compensating for the wrong cause.
+
 ## Scope variants
 
 The full sequence above is built for net-new architectural work. Two common cases do not justify the full funnel and follow lighter, alternative paths. They are escape hatches with explicit escalation rules back into the full sequence — that escalation is what keeps the lite paths honest.
@@ -192,6 +214,8 @@ Each artifact goes through review. Review is a specialized concern with its own 
 
 Pre-coding artifacts are committed to the repository as they are produced. Research notes, pre-ADRs, ADRs, specs, and implementation plans are version-controlled alongside the code they govern. This makes the decision history inspectable, reviewable, and traceable — not buried in chat logs or lost between sessions.
 
+These artifacts are expected outputs of the work. They are not the starting point, and they are not one-shot paperwork. They are living aids for thinking, decision-making, focus, and progress. They can be revised, adapted, or deprecated as the work moves forward and reality tests earlier assumptions.
+
 ## Biases in this approach
 
 This method strongly favors several principles.
@@ -206,7 +230,7 @@ Ownership matters. Layer responsibility matters. Coupling must be introduced del
 
 ### 3. Progressive commitment
 
-This approach does not favor premature formality, but it also does not tolerate indefinite vagueness. The sequence from research to pre-ADR to ADR exists to gradually increase commitment.
+This approach does not favor premature formality, but it also does not tolerate indefinite vagueness. The movement from research to pre-ADR to ADR expresses a gradual increase in commitment when the situation calls for it.
 
 ### 4. Separation of exploratory and committed documents
 
@@ -218,6 +242,6 @@ The later the stage, the less room there should be for invention. Coding should 
 
 ## Summary
 
-This pre-coding phase can be described as a funnel that converts uncertainty into explicit decisions, explicit contracts, and an execution path.
+This pre-coding phase can be described as a judgment-driven effort that converts uncertainty into explicit decisions, explicit contracts, and an execution path.
 
-It is an opinionated method, but not an arbitrary one. It comes from practical experience with the cost of ambiguity, hidden assumptions, and premature implementation. Its value lies in making difficult thinking happen before code is written, when change is still cheap and architectural mistakes are still reversible.
+It is an opinionated method, but not an arbitrary one. It comes from practical experience with the cost of ambiguity, hidden assumptions, and premature implementation. Its value lies in making difficult thinking happen before code is written, while still recognizing that software development remains iterative and that earlier decisions may need to be revisited as reality pushes back.

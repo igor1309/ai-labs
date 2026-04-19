@@ -2,6 +2,13 @@
 # LOC dashboard — counts code, generated, scripts, tests, and text files.
 # Run from repo root: ./scripts/loc-dashboard.sh
 # Options: --sort=name (default) | --sort=total
+#
+# ROW PROJECTS (implementation footprint only; update when row-bearing dirs change):
+#   nomos, oracle, loki, corpus-scout, web-scout, neris, notio, claude-insights,
+#   dev-skills, sandbox, tools
+# Docs-only or pre-implementation directories remain known to drift detection
+# but are intentionally omitted from LOC rows until they gain code/test/script
+# footprint (currently: nexum, niora).
 
 set -euo pipefail
 
@@ -12,6 +19,8 @@ for arg in "$@"; do
     --sort=total) SORT_BY="total" ;;
   esac
 done
+
+DOCS_ONLY_DIRS=( "nexum" "niora" )
 
 # ---------- helpers ----------
 
@@ -30,7 +39,7 @@ loc_find() {
 
 COL_NAME=32
 COL_NUM=8
-TABLE_WIDTH=$(( COL_NAME + (COL_NUM + 1) * 6 ))  # 86: name + 6 cols each with leading space
+TABLE_WIDTH=$(( COL_NAME + (COL_NUM + 1) * 6 ))
 
 header() {
   echo ""
@@ -52,43 +61,75 @@ divider() {
 
 # ---------- counting ----------
 
+# Shared exclusions for all find commands
+EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" )
+
 count_project() {
   local dir="$1"
-  # code: .js/.ts, not test, not generated
+
+  # code: .js/.ts/.swift/.py, not test, not generated
   local code
-  code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" \) \
-    ! -name "*.test.js" ! -name "*.test.ts" \
+  code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" -o -name "*.swift" -o -name "*.py" \) \
+    ! -name "*.test.js" ! -name "*.test.ts" ! -name "*.test.swift" \
+    ! -name "*Tests.swift" ! -path "*Tests/*" ! -path "*/tests/*" \
+    ! -name "test_*.py" ! -name "*_test.py" \
     ! -name "*.generated.js" ! -name "*.generated.ts" \
-    ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*")
+    ! -name "conftest.py" \
+    "${EXCLUDES[@]}")
+
   # generated
   local gen
   gen=$(loc_find "$dir" \( -name "*.generated.js" -o -name "*.generated.ts" \) \
-    ! -path "*/node_modules/*" ! -path "*/.venv/*")
+    "${EXCLUDES[@]}")
+
   # shell scripts
   local sh
-  sh=$(loc_find "$dir" -name "*.sh" ! -path "*/node_modules/*")
-  # tests
+  sh=$(loc_find "$dir" -name "*.sh" "${EXCLUDES[@]}")
+
+  # tests: .test.js/.test.ts, *Tests.swift, Tests/ dir, test_*.py, conftest.py
   local tests
-  tests=$(loc_find "$dir" \( -name "*.test.js" -o -name "*.test.ts" \) \
-    ! -path "*/node_modules/*" ! -path "*/.venv/*")
+  tests=$(loc_find "$dir" \( \
+    -name "*.test.js" -o -name "*.test.ts" -o \
+    -name "*.test.swift" -o -name "*Tests.swift" -o \
+    -name "test_*.py" -o -name "*_test.py" -o -name "conftest.py" \
+    \) "${EXCLUDES[@]}")
+  # Also count Swift files inside Tests/ directories
+  local swift_tests_dir
+  swift_tests_dir=$(loc_find "$dir" -path "*/Tests/*.swift" ! -name "*.test.swift" ! -name "*Tests.swift" "${EXCLUDES[@]}")
+  # And Python files inside tests/ directories (not already matched)
+  local py_tests_dir
+  py_tests_dir=$(loc_find "$dir" -path "*/tests/*.py" ! -name "test_*.py" ! -name "*_test.py" ! -name "conftest.py" "${EXCLUDES[@]}")
+  tests=$((tests + swift_tests_dir + py_tests_dir))
+
   echo "$code $gen $sh $tests"
 }
 
 count_text() {
-  # Text/doc files: AGENTS.md, CLAUDE.md, .claude/, .codex/
   local total=0
+
+  # Root agent config files
   for f in AGENTS.md CLAUDE.md; do
     [[ -f "$f" ]] && total=$((total + $(wc -l < "$f")))
   done
-  [[ -d ".claude" ]] && total=$((total + $(loc_find ".claude" -type f ! -name "*.json")))
-  [[ -d ".codex"  ]] && total=$((total + $(loc_find ".codex"  -type f ! -name "*.json")))
+
+  # Per-project AGENTS.md (exclude worktrees to avoid double-counting)
+  while IFS= read -r f; do
+    total=$((total + $(wc -l < "$f")))
+  done < <(find . -name "AGENTS.md" -not -path "./AGENTS.md" ! -path "*/worktrees/*" ! -path "*/node_modules/*" ! -path "*/.build/*" 2>/dev/null)
+
+  # .claude/ directory (skills, settings, memory — not JSON)
+  [[ -d ".claude" ]] && total=$((total + $(loc_find ".claude" -type f ! -name "*.json" ! -path "*/worktrees/*")))
+
+  # docs/my-way/ methodology docs
+  [[ -d "docs/my-way" ]] && total=$((total + $(loc_find "docs/my-way" -type f -name "*.md")))
+
   echo $total
 }
 
 # ---------- accumulator ----------
 
-TC=0; TG=0; TS=0; TT=0; TX=0   # grand totals: code gen scripts tests text
-ROWS=()                          # buffered rows: tab-separated name c g s t x
+TC=0; TG=0; TS=0; TT=0; TX=0
+ROWS=()
 
 emit_row() {
   local name="$1" c="$2" g="$3" s="$4" t="$5" x="$6"
@@ -98,7 +139,6 @@ emit_row() {
 }
 
 print_rows() {
-  # sort by name (field 1) or total (field 7, numeric descending)
   local sorted
   if [[ "$SORT_BY" == "total" ]]; then
     sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k7 -rn)
@@ -111,6 +151,22 @@ print_rows() {
   done <<< "$sorted"
 }
 
+# ---------- drift detection ----------
+
+check_project_drift() {
+  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading research sandbox scripts tests tools vendor web-scout worktrees _inbox"
+  local unknown=""
+  for d in */; do
+    d="${d%/}"
+    if ! echo " $known " | grep -q " $d "; then
+      unknown="${unknown} ${d}"
+    fi
+  done
+  if [[ -n "$unknown" ]]; then
+    echo "  ⚠ unknown top-level dirs (classify in loc-dashboard.sh):${unknown}"
+  fi
+}
+
 # ---------- main ----------
 
 inner=$(( TABLE_WIDTH - 2 ))
@@ -120,8 +176,6 @@ pad=$(( (inner - ${#title}) / 2 ))
 printf "║%*s%s%*s║\n" $pad "" "$title" $(( inner - pad - ${#title} )) ""
 printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
-
-# collect all rows (order doesn't matter — they get sorted before printing)
 
 # nomos
 read nc ng ns nt < <(count_project "nomos")
@@ -153,9 +207,36 @@ emit_row "corpus-scout" "$cc" "$cg" "$cs" "$ct" "0"
 read wc wg ws wt < <(count_project "web-scout")
 emit_row "web-scout" "$wc" "$wg" "$ws" "$wt" "0"
 
+# neris (Swift)
+read rc rg rs rt < <(count_project "neris")
+emit_row "neris" "$rc" "$rg" "$rs" "$rt" "0"
+
+# notio (Swift)
+read oc og os ot < <(count_project "notio")
+emit_row "notio" "$oc" "$og" "$os" "$ot" "0"
+
+# claude-insights (TS/Python)
+read ic ig is it < <(count_project "claude-insights")
+emit_row "claude-insights" "$ic" "$ig" "$is" "$it" "0"
+
+# dev-skills
+read dc dg ds dt < <(count_project "dev-skills")
+emit_row "dev-skills" "$dc" "$dg" "$ds" "$dt" "0"
+
+# sandbox
+read sc sg ss st < <(count_project "sandbox")
+emit_row "sandbox" "$sc" "$sg" "$ss" "$st" "0"
+
+# tools
+read tcg tgg tsg ttg < <(count_project "tools")
+emit_row "tools" "$tcg" "$tgg" "$tsg" "$ttg" "0"
+
 # repo-level rows
-REPO_SH=$(loc_find "scripts" -name "*.sh")
-emit_row "repo-scripts" "0" "0" "$REPO_SH" "0" "0"
+REPO_SH=$(loc_find "scripts" -name "*.sh" ! -path "*/node_modules/*")
+REPO_JS=$(loc_find "scripts" \( -name "*.js" -o -name "*.ts" \) ! -path "*/node_modules/*" ! -name "*.test.js" ! -name "*.test.ts")
+REPO_TESTS=$(loc_find "tests" \( -name "*.test.js" -o -name "*.test.ts" -o -name "test_*.py" -o -name "*.py" \) ! -path "*/node_modules/*" ! -path "*/.venv/*")
+REPO_TESTS=$((REPO_TESTS + $(loc_find "scripts/tests" \( -name "*.test.js" -o -name "*.test.ts" \) ! -path "*/node_modules/*")))
+emit_row "repo-scripts" "$REPO_JS" "0" "$REPO_SH" "$REPO_TESTS" "0"
 
 TEXT=$(count_text)
 emit_row "agents" "0" "0" "0" "0" "$TEXT"
@@ -172,4 +253,19 @@ if [[ $TC -gt 0 ]]; then
   ratio=$(awk "BEGIN{printf \"%.1f\", $TT/$TC}")
   echo "  test/code ratio: ${ratio}x"
 fi
+
+OMITTED_ROWS=()
+for dir in "${DOCS_ONLY_DIRS[@]}"; do
+  if [[ -d "$dir" ]]; then
+    OMITTED_ROWS+=( "$dir" )
+  fi
+done
+
+if [[ ${#OMITTED_ROWS[@]} -gt 0 ]]; then
+  echo "  omitted docs-only/pre-implementation dirs (no code/tests/scripts): ${OMITTED_ROWS[*]}"
+fi
+
+# drift detection
+check_project_drift
+
 echo ""

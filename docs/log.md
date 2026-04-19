@@ -1,5 +1,41 @@
 # Log
 
+## 2026-04-19
+
+- LOC dashboard: clarified that the report is implementation-footprint-only, surfaced omitted docs-only/pre-implementation dirs (`nexum`, `niora`) in output, and fixed repo-level test counting to include `scripts/tests`.
+
+- absorb-ai-coder: absorbed the remaining reusable content from `ai-coder/README.md` into the root `README.md` and `dev-skills/README.md`, then removed the obsolete `ai-coder/README.md` file.
+
+- absorb-ai-coder: absorbed the old `ai-coder/AGENTS.md` structure and publishing facts into the root `README.md`, then removed `ai-coder/AGENTS.md` and its paired `ai-coder/CLAUDE.md` symlink now that those repo-orientation notes live at the monorepo root.
+
+- absorb-ai-coder: moved `ai-coder/docs/` into `dev-skills/docs/` by promoting the ai-coder log and archived dev-skills migration docs into the dev-skills documentation area. Updated the active absorption plan so it reflects the follow-up moves already completed on this branch.
+
+- absorb-ai-coder: promoted `ai-coder/gemini/` to root `gemini/` and fixed the CI drift this created by adding `gemini/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/gemini` or root `gemini/`.
+
+- absorb-ai-coder: promoted `ai-coder/tools/` to root `tools/` and fixed the CI drift this created by adding `tools/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/tools` or root `tools/`.
+
+- absorb-ai-coder: promoted `ai-coder/sandbox/` to root `sandbox/` and fixed the CI drift this created by adding `sandbox/**` to `ci.yml` `paths-ignore`. The repo-wide `sandbox-todo-issues.yml` remains intentionally active for root `sandbox/` entries.
+
+- absorb-ai-coder: promoted `ai-coder/dev-skills/` to root `dev-skills/` and fixed the workflow drift this created by switching `sync-skills-public.yml` from `ai-coder/dev-skills/public/**` to `dev-skills/public/**` and adding `dev-skills/**` back to `ci.yml` `paths-ignore`.
+
+- absorb-ai-coder: promoted `ai-coder/guides/` to `migrate-to-skills/guides/` and fixed the workflow drift that surfaced from the new root destination by adding `migrate-to-skills/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/guides` or `migrate-to-skills/guides`.
+
+- absorb-ai-coder: promoted `ai-coder/prompts/` to root `prompts/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/prompts`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: promoted `ai-coder/debates/` to root `debates/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/debates`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: promoted `ai-coder/reading/` to root `reading/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/reading`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: promoted `ai-coder/insights/` to root `insights/`. Workflow audit for this step found no path drift: no workflows reference `ai-coder/insights`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: moved the imported `_inbox/` from `ai-coder/_inbox/` to repo root and fixed the workflow drift that surfaced on this branch by adding `_inbox/**` to `ci.yml` `paths-ignore`; `sync-skills-public.yml` still correctly targets `ai-coder/dev-skills/public/**`, and `sandbox-todo-issues.yml` remains intentionally repo-wide.
+
+- absorb-ai-coder: imported `~/dev/ai-coder` into ai-labs under `ai-coder/` with full tracked history preserved, keeping repo-level assets intact and separating any later restructuring into follow-up work.
+
+- LOC dashboard: added neris (Swift), notio (Swift), claude-insights (TS/Python); extended counting to .swift/.py; fixed agents text count (removed dead .codex ref, added per-project AGENTS.md, skills, my-way docs); added drift detection for new top-level dirs; wired drift warning into CI workflow.
+
+- my-way: clarify the pre-coding phase as judgment-driven and iterative; extract first-class skills for research, pre-ADR, ADR, spec, and implementation planning; add transition tracking, promotion checklist, and future-shape note so the approach can move toward skills without forcing a premature final information architecture.
+
 ## 2026-04-18
 
 - Added `notio-core.yml` CI workflow and wired it into `ci.yml` path-filter dispatch — notio tests now run on PRs in a `swift:6.1` Linux container, catching platform-specific failures before merge.
