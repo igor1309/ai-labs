@@ -133,12 +133,7 @@ Do NOT run `npm test` or `npx tsc` directly — always use the wrapper for Node/
 
 ## Composition Root
 
-Composition root rules are defined in `oracle/docs/composition-root-wiring-guide.md`.
-
-Use that guide as the source of truth for:
-- interface-only wiring boundaries,
-- layered assembly responsibilities,
-- composition wiring test strategy.
+Use the `composition-root` skill. See `.claude/skills/composition-root/SKILL.md`.
 
 ## Docker Discipline
 

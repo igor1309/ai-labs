@@ -1,1 +1,0 @@
-transform composition-root-wiring-guide to skill
