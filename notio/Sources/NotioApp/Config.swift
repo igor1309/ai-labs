@@ -7,6 +7,7 @@ public struct Config: Sendable {
     public let diagnosticMode: DiagnosticMode?
     public let supabaseURL: String?
     public let supabaseKey: String?
+    public let telegramBotToken: String?
 
     public init(
         port: Int = 8080,
@@ -14,7 +15,8 @@ public struct Config: Sendable {
         webhookPath: String,
         diagnosticMode: DiagnosticMode? = nil,
         supabaseURL: String? = nil,
-        supabaseKey: String? = nil
+        supabaseKey: String? = nil,
+        telegramBotToken: String? = nil
     ) {
         self.port = port
         self.version = version
@@ -22,10 +24,12 @@ public struct Config: Sendable {
         self.diagnosticMode = diagnosticMode
         self.supabaseURL = supabaseURL
         self.supabaseKey = supabaseKey
+        self.telegramBotToken = telegramBotToken
     }
 
     public enum ConfigError: Error, Equatable {
         case missingWebhookPath
+        case missingBotToken
     }
 
     /// Reads config from the given environment dictionary.
@@ -46,13 +50,19 @@ public struct Config: Sendable {
         }
         let supabaseURL = env["NOTIO_SUPABASE_URL"]
         let supabaseKey = env["NOTIO_SUPABASE_KEY"]
+        let telegramBotToken = env["NOTIO_TELEGRAM_BOT_TOKEN"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if diagnosticMode == nil && (telegramBotToken ?? "").isEmpty {
+            throw ConfigError.missingBotToken
+        }
         return Config(
             port: port,
             version: version,
             webhookPath: webhookPath,
             diagnosticMode: diagnosticMode,
             supabaseURL: supabaseURL,
-            supabaseKey: supabaseKey
+            supabaseKey: supabaseKey,
+            telegramBotToken: telegramBotToken
         )
     }
 }

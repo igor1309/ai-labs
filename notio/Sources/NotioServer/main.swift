@@ -20,5 +20,14 @@ let enricher: any Enricher = CompositeEnricher(
     githubRepo: GitHubRepoEnricher(fetcher: fetcher, logger: logger)
 )
 
-let app = buildApp(config: config, logger: logger, store: store, enricher: enricher)
+let messenger: (any CaptureFeedbackMessenger)?
+if let botToken = config.telegramBotToken {
+    let sender = TelegramMessageSender(botToken: botToken)
+    messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
+    logger.info("telegram feedback enabled")
+} else {
+    messenger = nil
+}
+
+let app = try buildApp(config: config, logger: logger, store: store, enricher: enricher, messenger: messenger)
 try await app.runService()

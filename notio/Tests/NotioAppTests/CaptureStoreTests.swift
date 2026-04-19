@@ -20,6 +20,7 @@ struct CaptureStoreTests {
     @Test func test_config_shouldReadSupabaseFromEnv() throws {
         let config = try Config.fromEnvironment([
             "NOTIO_WEBHOOK_PATH": "hook",
+            "NOTIO_TELEGRAM_BOT_TOKEN": "t",
             "NOTIO_SUPABASE_URL": "https://xxx.supabase.co",
             "NOTIO_SUPABASE_KEY": "secret-key",
         ])
@@ -28,7 +29,7 @@ struct CaptureStoreTests {
     }
 
     @Test func test_config_shouldHaveNilSupabaseByDefault() throws {
-        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "hook"])
+        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "hook", "NOTIO_TELEGRAM_BOT_TOKEN": "t"])
         #expect(config.supabaseURL == nil)
         #expect(config.supabaseKey == nil)
     }

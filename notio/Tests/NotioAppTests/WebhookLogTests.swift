@@ -10,7 +10,7 @@ struct WebhookLogTests {
     @Test func test_webhookLog_shouldEmitRequiredFields() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger)
+        let app = try makeApp(logger: logger)
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post) { _ in }
@@ -28,7 +28,7 @@ struct WebhookLogTests {
     @Test func test_normalMode_shouldLogUpdateId() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger)
+        let app = try makeApp(logger: logger)
         let body = ByteBuffer(string: #"{"update_id":42,"message":{"message_id":1,"chat":{"id":123},"date":0,"text":"hi"}}"#)
 
         try await app.test(.router) { client in
@@ -42,7 +42,7 @@ struct WebhookLogTests {
     @Test func test_normalMode_shouldLogChatId() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger)
+        let app = try makeApp(logger: logger)
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":456},"date":0,"text":"hi"}}"#)
 
         try await app.test(.router) { client in
@@ -56,7 +56,7 @@ struct WebhookLogTests {
     @Test func test_normalMode_shouldHandleInvalidJson() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger)
+        let app = try makeApp(logger: logger)
         let body = ByteBuffer(string: "not json")
 
         try await app.test(.router) { client in
@@ -69,7 +69,7 @@ struct WebhookLogTests {
     @Test func test_inspectMode_shouldReturn200() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .inspect)
+        let app = try makeApp(logger: logger, diagnosticMode: .inspect)
         let body = ByteBuffer(string: #"{"update_id":42,"message":{"chat":{"id":123},"text":"hello"}}"#)
 
         try await app.test(.router) { client in
@@ -82,7 +82,7 @@ struct WebhookLogTests {
     @Test func test_inspectMode_shouldLogUpdateId() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .inspect)
+        let app = try makeApp(logger: logger, diagnosticMode: .inspect)
         let body = ByteBuffer(string: #"{"update_id":42,"message":{"chat":{"id":123},"text":"hello"}}"#)
 
         try await app.test(.router) { client in
@@ -96,7 +96,7 @@ struct WebhookLogTests {
     @Test func test_inspectMode_shouldLogChatId() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .inspect)
+        let app = try makeApp(logger: logger, diagnosticMode: .inspect)
         let body = ByteBuffer(string: #"{"update_id":42,"message":{"chat":{"id":123},"text":"hello"}}"#)
 
         try await app.test(.router) { client in
@@ -110,7 +110,7 @@ struct WebhookLogTests {
     @Test func test_inspectMode_shouldLogTruncatedText() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .inspect)
+        let app = try makeApp(logger: logger, diagnosticMode: .inspect)
         let longText = String(repeating: "a", count: 200)
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"chat":{"id":1},"text":"\#(longText)"}}"#)
 
@@ -126,7 +126,7 @@ struct WebhookLogTests {
     @Test func test_delayMode_shouldReturn200() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .delay(milliseconds: 10))
+        let app = try makeApp(logger: logger, diagnosticMode: .delay(milliseconds: 10))
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post) { response in
@@ -138,7 +138,7 @@ struct WebhookLogTests {
     @Test func test_delayMode_shouldLogLatency() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .delay(milliseconds: 10))
+        let app = try makeApp(logger: logger, diagnosticMode: .delay(milliseconds: 10))
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post) { _ in }
@@ -152,7 +152,7 @@ struct WebhookLogTests {
     @Test func test_failMode_shouldReturnConfiguredStatus() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .fail(status: 503))
+        let app = try makeApp(logger: logger, diagnosticMode: .fail(status: 503))
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post) { response in
@@ -164,7 +164,7 @@ struct WebhookLogTests {
     @Test func test_failMode_shouldLogFailure() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .fail(status: 500))
+        let app = try makeApp(logger: logger, diagnosticMode: .fail(status: 500))
 
         try await app.test(.router) { client in
             try await client.execute(uri: "/hook", method: .post) { _ in }
@@ -179,11 +179,12 @@ struct WebhookLogTests {
         let spy = SpyCaptureStore()
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = buildApp(
+        let app = try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook"),
             logger: logger,
             store: spy,
-            enricher: NullEnricher()
+            enricher: NullEnricher(),
+            messenger: NoOpCaptureFeedbackMessenger()
         )
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com check later"}}"#)
 
@@ -202,11 +203,12 @@ struct WebhookLogTests {
     @Test func test_normalMode_shouldCallEnricherForLinkCapture() async throws {
         let store = SpyCaptureStore()
         let enricher = WebhookSpyEnricher(result: EnrichmentResult(title: "Example", description: nil, status: .partial))
-        let app = buildApp(
+        let app = try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook"),
             logger: Logger(label: "test", factory: SwiftLogNoOpLogHandler.init),
             store: store,
-            enricher: enricher
+            enricher: enricher,
+            messenger: NoOpCaptureFeedbackMessenger()
         )
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com"}}"#)
 
@@ -224,11 +226,12 @@ struct WebhookLogTests {
     @Test func test_normalMode_shouldReturn200WhenStoreFails() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = buildApp(
+        let app = try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook"),
             logger: logger,
             store: ThrowingCaptureStore(),
-            enricher: NullEnricher()
+            enricher: NullEnricher(),
+            messenger: NoOpCaptureFeedbackMessenger()
         )
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com"}}"#)
 
@@ -245,7 +248,7 @@ struct WebhookLogTests {
     @Test func test_inspectMode_shouldNotReflectPayloadInResponse() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
-        let app = makeApp(logger: logger, diagnosticMode: .inspect)
+        let app = try makeApp(logger: logger, diagnosticMode: .inspect)
         let body = ByteBuffer(string: #"{"update_id":42,"message":{"chat":{"id":123},"text":"secret"}}"#)
 
         try await app.test(.router) { client in
@@ -261,11 +264,13 @@ struct WebhookLogTests {
 // MARK: - Helpers
 
 extension WebhookLogTests {
-    private func makeApp(logger: Logger, diagnosticMode: DiagnosticMode? = nil) -> some ApplicationProtocol {
-        buildApp(
+    private func makeApp(logger: Logger, diagnosticMode: DiagnosticMode? = nil) throws -> some ApplicationProtocol {
+        try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook", diagnosticMode: diagnosticMode),
             logger: logger,
-            enricher: NullEnricher()
+            store: diagnosticMode == nil ? SpyCaptureStore() : nil,
+            enricher: NullEnricher(),
+            messenger: diagnosticMode == nil ? NoOpCaptureFeedbackMessenger() : nil
         )
     }
 }

@@ -2,6 +2,10 @@
 
 ## 2026-04-19
 
+- notio: two-phase capture feedback (`notio_v0.3.0`) — receipt acknowledgement and final outcome messages via Telegram. 144 tests, Docker verified.
+
+- notio: deployed `notio_v0.2.0` — full capture pipeline (parse → enrich → persist to Supabase) live on VPS. Fixed deploy ssh timeout and added `paths-ignore` to CI `pull_request` trigger to skip builds on docs-only PRs.
+
 - LOC dashboard: clarified that the report is implementation-footprint-only, surfaced omitted docs-only/pre-implementation dirs (`nexum`, `niora`) in output, and fixed repo-level test counting to include `scripts/tests`.
 
 - absorb-ai-coder: absorbed the remaining reusable content from `ai-coder/README.md` into the root `README.md` and `dev-skills/README.md`, then removed the obsolete `ai-coder/README.md` file.

@@ -8,7 +8,7 @@ import Testing
 @Suite("WebhookRoute")
 struct WebhookRouteTests {
     @Test func test_post_shouldReturn200Immediately() async throws {
-        let app = makeApp(webhookPath: "secret-path")
+        let app = try makeApp(webhookPath: "secret-path")
         try await app.test(.router) { client in
             try await client.execute(uri: "/secret-path", method: .post) { response in
                 #expect(response.status == .ok)
@@ -17,7 +17,7 @@ struct WebhookRouteTests {
     }
 
     @Test func test_post_shouldReturnOkBody() async throws {
-        let app = makeApp(webhookPath: "secret-path")
+        let app = try makeApp(webhookPath: "secret-path")
         try await app.test(.router) { client in
             try await client.execute(uri: "/secret-path", method: .post) { response in
                 #expect(String(buffer: response.body) == "ok")
@@ -26,7 +26,7 @@ struct WebhookRouteTests {
     }
 
     @Test func test_post_shouldReturn404ForUnknownPath() async throws {
-        let app = makeApp(webhookPath: "secret-path")
+        let app = try makeApp(webhookPath: "secret-path")
         try await app.test(.router) { client in
             try await client.execute(uri: "/other-path", method: .post) { response in
                 #expect(response.status == .notFound)
@@ -35,7 +35,7 @@ struct WebhookRouteTests {
     }
 
     @Test func test_post_shouldReturn404WhenWebhookPathDiffers() async throws {
-        let app = makeApp(webhookPath: "real-secret")
+        let app = try makeApp(webhookPath: "real-secret")
         try await app.test(.router) { client in
             try await client.execute(uri: "/wrong-secret", method: .post) { response in
                 #expect(response.status == .notFound)
@@ -62,7 +62,12 @@ struct WebhookRouteTests {
 // MARK: - Helpers
 
 extension WebhookRouteTests {
-    private func makeApp(webhookPath: String) -> some ApplicationProtocol {
-        buildApp(config: Config(port: 8080, version: "test", webhookPath: webhookPath), enricher: NullEnricher())
+    private func makeApp(webhookPath: String) throws -> some ApplicationProtocol {
+        try buildApp(
+            config: Config(port: 8080, version: "test", webhookPath: webhookPath),
+            store: SpyCaptureStore(),
+            enricher: NullEnricher(),
+            messenger: NoOpCaptureFeedbackMessenger()
+        )
     }
 }

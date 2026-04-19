@@ -31,8 +31,9 @@ A Telegram message may be a link, a link with a note, or a note only. Rules:
 3. kind is determined (`link` | `note`) and source type classified (`github_repo` | `web_page`)
 4. best-effort, non-AI enrichment runs (GitHub repo metadata or generic title/description)
 5. a canonical, storage-independent item is persisted through the storage interface
+6. two-phase feedback is attempted: immediate receipt acknowledgement, then final outcome (success/failure)
 
-If enrichment fails, the item is still persisted. Enrichment outcome is recorded as `full` | `partial` | `failed` | `none`.
+If enrichment fails, the item is still persisted. Enrichment outcome is recorded as `full` | `partial` | `failed` | `none`. Feedback delivery failure does not affect capture outcome.
 
 ## Architecture
 
@@ -54,6 +55,7 @@ Authoritative design lives in [`docs/adr/`](docs/adr/):
 - [ADR-003 — Supabase-backed storage](docs/adr/adr-003-supabase-backed-storage-implementation.md)
 - [ADR-004 — runtime diagnostics via config-driven composition](docs/adr/adr-004-runtime-diagnostics-config-driven-composition.md)
 - [ADR-005 — tag-driven CI/CD to VPS](docs/adr/adr-005-tag-driven-cicd-to-vps.md)
+- [ADR-006 — capture feedback as cross-cutting concern](docs/adr/adr-006-capture-feedback-as-cross-cutting-concern.md)
 
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 
@@ -82,8 +84,9 @@ One process initially; ingress and core stay logically separate.
 | `NOTIO_WEBHOOK_PATH`           | yes      | —       | Secret webhook path segment              |
 | `NOTIO_PORT`                   | no       | `8080`  | HTTP listen port                         |
 | `NOTIO_VERSION`                | no       | `dev`   | Reported by `/version`                   |
-| `NOTIO_SUPABASE_URL`           | no       | —       | Supabase project URL                     |
-| `NOTIO_SUPABASE_KEY`           | no       | —       | Supabase service-role key                |
+| `NOTIO_TELEGRAM_BOT_TOKEN`     | normal   | —       | Telegram bot token for feedback; required in normal mode, optional in diagnostic mode |
+| `NOTIO_SUPABASE_URL`           | normal   | —       | Supabase project URL; required in normal mode, optional in diagnostic mode |
+| `NOTIO_SUPABASE_KEY`           | normal   | —       | Supabase service-role key; required in normal mode, optional in diagnostic mode |
 | `NOTIO_DIAGNOSTIC_MODE`        | no       | —       | `ack` \| `inspect` \| `delay` \| `fail`              |
 | `NOTIO_DIAGNOSTIC_DELAY_MS`    | no       | `5000`  | Delay for `delay` mode; ignored otherwise            |
 | `NOTIO_DIAGNOSTIC_FAIL_STATUS` | no       | `500`   | HTTP status for `fail` mode; ignored otherwise       |
@@ -93,14 +96,20 @@ One process initially; ingress and core stay logically separate.
 ```bash
 swift test              # unit tests
 swift build             # debug build
-swift run NotioServer   # run locally (NOTIO_WEBHOOK_PATH required)
+NOTIO_WEBHOOK_PATH=test-webhook NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token NOTIO_SUPABASE_URL=https://example.supabase.co NOTIO_SUPABASE_KEY=test-service-role-key swift run NotioServer
 ```
 
 Docker:
 
 ```bash
 docker build -t notio:dev .
-docker run --rm -p 8080:8080 -e NOTIO_WEBHOOK_PATH=test notio:dev
+docker run --rm -p 8080:8080 -e NOTIO_WEBHOOK_PATH=test -e NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token -e NOTIO_SUPABASE_URL=https://example.supabase.co -e NOTIO_SUPABASE_KEY=test-service-role-key notio:dev
+```
+
+Diagnostic-only local run without Telegram feedback or persistence:
+
+```bash
+NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 ```
 
 ## Release
@@ -109,7 +118,7 @@ Notio is an independent release unit. Canonical version lives in `release.toml`;
 
 ## Status
 
-v1 capture pipeline complete (`notio_v0.2.0`): full parse → enrich → persist flow operational. Telegram messages are parsed (URL extraction with UTM stripping, entity/regex fallback), source-classified (`github_repo` | `web_page`), enriched (GitHub API metadata or HTML title/description extraction), and persisted to Supabase. Service deployed on VPS, `@NotioInboxBot` webhook live at `inbox.enoa.ai`. 116 tests. History: [`docs/log.md`](docs/log.md).
+v1 capture pipeline with two-phase feedback (`notio_v0.3.0`): full parse → enrich → persist flow with Telegram receipt and outcome feedback. Telegram messages are parsed (URL extraction with UTM stripping, entity/regex fallback), source-classified (`github_repo` | `web_page`), enriched (GitHub API metadata or HTML title/description extraction), and persisted to Supabase. Each capture request receives an immediate receipt acknowledgement and a final success/failure message. Service deployed on VPS, `@NotioInboxBot` webhook live at `inbox.enoa.ai`. History: [`docs/log.md`](docs/log.md).
 
 ## Future directions
 

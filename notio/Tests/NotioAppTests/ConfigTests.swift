@@ -16,27 +16,27 @@ struct ConfigTests {
     }
 
     @Test func test_fromEnvironment_shouldSucceedWithWebhookPath() throws {
-        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret"])
+        let config = try Config.fromEnvironment(normalEnv())
         #expect(config.webhookPath == "secret")
     }
 
     @Test func test_fromEnvironment_shouldUseDefaultPort() throws {
-        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret"])
+        let config = try Config.fromEnvironment(normalEnv())
         #expect(config.port == 8080)
     }
 
     @Test func test_fromEnvironment_shouldUseDefaultVersion() throws {
-        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret"])
+        let config = try Config.fromEnvironment(normalEnv())
         #expect(config.version == "dev")
     }
 
     @Test func test_fromEnvironment_shouldReadPortFromEnv() throws {
-        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret", "NOTIO_PORT": "9090"])
+        let config = try Config.fromEnvironment(normalEnv(["NOTIO_PORT": "9090"]))
         #expect(config.port == 9090)
     }
 
     @Test func test_fromEnvironment_shouldReadVersionFromEnv() throws {
-        let config = try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret", "NOTIO_VERSION": "1.2.3"])
+        let config = try Config.fromEnvironment(normalEnv(["NOTIO_VERSION": "1.2.3"]))
         #expect(config.version == "1.2.3")
     }
 
@@ -80,5 +80,57 @@ struct ConfigTests {
             "NOTIO_DIAGNOSTIC_FAIL_STATUS": "503",
         ])
         #expect(config.diagnosticMode == .fail(status: 503))
+    }
+
+    @Test func test_fromEnvironment_shouldThrowWhenBotTokenMissingInNormalMode() {
+        #expect(throws: Config.ConfigError.missingBotToken) {
+            try Config.fromEnvironment(["NOTIO_WEBHOOK_PATH": "secret"])
+        }
+    }
+
+    @Test func test_fromEnvironment_shouldThrowWhenBotTokenBlankInNormalMode() {
+        #expect(throws: Config.ConfigError.missingBotToken) {
+            try Config.fromEnvironment([
+                "NOTIO_WEBHOOK_PATH": "secret",
+                "NOTIO_TELEGRAM_BOT_TOKEN": " \n ",
+            ])
+        }
+    }
+
+    @Test func test_fromEnvironment_shouldSucceedWithoutBotTokenInDiagnosticMode() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_DIAGNOSTIC_MODE": "ack",
+        ])
+        #expect(config.telegramBotToken == nil)
+    }
+
+    @Test func test_fromEnvironment_shouldReadBotTokenFromEnv() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_TELEGRAM_BOT_TOKEN": "bot123",
+        ])
+        #expect(config.telegramBotToken == "bot123")
+    }
+
+    @Test func test_fromEnvironment_shouldTrimBotTokenFromEnv() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_TELEGRAM_BOT_TOKEN": "  bot123\n",
+        ])
+        #expect(config.telegramBotToken == "bot123")
+    }
+}
+
+// MARK: - Helpers
+
+private extension ConfigTests {
+    func normalEnv(_ extra: [String: String] = [:]) -> [String: String] {
+        var env: [String: String] = [
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_TELEGRAM_BOT_TOKEN": "test-token",
+        ]
+        extra.forEach { env[$0.key] = $0.value }
+        return env
     }
 }
