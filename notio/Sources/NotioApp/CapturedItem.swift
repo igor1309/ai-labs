@@ -1,5 +1,16 @@
 import Foundation
 
+public struct EnrichmentResult: Equatable, Sendable {
+
+    public let title: String?
+    public let description: String?
+    public let status: CapturedItem.Enrichment
+}
+
+public protocol Enricher: Sendable {
+    func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult
+}
+
 public struct CapturedItem: Equatable, Sendable {
 
     public let kind: Kind
@@ -40,6 +51,39 @@ public struct CapturedItem: Equatable, Sendable {
             self.kind = .note
             self.sourceType = nil
         }
+    }
+
+    public func applying(_ result: EnrichmentResult) -> CapturedItem {
+        CapturedItem(
+            kind: kind,
+            sourceType: sourceType,
+            capturedAt: capturedAt,
+            url: url,
+            note: note,
+            enrichment: result.status,
+            capturedTitle: result.title,
+            capturedDescription: result.description
+        )
+    }
+
+    init(
+        kind: Kind,
+        sourceType: SourceType?,
+        capturedAt: Date,
+        url: String?,
+        note: String?,
+        enrichment: Enrichment,
+        capturedTitle: String?,
+        capturedDescription: String?
+    ) {
+        self.kind = kind
+        self.sourceType = sourceType
+        self.capturedAt = capturedAt
+        self.url = url
+        self.note = note
+        self.enrichment = enrichment
+        self.capturedTitle = capturedTitle
+        self.capturedDescription = capturedDescription
     }
 }
 

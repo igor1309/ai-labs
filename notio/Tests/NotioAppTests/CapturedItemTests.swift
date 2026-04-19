@@ -82,4 +82,39 @@ struct CapturedItemTests {
         #expect(item.capturedTitle == nil)
         #expect(item.capturedDescription == nil)
     }
+
+    @Test func test_applying_shouldMapFullResult() {
+        let item = CapturedItem(from: IngressResult(primaryURL: "https://example.com", note: nil))
+        let enrichment = EnrichmentResult(title: "Example", description: "A page", status: .full)
+
+        let enriched = item.applying(enrichment)
+
+        #expect(enriched.capturedTitle == "Example")
+        #expect(enriched.capturedDescription == "A page")
+        #expect(enriched.enrichment == .full)
+        #expect(enriched.kind == .link)
+        #expect(enriched.url == "https://example.com")
+    }
+
+    @Test func test_applying_shouldMapPartialResult() {
+        let item = CapturedItem(from: IngressResult(primaryURL: "https://example.com", note: nil))
+        let enrichment = EnrichmentResult(title: "Only Title", description: nil, status: .partial)
+
+        let enriched = item.applying(enrichment)
+
+        #expect(enriched.capturedTitle == "Only Title")
+        #expect(enriched.capturedDescription == nil)
+        #expect(enriched.enrichment == .partial)
+    }
+
+    @Test func test_applying_shouldMapFailedResult() {
+        let item = CapturedItem(from: IngressResult(primaryURL: "https://example.com", note: nil))
+        let enrichment = EnrichmentResult(title: nil, description: nil, status: .failed)
+
+        let enriched = item.applying(enrichment)
+
+        #expect(enriched.capturedTitle == nil)
+        #expect(enriched.capturedDescription == nil)
+        #expect(enriched.enrichment == .failed)
+    }
 }
