@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: moved `ai-coder/docs/` into `dev-skills/docs/` by promoting the ai-coder log and archived dev-skills migration docs into the dev-skills documentation area. Updated the active absorption plan so it reflects the follow-up moves already completed on this branch.
+
 - absorb-ai-coder: promoted `ai-coder/gemini/` to root `gemini/` and fixed the CI drift this created by adding `gemini/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/gemini` or root `gemini/`.
 
 - absorb-ai-coder: promoted `ai-coder/tools/` to root `tools/` and fixed the CI drift this created by adding `tools/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/tools` or root `tools/`.

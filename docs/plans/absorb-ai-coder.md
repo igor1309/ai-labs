@@ -48,13 +48,15 @@ Git subtree, Markdown plans, existing ai-labs worktree workflow.
 - [x] Branch reset from the risky merge sequence back to `9214fc75`
 - [x] `ai-coder` remote added and fetched from `~/dev/ai-coder`
 - [x] `ai-coder` imported under `ai-coder/` with `git subtree add --prefix=ai-coder ai-coder trunk`
+- [x] Follow-up content promotions executed incrementally (`_inbox`, `insights`, `reading`, `debates`, `prompts`, `guides`, `dev-skills`, `sandbox`, `tools`, `gemini`)
+- [x] `ai-coder/docs/` moved into `dev-skills/docs/`
 - [ ] Follow-up restructuring evaluated and approved separately
 
 ## Phase 1: Preservation Import
 
 ### Scope
 
-Import the ai-coder repository unchanged under `ai-coder/` and preserve tracked repo-level assets including:
+Import the ai-coder repository unchanged under `ai-coder/` and preserve tracked repo-level assets at import time, including:
 
 - `ai-coder/README.md`
 - `ai-coder/AGENTS.md`
@@ -64,6 +66,8 @@ Import the ai-coder repository unchanged under `ai-coder/` and preserve tracked 
 - all existing ai-coder top-level content directories
 
 Local-only, untracked files such as `~/dev/ai-coder/.claude/settings.local.json` are out of scope for Git-based absorption.
+
+Later approved follow-up steps on this branch moved `ai-coder/docs/` into `dev-skills/docs/`.
 
 ### Why This Structure
 
@@ -117,9 +121,23 @@ Verification:
 
 ## Phase 2: Optional Post-Import Migration
 
-Phase 2 is not authorized by this plan. Start it only after Phase 1 is reviewed in the prefixed layout.
+Phase 2 started after the Phase 1 import and has been executed incrementally on this branch. Continue to treat each move as its own small plan or reviewable step.
 
-If approved later, treat each move as its own small plan or reviewable step:
+Applied so far:
+
+1. `_inbox/` moved to repo root
+2. `insights/` moved to repo root
+3. `reading/` moved to repo root
+4. `debates/` moved to repo root
+5. `prompts/` moved to repo root
+6. `guides/` moved to `migrate-to-skills/guides/`
+7. `dev-skills/` moved to repo root
+8. `sandbox/` moved to repo root
+9. `tools/` moved to repo root
+10. `gemini/` moved to repo root
+11. `ai-coder/docs/` moved to `dev-skills/docs/`
+
+Continue with this discipline for any further moves:
 
 1. Decide whether keeping `ai-coder/` intact is already sufficient.
 2. If not, pick one directory at a time to migrate.
