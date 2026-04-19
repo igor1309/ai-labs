@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-19
+
+- my-way: clarify the pre-coding phase as judgment-driven and iterative; extract first-class skills for research, pre-ADR, ADR, spec, and implementation planning; add transition tracking, promotion checklist, and future-shape note so the approach can move toward skills without forcing a premature final information architecture.
+
 ## 2026-04-18
 
 - Added `notio-core.yml` CI workflow and wired it into `ci.yml` path-filter dispatch — notio tests now run on PRs in a `swift:6.1` Linux container, catching platform-specific failures before merge.
