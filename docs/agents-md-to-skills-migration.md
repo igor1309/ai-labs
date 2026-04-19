@@ -86,12 +86,12 @@ A canonical skills plugin (private repo) is installed per-project from the marke
 
 ### Phase A: Extract skills locally (this repo)
 
-Extract rules from CLAUDE.md/AGENTS.md into `.claude/skills/` one at a time. Each extraction:
+Extract rules from CLAUDE.md/AGENTS.md into `.claude/skills/` one at a time.
 
-1. Create the skill (SKILL.md + references/ if needed).
-2. Reference the skill from CLAUDE.md.
-3. Remove the inlined content from CLAUDE.md.
-4. Verify the skill loads and is invocable.
+**Move then improve.** Each extraction is two separate commits:
+
+1. **Move (verbatim):** Extract the section as-is into a skill (SKILL.md + references/ if needed), add necessary frontmatter, reference the skill from CLAUDE.md, remove the inlined content. No rewording, no restructuring. Commit.
+2. **Improve (optional):** If the extracted content benefits from rewriting for the skill format, do it in a separate commit. This keeps the move reviewable as a pure extraction with no content changes mixed in.
 
 CLAUDE.md shrinks incrementally. Skills start as local/project-scoped.
 
