@@ -1,6 +1,8 @@
 # Dev Skills - Development Repository
 
-Private development repository for Claude Code skills.
+Development workspace for Claude Code skills inside `ai-labs`.
+
+Skills are developed here and published to the public [igor1309/skills](https://github.com/igor1309/skills) repository via GitHub Actions.
 
 ## Structure
 
@@ -48,3 +50,5 @@ Users install skills from: https://github.com/igor1309/skills
 ```
 /plugin marketplace add igor1309/skills
 ```
+
+See `public/README.md` for the current published skill catalog and usage examples.

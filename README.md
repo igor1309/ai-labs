@@ -2,11 +2,24 @@
 
 Applied AI experiments and systems engineering.
 
+This repo also holds a reusable library of agent-oriented instructions, prompts, skills, and exploratory tooling for AI-assisted development.
+
+## Agent-Agnostic Instructions
+
+AI tools and interfaces change quickly. The repo treats high-quality instructions as durable, version-controlled assets rather than tool-specific glue.
+
+The practical split is between:
+
+- `migrate-to-skills/guides/` for foundational context, methodologies, and style guides that teach an agent how to think about a task
+- `prompts/` for focused one-shot instructions that tell an agent what to do next
+
+The usual pattern is to combine a guide with a prompt when working with a chosen agent.
+
 ## Structure
 
 | Path | Purpose |
 |------|---------|
-| `migrate-to-skills/guides/` | Extended context docs that teach AI how to think about tasks |
+| `migrate-to-skills/guides/` | Foundational methodologies and style guides for AI-assisted work |
 | `prompts/` | Focused one-shot task instructions |
 | `dev-skills/` | Development workspace for Claude Code skills; published to `igor1309/skills` |
 | `tools/` | Small shell utilities and local workflow helpers |

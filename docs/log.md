@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: absorbed the remaining reusable content from `ai-coder/README.md` into the root `README.md` and `dev-skills/README.md`, then removed the obsolete `ai-coder/README.md` file.
+
 - absorb-ai-coder: absorbed the old `ai-coder/AGENTS.md` structure and publishing facts into the root `README.md`, then removed `ai-coder/AGENTS.md` and its paired `ai-coder/CLAUDE.md` symlink now that those repo-orientation notes live at the monorepo root.
 
 - absorb-ai-coder: moved `ai-coder/docs/` into `dev-skills/docs/` by promoting the ai-coder log and archived dev-skills migration docs into the dev-skills documentation area. Updated the active absorption plan so it reflects the follow-up moves already completed on this branch.

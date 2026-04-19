@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-19
 
+### README Realigned Under `ai-labs`
+The `dev-skills/README.md` now describes the workspace in its `ai-labs` location and points readers at `public/README.md` for the published skill catalog, so the folder keeps its own orientation after the repo absorption.
+
 ### `dev-skills` Moved Under `ai-labs`
 The `dev-skills` workspace now lives at the root of `ai-labs` instead of under `ai-coder`. Workflow paths and CI ignore rules were updated so skill publishing and repo validation still behave correctly after the move, while the skill workspace keeps its own history and documentation.
 
