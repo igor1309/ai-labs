@@ -60,6 +60,8 @@ private struct SupabaseRow: Encodable {
     let url: String?
     let note: String?
     let enrichment: String
+    let captured_title: String?
+    let captured_description: String?
 
     init(from item: CapturedItem) {
         self.kind = item.kind.rawValue
@@ -68,5 +70,7 @@ private struct SupabaseRow: Encodable {
         self.url = item.url
         self.note = item.note
         self.enrichment = item.enrichment.rawValue
+        self.captured_title = item.capturedTitle
+        self.captured_description = item.capturedDescription
     }
 }

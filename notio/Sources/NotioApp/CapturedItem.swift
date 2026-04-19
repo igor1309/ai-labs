@@ -8,6 +8,8 @@ public struct CapturedItem: Equatable, Sendable {
     public let url: String?
     public let note: String?
     public let enrichment: Enrichment
+    public let capturedTitle: String?
+    public let capturedDescription: String?
 
     public enum Kind: String, Equatable, Sendable {
         case note
@@ -28,6 +30,8 @@ public struct CapturedItem: Equatable, Sendable {
         self.url = result.primaryURL
         self.note = result.note
         self.enrichment = .none
+        self.capturedTitle = nil
+        self.capturedDescription = nil
 
         if let url = result.primaryURL {
             self.kind = .link
