@@ -64,22 +64,46 @@ public struct AsyncHTTPClientFetcher: HTTPFetcher {
     }
 
     public func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
-        var request = HTTPClientRequest(url: url)
-        request.method = .GET
-        for (name, value) in headers {
-            request.headers.add(name: name, value: value)
-        }
-        let response = try await httpClient.execute(request, timeout: timeout)
-        var accumulated = ByteBuffer()
-        for try await var chunk in response.body {
-            let remaining = maxBytes - accumulated.readableBytes
-            if remaining <= 0 { break }
-            if chunk.readableBytes > remaining {
-                chunk = chunk.getSlice(at: chunk.readerIndex, length: remaining) ?? chunk
+        var currentURL = url
+        let maxRedirects = 5
+
+        for _ in 0...maxRedirects {
+            var request = HTTPClientRequest(url: currentURL)
+            request.method = .GET
+            for (name, value) in headers {
+                request.headers.add(name: name, value: value)
             }
-            accumulated.writeBuffer(&chunk)
+            let response = try await httpClient.execute(request, timeout: timeout)
+
+            let status = response.status.code
+            if (300..<400).contains(status), let location = response.headers.first(name: "location") {
+                currentURL = resolveRedirect(location, relativeTo: currentURL)
+                continue
+            }
+
+            var accumulated = ByteBuffer()
+            for try await var chunk in response.body {
+                let remaining = maxBytes - accumulated.readableBytes
+                if remaining <= 0 { break }
+                if chunk.readableBytes > remaining {
+                    chunk = chunk.getSlice(at: chunk.readerIndex, length: remaining) ?? chunk
+                }
+                accumulated.writeBuffer(&chunk)
+            }
+            let bodyString = String(buffer: accumulated)
+            return HTTPFetchResponse(status: status, body: bodyString)
         }
-        let bodyString = String(buffer: accumulated)
-        return HTTPFetchResponse(status: response.status.code, body: bodyString)
+
+        return HTTPFetchResponse(status: 301, body: "")
+    }
+
+    private func resolveRedirect(_ location: String, relativeTo base: String) -> String {
+        if location.hasPrefix("http://") || location.hasPrefix("https://") {
+            return location
+        }
+        guard let baseURL = URL(string: base),
+              let resolved = URL(string: location, relativeTo: baseURL)
+        else { return location }
+        return resolved.absoluteString
     }
 }
