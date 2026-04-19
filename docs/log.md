@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: promoted `ai-coder/prompts/` to root `prompts/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/prompts`, and the move does not change the existing CI behavior for these assets.
+
 - absorb-ai-coder: promoted `ai-coder/debates/` to root `debates/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/debates`, and the move does not change the existing CI behavior for these assets.
 
 - absorb-ai-coder: promoted `ai-coder/reading/` to root `reading/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/reading`, and the move does not change the existing CI behavior for these assets.
