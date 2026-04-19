@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-19
+
+### `dev-skills` Moved Under `ai-labs`
+The `dev-skills` workspace now lives at the root of `ai-labs` instead of under `ai-coder`. Workflow paths and CI ignore rules were updated so skill publishing and repo validation still behave correctly after the move, while the skill workspace keeps its own history and documentation.
+
 ## 2026-04-04
 
 ### Cold Start Checkpoint v1.1.0 — Session-Start Understanding Replay
