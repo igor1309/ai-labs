@@ -48,6 +48,12 @@ struct CapturedItemTests {
         #expect(item.sourceType == .webPage)
     }
 
+    @Test func test_suffixLookalikeGithubDomain_shouldHaveSourceTypeWebPage() {
+        let result = IngressResult(primaryURL: "https://notgithub.com/owner/repo", note: nil)
+        let item = CapturedItem(from: result)
+        #expect(item.sourceType == .webPage)
+    }
+
     @Test func test_capturedAt_shouldBeSet() {
         let before = Date()
         let result = IngressResult(primaryURL: nil, note: "test")

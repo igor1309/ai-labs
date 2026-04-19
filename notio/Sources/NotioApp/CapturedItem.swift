@@ -95,9 +95,14 @@ public struct CapturedItem: Equatable, Sendable {
 }
 
 private extension CapturedItem {
+    static func isGitHubHost(_ host: String) -> Bool {
+        host == "github.com" || host == "www.github.com"
+    }
+
     static func classifySource(_ urlString: String) -> SourceType {
         guard let url = URL(string: urlString),
-              url.host?.hasSuffix("github.com") == true
+              let host = url.host,
+              isGitHubHost(host)
         else { return .webPage }
 
         let pathComponents = url.pathComponents.filter { $0 != "/" }

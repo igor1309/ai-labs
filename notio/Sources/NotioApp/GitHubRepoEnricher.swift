@@ -53,7 +53,8 @@ struct GitHubRepoEnricher: Enricher {
 private extension GitHubRepoEnricher {
     func parseOwnerRepo(from urlString: String) -> (owner: String, repo: String)? {
         guard let url = URL(string: urlString),
-              url.host?.hasSuffix("github.com") == true
+              let host = url.host,
+              host == "github.com" || host == "www.github.com"
         else { return nil }
 
         let components = url.pathComponents.filter { $0 != "/" }
