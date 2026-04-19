@@ -69,8 +69,8 @@ Preflight check: [ ] done
 - Define `Feedback` enum: `.receipt`, `.success(CapturedItem)`, `.failure`.
 - Define `CaptureFeedbackMessenger` protocol: `func send(chatId: Int, feedback: Feedback) async`.
 - Implement `TelegramCaptureFeedbackMessenger`: maps `Feedback` to message text, delegates to `MessageSender`, swallows delivery errors with warning log.
-- Wire normal webhook requests through a single detached per-request task owned by the route/composition layer.
-- Route behavior is fixed: decode the normal capture request, spawn `Task { await messenger.send(chatId: chatId, feedback: .receipt); await captureInBackground(...) }`, then return HTTP 200 immediately without awaiting that task.
+- Wire normal webhook requests through a single per-request `Task.detached` created by the route/composition layer.
+- Route behavior is fixed: decode the normal capture request, spawn `Task.detached { await messenger.send(chatId: chatId, feedback: .receipt); await captureInBackground(...) }`, then return HTTP 200 immediately without awaiting that task.
 - `captureInBackground` must start only after the receipt send attempt finishes (success or swallowed failure), so receipt sequencing is deterministic at the plan level.
 
 **Dependencies**: Phase 1 (`MessageSender`).
@@ -85,8 +85,10 @@ Preflight check: [ ] done
 - Unit test: `CaptureFeedbackMessenger` maps `.failure` to `Failed to save. Try again later.`.
 - Unit test: delivery failure is swallowed and logged at warning.
 - Integration test: webhook route returns HTTP 200 without waiting for a slow `MessageSender`.
+- Integration test: receipt feedback is attempted with the same `chatId` from the accepted webhook request.
 - Integration test: receipt feedback attempt happens before capture starts for the same request.
 - Integration test: receipt delivery failure is logged and capture still starts.
+- Integration test: receipt feedback and capture processing still proceed after the handler returns HTTP 200.
 - `swift test` passes.
 
 **Completion signal**: receipt feedback fires on normal webhook requests with correct formatting. Commit.
@@ -103,7 +105,7 @@ Preflight check: [ ] done
 - Add a short rationale note directly in this Phase 3 section stating that, because `store.save` is the only throwable failure boundary in the current capture flow, final `.failure` at the store boundary satisfies the spec's terminal failure contract for v0.0.1 without changing `CaptureService`.
 - Implement `NotifyingCaptureStore: CaptureStore`: wraps inner store, accepts `chatId` and `CaptureFeedbackMessenger`.
   - On `save()` success: call `messenger.send(chatId:feedback: .success(item))`, return.
-  - On `save()` failure: call `messenger.send(chatId:feedback: .failure)`, rethrow original error.
+  - On `save()` failure: attempt `messenger.send(chatId:feedback: .failure)`, preserve the original store error, and rethrow that original error regardless of notification delivery outcome.
 - Wire in webhook route: the per-request task from Phase 2 creates `NotifyingCaptureStore` wrapping the real store with the current `chatId` and messenger, then passes it to `CaptureService`.
 - Verify: `CaptureService` is not modified — no new parameters, no new dependencies.
 
@@ -118,6 +120,7 @@ Preflight check: [ ] done
 - Unit test: on success, messenger receives `.success(item)` with correct `chatId`.
 - Unit test: on failure, messenger receives `.failure` with correct `chatId`, original error rethrown.
 - Unit test: messenger delivery failure does not prevent `save()` from succeeding.
+- Unit test: if `save()` fails and failure notification delivery also fails, the original store error is rethrown after one `.failure` attempt.
 - Integration test: one accepted request emits exactly one final outcome message — success or failure, never both.
 - Verify: `CaptureService.swift` has zero diff.
 - `swift test` passes.
