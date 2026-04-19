@@ -5,9 +5,9 @@ description: "Tracked initiatives for ai-labs"
 
 # TODO
 
-## 1. AGENTS.md to Skills Migration
+## ~~1. AGENTS.md to Skills Migration~~ DONE
 
-Migrate rules from CLAUDE.md and `~/.codex/AGENTS.md` into reusable skills installed per-project. Slim CLAUDE.md to ~50-80 lines as a wiring doc pointing to skills.
+Migrated 9 skills from AGENTS.md into `.claude/skills/`. AGENTS.md reduced from 297 to 133 lines. Merged in PR #158.
 
 Plan: [agents-md-to-skills-migration.md](agents-md-to-skills-migration.md)
 
