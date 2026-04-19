@@ -32,6 +32,17 @@ struct CaptureStoreTests {
         #expect(config.supabaseURL == nil)
         #expect(config.supabaseKey == nil)
     }
+
+    @Test func test_supabaseRow_shouldEncodeNewEnrichmentFields() throws {
+        let item = CapturedItem(from: IngressResult(primaryURL: "https://example.com", note: nil))
+        let row = SupabaseRow(from: item)
+        let data = try JSONEncoder().encode(row)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        #expect(json.keys.contains("captured_title"))
+        #expect(json.keys.contains("captured_description"))
+        #expect(json["enrichment"] as? String == "none")
+    }
 }
 
 // MARK: - Helpers

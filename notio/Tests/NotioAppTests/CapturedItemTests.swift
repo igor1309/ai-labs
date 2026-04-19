@@ -68,4 +68,18 @@ struct CapturedItemTests {
         let item = CapturedItem(from: result)
         #expect(item.enrichment == .none)
     }
+
+    @Test func test_noteOnly_shouldHaveNilTitleAndDescription() {
+        let result = IngressResult(primaryURL: nil, note: "just a note")
+        let item = CapturedItem(from: result)
+        #expect(item.capturedTitle == nil)
+        #expect(item.capturedDescription == nil)
+    }
+
+    @Test func test_link_shouldHaveNilTitleAndDescription() {
+        let result = IngressResult(primaryURL: "https://example.com", note: nil)
+        let item = CapturedItem(from: result)
+        #expect(item.capturedTitle == nil)
+        #expect(item.capturedDescription == nil)
+    }
 }

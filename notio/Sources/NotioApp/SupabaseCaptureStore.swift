@@ -52,7 +52,7 @@ public struct SupabaseCaptureStore: CaptureStore {
     }
 }
 
-private struct SupabaseRow: Encodable {
+struct SupabaseRow: Encodable {
 
     let kind: String
     let source_type: String?
@@ -72,5 +72,21 @@ private struct SupabaseRow: Encodable {
         self.enrichment = item.enrichment.rawValue
         self.captured_title = item.capturedTitle
         self.captured_description = item.capturedDescription
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(source_type, forKey: .source_type)
+        try container.encode(captured_at, forKey: .captured_at)
+        try container.encode(url, forKey: .url)
+        try container.encode(note, forKey: .note)
+        try container.encode(enrichment, forKey: .enrichment)
+        try container.encode(captured_title, forKey: .captured_title)
+        try container.encode(captured_description, forKey: .captured_description)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, source_type, captured_at, url, note, enrichment, captured_title, captured_description
     }
 }
