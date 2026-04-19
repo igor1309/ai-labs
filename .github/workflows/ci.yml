@@ -16,6 +16,7 @@ on:
       - "dev-skills/**"
       - "migrate-to-skills/**"
       - "sandbox/**"
+      - "tools/**"
   pull_request:
   workflow_dispatch:
 

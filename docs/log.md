@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: promoted `ai-coder/tools/` to root `tools/` and fixed the CI drift this created by adding `tools/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/tools` or root `tools/`.
+
 - absorb-ai-coder: promoted `ai-coder/sandbox/` to root `sandbox/` and fixed the CI drift this created by adding `sandbox/**` to `ci.yml` `paths-ignore`. The repo-wide `sandbox-todo-issues.yml` remains intentionally active for root `sandbox/` entries.
 
 - absorb-ai-coder: promoted `ai-coder/dev-skills/` to root `dev-skills/` and fixed the workflow drift this created by switching `sync-skills-public.yml` from `ai-coder/dev-skills/public/**` to `dev-skills/public/**` and adding `dev-skills/**` back to `ci.yml` `paths-ignore`.
