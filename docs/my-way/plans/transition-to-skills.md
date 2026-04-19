@@ -84,7 +84,38 @@ Preflight check: [x] done
 **Completion signal**:
 - A repeatable extraction pattern exists for the next artifacts without turning the transition into a framework rewrite.
 
-## Task 3 — Establish And Promote Spec Skills
+## Task 3 — Establish And Promote Research Skill
+
+**Objective**: Create a single research skill as a self-sufficient, first-class artifact without forcing an artificial drafting/review split.
+
+**Key work items**:
+- Create `docs/my-way/skills/research/SKILL.md`.
+- Extract the skill from `docs/my-way/01-research/note.md` as operational form.
+- Keep the distinction explicit:
+  - research explores the problem space
+  - research is not pre-ADR
+  - research is not ADR
+  - research is not spec
+  - research is not implementation plan
+- Keep lightweight review inside the skill as gap surfacing and open-question marking rather than as a separate adversarial review skill.
+- Make the skill self-sufficient without relying on `docs/my-way/01-research/note.md`.
+
+**Dependencies**:
+- Existing research note, structure, and example.
+
+**Risks**:
+- The skill drifts into solution commitment too early.
+- The skill becomes too loose and loses decision value.
+- A forced split would over-formalize the earliest exploratory layer.
+
+**Validation**:
+- Read the skill against the research note and confirm the problem-space boundary holds.
+- Confirm the skill can be used correctly without consulting `docs/my-way/01-research/note.md`.
+
+**Completion signal**:
+- A single research skill exists as a self-sufficient, first-class skill.
+
+## Task 4 — Establish And Promote Spec Skills
 
 **Objective**: Create the spec pair as self-sufficient, first-class skills using the ADR extraction pattern.
 
@@ -113,7 +144,7 @@ Preflight check: [x] done
 **Completion signal**:
 - Two spec skills exist as self-sufficient, first-class skills.
 
-## Task 4 — Establish And Promote Implementation-Plan Skills
+## Task 5 — Establish And Promote Implementation-Plan Skills
 
 **Objective**: Create the implementation-plan pair as self-sufficient, first-class skills using the ADR/spec extraction pattern.
 
@@ -143,7 +174,7 @@ Preflight check: [x] done
 **Completion signal**:
 - Two implementation-plan skills exist as self-sufficient, first-class skills.
 
-## Task 5 — Establish And Promote Pre-ADR Skills
+## Task 6 — Establish And Promote Pre-ADR Skills
 
 **Objective**: Create the pre-ADR pair as self-sufficient, first-class skills using the same extraction pattern while preserving its exploratory role.
 
@@ -173,7 +204,7 @@ Preflight check: [x] done
 **Completion signal**:
 - Two pre-ADR skills exist as self-sufficient, first-class skills.
 
-## Task 6 — Expand Remaining Artifact Skills One By One
+## Task 7 — Expand Remaining Artifact Skills One By One
 
 **Objective**: Convert the remaining `My Way` artifacts incrementally instead of as a bulk rewrite.
 
@@ -190,9 +221,10 @@ Preflight check: [x] done
 
 **Dependencies**:
 - Task 2 transition rules.
-- Task 3 spec pair established.
-- Task 4 implementation-plan pair established.
-- Task 5 pre-ADR pair established.
+- Task 3 research skill established.
+- Task 4 spec pair established.
+- Task 5 implementation-plan pair established.
+- Task 6 pre-ADR pair established.
 
 **Risks**:
 - The migration becomes a large undifferentiated batch.
@@ -208,6 +240,7 @@ Preflight check: [x] done
 ## Done criteria
 
 - The transition has an explicit plan artifact.
+- A single research skill exists as the first promoted first-class research artifact.
 - ADR drafting and review skills exist as the first promoted first-class pair.
 - Spec drafting and review skills exist as the next promoted first-class pair.
 - Implementation-plan drafting and review skills exist as the next promoted first-class pair.
