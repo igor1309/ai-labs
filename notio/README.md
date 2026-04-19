@@ -82,6 +82,8 @@ One process initially; ingress and core stay logically separate.
 | `NOTIO_WEBHOOK_PATH`           | yes      | —       | Secret webhook path segment              |
 | `NOTIO_PORT`                   | no       | `8080`  | HTTP listen port                         |
 | `NOTIO_VERSION`                | no       | `dev`   | Reported by `/version`                   |
+| `NOTIO_SUPABASE_URL`           | no       | —       | Supabase project URL                     |
+| `NOTIO_SUPABASE_KEY`           | no       | —       | Supabase service-role key                |
 | `NOTIO_DIAGNOSTIC_MODE`        | no       | —       | `ack` \| `inspect` \| `delay` \| `fail`              |
 | `NOTIO_DIAGNOSTIC_DELAY_MS`    | no       | `5000`  | Delay for `delay` mode; ignored otherwise            |
 | `NOTIO_DIAGNOSTIC_FAIL_STATUS` | no       | `500`   | HTTP status for `fail` mode; ignored otherwise       |
@@ -107,11 +109,10 @@ Notio is an independent release unit. Canonical version lives in `release.toml`;
 
 ## Status
 
-v1 bring-up complete (`notio_v0.1.1`): service deployed on VPS, `@NotioInboxBot` webhook live at `inbox.enoa.ai`, structured JSON logging verified end-to-end. The webhook currently acks only — the capture core, enrichment, and Supabase-backed storage are the next slices. History: [`docs/log.md`](docs/log.md).
+v1 capture pipeline complete (`notio_v0.2.0`): full parse → enrich → persist flow operational. Telegram messages are parsed (URL extraction with UTM stripping, entity/regex fallback), source-classified (`github_repo` | `web_page`), enriched (GitHub API metadata or HTML title/description extraction), and persisted to Supabase. Service deployed on VPS, `@NotioInboxBot` webhook live at `inbox.enoa.ai`. 116 tests. History: [`docs/log.md`](docs/log.md).
 
 ## Future directions
 
-- capture core + Supabase-backed storage (next)
 - additional source-specific enrichers
 - tags and AI-assisted summarization
 - query/read/edit clients
