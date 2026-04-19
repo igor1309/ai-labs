@@ -261,7 +261,7 @@ For any change that could affect the Docker build or runtime behavior of a Docke
 
 This applies to: Dockerfile changes, .dockerignore changes, Package.swift/Package.resolved changes, deploy script changes, source file additions/removals, and any change to structured logging or request handling.
 
-Do not push changes that affect the Docker path without a local `docker build` pass. CI deploys cost time and money — catch failures locally first.
+**Mandatory**: for Docker-producing units (e.g. notio), ALWAYS run `docker build` before pushing — no exceptions. Do not push without a passing Docker build. CI deploys cost time and money — catch failures locally first.
 
 ## Swift on Linux: ByteBuffer ≠ Data
 

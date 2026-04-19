@@ -1,12 +1,12 @@
 import Hummingbird
 import Logging
 
-public func buildApp(config: Config, logger: Logger? = nil) -> some ApplicationProtocol {
+public func buildApp(config: Config, logger: Logger? = nil, store: (any CaptureStore)? = nil) -> some ApplicationProtocol {
     let effectiveLogger = logger ?? makeLogger(label: "notio")
     let router = Router()
     addHealthRoute(to: router)
     addVersionRoute(to: router, config: config)
-    addWebhookRoute(to: router, config: config, logger: effectiveLogger)
+    addWebhookRoute(to: router, config: config, logger: effectiveLogger, store: store)
     return Application(
         router: router,
         configuration: .init(address: .hostname("0.0.0.0", port: config.port))

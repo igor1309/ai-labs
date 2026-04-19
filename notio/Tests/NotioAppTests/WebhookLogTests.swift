@@ -175,6 +175,49 @@ struct WebhookLogTests {
         #expect(event.metadata?["status"] == .string("500"))
     }
 
+    @Test func test_normalMode_shouldCallStoreWithCapturedItem() async throws {
+        let spy = SpyCaptureStore()
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let app = buildApp(
+            config: Config(port: 8080, version: "test", webhookPath: "hook"),
+            logger: logger,
+            store: spy
+        )
+        let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com check later"}}"#)
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                #expect(response.status == .ok)
+            }
+        }
+
+        let item = await spy.waitForSave()
+        #expect(item.kind == .link)
+        #expect(item.url == "https://example.com")
+        #expect(item.note == "check later")
+    }
+
+    @Test func test_normalMode_shouldReturn200WhenStoreFails() async throws {
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let app = buildApp(
+            config: Config(port: 8080, version: "test", webhookPath: "hook"),
+            logger: logger,
+            store: ThrowingCaptureStore()
+        )
+        let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com"}}"#)
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                #expect(response.status == .ok)
+            }
+        }
+
+        let errorEvent = await handler.waitForError()
+        #expect(errorEvent.message.description == "capture failed")
+    }
+
     @Test func test_inspectMode_shouldNotReflectPayloadInResponse() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
@@ -205,7 +248,15 @@ extension WebhookLogTests {
 final class CapturingLogHandler: LogHandler, @unchecked Sendable {
     var metadata: Logger.Metadata = [:]
     var logLevel: Logger.Level = .trace
-    private(set) var events: [LogEvent] = []
+    private let lock = NSLock()
+    private var _events: [LogEvent] = []
+    private var errorContinuation: CheckedContinuation<LogEvent, Never>?
+
+    var events: [LogEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        return _events
+    }
 
     subscript(metadataKey key: String) -> Logger.Metadata.Value? {
         get { metadata[key] }
@@ -213,6 +264,24 @@ final class CapturingLogHandler: LogHandler, @unchecked Sendable {
     }
 
     func log(event: LogEvent) {
-        events.append(event)
+        lock.lock()
+        _events.append(event)
+        let continuation = event.level == .error ? errorContinuation : nil
+        if event.level == .error { errorContinuation = nil }
+        lock.unlock()
+        continuation?.resume(returning: event)
+    }
+
+    func waitForError() async -> LogEvent {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if let event = _events.first(where: { $0.level == .error }) {
+                lock.unlock()
+                continuation.resume(returning: event)
+            } else {
+                errorContinuation = continuation
+                lock.unlock()
+            }
+        }
     }
 }
