@@ -24,6 +24,8 @@ public protocol CaptureFeedbackMessenger: Sendable {
 
 public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendable {
 
+    private static let maxFeedbackTitleLength = 80
+
     private let sender: any MessageSender
     private let logger: Logger
 
@@ -54,7 +56,7 @@ public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendab
             case .note:
                 return "Saved note."
             case .link:
-                if let title = item.capturedTitle {
+                if let title = normalizedTitle(item.capturedTitle) {
                     return "Saved: \(title)"
                 }
                 return "Saved link."
@@ -62,5 +64,13 @@ public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendab
         case .failure:
             return "Failed to save. Try again later."
         }
+    }
+
+    private func normalizedTitle(_ title: String?) -> String? {
+        guard let title else { return nil }
+        let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedTitle.isEmpty else { return nil }
+        guard normalizedTitle.count <= Self.maxFeedbackTitleLength else { return nil }
+        return normalizedTitle
     }
 }

@@ -22,8 +22,7 @@ let enricher: any Enricher = CompositeEnricher(
 
 let messenger: (any CaptureFeedbackMessenger)?
 if let botToken = config.telegramBotToken {
-    let executor = AsyncHTTPClientExecutor(httpClient: HTTPClient.shared)
-    let sender = TelegramMessageSender(botToken: botToken, executor: executor)
+    let sender = TelegramMessageSender(botToken: botToken)
     messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
     logger.info("telegram feedback enabled")
 } else {

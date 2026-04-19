@@ -37,6 +37,21 @@ struct CaptureFeedbackMessengerTests {
         #expect(messages.map(\.text) == ["Saved: Example"])
     }
 
+    @Test func test_send_shouldFallbackToSavedLink_onOverlyLongTitle() async {
+        let spy = SpyMessageSender()
+        let sut = makeSUT(sender: spy)
+        let item = makeItem(
+            kind: .link,
+            url: "https://example.com",
+            capturedTitle: String(repeating: "x", count: 81)
+        )
+
+        await sut.send(chatId: 1, feedback: .success(item))
+
+        let messages = await spy.messages
+        #expect(messages.map(\.text) == ["Saved link."])
+    }
+
     @Test func test_send_shouldMapSuccessLinkWithoutTitleToCorrectText() async {
         let spy = SpyMessageSender()
         let sut = makeSUT(sender: spy)

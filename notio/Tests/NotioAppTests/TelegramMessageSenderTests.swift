@@ -4,6 +4,10 @@ import Testing
 
 @Suite("TelegramMessageSender")
 struct TelegramMessageSenderTests {
+    @Test func test_init_shouldExposePublicBotTokenInitializer() {
+        _ = TelegramMessageSender(botToken: "t")
+    }
+
     @Test func test_send_shouldPassFiveSecondTimeout() async throws {
         let spy = SpyHTTPExecutor()
         let sut = makeSUT(botToken: "t", executor: spy)

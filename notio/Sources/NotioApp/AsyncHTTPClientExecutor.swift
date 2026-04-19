@@ -19,3 +19,12 @@ public struct AsyncHTTPClientExecutor: HTTPExecutor, Sendable {
         return Int(response.status.code)
     }
 }
+
+public extension TelegramMessageSender {
+    init(botToken: String) {
+        self.init(
+            botToken: botToken,
+            executor: AsyncHTTPClientExecutor(httpClient: HTTPClient.shared)
+        )
+    }
+}

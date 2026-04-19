@@ -9,20 +9,28 @@ import Testing
 struct WebhookFeedbackTests {
     @Test func test_normalRequest_shouldReturn200WithoutWaitingForSlowSender() async throws {
         let logger = Logger(label: "test", factory: SwiftLogNoOpLogHandler.init)
-        let messenger = TelegramCaptureFeedbackMessenger(sender: SlowMessageSender(), logger: logger)
-        let app = makeApp(messenger: messenger, store: SpyCaptureStore())
+        let sender = BlockingMessageSender()
+        let messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
+        let responseObserver = ResponseObserver()
+        let store = SpyCaptureStore()
+        let app = makeApp(messenger: messenger, store: store)
         let body = makeTelegramBody(chatId: 1, text: "hello")
-        let clock = ContinuousClock()
 
         try await app.test(.router) { client in
-            let start = clock.now
-
-            try await client.execute(uri: "/hook", method: .post, body: body) { response in
-                #expect(response.status == .ok)
+            let requestTask = Task {
+                try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                    #expect(response.status == .ok)
+                    await responseObserver.markResponded()
+                }
             }
 
-            let elapsed = start.duration(to: clock.now)
-            #expect(elapsed < .milliseconds(100))
+            await sender.waitForSendAttempt()
+            let respondedBeforeRelease = await waitForResponse(from: responseObserver)
+            #expect(respondedBeforeRelease)
+
+            await sender.release()
+            _ = await store.waitForSave()
+            try await requestTask.value
         }
     }
 
@@ -147,6 +155,23 @@ private extension WebhookFeedbackTests {
         {"update_id":1,"message":{"message_id":1,"chat":{"id":\(chatId)},"date":0,"text":"\(text)"}}
         """)
     }
+
+    func waitForResponse(from observer: ResponseObserver) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                await observer.waitForResponse()
+                return true
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(1))
+                return false
+            }
+
+            let didRespond = await group.next() ?? false
+            group.cancelAll()
+            return didRespond
+        }
+    }
 }
 
 actor RecordingFeedbackMessenger: CaptureFeedbackMessenger {
@@ -162,9 +187,26 @@ actor RecordingFeedbackMessenger: CaptureFeedbackMessenger {
     }
 }
 
-private struct SlowMessageSender: MessageSender {
+private actor BlockingMessageSender: MessageSender {
+    private var sendAttempted = false
+    private var sendContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
     func send(chatId: Int, text: String) async throws {
-        try await Task.sleep(for: .milliseconds(500))
+        sendAttempted = true
+        sendContinuation?.resume()
+        sendContinuation = nil
+        await withCheckedContinuation { self.releaseContinuation = $0 }
+    }
+
+    func waitForSendAttempt() async {
+        if sendAttempted { return }
+        await withCheckedContinuation { self.sendContinuation = $0 }
+    }
+
+    func release() {
+        releaseContinuation?.resume()
+        releaseContinuation = nil
     }
 }
 
@@ -215,5 +257,21 @@ private actor OrderTrackingStore: CaptureStore {
     func waitForSave() async -> CapturedItem {
         if let item = savedItem { return item }
         return await withCheckedContinuation { self.continuation = $0 }
+    }
+}
+
+private actor ResponseObserver {
+    private(set) var hasResponded = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func markResponded() {
+        hasResponded = true
+        continuation?.resume()
+        continuation = nil
+    }
+
+    func waitForResponse() async {
+        if hasResponded { return }
+        await withCheckedContinuation { self.continuation = $0 }
     }
 }
