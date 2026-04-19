@@ -5,7 +5,7 @@ public func buildApp(
     config: Config,
     logger: Logger? = nil,
     store: (any CaptureStore)? = nil,
-    enricher: (any Enricher)? = nil
+    enricher: any Enricher = NullEnricher()
 ) -> some ApplicationProtocol {
 
     let effectiveLogger = logger ?? makeLogger(label: "notio")

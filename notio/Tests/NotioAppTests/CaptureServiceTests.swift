@@ -70,7 +70,7 @@ struct CaptureServiceTests {
         #expect(enrichCalls.first?.sourceType == .githubRepo)
     }
 
-    @Test func test_noEnricher_shouldSaveLinkWithFailedEnrichment() async {
+    @Test func test_nullEnricher_shouldSaveLinkAsFailed() async {
         let store = SpyCaptureStore()
         let sut = makeSUT(store: store, enricher: NullEnricher())
 

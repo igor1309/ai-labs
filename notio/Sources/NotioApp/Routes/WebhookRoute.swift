@@ -8,7 +8,7 @@ func addWebhookRoute(
     config: Config,
     logger: Logger,
     store: (any CaptureStore)?,
-    enricher: (any Enricher)? = nil,
+    enricher: any Enricher = NullEnricher(),
     now: @escaping @Sendable () -> Date = { Date() }
 ) {
     router.post("/\(config.webhookPath)") { request, _ in
@@ -100,9 +100,9 @@ private func appendInspectMetadata(bodyData: Data?, to metadata: inout Logger.Me
     }
 }
 
-private func captureInBackground(update: TelegramUpdate, store: (any CaptureStore)?, enricher: (any Enricher)?, logger: Logger) {
+private func captureInBackground(update: TelegramUpdate, store: (any CaptureStore)?, enricher: any Enricher, logger: Logger) {
     guard let store, let text = update.message?.text else { return }
-    let service = CaptureService(store: store, enricher: enricher ?? NullEnricher(), logger: logger)
+    let service = CaptureService(store: store, enricher: enricher, logger: logger)
     Task {
         await service.capture(text: text, entities: update.message?.entities)
     }

@@ -47,14 +47,6 @@ public struct WebPageEnricher: Enricher {
             return EnrichmentResult(title: nil, description: nil, status: .failed)
         }
 
-        if let ct = response.contentType {
-            let normalizedCT = ct.lowercased()
-            guard normalizedCT.contains("text/html") || normalizedCT.contains("application/xhtml+xml") else {
-                logger.error("enrichment: non-HTML content type", metadata: ["url": .string(url), "content_type": .string(ct)])
-                return EnrichmentResult(title: nil, description: nil, status: .failed)
-            }
-        }
-
         let metadata = HTMLMetadataExtractor.extract(from: response.body)
         let status: CapturedItem.Enrichment = switch (metadata.title, metadata.description) {
         case (.some, .some): .full

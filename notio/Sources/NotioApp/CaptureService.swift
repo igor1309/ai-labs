@@ -31,8 +31,9 @@ struct CaptureService: Sendable {
 
 /// Fallback enricher used when no real enricher is configured.
 /// Returns `.failed` for all requests so link items never persist as `.none`.
-struct NullEnricher: Enricher, Sendable {
-    func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
+public struct NullEnricher: Enricher, Sendable {
+    public init() {}
+    public func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
         EnrichmentResult(title: nil, description: nil, status: .failed)
     }
 }
