@@ -2,7 +2,7 @@
 
 ## Working Directory
 
-**CRITICAL:** This is the `dev-skills/` subdirectory within the `ai-coder` repository - the skills marketplace development area.
+**CRITICAL:** This is the `dev-skills/` project within the `ai-labs` repository - the skills marketplace development area.
 
 **NEVER modify `~/.codex/skills/`** - that is the user's personal installation directory, NOT this repository.
 
@@ -10,7 +10,7 @@ When publishing skills:
 1. Move to `public/<skill-name>/` when ready to publish
 2. Update `public/.claude-plugin/marketplace.json`: add/update the skill entry in the skills array, and bump `metadata.version`
 3. Update `public/README.md`
-4. Update repo-root `docs/log.md` (concise entry, reverse chronological order; follow established style)
+4. Update `dev-skills/docs/log.md` for project-scoped changes. Update repo-root `docs/log.md` too only when the change is genuinely repo-wide.
 5. Stop to commit.
 6. Push to trunk.
 7. After ~1 min, verify CI and skills repo:
