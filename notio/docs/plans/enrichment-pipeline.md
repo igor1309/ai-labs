@@ -64,10 +64,10 @@ Create a pure function that extracts `<title>` and `<meta name="description">` f
 
 Implement `WebPageEnricher: Enricher` using `AsyncHTTPClient`. Fetches URL, passes body to HTML extractor, maps to `EnrichmentResult`. Handles timeout (5s), max body (512 KB), non-2xx, and parse errors.
 
-- [ ] `WebPageEnricher` struct
-- [ ] Tests with spy/stub HTTP client or protocol: successful fetch, partial result, failed fetch, timeout, oversized response (spec tests #2, #3, #4, #12, #13)
-- [ ] `swift test` passes
-- [ ] Per-step closeout complete
+- [x] `WebPageEnricher` struct
+- [x] Tests with spy/stub HTTP client or protocol: successful fetch, partial result, failed fetch, timeout, oversized response (spec tests #2, #3, #4, #12, #13)
+- [x] `swift test` passes
+- [x] Per-step closeout complete
 
 ### Step 5 — GitHub repo enricher implementation
 
