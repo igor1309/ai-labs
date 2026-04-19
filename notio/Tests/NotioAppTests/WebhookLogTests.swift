@@ -214,9 +214,8 @@ struct WebhookLogTests {
             }
         }
 
-        try await Task.sleep(for: .milliseconds(50))
-        let errorEvent = handler.events.first { $0.level == .error }
-        #expect(errorEvent?.message.description == "capture failed")
+        let errorEvent = await handler.waitForError()
+        #expect(errorEvent.message.description == "capture failed")
     }
 
     @Test func test_inspectMode_shouldNotReflectPayloadInResponse() async throws {
@@ -249,7 +248,15 @@ extension WebhookLogTests {
 final class CapturingLogHandler: LogHandler, @unchecked Sendable {
     var metadata: Logger.Metadata = [:]
     var logLevel: Logger.Level = .trace
-    private(set) var events: [LogEvent] = []
+    private let lock = NSLock()
+    private var _events: [LogEvent] = []
+    private var errorContinuation: CheckedContinuation<LogEvent, Never>?
+
+    var events: [LogEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        return _events
+    }
 
     subscript(metadataKey key: String) -> Logger.Metadata.Value? {
         get { metadata[key] }
@@ -257,6 +264,24 @@ final class CapturingLogHandler: LogHandler, @unchecked Sendable {
     }
 
     func log(event: LogEvent) {
-        events.append(event)
+        lock.lock()
+        _events.append(event)
+        let continuation = event.level == .error ? errorContinuation : nil
+        if event.level == .error { errorContinuation = nil }
+        lock.unlock()
+        continuation?.resume(returning: event)
+    }
+
+    func waitForError() async -> LogEvent {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if let event = _events.first(where: { $0.level == .error }) {
+                lock.unlock()
+                continuation.resume(returning: event)
+            } else {
+                errorContinuation = continuation
+                lock.unlock()
+            }
+        }
     }
 }
