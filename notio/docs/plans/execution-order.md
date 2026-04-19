@@ -17,4 +17,5 @@ Execute in this order. Do not skip or reorder. Each phase must be complete befor
 
 1. [x] **Observability** — deferred. Single container, `docker logs` + `inspect` mode sufficient. Revisit when Loki stack is live or second service exists. (`observability-structured-log-forwarding.md`)
 2. [x] **Diagnostic modes** — inspect, delay, fail implemented (`diagnostic-modes-inspect-delay-fail.md`)
-3. [ ] **Capture pipeline** — webhook adapter → parser → canonical item → storage (`next-slice-capture-pipeline.md`)
+3. [x] **Capture pipeline** — webhook adapter → parser → canonical item → storage (`next-slice-capture-pipeline.md`)
+4. [x] **Enrichment pipeline** — URL enrichment via web page and GitHub API, routed by source type, applied before storage (`enrichment-pipeline.md`)

@@ -70,15 +70,15 @@ struct CaptureServiceTests {
         #expect(enrichCalls.first?.sourceType == .githubRepo)
     }
 
-    @Test func test_noEnricher_shouldSaveWithoutEnrichment() async {
+    @Test func test_noEnricher_shouldSaveLinkWithFailedEnrichment() async {
         let store = SpyCaptureStore()
-        let sut = makeSUT(store: store, enricher: nil)
+        let sut = makeSUT(store: store, enricher: NullEnricher())
 
         await sut.capture(text: "https://example.com", entities: nil)
 
         let saved = await store.savedItems
         #expect(saved.count == 1)
-        #expect(saved.first?.enrichment == CapturedItem.Enrichment.none)
+        #expect(saved.first?.enrichment == .failed)
     }
 }
 
@@ -87,7 +87,7 @@ struct CaptureServiceTests {
 private extension CaptureServiceTests {
     typealias SUT = CaptureService
 
-    func makeSUT(store: SpyCaptureStore, enricher: SpyEnricher?) -> SUT {
+    func makeSUT(store: SpyCaptureStore, enricher: any Enricher) -> SUT {
         CaptureService(
             store: store,
             enricher: enricher,
@@ -105,7 +105,7 @@ private actor SpyEnricher: Enricher {
     private let result: EnrichmentResult
     private(set) var calls: [Call] = []
 
-    init(result: EnrichmentResult = EnrichmentResult(title: nil, description: nil, status: .none)) {
+    init(result: EnrichmentResult = EnrichmentResult(title: nil, description: nil, status: .failed)) {
         self.result = result
     }
 

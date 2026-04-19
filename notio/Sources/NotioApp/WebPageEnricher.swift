@@ -48,8 +48,8 @@ public struct WebPageEnricher: Enricher {
         }
 
         if let ct = response.contentType, !ct.lowercased().contains("text/html") {
-            logger.error("enrichment non-HTML content", metadata: ["url": .string(url), "content_type": .string(ct)])
-            return EnrichmentResult(title: nil, description: nil, status: .failed)
+            logger.info("enrichment non-HTML content, no metadata extracted", metadata: ["url": .string(url), "content_type": .string(ct)])
+            return EnrichmentResult(title: nil, description: nil, status: .partial)
         }
 
         let metadata = HTMLMetadataExtractor.extract(from: response.body)
