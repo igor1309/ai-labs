@@ -15,7 +15,7 @@ Trigger strict TDD mode when the user explicitly asks for TDD, RED/GREEN, or equ
 - Stop after RED and wait for explicit user approval to continue to GREEN, unless the user explicitly asks to auto-continue.
 - GREEN means minimum production code only for the current failing test.
 - Do not add extra behavior, scaffolding, defaults, or refactors in GREEN unless required by the failing test.
-- Run tests via the changed unit's native test command. Use `./scripts/run_silent.sh "tests" npm test` for Node/TypeScript scopes covered by the root suite.
+- Run tests via the changed unit's native test command.
 
 ## No-Junk Scope Lock
 
