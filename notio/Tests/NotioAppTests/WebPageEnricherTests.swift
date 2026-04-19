@@ -80,6 +80,25 @@ struct WebPageEnricherTests {
         #expect(result.status == .partial)
     }
 
+    @Test func test_shouldReturnFailedForNonHTMLContentType() async {
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "%PDF-1.4", contentType: "application/pdf"))
+
+        let result = await sut.enrich(url: "https://example.com/file.pdf", sourceType: .webPage)
+
+        #expect(result.status == .failed)
+        #expect(result.title == nil)
+    }
+
+    @Test func test_shouldAcceptHTMLContentType() async {
+        let html = "<html><head><title>Page</title></head></html>"
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "text/html; charset=utf-8"))
+
+        let result = await sut.enrich(url: "https://example.com", sourceType: .webPage)
+
+        #expect(result.title == "Page")
+        #expect(result.status == .partial)
+    }
+
     @Test func test_shouldLogOnFetchError() async {
         let handler = SpyLogHandler()
         let sut = WebPageEnricher(

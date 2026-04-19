@@ -10,10 +10,12 @@ public protocol HTTPFetcher: Sendable {
 public struct HTTPFetchResponse: Sendable {
     public let status: UInt
     public let body: String
+    public let contentType: String?
 
-    public init(status: UInt, body: String) {
+    public init(status: UInt, body: String, contentType: String? = nil) {
         self.status = status
         self.body = body
+        self.contentType = contentType
     }
 }
 
@@ -42,6 +44,11 @@ public struct WebPageEnricher: Enricher {
 
         guard (200..<300).contains(response.status) else {
             logger.error("enrichment non-2xx", metadata: ["url": .string(url), "status": .string("\(response.status)")])
+            return EnrichmentResult(title: nil, description: nil, status: .failed)
+        }
+
+        if let ct = response.contentType, !ct.contains("text/html") {
+            logger.error("enrichment non-HTML content", metadata: ["url": .string(url), "content_type": .string(ct)])
             return EnrichmentResult(title: nil, description: nil, status: .failed)
         }
 
@@ -91,10 +98,11 @@ public struct AsyncHTTPClientFetcher: HTTPFetcher {
                 accumulated.writeBuffer(&chunk)
             }
             let bodyString = String(buffer: accumulated)
-            return HTTPFetchResponse(status: status, body: bodyString)
+            let contentType = response.headers.first(name: "content-type")
+            return HTTPFetchResponse(status: status, body: bodyString, contentType: contentType)
         }
 
-        return HTTPFetchResponse(status: 301, body: "")
+        return HTTPFetchResponse(status: 301, body: "", contentType: nil)
     }
 
     private func resolveRedirect(_ location: String, relativeTo base: String) -> String {
