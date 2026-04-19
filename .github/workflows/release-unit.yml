@@ -291,6 +291,7 @@ jobs:
           username: ${{ secrets.NOTIO_VPS_USER }}
           key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
           envs: NOTIO_VERSION,NOTIO_GIT_SHA
+          command_timeout: 15m
           script: bash /tmp/notio-deploy/scripts/deploy.sh
 
       - name: Verify deployed version
