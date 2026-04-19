@@ -13,7 +13,7 @@ struct WebhookFeedbackTests {
         let messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
         let responseObserver = ResponseObserver()
         let store = SpyCaptureStore()
-        let app = makeApp(messenger: messenger, store: store)
+        let app = try makeApp(messenger: messenger, store: store)
         let body = makeTelegramBody(chatId: 1, text: "hello")
 
         try await app.test(.router) { client in
@@ -37,7 +37,7 @@ struct WebhookFeedbackTests {
     @Test func test_normalRequest_shouldAttemptReceiptWithChatId() async throws {
         let spy = RecordingFeedbackMessenger()
         let store = SpyCaptureStore()
-        let app = makeApp(messenger: spy, store: store)
+        let app = try makeApp(messenger: spy, store: store)
         let body = makeTelegramBody(chatId: 42, text: "hello")
 
         try await app.test(.router) { client in
@@ -55,7 +55,7 @@ struct WebhookFeedbackTests {
         let orderTracker = OrderTracker()
         let store = OrderTrackingStore(tracker: orderTracker)
         let orderMessenger = OrderTrackingMessenger(inner: spy, tracker: orderTracker)
-        let app = makeApp(messenger: orderMessenger, store: store)
+        let app = try makeApp(messenger: orderMessenger, store: store)
         let body = makeTelegramBody(chatId: 1, text: "hello")
 
         try await app.test(.router) { client in
@@ -77,7 +77,7 @@ struct WebhookFeedbackTests {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
         let messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
-        let app = makeApp(messenger: messenger, store: store)
+        let app = try makeApp(messenger: messenger, store: store)
         let body = makeTelegramBody(chatId: 1, text: "hello")
 
         try await app.test(.router) { client in
@@ -91,7 +91,7 @@ struct WebhookFeedbackTests {
     @Test func test_normalRequest_shouldEmitExactlyOneOutcomeMessage() async throws {
         let spy = RecordingFeedbackMessenger()
         let store = SpyCaptureStore()
-        let app = makeApp(messenger: spy, store: store)
+        let app = try makeApp(messenger: spy, store: store)
         let body = makeTelegramBody(chatId: 1, text: "hello")
 
         try await app.test(.router) { client in
@@ -117,7 +117,7 @@ struct WebhookFeedbackTests {
     @Test func test_normalRequest_feedbackAndCaptureShouldProceedAfterHandlerReturns() async throws {
         let spy = RecordingFeedbackMessenger()
         let store = SpyCaptureStore()
-        let app = makeApp(messenger: spy, store: store)
+        let app = try makeApp(messenger: spy, store: store)
         let body = makeTelegramBody(chatId: 1, text: "a note")
 
         try await app.test(.router) { client in
@@ -139,9 +139,9 @@ private extension WebhookFeedbackTests {
     func makeApp(
         messenger: some CaptureFeedbackMessenger = RecordingFeedbackMessenger(),
         store: some CaptureStore = SpyCaptureStore()
-    ) -> some ApplicationProtocol {
+    ) throws -> some ApplicationProtocol {
 
-        buildApp(
+        try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook"),
             logger: Logger(label: "test", factory: SwiftLogNoOpLogHandler.init),
             store: store,

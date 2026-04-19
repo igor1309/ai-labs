@@ -8,7 +8,7 @@ import Testing
 @Suite("VersionRoute")
 struct VersionRouteTests {
     @Test func test_versionEndpoint_shouldReturnConfiguredVersion() async throws {
-        let app = makeApp(config: makeConfig(version: "1.2.3"))
+        let app = try makeApp(config: makeConfig(version: "1.2.3"))
         try await app.test(.router) { client in
             try await client.execute(uri: "/version", method: .get) { response in
                 #expect(response.status == .ok)
@@ -26,7 +26,11 @@ extension VersionRouteTests {
         Config(port: 8080, version: version, webhookPath: "test-webhook")
     }
 
-    private func makeApp(config: Config) -> some ApplicationProtocol {
-        buildApp(config: config, enricher: NullEnricher())
+    private func makeApp(config: Config) throws -> some ApplicationProtocol {
+        try buildApp(
+            config: config,
+            enricher: NullEnricher(),
+            messenger: NoOpCaptureFeedbackMessenger()
+        )
     }
 }

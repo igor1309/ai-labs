@@ -1,13 +1,21 @@
 import Hummingbird
 import Logging
 
+public enum AppBuildError: Error, Equatable {
+    case missingFeedbackMessenger
+}
+
 public func buildApp(
     config: Config,
     logger: Logger? = nil,
     store: (any CaptureStore)? = nil,
     enricher: any Enricher,
     messenger: (any CaptureFeedbackMessenger)? = nil
-) -> some ApplicationProtocol {
+) throws -> some ApplicationProtocol {
+
+    if config.diagnosticMode == nil, messenger == nil {
+        throw AppBuildError.missingFeedbackMessenger
+    }
 
     let effectiveLogger = logger ?? makeLogger(label: "notio")
     let router = Router()

@@ -23,9 +23,6 @@ public protocol CaptureFeedbackMessenger: Sendable {
 }
 
 public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendable {
-
-    private static let maxFeedbackTitleLength = 80
-
     private let sender: any MessageSender
     private let logger: Logger
 
@@ -70,7 +67,6 @@ public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendab
         guard let title else { return nil }
         let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedTitle.isEmpty else { return nil }
-        guard normalizedTitle.count <= Self.maxFeedbackTitleLength else { return nil }
         return normalizedTitle
     }
 }

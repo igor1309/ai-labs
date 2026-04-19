@@ -29,5 +29,5 @@ if let botToken = config.telegramBotToken {
     messenger = nil
 }
 
-let app = buildApp(config: config, logger: logger, store: store, enricher: enricher, messenger: messenger)
+let app = try buildApp(config: config, logger: logger, store: store, enricher: enricher, messenger: messenger)
 try await app.runService()
