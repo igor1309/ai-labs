@@ -82,6 +82,7 @@ One process initially; ingress and core stay logically separate.
 | `NOTIO_WEBHOOK_PATH`           | yes      | —       | Secret webhook path segment              |
 | `NOTIO_PORT`                   | no       | `8080`  | HTTP listen port                         |
 | `NOTIO_VERSION`                | no       | `dev`   | Reported by `/version`                   |
+| `NOTIO_TELEGRAM_BOT_TOKEN`     | normal   | —       | Telegram bot token for feedback; required in normal mode, optional in diagnostic mode |
 | `NOTIO_SUPABASE_URL`           | no       | —       | Supabase project URL                     |
 | `NOTIO_SUPABASE_KEY`           | no       | —       | Supabase service-role key                |
 | `NOTIO_DIAGNOSTIC_MODE`        | no       | —       | `ack` \| `inspect` \| `delay` \| `fail`              |
