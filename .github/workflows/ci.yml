@@ -17,6 +17,7 @@ on:
       - "migrate-to-skills/**"
       - "sandbox/**"
       - "tools/**"
+      - "gemini/**"
   pull_request:
   workflow_dispatch:
 
