@@ -13,6 +13,7 @@ on:
       - "**/*.md"
       - ".claude/**"
       - "_inbox/**"
+      - "migrate-to-skills/**"
   pull_request:
   workflow_dispatch:
 
