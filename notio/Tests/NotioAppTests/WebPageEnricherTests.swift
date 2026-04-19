@@ -1,3 +1,4 @@
+import Logging
 import NIOCore
 import Testing
 @testable import NotioApp
@@ -61,7 +62,7 @@ struct WebPageEnricherTests {
 
     @Test func test_shouldPassUrlToFetcher() async {
         let spy = SpyHTTPFetcher(result: .success(HTTPFetchResponse(status: 200, body: "<title>T</title>")))
-        let sut = WebPageEnricher(fetcher: spy)
+        let sut = WebPageEnricher(fetcher: spy, logger: noopLogger)
 
         _ = await sut.enrich(url: "https://specific.example.com/page", sourceType: .webPage)
 
@@ -78,6 +79,34 @@ struct WebPageEnricherTests {
         #expect(result.title == "Truncated")
         #expect(result.status == .partial)
     }
+
+    @Test func test_shouldLogOnFetchError() async {
+        let handler = SpyLogHandler()
+        let sut = WebPageEnricher(
+            fetcher: StubHTTPFetcher(result: .failure(StubError())),
+            logger: Logger(label: "test", factory: { _ in handler })
+        )
+
+        _ = await sut.enrich(url: "https://fail.example.com", sourceType: .webPage)
+
+        let messages = handler.messages
+        #expect(messages.map(\.level) == [.error])
+        #expect(messages.first?.metadata?["url"] == "https://fail.example.com")
+    }
+
+    @Test func test_shouldLogOnNon2xxResponse() async {
+        let handler = SpyLogHandler()
+        let sut = WebPageEnricher(
+            fetcher: StubHTTPFetcher(result: .success(HTTPFetchResponse(status: 500, body: ""))),
+            logger: Logger(label: "test", factory: { _ in handler })
+        )
+
+        _ = await sut.enrich(url: "https://error.example.com", sourceType: .webPage)
+
+        let messages = handler.messages
+        #expect(messages.map(\.level) == [.error])
+        #expect(messages.first?.metadata?["url"] == "https://error.example.com")
+    }
 }
 
 // MARK: - Helpers
@@ -85,12 +114,14 @@ struct WebPageEnricherTests {
 private extension WebPageEnricherTests {
     typealias SUT = WebPageEnricher
 
+    var noopLogger: Logger { Logger(label: "test", factory: SwiftLogNoOpLogHandler.init) }
+
     func makeSUT(response: HTTPFetchResponse) -> SUT {
-        WebPageEnricher(fetcher: StubHTTPFetcher(result: .success(response)))
+        WebPageEnricher(fetcher: StubHTTPFetcher(result: .success(response)), logger: noopLogger)
     }
 
     func makeSUT(error: Error) -> SUT {
-        WebPageEnricher(fetcher: StubHTTPFetcher(result: .failure(error)))
+        WebPageEnricher(fetcher: StubHTTPFetcher(result: .failure(error)), logger: noopLogger)
     }
 }
 
@@ -115,5 +146,27 @@ private actor SpyHTTPFetcher: HTTPFetcher {
     func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         capturedURL = url
         return try result.get()
+    }
+}
+
+private final class SpyLogHandler: LogHandler, @unchecked Sendable {
+
+    struct Entry {
+        let level: Logger.Level
+        let message: String
+        let metadata: Logger.Metadata?
+    }
+
+    private(set) var messages: [Entry] = []
+    var metadata: Logger.Metadata = [:]
+    var logLevel: Logger.Level = .trace
+
+    subscript(metadataKey key: String) -> Logger.Metadata.Value? {
+        get { metadata[key] }
+        set { metadata[key] = newValue }
+    }
+
+    func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
+        messages.append(Entry(level: level, message: "\(message)", metadata: metadata))
     }
 }
