@@ -70,6 +70,9 @@ struct WebPageEnricherTests {
         #expect(captured == "https://specific.example.com/page")
     }
 
+    // Note: this test verifies WebPageEnricher's extraction on a large body.
+    // The byte-level streaming truncation inside AsyncHTTPClientFetcher.fetch is an
+    // integration concern that requires a live HTTP server; it is not covered here.
     @Test func test_shouldExtractFromTruncatedOversizedResponse() async {
         let html = "<html><head><title>Truncated</title></head>" + String(repeating: "x", count: 600_000)
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html))
@@ -90,21 +93,22 @@ struct WebPageEnricherTests {
         #expect(result.status == .partial)
     }
 
-    @Test func test_shouldExtractMetadataFromMislabelledResponse() async {
+    @Test func test_shouldReturnFailedForMislabelledContentType() async {
         let html = "<html><head><title>Page</title></head></html>"
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "application/octet-stream"))
 
         let result = await sut.enrich(url: "https://example.com", sourceType: .webPage)
 
-        #expect(result.title == "Page")
+        #expect(result.status == .failed)
+        #expect(result.title == nil)
     }
 
-    @Test func test_shouldReturnPartialForNonParseableBody() async {
+    @Test func test_shouldReturnFailedForNonHTMLContentType() async {
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "%PDF-1.4", contentType: "application/pdf"))
 
         let result = await sut.enrich(url: "https://example.com/file.pdf", sourceType: .webPage)
 
-        #expect(result.status == .partial)
+        #expect(result.status == .failed)
         #expect(result.title == nil)
     }
 

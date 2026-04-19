@@ -99,4 +99,16 @@ struct HTMLMetadataExtractorTests {
         let result = HTMLMetadataExtractor.extract(from: html)
         #expect(result.title == "Multi Line Title")
     }
+
+    @Test func test_shouldDecodeAmpersandEntityInTitle() {
+        let html = "<title>AT&amp;T</title>"
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.title == "AT&T")
+    }
+
+    @Test func test_shouldDecodeNumericEntityInDescription() {
+        let html = #"<meta name="description" content="Bob&#39;s repo">"#
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.description == "Bob's repo")
+    }
 }
