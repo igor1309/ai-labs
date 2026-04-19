@@ -65,4 +65,26 @@ struct HTMLMetadataExtractorTests {
         let result = HTMLMetadataExtractor.extract(from: html)
         #expect(result.title == "Spaced Title")
     }
+
+    @Test func test_shouldHandleApostropheInDoubleQuotedDescription() {
+        let html = #"<meta name="description" content="Bob's repo">"#
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.description == "Bob's repo")
+    }
+
+    @Test func test_shouldHandleDoubleQuoteInSingleQuotedDescription() {
+        let html = "<meta name='description' content='A \"great\" page'>"
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.description == #"A "great" page"#)
+    }
+
+    @Test func test_shouldHandleMultilineTitle() {
+        let html = """
+        <title>
+            Multi Line Title
+        </title>
+        """
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.title == "Multi Line Title")
+    }
 }

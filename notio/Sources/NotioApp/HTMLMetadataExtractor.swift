@@ -17,40 +17,44 @@ enum HTMLMetadataExtractor {
 
 private extension HTMLMetadataExtractor {
     static func extractTitle(from html: String) -> String? {
-        guard let range = html.range(
-            of: #"<title[^>]*>(.*?)</title>"#,
-            options: [.regularExpression, .caseInsensitive]
+        guard let regex = try? NSRegularExpression(
+            pattern: #"<title[^>]*>([\s\S]*?)</title>"#,
+            options: .caseInsensitive
         ) else { return nil }
 
-        let match = html[range]
-        guard let openEnd = match.range(of: ">"),
-              let closeStart = match.range(of: "</", options: .backwards)
+        let nsRange = NSRange(html.startIndex..., in: html)
+        guard let match = regex.firstMatch(in: html, range: nsRange),
+              let contentRange = Range(match.range(at: 1), in: html)
         else { return nil }
 
-        let content = String(match[openEnd.upperBound..<closeStart.lowerBound])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let content = String(html[contentRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         return content.isEmpty ? nil : content
     }
 
     static func extractMetaDescription(from html: String) -> String? {
-        guard let range = html.range(
-            of: #"<meta\s[^>]*name\s*=\s*["']description["'][^>]*>"#,
-            options: [.regularExpression, .caseInsensitive]
+        guard let tagRegex = try? NSRegularExpression(
+            pattern: #"<meta\s[^>]*name\s*=\s*["']description["'][^>]*>"#,
+            options: .caseInsensitive
         ) else { return nil }
 
-        let tag = String(html[range])
-        guard let contentRange = tag.range(
-            of: #"content\s*=\s*["']([^"']*)["']"#,
-            options: [.regularExpression, .caseInsensitive]
+        let nsRange = NSRange(html.startIndex..., in: html)
+        guard let tagMatch = tagRegex.firstMatch(in: html, range: nsRange),
+              let tagRange = Range(tagMatch.range, in: html)
+        else { return nil }
+
+        let tag = String(html[tagRange])
+
+        guard let contentRegex = try? NSRegularExpression(
+            pattern: #"content\s*=\s*(["'])(.*?)\1"#,
+            options: .caseInsensitive
         ) else { return nil }
 
-        let contentAttr = tag[contentRange]
-        guard let quoteStart = contentAttr.firstIndex(where: { $0 == "\"" || $0 == "'" }) else { return nil }
-        let afterQuote = contentAttr.index(after: quoteStart)
-        guard let quoteEnd = contentAttr[afterQuote...].firstIndex(where: { $0 == "\"" || $0 == "'" }) else { return nil }
+        let tagNSRange = NSRange(tag.startIndex..., in: tag)
+        guard let contentMatch = contentRegex.firstMatch(in: tag, range: tagNSRange),
+              let valueRange = Range(contentMatch.range(at: 2), in: tag)
+        else { return nil }
 
-        let value = String(contentAttr[afterQuote..<quoteEnd])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = String(tag[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
     }
 }
