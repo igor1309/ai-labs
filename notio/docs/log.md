@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- Enrichment pipeline: link items are enriched with title/description before persistence. WebPageEnricher (HTML metadata extraction), GitHubRepoEnricher (API-based), CompositeEnricher (source-type routing), CaptureService (parse → enrich → save orchestration). Supabase schema migration for `captured_title`/`captured_description` columns.
+
 - Webhook route refactored: extracted helpers (readBody, baseMetadata, decodeUpdate, appendUpdateMetadata, appendInspectMetadata, respond, captureInBackground), injected `now` clock dependency, removed nil default from store parameter, fixed NIOFoundationCompat `Data(buffer:)` → `Data(ByteBufferView())` in SupabaseCaptureStore. 60 tests, local Docker build verified.
 
 - Capture pipeline steps 1–4: TelegramUpdate model with typed decoding, IngressParser (URL extraction, UTM stripping, entity/regex fallback), CapturedItem canonical model with source classification, CaptureStore protocol + SupabaseCaptureStore adapter. Supabase project `notio` created with `captured_items` table. 59 tests.

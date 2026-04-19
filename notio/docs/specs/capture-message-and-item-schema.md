@@ -223,7 +223,7 @@ item:
 Try to capture:
 - repository title/name
 - repository description
-- simple README excerpt
+- README excerpt (deferred to v2; v1 captures title and description only)
 
 ### Generic web page
 Try to capture:

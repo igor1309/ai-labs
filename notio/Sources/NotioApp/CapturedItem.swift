@@ -1,5 +1,22 @@
 import Foundation
 
+public struct EnrichmentResult: Equatable, Sendable {
+
+    public let title: String?
+    public let description: String?
+    public let status: CapturedItem.Enrichment
+
+    public init(title: String?, description: String?, status: CapturedItem.Enrichment) {
+        self.title = title
+        self.description = description
+        self.status = status
+    }
+}
+
+public protocol Enricher: Sendable {
+    func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult
+}
+
 public struct CapturedItem: Equatable, Sendable {
 
     public let kind: Kind
@@ -8,6 +25,8 @@ public struct CapturedItem: Equatable, Sendable {
     public let url: String?
     public let note: String?
     public let enrichment: Enrichment
+    public let capturedTitle: String?
+    public let capturedDescription: String?
 
     public enum Kind: String, Equatable, Sendable {
         case note
@@ -28,6 +47,8 @@ public struct CapturedItem: Equatable, Sendable {
         self.url = result.primaryURL
         self.note = result.note
         self.enrichment = .none
+        self.capturedTitle = nil
+        self.capturedDescription = nil
 
         if let url = result.primaryURL {
             self.kind = .link
@@ -37,12 +58,51 @@ public struct CapturedItem: Equatable, Sendable {
             self.sourceType = nil
         }
     }
+
+    public func applying(_ result: EnrichmentResult) -> CapturedItem {
+        guard kind == .link, url != nil else { return self }
+        return CapturedItem(
+            kind: kind,
+            sourceType: sourceType,
+            capturedAt: capturedAt,
+            url: url,
+            note: note,
+            enrichment: result.status,
+            capturedTitle: result.title,
+            capturedDescription: result.description
+        )
+    }
+
+    init(
+        kind: Kind,
+        sourceType: SourceType?,
+        capturedAt: Date,
+        url: String?,
+        note: String?,
+        enrichment: Enrichment,
+        capturedTitle: String?,
+        capturedDescription: String?
+    ) {
+        self.kind = kind
+        self.sourceType = sourceType
+        self.capturedAt = capturedAt
+        self.url = url
+        self.note = note
+        self.enrichment = enrichment
+        self.capturedTitle = capturedTitle
+        self.capturedDescription = capturedDescription
+    }
 }
 
 private extension CapturedItem {
+    static func isGitHubHost(_ host: String) -> Bool {
+        host == "github.com" || host == "www.github.com"
+    }
+
     static func classifySource(_ urlString: String) -> SourceType {
         guard let url = URL(string: urlString),
-              url.host?.hasSuffix("github.com") == true
+              let host = url.host,
+              isGitHubHost(host)
         else { return .webPage }
 
         let pathComponents = url.pathComponents.filter { $0 != "/" }

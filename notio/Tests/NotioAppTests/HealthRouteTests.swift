@@ -23,6 +23,6 @@ struct HealthRouteTests {
 
 extension HealthRouteTests {
     private func makeApp() -> some ApplicationProtocol {
-        buildApp(config: Config(port: 8080, version: "test", webhookPath: "test-webhook"))
+        buildApp(config: Config(port: 8080, version: "test", webhookPath: "test-webhook"), enricher: NullEnricher())
     }
 }
