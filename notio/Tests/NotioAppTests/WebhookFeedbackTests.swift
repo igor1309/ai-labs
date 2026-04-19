@@ -73,6 +73,32 @@ struct WebhookFeedbackTests {
         #expect(item.kind == .note)
     }
 
+    @Test func test_normalRequest_shouldEmitExactlyOneOutcomeMessage() async throws {
+        let spy = RecordingFeedbackMessenger()
+        let store = SpyCaptureStore()
+        let app = makeApp(messenger: spy, store: store)
+        let body = makeTelegramBody(chatId: 1, text: "hello")
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { _ in }
+        }
+
+        _ = await store.waitForSave()
+        let feedbacks = await spy.feedbacks
+        let outcomes = feedbacks.filter { $0.feedback != .receipt }
+        #expect(outcomes.count == 1)
+        #expect(outcomes.first?.feedback == .success(CapturedItem(
+            kind: .note,
+            sourceType: nil,
+            capturedAt: (await store.savedItems.first!).capturedAt,
+            url: nil,
+            note: "hello",
+            enrichment: .none,
+            capturedTitle: nil,
+            capturedDescription: nil
+        )))
+    }
+
     @Test func test_normalRequest_feedbackAndCaptureShouldProceedAfterHandlerReturns() async throws {
         let spy = RecordingFeedbackMessenger()
         let store = SpyCaptureStore()

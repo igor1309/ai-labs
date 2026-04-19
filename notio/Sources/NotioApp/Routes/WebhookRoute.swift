@@ -104,11 +104,17 @@ private func appendInspectMetadata(bodyData: Data?, to metadata: inout Logger.Me
 private func captureInBackground(update: TelegramUpdate, store: (any CaptureStore)?, enricher: any Enricher, messenger: (any CaptureFeedbackMessenger)?, logger: Logger) {
     guard let store, let text = update.message?.text else { return }
     let chatId = update.message?.chat.id
-    let service = CaptureService(store: store, enricher: enricher, logger: logger)
     Task {
         if let chatId, let messenger {
             await messenger.send(chatId: chatId, feedback: .receipt)
         }
+        let effectiveStore: any CaptureStore =
+            if let chatId, let messenger {
+                NotifyingCaptureStore(inner: store, chatId: chatId, messenger: messenger)
+            } else {
+                store
+            }
+        let service = CaptureService(store: effectiveStore, enricher: enricher, logger: logger)
         await service.capture(text: text, entities: update.message?.entities)
     }
 }
