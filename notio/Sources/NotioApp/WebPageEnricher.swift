@@ -4,7 +4,7 @@ import Logging
 import NIOCore
 
 public protocol HTTPFetcher: Sendable {
-    func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse
+    func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse
 }
 
 public struct HTTPFetchResponse: Sendable {
@@ -34,7 +34,7 @@ public struct WebPageEnricher: Enricher {
     public func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
         let response: HTTPFetchResponse
         do {
-            response = try await fetcher.fetch(url: url, timeout: timeout, maxBytes: maxBytes)
+            response = try await fetcher.fetch(url: url, headers: [], timeout: timeout, maxBytes: maxBytes)
         } catch {
             logger.error("enrichment fetch failed", metadata: ["url": .string(url), "error": .string("\(error)")])
             return EnrichmentResult(title: nil, description: nil, status: .failed)
@@ -63,9 +63,12 @@ public struct AsyncHTTPClientFetcher: HTTPFetcher {
         self.httpClient = httpClient
     }
 
-    public func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
+    public func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         var request = HTTPClientRequest(url: url)
         request.method = .GET
+        for (name, value) in headers {
+            request.headers.add(name: name, value: value)
+        }
         let response = try await httpClient.execute(request, timeout: timeout)
         var accumulated = ByteBuffer()
         for try await var chunk in response.body {

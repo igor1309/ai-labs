@@ -130,7 +130,7 @@ private struct StubError: Error {}
 private struct StubHTTPFetcher: HTTPFetcher {
     let result: Result<HTTPFetchResponse, Error>
 
-    func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
+    func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         try result.get()
     }
 }
@@ -143,7 +143,7 @@ private actor SpyHTTPFetcher: HTTPFetcher {
         self.result = result
     }
 
-    func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
+    func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         capturedURL = url
         return try result.get()
     }

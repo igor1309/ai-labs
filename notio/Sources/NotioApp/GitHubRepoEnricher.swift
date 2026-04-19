@@ -21,7 +21,11 @@ public struct GitHubRepoEnricher: Enricher {
         let apiURL = "https://api.github.com/repos/\(owner)/\(repo)"
         let response: HTTPFetchResponse
         do {
-            response = try await fetcher.fetch(url: apiURL, timeout: .seconds(5), maxBytes: 512 * 1024)
+            let headers = [
+                ("User-Agent", "notio"),
+                ("Accept", "application/vnd.github+json"),
+            ]
+            response = try await fetcher.fetch(url: apiURL, headers: headers, timeout: .seconds(5), maxBytes: 512 * 1024)
         } catch {
             logger.error("enrichment fetch failed", metadata: ["url": .string(url), "error": .string("\(error)")])
             return EnrichmentResult(title: nil, description: nil, status: .failed)

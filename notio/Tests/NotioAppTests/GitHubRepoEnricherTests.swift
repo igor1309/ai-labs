@@ -55,6 +55,17 @@ struct GitHubRepoEnricherTests {
         #expect(captured == "https://api.github.com/repos/owner/repo")
     }
 
+    @Test func test_shouldSendRequiredGitHubHeaders() async {
+        let spy = SpyHTTPFetcher(result: .success(HTTPFetchResponse(status: 200, body: #"{"full_name":"a/b"}"#)))
+        let sut = GitHubRepoEnricher(fetcher: spy, logger: noopLogger)
+
+        _ = await sut.enrich(url: "https://github.com/owner/repo", sourceType: .githubRepo)
+
+        let headers = await spy.capturedHeaders
+        #expect(headers.map(\.0).contains("User-Agent"))
+        #expect(headers.map(\.0).contains("Accept"))
+    }
+
     @Test func test_shouldReturnFailedWhenFullNameMissing() async {
         let json = #"{"description":"Some repo"}"#
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: json))
@@ -95,7 +106,7 @@ private struct StubError: Error {}
 private struct StubHTTPFetcher: HTTPFetcher {
     let result: Result<HTTPFetchResponse, Error>
 
-    func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
+    func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         try result.get()
     }
 }
@@ -103,13 +114,15 @@ private struct StubHTTPFetcher: HTTPFetcher {
 private actor SpyHTTPFetcher: HTTPFetcher {
     let result: Result<HTTPFetchResponse, Error>
     private(set) var capturedURL: String?
+    private(set) var capturedHeaders: [(String, String)] = []
 
     init(result: Result<HTTPFetchResponse, Error>) {
         self.result = result
     }
 
-    func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
+    func fetch(url: String, headers: [(String, String)], timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         capturedURL = url
+        capturedHeaders = headers
         return try result.get()
     }
 }

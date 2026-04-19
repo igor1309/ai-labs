@@ -103,5 +103,5 @@ Add `captured_title` and `captured_description` columns to the `captured_items` 
 - [x] Full `swift test` passes
 - [x] `docker build` passes
 - [x] Log updated (`notio/docs/log.md`)
-- [x] Execution order updated (add enrichment phase)
+- [ ] Execution order updated (add enrichment phase)
 - [ ] Push and create PR
