@@ -84,6 +84,22 @@ struct GitHubRepoEnricherTests {
         #expect(result.status == .failed)
     }
 
+    @Test func test_shouldReturnFailedForIssueURL() async {
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "{}"))
+
+        let result = await sut.enrich(url: "https://github.com/owner/repo/issues/1", sourceType: .githubRepo)
+
+        #expect(result.status == .failed)
+    }
+
+    @Test func test_shouldReturnFailedForTreeURL() async {
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "{}"))
+
+        let result = await sut.enrich(url: "https://github.com/owner/repo/tree/main", sourceType: .githubRepo)
+
+        #expect(result.status == .failed)
+    }
+
     @Test func test_shouldStripDotGitSuffixFromCloneURL() async {
         let spy = SpyHTTPFetcher(result: .success(HTTPFetchResponse(status: 200, body: #"{"full_name":"owner/repo"}"#)))
         let sut = GitHubRepoEnricher(fetcher: spy, logger: noopLogger)
