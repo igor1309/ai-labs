@@ -1,7 +1,7 @@
 ---
 date: 2026-04-19
 model: gpt-5
-description: "Implementation plan for transitioning My Way notes into transitional skills while keeping the notes as source of truth."
+description: "Implementation plan for transitioning My Way notes into skills with explicit first-class promotion by artifact."
 ---
 
 # My Way Notes To Skills Transition Plan
@@ -84,7 +84,36 @@ Preflight check: [x] done
 **Completion signal**:
 - A repeatable extraction pattern exists for the next artifacts without turning the transition into a framework rewrite.
 
-## Task 3 — Expand Artifact Skills One By One
+## Task 3 — Establish And Promote Spec Skills
+
+**Objective**: Create the spec pair as self-sufficient, first-class skills using the ADR extraction pattern.
+
+**Key work items**:
+- Create `docs/my-way/skills/spec/spec-drafting/SKILL.md`.
+- Create `docs/my-way/skills/spec/spec-review/SKILL.md`.
+- Extract both skills from `docs/my-way/04-spec/note.md` as operational form.
+- Keep the distinction explicit:
+  - spec operationalizes ADRs into behavior and contracts
+  - spec is not ADR
+  - spec is not implementation plan
+- Make both skills self-sufficient without relying on `docs/my-way/04-spec/note.md`.
+
+**Dependencies**:
+- Task 1 ADR pattern.
+- Existing spec note, structure, and example.
+
+**Risks**:
+- The spec skills absorb architectural decision work that should remain in ADR.
+- The spec skills absorb execution detail that should remain in implementation planning.
+
+**Validation**:
+- Read both skills against the spec note and confirm the behavior/contract boundary holds.
+- Confirm both skills can be used correctly without consulting `docs/my-way/04-spec/note.md`.
+
+**Completion signal**:
+- Two spec skills exist as self-sufficient, first-class skills.
+
+## Task 4 — Expand Remaining Artifact Skills One By One
 
 **Objective**: Convert the remaining `My Way` artifacts incrementally instead of as a bulk rewrite.
 
@@ -101,6 +130,7 @@ Preflight check: [x] done
 
 **Dependencies**:
 - Task 2 transition rules.
+- Task 3 spec pair established.
 
 **Risks**:
 - The migration becomes a large undifferentiated batch.
@@ -117,5 +147,6 @@ Preflight check: [x] done
 
 - The transition has an explicit plan artifact.
 - ADR drafting and review skills exist as the first promoted first-class pair.
+- Spec drafting and review skills exist as the next promoted first-class pair.
 - Notes remain the source of truth for artifacts that have not yet been promoted.
 - Remaining artifact skills can be added incrementally without losing responsibility clarity.
