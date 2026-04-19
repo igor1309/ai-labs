@@ -83,6 +83,16 @@ struct GitHubRepoEnricherTests {
 
         #expect(result.status == .failed)
     }
+
+    @Test func test_shouldStripDotGitSuffixFromCloneURL() async {
+        let spy = SpyHTTPFetcher(result: .success(HTTPFetchResponse(status: 200, body: #"{"full_name":"owner/repo"}"#)))
+        let sut = GitHubRepoEnricher(fetcher: spy, logger: noopLogger)
+
+        _ = await sut.enrich(url: "https://github.com/owner/repo.git", sourceType: .githubRepo)
+
+        let captured = await spy.capturedURL
+        #expect(captured == "https://api.github.com/repos/owner/repo")
+    }
 }
 
 // MARK: - Helpers

@@ -63,6 +63,7 @@ private extension GitHubRepoEnricher {
 
         let components = url.pathComponents.filter { $0 != "/" }
         guard components.count >= 2 else { return nil }
-        return (components[0], components[1])
+        let repo = components[1].hasSuffix(".git") ? String(components[1].dropLast(4)) : components[1]
+        return (components[0], repo)
     }
 }

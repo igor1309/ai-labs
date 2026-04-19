@@ -80,32 +80,32 @@ struct WebPageEnricherTests {
         #expect(result.status == .partial)
     }
 
-    @Test func test_shouldReturnPartialForNonHTMLContentType() async {
+    @Test func test_shouldExtractMetadataFromXHTMLContentType() async {
+        let html = "<html><head><title>XHTML Page</title></head></html>"
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "application/xhtml+xml"))
+
+        let result = await sut.enrich(url: "https://example.com/page.xhtml", sourceType: .webPage)
+
+        #expect(result.title == "XHTML Page")
+        #expect(result.status == .partial)
+    }
+
+    @Test func test_shouldExtractMetadataFromMislabelledResponse() async {
+        let html = "<html><head><title>Page</title></head></html>"
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "application/octet-stream"))
+
+        let result = await sut.enrich(url: "https://example.com", sourceType: .webPage)
+
+        #expect(result.title == "Page")
+    }
+
+    @Test func test_shouldReturnPartialForNonParseableBody() async {
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "%PDF-1.4", contentType: "application/pdf"))
 
         let result = await sut.enrich(url: "https://example.com/file.pdf", sourceType: .webPage)
 
         #expect(result.status == .partial)
         #expect(result.title == nil)
-    }
-
-    @Test func test_shouldAcceptHTMLContentType() async {
-        let html = "<html><head><title>Page</title></head></html>"
-        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "text/html; charset=utf-8"))
-
-        let result = await sut.enrich(url: "https://example.com", sourceType: .webPage)
-
-        #expect(result.title == "Page")
-        #expect(result.status == .partial)
-    }
-
-    @Test func test_shouldAcceptMixedCaseHTMLContentType() async {
-        let html = "<html><head><title>Page</title></head></html>"
-        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "TEXT/HTML; charset=UTF-8"))
-
-        let result = await sut.enrich(url: "https://example.com", sourceType: .webPage)
-
-        #expect(result.title == "Page")
     }
 
     @Test func test_shouldLogOnFetchError() async {
