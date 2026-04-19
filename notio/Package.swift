@@ -4,7 +4,7 @@
 let package = Package(
     name: "notio",
     platforms: [.macOS(.v15)],
-    dependencies: [.hummingbird, .swiftLog],
+    dependencies: [.asyncHTTPClient, .hummingbird, .swiftLog],
     targets: [.notioApp, .notioServer, .notioAppTests]
 )
 
@@ -13,7 +13,7 @@ let package = Package(
 private extension Target {
     static let notioApp = target(
         name: .notioApp,
-        dependencies: [.hummingbird, .logging]
+        dependencies: [.asyncHTTPClient, .hummingbird, .logging]
     )
     static let notioAppTests = testTarget(
         name: .notioAppTests,
@@ -28,6 +28,7 @@ private extension Target {
 // MARK: - Target.Dependency
 
 private extension Target.Dependency {
+    static let asyncHTTPClient = product(name: "AsyncHTTPClient", package: "async-http-client")
     static let hummingbird = product(name: "Hummingbird", package: "hummingbird")
     static let hummingbirdTesting = product(name: "HummingbirdTesting", package: "hummingbird")
     static let logging = product(name: "Logging", package: "swift-log")
@@ -45,6 +46,7 @@ private extension String {
 // MARK: - Package.Dependency
 
 private extension Package.Dependency {
+    static let asyncHTTPClient = Package.Dependency.package(url: "https://github.com/swift-server/async-http-client", from: "1.20.0")
     static let hummingbird = Package.Dependency.package(url: "https://github.com/hummingbird-project/hummingbird", from: "2.0.0")
     static let swiftLog = Package.Dependency.package(url: "https://github.com/apple/swift-log", from: "1.0.0")
 }

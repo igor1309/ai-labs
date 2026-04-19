@@ -5,17 +5,23 @@ public struct Config: Sendable {
     public let version: String
     public let webhookPath: String
     public let diagnosticMode: DiagnosticMode?
+    public let supabaseURL: String?
+    public let supabaseKey: String?
 
     public init(
         port: Int = 8080,
         version: String = "dev",
         webhookPath: String,
-        diagnosticMode: DiagnosticMode? = nil
+        diagnosticMode: DiagnosticMode? = nil,
+        supabaseURL: String? = nil,
+        supabaseKey: String? = nil
     ) {
         self.port = port
         self.version = version
         self.webhookPath = webhookPath
         self.diagnosticMode = diagnosticMode
+        self.supabaseURL = supabaseURL
+        self.supabaseKey = supabaseKey
     }
 
     public enum ConfigError: Error, Equatable {
@@ -38,7 +44,16 @@ public struct Config: Sendable {
         if case .fail = diagnosticMode, let status = Int(env["NOTIO_DIAGNOSTIC_FAIL_STATUS"] ?? "") {
             diagnosticMode = .fail(status: status)
         }
-        return Config(port: port, version: version, webhookPath: webhookPath, diagnosticMode: diagnosticMode)
+        let supabaseURL = env["NOTIO_SUPABASE_URL"]
+        let supabaseKey = env["NOTIO_SUPABASE_KEY"]
+        return Config(
+            port: port,
+            version: version,
+            webhookPath: webhookPath,
+            diagnosticMode: diagnosticMode,
+            supabaseURL: supabaseURL,
+            supabaseKey: supabaseKey
+        )
     }
 }
 
