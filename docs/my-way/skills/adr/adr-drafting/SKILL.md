@@ -7,9 +7,9 @@ description: Use when architectural exploration is complete enough to lock a dec
 
 ## Overview
 
-This is a transitional skill derived from [ADR note](../../../03-adr/note.md). During the transition to skills, the note remains the source of truth and this skill is its operationalized form.
+Use this skill to turn settled architectural thinking into an ADR. ADR is the commitment layer of the pre-coding phase: it records the architectural decision that has been made, explains why it was made, and defines its implications clearly enough that later work does not have to reconstruct the reasoning from memory, folklore, or code.
 
-Use this skill to turn settled architectural thinking into an ADR. Do not use it while the decision is still genuinely open.
+Do not use this skill while the decision is still genuinely open.
 
 ## Trigger
 
@@ -41,6 +41,7 @@ Do not restage the whole exploratory history inside the ADR. Read enough to iden
 - The ADR must define boundaries: what this decision governs and what it does not.
 - The ADR must capture consequences and tradeoffs, not present the choice as cost-free.
 - The ADR must stay architectural. Behavioral detail belongs in the spec. Execution detail belongs in the implementation plan.
+- The ADR exists to reduce reinterpretation, drift, and repeated debate around already-resolved matters.
 
 ## Produce
 

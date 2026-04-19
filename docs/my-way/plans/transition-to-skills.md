@@ -8,7 +8,7 @@ description: "Implementation plan for transitioning My Way notes into transition
 
 ## Goal
 
-Transition `docs/my-way/` from note-only guidance to a mixed note-and-skill form, one artifact at a time, while keeping the notes as source of truth during the transition period.
+Transition `docs/my-way/` from note-only guidance to a mixed note-and-skill form, one artifact at a time, while keeping the notes as source of truth unless a skill is explicitly promoted to first-class.
 
 ## Execution lock
 
@@ -19,27 +19,28 @@ Preflight check: [x] done
 
 ## Scope guardrails
 
-- This plan covers transitional skill extraction only.
-- The source notes remain authoritative during the transition.
+- This plan covers skill extraction and explicit promotion from transitional to first-class status.
+- Source notes remain authoritative unless a skill has been explicitly promoted.
 - Do not rewrite the philosophy of `My Way` while extracting skills.
 - Do not collapse multiple artifact responsibilities into one generic skill.
 - Do not pretend the skills are a deterministic framework.
-- Do not remove or deprecate the original notes until the transition is intentionally closed.
+- Do not remove or deprecate the original notes until the transition is intentionally closed, even after promotion.
 
-## Task 1 — Establish Transitional ADR Skills
+## Task 1 — Establish And Promote ADR Skills
 
-**Objective**: Create the first pair of skills as the reference pattern for the transition.
+**Objective**: Create the first pair of skills as the reference pattern for the transition and promote them to first-class once they are self-sufficient.
 
 **Key work items**:
 - Create `docs/my-way/skills/adr/adr-drafting/SKILL.md`.
 - Create `docs/my-way/skills/adr/adr-review/SKILL.md`.
-- Make both skills explicitly transitional and subordinate to `docs/my-way/03-adr/note.md`.
+- Initially extract both skills from `docs/my-way/03-adr/note.md` as operational form.
 - Encode operational form rather than copying the note verbatim:
   - when the skill should trigger
   - what it should inspect before acting
   - what judgment it should preserve
   - what artifact it should help produce or review
   - what failure modes it should avoid
+- Remove the `note.md` dependency once both skills are operationally sufficient on their own.
 
 **Dependencies**:
 - Existing ADR note, structure, and example.
@@ -50,10 +51,10 @@ Preflight check: [x] done
 
 **Validation**:
 - Read both skills against the ADR note and confirm responsibility separation holds.
-- Confirm the skills explicitly treat the note as source of truth during transition.
+- Confirm both skills can be used correctly without consulting `docs/my-way/03-adr/note.md`.
 
 **Completion signal**:
-- Two ADR skills exist and are usable as transitional operationalizations of the ADR note.
+- Two ADR skills exist as self-sufficient, first-class skills.
 
 ## Task 2 — Define Transition Rules For Remaining Artifact Skills
 
@@ -115,6 +116,6 @@ Preflight check: [x] done
 ## Done criteria
 
 - The transition has an explicit plan artifact.
-- ADR drafting and review skills exist as the first transitional pair.
-- The notes remain the source of truth during the transition.
+- ADR drafting and review skills exist as the first promoted first-class pair.
+- Notes remain the source of truth for artifacts that have not yet been promoted.
 - Remaining artifact skills can be added incrementally without losing responsibility clarity.

@@ -7,9 +7,9 @@ description: Use when an ADR exists and needs adversarial review for decision qu
 
 ## Overview
 
-This is a transitional skill derived from [ADR note](../../../03-adr/note.md). During the transition to skills, the note remains the source of truth and this skill is its operationalized review form.
-
 Use this skill to pressure-test an ADR that already exists. Review is adversarial by design: it should challenge the decision record, not flatter it.
+
+ADR review exists to test whether the recorded decision is real, bounded, consistent, and stable enough to carry downstream work without forcing later readers to reinterpret architecture from code or team memory.
 
 ## Trigger
 
@@ -40,6 +40,7 @@ Review the ADR against what it claims to govern, not against implementation pref
 - The goal is not to rewrite the architecture from scratch.
 - A review may conclude that the ADR still holds. That is useful work, not failure.
 - If the ADR is invalidated, escalate explicitly rather than patching around the problem in lower-level artifacts.
+- The ADR must remain architectural. Review must not demand behavioral or execution detail that belongs in a spec or implementation plan.
 
 ## Review For
 
