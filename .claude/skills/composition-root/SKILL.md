@@ -1,13 +1,13 @@
 ---
-date: 2026-02-22
-model: gpt-5
-description: "Composition root rules for interface-only wiring, layered assembly, environment wiring, and wiring tests"
+name: composition-root
+description: Composition root wiring rules — interface-only boundaries, layered assembly, naming discipline, and wiring tests
+trigger: when creating or modifying composition root code, assemblers, wiring, or adapters
 ---
 
 # Composition Root Wiring Guide
 
 ## Purpose
-Define how composition root code is created, assembled, and tested in this repo.
+Define how composition root code is created, assembled, and tested.
 
 ## Definition
 Composition root is an architectural concept: the place(s) where the app is assembled from collaborating parts.

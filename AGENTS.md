@@ -25,16 +25,7 @@
 
 ## Specs
 
-Specs define a component's contract before implementation. They live at `<project>/docs/specs/<name>.md` and move to `<project>/docs/specs/implemented/` after implementation.
-
-Required sections:
-- **Goal**: one sentence — what the component does and who owns it.
-- **Public interface**: function signatures, input/output shapes.
-- **Behavior rules**: validation, error handling, edge cases — concrete and testable.
-- **Tests (required)**: enumerated test cases that cover the behavior rules.
-- **Done criteria**: what "finished" means — typically interface + tests.
-
-Specs must not contain architecture preamble, future speculation, or implementation details. They describe *what* and *when it fails*, not *how*.
+Use the `spec-writing` skill. See `.claude/skills/spec-writing/SKILL.md`.
 
 ## README Components Table
 
@@ -53,160 +44,40 @@ The `## Components` table in `README.md` lists every component with its type and
   - if both scopes are changed, update both logs
 - Keep log entries concise and outcome-focused; don’t copy commit messages verbatim.
 
-## Strict TDD mode
+## Strict TDD Mode
 
-Trigger strict TDD mode when the user explicitly asks for TDD, RED/GREEN, or equivalent.
+Use the `strict-tdd` skill. See `.claude/skills/strict-tdd/SKILL.md`.
 
-- One test at a time.
-- RED first: add or update one test, run tests, and get a failing assertion for the missing behavior.
-- Compilation errors are not RED.
-- During RED, production code changes are forbidden.
-- Stop after RED and wait for explicit user approval to continue to GREEN, unless the user explicitly asks to auto-continue.
-- GREEN means minimum production code only for the current failing test.
-- Do not add extra behavior, scaffolding, defaults, or refactors in GREEN unless required by the failing test.
-- Run tests via the changed unit's native test command. Use `./scripts/run_silent.sh "tests" npm test` for Node/TypeScript scopes covered by the root suite.
+## Process Gates
 
-## No-Junk Scope Lock
+Use the `process-gates` skill. See `.claude/skills/process-gates/SKILL.md`.
 
-Do not add anything not required by current scope or the current failing test.
-
-- No new modules or packages unless explicitly requested.
-- No default or fallback dependencies unless explicitly requested.
-- No placeholder behavior that is not demanded by tests.
-- No side docs or log updates for micro-steps.
-- If a change does not directly turn current RED into GREEN, do not add it.
-
-## Pre-Commit Scope Check
-
-Before each commit:
-
-1. Verify every changed file is directly tied to the current step.
-2. Verify no out-of-scope files were added.
-3. Run the required verification for the changed scope:
-   - `./scripts/run_silent.sh "tests" npm test` for Node/TypeScript or repo-wide integration changes covered by the root suite
-   - native unit checks such as `swift test` / `swift build` for Swift-only scopes
-
-## Step closeout protocol
-
-Mandatory after each implementation step:
-
-1. Self-review the step against the approved spec and implementation plan scope.
-2. Fix any issues found in the self-review.
-3. Run the full test suite and fix failures until it passes.
-4. Summarize what changed and why.
-5. Commit only files related to the current step.
-6. Update plan tracker checkboxes only for gates with verified evidence (successful command/check output).
-7. Push the branch to `origin` unless explicitly instructed not to push.
-8. Stop and wait for review approval before starting the next step.
-
-## Pre-Push / Pre-PR Gate (Blocking)
-
-Before pushing a branch or creating a PR, verify ALL of the following. Do not push until every item passes:
-
-1. **Log updated**: relevant `docs/log.md` or `<project>/docs/log.md` reflects what changed.
-2. **Plan updated**: active plan checkboxes match completed work.
-3. **No leftover changes**: `git status` is clean — no uncommitted docs, config, or code changes that belong in this branch.
-4. **Docker verified**: for Docker-producing units, `docker build` must pass (see "Local Docker Verification").
-5. **Tests pass**: full test suite for the changed scope is green.
-
-If any item fails, fix it and commit before pushing. Do not push code and leave docs for a follow-up commit.
-
-## Implementation Preflight Gate (Blocking)
-
-Before any implementation action (editing files, running implementation tests, or committing), run and report preflight:
-
-1. Confirm whether the active plan requires a separate worktree/branch.
-2. Verify with git commands (minimum): `git worktree list --porcelain` and `git branch --show-current`.
-3. Capture current worktree path and branch.
-4. Emit a preflight status line:
-   - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
-   - `separate_worktree=pass` means the current worktree is a newly created, non-root worktree (typically under `worktrees/<slug>`) and the branch is the dedicated work branch (typically `codex/<slug>`).
-5. If separate worktree is required and preflight is `fail`, create a new separate worktree and rerun preflight until it is `pass` (do not implement from the root worktree). Example: `git worktree add -b codex/<slug> worktrees/<slug> trunk`
-6. If any preflight item fails, no file edits are allowed.
-
-## Process Discipline Hard Gates
-
-- Execution lock is mandatory, never advisory.
-- If a plan requires a separate worktree/branch, no edits may start before preflight passes.
-- User scope changes do not implicitly waive plan locks.
-- If a requested action would violate a plan lock, ask one explicit override question first and proceed only after confirmation.
-- Commit is forbidden while any mandatory plan gate is incomplete, unless the user explicitly approves overriding that gate.
-- Immediately before commit, list gate status (`passed` or `not passed`) for required preflight, tests, build, step closeout, and plan-tracker updates.
-- Do not claim completion ("done", "in full", "completed") unless all mandatory gates have passed.
-- If blocked by environment (tooling, network, permissions), report blocked status and list exact unmet gates.
-- If the agent detects it already violated a lock, report that violation immediately before any further action.
-
-## Plan Creation Lock
-
-When creating implementation plans (especially from review findings), the plan must include an explicit execution lock:
-
-1. Include explicit preflight fields:
-   - `Worktree required: yes/no`
-   - `Expected worktree: <path or pattern>`
-   - `Expected branch: <name or pattern>`
-   - `Preflight check: [ ] done`
-2. Start from a new separate git worktree with a dedicated branch when required by the plan.
-3. Require preflight verification before Step 1; if preflight fails, halt immediately.
-4. Execute one step at a time with a green gate per step.
-5. For each step, run the required targeted verification for the changed unit.
-   - Use `./scripts/run_silent.sh "tests" npm test` when the step changes Node/TypeScript scope covered by the root suite or cross-project integration covered by that suite.
-   - Use native unit verification such as `swift test` / `swift build` for Swift-only scopes.
-6. Proceed only if green; if tests fail, fix first and re-run until green.
-7. Commit step changes only after green.
-8. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
-9. Mark implemented step status in the plan and commit the plan status update.
-10. Repeat the same process for each next step.
-11. At completion, run the final gates required by the changed scope.
-   - Node/TypeScript or cross-project integration touching the root suite: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`
-   - Swift-only scope: native final gates such as `swift build` and `swift test`
-12. Move completed plan from `docs/plans/` to `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/` for project-scoped plans), commit the move, and create a PR.
+Repo-specific details:
+- Pre-commit/pre-push verification for Node/TypeScript: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
+- Swift-only scopes: `swift test` / `swift build`.
+- Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
+- Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
+- Worktree convention: `worktrees/<slug>` with branch `codex/<slug>`.
 
 ## Release Process
 
-Release policy is outcome-based, per-unit, and governed by ADR-000 through ADR-006 (`docs/adr/release/`). Commands are implementation detail; these invariants are mandatory.
+Use the `release-process` skill. See `.claude/skills/release-process/SKILL.md`.
 
-### Per-unit release model
-
-- **Release units** are independently versioned and released. Units are declared in `release-units.config.toml` and tracked in the committed manifest `release-units.toml`.
-- **Discovery**: `release-units.config.toml` lists directory prefixes eligible for release-unit discovery. The generator (`scripts/release/generate-manifest.js`) produces the committed manifest. CI fails if the manifest drifts.
-- **Canonical version**: Node units use `package.json`; non-Node units use `release.toml`. A unit MUST NOT contain both. Versions follow semver.
-- **Tagging**: per-unit tags follow `<basename>_v<version>` (e.g., `nomos_v0.6.0`). Basename is the leaf directory name, must be globally unique, and must not contain underscores.
-- **Release detection**: a release occurs only when **both** files under the unit root changed **and** the canonical version changed since the last matching tag (`<basename>_v*`). No tag → base is the initial commit.
-- **Trunk-only**: releases trigger only on push to `trunk`. Release branches are prohibited.
-- **Docker units**: Docker-producing units (marked in manifest) define two image tags: `<version>` and `<git-sha>`. Registry publishing is deferred; images are built and tagged locally on the VPS.
-
-### Release invariants
-
-- **Start state**: release from `trunk`.
-- **SemVer decision**: choose release bump per SemVer 2.0 from the delta since the previous unit tag (or full history on first release).
-- **Release notes**: add exactly one new top entry in the release-scope log (`docs/log.md` for repo-level releases, `<project>/docs/log.md` for project releases) at the top of the current date section, if present, scoped to that reviewed delta.
-- **Version consistency**: canonical version in the unit's metadata file and the release tag `<basename>_v<version>` must match.
-- **Push safety**: push only `trunk` and the explicit release tag; never `git push --tags`.
-- **Pre-push gate**: run the release unit's required build and test verification before tagging.
-  - Node/TypeScript units or root-suite integration releases: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`
-  - Swift-only units: native verification such as `swift build` and `swift test`
-- **Deployment gate**: releases deploy via CI on tag push after tests pass.
-- **Post-push verification**: after pushing the tag, watch the Release Unit workflow with `gh run list` or `gh run watch`. Confirm CI and release-unit jobs pass before declaring the release complete.
-- **CI trigger**: `.github/workflows/release-unit.yml` is a post-tag pipeline that verifies, tests, and deploys. Release detection (`detect-releases.js`) and tag creation (`create-tags.js`) are operator-run scripts.
-- **Legacy coexistence**: the existing `v*` tag namespace (`.github/workflows/release.yml`, Oracle-specific) coexists with the new `<basename>_v*` namespace. The legacy workflow is not modified; migration is deferred.
-- **Smoke model**: the real-provider smoke gate uses `vars.OPENROUTER_CI_MODEL` and `secrets.OPENROUTER_API_KEY`.
+Repo-specific details:
+- Governed by ADR-000 through ADR-006 (`docs/adr/release/`).
+- Config: `release-units.config.toml`; manifest: `release-units.toml`; generator: `scripts/release/generate-manifest.js`.
+- CI trigger: `.github/workflows/release-unit.yml`. Release detection: `detect-releases.js`; tag creation: `create-tags.js`.
+- Pre-push gate for Node/TypeScript: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
+- Smoke model: `vars.OPENROUTER_CI_MODEL` and `secrets.OPENROUTER_API_KEY`.
+- Legacy coexistence: the existing `v*` tag namespace (`.github/workflows/release.yml`, Oracle-specific) coexists with the new `<basename>_v*` namespace. The legacy workflow is not modified; migration is deferred.
 
 ## ADR Governance
 
-Architecture Decision Records (ADRs) live in `docs/adr/` organized by domain (e.g., `docs/adr/release/`, `docs/adr/governance/`).
+Use the `adr-governance` skill. See `.claude/skills/adr-governance/SKILL.md`.
 
-- ADR structure follows the template in `docs/adr/governance/adr-structure-template.md` (6-section progressive disclosure: Executive Summary, Context, Decision, Rules/Invariants, Consequences, Non-Goals).
-- ADR review follows the standard in `docs/adr/governance/adr-review-standard.md` (4 dimensions: Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision Stability).
-- Implementation plans derived from ADRs must include an ADR Traceability Matrix mapping each invariant to its implementation phase.
-- Planner requirements for ADR-based plans are defined in `docs/adr/governance/implementation-plan-planner-requirements.md`.
+## "Protocol Owned by Client" Rule
 
-## "protocol owned by client" rule
-
-- The client defines and owns the dependency shape (protocol/interface/data model).
-- A protocol MUST live in the same module as its client. Separating them is a violation.
-- If the client is public, its protocol must be public so composition can supply an implementation.
-- Composition layer(s) adapts concrete implementations to client-owned protocols.
-- Modules MUST NOT know about CLI or each other.
+Use the `protocol-owned-by-client` skill. See `.claude/skills/protocol-owned-by-client/SKILL.md`.
 
 ## Per-Project CI Isolation
 
@@ -239,45 +110,11 @@ Do NOT run `npm test` or `npx tsc` directly — always use the wrapper for Node/
 
 ## Composition Root
 
-Composition root rules are defined in `oracle/docs/composition-root-wiring-guide.md`.
+Use the `composition-root` skill. See `.claude/skills/composition-root/SKILL.md`.
 
-Use that guide as the source of truth for:
-- interface-only wiring boundaries,
-- layered assembly responsibilities,
-- composition wiring test strategy.
+## Docker Discipline
 
-## Docker Compose and Worktrees
-
-Bind-mount paths in a compose file are resolved relative to the compose file's location at `docker compose up` time and frozen into the container. If that source path later disappears (e.g. the worktree it lived in was deleted), mounts break silently — the container may still report healthy while the missing config causes port or feature regressions.
-
-- **Before removing a worktree**, check for running stacks started from it: `docker inspect <container> --format '{{json .Mounts}}'`. Stop the stack before removing the worktree.
-- **Container healthy ≠ all ports reachable.** A health check that probes one port (e.g. ClickHouse TCP 9000 via `clickhouse-client`) does not verify other ports (e.g. HTTP 8123). When a service is unreachable from sibling containers, inspect mount sources and listen addresses before assuming the health check is authoritative.
-- **Long-lived shared stacks** (e.g. local Langfuse) should be started from a stable workspace, not a feature worktree, to avoid the bind-mount source disappearing mid-work.
-
-## Deploy Fix Discipline
-
-When fixing deploy failures, trace the full deploy path end-to-end before committing a fix — do not fix one layer and hope the rest works.
-
-- Read the entire flow: SCP source list (`release-unit.yml`) → deploy script → Dockerfile → `docker build`.
-- Test with `docker build` locally before pushing.
-- Check for stale state on the target (VPS directories not cleaned by the deploy script).
-- A single deploy fix PR should address all layers; multiple fix-tag-retry cycles waste CI time and money.
-
-## Local Docker Verification for Docker Units
-
-For any change that could affect the Docker build or runtime behavior of a Docker-producing unit, run a local Docker verification before pushing:
-
-1. `docker build` — confirms the image builds (catches Dockerfile, .dockerignore, SwiftPM source discovery issues).
-2. `docker run` with health/version check — confirms the container starts and responds correctly.
-3. If the change affects logging or request handling, send a test request to the running container and verify the expected output in `docker logs`.
-
-This applies to: Dockerfile changes, .dockerignore changes, Package.swift/Package.resolved changes, deploy script changes, source file additions/removals, and any change to structured logging or request handling.
-
-**Mandatory**: for Docker-producing units (e.g. notio), ALWAYS run `docker build` before pushing — no exceptions. Do not push without a passing Docker build. CI deploys cost time and money — catch failures locally first.
-
-## Swift on Linux: ByteBuffer ≠ Data
-
-Foundation APIs (`JSONSerialization`, `JSONDecoder`, etc.) do not accept `ByteBuffer` on Linux. macOS may bridge implicitly, but Linux will not — this causes Docker build failures. Always convert via `Data(ByteBufferView(buffer))`. Do not use `NIOFoundationCompat`.
+Use the `docker-discipline` skill. See `.claude/skills/docker-discipline/SKILL.md`.
 
 ## Infrastructure Topology
 
@@ -292,17 +129,4 @@ When a spec pins a dependency with a floor version (`>=X.0.0`), the implementati
 
 ## Architecture Doc Review
 
-Use this checklist when reviewing architecture/design docs in PRs.
-
-- Ambiguity (`fail/warn/pass`): Core terms are defined once, and rules have one reasonable interpretation.
-- Clarity (`fail/warn/pass`): The doc states scope, allowed behavior, and prohibited behavior in concrete terms.
-- Consistency (`fail/warn/pass`): No internal contradictions across sections; examples match stated rules.
-- Readability (`fail/warn/pass`): Structure is skimmable (`Purpose`, `Rules`, `Testing`, `Checklist`) with concise bullets and minimal prose.
-- Best practices (`fail/warn/pass`): Guidance aligns with repo architecture constraints (ownership boundaries, composition rules, testing strategy).
-- Drift resistance (`fail/warn/pass`): Critical rules use enforceable wording (`must/must not`) and include at least one verification mechanism (review checklist, tests, or CI gate).
-
-Review output requirements:
-- Provide verdict per criterion (`pass/warn/fail`).
-- Reference exact locations (`file:line`).
-- Provide concrete fix text for each `warn/fail`.
-- Review only changed/added doc scope, unless a change creates a cross-doc contradiction.
+Use the `arch-doc-review` skill. See `.claude/skills/arch-doc-review/SKILL.md`.
