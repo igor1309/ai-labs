@@ -82,12 +82,12 @@ Implement GitHub API enrichment for `sourceType == .githubRepo`. Parses owner/re
 
 Extract capture orchestration from `WebhookRoute.swift` into a capture service that owns the parse → build item → enrich → save flow. `WebhookRoute` decodes the Telegram update and delegates to the capture service. The enricher is injected into the capture service, not the route.
 
-- [ ] `CaptureService` (or equivalent) owns parse → enrich → save
-- [ ] `WebhookRoute.captureInBackground` delegates to capture service
-- [ ] Tests at capture-service level: note skip (spec test #1), enrichment failure still saves (spec test #7), link items call enricher with concrete source type (spec test #11)
-- [ ] `swift test` passes
-- [ ] `docker build` passes
-- [ ] Per-step closeout complete
+- [x] `CaptureService` (or equivalent) owns parse → enrich → save
+- [x] `WebhookRoute.captureInBackground` delegates to capture service
+- [x] Tests at capture-service level: note skip (spec test #1), enrichment failure still saves (spec test #7), link items call enricher with concrete source type (spec test #11)
+- [x] `swift test` passes
+- [x] `docker build` passes
+- [x] Per-step closeout complete
 
 ### Step 7 — Supabase schema migration
 
