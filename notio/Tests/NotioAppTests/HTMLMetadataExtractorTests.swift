@@ -78,6 +78,12 @@ struct HTMLMetadataExtractorTests {
         #expect(result.description == #"A "great" page"#)
     }
 
+    @Test func test_shouldHandleReversedAttributeOrder() {
+        let html = #"<meta content="Reversed order" name="description">"#
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.description == "Reversed order")
+    }
+
     @Test func test_shouldHandleMultilineTitle() {
         let html = """
         <title>

@@ -55,6 +55,16 @@ struct GitHubRepoEnricherTests {
         #expect(captured == "https://api.github.com/repos/owner/repo")
     }
 
+    @Test func test_shouldReturnFailedWhenFullNameMissing() async {
+        let json = #"{"description":"Some repo"}"#
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: json))
+
+        let result = await sut.enrich(url: "https://github.com/apple/swift", sourceType: .githubRepo)
+
+        #expect(result.status == .failed)
+        #expect(result.title == nil)
+    }
+
     @Test func test_shouldReturnFailedForInvalidURL() async {
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "{}"))
 

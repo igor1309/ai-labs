@@ -39,13 +39,13 @@ struct GitHubRepoEnricher: Enricher {
             return EnrichmentResult(title: nil, description: nil, status: .failed)
         }
 
-        let fullName = json["full_name"] as? String
-        let description = json["description"] as? String
-        let status: CapturedItem.Enrichment = switch (fullName, description) {
-        case (.some, .some): .full
-        case (.some, .none), (.none, .some): .partial
-        case (.none, .none): .partial
+        guard let fullName = json["full_name"] as? String else {
+            logger.error("enrichment: missing full_name in GitHub response", metadata: ["url": .string(url)])
+            return EnrichmentResult(title: nil, description: nil, status: .failed)
         }
+
+        let description = json["description"] as? String
+        let status: CapturedItem.Enrichment = description != nil ? .full : .partial
         return EnrichmentResult(title: fullName, description: description, status: status)
     }
 }
