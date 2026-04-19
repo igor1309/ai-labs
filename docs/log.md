@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- LOC dashboard: clarified that the report is implementation-footprint-only, surfaced omitted docs-only/pre-implementation dirs (`nexum`, `niora`) in output, and fixed repo-level test counting to include `scripts/tests`.
+
 - absorb-ai-coder: absorbed the remaining reusable content from `ai-coder/README.md` into the root `README.md` and `dev-skills/README.md`, then removed the obsolete `ai-coder/README.md` file.
 
 - absorb-ai-coder: absorbed the old `ai-coder/AGENTS.md` structure and publishing facts into the root `README.md`, then removed `ai-coder/AGENTS.md` and its paired `ai-coder/CLAUDE.md` symlink now that those repo-orientation notes live at the monorepo root.

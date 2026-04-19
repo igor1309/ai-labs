@@ -3,11 +3,12 @@
 # Run from repo root: ./scripts/loc-dashboard.sh
 # Options: --sort=name (default) | --sort=total
 #
-# KNOWN PROJECTS (update when adding/removing top-level projects):
+# ROW PROJECTS (implementation footprint only; update when row-bearing dirs change):
 #   nomos, oracle, loki, corpus-scout, web-scout, neris, notio, claude-insights,
 #   dev-skills, sandbox, tools
-# Knowledge-only directories without code/test/script footprints
-# (e.g. prompts, reading, insights) are intentionally excluded.
+# Docs-only or pre-implementation directories remain known to drift detection
+# but are intentionally omitted from LOC rows until they gain code/test/script
+# footprint (currently: nexum, niora).
 
 set -euo pipefail
 
@@ -18,6 +19,8 @@ for arg in "$@"; do
     --sort=total) SORT_BY="total" ;;
   esac
 done
+
+DOCS_ONLY_DIRS=( "nexum" "niora" )
 
 # ---------- helpers ----------
 
@@ -160,7 +163,7 @@ check_project_drift() {
     fi
   done
   if [[ -n "$unknown" ]]; then
-    echo "  ⚠ unknown top-level dirs (add to loc-dashboard.sh):${unknown}"
+    echo "  ⚠ unknown top-level dirs (classify in loc-dashboard.sh):${unknown}"
   fi
 }
 
@@ -232,6 +235,7 @@ emit_row "tools" "$tcg" "$tgg" "$tsg" "$ttg" "0"
 REPO_SH=$(loc_find "scripts" -name "*.sh" ! -path "*/node_modules/*")
 REPO_JS=$(loc_find "scripts" \( -name "*.js" -o -name "*.ts" \) ! -path "*/node_modules/*" ! -name "*.test.js" ! -name "*.test.ts")
 REPO_TESTS=$(loc_find "tests" \( -name "*.test.js" -o -name "*.test.ts" -o -name "test_*.py" -o -name "*.py" \) ! -path "*/node_modules/*" ! -path "*/.venv/*")
+REPO_TESTS=$((REPO_TESTS + $(loc_find "scripts/tests" \( -name "*.test.js" -o -name "*.test.ts" \) ! -path "*/node_modules/*")))
 emit_row "repo-scripts" "$REPO_JS" "0" "$REPO_SH" "$REPO_TESTS" "0"
 
 TEXT=$(count_text)
@@ -248,6 +252,17 @@ divider
 if [[ $TC -gt 0 ]]; then
   ratio=$(awk "BEGIN{printf \"%.1f\", $TT/$TC}")
   echo "  test/code ratio: ${ratio}x"
+fi
+
+OMITTED_ROWS=()
+for dir in "${DOCS_ONLY_DIRS[@]}"; do
+  if [[ -d "$dir" ]]; then
+    OMITTED_ROWS+=( "$dir" )
+  fi
+done
+
+if [[ ${#OMITTED_ROWS[@]} -gt 0 ]]; then
+  echo "  omitted docs-only/pre-implementation dirs (no code/tests/scripts): ${OMITTED_ROWS[*]}"
 fi
 
 # drift detection
