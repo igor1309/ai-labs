@@ -15,7 +15,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-enrichment`
 - Expected branch: `feat/notio-enrichment`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Per-step closeout (applies to every step)
 
@@ -35,10 +35,10 @@ After each step's specific gates pass:
 
 Add two optional `String?` fields to `CapturedItem`. Update the `init(from:)` initializer to set them to `nil`. Update `SupabaseRow` to include the new fields. Update existing tests that construct `CapturedItem` if needed.
 
-- [ ] Fields added to `CapturedItem`
-- [ ] `SupabaseRow` maps the new fields
-- [ ] `swift test` passes
-- [ ] Per-step closeout complete
+- [x] Fields added to `CapturedItem`
+- [x] `SupabaseRow` maps the new fields
+- [x] `swift test` passes
+- [x] Per-step closeout complete
 
 ### Step 2 — Add `EnrichmentResult` and `Enricher` protocol
 
