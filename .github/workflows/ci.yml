@@ -12,6 +12,7 @@ on:
       - "*.md"
       - "**/*.md"
       - ".claude/**"
+      - "_inbox/**"
   pull_request:
   workflow_dispatch:
 

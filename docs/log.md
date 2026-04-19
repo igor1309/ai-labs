@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: moved the imported `_inbox/` from `ai-coder/_inbox/` to repo root and fixed the workflow drift that surfaced on this branch by adding `_inbox/**` to `ci.yml` `paths-ignore`; `sync-skills-public.yml` still correctly targets `ai-coder/dev-skills/public/**`, and `sandbox-todo-issues.yml` remains intentionally repo-wide.
+
 - absorb-ai-coder: imported `~/dev/ai-coder` into ai-labs under `ai-coder/` with full tracked history preserved, keeping repo-level assets intact and separating any later restructuring into follow-up work.
 
 - LOC dashboard: added neris (Swift), notio (Swift), claude-insights (TS/Python); extended counting to .swift/.py; fixed agents text count (removed dead .codex ref, added per-project AGENTS.md, skills, my-way docs); added drift detection for new top-level dirs; wired drift warning into CI workflow.
