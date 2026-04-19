@@ -30,3 +30,16 @@ Release policy is outcome-based and per-unit. Commands are implementation detail
   - Swift-only units: `swift build` and `swift test`
 - **Deployment gate**: releases deploy via CI on tag push after tests pass.
 - **Post-push verification**: after pushing the tag, confirm CI and release-unit jobs pass before declaring the release complete.
+
+## Completion verification
+
+After a release is declared complete, verify against the invariants above:
+
+- [ ] Release was cut from the main branch (not a feature or release branch).
+- [ ] SemVer bump matches the scope of changes since the previous tag.
+- [ ] Release notes added to the release-scope log, scoped to the reviewed delta.
+- [ ] Canonical version in metadata file matches the release tag `<basename>_v<version>`.
+- [ ] Only the main branch and the explicit release tag were pushed (no `--tags`).
+- [ ] Build and test verification passed before tagging.
+- [ ] CI and release-unit jobs passed after tag push.
+- [ ] For Docker units: image tags include both `<version>` and `<git-sha>`.
