@@ -1,0 +1,61 @@
+name: Sync to Public Skills Repository
+
+on:
+  push:
+    branches:
+      - trunk
+    paths:
+      - 'dev-skills/public/**'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ai-coder
+        uses: actions/checkout@v4
+
+      - name: Checkout skills (public target)
+        uses: actions/checkout@v4
+        with:
+          repository: igor1309/skills
+          token: ${{ secrets.PUBLIC_REPO_PAT }}
+          path: skills-public
+
+      - name: Sync public folder to public repo
+        run: |
+          # Remove all content from public repo (except .git)
+          find skills-public -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # Sync published files while excluding local-only content and publish metadata.
+          rsync -a --exclude-from=dev-skills/public/.publishignore --exclude=.publishignore dev-skills/public/ skills-public/
+
+          # Enforce case-insensitive exclusion for blocked directory names.
+          while IFS= read -r excluded_name; do
+            if [ -z "$excluded_name" ]; then
+              continue
+            fi
+            if [ "${excluded_name#\#}" != "$excluded_name" ]; then
+              continue
+            fi
+            normalized_name="${excluded_name%/}"
+            find skills-public -type d -iname "$normalized_name" -prune -print -exec rm -rf -- {} +
+          done < dev-skills/public/.publishignore
+
+      - name: Commit and push to public repo
+        run: |
+          cd skills-public
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            VERSION=$(jq -r '.metadata.version' .claude-plugin/marketplace.json)
+            SUBJECT=$(cd "$GITHUB_WORKSPACE" && git log -1 --format=%s)
+            git commit -m "v${VERSION}: ${SUBJECT}"
+            git push
+          fi

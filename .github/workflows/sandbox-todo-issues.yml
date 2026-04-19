@@ -1,0 +1,12 @@
+name: Sandbox & TODO Issue Auto-Creation
+
+on:
+  push:
+    branches: [trunk]
+
+jobs:
+  create-issues:
+    uses: igor1309/ci-shared/.github/workflows/sandbox-todo-issues.yml@trunk
+    permissions:
+      issues: write
+      contents: read

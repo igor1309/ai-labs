@@ -4,8 +4,10 @@
 # Options: --sort=name (default) | --sort=total
 #
 # KNOWN PROJECTS (update when adding/removing top-level projects):
-#   nomos, oracle, loki, corpus-scout, web-scout, neris, notio, claude-insights
-# Projects without code files (e.g. niora, nexum) are intentionally excluded.
+#   nomos, oracle, loki, corpus-scout, web-scout, neris, notio, claude-insights,
+#   dev-skills, sandbox, tools
+# Knowledge-only directories without code/test/script footprints
+# (e.g. prompts, reading, insights) are intentionally excluded.
 
 set -euo pipefail
 
@@ -149,7 +151,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known="agents claude-insights corpus-scout docker docs loki neris nexum niora node_modules nomos notio oracle research scripts tests vendor web-scout worktrees"
+  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading research sandbox scripts tests tools vendor web-scout worktrees _inbox"
   local unknown=""
   for d in */; do
     d="${d%/}"
@@ -213,6 +215,18 @@ emit_row "notio" "$oc" "$og" "$os" "$ot" "0"
 # claude-insights (TS/Python)
 read ic ig is it < <(count_project "claude-insights")
 emit_row "claude-insights" "$ic" "$ig" "$is" "$it" "0"
+
+# dev-skills
+read dc dg ds dt < <(count_project "dev-skills")
+emit_row "dev-skills" "$dc" "$dg" "$ds" "$dt" "0"
+
+# sandbox
+read sc sg ss st < <(count_project "sandbox")
+emit_row "sandbox" "$sc" "$sg" "$ss" "$st" "0"
+
+# tools
+read tcg tgg tsg ttg < <(count_project "tools")
+emit_row "tools" "$tcg" "$tgg" "$tsg" "$ttg" "0"
 
 # repo-level rows
 REPO_SH=$(loc_find "scripts" -name "*.sh" ! -path "*/node_modules/*")

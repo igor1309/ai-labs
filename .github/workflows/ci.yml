@@ -12,6 +12,12 @@ on:
       - "*.md"
       - "**/*.md"
       - ".claude/**"
+      - "_inbox/**"
+      - "dev-skills/**"
+      - "migrate-to-skills/**"
+      - "sandbox/**"
+      - "tools/**"
+      - "gemini/**"
   pull_request:
   workflow_dispatch:
 
