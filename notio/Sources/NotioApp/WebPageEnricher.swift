@@ -47,7 +47,7 @@ public struct WebPageEnricher: Enricher {
             return EnrichmentResult(title: nil, description: nil, status: .failed)
         }
 
-        if let ct = response.contentType, !ct.contains("text/html") {
+        if let ct = response.contentType, !ct.lowercased().contains("text/html") {
             logger.error("enrichment non-HTML content", metadata: ["url": .string(url), "content_type": .string(ct)])
             return EnrichmentResult(title: nil, description: nil, status: .failed)
         }

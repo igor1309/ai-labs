@@ -198,6 +198,28 @@ struct WebhookLogTests {
         #expect(item.note == "check later")
     }
 
+    @Test func test_normalMode_shouldCallEnricherForLinkCapture() async throws {
+        let store = SpyCaptureStore()
+        let enricher = WebhookSpyEnricher(result: EnrichmentResult(title: "Example", description: nil, status: .partial))
+        let app = buildApp(
+            config: Config(port: 8080, version: "test", webhookPath: "hook"),
+            logger: Logger(label: "test", factory: SwiftLogNoOpLogHandler.init),
+            store: store,
+            enricher: enricher
+        )
+        let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com"}}"#)
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { _ in }
+        }
+
+        let item = await store.waitForSave()
+        #expect(item.capturedTitle == "Example")
+        #expect(item.enrichment == .partial)
+        let calls = await (enricher as WebhookSpyEnricher).calls
+        #expect(calls.first?.sourceType == .webPage)
+    }
+
     @Test func test_normalMode_shouldReturn200WhenStoreFails() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
@@ -242,6 +264,25 @@ extension WebhookLogTests {
             config: Config(port: 8080, version: "test", webhookPath: "hook", diagnosticMode: diagnosticMode),
             logger: logger
         )
+    }
+}
+
+private actor WebhookSpyEnricher: Enricher {
+    struct Call {
+        let url: String
+        let sourceType: CapturedItem.SourceType
+    }
+
+    private let result: EnrichmentResult
+    private(set) var calls: [Call] = []
+
+    init(result: EnrichmentResult) {
+        self.result = result
+    }
+
+    func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
+        calls.append(Call(url: url, sourceType: sourceType))
+        return result
     }
 }
 

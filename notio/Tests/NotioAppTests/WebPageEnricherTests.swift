@@ -99,6 +99,15 @@ struct WebPageEnricherTests {
         #expect(result.status == .partial)
     }
 
+    @Test func test_shouldAcceptMixedCaseHTMLContentType() async {
+        let html = "<html><head><title>Page</title></head></html>"
+        let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: html, contentType: "TEXT/HTML; charset=UTF-8"))
+
+        let result = await sut.enrich(url: "https://example.com", sourceType: .webPage)
+
+        #expect(result.title == "Page")
+    }
+
     @Test func test_shouldLogOnFetchError() async {
         let handler = SpyLogHandler()
         let sut = WebPageEnricher(
