@@ -73,10 +73,10 @@ Implement `WebPageEnricher: Enricher` using `AsyncHTTPClient`. Fetches URL, pass
 
 Implement GitHub API enrichment for `sourceType == .githubRepo`. Parses owner/repo from URL, calls `GET /repos/{owner}/{repo}`, decodes `full_name` and `description`.
 
-- [ ] `GitHubRepoEnricher` or routing logic within a composite enricher
-- [ ] Tests: successful GitHub API response, API failure (spec tests #5, #6)
-- [ ] `swift test` passes
-- [ ] Per-step closeout complete
+- [x] `GitHubRepoEnricher` or routing logic within a composite enricher
+- [x] Tests: successful GitHub API response, API failure (spec tests #5, #6)
+- [x] `swift test` passes
+- [x] Per-step closeout complete
 
 ### Step 6 — Capture service and orchestration
 
