@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- Webhook route refactored: extracted helpers (readBody, baseMetadata, decodeUpdate, appendUpdateMetadata, appendInspectMetadata, respond, captureInBackground), injected `now` clock dependency, removed nil default from store parameter, fixed NIOFoundationCompat `Data(buffer:)` → `Data(ByteBufferView())` in SupabaseCaptureStore. 60 tests, local Docker build verified.
+
 - Capture pipeline steps 1–4: TelegramUpdate model with typed decoding, IngressParser (URL extraction, UTM stripping, entity/regex fallback), CapturedItem canonical model with source classification, CaptureStore protocol + SupabaseCaptureStore adapter. Supabase project `notio` created with `captured_items` table. 59 tests.
 
 - Implemented diagnostic modes (inspect, delay, fail) per ADR-004 and webhook adapter spec. Inspect logs bounded payload subset (update_id, chat_id, truncated text); delay sleeps configurable ms; fail returns configurable HTTP status. 31 tests, local Docker build verified.

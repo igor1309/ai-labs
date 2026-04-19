@@ -21,7 +21,7 @@ private extension Target {
     )
     static let notioServer = executableTarget(
         name: .notioServer,
-        dependencies: [.notioApp]
+        dependencies: [.asyncHTTPClient, .notioApp]
     )
 }
 

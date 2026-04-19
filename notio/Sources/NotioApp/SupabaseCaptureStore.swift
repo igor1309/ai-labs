@@ -2,8 +2,6 @@ import AsyncHTTPClient
 import Foundation
 import Logging
 import NIOCore
-import NIOFoundationCompat
-
 public struct SupabaseCaptureStore: CaptureStore {
 
     private let url: String
@@ -35,7 +33,7 @@ public struct SupabaseCaptureStore: CaptureStore {
 
         guard (200..<300).contains(status) else {
             let responseBody = try? await response.body.collect(upTo: 1_048_576)
-            let message = responseBody.flatMap { String(data: Data(buffer: $0), encoding: .utf8) } ?? "unknown"
+            let message = responseBody.flatMap { String(data: Data(ByteBufferView($0)), encoding: .utf8) } ?? "unknown"
             logger.error("supabase insert failed", metadata: [
                 "status": .string("\(status)"),
                 "body": .string(message),

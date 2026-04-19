@@ -33,6 +33,6 @@ struct JSONLogHandler: LogHandler {
     }
 }
 
-func makeLogger(label: String) -> Logger {
+public func makeLogger(label: String) -> Logger {
     Logger(label: label) { label in JSONLogHandler(label: label) }
 }

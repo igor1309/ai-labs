@@ -175,6 +175,30 @@ struct WebhookLogTests {
         #expect(event.metadata?["status"] == .string("500"))
     }
 
+    @Test func test_normalMode_shouldCallStoreWithCapturedItem() async throws {
+        let spy = SpyCaptureStore()
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let app = buildApp(
+            config: Config(port: 8080, version: "test", webhookPath: "hook"),
+            logger: logger,
+            store: spy
+        )
+        let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com check later"}}"#)
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                #expect(response.status == .ok)
+            }
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(spy.savedItems.count == 1)
+        #expect(spy.savedItems.first?.kind == .link)
+        #expect(spy.savedItems.first?.url == "https://example.com")
+        #expect(spy.savedItems.first?.note == "check later")
+    }
+
     @Test func test_inspectMode_shouldNotReflectPayloadInResponse() async throws {
         let handler = CapturingLogHandler()
         let logger = Logger(label: "test") { _ in handler }
