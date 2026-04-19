@@ -2,6 +2,26 @@
 
 Applied AI experiments and systems engineering.
 
+## Structure
+
+| Path | Purpose |
+|------|---------|
+| `migrate-to-skills/guides/` | Extended context docs that teach AI how to think about tasks |
+| `prompts/` | Focused one-shot task instructions |
+| `dev-skills/` | Development workspace for Claude Code skills; published to `igor1309/skills` |
+| `tools/` | Small shell utilities and local workflow helpers |
+| `sandbox/` | Experiments and WIP explorations |
+| `insights/` | Notes on AI tooling and usage patterns |
+| `reading/` | Reading notes and curated references |
+| `debates/` | Long-form debates and synthesis docs |
+| `gemini/` | Gemini-specific prompt and workflow notes |
+
+## AI Tooling
+
+- Skills are developed in `dev-skills/public/` and synced to `igor1309/skills` on push to `trunk`
+- `sandbox/`, `research/`, and `archive/` are excluded from publish via `dev-skills/public/.publishignore`
+- Published skills can be installed with `/plugin marketplace add igor1309/skills`
+
 ## Components
 
 | Component | Type | Description |
