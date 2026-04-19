@@ -1,4 +1,5 @@
 import AsyncHTTPClient
+import Logging
 import NotioApp
 
 let config = try Config.fromEnvironment()
@@ -13,5 +14,11 @@ if let url = config.supabaseURL, let key = config.supabaseKey {
     logger.info("supabase store disabled (no credentials)")
 }
 
-let app = buildApp(config: config, logger: logger, store: store)
+let fetcher = AsyncHTTPClientFetcher(httpClient: HTTPClient.shared)
+let enricher: any Enricher = CompositeEnricher(
+    webPage: WebPageEnricher(fetcher: fetcher, logger: logger),
+    githubRepo: GitHubRepoEnricher(fetcher: fetcher, logger: logger)
+)
+
+let app = buildApp(config: config, logger: logger, store: store, enricher: enricher)
 try await app.runService()

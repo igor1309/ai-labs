@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- Enrichment pipeline: link items are enriched with title/description before persistence. WebPageEnricher (HTML metadata extraction), GitHubRepoEnricher (API-based), CompositeEnricher (source-type routing), CaptureService (parse → enrich → save orchestration). Supabase schema migration for `captured_title`/`captured_description` columns. 105 tests, Docker build verified.
+
 - Released `notio_v0.2.0`: capture pipeline, diagnostic modes, webhook refactor. Supabase credentials deployed to VPS.
 
 - Eliminated sleep-based test synchronization: actor-backed spy with continuation for capture tests, lock-protected log handler for failure-path test. Added store failure regression test (200 OK + error log when store throws). 61 tests.

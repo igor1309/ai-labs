@@ -2,17 +2,17 @@ import Foundation
 import Logging
 import NIOCore
 
-struct GitHubRepoEnricher: Enricher {
+public struct GitHubRepoEnricher: Enricher {
 
     private let fetcher: any HTTPFetcher
     private let logger: Logger
 
-    init(fetcher: any HTTPFetcher, logger: Logger) {
+    public init(fetcher: any HTTPFetcher, logger: Logger) {
         self.fetcher = fetcher
         self.logger = logger
     }
 
-    func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
+    public func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
         guard let (owner, repo) = parseOwnerRepo(from: url) else {
             logger.error("enrichment: cannot parse owner/repo", metadata: ["url": .string(url)])
             return EnrichmentResult(title: nil, description: nil, status: .failed)

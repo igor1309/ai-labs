@@ -3,30 +3,35 @@ import Foundation
 import Logging
 import NIOCore
 
-protocol HTTPFetcher: Sendable {
+public protocol HTTPFetcher: Sendable {
     func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse
 }
 
-struct HTTPFetchResponse: Sendable {
-    let status: UInt
-    let body: String
+public struct HTTPFetchResponse: Sendable {
+    public let status: UInt
+    public let body: String
+
+    public init(status: UInt, body: String) {
+        self.status = status
+        self.body = body
+    }
 }
 
-struct WebPageEnricher: Enricher {
+public struct WebPageEnricher: Enricher {
 
     private let fetcher: any HTTPFetcher
     private let logger: Logger
     private let timeout: TimeAmount
     private let maxBytes: Int
 
-    init(fetcher: any HTTPFetcher, logger: Logger, timeout: TimeAmount = .seconds(5), maxBytes: Int = 512 * 1024) {
+    public init(fetcher: any HTTPFetcher, logger: Logger, timeout: TimeAmount = .seconds(5), maxBytes: Int = 512 * 1024) {
         self.fetcher = fetcher
         self.logger = logger
         self.timeout = timeout
         self.maxBytes = maxBytes
     }
 
-    func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
+    public func enrich(url: String, sourceType: CapturedItem.SourceType) async -> EnrichmentResult {
         let response: HTTPFetchResponse
         do {
             response = try await fetcher.fetch(url: url, timeout: timeout, maxBytes: maxBytes)
@@ -50,15 +55,15 @@ struct WebPageEnricher: Enricher {
     }
 }
 
-struct AsyncHTTPClientFetcher: HTTPFetcher {
+public struct AsyncHTTPClientFetcher: HTTPFetcher {
 
     private let httpClient: HTTPClient
 
-    init(httpClient: HTTPClient) {
+    public init(httpClient: HTTPClient) {
         self.httpClient = httpClient
     }
 
-    func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
+    public func fetch(url: String, timeout: TimeAmount, maxBytes: Int) async throws -> HTTPFetchResponse {
         var request = HTTPClientRequest(url: url)
         request.method = .GET
         let response = try await httpClient.execute(request, timeout: timeout)
