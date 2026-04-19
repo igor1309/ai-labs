@@ -5,7 +5,7 @@ on:
     branches:
       - trunk
     paths:
-      - 'dev-skills/public/**'
+      - 'ai-coder/dev-skills/public/**'
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
           find skills-public -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
           # Sync published files while excluding local-only content and publish metadata.
-          rsync -a --exclude-from=dev-skills/public/.publishignore --exclude=.publishignore dev-skills/public/ skills-public/
+          rsync -a --exclude-from=ai-coder/dev-skills/public/.publishignore --exclude=.publishignore ai-coder/dev-skills/public/ skills-public/
 
           # Enforce case-insensitive exclusion for blocked directory names.
           while IFS= read -r excluded_name; do
@@ -41,7 +41,7 @@ jobs:
             fi
             normalized_name="${excluded_name%/}"
             find skills-public -type d -iname "$normalized_name" -prune -print -exec rm -rf -- {} +
-          done < dev-skills/public/.publishignore
+          done < ai-coder/dev-skills/public/.publishignore
 
       - name: Commit and push to public repo
         run: |
