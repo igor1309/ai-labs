@@ -50,7 +50,8 @@ public struct Config: Sendable {
         }
         let supabaseURL = env["NOTIO_SUPABASE_URL"]
         let supabaseKey = env["NOTIO_SUPABASE_KEY"]
-        let telegramBotToken = env["NOTIO_TELEGRAM_BOT_TOKEN"]
+        let telegramBotToken = env["NOTIO_TELEGRAM_BOT_TOKEN"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         if diagnosticMode == nil && (telegramBotToken ?? "").isEmpty {
             throw ConfigError.missingBotToken
         }

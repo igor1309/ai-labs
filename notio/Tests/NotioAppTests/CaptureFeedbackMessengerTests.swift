@@ -37,10 +37,10 @@ struct CaptureFeedbackMessengerTests {
         #expect(messages.map(\.text) == ["Saved: Example"])
     }
 
-    @Test func test_send_shouldKeepSavedPrefix_onLongLinkTitle() async {
+    @Test func test_send_shouldTruncateAndNormalizeLinkTitle_onLongOrMultilineTitle() async {
         let spy = SpyMessageSender()
         let sut = makeSUT(sender: spy)
-        let longTitle = String(repeating: "x", count: 81)
+        let longTitle = "  \(String(repeating: "x", count: 40))\n\(String(repeating: "y", count: 40))  "
         let item = makeItem(
             kind: .link,
             url: "https://example.com",
@@ -50,7 +50,7 @@ struct CaptureFeedbackMessengerTests {
         await sut.send(chatId: 1, feedback: .success(item))
 
         let messages = await spy.messages
-        #expect(messages.map(\.text) == ["Saved: \(longTitle)"])
+        #expect(messages.map(\.text) == ["Saved: \(String(repeating: "x", count: 40)) \(String(repeating: "y", count: 28))..."])
     }
 
     @Test func test_send_shouldMapSuccessLinkWithoutTitleToCorrectText() async {

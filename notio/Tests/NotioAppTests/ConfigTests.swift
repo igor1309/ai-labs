@@ -88,6 +88,15 @@ struct ConfigTests {
         }
     }
 
+    @Test func test_fromEnvironment_shouldThrowWhenBotTokenBlankInNormalMode() {
+        #expect(throws: Config.ConfigError.missingBotToken) {
+            try Config.fromEnvironment([
+                "NOTIO_WEBHOOK_PATH": "secret",
+                "NOTIO_TELEGRAM_BOT_TOKEN": " \n ",
+            ])
+        }
+    }
+
     @Test func test_fromEnvironment_shouldSucceedWithoutBotTokenInDiagnosticMode() throws {
         let config = try Config.fromEnvironment([
             "NOTIO_WEBHOOK_PATH": "secret",
@@ -100,6 +109,14 @@ struct ConfigTests {
         let config = try Config.fromEnvironment([
             "NOTIO_WEBHOOK_PATH": "secret",
             "NOTIO_TELEGRAM_BOT_TOKEN": "bot123",
+        ])
+        #expect(config.telegramBotToken == "bot123")
+    }
+
+    @Test func test_fromEnvironment_shouldTrimBotTokenFromEnv() throws {
+        let config = try Config.fromEnvironment([
+            "NOTIO_WEBHOOK_PATH": "secret",
+            "NOTIO_TELEGRAM_BOT_TOKEN": "  bot123\n",
         ])
         #expect(config.telegramBotToken == "bot123")
     }

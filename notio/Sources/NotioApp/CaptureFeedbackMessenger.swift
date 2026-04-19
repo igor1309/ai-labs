@@ -23,6 +23,10 @@ public protocol CaptureFeedbackMessenger: Sendable {
 }
 
 public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendable {
+    private enum Format {
+        static let maxLinkTitleLength = 72
+    }
+
     private let sender: any MessageSender
     private let logger: Logger
 
@@ -65,8 +69,15 @@ public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendab
 
     private func normalizedTitle(_ title: String?) -> String? {
         guard let title else { return nil }
-        let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedTitle = title
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedTitle.isEmpty else { return nil }
-        return normalizedTitle
+        guard normalizedTitle.count > Format.maxLinkTitleLength else { return normalizedTitle }
+
+        let truncatedTitle = String(normalizedTitle.prefix(Format.maxLinkTitleLength - 3))
+        return "\(truncatedTitle)..."
     }
 }
