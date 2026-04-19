@@ -33,7 +33,7 @@ private extension HTMLMetadataExtractor {
 
     static func extractMetaDescription(from html: String) -> String? {
         guard let tagRegex = try? NSRegularExpression(
-            pattern: #"<meta\s[^>]*name\s*=\s*["']description["'][^>]*>"#,
+            pattern: #"<meta\s[^>]*name\s*=\s*(?:["']description["']|description(?=[\s>]))[^>]*>"#,
             options: .caseInsensitive
         ) else { return nil }
 

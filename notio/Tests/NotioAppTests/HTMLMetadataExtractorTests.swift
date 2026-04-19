@@ -84,6 +84,12 @@ struct HTMLMetadataExtractorTests {
         #expect(result.description == "Reversed order")
     }
 
+    @Test func test_shouldHandleUnquotedNameAttribute() {
+        let html = #"<meta name=description content="Unquoted name">"#
+        let result = HTMLMetadataExtractor.extract(from: html)
+        #expect(result.description == "Unquoted name")
+    }
+
     @Test func test_shouldHandleMultilineTitle() {
         let html = """
         <title>
