@@ -29,6 +29,7 @@ extension VersionRouteTests {
     private func makeApp(config: Config) throws -> some ApplicationProtocol {
         try buildApp(
             config: config,
+            store: SpyCaptureStore(),
             enricher: NullEnricher(),
             messenger: NoOpCaptureFeedbackMessenger()
         )

@@ -2,6 +2,7 @@ import Hummingbird
 import Logging
 
 public enum AppBuildError: Error, Equatable {
+    case missingCaptureStore
     case missingFeedbackMessenger
 }
 
@@ -15,6 +16,9 @@ public func buildApp(
 
     if config.diagnosticMode == nil, messenger == nil {
         throw AppBuildError.missingFeedbackMessenger
+    }
+    if config.diagnosticMode == nil, store == nil {
+        throw AppBuildError.missingCaptureStore
     }
 
     let effectiveLogger = logger ?? makeLogger(label: "notio")

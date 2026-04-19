@@ -65,6 +65,7 @@ extension WebhookRouteTests {
     private func makeApp(webhookPath: String) throws -> some ApplicationProtocol {
         try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: webhookPath),
+            store: SpyCaptureStore(),
             enricher: NullEnricher(),
             messenger: NoOpCaptureFeedbackMessenger()
         )

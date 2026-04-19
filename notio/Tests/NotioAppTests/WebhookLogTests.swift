@@ -268,6 +268,7 @@ extension WebhookLogTests {
         try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook", diagnosticMode: diagnosticMode),
             logger: logger,
+            store: diagnosticMode == nil ? SpyCaptureStore() : nil,
             enricher: NullEnricher(),
             messenger: diagnosticMode == nil ? NoOpCaptureFeedbackMessenger() : nil
         )

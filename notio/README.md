@@ -85,8 +85,8 @@ One process initially; ingress and core stay logically separate.
 | `NOTIO_PORT`                   | no       | `8080`  | HTTP listen port                         |
 | `NOTIO_VERSION`                | no       | `dev`   | Reported by `/version`                   |
 | `NOTIO_TELEGRAM_BOT_TOKEN`     | normal   | —       | Telegram bot token for feedback; required in normal mode, optional in diagnostic mode |
-| `NOTIO_SUPABASE_URL`           | no       | —       | Supabase project URL                     |
-| `NOTIO_SUPABASE_KEY`           | no       | —       | Supabase service-role key                |
+| `NOTIO_SUPABASE_URL`           | normal   | —       | Supabase project URL; required in normal mode, optional in diagnostic mode |
+| `NOTIO_SUPABASE_KEY`           | normal   | —       | Supabase service-role key; required in normal mode, optional in diagnostic mode |
 | `NOTIO_DIAGNOSTIC_MODE`        | no       | —       | `ack` \| `inspect` \| `delay` \| `fail`              |
 | `NOTIO_DIAGNOSTIC_DELAY_MS`    | no       | `5000`  | Delay for `delay` mode; ignored otherwise            |
 | `NOTIO_DIAGNOSTIC_FAIL_STATUS` | no       | `500`   | HTTP status for `fail` mode; ignored otherwise       |
@@ -96,14 +96,20 @@ One process initially; ingress and core stay logically separate.
 ```bash
 swift test              # unit tests
 swift build             # debug build
-swift run NotioServer   # run locally (NOTIO_WEBHOOK_PATH required)
+NOTIO_WEBHOOK_PATH=test-webhook NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token NOTIO_SUPABASE_URL=https://example.supabase.co NOTIO_SUPABASE_KEY=test-service-role-key swift run NotioServer
 ```
 
 Docker:
 
 ```bash
 docker build -t notio:dev .
-docker run --rm -p 8080:8080 -e NOTIO_WEBHOOK_PATH=test notio:dev
+docker run --rm -p 8080:8080 -e NOTIO_WEBHOOK_PATH=test -e NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token -e NOTIO_SUPABASE_URL=https://example.supabase.co -e NOTIO_SUPABASE_KEY=test-service-role-key notio:dev
+```
+
+Diagnostic-only local run without Telegram feedback or persistence:
+
+```bash
+NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 ```
 
 ## Release

@@ -25,6 +25,7 @@ extension HealthRouteTests {
     private func makeApp() throws -> some ApplicationProtocol {
         try buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "test-webhook"),
+            store: SpyCaptureStore(),
             enricher: NullEnricher(),
             messenger: NoOpCaptureFeedbackMessenger()
         )
