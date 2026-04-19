@@ -44,12 +44,12 @@ Add two optional `String?` fields to `CapturedItem`. Update the `init(from:)` in
 
 Create `EnrichmentResult` struct and `Enricher` protocol per spec. Add a method on `CapturedItem` to apply an `EnrichmentResult` (returns a new item with title, description, and enrichment status set). Protocol lives in the same module as the capture service (protocol-owned-by-client rule).
 
-- [ ] `EnrichmentResult` struct
-- [ ] `Enricher` protocol
-- [ ] `CapturedItem.applying(_:)` method
-- [ ] Tests: applying full/partial/failed results maps correctly (spec test #10)
-- [ ] `swift test` passes
-- [ ] Per-step closeout complete
+- [x] `EnrichmentResult` struct
+- [x] `Enricher` protocol
+- [x] `CapturedItem.applying(_:)` method
+- [x] Tests: applying full/partial/failed results maps correctly (spec test #10)
+- [x] `swift test` passes
+- [x] Per-step closeout complete
 
 ### Step 3 — HTML metadata extractor
 
