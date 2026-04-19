@@ -192,11 +192,31 @@ struct WebhookLogTests {
             }
         }
 
+        let item = await spy.waitForSave()
+        #expect(item.kind == .link)
+        #expect(item.url == "https://example.com")
+        #expect(item.note == "check later")
+    }
+
+    @Test func test_normalMode_shouldReturn200WhenStoreFails() async throws {
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let app = buildApp(
+            config: Config(port: 8080, version: "test", webhookPath: "hook"),
+            logger: logger,
+            store: ThrowingCaptureStore()
+        )
+        let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com"}}"#)
+
+        try await app.test(.router) { client in
+            try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                #expect(response.status == .ok)
+            }
+        }
+
         try await Task.sleep(for: .milliseconds(50))
-        #expect(spy.savedItems.count == 1)
-        #expect(spy.savedItems.first?.kind == .link)
-        #expect(spy.savedItems.first?.url == "https://example.com")
-        #expect(spy.savedItems.first?.note == "check later")
+        let errorEvent = handler.events.first { $0.level == .error }
+        #expect(errorEvent?.message.description == "capture failed")
     }
 
     @Test func test_inspectMode_shouldNotReflectPayloadInResponse() async throws {
