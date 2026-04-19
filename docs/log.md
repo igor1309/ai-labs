@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- absorb-ai-coder: promoted `ai-coder/insights/` to root `insights/`. Workflow audit for this step found no path drift: no workflows reference `ai-coder/insights`, and the move does not change the existing CI behavior for these assets.
+
 - absorb-ai-coder: moved the imported `_inbox/` from `ai-coder/_inbox/` to repo root and fixed the workflow drift that surfaced on this branch by adding `_inbox/**` to `ci.yml` `paths-ignore`; `sync-skills-public.yml` still correctly targets `ai-coder/dev-skills/public/**`, and `sandbox-todo-issues.yml` remains intentionally repo-wide.
 
 - absorb-ai-coder: imported `~/dev/ai-coder` into ai-labs under `ai-coder/` with full tracked history preserved, keeping repo-level assets intact and separating any later restructuring into follow-up work.
