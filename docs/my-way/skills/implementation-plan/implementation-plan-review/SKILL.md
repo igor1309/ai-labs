@@ -41,6 +41,17 @@ Review the plan against execution needs, not against preferences that belong in 
 - Review may conclude that the plan already holds. That is useful work, not failure.
 - If the plan is weak because design or behavior is unstable, escalate explicitly rather than patching over the problem with task structure.
 - Review must not demand architecture or behavioral detail that belongs in ADR or spec.
+- Review must not demand concrete implementation primitives when equivalent observable behavior would satisfy the accepted ADR/spec.
+
+## Review Layer
+
+Treat implementation-plan review as its own layer.
+
+- Valid findings are about execution path quality: sequencing, hidden dependencies, risk isolation, validation gates, and ADR/spec boundary respect.
+- Invalid findings are implementation preferences disguised as plan problems.
+- If a concern can be expressed as observable behavior or a required validation, keep it at the plan layer.
+- If a concern requires naming a concrete primitive, API, data structure, or library choice, it belongs in implementation or code review unless the accepted ADR/spec already mandates it.
+- When a plan leaves multiple implementations open, review whether the plan constrains the required behavior enough to make those implementations testable. Do not collapse that latitude into a single mechanism.
 
 ## Review For
 
@@ -50,6 +61,7 @@ Review the plan against execution needs, not against preferences that belong in 
 - **Boundary respect**: does the plan follow ADRs and spec rather than redesigning them?
 - **Validation awareness**: does every slice have a meaningful check or gate?
 - **Commit discipline**: does the plan require green validation before completion and commit?
+- **Layer discipline**: do the findings stay at plan level instead of enforcing implementation details that the accepted docs leave open?
 
 ## Produce
 
@@ -67,8 +79,9 @@ Help produce one of these outputs:
 3. Probe for hidden dependencies, deferred risks, or slices that are too large to validate well.
 4. Check whether each slice has a meaningful validation gate.
 5. Check whether the plan respects the accepted ADRs and spec.
-6. Decide whether the plan holds, needs revision, or should escalate to another layer.
-7. Return concrete findings or revision guidance.
+6. Check whether your own concerns belong at the plan layer or should be deferred to implementation/code review.
+7. Decide whether the plan holds, needs revision, or should escalate to another layer.
+8. Return concrete findings or revision guidance.
 
 ## Failure Modes To Avoid
 
@@ -77,7 +90,19 @@ Help produce one of these outputs:
 - missing hidden design drift inside task decomposition
 - allowing validation to stay vague or delayed
 - mistaking a backlog export for an execution plan
+- turning implementation preferences into plan failures
 - assuming a revisit means the plan was automatically wrong rather than stressed by new execution knowledge
+
+## Findings Discipline
+
+For each finding, make the layer legible:
+
+- cite the rule or expectation being violated
+- name the owning artifact for that rule: plan, spec, or ADR
+- describe the observable closure condition
+- avoid prescribing a concrete implementation unless the owning spec/ADR already requires it
+
+If you cannot explain why the issue belongs in plan review rather than code review, do not return it as a plan failure.
 
 ## When Review Forces Change
 

@@ -69,13 +69,20 @@ Preflight check: [ ] done
 - Define `Feedback` enum: `.receipt`, `.success(CapturedItem)`, `.failure`.
 - Define `CaptureFeedbackMessenger` protocol: `func send(chatId: Int, feedback: Feedback) async`.
 - Implement `TelegramCaptureFeedbackMessenger`: maps `Feedback` to message text, delegates to `MessageSender`, swallows delivery errors with warning log.
-- Wire normal webhook requests through a single per-request `Task.detached` created by the route/composition layer.
-- Route behavior is fixed: decode the normal capture request, spawn `Task.detached { await messenger.send(chatId: chatId, feedback: .receipt); await captureInBackground(...) }`, then return HTTP 200 immediately without awaiting that task.
-- `captureInBackground` must start only after the receipt send attempt finishes (success or swallowed failure), so receipt sequencing is deterministic at the plan level.
+- Thread `CaptureFeedbackMessenger` through composition (`buildApp`, `addWebhookRoute`, and test helpers) so the route can own receipt feedback without constructing transport details inline.
+- Wire normal webhook requests through a single per-request background task owned by the route/composition layer.
+- Route behavior is fixed: decode the normal capture request, schedule background work that first attempts `messenger.send(chatId:feedback: .receipt)`, then starts capture processing for that same request, and return HTTP 200 immediately without awaiting feedback or capture work.
+- `captureInBackground` must start only after the receipt send attempt finishes (success or swallowed failure), so receipt sequencing is deterministic at the behavior level.
+- The implementation may choose any task primitive that preserves those observable rules; the plan does not require a specific concurrency API.
 
 **Dependencies**: Phase 1 (`MessageSender`).
 
-**Risks**: detached task sequencing can drift if receipt send and capture start are split across multiple tasks. Mitigation: keep receipt attempt and capture start in the same per-request task.
+**Risks**:
+- receipt feedback can accidentally delay the HTTP acknowledgment if the route awaits delivery instead of scheduling background work
+- receipt sequencing can drift if receipt send and capture start are split across multiple background units
+- route wiring can stay implicit and force ad hoc API changes during implementation
+
+Mitigation: keep receipt attempt and capture start in the same per-request background unit, and make the composition/wiring slice explicit in this phase.
 
 **Validation**:
 - Unit test: `CaptureFeedbackMessenger` maps `.receipt` to `Received. Processing...`.
@@ -84,6 +91,7 @@ Preflight check: [ ] done
 - Unit test: `CaptureFeedbackMessenger` maps `.success(linkItemNoTitle)` to `Saved link.`.
 - Unit test: `CaptureFeedbackMessenger` maps `.failure` to `Failed to save. Try again later.`.
 - Unit test: delivery failure is swallowed and logged at warning.
+- Integration test: `buildApp`/`addWebhookRoute` accept injected feedback messenger wiring used by webhook tests.
 - Integration test: webhook route returns HTTP 200 without waiting for a slow `MessageSender`.
 - Integration test: receipt feedback is attempted with the same `chatId` from the accepted webhook request.
 - Integration test: receipt feedback attempt happens before capture starts for the same request.
@@ -95,14 +103,14 @@ Preflight check: [ ] done
 
 ## Phase 3 — Lock failure surface and wire final outcome feedback
 
-**Objective**: first prove the current capture flow has no throwable failure boundary before `save()`, then wire final success/failure feedback at the save boundary using a `CaptureStore` decorator.
+**Objective**: first prove the current capture flow reaches its terminal success/failure boundary at `store.save()`, then wire final success/failure feedback at that boundary using a `CaptureStore` decorator.
 
 **Key work items**:
-- Add characterization coverage that locks the current failure surface:
+- Add characterization coverage that locks the current terminal boundary:
   - `IngressParser.parse` is non-throwing.
   - `Enricher.enrich` returns `EnrichmentResult` and does not fail the request by throwing.
-  - `CaptureService.capture` only observes throwable failure from `store.save`.
-- Add a short rationale note directly in this Phase 3 section stating that, because `store.save` is the only throwable failure boundary in the current capture flow, final `.failure` at the store boundary satisfies the spec's terminal failure contract for v0.0.1 without changing `CaptureService`.
+  - `CaptureService.capture` completes its success path at `store.save` and only observes throwable failure from `store.save`.
+- Add a short rationale note directly in this Phase 3 section stating that, because `store.save` is the terminal success/failure boundary in the current capture flow, final outcome feedback at the store boundary satisfies the spec's terminal feedback contract for v0.0.1 without changing `CaptureService`.
 - Implement `NotifyingCaptureStore: CaptureStore`: wraps inner store, accepts `chatId` and `CaptureFeedbackMessenger`.
   - On `save()` success: call `messenger.send(chatId:feedback: .success(item))`, return.
   - On `save()` failure: attempt `messenger.send(chatId:feedback: .failure)`, preserve the original store error, and rethrow that original error regardless of notification delivery outcome.
@@ -111,12 +119,14 @@ Preflight check: [ ] done
 
 **Dependencies**: Phase 2 (`CaptureFeedbackMessenger`).
 
-**Risks**: future throwable work added before `save()` would invalidate store-only outcome wiring. Mitigation: characterization tests in this phase make that drift visible immediately.
+**Risks**: future work added before or after `save()` could invalidate store-only outcome wiring. Mitigation: characterization tests in this phase make boundary drift visible immediately.
 
 **Validation**:
 - Characterization test: enrichment failure still reaches `save()` and does not create a second failure boundary.
+- Characterization test: successful capture completes at the store boundary and does not perform later terminal work after `save()`.
 - Characterization test: store failure is the terminal failure path observed by `CaptureService`.
 - Unit test: decorated store calls inner store's `save()` with item unchanged.
+- Unit test: on success, messenger receives `.success(item)` only after inner `save()` succeeds.
 - Unit test: on success, messenger receives `.success(item)` with correct `chatId`.
 - Unit test: on failure, messenger receives `.failure` with correct `chatId`, original error rethrown.
 - Unit test: messenger delivery failure does not prevent `save()` from succeeding.
