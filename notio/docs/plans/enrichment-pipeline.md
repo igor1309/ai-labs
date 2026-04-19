@@ -94,8 +94,8 @@ Extract capture orchestration from `WebhookRoute.swift` into a capture service t
 Add `captured_title` and `captured_description` columns to the `captured_items` table. Commit a migration SQL file at `notio/supabase/migrations/` so the change is repo-tracked and reproducible. Apply via `supabase db query` against the linked project.
 
 - [x] Migration file committed at `notio/supabase/migrations/001_add_enrichment_columns.sql`
-- [ ] Migration applied to the linked Supabase project
-- [ ] Verify columns exist with a test query
+- [x] Migration applied to the linked Supabase project
+- [x] Verify columns exist with a test query
 - [x] Per-step closeout complete
 
 ### Step 8 — Final gates and closeout
