@@ -113,7 +113,37 @@ Preflight check: [x] done
 **Completion signal**:
 - Two spec skills exist as self-sufficient, first-class skills.
 
-## Task 4 — Expand Remaining Artifact Skills One By One
+## Task 4 — Establish And Promote Implementation-Plan Skills
+
+**Objective**: Create the implementation-plan pair as self-sufficient, first-class skills using the ADR/spec extraction pattern.
+
+**Key work items**:
+- Create `docs/my-way/skills/implementation-plan/implementation-plan-drafting/SKILL.md`.
+- Create `docs/my-way/skills/implementation-plan/implementation-plan-review/SKILL.md`.
+- Extract both skills from `docs/my-way/05-implementation-plan/note.md` as operational form.
+- Keep the distinction explicit:
+  - implementation plan organizes execution from an accepted spec
+  - implementation plan is not ADR
+  - implementation plan is not spec
+- Make both skills self-sufficient without relying on `docs/my-way/05-implementation-plan/note.md`.
+
+**Dependencies**:
+- Task 1 ADR pattern.
+- Task 3 spec pair established.
+- Existing implementation-plan note, structure, and example.
+
+**Risks**:
+- The implementation-plan skills absorb behavioral clarification that should remain in spec.
+- Task decomposition quietly redesigns architecture or contracts.
+
+**Validation**:
+- Read both skills against the implementation-plan note and confirm the execution boundary holds.
+- Confirm both skills can be used correctly without consulting `docs/my-way/05-implementation-plan/note.md`.
+
+**Completion signal**:
+- Two implementation-plan skills exist as self-sufficient, first-class skills.
+
+## Task 5 — Expand Remaining Artifact Skills One By One
 
 **Objective**: Convert the remaining `My Way` artifacts incrementally instead of as a bulk rewrite.
 
@@ -131,6 +161,7 @@ Preflight check: [x] done
 **Dependencies**:
 - Task 2 transition rules.
 - Task 3 spec pair established.
+- Task 4 implementation-plan pair established.
 
 **Risks**:
 - The migration becomes a large undifferentiated batch.
@@ -148,5 +179,6 @@ Preflight check: [x] done
 - The transition has an explicit plan artifact.
 - ADR drafting and review skills exist as the first promoted first-class pair.
 - Spec drafting and review skills exist as the next promoted first-class pair.
+- Implementation-plan drafting and review skills exist as the next promoted first-class pair.
 - Notes remain the source of truth for artifacts that have not yet been promoted.
 - Remaining artifact skills can be added incrementally without losing responsibility clarity.
