@@ -75,13 +75,9 @@ Repo-specific details:
 
 Use the `adr-governance` skill. See `.claude/skills/adr-governance/SKILL.md`.
 
-## "protocol owned by client" rule
+## "Protocol Owned by Client" Rule
 
-- The client defines and owns the dependency shape (protocol/interface/data model).
-- A protocol MUST live in the same module as its client. Separating them is a violation.
-- If the client is public, its protocol must be public so composition can supply an implementation.
-- Composition layer(s) adapts concrete implementations to client-owned protocols.
-- Modules MUST NOT know about CLI or each other.
+Use the `protocol-owned-by-client` skill. See `.claude/skills/protocol-owned-by-client/SKILL.md`.
 
 ## Per-Project CI Isolation
 
