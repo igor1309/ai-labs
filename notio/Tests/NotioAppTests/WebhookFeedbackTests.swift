@@ -9,28 +9,20 @@ import Testing
 struct WebhookFeedbackTests {
     @Test func test_normalRequest_shouldReturn200WithoutWaitingForSlowSender() async throws {
         let logger = Logger(label: "test", factory: SwiftLogNoOpLogHandler.init)
-        let sender = BlockingMessageSender()
-        let messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
-        let responseObserver = ResponseObserver()
-        let store = SpyCaptureStore()
-        let app = makeApp(messenger: messenger, store: store)
+        let messenger = TelegramCaptureFeedbackMessenger(sender: SlowMessageSender(), logger: logger)
+        let app = makeApp(messenger: messenger, store: SpyCaptureStore())
         let body = makeTelegramBody(chatId: 1, text: "hello")
+        let clock = ContinuousClock()
 
         try await app.test(.router) { client in
-            let requestTask = Task {
-                try await client.execute(uri: "/hook", method: .post, body: body) { response in
-                    #expect(response.status == .ok)
-                    await responseObserver.markResponded()
-                }
+            let start = clock.now
+
+            try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                #expect(response.status == .ok)
             }
 
-            await sender.waitForSendAttempt()
-            let respondedBeforeRelease = await responseObserver.hasResponded
-            #expect(respondedBeforeRelease)
-
-            await sender.release()
-            _ = await store.waitForSave()
-            try await requestTask.value
+            let elapsed = start.duration(to: clock.now)
+            #expect(elapsed < .milliseconds(100))
         }
     }
 
@@ -170,26 +162,9 @@ actor RecordingFeedbackMessenger: CaptureFeedbackMessenger {
     }
 }
 
-private actor BlockingMessageSender: MessageSender {
-    private var sendAttempted = false
-    private var sendContinuation: CheckedContinuation<Void, Never>?
-    private var releaseContinuation: CheckedContinuation<Void, Never>?
-
+private struct SlowMessageSender: MessageSender {
     func send(chatId: Int, text: String) async throws {
-        sendAttempted = true
-        sendContinuation?.resume()
-        sendContinuation = nil
-        await withCheckedContinuation { self.releaseContinuation = $0 }
-    }
-
-    func waitForSendAttempt() async {
-        if sendAttempted { return }
-        await withCheckedContinuation { self.sendContinuation = $0 }
-    }
-
-    func release() {
-        releaseContinuation?.resume()
-        releaseContinuation = nil
+        try await Task.sleep(for: .milliseconds(500))
     }
 }
 
@@ -240,13 +215,5 @@ private actor OrderTrackingStore: CaptureStore {
     func waitForSave() async -> CapturedItem {
         if let item = savedItem { return item }
         return await withCheckedContinuation { self.continuation = $0 }
-    }
-}
-
-private actor ResponseObserver {
-    private(set) var hasResponded = false
-
-    func markResponded() {
-        hasResponded = true
     }
 }
