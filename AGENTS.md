@@ -17,7 +17,7 @@
 - Require a full test suite pass for each phase step before moving to the next step.
 - Commit only when tests are passing for the current branch state.
 - `trunk` is a protected branch. Never commit or push directly to `trunk`. All changes must go through a PR from a dedicated branch.
-- PR merge strategy: use merge commit (`--merge`), never squash.
+- PR merge strategy: use merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
 - Protocols are owned by their client and MUST live in the same module. A protocol without its client is a violation.
 - Keep scope minimal and explicit; avoid scope creep.
 - Tests must cover reasonable edge cases for new or changed behavior.
@@ -98,6 +98,18 @@ Mandatory after each implementation step:
 6. Update plan tracker checkboxes only for gates with verified evidence (successful command/check output).
 7. Push the branch to `origin` unless explicitly instructed not to push.
 8. Stop and wait for review approval before starting the next step.
+
+## Pre-Push / Pre-PR Gate (Blocking)
+
+Before pushing a branch or creating a PR, verify ALL of the following. Do not push until every item passes:
+
+1. **Log updated**: relevant `docs/log.md` or `<project>/docs/log.md` reflects what changed.
+2. **Plan updated**: active plan checkboxes match completed work.
+3. **No leftover changes**: `git status` is clean — no uncommitted docs, config, or code changes that belong in this branch.
+4. **Docker verified**: for Docker-producing units, `docker build` must pass (see "Local Docker Verification").
+5. **Tests pass**: full test suite for the changed scope is green.
+
+If any item fails, fix it and commit before pushing. Do not push code and leave docs for a follow-up commit.
 
 ## Implementation Preflight Gate (Blocking)
 
