@@ -2,6 +2,8 @@
 
 ## 2026-04-19
 
+- Release prep for `notio_v0.2.0`: updated README status and env vars table, cleaned up future directions. 116 tests.
+
 - Enrichment pipeline: link items are enriched with title/description before persistence. WebPageEnricher (HTML metadata extraction), GitHubRepoEnricher (API-based), CompositeEnricher (source-type routing), CaptureService (parse → enrich → save orchestration). Supabase schema migration for `captured_title`/`captured_description` columns.
 
 - Webhook route refactored: extracted helpers (readBody, baseMetadata, decodeUpdate, appendUpdateMetadata, appendInspectMetadata, respond, captureInBackground), injected `now` clock dependency, removed nil default from store parameter, fixed NIOFoundationCompat `Data(buffer:)` → `Data(ByteBufferView())` in SupabaseCaptureStore. 60 tests, local Docker build verified.
