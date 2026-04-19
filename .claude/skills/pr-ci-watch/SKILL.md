@@ -16,8 +16,10 @@ gh pr checks <pr-number> --watch --fail-fast
 ```
 
 - Blocks until all checks settle, or exits on the first failure (`--fail-fast`).
+- `--fail-fast` is the default for fast feedback. Drop it if the user wants to see all failures at once.
 - Exit 0: all green. Nonzero: something failed. Exit 8: still pending (shouldn't occur with `--watch` but handle defensively).
 - No PR number given? Resolve from current branch: `gh pr view --json number -q .number`.
+- Set `timeout: 600000` on the Bash tool call — `--watch` can block indefinitely if a check hangs.
 
 ## Foreground by default
 
@@ -30,7 +32,15 @@ Switch to **background** only if the user explicitly says they want to keep work
 gh pr checks <pr> --watch --fail-fast > /tmp/pr-<pr>.log 2>&1
 ```
 
-Check with `BashOutput` when the user asks about it.
+You will be notified when it completes. Read the log at `/tmp/pr-<pr>.log` if details are needed.
+
+## On success
+
+If the user asked to merge on green:
+
+```bash
+gh pr merge <pr> --merge --auto --delete-branch
+```
 
 ## On failure
 
@@ -44,7 +54,7 @@ Get run IDs from the `--watch` output or `gh pr checks <pr> --json name,link,sta
 
 ## Known race: "no checks reported"
 
-If `--watch` runs too soon after a push, it may exit 1 with "no checks reported on branch" before GitHub registers the workflow. Retry once after a short wait — still with `--watch`, never a poll loop.
+If `--watch` runs too soon after a push, it may exit 1 with "no checks reported on branch" before GitHub registers the workflow. Retry once after 5–10 seconds — still with `--watch`, never a poll loop.
 
 ## Forbidden
 
