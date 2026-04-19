@@ -156,7 +156,7 @@ Release policy is outcome-based, per-unit, and governed by ADR-000 through ADR-0
 ### Per-unit release model
 
 - **Release units** are independently versioned and released. Units are declared in `release-units.config.toml` and tracked in the committed manifest `release-units.toml`.
-- **Discovery**: `release-units.config.toml` lists directory prefixes eligible for release-unit discovery. The generator (`scripts/release/generate-manifest.js`) produces the committed manifest. CI fails if the manifest drifts.
+- **Discovery**: `release-units.config.toml` lists directory prefixes eligible for release-unit discovery. The generator (`scripts/release/generate-manifest.js`) produces the committed manifest. CI fails if the manifest drifts. A local pre-commit hook (`.git/hooks/pre-commit`) auto-regenerates and stages `release-units.toml` whenever any `release.toml` is staged, so manifest drift cannot be committed.
 - **Canonical version**: Node units use `package.json`; non-Node units use `release.toml`. A unit MUST NOT contain both. Versions follow semver.
 - **Tagging**: per-unit tags follow `<basename>_v<version>` (e.g., `nomos_v0.6.0`). Basename is the leaf directory name, must be globally unique, and must not contain underscores.
 - **Release detection**: a release occurs only when **both** files under the unit root changed **and** the canonical version changed since the last matching tag (`<basename>_v*`). No tag → base is the initial commit.
