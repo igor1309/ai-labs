@@ -8,6 +8,7 @@ func addWebhookRoute(
     config: Config,
     logger: Logger,
     store: (any CaptureStore)?,
+    enricher: (any Enricher)? = nil,
     now: @escaping @Sendable () -> Date = { Date() }
 ) {
     router.post("/\(config.webhookPath)") { request, _ in
@@ -24,7 +25,7 @@ func addWebhookRoute(
             let update = decodeUpdate(bodyData)
             appendUpdateMetadata(update, to: &metadata)
             if mode == nil, let update {
-                captureInBackground(update: update, store: store, logger: logger)
+                captureInBackground(update: update, store: store, enricher: enricher, logger: logger)
             }
         case .delay(let ms):
             try await Task.sleep(for: .milliseconds(ms))
@@ -99,15 +100,10 @@ private func appendInspectMetadata(bodyData: Data?, to metadata: inout Logger.Me
     }
 }
 
-private func captureInBackground(update: TelegramUpdate, store: (any CaptureStore)?, logger: Logger) {
+private func captureInBackground(update: TelegramUpdate, store: (any CaptureStore)?, enricher: (any Enricher)?, logger: Logger) {
     guard let store, let text = update.message?.text else { return }
+    let service = CaptureService(store: store, enricher: enricher, logger: logger)
     Task {
-        let result = IngressParser.parse(text: text, entities: update.message?.entities)
-        let item = CapturedItem(from: result)
-        do {
-            try await store.save(item)
-        } catch {
-            logger.error("capture failed", metadata: ["error": .string("\(error)")])
-        }
+        await service.capture(text: text, entities: update.message?.entities)
     }
 }
