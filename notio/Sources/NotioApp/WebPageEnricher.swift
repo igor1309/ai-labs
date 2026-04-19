@@ -48,11 +48,19 @@ public struct WebPageEnricher: Enricher {
         }
 
         let metadata = HTMLMetadataExtractor.extract(from: response.body)
-        let status: CapturedItem.Enrichment = switch (metadata.title, metadata.description) {
-        case (.some, .some): .full
-        case (.some, .none), (.none, .some): .partial
-        case (.none, .none): .partial
+
+        if metadata.title == nil, metadata.description == nil {
+            if let ct = response.contentType {
+                let normalizedCT = ct.lowercased()
+                guard normalizedCT.contains("text/html") || normalizedCT.contains("application/xhtml+xml") else {
+                    logger.error("enrichment: non-HTML content type with no extractable metadata", metadata: ["url": .string(url), "content_type": .string(ct)])
+                    return EnrichmentResult(title: nil, description: nil, status: .failed)
+                }
+            }
+            return EnrichmentResult(title: nil, description: nil, status: .partial)
         }
+
+        let status: CapturedItem.Enrichment = (metadata.title != nil && metadata.description != nil) ? .full : .partial
         return EnrichmentResult(title: metadata.title, description: metadata.description, status: status)
     }
 }

@@ -8,7 +8,7 @@ func addWebhookRoute(
     config: Config,
     logger: Logger,
     store: (any CaptureStore)?,
-    enricher: any Enricher = NullEnricher(),
+    enricher: any Enricher,
     now: @escaping @Sendable () -> Date = { Date() }
 ) {
     router.post("/\(config.webhookPath)") { request, _ in

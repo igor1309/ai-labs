@@ -63,6 +63,6 @@ struct WebhookRouteTests {
 
 extension WebhookRouteTests {
     private func makeApp(webhookPath: String) -> some ApplicationProtocol {
-        buildApp(config: Config(port: 8080, version: "test", webhookPath: webhookPath))
+        buildApp(config: Config(port: 8080, version: "test", webhookPath: webhookPath), enricher: NullEnricher())
     }
 }

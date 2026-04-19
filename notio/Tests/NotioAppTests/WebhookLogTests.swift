@@ -182,7 +182,8 @@ struct WebhookLogTests {
         let app = buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook"),
             logger: logger,
-            store: spy
+            store: spy,
+            enricher: NullEnricher()
         )
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com check later"}}"#)
 
@@ -226,7 +227,8 @@ struct WebhookLogTests {
         let app = buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook"),
             logger: logger,
-            store: ThrowingCaptureStore()
+            store: ThrowingCaptureStore(),
+            enricher: NullEnricher()
         )
         let body = ByteBuffer(string: #"{"update_id":1,"message":{"message_id":1,"chat":{"id":1},"date":0,"text":"https://example.com"}}"#)
 
@@ -262,7 +264,8 @@ extension WebhookLogTests {
     private func makeApp(logger: Logger, diagnosticMode: DiagnosticMode? = nil) -> some ApplicationProtocol {
         buildApp(
             config: Config(port: 8080, version: "test", webhookPath: "hook", diagnosticMode: diagnosticMode),
-            logger: logger
+            logger: logger,
+            enricher: NullEnricher()
         )
     }
 }

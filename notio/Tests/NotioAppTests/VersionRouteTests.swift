@@ -27,6 +27,6 @@ extension VersionRouteTests {
     }
 
     private func makeApp(config: Config) -> some ApplicationProtocol {
-        buildApp(config: config)
+        buildApp(config: config, enricher: NullEnricher())
     }
 }

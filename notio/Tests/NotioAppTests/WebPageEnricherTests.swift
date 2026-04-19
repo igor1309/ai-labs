@@ -103,12 +103,12 @@ struct WebPageEnricherTests {
         #expect(result.status == .partial)
     }
 
-    @Test func test_shouldReturnPartialForUnparsableBody() async {
+    @Test func test_shouldReturnFailedForUnparsableBodyWithNonHTMLContentType() async {
         let sut = makeSUT(response: HTTPFetchResponse(status: 200, body: "%PDF-1.4", contentType: "application/pdf"))
 
         let result = await sut.enrich(url: "https://example.com/file.pdf", sourceType: .webPage)
 
-        #expect(result.status == .partial)
+        #expect(result.status == .failed)
         #expect(result.title == nil)
     }
 
