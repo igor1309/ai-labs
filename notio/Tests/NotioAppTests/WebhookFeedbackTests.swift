@@ -8,14 +8,29 @@ import Testing
 @Suite("WebhookFeedback")
 struct WebhookFeedbackTests {
     @Test func test_normalRequest_shouldReturn200WithoutWaitingForSlowSender() async throws {
-        let sender = SlowMessageSender()
-        let app = makeApp(sender: sender, store: SpyCaptureStore())
+        let logger = Logger(label: "test", factory: SwiftLogNoOpLogHandler.init)
+        let sender = BlockingMessageSender()
+        let messenger = TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
+        let responseObserver = ResponseObserver()
+        let store = SpyCaptureStore()
+        let app = makeApp(messenger: messenger, store: store)
         let body = makeTelegramBody(chatId: 1, text: "hello")
 
         try await app.test(.router) { client in
-            try await client.execute(uri: "/hook", method: .post, body: body) { response in
-                #expect(response.status == .ok)
+            let requestTask = Task {
+                try await client.execute(uri: "/hook", method: .post, body: body) { response in
+                    #expect(response.status == .ok)
+                    await responseObserver.markResponded()
+                }
             }
+
+            await sender.waitForSendAttempt()
+            let respondedBeforeRelease = await responseObserver.hasResponded
+            #expect(respondedBeforeRelease)
+
+            await sender.release()
+            _ = await store.waitForSave()
+            try await requestTask.value
         }
     }
 
@@ -123,29 +138,7 @@ struct WebhookFeedbackTests {
 private extension WebhookFeedbackTests {
     func makeApp(
         messenger: some CaptureFeedbackMessenger = RecordingFeedbackMessenger(),
-        sender: some MessageSender = SpyMessageSender(),
-        store: SpyCaptureStore = SpyCaptureStore()
-    ) -> some ApplicationProtocol {
-
-        let logger = Logger(label: "test", factory: SwiftLogNoOpLogHandler.init)
-        let effectiveMessenger: any CaptureFeedbackMessenger =
-            if messenger is RecordingFeedbackMessenger {
-                messenger
-            } else {
-                TelegramCaptureFeedbackMessenger(sender: sender, logger: logger)
-            }
-        return buildApp(
-            config: Config(port: 8080, version: "test", webhookPath: "hook"),
-            logger: logger,
-            store: store,
-            enricher: NullEnricher(),
-            messenger: effectiveMessenger
-        )
-    }
-
-    func makeApp(
-        messenger: some CaptureFeedbackMessenger,
-        store: some CaptureStore
+        store: some CaptureStore = SpyCaptureStore()
     ) -> some ApplicationProtocol {
 
         buildApp(
@@ -177,9 +170,26 @@ actor RecordingFeedbackMessenger: CaptureFeedbackMessenger {
     }
 }
 
-private struct SlowMessageSender: MessageSender {
+private actor BlockingMessageSender: MessageSender {
+    private var sendAttempted = false
+    private var sendContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
     func send(chatId: Int, text: String) async throws {
-        try await Task.sleep(for: .milliseconds(500))
+        sendAttempted = true
+        sendContinuation?.resume()
+        sendContinuation = nil
+        await withCheckedContinuation { self.releaseContinuation = $0 }
+    }
+
+    func waitForSendAttempt() async {
+        if sendAttempted { return }
+        await withCheckedContinuation { self.sendContinuation = $0 }
+    }
+
+    func release() {
+        releaseContinuation?.resume()
+        releaseContinuation = nil
     }
 }
 
@@ -230,5 +240,13 @@ private actor OrderTrackingStore: CaptureStore {
     func waitForSave() async -> CapturedItem {
         if let item = savedItem { return item }
         return await withCheckedContinuation { self.continuation = $0 }
+    }
+}
+
+private actor ResponseObserver {
+    private(set) var hasResponded = false
+
+    func markResponded() {
+        hasResponded = true
     }
 }

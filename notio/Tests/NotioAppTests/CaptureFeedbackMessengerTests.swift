@@ -78,6 +78,21 @@ struct CaptureFeedbackMessengerTests {
         let messages = await spy.messages
         #expect(messages.count == 1)
     }
+
+    @Test func test_send_shouldLogSanitizedFeedbackOnDeliveryFailure() async {
+        let spy = SpyMessageSender()
+        await spy.setShouldThrow(true)
+        let handler = CapturingLogHandler()
+        let logger = Logger(label: "test") { _ in handler }
+        let sut = TelegramCaptureFeedbackMessenger(sender: spy, logger: logger)
+        let item = makeItem(kind: .note)
+
+        await sut.send(chatId: 1, feedback: .success(item))
+
+        let warning = handler.events.first(where: { $0.level == .warning })
+        let feedbackValue = warning?.metadata?["feedback"]?.description
+        #expect(feedbackValue == "success_note")
+    }
 }
 
 // MARK: - Helpers

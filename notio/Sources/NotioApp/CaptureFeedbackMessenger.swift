@@ -4,6 +4,18 @@ public enum Feedback: Equatable, Sendable {
     case receipt
     case success(CapturedItem)
     case failure
+
+    var logLabel: String {
+        switch self {
+        case .receipt: "receipt"
+        case .success(let item):
+            switch item.kind {
+            case .note: "success_note"
+            case .link: "success_link"
+            }
+        case .failure: "failure"
+        }
+    }
 }
 
 public protocol CaptureFeedbackMessenger: Sendable {
@@ -27,7 +39,7 @@ public struct TelegramCaptureFeedbackMessenger: CaptureFeedbackMessenger, Sendab
         } catch {
             logger.warning("feedback delivery failed", metadata: [
                 "chat_id": .string("\(chatId)"),
-                "feedback": .string("\(feedback)"),
+                "feedback": .string(feedback.logLabel),
                 "error": .string("\(error)"),
             ])
         }
