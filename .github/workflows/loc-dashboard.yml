@@ -23,6 +23,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check project drift
+        run: |
+          drift=$(./scripts/loc-dashboard.sh --sort=total 2>&1 | grep "⚠" || true)
+          if [ -n "$drift" ]; then
+            echo "::warning::LOC dashboard drift detected: $drift"
+          fi
+
       - name: Run LOC dashboard
         id: loc
         run: |
