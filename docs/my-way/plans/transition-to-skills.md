@@ -143,7 +143,37 @@ Preflight check: [x] done
 **Completion signal**:
 - Two implementation-plan skills exist as self-sufficient, first-class skills.
 
-## Task 5 — Expand Remaining Artifact Skills One By One
+## Task 5 — Establish And Promote Pre-ADR Skills
+
+**Objective**: Create the pre-ADR pair as self-sufficient, first-class skills using the same extraction pattern while preserving its exploratory role.
+
+**Key work items**:
+- Create `docs/my-way/skills/pre-adr/pre-adr-drafting/SKILL.md`.
+- Create `docs/my-way/skills/pre-adr/pre-adr-review/SKILL.md`.
+- Extract both skills from `docs/my-way/02-pre-adr/note.md` as operational form.
+- Keep the distinction explicit:
+  - pre-ADR shapes the solution space before commitment
+  - pre-ADR is not ADR
+  - pre-ADR is not spec
+  - pre-ADR is not implementation plan
+- Make both skills self-sufficient without relying on `docs/my-way/02-pre-adr/note.md`.
+
+**Dependencies**:
+- Task 1 ADR pattern.
+- Existing pre-ADR note, structure, and example.
+
+**Risks**:
+- The pre-ADR skills become too commitment-heavy and collapse into ADR.
+- The pre-ADR skills repeat research without moving into architectural solution shaping.
+
+**Validation**:
+- Read both skills against the pre-ADR note and confirm the exploratory boundary holds.
+- Confirm both skills can be used correctly without consulting `docs/my-way/02-pre-adr/note.md`.
+
+**Completion signal**:
+- Two pre-ADR skills exist as self-sufficient, first-class skills.
+
+## Task 6 — Expand Remaining Artifact Skills One By One
 
 **Objective**: Convert the remaining `My Way` artifacts incrementally instead of as a bulk rewrite.
 
@@ -162,6 +192,7 @@ Preflight check: [x] done
 - Task 2 transition rules.
 - Task 3 spec pair established.
 - Task 4 implementation-plan pair established.
+- Task 5 pre-ADR pair established.
 
 **Risks**:
 - The migration becomes a large undifferentiated batch.
@@ -180,5 +211,6 @@ Preflight check: [x] done
 - ADR drafting and review skills exist as the first promoted first-class pair.
 - Spec drafting and review skills exist as the next promoted first-class pair.
 - Implementation-plan drafting and review skills exist as the next promoted first-class pair.
+- Pre-ADR drafting and review skills exist as the next promoted first-class pair.
 - Notes remain the source of truth for artifacts that have not yet been promoted.
 - Remaining artifact skills can be added incrementally without losing responsibility clarity.
