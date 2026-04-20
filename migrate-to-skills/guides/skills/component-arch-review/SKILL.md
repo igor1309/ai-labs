@@ -1,5 +1,5 @@
 ---
-name: component-improvement-review-guideline
+name: component-arch-review
 version: "1.0.0"
 author: Igor Malyarov
 description: Use when reviewing an implemented component and you need a principle-driven critique focused on root causes, strategic impact, and verifiable improvement paths rather than a laundry list of code smells.
