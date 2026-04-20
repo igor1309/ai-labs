@@ -1,7 +1,6 @@
 ---
-date: 2025-10-21
-model: codex
-description: "Working notes for executable specification scaffolding and responsibility-focused tests."
+name: executable-specification-scaffolding
+description: Use when drafting executable specifications and responsibility-focused tests that define behavior clearly before implementation.
 ---
 
 # Executable Specification Scaffolding — Working Notes

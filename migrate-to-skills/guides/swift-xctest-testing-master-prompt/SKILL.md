@@ -1,7 +1,6 @@
 ---
-date: 2025-08-11
-model: gpt-5
-description: "XCTest suite standards: structure, naming, async testing, spies, and formatting rules."
+name: swift-xctest-testing-master-prompt
+description: Use when writing or reviewing XCTest suites for Swift code and you need standards for structure, naming, async testing, spies, and formatting.
 ---
 
 ## ROLE

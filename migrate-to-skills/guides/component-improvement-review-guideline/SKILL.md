@@ -1,11 +1,6 @@
 ---
-title: “Component Improvement Review Guideline”
-version: “2.0.0”
-date: “2025-09-20”
-description: “A guideline for AI agents to conduct principle-driven reviews, focusing on strategic insights, root-cause analysis, and self-evaluation.”
-status: “stable”
-maintainer: “ai-agent-team”
-tags: [“guideline”, “review”, “principles”, “architecture”, “reasoning”]
+name: component-improvement-review-guideline
+description: Use when reviewing a component and you need a principle-driven critique focused on strategic improvements, root causes, and self-evaluation.
 ---
 
 # Component Improvement Review Guideline (A Principle-Driven Approach)

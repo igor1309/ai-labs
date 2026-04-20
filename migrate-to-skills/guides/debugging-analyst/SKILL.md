@@ -1,7 +1,6 @@
 ---
-date: 2025-05-16
-model: gpt-5
-description: "Debugging analyst role guide and report template."
+name: debugging-analyst
+description: Use when investigating a bug and you need a structured debugging analysis with execution tracing, root-cause hypotheses, and a formal report.
 ---
 
 ## ROLE & PRIMARY GOAL:

@@ -1,3 +1,8 @@
+---
+name: feature-spec-protocol
+description: Use when creating a feature specification through a structured clarification process that asks one question at a time and avoids hidden assumptions.
+---
+
 # Feature Specification Protocol
 
 This protocol defines how to create consistent, reusable **feature specifications**.  

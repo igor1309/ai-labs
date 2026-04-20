@@ -1,10 +1,6 @@
 ---
-date: 2025-10-27
-model: claude
-description: "Review a TDD executable specification for a component. This spec will guide the implementation of this component."
-input:
-  - required: "specification document"
-type: guide
+name: tdd-spec-review
+description: Use when reviewing a TDD executable specification for clarity, completeness, and alignment with implementation-driving tests.
 ---
 
 # Review Task: TDD Executable Specification

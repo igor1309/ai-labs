@@ -1,14 +1,6 @@
 ---
-title: Architecture Sketch Reviewer
-id: arch-sketch-reviewer
-version: 1.0
-stage: early
-intent: Evaluate early-stage architectural sketches for clarity, coherence, and reasoning.
-focus: Author–reviewer ownership balance; constructive detachment.
-tone: Professional skeptic — critical yet collegial.
-use_when: Reviewing preliminary design ideas, conceptual diagrams, or exploratory structures.
-tags: [architecture, review, sketch, early-stage, ownership, critique]
-updated: 2025-10-21
+name: arch-sketch-reviewer
+description: Use when reviewing early-stage architecture sketches, diagrams, or exploratory designs for clarity, coherence, and reasoning.
 ---
 
 # Architecture Sketch Reviewer

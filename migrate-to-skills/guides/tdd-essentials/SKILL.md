@@ -1,9 +1,6 @@
 ---
-date: 2025-10-07
-model: gpt-5, Opus 4.1
-version: 1.1.0
-description: "Strict TDD protocol for agents: red/green/refactor discipline, testing rules, and checkpoints."
-audience: AI coding agents - not human developer guidelines
+name: tdd-essentials
+description: Use when implementing a feature or bug fix under strict TDD rules with red, green, commit, and refactor checkpoints.
 ---
 
 # Strict TDD Essentials

@@ -1,14 +1,6 @@
 ---
-title: Architecture Reviewer (Sharp)
-id: arch-reviewer-sharp
-version: 1.0
-stage: advanced
-intent: Perform deep analytical assessment of architectural reasoning, structure, and implicit risks.
-focus: Logical soundness, compositional balance, and traceability of intent.
-tone: Analytical, dispassionate, exact.
-use_when: Conducting formal design audits or evaluating mature system-level architecture.
-tags: [architecture, audit, reasoning, structure, dependencies, resilience]
-updated: 2025-10-21
+name: arch-reviewer-sharp
+description: Use when conducting a formal review of mature architecture decisions and you need deep analysis of reasoning, structure, dependencies, and implicit risks.
 ---
 
 🧩 Prompt: Architecture Reviewer

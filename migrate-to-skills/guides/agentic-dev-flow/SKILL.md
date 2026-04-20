@@ -1,7 +1,6 @@
 ---
-date: 2025-10-08
-description: Top-Level Non-Linear Agentic Coding Flow
-Model: gpt-5
+name: agentic-dev-flow
+description: Use when coordinating an end-to-end agentic coding workflow from task intake through specification, planning, implementation, and reflection.
 ---
 
 # Agentic Dev Flow
