@@ -1,7 +1,13 @@
+---
+name: feature-spec-protocol
+version: "1.0.0"
+author: Igor Malyarov
+description: Use when creating a feature specification through an ordered clarification protocol that asks one question at a time, avoids hidden assumptions, and fills the spec incrementally.
+---
+
 # Feature Specification Protocol
 
-This protocol defines how to create consistent, reusable **feature specifications**.  
-It is based on a structured Q&A process: never presume, always ask one question at a time, and build the spec incrementally.
+Create feature specifications through a structured Q&A protocol: do not assume, ask one question at a time, and fill the spec incrementally.
 
 ---
 
@@ -158,8 +164,6 @@ Each spec should follow this skeleton:
 
 ---
 
----
-
 ## 5. Example (Seed Spec)
 
 Below is a minimal example spec created using this protocol.  
@@ -216,5 +220,3 @@ struct ToastConfig {
 - `ToastConfig` struct
 - Example usage snippet in README
 ```
-
----

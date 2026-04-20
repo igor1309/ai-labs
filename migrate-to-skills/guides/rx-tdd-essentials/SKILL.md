@@ -1,7 +1,6 @@
 ---
-date: 2025-09-08
-model: gpt-5.1
-description: "Rx TDD essentials for reducer/effect handler development and migration to production."
+name: rx-tdd-essentials
+description: Use when developing or migrating Rx reducers and effect handlers with a test-first workflow before moving code into production files.
 ---
 
 # Rx TDD

@@ -1,7 +1,6 @@
 ---
-date: 2025-12-27
-model: gpt-5
-description: "Vortex iOS guidelines for Swift code style, formatting, docs, and testing practices."
+name: vortex-seasoned-ios-developer
+description: Use when generating or reviewing Swift and SwiftUI code for Vortex and you need its formatting, documentation, and XCTest conventions.
 ---
 
 <instructions>

@@ -1,13 +1,13 @@
 ---
 name: arch-spec-review
-description: Review architecture specifications for completeness, appropriate abstraction level, and separation of concerns. Use when reviewing top-level, implementation-agnostic architecture documents that define system boundaries, responsibilities, flows, and constraints without prescribing implementation details.
-version: "1.0.0"
+description: Review architecture specifications for completeness, appropriate abstraction level, separation of concerns, implicit architectural risk, and the intentionality of mature architecture decisions. Use when reviewing top-level, implementation-agnostic architecture documents that define system boundaries, responsibilities, flows, constraints, and rationale without prescribing implementation details.
+version: "1.0.2"
 author: Igor Malyarov
 ---
 
 # Architecture Specification Review
 
-Review architecture specifications at the appropriate level of abstraction, evaluating whether they successfully define system structure without drifting into implementation details.
+Review architecture specifications at the appropriate level of abstraction, evaluating whether they successfully define system structure and architectural reasoning without drifting into implementation details.
 
 ## Document Classification
 
@@ -43,6 +43,8 @@ Before reviewing, read the document's stated goals:
 
 **Never review against your expectations - review against the document's stated purpose.**
 
+Treat the document as a standalone artifact of reasoning. Review the thinking it encodes, not the effort that produced it.
+
 ### 2. Evaluate Completeness
 
 For architecture specifications, assess whether these are clear:
@@ -50,8 +52,9 @@ For architecture specifications, assess whether these are clear:
 **Boundaries**: Is each component's responsibility distinct and well-defined?
 - Can you explain what each component does without talking about how?
 - Are there clear lines between components?
+- Does the structure appear intentional rather than incidental?
 
-**Flows**: Are the key scenarios described?
+**Flow of Control and Data**: Are the key scenarios described clearly enough to follow how actions and information propagate?
 - Bootstrap/initialization
 - Primary operational paths
 - Update/refresh mechanisms
@@ -62,6 +65,15 @@ For architecture specifications, assess whether these are clear:
 - Atomicity and consistency
 - Immutability
 - Failure modes
+
+**Dependencies and Coupling**: Are hard edges visible?
+- Which dependencies are load-bearing?
+- Where are components too entangled or too opaque?
+- Does each major part justify its existence within the whole?
+
+**Resilience and Change**: Does the structure appear stable under growth or failure?
+- How would the design react to scale, feature growth, or subsystem failure?
+- Are change pressure and failure boundaries legible at the architectural level?
 
 **Extension Points**: Can the design evolve?
 - What can be swapped without ripple effects?
@@ -99,6 +111,9 @@ Ask yourself:
 - **Would my questions add clarity or just detail noise?**
   - If the answer doesn't affect architectural boundaries, it's probably implementation detail.
 
+- **Am I treating absence of rationale as a signal?**
+  - If a major boundary, dependency, or constraint appears unexplained, treat that as architectural risk rather than assuming it is fine.
+
 - **Am I respecting explicit scope boundaries?**
   - If the doc says "duplicates policy is TBD," don't demand a resolution.
   - If the doc says "implementation-agnostic," don't ask about specific technologies.
@@ -122,8 +137,14 @@ Structure your review:
 **Questions** (only architectural concerns):
 - Ambiguities in responsibilities or guarantees
 - Missing flows or undefined coordination
+- Unclear dependency edges or unexplained coupling
+- Missing rationale behind major structural choices
 - Unclear extension points
 - Contradictions or gaps in constraints
+
+**Clarity Index**:
+- Does the document communicate architecture as reasoning, not just topology?
+- Can a neutral reader infer why this structure exists, not only what boxes connect to what?
 
 **Not**: "How does X work internally?"
 **But**: "What guarantee does X provide to its clients?"
@@ -133,6 +154,10 @@ Structure your review:
 - Implementation recommendations  
 - Technology preferences
 - Asking about appropriately deferred decisions
+
+## Tone
+
+Analytical, dispassionate, exact. Evaluate quality of thinking, not taste or polish.
 
 ## Anti-Patterns to Avoid
 

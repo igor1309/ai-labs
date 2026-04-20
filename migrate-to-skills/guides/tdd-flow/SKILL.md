@@ -1,11 +1,6 @@
 ---
-date: 2025-10-19
-model: claude
-title: TDD Flow - Mandatory Process
-purpose: Defines the strict Test-Driven Development cycle for AI coding agents
-audience: AI coding assistants implementing features using TDD
-stops: 2 (at RED and after REFACTOR)
-cycle: RED → [STOP] → GREEN → COMMIT → REFACTOR → [STOP] → RECORD_REFACTOR_COMMIT
+name: tdd-flow
+description: Use when enforcing a strict test-driven development cycle with explicit stop points at red and after refactor.
 ---
 
 # TDD Flow - Mandatory Process

@@ -1,19 +1,33 @@
 ---
-date: 2025-10-21
-model: codex
-description: "Working notes for executable specification scaffolding and responsibility-focused tests."
+name: executable-spec-scaffolding
+version: "1.0.0"
+author: Igor Malyarov
+description: Use when drafting executable specifications for service, orchestrator, or collaborator-heavy components where responsibility boundaries, shared orchestration, and collaborator contracts must be made explicit before implementation.
 ---
 
-# Executable Specification Scaffolding — Working Notes
+# Executable Specification Scaffolding
+
+Draft executable specifications that guide implementations through clear actor responsibilities, explicit collaborator contracts, shared orchestration boundaries, and minimal duplication.
+
+## When to Use
+
+Use this skill when:
+
+- the component is built around services, orchestrators, pipelines, guards, repositories, or similar collaborators
+- the main risk is unclear responsibility boundaries rather than UI detail
+- you need tests that assert contracts and payloads, not just downstream effects
+
+Do not use this as a generic spec-writing checklist for every feature. It is most useful when orchestration, delegation, sequencing, and collaborator contracts are the load-bearing design concerns.
 
 ## Purpose
-Summarize reusable insights for designing executable specifications that guide implementations with clear responsibility boundaries, minimal duplication, and future-flexible contracts. Use this as a checklist when spinning up new specs, regardless of domain.
+
+Use this as a drafting and review checklist for executable specs that should stay flexible under future iteration while remaining explicit about responsibilities and guarantees.
 
 ## Core Principles
 - **Stateless service surfaces**: Entry points should coordinate collaborators but not own long-term state. Any history or caching belongs to explicit dependencies.
 - **Explicit collaborator contracts**: Specifications must spell out what data each collaborator expects (payload shape, sequencing guarantees) rather than asserting outcomes the service cannot enforce alone.
 - **Shared policy extraction**: When multiple use cases share orchestration, extract a reusable coordinator/spec (e.g., orchestrator, pipeline, policy engine) so per-use-case specs focus on differentiators.
-- **Async-by-default contracts**: Declare operations as `async throws` (or equivalent) even if current collaborators are synchronous. This future-proofs the spec while allowing deterministic tests through synchronous stubs.
+- **Prefer async-capable contracts when future async boundaries are likely**: If the component is likely to cross network, storage, or other asynchronous boundaries later, prefer `async throws` (or equivalent) in the executable spec even if current collaborators are synchronous. If the domain is genuinely synchronous, keep the contract synchronous.
 - **Test names as executable statements**: Phrase scenarios in terms of observable contracts (“should pass fingerprint with …”, “should propagate guard error”) rather than internal assumptions.
 
 ## Responsibility Modeling
@@ -47,7 +61,7 @@ Summarize reusable insights for designing executable specifications that guide i
 - [ ] Responsibilities diagrammed with stateless vs stateful actors identified.
 - [ ] Shared orchestration extracted into its own executable spec.
 - [ ] Service-level specs focus on collaborator payloads, configuration injection, and delegation.
-- [ ] Async contract documented; tests remain deterministic via controlled stubs.
+- [ ] Async contract choice documented; tests remain deterministic via controlled stubs.
 - [ ] Idempotency/replay requirements expressed as collaborator contracts, not implicit service memory.
 - [ ] Duplication audit performed—no scenario is asserted in multiple suites without purpose.
 - [ ] Guard failure paths covered (propagation, translation if required).
