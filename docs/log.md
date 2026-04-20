@@ -1,5 +1,11 @@
 # Log
 
+## 2026-04-20
+
+- Added `.github/workflows/` README.md and CLAUDE.md (with AGENTS.md symlink) documenting CI architecture, agent rules, and paths-ignore policy.
+- CI now skips `**/sandbox/**` and `**/research/**` at any nesting level (previously top-level `sandbox/` only, `research/` missing).
+- Repo-root `AGENTS.md` is now a symlink to `CLAUDE.md` (was the reverse). Convention documented in README.
+
 ## 2026-04-19
 
 - notio: two-phase capture feedback (`notio_v0.3.0`) — receipt acknowledgement and final outcome messages via Telegram. 144 tests, Docker verified.
