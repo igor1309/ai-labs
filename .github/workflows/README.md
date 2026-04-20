@@ -19,6 +19,8 @@ Workflows are organized into four categories:
 
 Per-project workflows do not need their own paths-ignore — the dispatcher's path-filter routing already prevents them from running on unrelated changes.
 
+Currently `sandbox/` and `research/` skip CI entirely. In the future, specialized workflows may run for them — e.g., LinkedIn content checks, frontmatter validation, link checking. When that happens, remove the relevant `paths-ignore` entries and add proper path filters instead.
+
 ## Shared Infrastructure
 
 - **Path detection**: `dorny/paths-filter@v3` in the `changes` job
