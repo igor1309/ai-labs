@@ -15,6 +15,8 @@ The practical split is between:
 
 The usual pattern is to combine a guide with a prompt when working with a chosen agent.
 
+`CLAUDE.md` is the canonical agent instruction file. `AGENTS.md` is a symlink to it — do not reverse the direction (web-based agents cannot follow symlinks).
+
 ## Structure
 
 | Path | Purpose |
