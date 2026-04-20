@@ -1,5 +1,7 @@
 ---
 name: tactical-action-plan-guide
+version: "1.0.0"
+author: Igor Malyarov
 description: Use when an approved review finding needs a safe, dependency-aware implementation plan that keeps the codebase working after every step.
 ---
 

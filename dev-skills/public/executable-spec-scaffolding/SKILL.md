@@ -1,5 +1,5 @@
 ---
-name: executable-specification-scaffolding
+name: executable-spec-scaffolding
 version: "1.0.0"
 author: Igor Malyarov
 description: Use when drafting executable specifications for service, orchestrator, or collaborator-heavy components where responsibility boundaries, shared orchestration, and collaborator contracts must be made explicit before implementation.

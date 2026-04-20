@@ -6,12 +6,12 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.29.0"
+    "version": "1.30.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, strict TDD, architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, and architecture sketch review",
+      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, architecture sketch review, bug analysis, tactical action planning, and Vortex Swift packaging",
       "source": "./",
       "strict": false,
       "skills": [
@@ -19,12 +19,16 @@
         "./arch-doc-review",
         "./arch-reviewer",
         "./arch-spec-review",
+        "./bug-analysis",
         "./check-domain",
         "./cold-start-checkpoint",
+        "./component-arch-review",
         "./composition-root",
         "./discuss",
         "./doc-drift-audit",
         "./docker-discipline",
+        "./executable-spec-scaffolding",
+        "./feature-spec-protocol",
         "./intake",
         "./job-search-strategy",
         "./pr-ci-watch",
@@ -38,8 +42,10 @@
         "./strict-tdd",
         "./swift-package-manifest",
         "./synopsis",
+        "./tactical-action-plan-guide",
         "./tdd-interactive",
-        "./tdd-scaffold-review"
+        "./tdd-scaffold-review",
+        "./vortex-swift-package-manifest"
       ]
     }
   ]

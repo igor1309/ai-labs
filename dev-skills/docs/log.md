@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-20
 
+### Six New Skills Published
+Published bug-analysis, component-arch-review, executable-spec-scaffolding, feature-spec-protocol, tactical-action-plan-guide, and vortex-swift-package-manifest. Marketplace v1.30.0.
+
 ### Arch Doc Review v1.0.0 Published
 Moved from `.claude/skills/` to `dev-skills/public/`. Marketplace v1.29.0.
 

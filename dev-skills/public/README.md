@@ -61,6 +61,20 @@ Review architecture specifications for completeness, appropriate abstraction lev
 
 **Documentation:** See [arch-spec-review/SKILL.md](arch-spec-review/SKILL.md)
 
+### Bug Analysis
+
+Analyze a reported bug by tracing the likely execution path, forming evidence-based root-cause hypotheses, and producing a structured debugging report.
+
+**Key features:**
+- Structured debugging report with findings, evidence, and verification steps
+- Root-cause hypotheses before coding
+- Execution-path tracing from the bug report
+- Read-only exploration — no implementation
+
+**Use when:** Investigating or explaining a bug before implementing a fix.
+
+**Documentation:** See [bug-analysis/SKILL.md](bug-analysis/SKILL.md)
+
 ### Check Domain
 
 Check domain name availability and find alternatives. Runs on a fast, cheap model (Haiku) via a dedicated subagent — no Opus turns spent on straightforward lookups.
@@ -90,6 +104,21 @@ Session-start checkpoint that pauses the agent on the first message of every new
 **Use when:** Automatically triggered on the first message of a new session via the companion hook.
 
 **Documentation:** See [cold-start-checkpoint/SKILL.md](cold-start-checkpoint/SKILL.md)
+
+### Component Architecture Review
+
+Principle-driven critique of an implemented component focused on root causes, strategic impact, and verifiable improvement paths.
+
+**Key features:**
+- First-principles reasoning, not smell labels
+- Strategic impact over trivial correctness
+- Deep, well-supported findings over many shallow ones
+- Explains why issues matter in practice: change cost, coupling, testability
+- Willing to say evidence is insufficient
+
+**Use when:** Reviewing an implemented component and you need strategic architectural feedback rather than line-by-line code review.
+
+**Documentation:** See [component-arch-review/SKILL.md](component-arch-review/SKILL.md)
 
 ### Composition Root
 
@@ -138,6 +167,35 @@ Docker compose, deploy fix, local verification, and cross-platform gotchas for D
 **Use when:** Working with Dockerfiles, docker compose, deploy scripts, or Docker-producing units.
 
 **Documentation:** See [docker-discipline/SKILL.md](docker-discipline/SKILL.md)
+
+### Executable Specification Scaffolding
+
+Draft executable specifications for service, orchestrator, or collaborator-heavy components where responsibility boundaries and collaborator contracts must be explicit before implementation.
+
+**Key features:**
+- Stateless service surfaces with explicit collaborator contracts
+- Shared policy extraction for reusable coordinators
+- Async-capable contracts when future async boundaries are likely
+- Responsibility boundaries and sequencing guarantees
+
+**Use when:** Drafting executable specs for components built around services, orchestrators, pipelines, guards, or repositories.
+
+**Documentation:** See [executable-spec-scaffolding/SKILL.md](executable-spec-scaffolding/SKILL.md)
+
+### Feature Spec Protocol
+
+Create feature specifications through a structured Q&A protocol that asks one question at a time and fills the spec incrementally.
+
+**Key features:**
+- Ask, don't assume — each section populated only after explicit clarification
+- One-question-at-a-time approach
+- Deterministic — no hidden defaults
+- Final artifact as a Markdown document
+- Structured steps: Scope, Behavior, Edge Cases, Persistence, Testing, Done Criteria
+
+**Use when:** Creating a feature specification through an ordered clarification protocol.
+
+**Documentation:** See [feature-spec-protocol/SKILL.md](feature-spec-protocol/SKILL.md)
 
 ### Documentation Drift Audit
 
@@ -344,6 +402,22 @@ Strict TDD mode — RED/GREEN/REFACTOR discipline with no-junk scope lock.
 
 **Documentation:** See [strict-tdd/SKILL.md](strict-tdd/SKILL.md)
 
+### Tactical Action Plan Guide
+
+Translate an approved review finding into a safe, dependency-aware implementation plan that keeps the codebase working after every step.
+
+**Key features:**
+- Machine-readable YAML/JSON action plans from approved findings
+- Green-to-Green Rule: codebase valid after every step
+- Closed set of operation types (CREATE_FILE, ADD_TYPE, RENAME_SYMBOL, etc.)
+- Mandatory verification blocks per step
+- Dependency-driven DAG ordering
+- Characterization test harness when no adequate tests exist
+
+**Use when:** An approved review finding needs a safe, step-by-step refactoring plan.
+
+**Documentation:** See [tactical-action-plan-guide/SKILL.md](tactical-action-plan-guide/SKILL.md)
+
 ### Swift Package Manifest
 
 Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK.
@@ -358,6 +432,20 @@ Clean, maintainable Package.swift creation and editing using the static property
 **Use when:** Creating new Package.swift files, refactoring existing ones, adding modules/targets to Swift packages, or organizing Swift Package Manager manifests.
 
 **Documentation:** See [swift-package-manifest/SKILL.md](swift-package-manifest/SKILL.md)
+
+### Vortex Swift Package Manifest
+
+Feature module playbook for Swift packages using the static-extension manifest pattern with sources under `Sources/Feature/` and tests under `Tests/Feature/`.
+
+**Key features:**
+- Static-extension manifest pattern
+- Human-in-the-loop — requestor supplies exact names and targets
+- Feature module scaffold: Backend, Core, UI targets
+- Does not infer extra targets beyond the request
+
+**Use when:** Adding a new feature module to Package.swift in a Swift package that uses the static-extension pattern.
+
+**Documentation:** See [vortex-swift-package-manifest/SKILL.md](vortex-swift-package-manifest/SKILL.md)
 
 ### TDD Interactive
 
@@ -405,12 +493,16 @@ Then install the skills you want:
 /plugin install arch-doc-review
 /plugin install arch-reviewer
 /plugin install arch-spec-review
+/plugin install bug-analysis
 /plugin install check-domain
 /plugin install cold-start-checkpoint
+/plugin install component-arch-review
 /plugin install composition-root
 /plugin install discuss
 /plugin install docker-discipline
 /plugin install doc-drift-audit
+/plugin install executable-spec-scaffolding
+/plugin install feature-spec-protocol
 /plugin install intake
 /plugin install job-search-strategy
 /plugin install pr-ci-watch
@@ -424,8 +516,10 @@ Then install the skills you want:
 /plugin install strict-tdd
 /plugin install synopsis
 /plugin install swift-package-manifest
+/plugin install tactical-action-plan-guide
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
+/plugin install vortex-swift-package-manifest
 ```
 
 ### Manual Installation
@@ -438,12 +532,16 @@ cp -r adr-governance ~/.claude/skills/
 cp -r arch-doc-review ~/.claude/skills/
 cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
+cp -r bug-analysis ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
 cp -r cold-start-checkpoint ~/.claude/skills/
+cp -r component-arch-review ~/.claude/skills/
 cp -r composition-root ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
 cp -r docker-discipline ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
+cp -r executable-spec-scaffolding ~/.claude/skills/
+cp -r feature-spec-protocol ~/.claude/skills/
 cp -r intake ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r pr-ci-watch ~/.claude/skills/
@@ -457,11 +555,13 @@ cp -r spec-writing ~/.claude/skills/
 cp -r strict-tdd ~/.claude/skills/
 cp -r synopsis ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
+cp -r tactical-action-plan-guide ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
+cp -r vortex-swift-package-manifest ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide tdd-interactive tdd-scaffold-review vortex-swift-package-manifest ~/.claude/skills/
 ```
 
 ## Usage
@@ -524,6 +624,20 @@ Or:
 Evaluate this architecture document to ensure it defines system boundaries without prescribing implementation details.
 ```
 
+### Bug Analysis
+
+Invoke when investigating a bug before implementing a fix.
+
+**Example prompt:**
+```
+Analyze this bug — trace the execution path and give me root-cause hypotheses.
+```
+
+Or:
+```
+/bug-analysis the session expires unexpectedly after 5 minutes
+```
+
 ### Check Domain
 
 Invoke to check domain availability. Runs on Haiku for fast, cheap lookups.
@@ -548,6 +662,20 @@ fix that caching thing
 ```
 
 The agent will pause, summarize its understanding, list assumptions, and ask you to confirm before proceeding.
+
+### Component Architecture Review
+
+Invoke when reviewing an implemented component for strategic architectural feedback.
+
+**Example prompt:**
+```
+Review the OrderProcessor component for architectural health.
+```
+
+Or:
+```
+Give me a principle-driven critique of this module's changeability and testability.
+```
 
 ### Composition Root
 
@@ -589,6 +717,34 @@ Review the Docker setup for this service before I push.
 Or:
 ```
 Fix the deploy failure — trace the full deploy path.
+```
+
+### Executable Specification Scaffolding
+
+Invoke when drafting executable specs for orchestrator or collaborator-heavy components.
+
+**Example prompt:**
+```
+Draft an executable spec for the payment orchestrator with explicit collaborator contracts.
+```
+
+Or:
+```
+Scaffold a spec for this pipeline showing responsibility boundaries and sequencing guarantees.
+```
+
+### Feature Spec Protocol
+
+Invoke when creating a feature specification through structured Q&A.
+
+**Example prompt:**
+```
+/feature-spec-protocol — I need a spec for the new notification system.
+```
+
+Or:
+```
+Let's build a feature spec one question at a time for the export feature.
 ```
 
 ### Documentation Drift Audit
@@ -788,6 +944,34 @@ Create a Package.swift using the static property pattern for [package descriptio
 Or:
 ```
 Refactor this Package.swift to use the clean static property pattern.
+```
+
+### Tactical Action Plan Guide
+
+Invoke when an approved review finding needs a step-by-step refactoring plan.
+
+**Example prompt:**
+```
+Create an action plan for finding #2 from the component review.
+```
+
+Or:
+```
+Turn this approved finding into an executable refactoring plan with verification gates.
+```
+
+### Vortex Swift Package Manifest
+
+Invoke when adding a feature module to a Swift package using the static-extension pattern.
+
+**Example prompt:**
+```
+Add a Profile feature module with Backend and Core targets.
+```
+
+Or:
+```
+Scaffold the Settings feature module under Sources/Feature/Settings.
 ```
 
 ### TDD Interactive
