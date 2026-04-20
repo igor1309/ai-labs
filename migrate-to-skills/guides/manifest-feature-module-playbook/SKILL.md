@@ -1,15 +1,36 @@
 ---
 name: manifest-feature-module-playbook
-description: Use when adding a new feature module to Package.swift in a Swift package that uses the static-extension manifest pattern.
+version: "1.0.0"
+author: Igor Malyarov
+description: Use when adding a new feature module to Package.swift in this repo's Swift package layout, where feature code lives under Sources/Feature and Tests/Feature and the manifest follows the static-extension pattern.
 ---
 
 # Feature Module Playbook
 
-This guide covers the steps to introduce a new feature module in a Swift package that follows the static-extension manifest pattern described below. Assume module sources live under `Sources/Feature/<FeatureName>` and tests under `Tests/Feature/<FeatureName>`—substitute `<FeatureName>` with the actual identifier when applying the process.
+Introduce a new feature module in a Swift package that uses this repo's static-extension manifest pattern.
 
-The playbook is designed for human-in-the-loop execution. The task requestor supplies the exact feature/module name, folder location, and the list of targets that must exist (Backend, Core, UI, etc.). The agent applies those inputs verbatim, does not infer additional targets, and does not author commits; a human developer remains accountable for reconciling the scaffolding with production code.
+Assume module sources live under `Sources/Feature/<FeatureName>` and tests under `Tests/Feature/<FeatureName>`. Substitute `<FeatureName>` with the exact identifier provided in the task.
+
+## When to Use
+
+Use this playbook when:
+
+- a new feature module must be added to `Package.swift`
+- the package already uses the static-extension manifest pattern
+- the task provides the exact feature name and required targets
+
+## Human-in-the-Loop Rule
+
+This playbook is intentionally human-in-the-loop.
+
+- The requestor supplies the exact feature or module name, folder location, and target set such as `Backend`, `Core`, or `UI`.
+- Apply those inputs verbatim.
+- Do not infer extra targets or broaden the scaffold beyond the request.
+- Do not treat the generated placeholders as production-ready code.
 
 The placeholder backend test added later intentionally fails via `XCTFail()`. That failure is the acceptance signal: it proves the manifest wiring is live and that the new module is discoverable by the test suite. The human developer must replace the stub implementation and remove the failing assertion before landing changes so CI returns to green.
+
+## Workflow
 
 - **Name Prep**  
   Use the provided feature identifier (e.g., `EU` or `EUFeature`) and reuse it consistently. Derive component names (`<FeatureName>Backend`, `<FeatureName>BackendTests`, etc.) from the placeholder. Folder names must mirror the manifest paths supplied in the task context.
@@ -104,8 +125,19 @@ The placeholder backend test added later intentionally fails via `XCTFail()`. Th
   ```
   These placeholders keep the manifest valid until real code ships.
 
+## Constraints
+
+- Preserve strict alphabetical ordering in all manifest sections.
+- Apply only the targets explicitly requested.
+- Keep the placeholder test failing until a human replaces the scaffold with real implementation.
+- Do not reinterpret the placeholder as a green CI-ready state.
+
+## Housekeeping
+
 - **Housekeeping**  
   Avoid unused imports, stick to ASCII, and follow repo commenting conventions. Confirm that `Package.swift` additions introduce no duplicate product entries.
+
+## Validation
 
 - **Validation**  
   Run `swift package describe` or `swift test` (after adjusting the placeholder test to succeed) to ensure the manifest parses. Replace the `DeleteMe` stubs with real implementation as the feature matures.
