@@ -15,7 +15,8 @@ on:
       - "_inbox/**"
       - "dev-skills/**"
       - "migrate-to-skills/**"
-      - "sandbox/**"
+      - "**/sandbox/**"
+      - "**/research/**"
       - "tools/**"
       - "gemini/**"
   pull_request:
@@ -27,7 +28,8 @@ on:
       - "_inbox/**"
       - "dev-skills/**"
       - "migrate-to-skills/**"
-      - "sandbox/**"
+      - "**/sandbox/**"
+      - "**/research/**"
       - "tools/**"
       - "gemini/**"
   workflow_dispatch:
