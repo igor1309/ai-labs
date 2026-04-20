@@ -18,6 +18,20 @@ ADR structure, review standards, and implementation plan requirements for Archit
 
 **Documentation:** See [adr-governance/SKILL.md](adr-governance/SKILL.md)
 
+### Architecture Doc Review
+
+Checklist for reviewing architecture and design docs in PRs.
+
+**Key features:**
+- 6 criteria: ambiguity, clarity, consistency, readability, best practices, drift resistance
+- Each criterion graded as pass/warn/fail
+- Requires exact `file:line` references and concrete fix text
+- Scoped to changed/added docs only
+
+**Use when:** Reviewing architecture docs, design docs, or ADRs in pull requests.
+
+**Documentation:** See [arch-doc-review/SKILL.md](arch-doc-review/SKILL.md)
+
 ### Architecture Reviewer
 
 Structured, detached evaluation of component or system architecture clarity and intent.
@@ -388,6 +402,7 @@ Then install the skills you want:
 
 ```
 /plugin install adr-governance
+/plugin install arch-doc-review
 /plugin install arch-reviewer
 /plugin install arch-spec-review
 /plugin install check-domain
@@ -420,6 +435,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 ```bash
 # Install individual skills
 cp -r adr-governance ~/.claude/skills/
+cp -r arch-doc-review ~/.claude/skills/
 cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
@@ -445,7 +461,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -464,6 +480,20 @@ Create an ADR for the new caching strategy.
 Or:
 ```
 Review ADR-007 for boundary clarity and cross-ADR consistency.
+```
+
+### Architecture Doc Review
+
+Invoke when reviewing architecture or design docs in a PR.
+
+**Example prompt:**
+```
+Review the architecture docs in this PR for ambiguity and drift resistance.
+```
+
+Or:
+```
+Check this design doc against the arch-doc-review checklist.
 ```
 
 ### Architecture Reviewer

@@ -129,4 +129,4 @@ When a spec pins a dependency with a floor version (`>=X.0.0`), the implementati
 
 ## Architecture Doc Review
 
-Use the `arch-doc-review` skill. See `.claude/skills/arch-doc-review/SKILL.md`.
+Use the `arch-doc-review` skill. See `dev-skills/public/arch-doc-review/SKILL.md`.

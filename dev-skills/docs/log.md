@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-20
 
+### Arch Doc Review v1.0.0 Published
+Moved from `.claude/skills/` to `dev-skills/public/`. Marketplace v1.29.0.
+
 ### Release Process, Spec Writing, Strict TDD v1.0.0 Published
 Moved all three from `.claude/skills/` to `dev-skills/public/`. Marketplace v1.28.0.
 
