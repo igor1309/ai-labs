@@ -80,6 +80,21 @@ Collaborative discussion mode for exploring ideas, designs, and implementation a
 
 **Documentation:** See [discuss/SKILL.md](discuss/SKILL.md)
 
+### Docker Discipline
+
+Docker compose, deploy fix, local verification, and cross-platform gotchas for Docker-producing units.
+
+**Key features:**
+- Bind-mount path awareness for worktrees and compose files
+- End-to-end deploy fix discipline — trace full deploy path before committing
+- Local Docker verification gates (build, run, health check)
+- Cross-platform gotchas (Swift on Linux: ByteBuffer ≠ Data)
+- Completion verification checklist
+
+**Use when:** Working with Dockerfiles, docker compose, deploy scripts, or Docker-producing units.
+
+**Documentation:** See [docker-discipline/SKILL.md](docker-discipline/SKILL.md)
+
 ### Documentation Drift Audit
 
 Verify that markdown documentation accurately describes the current codebase. Detects factual mismatches between docs and code — wrong names, signatures, paths, behaviors. Does not rewrite, reformat, or improve docs.
@@ -129,6 +144,21 @@ Comprehensive job search strategy toolkit for analyzing job postings, discoverin
 **Use when:** Strategizing job searches, preparing tailored applications, developing competitive advantages, or coaching candidates through the job hunt process.
 
 **Documentation:** See [job-search-strategy/SKILL.md](job-search-strategy/SKILL.md)
+
+### PR CI Watch
+
+Monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Prevents wasteful polling.
+
+**Key features:**
+- Single `gh pr checks --watch --fail-fast` command — never poll
+- Foreground by default, background on request
+- Auto-merge on green with `--merge --auto --delete-branch`
+- Failed check investigation via `gh run view --log-failed`
+- Race condition handling for "no checks reported" after push
+
+**Use when:** Waiting for CI checks, merging PRs on green, or investigating CI failures.
+
+**Documentation:** See [pr-ci-watch/SKILL.md](pr-ci-watch/SKILL.md)
 
 ### RPI Research
 
@@ -257,9 +287,11 @@ Then install the skills you want:
 /plugin install check-domain
 /plugin install cold-start-checkpoint
 /plugin install discuss
+/plugin install docker-discipline
 /plugin install doc-drift-audit
 /plugin install intake
 /plugin install job-search-strategy
+/plugin install pr-ci-watch
 /plugin install rpi-research
 /plugin install simulator-settings
 /plugin install skill-review
@@ -280,9 +312,11 @@ cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
 cp -r cold-start-checkpoint ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
+cp -r docker-discipline ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r intake ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
+cp -r pr-ci-watch ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r simulator-settings ~/.claude/skills/
 cp -r skill-review ~/.claude/skills/
@@ -292,7 +326,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -366,6 +400,20 @@ Or:
 Before we build — I want to think through the authentication redesign.
 ```
 
+### Docker Discipline
+
+Invoke when working with Dockerfiles, docker compose, deploy scripts, or Docker-producing units.
+
+**Example prompt:**
+```
+Review the Docker setup for this service before I push.
+```
+
+Or:
+```
+Fix the deploy failure — trace the full deploy path.
+```
+
 ### Documentation Drift Audit
 
 Invoke after refactors or when you suspect docs have fallen out of sync with code.
@@ -407,6 +455,20 @@ Analyze this job posting and help me develop a targeted application strategy.
 Or:
 ```
 Help me identify skill gaps and create a development plan for this role.
+```
+
+### PR CI Watch
+
+Invoke when waiting for CI checks or merging on green.
+
+**Example prompt:**
+```
+Watch the PR and merge when green.
+```
+
+Or:
+```
+Is CI done on PR #42?
 ```
 
 ### RPI Research
