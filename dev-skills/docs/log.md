@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-20
 
+### Release Process, Spec Writing, Strict TDD v1.0.0 Published
+Moved all three from `.claude/skills/` to `dev-skills/public/`. Marketplace v1.28.0.
+
 ### Composition Root, Process Gates, Protocol Owned by Client v1.0.0 Published
 Moved all three from `.claude/skills/` to `dev-skills/public/`. All self-contained. Marketplace v1.27.0.
 

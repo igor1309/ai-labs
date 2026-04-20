@@ -220,6 +220,22 @@ Protocol/interface ownership rule — the client owns the dependency shape, the 
 
 **Documentation:** See [protocol-owned-by-client/SKILL.md](protocol-owned-by-client/SKILL.md)
 
+### Release Process
+
+Per-unit release discipline — model, invariants, and verification gates.
+
+**Key features:**
+- Per-unit release model with independent versioning and tagging (`<basename>_v<version>`)
+- Release detection: both files changed and canonical version changed since last tag
+- Trunk-only releases, no release branches
+- Pre-push gate: build and test verification before tagging
+- Post-push verification: CI and release-unit jobs must pass
+- Docker unit support with `<version>` and `<git-sha>` image tags
+
+**Use when:** Performing a release, tagging, bumping versions, or working with release-unit infrastructure.
+
+**Documentation:** See [release-process/SKILL.md](release-process/SKILL.md)
+
 ### RPI Research
 
 Codebase investigation and findings report without solution proposals. No spec required, no auto-transition to planning.
@@ -270,6 +286,20 @@ Review and improve existing Claude Code skills for signal quality, description e
 
 **Documentation:** See [skill-review/SKILL.md](skill-review/SKILL.md)
 
+### Spec Writing
+
+Spec structure, required sections, and constraints for defining component contracts before implementation.
+
+**Key features:**
+- Required sections: Goal, Public interface, Behavior rules, Tests, Done criteria
+- No architecture preamble, future speculation, or implementation details
+- Specs describe *what* and *when it fails*, not *how*
+- Specs live at `<project>/docs/specs/` and move to `implemented/` after implementation
+
+**Use when:** Creating, reviewing, or working with specs.
+
+**Documentation:** See [spec-writing/SKILL.md](spec-writing/SKILL.md)
+
 ### Synopsis
 
 Produce a concise, behavior-focused description of any target — component, module, product, or entire codebase — for a reader with zero project context.
@@ -284,6 +314,21 @@ Produce a concise, behavior-focused description of any target — component, mod
 **Use when:** You need a concise description of something for outsiders — READMEs, marketplace listings, onboarding docs, or elevator pitches.
 
 **Documentation:** See [synopsis/SKILL.md](synopsis/SKILL.md)
+
+### Strict TDD
+
+Strict TDD mode — RED/GREEN/REFACTOR discipline with no-junk scope lock.
+
+**Key features:**
+- One test at a time, RED first
+- Compilation errors are not RED
+- Stop after RED, wait for user approval before GREEN
+- GREEN means minimum production code only for the current failing test
+- No-junk scope lock: no extra modules, defaults, scaffolding, or refactors unless required by the failing test
+
+**Use when:** The user explicitly asks for TDD, RED/GREEN, or equivalent.
+
+**Documentation:** See [strict-tdd/SKILL.md](strict-tdd/SKILL.md)
 
 ### Swift Package Manifest
 
@@ -356,9 +401,12 @@ Then install the skills you want:
 /plugin install pr-ci-watch
 /plugin install process-gates
 /plugin install protocol-owned-by-client
+/plugin install release-process
 /plugin install rpi-research
 /plugin install simulator-settings
 /plugin install skill-review
+/plugin install spec-writing
+/plugin install strict-tdd
 /plugin install synopsis
 /plugin install swift-package-manifest
 /plugin install tdd-interactive
@@ -385,16 +433,19 @@ cp -r job-search-strategy ~/.claude/skills/
 cp -r pr-ci-watch ~/.claude/skills/
 cp -r process-gates ~/.claude/skills/
 cp -r protocol-owned-by-client ~/.claude/skills/
+cp -r release-process ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r simulator-settings ~/.claude/skills/
 cp -r skill-review ~/.claude/skills/
+cp -r spec-writing ~/.claude/skills/
+cp -r strict-tdd ~/.claude/skills/
 cp -r synopsis ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r adr-governance arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -595,6 +646,20 @@ Or:
 Move this protocol to live with its client module.
 ```
 
+### Release Process
+
+Invoke when performing a release, tagging, or bumping versions.
+
+**Example prompt:**
+```
+Release nomos with a minor version bump.
+```
+
+Or:
+```
+Verify the release invariants before tagging.
+```
+
 ### RPI Research
 
 Invoke after describing a task to get research output before planning or coding.
@@ -639,6 +704,20 @@ Or:
 Is this skill effective? What should I change?
 ```
 
+### Spec Writing
+
+Invoke when creating or reviewing specs for component contracts.
+
+**Example prompt:**
+```
+Write a spec for the new caching layer.
+```
+
+Or:
+```
+Review this spec for completeness and testability.
+```
+
 ### Synopsis
 
 Invoke when you need a concise description of a component, module, or product for outsiders.
@@ -651,6 +730,20 @@ Invoke when you need a concise description of a component, module, or product fo
 Or:
 ```
 /synopsis this repo
+```
+
+### Strict TDD
+
+Invoke when you want strict RED/GREEN/REFACTOR discipline.
+
+**Example prompt:**
+```
+Implement this feature using strict TDD.
+```
+
+Or:
+```
+Let's do RED/GREEN for this test case.
 ```
 
 ### Swift Package Manifest

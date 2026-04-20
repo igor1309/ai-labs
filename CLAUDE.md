@@ -25,7 +25,7 @@
 
 ## Specs
 
-Use the `spec-writing` skill. See `.claude/skills/spec-writing/SKILL.md`.
+Use the `spec-writing` skill. See `dev-skills/public/spec-writing/SKILL.md`.
 
 ## README Components Table
 
@@ -46,7 +46,7 @@ The `## Components` table in `README.md` lists every component with its type and
 
 ## Strict TDD Mode
 
-Use the `strict-tdd` skill. See `.claude/skills/strict-tdd/SKILL.md`.
+Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
 
 ## Process Gates
 
@@ -61,7 +61,7 @@ Repo-specific details:
 
 ## Release Process
 
-Use the `release-process` skill. See `.claude/skills/release-process/SKILL.md`.
+Use the `release-process` skill. See `dev-skills/public/release-process/SKILL.md`.
 
 Repo-specific details:
 - Governed by ADR-000 through ADR-006 (`docs/adr/release/`).
