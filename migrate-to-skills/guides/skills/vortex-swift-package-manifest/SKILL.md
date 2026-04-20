@@ -1,5 +1,5 @@
 ---
-name: manifest-feature-module-playbook
+name: vortex-swift-package-manifest
 version: "1.0.0"
 author: Igor Malyarov
 description: Use when adding a new feature module to Package.swift in this repo's Swift package layout, where feature code lives under Sources/Feature and Tests/Feature and the manifest follows the static-extension pattern.
