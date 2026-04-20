@@ -1,92 +1,90 @@
 ---
 date: 2026-04-20
 model: gpt-5
-description: "Three-bucket strategy for merging legacy migrate-to-skills guides into dev-skills/public skills."
+description: "Current bucket assignment for the guides and staged skills that still live under migrate-to-skills/guides."
 ---
 
 # Three Buckets Merge Strategy
 
 ## Purpose
 
-This note captures the recommended three-bucket approach for consolidating legacy guides from `migrate-to-skills/guides/` into `dev-skills/public/`.
+This document reflects the current state of `migrate-to-skills/guides/`.
+
+It assigns the guides that still live there into three buckets:
+
+- direct retire-and-map
+- fold delta into a public skill
+- preserve or stage as a narrow specialized skill
 
 ## Bucket 1: Direct Retire and Map
 
 Use this bucket when overlap is very high and the public skill already owns the same trigger and output shape.
 
-- Retire the legacy guide.
-- Map callers, docs, or migration notes to the public skill.
-- Do this only when the public skill already covers the practical behavior, not just the general topic.
+### Current items in this bucket
 
-Typical threshold:
-
-- `85+` overlap
-
-Examples:
-
-- `arch-sketch-reviewer` -> `arch-reviewer`
-- `manifest-feature-module-playbook` -> `swift-package-manifest`
 - `tdd-flow` -> `tdd-interactive`
 - `tdd-spec-review` -> `tdd-scaffold-review`
+- `tdd-essentials` -> `strict-tdd` and `tdd-interactive`
 
-## Bucket 2: Fold the Delta into the Public Skill
+### Rule
 
-Use this bucket when there is clear overlap, but the legacy guide still contains practical details that would be lost in a direct retirement.
+- retire the legacy guide only after the destination skill absorbs any small missing behavioral delta
 
-- Keep the public skill as the long-term destination.
-- Extract only the missing behavioral signal from the legacy guide.
-- Remove duplicated wording, generic advice, and style-only text.
-- Retire the legacy guide only after the public skill has absorbed the useful delta.
+## Bucket 2: Fold the Delta into a Public Skill
 
-Typical threshold:
+Use this bucket when there is real overlap, but the guide still contains operational details that would be lost in a direct retirement.
 
-- `60-84` overlap
+### Current items in this bucket
 
-Examples:
+- `rx-tdd-essentials` -> likely `tdd-interactive`
+- `swift-xctest-testing-master-prompt` -> likely `tdd-scaffold-review`
+- `tdd-practitioner` -> likely `strict-tdd` or `tdd-interactive`
 
-- `arch-reviewer-sharp` -> enrich `arch-spec-review`
-- `feature-spec-protocol` -> enrich `spec-writing`
-- `executable-specification-scaffolding` -> enrich `spec-writing` and `tdd-scaffold-review`
-- `tactical-action-plan-guide` -> enrich `process-gates`
-- `rx-tdd-essentials` -> enrich `tdd-interactive`
+### Rule
 
-## Bucket 3: Preserve or Split Out a Narrow Skill
+- keep the public skill as the long-term owner
+- move only the delta that changes agent behavior
+- do not flatten domain-specific constraints into generic wording
 
-Use this bucket when public coverage is weak, the trigger does not really match an existing public skill, or the guide contains repo- or product-specific knowledge.
+## Bucket 3: Preserve or Stage as a Narrow Skill
 
-- Keep the legacy guide for now, or
-- Split out a new narrow skill that clearly owns the capability.
+Use this bucket when public coverage is weak, the trigger does not actually belong to an existing public skill, or the guide contains repo- or product-specific operating knowledge.
 
-Do not force-merge these into a public skill just because the topics sound adjacent.
+### Current items in this bucket
 
-Typical threshold:
-
-- `<60` overlap
-
-Examples:
-
-- `debugging-analyst`
-- `component-improvement-review-guideline`
+- `skills/bug-analysis`
+- `skills/component-arch-review`
+- `skills/executable-specification-scaffolding`
+- `skills/feature-spec-protocol`
+- `skills/tactical-action-plan-guide`
+- `skills/vortex-swift-package-manifest`
 - `vortex-seasoned-iOS-developer`
+
+### Notes
+
+- The items already under `migrate-to-skills/guides/skills/` are intentionally staged specialized skills, not temporary leftovers.
+- `vortex-seasoned-iOS-developer` should not be staged as-is. If it survives, it should become a narrow Vortex Swift review skill for convention compliance.
 
 ## Operating Rule
 
 Merge by capability, not by filename.
 
-For each legacy guide:
+For each guide:
 
-1. Confirm which public skill truly owns the trigger.
-2. Decide which bucket applies.
-3. Move only the content that changes agent behavior in a meaningful way.
-4. Retire the legacy guide only after the destination skill is behaviorally complete.
+1. Confirm which skill truly owns the trigger.
+2. Keep only the content that changes agent behavior in a meaningful way.
+3. Drop duplicated wording, persona fluff, and generic advice.
+4. Retire the source only when the destination is behaviorally complete.
 
-## Recommended Starting Point
+## Recommended Next Area
 
-Start with the TDD cluster first.
+The remaining TDD cluster is the clearest next area:
 
-It has the highest overlap density and the clearest consolidation path:
+- `tdd-flow`
+- `tdd-essentials`
+- `tdd-practitioner`
+- `tdd-spec-review`
+- `rx-tdd-essentials`
+- `swift-xctest-testing-master-prompt`
 
-- Keep `strict-tdd` for hard constraints.
-- Keep `tdd-interactive` for the reviewer-gated workflow.
-- Move reusable XCTest and Rx testing patterns into references or companion docs.
-- Retire overlapping legacy TDD guides after the missing details are absorbed.
+It still has the highest overlap density and the highest risk of accidental flattening if handled casually.
