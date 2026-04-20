@@ -1,6 +1,6 @@
 ---
 name: tactical-action-plan-guide
-description: Use when turning a strategic review finding into an ordered sequence of atomic, verifiable implementation steps.
+description: Use when an approved review finding needs a safe, dependency-aware implementation plan that keeps the codebase working after every step.
 ---
 
 # Tactical Action Plan Guideline
@@ -10,7 +10,7 @@ description: Use when turning a strategic review finding into an ordered sequenc
 -   **Role:** Refactoring Planner. The AI's role is to act as a meticulous, safety-conscious engineer, translating a strategic goal into a low-level, executable plan.
 -   **Audience:** AI coding agent. The output is a **structured plan**, not a human-readable document.
 -   **Goal:** To produce an unambiguous, step-by-step refactoring plan that is **safe, verifiable, and idempotent**.
--   **Core Philosophy:** The plan must break down a complex change into the smallest possible, independently verifiable steps. Each step must leave the codebase in a valid state (compiles and passes all existing tests).
+-   **Core Philosophy:** The plan must break down a complex change into the smallest possible, independently verifiable steps. Each step must leave the codebase in a valid state before the next step begins.
 
 ## 2. Operating Principles
 
@@ -19,11 +19,11 @@ description: Use when turning a strategic review finding into an ordered sequenc
 3.  **Safety First (The Green-to-Green Rule):** The codebase must remain in a valid, working state after every step. This is the **Green-to-Green Rule**. This rule is verified by an automated test suite. **Crucially, if the `preconditions` reveal no adequate test suite exists, the first objective of the plan *must* be to establish a high-level characterization test.** This test acts as a safety harness by capturing the component's current behavior, including any existing bugs. All subsequent refactoring steps must ensure this harness test continues to pass.
 4.  **Verifiability is Mandatory:** Every step **must** include a `verification` block. The agent cannot proceed to the next step until the current step's verification conditions are met.
 5.  **Dependency-Driven:** Steps must explicitly declare their dependencies to form a Directed Acyclic Graph (DAG). This ensures correct execution order.
-6.  **No Ambiguity:** The plan must use structured operations. Avoid free-text instructions like "refactor the class." Instead, specify precise actions like `RENAME_SYMBOL` or `ADD_METHOD_TO_INTERFACE`.
+6.  **No Ambiguity:** The plan must use structured operations. Avoid free-text instructions like "refactor the class." Instead, specify precise actions like `RENAME_SYMBOL` or `ADD_METHOD`.
 
 ## 3. Output Structure: Action Plan
 
-The AI agent must produce a **YAML or JSON file** representing the action plan. The following structure is mandatory.
+The AI agent must produce a **machine-readable action plan** in YAML or JSON. The following structure is mandatory.
 
 ```yaml
 # A machine-readable refactoring plan.
@@ -41,6 +41,9 @@ plan:
   steps:
     - step_id: 1
       description: "Create a characterization test to provide a safety harness."
+      operation:
+        type: "CREATE_FILE"
+        target: "Tests/OrderProcessorCharacterizationTests.*"
       # ... this step would only be present if no tests exist ...
       verification:
         - { type: "ALL_TESTS_PASS" }
@@ -50,7 +53,58 @@ plan:
 
 ## 4. Schemas for Operations & Verification
 
-(No changes in this section)
+Use a closed set of operation and verification shapes. Do not fall back to vague instructions.
+
+### Operation schema
+
+Each step should describe one primary operation. Use the smallest operation that keeps the plan unambiguous.
+
+```yaml
+operation:
+  type: "CREATE_FILE" | "ADD_TYPE" | "ADD_METHOD" | "ADD_PARAMETER" | "RENAME_SYMBOL" | "MOVE_CODE" | "UPDATE_CALL_SITE" | "UPDATE_COMPOSITION_ROOT" | "DELETE_OLD_CODE"
+  target: "Path, symbol, or module being changed"
+  details:
+    # Operation-specific structured fields only
+```
+
+Use these operation types as follows:
+
+-   `CREATE_FILE`: Introduce a new source or test file.
+-   `ADD_TYPE`: Add a protocol, interface, class, struct, or enum.
+-   `ADD_METHOD`: Add one method, function, or initializer signature.
+-   `ADD_PARAMETER`: Extend an existing API without changing unrelated behavior.
+-   `RENAME_SYMBOL`: Rename one type, method, property, or variable.
+-   `MOVE_CODE`: Relocate one responsibility from one type or file to another.
+-   `UPDATE_CALL_SITE`: Update one consumer or one cluster of equivalent call sites.
+-   `UPDATE_COMPOSITION_ROOT`: Change dependency wiring, registration, or factory setup.
+-   `DELETE_OLD_CODE`: Remove superseded code only after callers and tests are updated.
+
+### Verification schema
+
+Every step must include at least one verification entry.
+
+```yaml
+verification:
+  - type: "TEST_TARGET_PASSES" | "ALL_TESTS_PASS" | "BUILDS" | "LINTS" | "SYMBOL_EXISTS" | "SYMBOL_REMOVED" | "CALL_SITE_COUNT_MATCHES"
+    target: "Optional target, suite, symbol, or file"
+    notes: "Optional constraint or expected observation"
+```
+
+Use these verification types as follows:
+
+-   `TEST_TARGET_PASSES`: Run the smallest relevant suite that proves the step.
+-   `ALL_TESTS_PASS`: Use when the step changes shared contracts, wiring, or broad behavior.
+-   `BUILDS`: Verify the codebase compiles after signature or composition changes.
+-   `LINTS`: Verify formatting or static checks when the repo enforces them.
+-   `SYMBOL_EXISTS`: Confirm a new abstraction, method, or file is present.
+-   `SYMBOL_REMOVED`: Confirm obsolete code is gone only after replacement is live.
+-   `CALL_SITE_COUNT_MATCHES`: Confirm all intended consumers have been migrated.
+
+### Dependency rules
+
+-   `depends_on` may only reference earlier `step_id` values.
+-   A step with no prerequisites must omit `depends_on` or use an empty list.
+-   If a step cannot be safely verified in isolation, the plan is under-decomposed and must be split further.
 
 ## 5. Mental Models for Plan Generation (Refactoring Strategies)
 
