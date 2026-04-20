@@ -4,6 +4,20 @@ Custom skills for Claude Code, focusing on interactive development workflows and
 
 ## Skills
 
+### ADR Governance
+
+ADR structure, review standards, and implementation plan requirements for Architecture Decision Records.
+
+**Key features:**
+- 6-section progressive disclosure template (Executive Summary, Context, Decision, Rules/Invariants, Consequences, Non-Goals)
+- 4-dimension review standard (Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision Stability)
+- Implementation plan planner requirements with ADR traceability matrix
+- Self-contained — all reference documents bundled in `references/`
+
+**Use when:** Creating, reviewing, or implementing Architecture Decision Records.
+
+**Documentation:** See [adr-governance/SKILL.md](adr-governance/SKILL.md)
+
 ### Architecture Reviewer
 
 Structured, detached evaluation of component or system architecture clarity and intent.
@@ -282,6 +296,7 @@ Add this marketplace to Claude Code:
 Then install the skills you want:
 
 ```
+/plugin install adr-governance
 /plugin install arch-reviewer
 /plugin install arch-spec-review
 /plugin install check-domain
@@ -307,6 +322,7 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 
 ```bash
 # Install individual skills
+cp -r adr-governance ~/.claude/skills/
 cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
@@ -326,12 +342,26 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r adr-governance arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
 
 Claude Code will automatically load skills from the skills directory.
+
+### ADR Governance
+
+Invoke when creating, reviewing, or implementing Architecture Decision Records.
+
+**Example prompt:**
+```
+Create an ADR for the new caching strategy.
+```
+
+Or:
+```
+Review ADR-007 for boundary clarity and cross-ADR consistency.
+```
 
 ### Architecture Reviewer
 

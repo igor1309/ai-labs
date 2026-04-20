@@ -56,7 +56,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 Architecture Decision Records (ADRs) live in `docs/adr/`, organized by domain:
 
 - `docs/adr/release/` — Release architecture (ADR-000 through ADR-006): independent per-unit releases, config-driven discovery, tag-based detection, Docker image tagging.
-- `docs/adr/governance/` — ADR structure template, review standard, and implementation plan requirements.
+- ADR governance (structure template, review standard, implementation plan requirements) is bundled in the `adr-governance` skill (`dev-skills/public/adr-governance/references/`).
 
 ## Releases
 

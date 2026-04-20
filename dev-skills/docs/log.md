@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-20
 
+### ADR Governance v1.0.0 Published
+Moved from `.claude/skills/` to `dev-skills/public/` with governance docs bundled as `references/` for self-sufficiency. Marketplace v1.26.0.
+
 ### Docker Discipline v1.0.0 & PR CI Watch v1.0.0 Published
 Moved both skills from `.claude/skills/` to `dev-skills/public/`. Added version fields, updated marketplace to v1.25.0.
 
