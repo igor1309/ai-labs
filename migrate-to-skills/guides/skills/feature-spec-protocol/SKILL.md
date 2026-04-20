@@ -220,5 +220,3 @@ struct ToastConfig {
 - `ToastConfig` struct
 - Example usage snippet in README
 ```
-
----
