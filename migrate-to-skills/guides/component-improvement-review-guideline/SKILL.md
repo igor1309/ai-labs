@@ -1,79 +1,139 @@
 ---
 name: component-improvement-review-guideline
-description: Use when reviewing a component and you need a principle-driven critique focused on strategic improvements, root causes, and self-evaluation.
+version: "1.0.0"
+author: Igor Malyarov
+description: Use when reviewing an implemented component and you need a principle-driven critique focused on root causes, strategic impact, and verifiable improvement paths rather than a laundry list of code smells.
 ---
 
-# Component Improvement Review Guideline (A Principle-Driven Approach)
+# Component Improvement Review Guideline
 
-## 1. Core Philosophy & Role
-- **Role:** Synthetic Architect. The AI's role is not to lint, but to provide deep, principle-driven architectural feedback. The output is a **strategic report**.
-- **Goal:** Uncover the root causes of architectural decay and provide high-leverage recommendations. The analysis must be grounded in first principles like **SOLID, Testability, and Cohesion**.
-- **Guiding Mindset:** Prioritize strategic impact over trivial correctness. A single, profound insight into a component's core design flaw is more valuable than a list of twenty minor infractions.
+Review a component as an architectural health check. The goal is not to lint, rank minor smells, or recommend patterns for their own sake. The goal is to identify the few issues that most materially harm changeability, testability, cohesion, or long-term maintainability.
 
-## 2. Operating Principles (Mandatory Cognitive Steps)
+## When to Use
 
-1.  **Reason from First Principles:** Do not just identify a symptom (e.g., "a large class"). Trace it back to a violation of a core principle (e.g., "This class violates SRP by mixing data persistence, business logic, and API presentation, leading to high coupling and poor testability").
-2.  **Focus on Strategic Impact:** Evaluate every potential finding against the question: "Does this issue materially harm the component's ability to be changed, tested, understood, or scaled?" If the answer is no, deprioritize or discard it.
-3.  **Embrace Chain-of-Thought:** For each significant finding, explicitly reason from observation to principle to impact. Your internal monologue should become part of the justification.
-4.  **Mandate Self-Correction & Meta-Review:** Before finalizing the report, perform a mandatory self-critique. Ask:
-    *   "Is this report just a list of 'code smells,' or does it tell a coherent story about the component's health?"
-    *   "Have I fallen into the trap of recommending a pattern for its own sake?"
-    *   "If I could only make **one** recommendation to the team, what would it be and why?" This answer should be reflected in the report's priorities.
+Use this guideline when:
 
-## 3. Output Structure
-The AI agent must produce a **Markdown report** that reflects a strategic narrative.
+- reviewing an implemented component, service, module, or subsystem
+- the user wants strategic architectural feedback rather than line-by-line code review
+- the value lies in root-cause analysis and high-leverage recommendations
+
+Do not use this as a generic code review rubric. If the task is mainly about correctness, regressions, or small implementation defects, use a normal review flow instead.
+
+## Core Stance
+
+- Reason from first principles, not from smell labels alone.
+- Prioritize strategic impact over trivial correctness.
+- Prefer one deep, well-supported finding over twenty shallow ones.
+- Explain why the issue matters in practice: change cost, coupling, testability, reliability, or scaling pressure.
+- Be willing to say the evidence is insufficient.
+
+## Review Workflow
+
+### 1. Define scope and evidence
+
+Before judging the component, establish:
+
+- what was reviewed
+- what was out of scope
+- what evidence is available in code, tests, or surrounding documentation
+- what assumptions are necessary because evidence is missing
+
+### 2. Identify root causes, not just symptoms
+
+Do not stop at observations like:
+
+- large class
+- many dependencies
+- duplicated branching
+- hard-to-test logic
+
+Trace each serious issue back to a principle violation or architectural weakness such as:
+
+- mixed responsibilities
+- unstable boundaries
+- missing abstractions
+- policy coupled to framework details
+- hidden state or dependency seams that block testing
+
+### 3. Rank findings by strategic impact
+
+For every possible finding, ask:
+
+- Does this materially harm the component's ability to change?
+- Does this materially harm understanding or testability?
+- Does this create compounding complexity or maintenance risk?
+
+If not, deprioritize it or omit it.
+
+### 4. Show principled rationale explicitly
+
+For each significant finding, make the reasoning visible:
+
+- observation
+- principle violated
+- concrete impact
+- evidence
+- verifiable improvement path
+
+The report should read like an argument, not a slogan.
+
+### 5. Self-critique before finalizing
+
+Before finalizing, check:
+
+- Does the report tell a coherent story about the component's health?
+- Did I prioritize causes over symptoms?
+- Did I recommend a pattern because it solves a real problem, or because it sounds architecturally neat?
+- If I could keep only one recommendation, which one would matter most?
+
+## Output Format
+
+Produce a Markdown report with this structure:
 
 ```markdown
 # Component Review — <Component Name>
 
 ## Executive Synthesis
-<A concise, executive-level paragraph synthesizing the component's state. Tell a story about the central architectural challenge or risk. For example, "The component is brittle due to a conflation of business policy and external framework details. This entanglement makes testing difficult and future migrations costly. The key recommendations focus on establishing a clear architectural boundary to reclaim flexibility.">
+<A short paragraph explaining the central architectural challenge or risk.>
 
 ## Scope & Inputs
-- Reviewed: …
-- Out of scope: …
-- Assumptions Made: …
+- Reviewed: ...
+- Out of scope: ...
+- Assumptions made: ...
 
 ## Strategic Findings
 | Priority | Finding | Strategic Justification |
 |:---|:---|:---|
-| **Critical** | `[Title of Finding 1]` | This issue represents a fundamental architectural flaw that actively impedes business goals (e.g., velocity, stability, scalability). It is the root cause of multiple other symptoms. |
-| **High**     | `[Title of Finding 2]` | This issue creates significant friction, maintenance overhead, or risk. While not a foundational flaw, it has a high negative impact on developers or system reliability. |
-| **Medium**   | `[Title of Finding 3]` | An important violation of principles that, if unaddressed, will lead to future complexity and technical debt. |
+| Critical / High / Medium | ... | ... |
 
 ## Detailed Analysis
 
-### Finding 1: [Title]
-- **Observation:** A brief, neutral description of the code structure or behavior.
-- **Evidence:** Concrete code citations (file path + symbol + line numbers).
-- **Principled Rationale (Chain-of-Thought):** Explain *how* the observation violates a core principle (SOLID, Testability, etc.). This section should articulate your reasoning.
-- **Strategic Impact:** Describe the concrete, negative consequences of this problem (e.g., "This makes the business logic untestable without a database," or "Changing one policy requires redeploying three unrelated services").
-- **Actionable Path:** Recommend a *verifiable improvement*, not a vague suggestion. Focus on the desired end-state (e.g., "Refactor the `OrderProcessor` to depend on an `IOrderRepository` abstraction, isolating business logic from data access concerns.").
+### Finding: <Title>
+- Observation: ...
+- Evidence: <file path, symbol, lines where possible>
+- Principled Rationale: ...
+- Strategic Impact: ...
+- Actionable Path: <desired end state, not vague advice>
 
-*(Repeat this structure for each finding)*
-
-## Blocked (Insufficient Evidence)
-- … <List areas where analysis was impossible and specify what information is needed.>
-
+## Blocked
+- <Areas where analysis is limited by missing evidence>
 ```
 
-## 4. Guiding Principles & Mental Models (Heuristics for Thought)
+## Heuristics
 
-Use these questions to guide your analysis, not as a checklist:
+Use these lenses to guide the review:
 
--   **Responsibility & Purpose:** Is the component's purpose singular and clear? Or is it a "God Object" or a junk-drawer `Utils` module that attracts unrelated logic?
--   **Boundaries & Abstractions:** Does the core business logic know about external details (frameworks, databases, APIs)? Or is it protected by stable abstractions (DIP)? Are external libraries wrapped to prevent lock-in?
--   **Change & Extension:** How would a developer add a new, similar feature? Would they need to modify existing, tested code (violating OCP), or can they add new code? Look for `switch` statements or long `if/else if` chains that are prime candidates for the Strategy or State patterns.
--   **Testability & Seams:** Could I instantiate this component and its core logic in a unit test without a real database, network, or filesystem? Identify hard-coded dependencies (`new ...`), static method calls, and hidden state as primary blockers.
--   **Complexity & Simplicity:** Is the complexity essential (inherent to the problem domain) or accidental (a result of poor design)? Are patterns being used to solve a real problem, or are they adding unnecessary layers of abstraction?
+- **Responsibility and Purpose**: Is the component's purpose singular and clear?
+- **Boundaries and Abstractions**: Does core logic depend on stable abstractions or on external details?
+- **Change and Extension**: Does similar future work require modifying existing code or adding new code cleanly?
+- **Testability and Seams**: Can core behavior be exercised without real infrastructure?
+- **Complexity and Simplicity**: Is the complexity inherent to the domain or created by the design?
 
-## 5. Definition of Done (A Checklist for Reasoning)
+## Constraints
 
-Before concluding, verify that your process met these standards:
-
--   [ ] **Strategic Focus:** The report prioritizes the most impactful issues and avoids a long tail of minor findings.
--   [ ] **Principle-Grounded:** Every significant finding is explicitly tied back to a foundational software design principle.
--   [ ] **Causal Analysis:** The report distinguishes between symptoms and their root causes.
--   [ ] **Self-Critiqued:** You have performed the self-correction step and are confident the report is actionable and valuable.
--   [ ] **Evidence-Based:** All claims are supported by traceable evidence from the source code.
--   [ ] **No Speculation:** Blocked areas are clearly marked, and no assumptions are presented as facts.
+- Be evidence-based.
+- Do not speculate beyond what the code supports.
+- Do not produce a long tail of low-value findings.
+- Do not recommend patterns without tying them to a concrete problem.
+- Prefer end-state recommendations over vague advice.
+- Mark blocked areas explicitly instead of guessing.
