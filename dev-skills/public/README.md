@@ -77,6 +77,22 @@ Session-start checkpoint that pauses the agent on the first message of every new
 
 **Documentation:** See [cold-start-checkpoint/SKILL.md](cold-start-checkpoint/SKILL.md)
 
+### Composition Root
+
+Composition root wiring rules — interface-only boundaries, layered assembly, naming discipline, and wiring tests.
+
+**Key features:**
+- Core rule: wiring connects interfaces, must not implement business decisions
+- Naming discipline: name adapters by protocol, not by vendor/service
+- Layered assembly: wiring composer → adapter layer → final assembler
+- Stub/fake prohibitions for production paths
+- Wiring test patterns: payload/response flow assertions, dependency validation
+- Review checklist
+
+**Use when:** Creating or modifying composition root code, assemblers, wiring, or adapters.
+
+**Documentation:** See [composition-root/SKILL.md](composition-root/SKILL.md)
+
 ### Discuss
 
 Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
@@ -173,6 +189,36 @@ Monitor GitHub PR CI status, wait for checks to finish, merge on green, or inves
 **Use when:** Waiting for CI checks, merging PRs on green, or investigating CI failures.
 
 **Documentation:** See [pr-ci-watch/SKILL.md](pr-ci-watch/SKILL.md)
+
+### Process Gates
+
+Pre-commit, step closeout, pre-push, preflight, hard gates, and plan creation locks for implementation work.
+
+**Key features:**
+- Pre-commit scope check: verify every changed file ties to the current step
+- Step closeout protocol: self-review, test, summarize, commit, push
+- Pre-push/pre-PR blocking gate: log, plan, clean status, Docker, tests
+- Implementation preflight gate with worktree/branch verification
+- Hard gates: execution lock is mandatory, never advisory
+- Plan creation lock with explicit preflight fields
+
+**Use when:** Implementing, committing, pushing code, or creating implementation plans.
+
+**Documentation:** See [process-gates/SKILL.md](process-gates/SKILL.md)
+
+### Protocol Owned by Client
+
+Protocol/interface ownership rule — the client owns the dependency shape, the protocol lives with its client.
+
+**Key features:**
+- Client defines and owns the dependency shape (protocol/interface/data model)
+- Protocol MUST live in the same module as its client
+- Composition layer adapts concrete implementations to client-owned protocols
+- Modules must not know about CLI or each other
+
+**Use when:** Creating or modifying protocols, interfaces, or module boundaries.
+
+**Documentation:** See [protocol-owned-by-client/SKILL.md](protocol-owned-by-client/SKILL.md)
 
 ### RPI Research
 
@@ -301,12 +347,15 @@ Then install the skills you want:
 /plugin install arch-spec-review
 /plugin install check-domain
 /plugin install cold-start-checkpoint
+/plugin install composition-root
 /plugin install discuss
 /plugin install docker-discipline
 /plugin install doc-drift-audit
 /plugin install intake
 /plugin install job-search-strategy
 /plugin install pr-ci-watch
+/plugin install process-gates
+/plugin install protocol-owned-by-client
 /plugin install rpi-research
 /plugin install simulator-settings
 /plugin install skill-review
@@ -327,12 +376,15 @@ cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
 cp -r cold-start-checkpoint ~/.claude/skills/
+cp -r composition-root ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
 cp -r docker-discipline ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r intake ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r pr-ci-watch ~/.claude/skills/
+cp -r process-gates ~/.claude/skills/
+cp -r protocol-owned-by-client ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r simulator-settings ~/.claude/skills/
 cp -r skill-review ~/.claude/skills/
@@ -342,7 +394,7 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r adr-governance arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
@@ -415,6 +467,20 @@ fix that caching thing
 ```
 
 The agent will pause, summarize its understanding, list assumptions, and ask you to confirm before proceeding.
+
+### Composition Root
+
+Invoke when creating or modifying composition root code, assemblers, or wiring.
+
+**Example prompt:**
+```
+Wire the new service into the composition root.
+```
+
+Or:
+```
+Review this assembler for composition discipline violations.
+```
 
 ### Discuss
 
@@ -499,6 +565,34 @@ Watch the PR and merge when green.
 Or:
 ```
 Is CI done on PR #42?
+```
+
+### Process Gates
+
+Invoke when implementing, committing, or pushing code — enforces pre-commit, pre-push, and preflight gates.
+
+**Example prompt:**
+```
+Implement step 3 from the plan with full process gates.
+```
+
+Or:
+```
+Run the pre-push gate before I push this branch.
+```
+
+### Protocol Owned by Client
+
+Invoke when creating or modifying protocols, interfaces, or module boundaries.
+
+**Example prompt:**
+```
+Check if this protocol placement follows the client-ownership rule.
+```
+
+Or:
+```
+Move this protocol to live with its client module.
 ```
 
 ### RPI Research

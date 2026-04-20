@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-20
 
+### Composition Root, Process Gates, Protocol Owned by Client v1.0.0 Published
+Moved all three from `.claude/skills/` to `dev-skills/public/`. All self-contained. Marketplace v1.27.0.
+
 ### ADR Governance v1.0.0 Published
 Moved from `.claude/skills/` to `dev-skills/public/` with governance docs bundled as `references/` for self-sufficiency. Marketplace v1.26.0.
 

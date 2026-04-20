@@ -50,7 +50,7 @@ Use the `strict-tdd` skill. See `.claude/skills/strict-tdd/SKILL.md`.
 
 ## Process Gates
 
-Use the `process-gates` skill. See `.claude/skills/process-gates/SKILL.md`.
+Use the `process-gates` skill. See `dev-skills/public/process-gates/SKILL.md`.
 
 Repo-specific details:
 - Pre-commit/pre-push verification for Node/TypeScript: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
@@ -73,11 +73,11 @@ Repo-specific details:
 
 ## ADR Governance
 
-Use the `adr-governance` skill. See `.claude/skills/adr-governance/SKILL.md`.
+Use the `adr-governance` skill. See `dev-skills/public/adr-governance/SKILL.md`.
 
 ## "Protocol Owned by Client" Rule
 
-Use the `protocol-owned-by-client` skill. See `.claude/skills/protocol-owned-by-client/SKILL.md`.
+Use the `protocol-owned-by-client` skill. See `dev-skills/public/protocol-owned-by-client/SKILL.md`.
 
 ## Per-Project CI Isolation
 
@@ -110,11 +110,11 @@ Do NOT run `npm test` or `npx tsc` directly — always use the wrapper for Node/
 
 ## Composition Root
 
-Use the `composition-root` skill. See `.claude/skills/composition-root/SKILL.md`.
+Use the `composition-root` skill. See `dev-skills/public/composition-root/SKILL.md`.
 
 ## Docker Discipline
 
-Use the `docker-discipline` skill. See `.claude/skills/docker-discipline/SKILL.md`.
+Use the `docker-discipline` skill. See `dev-skills/public/docker-discipline/SKILL.md`.
 
 ## Infrastructure Topology
 

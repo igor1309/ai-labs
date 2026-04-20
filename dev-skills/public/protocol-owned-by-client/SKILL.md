@@ -1,5 +1,6 @@
 ---
 name: protocol-owned-by-client
+version: "1.0.0"
 description: Protocol/interface ownership rule — client owns the dependency shape, protocol lives with its client
 trigger: when creating or modifying protocols, interfaces, or module boundaries
 ---
