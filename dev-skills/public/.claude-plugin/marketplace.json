@@ -6,26 +6,36 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.24.0"
+    "version": "1.29.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, architecture review, documentation auditing, domain availability checking, cold-start checkpoint, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, and architecture sketch review",
+      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, strict TDD, architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, and architecture sketch review",
       "source": "./",
       "strict": false,
       "skills": [
+        "./adr-governance",
+        "./arch-doc-review",
         "./arch-reviewer",
         "./arch-spec-review",
         "./check-domain",
         "./cold-start-checkpoint",
+        "./composition-root",
         "./discuss",
         "./doc-drift-audit",
+        "./docker-discipline",
         "./intake",
         "./job-search-strategy",
+        "./pr-ci-watch",
+        "./process-gates",
+        "./protocol-owned-by-client",
+        "./release-process",
         "./rpi-research",
         "./simulator-settings",
         "./skill-review",
+        "./spec-writing",
+        "./strict-tdd",
         "./swift-package-manifest",
         "./synopsis",
         "./tdd-interactive",

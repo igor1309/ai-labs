@@ -25,7 +25,7 @@
 
 ## Specs
 
-Use the `spec-writing` skill. See `.claude/skills/spec-writing/SKILL.md`.
+Use the `spec-writing` skill. See `dev-skills/public/spec-writing/SKILL.md`.
 
 ## README Components Table
 
@@ -46,11 +46,11 @@ The `## Components` table in `README.md` lists every component with its type and
 
 ## Strict TDD Mode
 
-Use the `strict-tdd` skill. See `.claude/skills/strict-tdd/SKILL.md`.
+Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
 
 ## Process Gates
 
-Use the `process-gates` skill. See `.claude/skills/process-gates/SKILL.md`.
+Use the `process-gates` skill. See `dev-skills/public/process-gates/SKILL.md`.
 
 Repo-specific details:
 - Pre-commit/pre-push verification for Node/TypeScript: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
@@ -61,7 +61,7 @@ Repo-specific details:
 
 ## Release Process
 
-Use the `release-process` skill. See `.claude/skills/release-process/SKILL.md`.
+Use the `release-process` skill. See `dev-skills/public/release-process/SKILL.md`.
 
 Repo-specific details:
 - Governed by ADR-000 through ADR-006 (`docs/adr/release/`).
@@ -73,11 +73,11 @@ Repo-specific details:
 
 ## ADR Governance
 
-Use the `adr-governance` skill. See `.claude/skills/adr-governance/SKILL.md`.
+Use the `adr-governance` skill. See `dev-skills/public/adr-governance/SKILL.md`.
 
 ## "Protocol Owned by Client" Rule
 
-Use the `protocol-owned-by-client` skill. See `.claude/skills/protocol-owned-by-client/SKILL.md`.
+Use the `protocol-owned-by-client` skill. See `dev-skills/public/protocol-owned-by-client/SKILL.md`.
 
 ## Per-Project CI Isolation
 
@@ -110,11 +110,11 @@ Do NOT run `npm test` or `npx tsc` directly — always use the wrapper for Node/
 
 ## Composition Root
 
-Use the `composition-root` skill. See `.claude/skills/composition-root/SKILL.md`.
+Use the `composition-root` skill. See `dev-skills/public/composition-root/SKILL.md`.
 
 ## Docker Discipline
 
-Use the `docker-discipline` skill. See `.claude/skills/docker-discipline/SKILL.md`.
+Use the `docker-discipline` skill. See `dev-skills/public/docker-discipline/SKILL.md`.
 
 ## Infrastructure Topology
 
@@ -129,4 +129,4 @@ When a spec pins a dependency with a floor version (`>=X.0.0`), the implementati
 
 ## Architecture Doc Review
 
-Use the `arch-doc-review` skill. See `.claude/skills/arch-doc-review/SKILL.md`.
+Use the `arch-doc-review` skill. See `dev-skills/public/arch-doc-review/SKILL.md`.

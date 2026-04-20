@@ -1,14 +1,3 @@
----
-date: 2026-02-27
-model: gpt-5.2
-description: >
-This structure:
-	•	Prevents cognitive overload
-	•	Allows skim reading
-	•	Keeps enforceable parts separate from reasoning
-	•	Matches your deterministic style
----
-	
 # ADR Structure Template (Progressive Disclosure)
 
 Each ADR should follow exactly this structure:

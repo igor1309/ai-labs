@@ -4,6 +4,34 @@ Custom skills for Claude Code, focusing on interactive development workflows and
 
 ## Skills
 
+### ADR Governance
+
+ADR structure, review standards, and implementation plan requirements for Architecture Decision Records.
+
+**Key features:**
+- 6-section progressive disclosure template (Executive Summary, Context, Decision, Rules/Invariants, Consequences, Non-Goals)
+- 4-dimension review standard (Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision Stability)
+- Implementation plan planner requirements with ADR traceability matrix
+- Self-contained — all reference documents bundled in `references/`
+
+**Use when:** Creating, reviewing, or implementing Architecture Decision Records.
+
+**Documentation:** See [adr-governance/SKILL.md](adr-governance/SKILL.md)
+
+### Architecture Doc Review
+
+Checklist for reviewing architecture and design docs in PRs.
+
+**Key features:**
+- 6 criteria: ambiguity, clarity, consistency, readability, best practices, drift resistance
+- Each criterion graded as pass/warn/fail
+- Requires exact `file:line` references and concrete fix text
+- Scoped to changed/added docs only
+
+**Use when:** Reviewing architecture docs, design docs, or ADRs in pull requests.
+
+**Documentation:** See [arch-doc-review/SKILL.md](arch-doc-review/SKILL.md)
+
 ### Architecture Reviewer
 
 Structured, detached evaluation of component or system architecture clarity and intent.
@@ -63,6 +91,22 @@ Session-start checkpoint that pauses the agent on the first message of every new
 
 **Documentation:** See [cold-start-checkpoint/SKILL.md](cold-start-checkpoint/SKILL.md)
 
+### Composition Root
+
+Composition root wiring rules — interface-only boundaries, layered assembly, naming discipline, and wiring tests.
+
+**Key features:**
+- Core rule: wiring connects interfaces, must not implement business decisions
+- Naming discipline: name adapters by protocol, not by vendor/service
+- Layered assembly: wiring composer → adapter layer → final assembler
+- Stub/fake prohibitions for production paths
+- Wiring test patterns: payload/response flow assertions, dependency validation
+- Review checklist
+
+**Use when:** Creating or modifying composition root code, assemblers, wiring, or adapters.
+
+**Documentation:** See [composition-root/SKILL.md](composition-root/SKILL.md)
+
 ### Discuss
 
 Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
@@ -79,6 +123,21 @@ Collaborative discussion mode for exploring ideas, designs, and implementation a
 **Use when:** You want to explore, reason about, or align on a problem before building. Say "let's discuss", "let's think about", "before we build", or similar.
 
 **Documentation:** See [discuss/SKILL.md](discuss/SKILL.md)
+
+### Docker Discipline
+
+Docker compose, deploy fix, local verification, and cross-platform gotchas for Docker-producing units.
+
+**Key features:**
+- Bind-mount path awareness for worktrees and compose files
+- End-to-end deploy fix discipline — trace full deploy path before committing
+- Local Docker verification gates (build, run, health check)
+- Cross-platform gotchas (Swift on Linux: ByteBuffer ≠ Data)
+- Completion verification checklist
+
+**Use when:** Working with Dockerfiles, docker compose, deploy scripts, or Docker-producing units.
+
+**Documentation:** See [docker-discipline/SKILL.md](docker-discipline/SKILL.md)
 
 ### Documentation Drift Audit
 
@@ -130,6 +189,67 @@ Comprehensive job search strategy toolkit for analyzing job postings, discoverin
 
 **Documentation:** See [job-search-strategy/SKILL.md](job-search-strategy/SKILL.md)
 
+### PR CI Watch
+
+Monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Prevents wasteful polling.
+
+**Key features:**
+- Single `gh pr checks --watch --fail-fast` command — never poll
+- Foreground by default, background on request
+- Auto-merge on green with `--merge --auto --delete-branch`
+- Failed check investigation via `gh run view --log-failed`
+- Race condition handling for "no checks reported" after push
+
+**Use when:** Waiting for CI checks, merging PRs on green, or investigating CI failures.
+
+**Documentation:** See [pr-ci-watch/SKILL.md](pr-ci-watch/SKILL.md)
+
+### Process Gates
+
+Pre-commit, step closeout, pre-push, preflight, hard gates, and plan creation locks for implementation work.
+
+**Key features:**
+- Pre-commit scope check: verify every changed file ties to the current step
+- Step closeout protocol: self-review, test, summarize, commit, push
+- Pre-push/pre-PR blocking gate: log, plan, clean status, Docker, tests
+- Implementation preflight gate with worktree/branch verification
+- Hard gates: execution lock is mandatory, never advisory
+- Plan creation lock with explicit preflight fields
+
+**Use when:** Implementing, committing, pushing code, or creating implementation plans.
+
+**Documentation:** See [process-gates/SKILL.md](process-gates/SKILL.md)
+
+### Protocol Owned by Client
+
+Protocol/interface ownership rule — the client owns the dependency shape, the protocol lives with its client.
+
+**Key features:**
+- Client defines and owns the dependency shape (protocol/interface/data model)
+- Protocol MUST live in the same module as its client
+- Composition layer adapts concrete implementations to client-owned protocols
+- Modules must not know about CLI or each other
+
+**Use when:** Creating or modifying protocols, interfaces, or module boundaries.
+
+**Documentation:** See [protocol-owned-by-client/SKILL.md](protocol-owned-by-client/SKILL.md)
+
+### Release Process
+
+Per-unit release discipline — model, invariants, and verification gates.
+
+**Key features:**
+- Per-unit release model with independent versioning and tagging (`<basename>_v<version>`)
+- Release detection: both files changed and canonical version changed since last tag
+- Trunk-only releases, no release branches
+- Pre-push gate: build and test verification before tagging
+- Post-push verification: CI and release-unit jobs must pass
+- Docker unit support with `<version>` and `<git-sha>` image tags
+
+**Use when:** Performing a release, tagging, bumping versions, or working with release-unit infrastructure.
+
+**Documentation:** See [release-process/SKILL.md](release-process/SKILL.md)
+
 ### RPI Research
 
 Codebase investigation and findings report without solution proposals. No spec required, no auto-transition to planning.
@@ -180,6 +300,20 @@ Review and improve existing Claude Code skills for signal quality, description e
 
 **Documentation:** See [skill-review/SKILL.md](skill-review/SKILL.md)
 
+### Spec Writing
+
+Spec structure, required sections, and constraints for defining component contracts before implementation.
+
+**Key features:**
+- Required sections: Goal, Public interface, Behavior rules, Tests, Done criteria
+- No architecture preamble, future speculation, or implementation details
+- Specs describe *what* and *when it fails*, not *how*
+- Specs live at `<project>/docs/specs/` and move to `implemented/` after implementation
+
+**Use when:** Creating, reviewing, or working with specs.
+
+**Documentation:** See [spec-writing/SKILL.md](spec-writing/SKILL.md)
+
 ### Synopsis
 
 Produce a concise, behavior-focused description of any target — component, module, product, or entire codebase — for a reader with zero project context.
@@ -194,6 +328,21 @@ Produce a concise, behavior-focused description of any target — component, mod
 **Use when:** You need a concise description of something for outsiders — READMEs, marketplace listings, onboarding docs, or elevator pitches.
 
 **Documentation:** See [synopsis/SKILL.md](synopsis/SKILL.md)
+
+### Strict TDD
+
+Strict TDD mode — RED/GREEN/REFACTOR discipline with no-junk scope lock.
+
+**Key features:**
+- One test at a time, RED first
+- Compilation errors are not RED
+- Stop after RED, wait for user approval before GREEN
+- GREEN means minimum production code only for the current failing test
+- No-junk scope lock: no extra modules, defaults, scaffolding, or refactors unless required by the failing test
+
+**Use when:** The user explicitly asks for TDD, RED/GREEN, or equivalent.
+
+**Documentation:** See [strict-tdd/SKILL.md](strict-tdd/SKILL.md)
 
 ### Swift Package Manifest
 
@@ -252,17 +401,27 @@ Add this marketplace to Claude Code:
 Then install the skills you want:
 
 ```
+/plugin install adr-governance
+/plugin install arch-doc-review
 /plugin install arch-reviewer
 /plugin install arch-spec-review
 /plugin install check-domain
 /plugin install cold-start-checkpoint
+/plugin install composition-root
 /plugin install discuss
+/plugin install docker-discipline
 /plugin install doc-drift-audit
 /plugin install intake
 /plugin install job-search-strategy
+/plugin install pr-ci-watch
+/plugin install process-gates
+/plugin install protocol-owned-by-client
+/plugin install release-process
 /plugin install rpi-research
 /plugin install simulator-settings
 /plugin install skill-review
+/plugin install spec-writing
+/plugin install strict-tdd
 /plugin install synopsis
 /plugin install swift-package-manifest
 /plugin install tdd-interactive
@@ -275,29 +434,67 @@ Alternatively, copy any skill folder to your Claude Code skills directory:
 
 ```bash
 # Install individual skills
+cp -r adr-governance ~/.claude/skills/
+cp -r arch-doc-review ~/.claude/skills/
 cp -r arch-reviewer ~/.claude/skills/
 cp -r arch-spec-review ~/.claude/skills/
 cp -r check-domain ~/.claude/skills/
 cp -r cold-start-checkpoint ~/.claude/skills/
+cp -r composition-root ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
+cp -r docker-discipline ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r intake ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
+cp -r pr-ci-watch ~/.claude/skills/
+cp -r process-gates ~/.claude/skills/
+cp -r protocol-owned-by-client ~/.claude/skills/
+cp -r release-process ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r simulator-settings ~/.claude/skills/
 cp -r skill-review ~/.claude/skills/
+cp -r spec-writing ~/.claude/skills/
+cp -r strict-tdd ~/.claude/skills/
 cp -r synopsis ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 
 # Or install all skills at once
-cp -r arch-reviewer arch-spec-review check-domain cold-start-checkpoint discuss doc-drift-audit intake job-search-strategy rpi-research simulator-settings skill-review synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
+cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review check-domain cold-start-checkpoint composition-root discuss docker-discipline doc-drift-audit intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tdd-interactive tdd-scaffold-review ~/.claude/skills/
 ```
 
 ## Usage
 
 Claude Code will automatically load skills from the skills directory.
+
+### ADR Governance
+
+Invoke when creating, reviewing, or implementing Architecture Decision Records.
+
+**Example prompt:**
+```
+Create an ADR for the new caching strategy.
+```
+
+Or:
+```
+Review ADR-007 for boundary clarity and cross-ADR consistency.
+```
+
+### Architecture Doc Review
+
+Invoke when reviewing architecture or design docs in a PR.
+
+**Example prompt:**
+```
+Review the architecture docs in this PR for ambiguity and drift resistance.
+```
+
+Or:
+```
+Check this design doc against the arch-doc-review checklist.
+```
 
 ### Architecture Reviewer
 
@@ -352,6 +549,20 @@ fix that caching thing
 
 The agent will pause, summarize its understanding, list assumptions, and ask you to confirm before proceeding.
 
+### Composition Root
+
+Invoke when creating or modifying composition root code, assemblers, or wiring.
+
+**Example prompt:**
+```
+Wire the new service into the composition root.
+```
+
+Or:
+```
+Review this assembler for composition discipline violations.
+```
+
 ### Discuss
 
 Invoke when you want to explore an idea or align on an approach before building.
@@ -364,6 +575,20 @@ Let's discuss how to add caching to the API layer.
 Or:
 ```
 Before we build — I want to think through the authentication redesign.
+```
+
+### Docker Discipline
+
+Invoke when working with Dockerfiles, docker compose, deploy scripts, or Docker-producing units.
+
+**Example prompt:**
+```
+Review the Docker setup for this service before I push.
+```
+
+Or:
+```
+Fix the deploy failure — trace the full deploy path.
 ```
 
 ### Documentation Drift Audit
@@ -407,6 +632,62 @@ Analyze this job posting and help me develop a targeted application strategy.
 Or:
 ```
 Help me identify skill gaps and create a development plan for this role.
+```
+
+### PR CI Watch
+
+Invoke when waiting for CI checks or merging on green.
+
+**Example prompt:**
+```
+Watch the PR and merge when green.
+```
+
+Or:
+```
+Is CI done on PR #42?
+```
+
+### Process Gates
+
+Invoke when implementing, committing, or pushing code — enforces pre-commit, pre-push, and preflight gates.
+
+**Example prompt:**
+```
+Implement step 3 from the plan with full process gates.
+```
+
+Or:
+```
+Run the pre-push gate before I push this branch.
+```
+
+### Protocol Owned by Client
+
+Invoke when creating or modifying protocols, interfaces, or module boundaries.
+
+**Example prompt:**
+```
+Check if this protocol placement follows the client-ownership rule.
+```
+
+Or:
+```
+Move this protocol to live with its client module.
+```
+
+### Release Process
+
+Invoke when performing a release, tagging, or bumping versions.
+
+**Example prompt:**
+```
+Release nomos with a minor version bump.
+```
+
+Or:
+```
+Verify the release invariants before tagging.
 ```
 
 ### RPI Research
@@ -453,6 +734,20 @@ Or:
 Is this skill effective? What should I change?
 ```
 
+### Spec Writing
+
+Invoke when creating or reviewing specs for component contracts.
+
+**Example prompt:**
+```
+Write a spec for the new caching layer.
+```
+
+Or:
+```
+Review this spec for completeness and testability.
+```
+
 ### Synopsis
 
 Invoke when you need a concise description of a component, module, or product for outsiders.
@@ -465,6 +760,20 @@ Invoke when you need a concise description of a component, module, or product fo
 Or:
 ```
 /synopsis this repo
+```
+
+### Strict TDD
+
+Invoke when you want strict RED/GREEN/REFACTOR discipline.
+
+**Example prompt:**
+```
+Implement this feature using strict TDD.
+```
+
+Or:
+```
+Let's do RED/GREEN for this test case.
 ```
 
 ### Swift Package Manifest

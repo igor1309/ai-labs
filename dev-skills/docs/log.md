@@ -4,6 +4,23 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-20
+
+### Arch Doc Review v1.0.0 Published
+Moved from `.claude/skills/` to `dev-skills/public/`. Marketplace v1.29.0.
+
+### Release Process, Spec Writing, Strict TDD v1.0.0 Published
+Moved all three from `.claude/skills/` to `dev-skills/public/`. Marketplace v1.28.0.
+
+### Composition Root, Process Gates, Protocol Owned by Client v1.0.0 Published
+Moved all three from `.claude/skills/` to `dev-skills/public/`. All self-contained. Marketplace v1.27.0.
+
+### ADR Governance v1.0.0 Published
+Moved from `.claude/skills/` to `dev-skills/public/` with governance docs bundled as `references/` for self-sufficiency. Marketplace v1.26.0.
+
+### Docker Discipline v1.0.0 & PR CI Watch v1.0.0 Published
+Moved both skills from `.claude/skills/` to `dev-skills/public/`. Added version fields, updated marketplace to v1.25.0.
+
 ## 2026-04-19
 
 ### README Realigned Under `ai-labs`
