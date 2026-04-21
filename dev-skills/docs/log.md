@@ -4,6 +4,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-21
+
+### Five Skills Migrated from ios.config
+Moved debug-print, ios-simulator-install, rest-contract-review, test-runner, and testing-schedulers from iFora ios.config/.claude/ to dev-skills/public/. Stripped Vortex-specific references where needed. Marketplace v1.31.0.
+
 ## 2026-04-20
 
 ### Six New Skills Published

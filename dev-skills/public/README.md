@@ -136,6 +136,20 @@ Composition root wiring rules — interface-only boundaries, layered assembly, n
 
 **Documentation:** See [composition-root/SKILL.md](composition-root/SKILL.md)
 
+### Debug Print
+
+Isolate bugs by adding `debugPrint` logging only — no behavior changes, no refactoring.
+
+**Key features:**
+- Targeted `debugPrint` statements with unique filterable prefixes (e.g., `[DBG1]`)
+- Branch-point logging to disambiguate control flow
+- Mandatory build verification after adding prints
+- Wait-for-console-output workflow: add prints → user runs app → analyze output
+
+**Use when:** Tracing a bug through runtime behavior. Invoke with the bug description as argument.
+
+**Documentation:** See [debug-print/SKILL.md](debug-print/SKILL.md)
+
 ### Discuss
 
 Collaborative discussion mode for exploring ideas, designs, and implementation approaches before taking action. Prevents premature implementation and ensures alignment before any code is written.
@@ -232,6 +246,21 @@ Task intake for implementation and bug-fix assignments. The agent reads all refe
 
 **Documentation:** See [intake/SKILL.md](intake/SKILL.md)
 
+### iOS Simulator Install
+
+Install and launch iOS apps on simulator from Xcode build output for manual testing or deep link validation.
+
+**Key features:**
+- Auto-detects DerivedData path from Xcode preferences
+- Finds most recent matching .app by bundle identifier
+- Boots simulator automatically if not running
+- Optional deep link launch support
+- Reads Bundle ID and Simulator UUID from `.claude/AGENTS.md`
+
+**Use when:** Running or launching the app on simulator for manual testing (not for xcodebuild test).
+
+**Documentation:** See [ios-simulator-install/SKILL.md](ios-simulator-install/SKILL.md)
+
 ### Job Search Strategy
 
 Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies.
@@ -307,6 +336,21 @@ Per-unit release discipline — model, invariants, and verification gates.
 **Use when:** Performing a release, tagging, bumping versions, or working with release-unit infrastructure.
 
 **Documentation:** See [release-process/SKILL.md](release-process/SKILL.md)
+
+### REST Contract Review
+
+Systematic review of REST API contracts (OpenAPI/Swagger specs, JSON schemas) for quality and cross-endpoint consistency.
+
+**Key features:**
+- 5-category checklist: naming, types, response structure, documentation, versioning
+- Cyrillic look-alike detection in key names
+- Contract invariant verification
+- Cross-endpoint consistency checks
+- Structured output: Accept / Accept with changes / Needs rework
+
+**Use when:** Reviewing API spec PRs, validating JSON schema changes, auditing contracts for breaking changes, or investigating decoding failures.
+
+**Documentation:** See [rest-contract-review/SKILL.md](rest-contract-review/SKILL.md)
 
 ### RPI Research
 
@@ -476,6 +520,36 @@ Evaluates test name scaffolds for TDD readiness by determining if each test name
 
 **Documentation:** See [tdd-scaffold-review/SKILL.md](tdd-scaffold-review/SKILL.md)
 
+### Test Runner
+
+xcodebuild test execution worker that runs exactly one test command and returns structured results.
+
+**Key features:**
+- Single xcodebuild command execution — no retries, no debugging
+- Structured output schema with test list, counts, and pass/fail status
+- Reads project/scheme/destination defaults from `.claude/AGENTS.md`
+- Supports full scheme, specific classes, or specific test methods
+- Runs on Sonnet for fast, cheap execution
+
+**Use when:** Running xcodebuild tests. Main agent should delegate test execution to this worker.
+
+**Documentation:** See [test-runner/SKILL.md](test-runner/SKILL.md)
+
+### Testing Schedulers
+
+Control virtual time for testing delays, debouncing, and background operations with RxSwift test schedulers.
+
+**Key features:**
+- Set `.immediate` for schedulers you don't care about
+- Omit the parameter for the scheduler you want to control
+- Manual time advancement with `advance(by:)`
+- Assert before AND after time advancement
+- Common mistake patterns documented
+
+**Use when:** Testing time-dependent behavior — delays, debouncing, background operations, or any behavior requiring virtual time control.
+
+**Documentation:** See [testing-schedulers/SKILL.md](testing-schedulers/SKILL.md)
+
 ## Installation
 
 ### Via Claude Code
@@ -498,17 +572,20 @@ Then install the skills you want:
 /plugin install cold-start-checkpoint
 /plugin install component-arch-review
 /plugin install composition-root
+/plugin install debug-print
 /plugin install discuss
 /plugin install docker-discipline
 /plugin install doc-drift-audit
 /plugin install executable-spec-scaffolding
 /plugin install feature-spec-protocol
 /plugin install intake
+/plugin install ios-simulator-install
 /plugin install job-search-strategy
 /plugin install pr-ci-watch
 /plugin install process-gates
 /plugin install protocol-owned-by-client
 /plugin install release-process
+/plugin install rest-contract-review
 /plugin install rpi-research
 /plugin install simulator-settings
 /plugin install skill-review
@@ -519,6 +596,8 @@ Then install the skills you want:
 /plugin install tactical-action-plan-guide
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
+/plugin install test-runner
+/plugin install testing-schedulers
 /plugin install vortex-swift-package-manifest
 ```
 
@@ -537,17 +616,20 @@ cp -r check-domain ~/.claude/skills/
 cp -r cold-start-checkpoint ~/.claude/skills/
 cp -r component-arch-review ~/.claude/skills/
 cp -r composition-root ~/.claude/skills/
+cp -r debug-print ~/.claude/skills/
 cp -r discuss ~/.claude/skills/
 cp -r docker-discipline ~/.claude/skills/
 cp -r doc-drift-audit ~/.claude/skills/
 cp -r executable-spec-scaffolding ~/.claude/skills/
 cp -r feature-spec-protocol ~/.claude/skills/
 cp -r intake ~/.claude/skills/
+cp -r ios-simulator-install ~/.claude/skills/
 cp -r job-search-strategy ~/.claude/skills/
 cp -r pr-ci-watch ~/.claude/skills/
 cp -r process-gates ~/.claude/skills/
 cp -r protocol-owned-by-client ~/.claude/skills/
 cp -r release-process ~/.claude/skills/
+cp -r rest-contract-review ~/.claude/skills/
 cp -r rpi-research ~/.claude/skills/
 cp -r simulator-settings ~/.claude/skills/
 cp -r skill-review ~/.claude/skills/
@@ -558,10 +640,12 @@ cp -r swift-package-manifest ~/.claude/skills/
 cp -r tactical-action-plan-guide ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
+cp -r test-runner ~/.claude/skills/
+cp -r testing-schedulers ~/.claude/skills/
 cp -r vortex-swift-package-manifest ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide tdd-interactive tdd-scaffold-review vortex-swift-package-manifest ~/.claude/skills/
+cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root debug-print discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake ios-simulator-install job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rest-contract-review rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide tdd-interactive tdd-scaffold-review test-runner testing-schedulers vortex-swift-package-manifest ~/.claude/skills/
 ```
 
 ## Usage
@@ -691,6 +775,15 @@ Or:
 Review this assembler for composition discipline violations.
 ```
 
+### Debug Print
+
+Invoke to trace a bug with debug logging only.
+
+**Example prompt:**
+```
+/debug-print the payment confirmation screen shows stale data after retry
+```
+
 ### Discuss
 
 Invoke when you want to explore an idea or align on an approach before building.
@@ -776,6 +869,20 @@ Your task is to implement PR #42 from sandbox/feature-plan.md
 /intake
 ```
 
+### iOS Simulator Install
+
+Invoke to install and launch an app on the iOS simulator.
+
+**Example prompt:**
+```
+Run the app on the simulator.
+```
+
+Or:
+```
+Launch the app with deep link myapp://settings/profile
+```
+
 ### Job Search Strategy
 
 Invoke when analyzing job postings or developing application strategies.
@@ -844,6 +951,20 @@ Release nomos with a minor version bump.
 Or:
 ```
 Verify the release invariants before tagging.
+```
+
+### REST Contract Review
+
+Invoke when reviewing REST API contracts for quality and consistency.
+
+**Example prompt:**
+```
+Review this OpenAPI spec for naming consistency and breaking changes.
+```
+
+Or:
+```
+Check this JSON schema against our existing API conventions.
 ```
 
 ### RPI Research
@@ -992,6 +1113,24 @@ I am the reviewer and will approve at each checkpoint.
 ### TDD Scaffold Review
 
 Invoke when you have test names and need to verify they're ready for TDD implementation.
+
+### Test Runner
+
+Delegate test execution to this worker agent.
+
+**Example prompt:**
+```
+Run the tests for scheme MyAppTests, class LoginViewModelTests.
+```
+
+### Testing Schedulers
+
+Invoke when testing time-dependent behavior with RxSwift schedulers.
+
+**Example prompt:**
+```
+I need to test a 300ms debounce on the search input — use the testing-schedulers pattern.
+```
 
 **Example prompt:**
 ```
