@@ -273,9 +273,11 @@ Optional later additions:
 ## Partial-run semantics
 
 A collection run may complete partially.
-Coverage and ingest metadata must therefore reflect per-source or per-slice outcomes, not only overall run status.
+Run status and coverage status are distinct.
 
-Coverage is advanced only for source/timeframe slices that completed successfully.
+Coverage and ingest metadata must reflect per-session outcomes, not only overall run status.
+Coverage advances only for canonical sessions that were successfully collected and persisted.
+Failed sessions must not be marked as covered.
 A partially failed run must not claim blanket coverage for the requested range.
 
 ## Boundary summary
@@ -292,8 +294,7 @@ A partially failed run must not claim blanket coverage for the requested range.
 
 ## Open questions
 
-1. What are the failure and partial-run semantics for canonical-session replacement and coverage advancement when refresh selects sessions in a requested timeframe?
-2. What minimum retained evidence must the store preserve so the digest engine can perform promoted-session deep inspection without reading raw sources directly?
-3. Should collection planning understand repo/task boundaries, or only time windows at first?
-4. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
-5. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
+1. What minimum retained evidence must the store preserve so the digest engine can perform promoted-session deep inspection without reading raw sources directly?
+2. Should collection planning understand repo/task boundaries, or only time windows at first?
+3. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
+4. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
