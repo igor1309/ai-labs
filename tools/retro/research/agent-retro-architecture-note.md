@@ -46,7 +46,7 @@ Digesting is judgment-oriented.
 
 Responsibility:
 - read a specific source format
-- expose source records in a normalized intermediate form
+- expose source records in a canonical source-shaped form
 - isolate source-specific parsing and path logic
 
 Examples:
@@ -62,7 +62,7 @@ Source adapters should not decide collection windows, digest scoring, or report 
 Responsibility:
 - execute an explicit **collection plan**
 - invoke relevant source adapters for the planned scope
-- normalize records
+- normalize canonical source records into index-normalized records
 - persist normalized results into the local index/store
 - emit collection metadata
 
@@ -81,10 +81,11 @@ Responsibility:
 - persist normalized session evidence
 - support query/filter/search for digest generation
 - support coverage-planning queries for collection planning
-- optionally retain raw evidence cache alongside normalized records
+- retain sufficient evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
 
 The index/store is the source of truth for digest generation.
 The digest engine should read from the index, not from source files directly.
+The store must therefore preserve sufficient evidence for promoted-session deep inspection without requiring raw-source reads during digest generation.
 
 Minimum stored categories:
 - sessions
@@ -98,6 +99,7 @@ Minimum stored categories:
 Responsibility:
 - read existing coverage from the index/store
 - evaluate a requested collection timeframe
+- validate and resolve requested source scope
 - detect gaps and overlap
 - resolve effective collection mode
 - produce an explicit **collection plan**
@@ -107,6 +109,7 @@ The collection planner is the sole owner of collection decision logic.
 That includes:
 - overlap handling
 - gap filling
+- source-scope resolution from invocation/config input
 - effective mode resolution
 - definition of the indexed slice that a refresh is allowed to replace
 
@@ -116,6 +119,7 @@ The collection planner should be policy-heavy and testable as decision logic.
 
 Responsibility:
 - invoke collection manually or on schedule
+- supply requested source scope and timeframe from invocation/config
 - obtain a collection plan from the planner
 - pass that plan to the collector
 - coordinate run lifecycle
@@ -143,7 +147,10 @@ The digest engine should be deterministic relative to:
 - configured scoring/promotion policy
 - requested digest window
 
-## 7. Promotion / scoring policy
+## 7. Digest promotion / scoring
+
+This is a distinct digest-engine responsibility with separable configuration and heuristics.
+It is not a peer top-level component.
 
 Responsibility:
 - define which sessions are promoted for deeper inspection
@@ -157,8 +164,6 @@ Signals may include:
 - apparent stuck loops
 - bad outcomes
 - important repo/task context
-
-This can be implemented as a subsystem of the digest engine, but it is a distinct responsibility and should be modeled as such.
 
 ## 8. Report writer
 
@@ -208,6 +213,9 @@ That plan should answer:
 - effective collection mode
 - replacement slice for refresh, when applicable
 
+Requested source scope must come from invocation or configuration.
+The planner validates and resolves that input into concrete plan targets; it does not invent source scope implicitly.
+
 ## Default collection must be non-destructive
 
 Repeated collection must not silently rewrite already covered ranges.
@@ -246,21 +254,124 @@ Optional later additions:
 - raw artifact hash
 - ingest batch id
 
+## Partial-run semantics
+
+A collection run may complete partially.
+Coverage and ingest metadata must therefore reflect per-source or per-slice outcomes, not only overall run status.
+
+Coverage is advanced only for source/timeframe slices that completed successfully.
+A partially failed run must not claim blanket coverage for the requested range.
+
 ## Boundary summary
 
-- **source adapters** know source formats
-- **collection planner** decides what to collect and what may be replaced
-- **collection runner/scheduler** coordinates invocation and run lifecycle
-- **collector** executes the collection plan
+- **source adapters** know source formats and emit canonical source-shaped records
+- **collection planner** decides what to collect, resolves source scope, and defines what may be replaced
+- **collection runner/scheduler** supplies invocation/config inputs and coordinates run lifecycle
+- **collector** executes the collection plan and normalizes records into index form
 - **index/store** persists and serves indexed evidence plus coverage metadata
 - **digest engine** analyzes indexed evidence
+- **digest promotion/scoring** remains an internal digest-engine responsibility with separable configuration
 - **report writer** formats output
 - **runners/schedulers** handle invocation timing
 
 ## Open questions
 
-1. What is the exact storage-level replacement unit for refresh: timeframe slice, session, ingest batch, or another indexed segment?
-2. Should raw evidence be retained permanently, or only long enough to support parser evolution and debugging?
+1. What is the exact storage-level replacement unit for refresh: timeframe slice, session, ingest batch, or another indexed segment? What are the failure and partial-run semantics for replacement and coverage advancement at that unit?
+2. What minimum retained evidence must the store preserve so the digest engine can perform promoted-session deep inspection without reading raw sources directly?
 3. Should collection planning understand repo/task boundaries, or only time windows at first?
 4. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
 5. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
+
+## Adversarial review
+
+## 1. What is now strong
+
+- collector is explicitly plan-driven
+- collection decision logic is separated into the planner
+- execution orchestration is separated into the runner/scheduler
+- collection is explicitly timeframe-bounded
+- default behavior is non-destructive
+- digest generation reads from the index only
+
+These are the most load-bearing architectural boundaries in the note.
+
+## 2. Main remaining risks
+
+### A. Refresh semantics are still only partially resolved
+
+The note now states that refresh must act on a defined replacement slice determined by the plan.
+That closes the dangerous ambiguity of "rewrite whatever overlaps."
+
+What remains open is the exact storage-level unit of that replacement.
+This is acceptable at this stage, but it must not stay vague into implementation.
+
+### B. Store shape is intentionally unresolved
+
+"Searchable local index/store" is still a placeholder for an eventual concrete storage model.
+That is acceptable in an architecture note, but the eventual choice must satisfy two classes of queries:
+- digest/search queries over indexed evidence
+- coverage-planning queries for collection safety and overlap handling
+
+A future store choice that is convenient for one and weak for the other would break the design.
+
+### C. Digest artifacts share a home with indexed evidence
+
+This is acceptable for an MVP, but it should be treated as namespace separation inside one store, not as one undifferentiated data pool.
+Otherwise evidence semantics and artifact semantics may get muddy.
+
+## 3. Boundary checks
+
+### A. Collector boundary
+
+The collector boundary is now correct.
+It executes a plan and does not decide whether recollection is justified.
+This is an important lock.
+
+### B. Planner boundary
+
+The planner now correctly owns overlap handling, gap detection, mode resolution, and replacement-slice definition.
+That is architectural policy and belongs here.
+
+### C. Runner/scheduler boundary
+
+The runner/scheduler now correctly owns operational invocation, lifecycle coordination, and persistence of run results.
+It should remain free of hidden collection policy.
+
+### D. Digest boundary
+
+The digest engine reading only from the index is correct.
+That preserves reproducibility, allows fixture-driven testing, and prevents accidental coupling to raw source formats.
+
+### E. Report writer boundary
+
+The report writer remains a formatting/output concern only.
+It must not accrete analytical decisions.
+
+## 4. Constraints worth locking now
+
+These should be treated as hard constraints, not soft guidance:
+
+1. collector is plan-driven
+2. planner is sole owner of collection decision logic
+3. collection is timeframe-bounded
+4. default collection mode is non-destructive
+5. refresh requires explicit replacement semantics
+6. executing the same plan is idempotent unless rewrite is explicitly authorized
+7. digest generation reads from the index only
+
+## 5. Overall judgment
+
+The note is sound as a pre-ADR / architecture-note artifact.
+It now has the right boundaries for:
+- collection policy
+- collection execution
+- evidence storage
+- digest analysis
+- report rendering
+
+The main intentionally unresolved points are:
+- exact storage model
+- exact refresh replacement unit
+- minimum retained-evidence requirements for index-only deep inspection
+
+Those are appropriate open questions for this stage.
