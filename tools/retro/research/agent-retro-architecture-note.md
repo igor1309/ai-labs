@@ -42,7 +42,7 @@ Digesting is judgment-oriented.
 
 ## Components
 
-## 1. Source adapters
+### 1. Source adapters
 
 Responsibility:
 - read a specific source format
@@ -60,7 +60,11 @@ Source adapters should not decide collection windows, digest scoring, or report 
 Normalization preserves only the source-specific metadata required for provenance, recollection, and ingestion diagnostics.
 The index should not retain source-native fields that materially shape query or digest behavior in the first version.
 
-## 2. Collector
+Two shapes appear across the pipeline and are distinct:
+- *canonical source record* — adapter output; source-shaped but normalized for provenance and diagnostics
+- *canonical session* — the index-side grouping a source record maps into; the unit of selection and replacement during collection
+
+### 2. Collector
 
 Responsibility:
 - execute an explicit **collection plan**
@@ -78,14 +82,13 @@ The collector should not:
 - derive collection scope on its own
 - perform digest analysis
 
-## 3. Local index/store
+### 3. Local index/store
 
 Responsibility:
 - persist normalized session evidence
 - support query/filter/search for digest generation
 - support coverage-planning queries for collection planning
 - retain sufficient evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
-- retained session-level evidence
 
 The index/store is the source of truth for digest generation.
 The digest engine should read from the index, not from source files directly.
@@ -98,7 +101,7 @@ Minimum stored categories:
 - collection coverage metadata
 - generated digest artifacts
 
-## 4. Collection planner
+### 4. Collection planner
 
 Responsibility:
 - read existing coverage from the index/store
@@ -122,7 +125,7 @@ That includes:
 
 The collection planner should be policy-heavy and testable as decision logic.
 
-## 5. Collection runner / scheduler
+### 5. Collection runner / scheduler
 
 Responsibility:
 - invoke collection manually or on schedule
@@ -135,7 +138,7 @@ Responsibility:
 The collection runner/scheduler is operational orchestration.
 It should not own hidden collection policy.
 
-## 6. Digest engine
+### 6. Digest engine
 
 Responsibility:
 - query the index for a requested window or selection
@@ -154,7 +157,7 @@ The digest engine should be deterministic relative to:
 - configured scoring/promotion policy
 - requested digest window
 
-## 7. Digest promotion / scoring
+### 7. Digest promotion / scoring
 
 This is a distinct digest-engine responsibility with separable configuration and heuristics.
 It is not a peer top-level component.
@@ -170,9 +173,9 @@ Signals may include:
 - repeated retries or reversals
 - apparent stuck loops
 - bad outcomes
-- important repo/task context
+- important repo/task context (scoring only; planner remains repo/task-agnostic per §4)
 
-## 8. Report writer
+### 8. Report writer
 
 Responsibility:
 - render digest output to terminal
@@ -181,7 +184,7 @@ Responsibility:
 
 The report writer does not perform collection or analysis.
 
-## 9. Digest runner / scheduler
+### 9. Digest runner / scheduler
 
 Responsibility:
 - invoke digest generation manually or on schedule
@@ -191,7 +194,7 @@ Responsibility:
 
 ## Key constraints
 
-## Time-bounded collection
+### Time-bounded collection
 
 Every collection run must have an explicit target timeframe.
 There should be no unbounded full-history scan by default.
@@ -203,19 +206,19 @@ Why this matters:
 - testability
 - avoidance of accidental large reingestion
 
-## Collector is plan-driven
+### Collector is plan-driven
 
 The collector must accept an explicit collection plan.
 The collector must not derive collection scope or rewrite policy itself.
 
-## Collection planning is coverage-aware
+### Collection planning is coverage-aware
 
 Before invoking the collector, the collection planner must read coverage metadata from the index/store and produce an explicit collection plan.
 
 That plan should answer:
 - target source(s)
 - target timeframe
-- session-selection rule
+- session-selection rule (see §"Collection selects whole sessions")
 - uncovered gaps
 - overlap with existing coverage
 - effective collection mode
@@ -224,7 +227,7 @@ That plan should answer:
 Requested source scope must come from invocation or configuration.
 The planner validates and resolves that input into concrete plan targets; it does not invent source scope implicitly.
 
-## Collection selects whole sessions
+### Collection selects whole sessions
 
 A collection request is timeframe-bounded, but collection operates on whole canonical sessions.
 Sessions are not sliced by timeframe for collection or refresh semantics.
@@ -232,19 +235,19 @@ Sessions are not sliced by timeframe for collection or refresh semantics.
 The planner selects all sessions whose own timeframes overlap the requested collection timeframe.
 Strict containment is not the default policy.
 
-## Canonical-session replacement
+### Canonical-session replacement
 
 Refresh replaces indexed data at canonical-session granularity for the sessions selected by the plan.
 Collection windows define selection scope; they do not define arbitrary replacement slices inside sessions.
 
 This requires stable source session identity or a deterministic canonical mapping from source session identity into indexed canonical sessions.
 
-## Default collection must be non-destructive
+### Default collection must be non-destructive
 
 Repeated collection must not silently rewrite already covered ranges.
 Default behavior should prefer gap-filling rather than overlap replacement.
 
-## Explicit collection modes
+### Explicit collection modes
 
 A simple and meaningful model is:
 - **fill** — collect whole sessions within the requested timeframe selection policy only where indexed coverage is missing
@@ -256,11 +259,11 @@ Default mode should be **fill**.
 Recollection of already covered time ranges must require an explicit non-default mode.
 Refresh must operate on an explicit replacement scope defined by the plan, not on implicit overlap alone.
 
-## Idempotent execution of the same plan
+### Idempotent execution of the same plan
 
 Executing the same collection plan multiple times must not mutate indexed data unless the plan explicitly authorizes rewrite behavior.
 
-## Coverage metadata
+### Coverage metadata
 
 The index/store should maintain coverage metadata sufficient for planning and safety.
 
@@ -277,7 +280,7 @@ Optional later additions:
 - raw artifact hash
 - ingest batch id
 
-## Partial-run semantics
+### Partial-run semantics
 
 A collection run may complete partially.
 Coverage and ingest metadata must therefore reflect per-session outcomes, not only overall run status.
