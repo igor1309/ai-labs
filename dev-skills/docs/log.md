@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-21
 
+### Skills repo made public
+Removed LICENSE and README.md from public folder. Made igor1309/skills public for Web Agent compatibility. Added project-level `.claude/settings.json` to enable the plugin. Marketplace v1.32.1.
+
 ### Moved vortex-swift-package-manifest to ios.config
 Removed from dev-skills/public/ — Vortex-specific, belongs in repo. Marketplace v1.32.0.
 
