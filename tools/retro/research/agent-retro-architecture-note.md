@@ -88,11 +88,18 @@ Responsibility:
 - persist normalized session evidence
 - support query/filter/search for digest generation
 - support coverage-planning queries for collection planning
-- retain sufficient evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
+- retain normalized session-level evidence sufficient to support deep inspection of promoted sessions
 
 The index/store is the source of truth for digest generation.
 The digest engine should read from the index, not from source files directly.
-The store must therefore preserve sufficient evidence for promoted-session deep inspection without requiring raw-source reads during digest generation.
+
+Retained evidence should be concrete enough for deep inspection without raw-source reads, such as:
+- session trajectory
+- notable retries/failures
+- tool activity
+- supporting excerpts
+
+Full raw retention is not a hard requirement.
 
 Minimum stored categories:
 - sessions
@@ -143,8 +150,8 @@ It should not own hidden collection policy.
 
 Responsibility:
 - query the index for a requested window or selection
-- compute promotion/scoring
-- perform deeper inspection on promoted sessions
+- compute promotion/scoring (first pass)
+- perform deep inspection on promoted sessions (second pass)
 - produce structured digest data
 
 Digest output should include:
@@ -158,7 +165,9 @@ Scoring and promotion should be deterministic relative to:
 - configured scoring/promotion policy
 - requested digest window
 
-Deep inspection of promoted sessions is expected to involve non-deterministic analysis (for example LLM reasoning).
+Deep inspection is an internal second-pass stage of the digest engine.
+It runs only on sessions promoted by the first pass, and it reads from the index/store — never from raw source files.
+Deep inspection is expected to involve non-deterministic analysis (for example LLM reasoning).
 Reproducibility there is bounded by model version and prompt/input fingerprint rather than strict determinism.
 
 ### 7. Digest promotion / scoring
@@ -298,6 +307,14 @@ Coverage is advanced only for canonical sessions that were successfully collecte
 Failed sessions must not be marked as covered.
 Timeframe is not the coverage truth; a partially failed run must not claim blanket coverage for the requested range.
 
+### Bounded deep-inspection cost
+
+Deep inspection cost must be bounded by configurable limits on:
+- number of promoted sessions inspected per digest run
+- evidence consumed per session
+
+This prevents the digest engine from becoming unbounded when many sessions promote in the same digest window.
+
 ## Boundary summary
 
 - **source adapters** know source formats and emit canonical source-shaped records
@@ -313,18 +330,3 @@ Timeframe is not the coverage truth; a partially failed run must not claim blank
 ## Duplicate digest suppression
 
 Duplicate digest suppression should be based on the requested window together with digest-engine version and configuration fingerprint, rather than requested window alone.
-
-## Open questions
-
-These are deliberately unresolved at the research stage and should be closed in the ADR or the spec that follows.
-
-### Deep inspection mechanism and evidence needs
-
-Deep inspection of promoted sessions is the core value-add of the pipeline per the research note, but this architecture note treats it as a single bullet under §6.
-Its shape determines what the index/store must retain — which is why §3's "retain sufficient evidence" language is currently circular.
-
-Open:
-- what inputs does deep inspection consume beyond the baseline scoring pass?
-- does the index/store retain raw transcripts, normalized excerpts, or both?
-- is deep inspection a pluggable analysis stage, or a fixed procedure with configurable prompts?
-- how is deep-inspection cost bounded when many sessions promote in the same digest window?
