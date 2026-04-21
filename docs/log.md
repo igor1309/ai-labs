@@ -2,6 +2,7 @@
 
 ## 2026-04-21
 
+- dev-skills: made igor1309/skills public for Web Agent plugin access. Added project-level `.claude/settings.json`. Marketplace v1.32.1.
 - Removed `paths-ignore` from `ci.yml` — the `report` required check was never created on doc-only PRs, blocking auto-merge. Path filtering now handled entirely by `dorny/paths-filter` inside the workflow.
 - agent-retro architecture note: reinstated Open questions section with five architecture-level gaps surfaced during review — digest-engine behavior on uncovered sessions, canonical-session mapping ownership, digest artifact lifecycle, report-writer invocation boundary, and digest window shape vs session-based model. All are structural/contract questions deferred to the follow-up ADR/spec.
 - agent-retro architecture note: added a Boundary summary bullet for deep inspection — "a bounded second-pass stage within the digest engine, applied only to promoted sessions and using retained evidence from the index/store" — consolidating the mechanism, scope, input-source, and cost-bound properties decided in prior patches.
