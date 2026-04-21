@@ -42,6 +42,10 @@ Digesting is judgment-oriented.
 
 ## Components
 
+Two shapes recur across the pipeline and are distinct:
+- *canonical source record* — adapter output; source-shaped but normalized for provenance and diagnostics
+- *canonical session* — the index-side grouping a source record maps into; the unit of selection and replacement during collection
+
 ### 1. Source adapters
 
 Responsibility:
@@ -59,10 +63,6 @@ Source adapters should not decide collection windows, digest scoring, or report 
 
 Normalization preserves only the source-specific metadata required for provenance, recollection, and ingestion diagnostics.
 The index should not retain source-native fields that materially shape query or digest behavior in the first version.
-
-Two shapes appear across the pipeline and are distinct:
-- *canonical source record* — adapter output; source-shaped but normalized for provenance and diagnostics
-- *canonical session* — the index-side grouping a source record maps into; the unit of selection and replacement during collection
 
 ### 2. Collector
 
@@ -152,10 +152,13 @@ Digest output should include:
 - proposed skill/rule deltas
 - selected scores such as drift, waste, friction, leverage
 
-The digest engine should be deterministic relative to:
+Scoring and promotion should be deterministic relative to:
 - indexed evidence
 - configured scoring/promotion policy
 - requested digest window
+
+Deep inspection of promoted sessions is expected to involve non-deterministic analysis (for example LLM reasoning).
+Reproducibility there is bounded by model version and prompt/input fingerprint rather than strict determinism.
 
 ### 7. Digest promotion / scoring
 
@@ -173,7 +176,7 @@ Signals may include:
 - repeated retries or reversals
 - apparent stuck loops
 - bad outcomes
-- important repo/task context (scoring only; planner remains repo/task-agnostic per §4)
+- important repo/task context
 
 ### 8. Report writer
 
