@@ -255,6 +255,11 @@ Collection windows define selection scope; they do not define arbitrary replacem
 
 This requires stable source session identity or a deterministic canonical mapping from source session identity into indexed canonical sessions.
 
+### Stable canonical-session identity
+
+Canonical-session collection, refresh, and coverage all require stable session identity.
+The exact derivation of that identity is deferred to the ADR or spec that follows.
+
 ### Default collection must be non-destructive
 
 Repeated collection must not silently rewrite already covered canonical sessions.

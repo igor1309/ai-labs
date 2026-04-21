@@ -2,6 +2,8 @@
 
 ## 2026-04-21
 
+- agent-retro architecture note: added "Stable canonical-session identity" key constraint — canonical-session collection, refresh, and coverage all require stable session identity; the exact derivation is deferred to the follow-up ADR/spec.
+
 - agent-retro architecture note: clarified deep inspection as an internal second-pass stage of the digest engine that runs only on promoted sessions and reads from the index/store (never raw sources). Tightened retained-evidence wording to concrete categories (session trajectory, notable retries/failures, tool activity, supporting excerpts) with full raw retention not required. Added a bounded deep-inspection cost constraint (configurable limits on promoted sessions inspected per run and evidence per session). Removed the remaining open question, and with it the Open questions section.
 
 - agent-retro architecture note: shifted coverage from timeframe-shaped to session-shaped. Coverage metadata is now tracked per canonical session (source id, canonical session identity, collection outcome, collected at, collection mode, collector/schema version); requested timeframes retained only as run/request metadata. Planner wording now explicitly separates timeframe (selection input) from coverage (per-canonical-session truth). Resolved the open question on coverage representation.
