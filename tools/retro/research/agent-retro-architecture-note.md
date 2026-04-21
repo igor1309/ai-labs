@@ -329,6 +329,7 @@ This prevents the digest engine from becoming unbounded when many sessions promo
 - **index/store** persists and serves indexed evidence plus coverage metadata
 - **digest engine** analyzes indexed evidence
 - **digest promotion/scoring** remains an internal digest-engine responsibility with separable configuration
+- **deep inspection** is a bounded second-pass stage within the digest engine, applied only to promoted sessions and using retained evidence from the index/store
 - **report writer** formats output
 - **runners/schedulers** handle invocation timing
 
