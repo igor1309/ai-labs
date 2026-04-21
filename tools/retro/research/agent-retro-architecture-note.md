@@ -114,6 +114,7 @@ Responsibility:
 The collection planner is the sole owner of collection decision logic.
 
 Collection planning operates on time windows, source scope, and existing coverage only.
+Timeframes are used to select candidate sessions; coverage is then checked per canonical session.
 Repo and task boundaries are out of scope for the first version.
 
 That includes:
@@ -220,10 +221,10 @@ Before invoking the collector, the collection planner must read coverage metadat
 
 That plan should answer:
 - target source(s)
-- target timeframe
+- target timeframe (used as selection input)
 - session-selection rule (see §"Collection selects whole sessions")
-- uncovered gaps
-- overlap with existing coverage
+- canonical sessions not yet covered
+- canonical sessions already covered
 - effective collection mode
 - replacement scope for refresh, when applicable
 
@@ -247,19 +248,19 @@ This requires stable source session identity or a deterministic canonical mappin
 
 ### Default collection must be non-destructive
 
-Repeated collection must not silently rewrite already covered ranges.
-Default behavior should prefer gap-filling rather than overlap replacement.
+Repeated collection must not silently rewrite already covered canonical sessions.
+Default behavior should prefer filling uncovered sessions rather than replacing covered ones.
 
 ### Explicit collection modes
 
 A simple and meaningful model is:
-- **fill** — collect whole sessions within the requested timeframe selection policy only where indexed coverage is missing
+- **fill** — collect whole sessions within the requested timeframe selection policy only where indexed per-session coverage is missing
 - **refresh** — recollect selected sessions and replace them at canonical-session granularity
 - **rebuild** — recreate full index or a source-scoped segment explicitly
 
 Default mode should be **fill**.
 
-Recollection of already covered time ranges must require an explicit non-default mode.
+Recollection of already covered canonical sessions must require an explicit non-default mode.
 Refresh must operate on an explicit replacement scope defined by the plan, not on implicit overlap alone.
 
 ### Idempotent execution of the same plan
@@ -268,14 +269,18 @@ Executing the same collection plan multiple times must not mutate indexed data u
 
 ### Coverage metadata
 
-The index/store should maintain coverage metadata sufficient for planning and safety.
+Coverage is tracked per canonical session.
+The index/store should maintain per-session coverage metadata sufficient for planning and safety.
 
-At minimum:
+At minimum, per canonical session:
 - source id
-- covered timeframe
+- canonical session identity
+- collection outcome
 - collected at
 - collection mode
 - collector/schema version
+
+Requested timeframes may still be retained as run/request metadata, but they are not the authoritative coverage unit.
 
 Optional later additions:
 - content fingerprint
@@ -288,9 +293,10 @@ Optional later additions:
 A collection run may complete partially.
 Coverage and ingest metadata must therefore reflect per-session outcomes, not only overall run status.
 
+Coverage is represented at canonical-session granularity.
 Coverage is advanced only for canonical sessions that were successfully collected and persisted.
 Failed sessions must not be marked as covered.
-A partially failed run must not claim blanket coverage for the requested range.
+Timeframe is not the coverage truth; a partially failed run must not claim blanket coverage for the requested range.
 
 ## Boundary summary
 
@@ -311,16 +317,6 @@ Duplicate digest suppression should be based on the requested window together wi
 ## Open questions
 
 These are deliberately unresolved at the research stage and should be closed in the ADR or the spec that follows.
-
-### Coverage representation vs per-session advancement
-
-The note commits to per-session coverage advancement (see §"Partial-run semantics") but represents coverage metadata as `covered timeframe` (see §"Coverage metadata").
-A set of successfully collected sessions does not obviously compose into a contiguous timeframe when some sessions in the requested window fail.
-
-Open:
-- is coverage a set of per-session records, a set of contiguous timeframe intervals, or both?
-- how are gaps inside a requested window represented after a partial run?
-- does planning query coverage by session identity, by timeframe, or by both?
 
 ### Deep inspection mechanism and evidence needs
 

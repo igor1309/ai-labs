@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-21
+
+- agent-retro architecture note: shifted coverage from timeframe-shaped to session-shaped. Coverage metadata is now tracked per canonical session (source id, canonical session identity, collection outcome, collected at, collection mode, collector/schema version); requested timeframes retained only as run/request metadata. Planner wording now explicitly separates timeframe (selection input) from coverage (per-canonical-session truth). Resolved the open question on coverage representation.
+
 ## 2026-04-20
 
 - Added `.github/workflows/` README.md and CLAUDE.md (with AGENTS.md symlink) documenting CI architecture, agent rules, and paths-ignore policy.
