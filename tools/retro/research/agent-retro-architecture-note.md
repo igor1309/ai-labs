@@ -1,0 +1,388 @@
+---
+title: Agent Retro Local Architecture Note
+status: draft
+kind: architecture-note
+created: 2026-04-21
+updated: 2026-04-21
+scope: local-only personal retrospective pipeline for coding-agent sessions
+---
+
+# Agent Retro Local Architecture Note
+
+## Goal
+
+Define a minimal local architecture for collecting coding-agent session evidence and producing daily/weekly retrospective digests without turning the system into a general-purpose platform.
+
+## Scope
+
+In scope:
+- local collection from available sources
+- normalized searchable local index
+- manual and scheduled collection
+- manual and scheduled digest generation
+- selective deep inspection for promoted sessions
+- markdown and terminal output
+
+Out of scope:
+- cloud sync
+- collaboration workflows
+- skill lifecycle management
+- generalized observability platform
+- always-on full-session postmortem
+
+## Core design position
+
+The system is split into two major phases:
+
+1. **collection** — bounded ingestion of local evidence into a normalized local index
+2. **digesting** — analysis of indexed evidence into findings, actions, and proposed skill/rule deltas
+
+Collection is fact-oriented.
+Digesting is judgment-oriented.
+
+## Components
+
+Two shapes recur across the pipeline and are distinct:
+- *canonical source record* — adapter output; source-shaped but normalized for provenance and diagnostics
+- *canonical session* — the index-side grouping a source record maps into; the unit of selection and replacement during collection
+
+### 1. Source adapters
+
+Responsibility:
+- read a specific source format
+- expose source records in a canonical source-shaped form
+- isolate source-specific parsing and path logic
+
+Examples:
+- Claude Code adapter
+- Codex adapter
+- optional git enrichment adapter
+- optional shell/history adapter
+
+Source adapters should not decide collection windows, digest scoring, or report shape.
+
+Normalization preserves only the source-specific metadata required for provenance, recollection, and ingestion diagnostics.
+The index should not retain source-native fields that materially shape query or digest behavior in the first version.
+
+### 2. Collector
+
+Responsibility:
+- execute an explicit **collection plan**
+- invoke relevant source adapters for the planned scope
+- normalize canonical source records into index-normalized records
+- persist normalized results into the local index/store
+- emit collection metadata
+
+The collector is not a blind scanner.
+It must depend on an explicit **collection plan** produced elsewhere.
+
+The collector should not:
+- decide whether a range should be recollected
+- infer rewrite intent from overlap
+- derive collection scope on its own
+- perform digest analysis
+
+### 3. Local index/store
+
+Responsibility:
+- persist normalized session evidence
+- support query/filter/search for digest generation
+- support coverage-planning queries for collection planning
+- retain normalized session-level evidence sufficient to support deep inspection of promoted sessions
+
+The index/store is the source of truth for digest generation.
+The digest engine should read from the index, not from source files directly.
+
+Retained evidence should be concrete enough for deep inspection without raw-source reads, such as:
+- session trajectory
+- notable retries/failures
+- tool activity
+- supporting excerpts
+
+Full raw retention is not a hard requirement.
+
+Minimum stored categories:
+- sessions
+- normalized events/excerpts
+- derived metrics
+- collection coverage metadata
+- generated digest artifacts
+
+### 4. Collection planner
+
+Responsibility:
+- read existing coverage from the index/store
+- evaluate a requested collection timeframe
+- validate and resolve requested source scope
+- detect gaps and overlap
+- resolve effective collection mode
+- produce an explicit **collection plan**
+
+The collection planner is the sole owner of collection decision logic.
+
+Collection planning operates on time windows, source scope, and existing coverage only.
+Timeframes are used to select candidate sessions; coverage is then checked per canonical session.
+Repo and task boundaries are out of scope for the first version.
+
+That includes:
+- overlap handling
+- gap filling
+- source-scope resolution from invocation/config input
+- effective mode resolution
+- definition of the indexed slice that a refresh is allowed to replace
+
+The collection planner should be policy-heavy and testable as decision logic.
+
+### 5. Collection runner / scheduler
+
+Responsibility:
+- invoke collection manually or on schedule
+- supply requested source scope and timeframe from invocation/config
+- obtain a collection plan from the planner
+- pass that plan to the collector
+- coordinate run lifecycle
+- persist run result and ingest metadata
+
+The collection runner/scheduler is operational orchestration.
+It should not own hidden collection policy.
+
+### 6. Digest engine
+
+Responsibility:
+- query the index for a requested window or selection
+- compute promotion/scoring (first pass)
+- perform deep inspection on promoted sessions (second pass)
+- produce structured digest data
+
+Digest output should include:
+- findings
+- actions
+- proposed skill/rule deltas
+- selected scores such as drift, waste, friction, leverage
+
+Scoring and promotion should be deterministic relative to:
+- indexed evidence
+- configured scoring/promotion policy
+- requested digest window
+
+Deep inspection is an internal second-pass stage of the digest engine.
+It runs only on sessions promoted by the first pass, and it reads from the index/store — never from raw source files.
+Deep inspection is expected to involve non-deterministic analysis (for example LLM reasoning).
+Reproducibility there is bounded by model version and prompt/input fingerprint rather than strict determinism.
+
+### 7. Digest promotion / scoring
+
+This is a distinct digest-engine responsibility with separable configuration and heuristics.
+It is not a peer top-level component.
+
+Responsibility:
+- define which sessions are promoted for deeper inspection
+- define digest scores and thresholds
+- remain configurable and evolvable without changing storage or collection logic
+
+Signals may include:
+- long sessions
+- expensive sessions
+- repeated retries or reversals
+- apparent stuck loops
+- bad outcomes
+- important repo/task context
+
+### 8. Report writer
+
+Responsibility:
+- render digest output to terminal
+- write markdown artifact with stable structure
+- attach front matter and metadata
+
+The report writer does not perform collection or analysis.
+
+### 9. Digest runner / scheduler
+
+Responsibility:
+- invoke digest generation manually or on schedule
+- supply requested time window
+- coordinate terminal output and markdown artifact generation
+- prevent accidental duplicate digest generation for the same effective digest input unless forced
+
+## Key constraints
+
+### Time-bounded collection
+
+Every collection run must have an explicit target timeframe.
+There should be no unbounded full-history scan by default.
+
+Why this matters:
+- runtime control
+- predictable cost
+- safer pre-prod validation
+- testability
+- avoidance of accidental large reingestion
+
+### Collector is plan-driven
+
+The collector must accept an explicit collection plan.
+The collector must not derive collection scope or rewrite policy itself.
+
+### Collection planning is coverage-aware
+
+Before invoking the collector, the collection planner must read coverage metadata from the index/store and produce an explicit collection plan.
+
+That plan should answer:
+- target source(s)
+- target timeframe (used as selection input)
+- session-selection rule (see §"Collection selects whole sessions")
+- canonical sessions not yet covered
+- canonical sessions already covered
+- effective collection mode
+- replacement scope for refresh, when applicable
+
+Requested source scope must come from invocation or configuration.
+The planner validates and resolves that input into concrete plan targets; it does not invent source scope implicitly.
+
+### Collection selects whole sessions
+
+A collection request is timeframe-bounded, but collection operates on whole canonical sessions.
+Sessions are not sliced by timeframe for collection or refresh semantics.
+
+The planner selects all sessions whose own timeframes overlap the requested collection timeframe.
+Strict containment is not the default policy.
+
+### Canonical-session replacement
+
+Refresh replaces indexed data at canonical-session granularity for the sessions selected by the plan.
+Collection windows define selection scope; they do not define arbitrary replacement slices inside sessions.
+
+This requires stable source session identity or a deterministic canonical mapping from source session identity into indexed canonical sessions.
+
+### Stable canonical-session identity
+
+Canonical-session collection, refresh, and coverage all require stable session identity.
+The exact derivation of that identity is deferred to the ADR or spec that follows.
+
+### Default collection must be non-destructive
+
+Repeated collection must not silently rewrite already covered canonical sessions.
+Default behavior should prefer filling uncovered sessions rather than replacing covered ones.
+
+### Explicit collection modes
+
+A simple and meaningful model is:
+- **fill** — collect whole sessions within the requested timeframe selection policy only where indexed per-session coverage is missing
+- **refresh** — recollect selected sessions and replace them at canonical-session granularity
+- **rebuild** — recreate full index or a source-scoped segment explicitly
+
+Default mode should be **fill**.
+
+Recollection of already covered canonical sessions must require an explicit non-default mode.
+Refresh must operate on an explicit replacement scope defined by the plan, not on implicit overlap alone.
+
+### Idempotent execution of the same plan
+
+Executing the same collection plan multiple times must not mutate indexed data unless the plan explicitly authorizes rewrite behavior.
+
+### Coverage metadata
+
+Coverage is tracked per canonical session.
+The index/store should maintain per-session coverage metadata sufficient for planning and safety.
+
+At minimum, per canonical session:
+- source id
+- canonical session identity
+- collection outcome
+- collected at
+- collection mode
+- collector/schema version
+
+Requested timeframes may still be retained as run/request metadata, but they are not the authoritative coverage unit.
+
+Optional later additions:
+- content fingerprint
+- source generation marker/cursor
+- raw artifact hash
+- ingest batch id
+
+### Partial-run semantics
+
+A collection run may complete partially.
+Coverage and ingest metadata must therefore reflect per-session outcomes, not only overall run status.
+
+Coverage is represented at canonical-session granularity.
+Coverage is advanced only for canonical sessions that were successfully collected and persisted.
+Failed sessions must not be marked as covered.
+Timeframe is not the coverage truth; a partially failed run must not claim blanket coverage for the requested range.
+
+### Bounded deep-inspection cost
+
+Deep inspection cost must be bounded by configurable limits on:
+- number of promoted sessions inspected per digest run
+- evidence consumed per session
+
+This prevents the digest engine from becoming unbounded when many sessions promote in the same digest window.
+
+## Boundary summary
+
+- **source adapters** know source formats and emit canonical source-shaped records
+- **collection planner** decides what to collect, resolves source scope, selects whole sessions by timeframe overlap, and defines what may be replaced
+- **collection runner/scheduler** supplies invocation/config inputs and coordinates run lifecycle
+- **collector** executes the collection plan and normalizes records into index form
+- **index/store** persists and serves indexed evidence plus coverage metadata
+- **digest engine** analyzes indexed evidence
+- **digest promotion/scoring** remains an internal digest-engine responsibility with separable configuration
+- **deep inspection** is a bounded second-pass stage within the digest engine, applied only to promoted sessions and using retained evidence from the index/store
+- **report writer** formats output
+- **runners/schedulers** handle invocation timing
+
+## Duplicate digest suppression
+
+Duplicate digest suppression should be based on the requested window together with digest-engine version and configuration fingerprint, rather than requested window alone.
+
+## Open questions
+
+These are architecture-level gaps deliberately unresolved at this stage and should be closed in the ADR or spec that follows.
+
+### Digest-engine behavior on uncovered sessions
+
+Coverage is represented at canonical-session granularity (see §"Partial-run semantics"), and the digest engine takes a requested digest window (see §6).
+The doc does not pin what the digest engine does when the requested window overlaps canonical sessions that are not yet covered.
+
+Open:
+- does the digest engine silently skip uncovered sessions, warn, or fail?
+- is "coverage sufficient for this window" a precondition checked by the digest runner before invoking the engine, or a runtime concern of the engine itself?
+
+### Canonical-session mapping ownership
+
+§"Stable canonical-session identity" pins the requirement for stable identity and defers its derivation to the follow-up ADR/spec.
+It does not pin which component performs the source-record → canonical-session mapping.
+
+Open:
+- does the source adapter emit canonical-session identity alongside the canonical source record?
+- does the collector perform the mapping during normalization?
+- is there a dedicated mapping stage between adapter and collector?
+
+### Digest artifact lifecycle
+
+§3 lists "generated digest artifacts" as a stored category and §9 blocks accidental duplicate generation for the same effective input.
+The doc does not pin whether prior digest artifacts are queryable by later digest runs.
+
+Open:
+- are digest artifacts a write-only log, or a queryable store that later digests can reference (for historical comparison, skill/rule-delta accretion, regression detection)?
+- if queryable, does the digest engine read them as part of its first or second pass, or are they exposed only to the report writer?
+
+### Report-writer invocation boundary
+
+§6 produces structured digest data, §8 renders it, and §9 coordinates terminal output and markdown artifact generation.
+The control flow between digest engine, digest runner/scheduler, and report writer is not pinned.
+
+Open:
+- is the report writer invoked by the digest engine (after producing structured data) or by the digest runner/scheduler (after receiving structured data from the engine)?
+- who owns the front matter and metadata shape — the digest engine, the report writer, or the runner?
+
+### Digest window shape vs session-based model
+
+Collection follows the model "timeframe selects candidate sessions; coverage is per canonical session" (see §4 and §"Collection selects whole sessions").
+The doc does not carry that distinction across to digesting.
+
+Open:
+- is a digest window also purely a timeframe selector over canonical sessions, with the sessions themselves as the unit of digest truth?
+- can a digest request target explicit canonical sessions, bypassing the timeframe selector?
