@@ -6,6 +6,9 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-21
 
+### Moved vortex-swift-package-manifest to ios.config
+Removed from dev-skills/public/ — Vortex-specific, belongs in repo. Marketplace v1.32.0.
+
 ### Five Skills Migrated from ios.config
 Moved debug-print, ios-simulator-install, rest-contract-review, test-runner, and testing-schedulers from iFora ios.config/.claude/ to dev-skills/public/. Stripped Vortex-specific references where needed. Marketplace v1.31.0.
 
