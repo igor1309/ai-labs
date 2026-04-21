@@ -491,6 +491,35 @@ Feature module playbook for Swift packages using the static-extension manifest p
 
 **Documentation:** See [vortex-swift-package-manifest/SKILL.md](vortex-swift-package-manifest/SKILL.md)
 
+### TDD Interactive
+
+Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression.
+
+**Key features:**
+- Two verification gates: at RED (failing test) and REFACTOR (code quality)
+- Immutable git history (no amending or force pushing)
+- Systematic escalation protocol for when agents get stuck
+- Language-specific test runner guidance
+- Review guidelines for both executing agent and reviewer
+
+**Use when:** Implementing features, bug fixes, or refactoring using test-first methodology with step-by-step verification.
+
+**Documentation:** See [tdd-interactive/SKILL.md](tdd-interactive/SKILL.md)
+
+### TDD Scaffold Review
+
+Evaluates test name scaffolds for TDD readiness by determining if each test name provides enough specification clarity to write a failing test.
+
+**Key features:**
+- Assesses whether test names clearly define testable behavior
+- Identifies ambiguous or underspecified tests
+- Provides minimal clarifying questions for unclear tests
+- Generates structured Markdown reports
+
+**Use when:** Reviewing test scaffolds, evaluating executable specifications, or assessing whether test names are ready for TDD implementation.
+
+**Documentation:** See [tdd-scaffold-review/SKILL.md](tdd-scaffold-review/SKILL.md)
+
 ### Test Runner
 
 xcodebuild test execution worker that runs exactly one test command and returns structured results.
@@ -520,35 +549,6 @@ Control virtual time for testing delays, debouncing, and background operations w
 **Use when:** Testing time-dependent behavior — delays, debouncing, background operations, or any behavior requiring virtual time control.
 
 **Documentation:** See [testing-schedulers/SKILL.md](testing-schedulers/SKILL.md)
-
-### TDD Interactive
-
-Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression.
-
-**Key features:**
-- Two verification gates: at RED (failing test) and REFACTOR (code quality)
-- Immutable git history (no amending or force pushing)
-- Systematic escalation protocol for when agents get stuck
-- Language-specific test runner guidance
-- Review guidelines for both executing agent and reviewer
-
-**Use when:** Implementing features, bug fixes, or refactoring using test-first methodology with step-by-step verification.
-
-**Documentation:** See [tdd-interactive/SKILL.md](tdd-interactive/SKILL.md)
-
-### TDD Scaffold Review
-
-Evaluates test name scaffolds for TDD readiness by determining if each test name provides enough specification clarity to write a failing test.
-
-**Key features:**
-- Assesses whether test names clearly define testable behavior
-- Identifies ambiguous or underspecified tests
-- Provides minimal clarifying questions for unclear tests
-- Generates structured Markdown reports
-
-**Use when:** Reviewing test scaffolds, evaluating executable specifications, or assessing whether test names are ready for TDD implementation.
-
-**Documentation:** See [tdd-scaffold-review/SKILL.md](tdd-scaffold-review/SKILL.md)
 
 ## Installation
 
@@ -594,10 +594,10 @@ Then install the skills you want:
 /plugin install synopsis
 /plugin install swift-package-manifest
 /plugin install tactical-action-plan-guide
-/plugin install test-runner
-/plugin install testing-schedulers
 /plugin install tdd-interactive
 /plugin install tdd-scaffold-review
+/plugin install test-runner
+/plugin install testing-schedulers
 /plugin install vortex-swift-package-manifest
 ```
 
@@ -638,14 +638,14 @@ cp -r strict-tdd ~/.claude/skills/
 cp -r synopsis ~/.claude/skills/
 cp -r swift-package-manifest ~/.claude/skills/
 cp -r tactical-action-plan-guide ~/.claude/skills/
-cp -r test-runner ~/.claude/skills/
-cp -r testing-schedulers ~/.claude/skills/
 cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
+cp -r test-runner ~/.claude/skills/
+cp -r testing-schedulers ~/.claude/skills/
 cp -r vortex-swift-package-manifest ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root debug-print discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake ios-simulator-install job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rest-contract-review rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide test-runner testing-schedulers tdd-interactive tdd-scaffold-review vortex-swift-package-manifest ~/.claude/skills/
+cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root debug-print discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake ios-simulator-install job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rest-contract-review rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide tdd-interactive tdd-scaffold-review test-runner testing-schedulers vortex-swift-package-manifest ~/.claude/skills/
 ```
 
 ## Usage
@@ -1095,24 +1095,6 @@ Or:
 Scaffold the Settings feature module under Sources/Feature/Settings.
 ```
 
-### Test Runner
-
-Delegate test execution to this worker agent.
-
-**Example prompt:**
-```
-Run the tests for scheme MyAppTests, class LoginViewModelTests.
-```
-
-### Testing Schedulers
-
-Invoke when testing time-dependent behavior with RxSwift schedulers.
-
-**Example prompt:**
-```
-I need to test a 300ms debounce on the search input — use the testing-schedulers pattern.
-```
-
 ### TDD Interactive
 
 Invoke the skill by requesting interactive Test-Driven Development with verification gates.
@@ -1131,6 +1113,24 @@ I am the reviewer and will approve at each checkpoint.
 ### TDD Scaffold Review
 
 Invoke when you have test names and need to verify they're ready for TDD implementation.
+
+### Test Runner
+
+Delegate test execution to this worker agent.
+
+**Example prompt:**
+```
+Run the tests for scheme MyAppTests, class LoginViewModelTests.
+```
+
+### Testing Schedulers
+
+Invoke when testing time-dependent behavior with RxSwift schedulers.
+
+**Example prompt:**
+```
+I need to test a 300ms debounce on the search input — use the testing-schedulers pattern.
+```
 
 **Example prompt:**
 ```

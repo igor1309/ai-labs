@@ -46,10 +46,10 @@
         "./swift-package-manifest",
         "./synopsis",
         "./tactical-action-plan-guide",
-        "./test-runner",
-        "./testing-schedulers",
         "./tdd-interactive",
         "./tdd-scaffold-review",
+        "./test-runner",
+        "./testing-schedulers",
         "./vortex-swift-package-manifest"
       ]
     }
