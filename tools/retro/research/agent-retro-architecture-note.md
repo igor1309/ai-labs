@@ -336,3 +336,53 @@ This prevents the digest engine from becoming unbounded when many sessions promo
 ## Duplicate digest suppression
 
 Duplicate digest suppression should be based on the requested window together with digest-engine version and configuration fingerprint, rather than requested window alone.
+
+## Open questions
+
+These are architecture-level gaps deliberately unresolved at this stage and should be closed in the ADR or spec that follows.
+
+### Digest-engine behavior on uncovered sessions
+
+Coverage is represented at canonical-session granularity (see §"Partial-run semantics"), and the digest engine takes a requested digest window (see §6).
+The doc does not pin what the digest engine does when the requested window overlaps canonical sessions that are not yet covered.
+
+Open:
+- does the digest engine silently skip uncovered sessions, warn, or fail?
+- is "coverage sufficient for this window" a precondition checked by the digest runner before invoking the engine, or a runtime concern of the engine itself?
+
+### Canonical-session mapping ownership
+
+§"Stable canonical-session identity" pins the requirement for stable identity and defers its derivation to the follow-up ADR/spec.
+It does not pin which component performs the source-record → canonical-session mapping.
+
+Open:
+- does the source adapter emit canonical-session identity alongside the canonical source record?
+- does the collector perform the mapping during normalization?
+- is there a dedicated mapping stage between adapter and collector?
+
+### Digest artifact lifecycle
+
+§3 lists "generated digest artifacts" as a stored category and §9 blocks accidental duplicate generation for the same effective input.
+The doc does not pin whether prior digest artifacts are queryable by later digest runs.
+
+Open:
+- are digest artifacts a write-only log, or a queryable store that later digests can reference (for historical comparison, skill/rule-delta accretion, regression detection)?
+- if queryable, does the digest engine read them as part of its first or second pass, or are they exposed only to the report writer?
+
+### Report-writer invocation boundary
+
+§6 produces structured digest data, §8 renders it, and §9 coordinates terminal output and markdown artifact generation.
+The control flow between digest engine, digest runner/scheduler, and report writer is not pinned.
+
+Open:
+- is the report writer invoked by the digest engine (after producing structured data) or by the digest runner/scheduler (after receiving structured data from the engine)?
+- who owns the front matter and metadata shape — the digest engine, the report writer, or the runner?
+
+### Digest window shape vs session-based model
+
+Collection follows the model "timeframe selects candidate sessions; coverage is per canonical session" (see §4 and §"Collection selects whole sessions").
+The doc does not carry that distinction across to digesting.
+
+Open:
+- is a digest window also purely a timeframe selector over canonical sessions, with the sessions themselves as the unit of digest truth?
+- can a digest request target explicit canonical sessions, bypassing the timeframe selector?
