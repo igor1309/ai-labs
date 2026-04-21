@@ -187,7 +187,7 @@ Responsibility:
 - invoke digest generation manually or on schedule
 - supply requested time window
 - coordinate terminal output and markdown artifact generation
-- prevent accidental duplicate digest generation for the same period unless forced
+- prevent accidental duplicate digest generation for the same effective digest input unless forced
 
 ## Key constraints
 
@@ -298,6 +298,6 @@ A partially failed run must not claim blanket coverage for the requested range.
 - **report writer** formats output
 - **runners/schedulers** handle invocation timing
 
-## Open questions
+## Duplicate digest suppression
 
-1. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
+Duplicate digest suppression should be based on the requested window together with digest-engine version and configuration fingerprint, rather than requested window alone.
