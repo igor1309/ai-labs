@@ -307,3 +307,28 @@ A partially failed run must not claim blanket coverage for the requested range.
 ## Duplicate digest suppression
 
 Duplicate digest suppression should be based on the requested window together with digest-engine version and configuration fingerprint, rather than requested window alone.
+
+## Open questions
+
+These are deliberately unresolved at the research stage and should be closed in the ADR or the spec that follows.
+
+### Coverage representation vs per-session advancement
+
+The note commits to per-session coverage advancement (see §"Partial-run semantics") but represents coverage metadata as `covered timeframe` (see §"Coverage metadata").
+A set of successfully collected sessions does not obviously compose into a contiguous timeframe when some sessions in the requested window fail.
+
+Open:
+- is coverage a set of per-session records, a set of contiguous timeframe intervals, or both?
+- how are gaps inside a requested window represented after a partial run?
+- does planning query coverage by session identity, by timeframe, or by both?
+
+### Deep inspection mechanism and evidence needs
+
+Deep inspection of promoted sessions is the core value-add of the pipeline per the research note, but this architecture note treats it as a single bullet under §6.
+Its shape determines what the index/store must retain — which is why §3's "retain sufficient evidence" language is currently circular.
+
+Open:
+- what inputs does deep inspection consume beyond the baseline scoring pass?
+- does the index/store retain raw transcripts, normalized excerpts, or both?
+- is deep inspection a pluggable analysis stage, or a fixed procedure with configurable prompts?
+- how is deep-inspection cost bounded when many sessions promote in the same digest window?
