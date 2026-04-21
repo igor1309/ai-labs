@@ -3,6 +3,7 @@
 ## 2026-04-21
 
 - Removed `paths-ignore` from `ci.yml` — the `report` required check was never created on doc-only PRs, blocking auto-merge. Path filtering now handled entirely by `dorny/paths-filter` inside the workflow.
+- agent-retro architecture note: shifted coverage from timeframe-shaped to session-shaped. Coverage metadata is now tracked per canonical session (source id, canonical session identity, collection outcome, collected at, collection mode, collector/schema version); requested timeframes retained only as run/request metadata. Planner wording now explicitly separates timeframe (selection input) from coverage (per-canonical-session truth). Resolved the open question on coverage representation.
 
 ## 2026-04-20
 
