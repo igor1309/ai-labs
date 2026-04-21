@@ -1,5 +1,13 @@
 {
   "enabledPlugins": {
     "dev-skills@dev-skills": true
+  },
+  "extraKnownMarketplaces": {
+    "dev-skills": {
+      "source": {
+        "source": "github",
+        "repo": "igor1309/skills"
+      }
+    }
   }
 }
