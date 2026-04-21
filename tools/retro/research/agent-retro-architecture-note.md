@@ -105,6 +105,9 @@ Responsibility:
 - resolve effective collection mode
 - produce an explicit **collection plan**
 
+Collection planning operates on time windows, source scope, and existing coverage only.
+Repo and task boundaries are out of scope for the first version.
+
 The collection planner is the sole owner of collection decision logic.
 
 That includes:
@@ -295,6 +298,5 @@ A partially failed run must not claim blanket coverage for the requested range.
 
 ## Open questions
 
-1. Should collection planning understand repo/task boundaries, or only time windows at first?
-2. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
-3. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
+1. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
+2. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
