@@ -51,3 +51,4 @@ Too tightly coupled to Vortex types, flows, or domain.
 | non-standard-payments | skill | Payments | ServiceCategory.paymentFlow enum routing |
 | payment-by-phone-flow | skill | Payments | ContactsViewModel modes, source types |
 | latest-payments-flow | skill | Payments | OperationPicker, Latest type routing |
+| vortex-swift-package-manifest | skill | Tooling | Moved from dev-skills back to ios.config — Vortex-specific |

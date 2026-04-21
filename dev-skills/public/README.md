@@ -477,20 +477,6 @@ Clean, maintainable Package.swift creation and editing using the static property
 
 **Documentation:** See [swift-package-manifest/SKILL.md](swift-package-manifest/SKILL.md)
 
-### Vortex Swift Package Manifest
-
-Feature module playbook for Swift packages using the static-extension manifest pattern with sources under `Sources/Feature/` and tests under `Tests/Feature/`.
-
-**Key features:**
-- Static-extension manifest pattern
-- Human-in-the-loop — requestor supplies exact names and targets
-- Feature module scaffold: Backend, Core, UI targets
-- Does not infer extra targets beyond the request
-
-**Use when:** Adding a new feature module to Package.swift in a Swift package that uses the static-extension pattern.
-
-**Documentation:** See [vortex-swift-package-manifest/SKILL.md](vortex-swift-package-manifest/SKILL.md)
-
 ### TDD Interactive
 
 Interactive Test-Driven Development workflow with reviewer-in-the-loop. Implements the RED-GREEN-REFACTOR cycle with two mandatory verification gates where a reviewer (human or AI) approves work before progression.
@@ -598,7 +584,6 @@ Then install the skills you want:
 /plugin install tdd-scaffold-review
 /plugin install test-runner
 /plugin install testing-schedulers
-/plugin install vortex-swift-package-manifest
 ```
 
 ### Manual Installation
@@ -642,10 +627,9 @@ cp -r tdd-interactive ~/.claude/skills/
 cp -r tdd-scaffold-review ~/.claude/skills/
 cp -r test-runner ~/.claude/skills/
 cp -r testing-schedulers ~/.claude/skills/
-cp -r vortex-swift-package-manifest ~/.claude/skills/
 
 # Or install all skills at once
-cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root debug-print discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake ios-simulator-install job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rest-contract-review rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide tdd-interactive tdd-scaffold-review test-runner testing-schedulers vortex-swift-package-manifest ~/.claude/skills/
+cp -r adr-governance arch-doc-review arch-reviewer arch-spec-review bug-analysis check-domain cold-start-checkpoint component-arch-review composition-root debug-print discuss docker-discipline doc-drift-audit executable-spec-scaffolding feature-spec-protocol intake ios-simulator-install job-search-strategy pr-ci-watch process-gates protocol-owned-by-client release-process rest-contract-review rpi-research simulator-settings skill-review spec-writing strict-tdd synopsis swift-package-manifest tactical-action-plan-guide tdd-interactive tdd-scaffold-review test-runner testing-schedulers ~/.claude/skills/
 ```
 
 ## Usage
