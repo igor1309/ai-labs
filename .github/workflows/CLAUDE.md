@@ -2,7 +2,7 @@
 
 ## Architecture
 
-See `README.md` in this directory for workflow categories and paths-ignore policy.
+See `README.md` in this directory for workflow categories and path filtering policy.
 
 ## Rules
 
@@ -10,4 +10,4 @@ See `README.md` in this directory for workflow categories and paths-ignore polic
 - `ci.yml` is the dispatcher — it routes to per-project workflows via `dorny/paths-filter`. Do not add test steps directly to `ci.yml`.
 - All failure notifications go through `notify-telegram-failure.yml`. Do not add inline notification steps.
 - Scheduled workflows must document timezone conversion in comments (cron is UTC, target is Moscow UTC+3).
-- `paths-ignore` in `ci.yml` is the single source of truth for which directories skip CI. Per-project workflows rely on the dispatcher's path filters instead.
+- `ci.yml` does not use top-level `paths-ignore`. All path filtering is handled by `dorny/paths-filter` inside the `changes` job. This ensures the `report` required check always runs. Do not add `paths-ignore` to `ci.yml`.

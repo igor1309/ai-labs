@@ -13,13 +13,13 @@ Workflows are organized into four categories:
 - **Release** — tag-triggered pipelines for per-unit and legacy Oracle releases.
 - **Scheduled & Independent** — health checks, dashboards, deployments, and housekeeping that run on cron or trunk push.
 
-## Paths-Ignore Policy
+## Path Filtering Policy
 
-`ci.yml` uses `paths-ignore` to skip CI for non-code directories — e.g., `docs/**`, `sandbox/**`, `.claude/**`, `tools/**`. See the `paths-ignore` block in `ci.yml` for the authoritative list.
+`ci.yml` does **not** use top-level `paths-ignore`. All path filtering happens inside the workflow via `dorny/paths-filter` in the `changes` job, which gates per-project jobs with `if:` conditions.
 
-Per-project workflows do not need their own paths-ignore — the dispatcher's path-filter routing already prevents them from running on unrelated changes.
+This ensures the `report` job (a required status check for branch protection) always runs — even on doc-only or non-code changes — while expensive test/build jobs are skipped when their project files are unchanged.
 
-Currently `sandbox/` and `research/` skip CI entirely. In the future, specialized workflows may run for them — e.g., LinkedIn content checks, frontmatter validation, link checking. When that happens, remove the relevant `paths-ignore` entries and add proper path filters instead.
+Per-project workflows do not need their own path filters — the dispatcher's `changes` job already prevents them from running on unrelated changes.
 
 ## Shared Infrastructure
 

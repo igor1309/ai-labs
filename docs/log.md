@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-21
+
+- Removed `paths-ignore` from `ci.yml` — the `report` required check was never created on doc-only PRs, blocking auto-merge. Path filtering now handled entirely by `dorny/paths-filter` inside the workflow.
+
 ## 2026-04-20
 
 - Added `.github/workflows/` README.md and CLAUDE.md (with AGENTS.md symlink) documenting CI architecture, agent rules, and paths-ignore policy.
