@@ -57,6 +57,9 @@ Examples:
 
 Source adapters should not decide collection windows, digest scoring, or report shape.
 
+Normalization preserves only the source-specific metadata required for provenance, recollection, and ingestion diagnostics.
+The index should not retain source-native fields that materially shape query or digest behavior in the first version.
+
 ## 2. Collector
 
 Responsibility:
@@ -81,15 +84,15 @@ Responsibility:
 - persist normalized session evidence
 - support query/filter/search for digest generation
 - support coverage-planning queries for collection planning
-- retain sufficient session-level evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
+- retain sufficient evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
+- retained session-level evidence
 
 The index/store is the source of truth for digest generation.
 The digest engine should read from the index, not from source files directly.
-The store must therefore preserve sufficient session-level evidence to reconstruct a promoted session's main trajectory, notable retries/failures, tool activity, and supporting excerpts without requiring raw-source reads during digest generation.
+The store must therefore preserve sufficient evidence for promoted-session deep inspection without requiring raw-source reads during digest generation.
 
 Minimum stored categories:
 - sessions
-- retained session-level evidence
 - normalized events/excerpts
 - derived metrics
 - collection coverage metadata
@@ -105,10 +108,10 @@ Responsibility:
 - resolve effective collection mode
 - produce an explicit **collection plan**
 
+The collection planner is the sole owner of collection decision logic.
+
 Collection planning operates on time windows, source scope, and existing coverage only.
 Repo and task boundaries are out of scope for the first version.
-
-The collection planner is the sole owner of collection decision logic.
 
 That includes:
 - overlap handling
@@ -277,10 +280,9 @@ Optional later additions:
 ## Partial-run semantics
 
 A collection run may complete partially.
-Run status and coverage status are distinct.
+Coverage and ingest metadata must therefore reflect per-session outcomes, not only overall run status.
 
-Coverage and ingest metadata must reflect per-session outcomes, not only overall run status.
-Coverage advances only for canonical sessions that were successfully collected and persisted.
+Coverage is advanced only for canonical sessions that were successfully collected and persisted.
 Failed sessions must not be marked as covered.
 A partially failed run must not claim blanket coverage for the requested range.
 
@@ -298,5 +300,4 @@ A partially failed run must not claim blanket coverage for the requested range.
 
 ## Open questions
 
-1. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
-2. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
+1. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
