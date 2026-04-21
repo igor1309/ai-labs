@@ -81,14 +81,15 @@ Responsibility:
 - persist normalized session evidence
 - support query/filter/search for digest generation
 - support coverage-planning queries for collection planning
-- retain sufficient evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
+- retain sufficient session-level evidence alongside normalized records to support promoted-session deep inspection within the digest boundary
 
 The index/store is the source of truth for digest generation.
 The digest engine should read from the index, not from source files directly.
-The store must therefore preserve sufficient evidence for promoted-session deep inspection without requiring raw-source reads during digest generation.
+The store must therefore preserve sufficient session-level evidence to reconstruct a promoted session's main trajectory, notable retries/failures, tool activity, and supporting excerpts without requiring raw-source reads during digest generation.
 
 Minimum stored categories:
 - sessions
+- retained session-level evidence
 - normalized events/excerpts
 - derived metrics
 - collection coverage metadata
@@ -294,7 +295,6 @@ A partially failed run must not claim blanket coverage for the requested range.
 
 ## Open questions
 
-1. What minimum retained evidence must the store preserve so the digest engine can perform promoted-session deep inspection without reading raw sources directly?
-2. Should collection planning understand repo/task boundaries, or only time windows at first?
-3. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
-4. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
+1. Should collection planning understand repo/task boundaries, or only time windows at first?
+2. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
+3. Should duplicate digest suppression be based on requested window only, or also digest-engine version and configuration fingerprint?
