@@ -208,13 +208,29 @@ Before invoking the collector, the collection planner must read coverage metadat
 That plan should answer:
 - target source(s)
 - target timeframe
+- session-selection rule
 - uncovered gaps
 - overlap with existing coverage
 - effective collection mode
-- replacement slice for refresh, when applicable
+- replacement scope for refresh, when applicable
 
 Requested source scope must come from invocation or configuration.
 The planner validates and resolves that input into concrete plan targets; it does not invent source scope implicitly.
+
+## Collection selects whole sessions
+
+A collection request is timeframe-bounded, but collection operates on whole canonical sessions.
+Sessions are not sliced by timeframe for collection or refresh semantics.
+
+The planner selects all sessions whose own timeframes overlap the requested collection timeframe.
+Strict containment is not the default policy.
+
+## Canonical-session replacement
+
+Refresh replaces indexed data at canonical-session granularity for the sessions selected by the plan.
+Collection windows define selection scope; they do not define arbitrary replacement slices inside sessions.
+
+This requires stable source session identity or a deterministic canonical mapping from source session identity into indexed canonical sessions.
 
 ## Default collection must be non-destructive
 
@@ -224,14 +240,14 @@ Default behavior should prefer gap-filling rather than overlap replacement.
 ## Explicit collection modes
 
 A simple and meaningful model is:
-- **fill** — collect only uncovered gaps within requested timeframe
-- **refresh** — recollect overlapping covered range and replace a defined indexed slice determined by the plan
+- **fill** — collect whole sessions within the requested timeframe selection policy only where indexed coverage is missing
+- **refresh** — recollect selected sessions and replace them at canonical-session granularity
 - **rebuild** — recreate full index or a source-scoped segment explicitly
 
 Default mode should be **fill**.
 
 Recollection of already covered time ranges must require an explicit non-default mode.
-Refresh must operate on an explicit replacement slice, not on implicit overlap alone.
+Refresh must operate on an explicit replacement scope defined by the plan, not on implicit overlap alone.
 
 ## Idempotent execution of the same plan
 
@@ -265,7 +281,7 @@ A partially failed run must not claim blanket coverage for the requested range.
 ## Boundary summary
 
 - **source adapters** know source formats and emit canonical source-shaped records
-- **collection planner** decides what to collect, resolves source scope, and defines what may be replaced
+- **collection planner** decides what to collect, resolves source scope, selects whole sessions by timeframe overlap, and defines what may be replaced
 - **collection runner/scheduler** supplies invocation/config inputs and coordinates run lifecycle
 - **collector** executes the collection plan and normalizes records into index form
 - **index/store** persists and serves indexed evidence plus coverage metadata
@@ -276,7 +292,7 @@ A partially failed run must not claim blanket coverage for the requested range.
 
 ## Open questions
 
-1. What is the exact storage-level replacement unit for refresh: timeframe slice, session, ingest batch, or another indexed segment? What are the failure and partial-run semantics for replacement and coverage advancement at that unit?
+1. What are the failure and partial-run semantics for canonical-session replacement and coverage advancement when refresh selects sessions in a requested timeframe?
 2. What minimum retained evidence must the store preserve so the digest engine can perform promoted-session deep inspection without reading raw sources directly?
 3. Should collection planning understand repo/task boundaries, or only time windows at first?
 4. How much source-specific metadata should survive normalization before the index becomes too source-shaped?
