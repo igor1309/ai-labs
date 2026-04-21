@@ -15,11 +15,11 @@ Generic skills with no repo-specific references.
 
 | Name | Type | Domain | Status |
 |------|------|--------|--------|
-| testing-schedulers | skill | Swift testing | pending |
-| rest-contract-review | skill | API design | pending |
-| ios-simulator-install | skill | Tooling | pending |
-| debug-print | command | Debugging | pending |
-| test-runner | non-agent | Testing | pending |
+| testing-schedulers | skill | Swift testing | done |
+| rest-contract-review | skill | API design | done |
+| ios-simulator-install | skill | Tooling | done |
+| debug-print | command | Debugging | done |
+| test-runner | non-agent | Testing | done |
 
 ## Move with extraction
 
