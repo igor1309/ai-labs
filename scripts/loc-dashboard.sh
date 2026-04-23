@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# LOC dashboard — counts code, generated, scripts, tests, and text files.
+# LOC dashboard — counts code, tests, and docs files.
 # Run from repo root: ./scripts/loc-dashboard.sh
 # Options: --sort=name (default) | --sort=total
 #
-# ROW PROJECTS (implementation footprint only; update when row-bearing dirs change):
-#   nomos, oracle, loki, corpus-scout, web-scout, neris, notio, claude-insights,
-#   dev-skills, sandbox, tools
-# Docs-only or pre-implementation directories remain known to drift detection
-# but are intentionally omitted from LOC rows until they gain code/test/script
-# footprint (currently: nexum, niora, regentara).
+# ROW PROJECTS (update the loop in main when adding a new project):
+#   claude-insights, corpus-scout, dev-skills, loki, neris, nexum, niora,
+#   nomos, notio, oracle, regentara, sandbox, tools, web-scout
 
 set -euo pipefail
 
@@ -19,8 +16,6 @@ for arg in "$@"; do
     --sort=total) SORT_BY="total" ;;
   esac
 done
-
-DOCS_ONLY_DIRS=( "nexum" "niora" "regentara" )
 
 # ---------- helpers ----------
 
@@ -39,20 +34,20 @@ loc_find() {
 
 COL_NAME=32
 COL_NUM=8
-TABLE_WIDTH=$(( COL_NAME + (COL_NUM + 1) * 6 ))
+TABLE_WIDTH=$(( COL_NAME + (COL_NUM + 1) * 4 ))
 
 header() {
   echo ""
-  printf "%-${COL_NAME}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s\n" \
-    "project" "code" "gen" "scripts" "tests" "text" "TOTAL"
+  printf "%-${COL_NAME}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s\n" \
+    "project" "code" "tests" "docs" "TOTAL"
   divider
 }
 
 row() {
-  local name="$1" code="$2" gen="$3" sh="$4" tests="$5" text="$6"
-  local total=$(( code + gen + sh + tests + text ))
-  printf "%-${COL_NAME}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s\n" \
-    "$name" "$code" "$gen" "$sh" "$tests" "$text" "$total"
+  local name="$1" code="$2" tests="$3" text="$4"
+  local total=$(( code + tests + text ))
+  printf "%-${COL_NAME}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s\n" \
+    "$name" "$code" "$tests" "$text" "$total"
 }
 
 divider() {
@@ -62,29 +57,19 @@ divider() {
 # ---------- counting ----------
 
 # Shared exclusions for all find commands
-EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" )
+EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" )
 
 count_project() {
   local dir="$1"
 
-  # code: .js/.ts/.swift/.py, not test, not generated
+  # code: .js/.ts/.swift/.py/.svelte/.sql/.css/.html/.mjs/.sh, not test
   local code
-  code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" -o -name "*.swift" -o -name "*.py" \) \
+  code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" -o -name "*.swift" -o -name "*.py" -o -name "*.svelte" -o -name "*.sql" -o -name "*.css" -o -name "*.html" -o -name "*.mjs" -o -name "*.sh" \) \
     ! -name "*.test.js" ! -name "*.test.ts" ! -name "*.test.swift" \
     ! -name "*Tests.swift" ! -path "*Tests/*" ! -path "*/tests/*" \
     ! -name "test_*.py" ! -name "*_test.py" \
-    ! -name "*.generated.js" ! -name "*.generated.ts" \
     ! -name "conftest.py" \
     "${EXCLUDES[@]}")
-
-  # generated
-  local gen
-  gen=$(loc_find "$dir" \( -name "*.generated.js" -o -name "*.generated.ts" \) \
-    "${EXCLUDES[@]}")
-
-  # shell scripts
-  local sh
-  sh=$(loc_find "$dir" -name "*.sh" "${EXCLUDES[@]}")
 
   # tests: .test.js/.test.ts, *Tests.swift, Tests/ dir, test_*.py, conftest.py
   local tests
@@ -101,7 +86,11 @@ count_project() {
   py_tests_dir=$(loc_find "$dir" -path "*/tests/*.py" ! -name "test_*.py" ! -name "*_test.py" ! -name "conftest.py" "${EXCLUDES[@]}")
   tests=$((tests + swift_tests_dir + py_tests_dir))
 
-  echo "$code $gen $sh $tests"
+  # docs: .md files
+  local text
+  text=$(loc_find "$dir" -name "*.md" "${EXCLUDES[@]}")
+
+  echo "$code $tests $text"
 }
 
 count_text() {
@@ -128,26 +117,26 @@ count_text() {
 
 # ---------- accumulator ----------
 
-TC=0; TG=0; TS=0; TT=0; TX=0
+TC=0; TT=0; TX=0
 ROWS=()
 
 emit_row() {
-  local name="$1" c="$2" g="$3" s="$4" t="$5" x="$6"
-  local total=$(( c + g + s + t + x ))
-  ROWS+=("${name}	${c}	${g}	${s}	${t}	${x}	${total}")
-  TC=$((TC+c)); TG=$((TG+g)); TS=$((TS+s)); TT=$((TT+t)); TX=$((TX+x))
+  local name="$1" c="$2" t="$3" x="$4"
+  local total=$(( c + t + x ))
+  ROWS+=("${name}	${c}	${t}	${x}	${total}")
+  TC=$((TC+c)); TT=$((TT+t)); TX=$((TX+x))
 }
 
 print_rows() {
   local sorted
   if [[ "$SORT_BY" == "total" ]]; then
-    sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k7 -rn)
+    sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k4 -rn)
   else
     sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k1)
   fi
-  while IFS=$'\t' read -r name c g s t x total; do
-    printf "%-${COL_NAME}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s\n" \
-      "$name" "$c" "$g" "$s" "$t" "$x" "$total"
+  while IFS=$'\t' read -r name c t x total; do
+    printf "%-${COL_NAME}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s %${COL_NUM}s\n" \
+      "$name" "$c" "$t" "$x" "$total"
   done <<< "$sorted"
 }
 
@@ -177,92 +166,33 @@ printf "║%*s%s%*s║\n" $pad "" "$title" $(( inner - pad - ${#title} )) ""
 printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
-# nomos
-read nc ng ns nt < <(count_project "nomos")
-emit_row "nomos" "$nc" "$ng" "$ns" "$nt" "0"
-
-# oracle packages
-for pkg in oracle/packages/*/; do
-  name="oracle-$(basename "$pkg")"
-  read c g s t < <(count_project "$pkg")
-  emit_row "$name" "$c" "$g" "$s" "$t" "0"
+# per-project rows
+for proj in claude-insights corpus-scout dev-skills loki neris nexum niora nomos notio oracle regentara sandbox tools web-scout; do
+  [[ -d "$proj" ]] || continue
+  read c t x < <(count_project "$proj")
+  emit_row "$proj" "$c" "$t" "$x"
 done
-
-# oracle apps
-for app in oracle/apps/*/; do
-  name="oracle-$(basename "$app")"
-  read c g s t < <(count_project "$app")
-  emit_row "$name" "$c" "$g" "$s" "$t" "0"
-done
-
-# loki
-read lc lg ls lt < <(count_project "loki")
-emit_row "loki" "$lc" "$lg" "$ls" "$lt" "0"
-
-# corpus-scout
-read cc cg cs ct < <(count_project "corpus-scout")
-emit_row "corpus-scout" "$cc" "$cg" "$cs" "$ct" "0"
-
-# web-scout
-read wc wg ws wt < <(count_project "web-scout")
-emit_row "web-scout" "$wc" "$wg" "$ws" "$wt" "0"
-
-# neris (Swift)
-read rc rg rs rt < <(count_project "neris")
-emit_row "neris" "$rc" "$rg" "$rs" "$rt" "0"
-
-# notio (Swift)
-read oc og os ot < <(count_project "notio")
-emit_row "notio" "$oc" "$og" "$os" "$ot" "0"
-
-# claude-insights (TS/Python)
-read ic ig is it < <(count_project "claude-insights")
-emit_row "claude-insights" "$ic" "$ig" "$is" "$it" "0"
-
-# dev-skills
-read dc dg ds dt < <(count_project "dev-skills")
-emit_row "dev-skills" "$dc" "$dg" "$ds" "$dt" "0"
-
-# sandbox
-read sc sg ss st < <(count_project "sandbox")
-emit_row "sandbox" "$sc" "$sg" "$ss" "$st" "0"
-
-# tools
-read tcg tgg tsg ttg < <(count_project "tools")
-emit_row "tools" "$tcg" "$tgg" "$tsg" "$ttg" "0"
 
 # repo-level rows
-REPO_SH=$(loc_find "scripts" -name "*.sh" ! -path "*/node_modules/*")
-REPO_JS=$(loc_find "scripts" \( -name "*.js" -o -name "*.ts" \) ! -path "*/node_modules/*" ! -name "*.test.js" ! -name "*.test.ts")
+REPO_CODE=$(loc_find "scripts" \( -name "*.js" -o -name "*.ts" -o -name "*.sh" \) ! -path "*/node_modules/*" ! -name "*.test.js" ! -name "*.test.ts")
 REPO_TESTS=$(loc_find "tests" \( -name "*.test.js" -o -name "*.test.ts" -o -name "test_*.py" -o -name "*.py" \) ! -path "*/node_modules/*" ! -path "*/.venv/*")
 REPO_TESTS=$((REPO_TESTS + $(loc_find "scripts/tests" \( -name "*.test.js" -o -name "*.test.ts" \) ! -path "*/node_modules/*")))
-emit_row "repo-scripts" "$REPO_JS" "0" "$REPO_SH" "$REPO_TESTS" "0"
+emit_row "repo-scripts" "$REPO_CODE" "$REPO_TESTS" "0"
 
 TEXT=$(count_text)
-emit_row "agents" "0" "0" "0" "0" "$TEXT"
+emit_row "agents" "0" "0" "$TEXT"
 
 # print sorted rows, then grand total
 header
 print_rows
 divider
-row "TOTAL" "$TC" "$TG" "$TS" "$TT" "$TX"
+row "TOTAL" "$TC" "$TT" "$TX"
 divider
 
 # ratio
 if [[ $TC -gt 0 ]]; then
   ratio=$(awk "BEGIN{printf \"%.1f\", $TT/$TC}")
   echo "  test/code ratio: ${ratio}x"
-fi
-
-OMITTED_ROWS=()
-for dir in "${DOCS_ONLY_DIRS[@]}"; do
-  if [[ -d "$dir" ]]; then
-    OMITTED_ROWS+=( "$dir" )
-  fi
-done
-
-if [[ ${#OMITTED_ROWS[@]} -gt 0 ]]; then
-  echo "  omitted docs-only/pre-implementation dirs (no code/tests/scripts): ${OMITTED_ROWS[*]}"
 fi
 
 # drift detection
