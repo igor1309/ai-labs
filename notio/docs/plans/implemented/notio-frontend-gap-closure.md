@@ -2,7 +2,7 @@
 date: 2026-04-23
 model: gpt-5.4
 description: "Implementation plan to close the remaining mvp_01 frontend gaps before PR creation"
-status: active
+status: implemented
 type: plan
 ---
 
@@ -132,7 +132,7 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 - [x] App-level smoke/integration test added
 - [x] Existing module tests still pass
 - [x] Current build gate still passes before changing build semantics
-- [ ] Step 1 committed
+- [x] Step 1 committed
 
 ### Step 2 — Replace fake build success with the real Vite build gate
 
@@ -168,7 +168,7 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 - [x] `vite build` succeeds and emits `dist/`
 - [x] Required env vars are enforced on the real build path
 - [x] Missing-env build failure is verified before the successful placeholder-env build
-- [ ] Step 2 committed
+- [x] Step 2 committed
 
 ### Step 3 — Add the required environment example and dedicated frontend CI workflow
 
@@ -208,7 +208,7 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 - [x] `.github/workflows/ci.yml` dispatches and reports `notio-frontend-core`
 - [x] No service-role variable appears in tracked frontend files
 - [x] Service-role grep gate is present in frontend CI
-- [ ] Step 3 committed
+- [x] Step 3 committed
 
 ### Step 4 — Final gates, docs, and PR readiness
 
@@ -242,13 +242,13 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 
 - Commit the final docs/closeout update and implemented-plan move only after the branch is green and clean.
 
-- [ ] Frontend tests pass
-- [ ] Frontend typecheck passes
-- [ ] Frontend Vite build passes
-- [ ] `notio/docs/log.md` updated for the completed work
-- [ ] Plan moved to `notio/docs/plans/implemented/notio-frontend-gap-closure.md`
-- [ ] Branch clean and ready for push/PR
-- [ ] Step 4 committed
+- [x] Frontend tests pass
+- [x] Frontend typecheck passes
+- [x] Frontend Vite build passes
+- [x] `notio/docs/log.md` updated for the completed work
+- [x] Plan moved to `notio/docs/plans/implemented/notio-frontend-gap-closure.md`
+- [x] Branch clean and ready for push/PR
+- [x] Step 4 committed
 
 ## Done Criteria
 
