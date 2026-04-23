@@ -57,6 +57,15 @@ Authoritative design lives in [`docs/adr/`](docs/adr/):
 - [ADR-005 — tag-driven CI/CD to VPS](docs/adr/adr-005-tag-driven-cicd-to-vps.md)
 - [ADR-006 — capture feedback as cross-cutting concern](docs/adr/adr-006-capture-feedback-as-cross-cutting-concern.md)
 
+Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/adr/):
+
+- [Frontend ADR-001 — frontend architecture for mvp_01 browse client](docs/frontend/adr/ADR-001-frontend-architecture-mvp01-supabase-browse.md)
+- [Frontend ADR-002 — auth model for mvp_01 read-only Supabase frontend](docs/frontend/adr/ADR-002-auth-model-mvp01-readonly-supabase-frontend.md)
+- [Frontend ADR-003 — mvp_01 product scope for read-only browse frontend](docs/frontend/adr/ADR-003-mvp01-product-scope-readonly-browse-frontend.md)
+- [Frontend ADR-004 — read-model contract for mvp_01 browse](docs/frontend/adr/ADR-004-read-model-contract-mvp01-browse.md)
+- [Frontend ADR-005 — single-user data model for mvp_01 frontend](docs/frontend/adr/ADR-005-single-user-data-model-mvp01-frontend.md)
+- [Frontend ADR-006 — platform, hosting, and repo layout for mvp_01 frontend](docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md)
+
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 
 ## Stack

@@ -1,5 +1,10 @@
 # Log
 
+## 2026-04-23
+
+- regentara: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
+- CI: switched `notio` path filter from catch-all `notio/**` to inclusion-only (Sources, Tests, Package.swift, Dockerfile, etc.) so doc-only changes skip the expensive `notio-core` Swift build. Negation patterns don't work — `dorny/paths-filter` OR's all lines.
+
 ## 2026-04-21
 
 - dev-skills: made igor1309/skills public for Web Agent plugin access. Added project-level `.claude/settings.json`. Marketplace v1.32.1.
