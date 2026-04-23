@@ -13,6 +13,8 @@ Accepted
 ## Related ADRs
 
 - **Frontend ADR-002** — auth model and security boundary for this client.
+- **Frontend ADR-003** — single-user scope for `mvp_01` (pins the authorization rule and the no-ownership data model).
+- **Frontend ADR-004** — read-model contract (names the concrete table and public columns consumed by this client).
 - **Capture ADR-003** (`../../adr/adr-003-supabase-backed-storage-implementation.md`) — the write side that owns the Supabase project this frontend reads from.
 
 ## Context

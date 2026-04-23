@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Frontend ADR-003 (single-user scope for `mvp_01` frontend) and ADR-004 (read-model contract for `mvp_01` browse): lock the product as single-user/personal/discovery — no per-row ownership, no Telegram-to-Supabase identity bridge, Supabase Auth as a binary gate; pin `captured_items` columns as the public read surface with explicit-select rule and "non-public by default" for new columns. Back-linked from ADR-001/ADR-002; ADR-002's authorization rule now defers to ADR-003 instead of sitting open.
+
 - Frontend ADRs for `mvp_01` (read-only Supabase browse client): ADR-001 (architecture: direct thin client, no BFF, feature-owned read protocol, no mutating Supabase calls) and ADR-002 (auth: Supabase Auth + RLS scoped to the `authenticated` role, no anonymous or service-role access). Both ADRs include Enforcement sections with reviewable rules (MUST/MUST NOT) and cross-link to each other and to capture ADR-003. Added `docs/frontend/adr/README.md` to namespace the frontend ADR numbering; linked frontend ADRs from the top-level `README.md`.
 
 ## 2026-04-19
