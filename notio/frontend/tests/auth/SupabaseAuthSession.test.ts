@@ -20,6 +20,29 @@ describe("SupabaseAuthSession", () => {
     expect(receivedStates[0]).toEqual({ status: "checking" });
   });
 
+  it("bootstrap shouldStayCheckingUntilGetSessionResolves_onInitialSessionEventDuringPendingBootstrap", async () => {
+    const sessionRequest = makeDeferred<SessionResult>();
+    const client = makeClientDouble({
+      sessionOutcome: sessionRequest.promise
+    });
+    const sut = new SupabaseAuthSession(client.value as never);
+    const receivedStates: AuthState[] = [];
+
+    sut.subscribe(($0) => {
+      receivedStates.push($0);
+    });
+    await vi.waitFor(() => {
+      expect(client.initialSessionEmitCount).toBe(1);
+    });
+
+    expect(receivedStates.at(-1)).toEqual({ status: "checking" });
+    sessionRequest.resolve({ data: { session: null }, error: null });
+
+    await vi.waitFor(() => {
+      expect(receivedStates.at(-1)).toEqual({ status: "unauthenticated" });
+    });
+  });
+
   it("subscribe shouldTransitionToUnauthenticated_onMissingPersistedSession", async () => {
     const client = makeClientDouble({
       sessionOutcome: { data: { session: null }, error: null }
@@ -301,6 +324,8 @@ describe("SupabaseAuthSession", () => {
 type AuthChangeEvent = "INITIAL_SESSION" | "PASSWORD_RECOVERY" | "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "USER_UPDATED";
 
 type ClientDoubleOptions = {
+  emitInitialSessionEvent?: boolean;
+  initialSessionEventSession?: SessionValue;
   sessionOutcome?: Outcome<SessionResult>;
   signInError?: unknown;
   signOutError?: unknown;
@@ -344,6 +369,7 @@ type SupabaseAuthClientDouble = {
   };
   authListenerUnsubscribeCallCount: number;
   emit(event: AuthChangeEvent, session: SessionValue): void;
+  initialSessionEmitCount: number;
   signInAnonymouslyCallCount: number;
   signInWithOtpCalls: string[];
   signUpCallCount: number;
@@ -353,9 +379,12 @@ type SupabaseAuthClientDouble = {
 function makeClientDouble(options: ClientDoubleOptions): SupabaseAuthClientDouble {
   let authListener: ((event: AuthChangeEvent, session: SessionValue) => void) | null = null;
   let authListenerUnsubscribeCallCount = 0;
+  let initialSessionEmitCount = 0;
   let signInAnonymouslyCallCount = 0;
   const signInWithOtpCalls: string[] = [];
   let signUpCallCount = 0;
+  const emitInitialSessionEvent = options.emitInitialSessionEvent ?? true;
+  const initialSessionEventSession = options.initialSessionEventSession ?? null;
 
   const value = {
     auth: {
@@ -364,6 +393,17 @@ function makeClientDouble(options: ClientDoubleOptions): SupabaseAuthClientDoubl
       },
       onAuthStateChange(callback: (event: AuthChangeEvent, session: SessionValue) => void) {
         authListener = callback;
+        if (emitInitialSessionEvent) {
+          queueMicrotask(() => {
+            if (authListener === null) {
+              return;
+            }
+
+            initialSessionEmitCount += 1;
+            authListener("INITIAL_SESSION", initialSessionEventSession);
+          });
+        }
+
         return {
           data: {
             subscription: {
@@ -403,6 +443,9 @@ function makeClientDouble(options: ClientDoubleOptions): SupabaseAuthClientDoubl
     auth: value.auth,
     emit(event: AuthChangeEvent, session: SessionValue): void {
       authListener?.(event, session);
+    },
+    get initialSessionEmitCount() {
+      return initialSessionEmitCount;
     },
     get signInAnonymouslyCallCount() {
       return signInAnonymouslyCallCount;

@@ -4,6 +4,7 @@ import type { AuthSession, AuthState } from "./AuthSession";
 import { SignInError, SignOutError } from "./AuthSession";
 
 export class SupabaseAuthSession implements AuthSession {
+  private bootstrapPending = true;
   private destroyed = false;
   private readonly subscription: { unsubscribe(): void };
   private readonly subscribers = new Set<(state: AuthState) => void>();
@@ -53,20 +54,40 @@ export class SupabaseAuthSession implements AuthSession {
   }
 
   private async bootstrap(): Promise<void> {
-    const result = await this.client.auth.getSession();
-    if (this.destroyed || this.state.status !== "checking") {
-      return;
-    }
-    if (result.error !== null) {
-      this.setState({ status: "unauthenticated" });
-      return;
-    }
+    try {
+      const result = await this.client.auth.getSession();
+      if (this.destroyed) {
+        return;
+      }
 
-    this.setState(toAuthState(result.data.session));
+      this.bootstrapPending = false;
+      if (this.state.status !== "checking") {
+        return;
+      }
+      if (result.error !== null) {
+        this.setState({ status: "unauthenticated" });
+        return;
+      }
+
+      this.setState(toAuthState(result.data.session));
+    } catch {
+      if (this.destroyed) {
+        return;
+      }
+
+      this.bootstrapPending = false;
+      if (this.state.status === "checking") {
+        this.setState({ status: "unauthenticated" });
+      }
+      return;
+    }
   }
 
   private handleAuthStateChange(event: string, session: unknown): void {
     if (this.destroyed) {
+      return;
+    }
+    if (this.bootstrapPending) {
       return;
     }
     if (event === "SIGNED_OUT") {
