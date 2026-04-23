@@ -64,6 +64,7 @@ Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/
 - [Frontend ADR-003 — mvp_01 product scope for read-only browse frontend](docs/frontend/adr/ADR-003-mvp01-product-scope-readonly-browse-frontend.md)
 - [Frontend ADR-004 — read-model contract for mvp_01 browse](docs/frontend/adr/ADR-004-read-model-contract-mvp01-browse.md)
 - [Frontend ADR-005 — single-user data model for mvp_01 frontend](docs/frontend/adr/ADR-005-single-user-data-model-mvp01-frontend.md)
+- [Frontend ADR-006 — platform, hosting, and repo layout for mvp_01 frontend](docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md)
 
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 

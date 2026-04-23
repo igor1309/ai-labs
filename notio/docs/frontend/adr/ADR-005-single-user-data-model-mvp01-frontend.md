@@ -16,6 +16,7 @@ Accepted
 - **Frontend ADR-002** — auth boundary (Supabase Auth + RLS on `authenticated`). This ADR constrains the authorization rule that ADR-002 deliberately left open.
 - **Frontend ADR-003** — product scope. ADR-003 pins *what* the product does under a single-user assumption; this ADR pins *how* "single-user" is expressed in the data model and what the write/read sides are forbidden from doing to violate it.
 - **Frontend ADR-004** — read-model contract for the browsed table.
+- **Frontend ADR-006** — platform, hosting, and repo layout; hosts exactly one user with no multi-device, multi-account, or multi-tenant plumbing.
 
 ## Context
 

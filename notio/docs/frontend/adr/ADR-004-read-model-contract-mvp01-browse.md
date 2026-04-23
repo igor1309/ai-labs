@@ -15,6 +15,7 @@ Accepted
 - **Frontend ADR-001** — pins "the browsed table row IS the read model"; this ADR names the concrete table and columns.
 - **Frontend ADR-003** — product scope; consumes this contract for the browse list.
 - **Frontend ADR-005** — single-user data model; explains why this contract needs no ownership column.
+- **Frontend ADR-006** — platform, hosting, and repo layout; the chosen stack's Supabase SDK (`@supabase/supabase-js`) issues the explicit-column select pinned here.
 - **Capture ADR-003** (`../../adr/adr-003-supabase-backed-storage-implementation.md`) — the write side that owns `captured_items`.
 
 ## Context

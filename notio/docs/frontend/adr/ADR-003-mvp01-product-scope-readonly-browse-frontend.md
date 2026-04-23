@@ -16,6 +16,7 @@ Accepted
 - **Frontend ADR-002** — auth boundary (Supabase Auth + RLS on `authenticated`). This ADR picks the concrete sign-in method (magic link / OTP email) that ADR-002 left open.
 - **Frontend ADR-004** — read-model contract; defines the table and columns consumed by the browse list defined here.
 - **Frontend ADR-005** — single-user data model; pins the enforcement rules (no `user_id`, no `auth.uid()`, no Telegram identity bridge) behind this product's "single-user" claim.
+- **Frontend ADR-006** — platform, hosting, and repo layout; picks a stack (web SPA + Supabase JS SDK) that can reach the pinned state set and magic-link sign-in method.
 
 ## Context
 

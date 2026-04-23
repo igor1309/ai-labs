@@ -16,6 +16,7 @@ Accepted
 - **Frontend ADR-003** — product scope; pins the concrete sign-in method (magic link / OTP email) that this ADR leaves open.
 - **Frontend ADR-004** — read-model contract; names the table and columns this boundary protects.
 - **Frontend ADR-005** — single-user data model; pins the concrete authorization rule that this ADR leaves open ("any authenticated session reads everything; no per-row ownership").
+- **Frontend ADR-006** — platform, hosting, and repo layout; names the `VITE_*` env-var mechanism that injects the publishable/anon key for this boundary without ever exposing the service-role key.
 
 ## Context
 

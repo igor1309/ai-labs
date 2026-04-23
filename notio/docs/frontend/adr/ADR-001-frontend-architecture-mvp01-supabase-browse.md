@@ -16,6 +16,7 @@ Accepted
 - **Frontend ADR-003** — product scope for the `mvp_01` browse client (sign-in method, pagination, state set, what's in and out of scope).
 - **Frontend ADR-004** — read-model contract (names the concrete table and public columns consumed by this client).
 - **Frontend ADR-005** — single-user data model for `mvp_01` (pins the authorization rule and the no-ownership data model).
+- **Frontend ADR-006** — platform, hosting, and repo layout (picks the concrete SDK, language, and module placement that this ADR's "feature-owned read protocol" rule refers to).
 - **Capture ADR-003** (`../../adr/adr-003-supabase-backed-storage-implementation.md`) — the write side that owns the Supabase project this frontend reads from.
 
 ## Context
