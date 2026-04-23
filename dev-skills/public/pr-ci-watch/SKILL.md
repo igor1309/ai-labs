@@ -1,6 +1,6 @@
 ---
 name: pr-ci-watch
-version: "1.2.1"
+version: "1.2.2"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
 
@@ -12,13 +12,14 @@ description: Use when the user wants to monitor GitHub PR CI status, wait for ch
 
 ## The command
 
+**Always redirect output to a file** — raw `--watch` output contains hundreds of duplicate status lines across refreshes that bloat the context window. Branch on exit code, read the log only on failure.
+
 ```bash
-gh pr checks <pr-number> --watch --fail-fast
+gh pr checks <pr-number> --watch --fail-fast > /tmp/<repo>-pr-<pr>.log 2>&1
 ```
 
-- Blocks until all checks settle, or exits on the first failure (`--fail-fast`).
-- `--fail-fast` is the default for fast feedback. Drop it if the user wants to see all failures at once.
 - Exit 0: all green. Nonzero: something failed. Exit 8: still pending (shouldn't occur with `--watch` but handle defensively).
+- `--fail-fast` is the default for fast feedback. Drop it if the user wants to see all failures at once.
 - No PR number given? Resolve from current branch: `gh pr view --json number -q .number`.
 - Set `timeout: 600000` on the Bash tool call — `--watch` can block indefinitely if a check hangs.
 
@@ -26,14 +27,9 @@ gh pr checks <pr-number> --watch --fail-fast
 
 Run `--watch` in the foreground. The agent is cheap while blocked on a subprocess — no tokens burn, no context grows, resume is instant when checks settle.
 
-Switch to **background** only if the user explicitly says they want to keep working in parallel:
+Switch to **background** only if the user explicitly says they want to keep working in parallel — use `run_in_background: true` on the Bash tool call.
 
-```bash
-# Bash tool with run_in_background: true
-gh pr checks <pr> --watch --fail-fast > /tmp/<repo>-pr-<pr>.log 2>&1
-```
-
-You will be notified when it completes. Read the log at `/tmp/<repo>-pr-<pr>.log` if details are needed.
+You will be notified when the background command completes. Read the log at `/tmp/<repo>-pr-<pr>.log` if details are needed.
 
 ## On success
 
