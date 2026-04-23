@@ -13,8 +13,9 @@ Accepted
 ## Related ADRs
 
 - **Frontend ADR-002** — auth model and security boundary for this client.
-- **Frontend ADR-005** — single-user data model for `mvp_01` (pins the authorization rule and the no-ownership data model).
+- **Frontend ADR-003** — product scope for the `mvp_01` browse client (sign-in method, pagination, state set, what's in and out of scope).
 - **Frontend ADR-004** — read-model contract (names the concrete table and public columns consumed by this client).
+- **Frontend ADR-005** — single-user data model for `mvp_01` (pins the authorization rule and the no-ownership data model).
 - **Capture ADR-003** (`../../adr/adr-003-supabase-backed-storage-implementation.md`) — the write side that owns the Supabase project this frontend reads from.
 
 ## Context
@@ -69,7 +70,7 @@ At the architectural level, the client consists of:
 
 - UI layer for browsing the table
 - read-side data access layer using Supabase
-- feature-level state for loading, loaded, empty, and failed states
+- feature-level state whose authoritative set is defined by ADR-003 §Decision (`loading`, `refreshing`, `loaded`, `empty`, `failed`, `unauthorized`)
 
 The frontend should treat the table as a **read model** for browsing.
 

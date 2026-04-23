@@ -6,5 +6,6 @@ Filenames use uppercase `ADR-NNN-...` to make the namespace visually distinct fr
 
 - [ADR-001 — frontend architecture for mvp_01 browse client](ADR-001-frontend-architecture-mvp01-supabase-browse.md)
 - [ADR-002 — auth model for mvp_01 read-only Supabase frontend](ADR-002-auth-model-mvp01-readonly-supabase-frontend.md)
+- [ADR-003 — mvp_01 product scope for read-only browse frontend](ADR-003-mvp01-product-scope-readonly-browse-frontend.md)
 - [ADR-004 — read-model contract for mvp_01 browse](ADR-004-read-model-contract-mvp01-browse.md)
 - [ADR-005 — single-user data model for mvp_01 frontend](ADR-005-single-user-data-model-mvp01-frontend.md)

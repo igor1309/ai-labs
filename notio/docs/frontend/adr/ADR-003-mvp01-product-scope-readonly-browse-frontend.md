@@ -10,6 +10,13 @@ date: 2026-04-23
 
 Accepted
 
+## Related ADRs
+
+- **Frontend ADR-001** — architectural shape (direct, read-only Supabase client). This ADR's state set extends the one described in ADR-001 §Architectural Shape.
+- **Frontend ADR-002** — auth boundary (Supabase Auth + RLS on `authenticated`). This ADR picks the concrete sign-in method (magic link / OTP email) that ADR-002 left open.
+- **Frontend ADR-004** — read-model contract; defines the table and columns consumed by the browse list defined here.
+- **Frontend ADR-005** — single-user data model; pins the enforcement rules (no `user_id`, no `auth.uid()`, no Telegram identity bridge) behind this product's "single-user" claim.
+
 ## Context
 
 Two prior decisions are already locked:
@@ -29,7 +36,7 @@ This ADR defines the functional scope of the first frontend slice.
 - authentication uses Supabase Auth
 - sign-in method is magic link / OTP email
 - access is limited to the authenticated user
-- frontend reads the existing table as-is
+- frontend consumes the read-model contract defined in ADR-004
 - browse is list-only
 - default ordering is newest first
 - pagination uses a **Load more** interaction
@@ -137,6 +144,18 @@ Cons:
 - users cannot inspect row details beyond list presentation
 - larger datasets may eventually need search or filters
 - future broadening will require explicit follow-up decisions
+
+## Enforcement
+
+These rules make the scope drift-resistant. Each must be verifiable by review or CI:
+
+- Initial list load and each "Load more" request MUST use a page size of 50, encoded as a single named constant; any other value requires an ADR amendment.
+- Pagination MUST be an explicit user action. The frontend MUST NOT implement infinite-scroll, auto-load-on-scroll, or any background pre-fetching.
+- Sign-in method MUST be magic link / OTP email. The frontend MUST NOT implement password, social/OAuth, or passkey flows without an ADR amendment.
+- The feature state machine MUST be closed over `{loading, refreshing, loaded, empty, failed, unauthorized}`. Session expiration MUST map to `unauthorized`; no separate `sessionExpired` state is permitted.
+- A unit test MUST assert that the state type's cases equal the set above.
+- The frontend MUST NOT implement a detail screen, search field, filter UI, or any write control (create, update, delete, reorder).
+- PR review checklist item: "no state beyond the ADR-003 set; no search/filter UI; no mutation UI; no auto-pagination."
 
 ## Out of Scope
 

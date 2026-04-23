@@ -14,6 +14,7 @@ Accepted
 
 - **Frontend ADR-001** — architectural shape (direct, read-only Supabase).
 - **Frontend ADR-002** — auth boundary (Supabase Auth + RLS on `authenticated`). This ADR constrains the authorization rule that ADR-002 deliberately left open.
+- **Frontend ADR-003** — product scope. ADR-003 pins *what* the product does under a single-user assumption; this ADR pins *how* "single-user" is expressed in the data model and what the write/read sides are forbidden from doing to violate it.
 - **Frontend ADR-004** — read-model contract for the browsed table.
 
 ## Context

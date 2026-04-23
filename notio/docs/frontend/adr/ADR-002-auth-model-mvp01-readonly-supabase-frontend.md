@@ -13,8 +13,9 @@ Accepted
 ## Related ADRs
 
 - **Frontend ADR-001** — architectural shape (direct, read-only) that this auth boundary sits inside. ADR-001 sets the shape; ADR-002 is the canonical source for the auth/security model it refers to.
-- **Frontend ADR-005** — single-user data model; pins the concrete authorization rule that this ADR leaves open ("any authenticated session reads everything; no per-row ownership").
+- **Frontend ADR-003** — product scope; pins the concrete sign-in method (magic link / OTP email) that this ADR leaves open.
 - **Frontend ADR-004** — read-model contract; names the table and columns this boundary protects.
+- **Frontend ADR-005** — single-user data model; pins the concrete authorization rule that this ADR leaves open ("any authenticated session reads everything; no per-row ownership").
 
 ## Context
 
@@ -165,8 +166,7 @@ These rules make the decision drift-resistant. Each must be verifiable by review
 
 This ADR does not define:
 
-- exact sign-in method
-- UI of the sign-in flow
+- UI of the sign-in flow (the method itself is decided in ADR-003)
 - multi-tenant rules
 - admin access patterns
 - write permissions
