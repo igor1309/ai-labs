@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Reviewed the first frontend spec implementation on `codex/notio-first-frontend-spec`, found a failing pagination defect in `fetchAfter()` cursor serialization (double-encoded PostgREST filter), and saved the review at `docs/specs/reviews/notio-first-frontend-spec-implementation-review-2026-04-23.md`.
+
 - Archived frontend spec review (all findings resolved). Moved to `docs/specs/reviews/archived/`.
 
 - Fixed last ADR consistency nit: updated ADR-006 directory-layout example to show all three `@supabase/supabase-js` import sites (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`) and added `AuthSession.ts`/`SupabaseAuthSession.ts` to the `auth/` listing.
