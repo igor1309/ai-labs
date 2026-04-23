@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Reviewed the third frontend spec implementation on `codex/notio-first-frontend-spec`, found a failing auth bootstrap race in `SupabaseAuthSession` (`INITIAL_SESSION` can leave `checking` before `getSession()` resolves), and saved the review at `docs/specs/reviews/notio-third-frontend-spec-implementation-review-2026-04-23.md`.
+
 - Reviewed the second frontend spec implementation on `codex/notio-first-frontend-spec`, found a warning in `BrowseView.svelte` where the empty-state `Refresh` button is inert, and saved the review at `docs/specs/reviews/notio-second-frontend-spec-implementation-review-2026-04-23.md`.
 
 - Reviewed the first frontend spec implementation on `codex/notio-first-frontend-spec`, found a failing pagination defect in `fetchAfter()` cursor serialization (double-encoded PostgREST filter), and saved the review at `docs/specs/reviews/notio-first-frontend-spec-implementation-review-2026-04-23.md`.
