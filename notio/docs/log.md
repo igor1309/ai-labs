@@ -1,5 +1,9 @@
 # notio — Change Log
 
+## 2026-04-24
+
+- Added the missing `captured_items` authenticated read migration so the frontend's signed-in Supabase session can see the single-user inbox rows under RLS.
+
 ## 2026-04-23
 
 - Fixed frontend magic-link redirects so `SupabaseAuthSession.signIn` sends the current browser origin as `emailRedirectTo`; deployed Pages builds no longer fall back to the Supabase project's stale `localhost:3000` Site URL.
