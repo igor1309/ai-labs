@@ -53,7 +53,7 @@ export type BrowseState =
 
 1. **Waiting for auth.** On mount, if `authState.status` is `checking`, the view enters `{ status: 'loading' }` and does NOT call the reader. It waits for auth to resolve.
 2. **Trigger.** When `authState.status` becomes `authenticated` (either on mount or after resolving from `checking`), the view enters `{ status: 'loading' }` and calls `reader.fetchFirstPage()`.
-3. **Loaded.** If `fetchFirstPage` returns a page with items, state transitions to `{ status: 'loaded', items, hasMore: nextCursor !== null }`.
+3. **Loaded.** If `fetchFirstPage` returns a page with items, state transitions to `{ status: 'loaded', items, hasMore: nextCursor !== null, loadMoreError: null }`.
 4. **Empty.** If `fetchFirstPage` returns a page with zero items, state transitions to `{ status: 'empty' }`.
 5. **Failed.** If `fetchFirstPage` throws `ReaderError`, state transitions to `{ status: 'failed', message }`.
 6. **Unauthorized from reader.** If `fetchFirstPage` throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and the view calls `onUnauthorized()`.
@@ -62,14 +62,14 @@ export type BrowseState =
 ### Refresh
 
 8. **Trigger.** User clicks "Refresh". State transitions to `{ status: 'refreshing', items }` preserving the current items for display. The view calls `reader.fetchFirstPage()`.
-9. **Success.** On success, state transitions to `loaded` (with items) or `empty` (zero items), replacing the previous item list. The cursor resets.
+9. **Success.** On success, state transitions to `{ status: 'loaded', items, hasMore, loadMoreError: null }` (with items) or `empty` (zero items), replacing the previous item list. The cursor resets.
 10. **Failure.** If refresh throws `ReaderError`, state transitions to `{ status: 'failed', message }`.
 11. **Unauthorized during refresh.** If refresh throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
 
 ### Load more
 
 12. **Trigger.** User clicks "Load more". The view calls `reader.fetchAfter(cursor)` using the cursor from the last loaded page.
-13. **Success.** Returned items are appended to the existing list. `hasMore` updates based on `nextCursor`.
+13. **Success.** Returned items are appended to the existing list. `hasMore` updates based on `nextCursor`. `loadMoreError` is cleared to `null`.
 14. **Failure.** If `fetchAfter` throws `ReaderError`, the existing items remain displayed and `loadMoreError` is set to the error message. The state remains `loaded`.
 15. **Unauthorized during load more.** If `fetchAfter` throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
 16. **Hidden when exhausted.** The "Load more" button is not rendered when `hasMore` is `false`.

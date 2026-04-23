@@ -149,7 +149,7 @@ Cons:
 
 These rules make the decision drift-resistant. Each must be verifiable by review or CI:
 
-- The frontend package MUST NOT import any Supabase SDK symbol outside the single read-data module that implements the feature-owned read protocol. The concrete SDK package is `@supabase/supabase-js` and the concrete module is `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` (per ADR-006).
+- The frontend package MUST NOT import `@supabase/supabase-js` outside the following allowed modules: `notio/frontend/src/main.ts` (composition root — `createClient`), `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` (data adapter), and `notio/frontend/src/auth/SupabaseAuthSession.ts` (auth adapter). A single grep gate asserts this set. No UI component may import the SDK.
 - The frontend bundle and its build environment MUST NOT contain the Supabase service-role key; a secret-scan / grep gate MUST fail the build otherwise.
 - A unit or integration test MUST assert the Supabase client is constructed with the publishable (anon) key only.
 - PR review checklist item: "no mutating Supabase calls (`insert`/`update`/`upsert`/`delete`/side-effecting `rpc`) introduced."

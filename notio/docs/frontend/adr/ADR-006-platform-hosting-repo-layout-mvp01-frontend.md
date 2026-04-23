@@ -162,7 +162,7 @@ Cons: visually suggests a separate product; Per-Project CI Isolation is already 
 - The Vite build MUST fail if `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is unset (explicit check in `config.ts` or `vite.config.ts`).
 - No env var starting `VITE_SUPABASE_SERVICE` (or any name that would be interpretable as a service-role key) MUST appear in the frontend codebase or in any `.env*` file tracked by git; a grep-based CI check rejects such references.
 - The frontend MUST NOT deploy a Cloudflare Pages Function or any server-side runtime for `mvp_01`; the Pages project is static-only.
-- `@supabase/supabase-js` MUST be imported only from `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` (or the single adapter module equivalent), per ADR-001 §Enforcement.
+- `@supabase/supabase-js` MUST be imported only from the allowed modules listed in ADR-001 §Enforcement: `main.ts` (composition root), `SupabaseBrowseItemsReader.ts` (data adapter), and `SupabaseAuthSession.ts` (auth adapter).
 - PR review checklist item: "no new Node dependencies outside `notio/frontend/package.json`; no new server-runtime code on the Pages target."
 
 ## Non-Goals

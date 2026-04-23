@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Closed re-review findings: aligned ADR-001 and ADR-006 enforcement text with the canonical three-file SDK import allowlist (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`); made every `loaded` transition in browse-view explicit with `loadMoreError: null` (initial load rule 3, refresh rule 9, load-more success rule 13).
+
 - Re-reviewed the frontend spec fixes and updated the saved review document. Three of the original four issues are now closed (`checking` auth bootstrap, trim-before-validate config, explicit `loadMoreError` channel), with two follow-up doc issues left: ADR-001/ADR-006 still enforce the old single Supabase SDK import site, and browse-view still omits `loadMoreError: null` from some `loaded` success examples.
 
 - Addressed all four review findings across specs: (1) added `checking` bootstrap state to `AuthState` so persisted sessions don't flash `unauthorized` — browse-view waits for auth to resolve before reacting; (2) unified Supabase SDK import rule into a single canonical list in auth-session spec §Supabase SDK import boundary (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`), all other specs defer to it; (3) fixed config validation to trim-before-validate so whitespace-only env vars are rejected, added test cases; (4) added `loadMoreError: string | null` field to `BrowseState.loaded` so load-more failures have a defined error channel while preserving items.
