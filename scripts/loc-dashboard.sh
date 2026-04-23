@@ -8,7 +8,7 @@
 #   dev-skills, sandbox, tools
 # Docs-only or pre-implementation directories remain known to drift detection
 # but are intentionally omitted from LOC rows until they gain code/test/script
-# footprint (currently: nexum, niora).
+# footprint (currently: nexum, niora, regentara).
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ for arg in "$@"; do
   esac
 done
 
-DOCS_ONLY_DIRS=( "nexum" "niora" )
+DOCS_ONLY_DIRS=( "nexum" "niora" "regentara" )
 
 # ---------- helpers ----------
 
@@ -154,7 +154,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading research sandbox scripts tests tools vendor web-scout worktrees _inbox"
+  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts tests tools vendor web-scout worktrees _inbox"
   local unknown=""
   for d in */; do
     d="${d%/}"
