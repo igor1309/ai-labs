@@ -128,3 +128,35 @@ Still open:
 - Why: `BrowseState` now requires `loadMoreError` on every `loaded` state, but the success transitions for initial load and refresh still describe `loaded` objects without that property. The load-more success rule also does not say that a successful request clears stale `loadMoreError`, even though the tests require it.
 - Fix: Make every `loaded` transition explicit as `{ status: 'loaded', items, hasMore, loadMoreError: null }` and state that successful initial load, refresh, and load-more all clear stale load-more errors.
 - Tests: Keep the existing tests that require `loadMoreError: null` initially and that successful load-more clears the field.
+
+## Final Re-review
+
+### Scope
+
+Re-reviewed the final follow-up doc fix after the prior re-review findings were addressed, focused on:
+
+- `notio/docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md`
+
+### Summary
+
+Overall assessment: Needs a minor doc cleanup.
+
+Resolved from the prior re-review:
+
+- ADR enforcement now matches the canonical three-file SDK import allowlist
+- `loaded` state transitions now make `loadMoreError` explicit
+
+Still open:
+
+- ADR-006 directory-layout example still contains a stale single-import comment
+
+### Findings
+
+#### Final Re-review Finding 1
+
+- Verdict: warning
+- Title: ADR-006 directory example still has stale single-import comment
+- Location: `notio/docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md:75`
+- Why: The enforcement text now correctly allows three `@supabase/supabase-js` import sites, but the directory-layout example still says the browse adapter is the only import site. That leaves one misleading contradiction in the ADR even though the enforcement section is fixed.
+- Fix: Update the inline comment to match the allowlist, or remove the import claim from the example tree.
+- Tests: No new tests needed; this is a documentation consistency fix.

@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Re-reviewed the latest doc fix and updated the saved review document again. The remaining issue set is down to one ADR consistency nit: ADR-006's directory-layout example still says `SupabaseBrowseItemsReader.ts` is the only `@supabase/supabase-js` import site even though enforcement now allows `main.ts`, `SupabaseBrowseItemsReader.ts`, and `SupabaseAuthSession.ts`.
+
 - Closed re-review findings: aligned ADR-001 and ADR-006 enforcement text with the canonical three-file SDK import allowlist (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`); made every `loaded` transition in browse-view explicit with `loadMoreError: null` (initial load rule 3, refresh rule 9, load-more success rule 13).
 
 - Re-reviewed the frontend spec fixes and updated the saved review document. Three of the original four issues are now closed (`checking` auth bootstrap, trim-before-validate config, explicit `loadMoreError` channel), with two follow-up doc issues left: ADR-001/ADR-006 still enforce the old single Supabase SDK import site, and browse-view still omits `loadMoreError: null` from some `loaded` success examples.
