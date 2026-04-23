@@ -2,6 +2,16 @@
 
 ## 2026-04-23
 
+- Closed the mvp_01 frontend gap plan: added the runnable Svelte/Vite SPA shell and composition root, made `build` a real env-validated Vite bundle, and wired the dedicated `notio-frontend-core` CI workflow with client-only env scaffolding.
+
+- Added implementation plan `docs/plans/notio-frontend-gap-closure.md` to close the remaining mvp_01 frontend gaps before PR creation: add the runnable SPA entry/composition root, replace the fake typecheck-only `build` with a real Vite bundle gate, and add the required frontend-only CI workflow plus `.env.example`.
+
+- Reviewed the third frontend spec implementation on `codex/notio-first-frontend-spec`, found a failing auth bootstrap race in `SupabaseAuthSession` (`INITIAL_SESSION` can leave `checking` before `getSession()` resolves), and saved the review at `docs/specs/reviews/notio-third-frontend-spec-implementation-review-2026-04-23.md`.
+
+- Reviewed the second frontend spec implementation on `codex/notio-first-frontend-spec`, found a warning in `BrowseView.svelte` where the empty-state `Refresh` button is inert, and saved the review at `docs/specs/reviews/notio-second-frontend-spec-implementation-review-2026-04-23.md`.
+
+- Reviewed the first frontend spec implementation on `codex/notio-first-frontend-spec`, found a failing pagination defect in `fetchAfter()` cursor serialization (double-encoded PostgREST filter), and saved the review at `docs/specs/reviews/notio-first-frontend-spec-implementation-review-2026-04-23.md`.
+
 - Archived frontend spec review (all findings resolved). Moved to `docs/specs/reviews/archived/`.
 
 - Fixed last ADR consistency nit: updated ADR-006 directory-layout example to show all three `@supabase/supabase-js` import sites (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`) and added `AuthSession.ts`/`SupabaseAuthSession.ts` to the `auth/` listing.
