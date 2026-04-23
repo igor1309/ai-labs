@@ -147,7 +147,7 @@ Cons:
 
 These rules make the decision drift-resistant. Each must be verifiable by review or CI:
 
-- The frontend package MUST NOT import `@supabase/*` outside the single read-data module that implements the feature-owned read protocol.
+- The frontend package MUST NOT import any Supabase SDK symbol outside the single read-data module that implements the feature-owned read protocol. (The concrete SDK package or module name depends on the chosen platform and will be pinned by the platform ADR; e.g. `@supabase/supabase-js` on web/JS, `Supabase` on Swift.)
 - The frontend bundle and its build environment MUST NOT contain the Supabase service-role key; a secret-scan / grep gate MUST fail the build otherwise.
 - A unit or integration test MUST assert the Supabase client is constructed with the publishable (anon) key only.
 - PR review checklist item: "no mutating Supabase calls (`insert`/`update`/`upsert`/`delete`/side-effecting `rpc`) introduced."

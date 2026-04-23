@@ -22,7 +22,7 @@ Notio is explicitly a **personal capture service**, not a marketable product (`n
 
 ADR-002 locked the boundary (Supabase Auth + RLS scoped to the `authenticated` role) but intentionally deferred the actual authorization rule — i.e. *which rows which authenticated user may read*. With a personal product, that rule is trivial, and naming it now prevents accidental drift into a multi-user model.
 
-The capture side attributes items through a Telegram ingress (capture ADR-003 / capture-side pipeline). The frontend could in principle be bridged to that identity, but doing so for a single-user product would add surface area for no product benefit.
+The capture side ingests items through a Telegram webhook (see capture ADR-001 for system boundaries). The frontend could in principle be bridged to the Telegram identity, but doing so for a single-user product would add surface area for no product benefit.
 
 ## Decision
 
@@ -32,7 +32,7 @@ Concretely:
 
 - The product has exactly one end user.
 - The data model carries **no per-row ownership column** — `captured_items` is treated as a single shared inbox.
-- Supabase Auth is used as a **binary gate**: any authenticated session MAY read every row; no session MUST read nothing. There are no per-user rules.
+- Supabase Auth is used as a **binary gate**: any authenticated session MAY read every row; any request without an authenticated session MUST be denied. There are no per-user rules.
 - The frontend Supabase Auth identity is **not coupled** to the Telegram capture identity. No identity-bridging table, no `user_id` mapping, no join between them.
 - "Sign-up" is out of scope. Account provisioning is manual (one account, created once, out of band).
 
