@@ -1,6 +1,6 @@
 ---
 name: pr-ci-watch
-version: "1.0.0"
+version: "1.1.0"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
 
@@ -42,6 +42,20 @@ If the user asked to merge on green:
 ```bash
 gh pr merge <pr> --merge --auto --delete-branch
 ```
+
+## Post-success: verify mergeability
+
+CI green does NOT mean the PR can merge. Auto-merge is blocked by conflicts, missing approvals, or other branch-protection rules. After checks pass, **always** verify:
+
+```bash
+gh pr view <pr> --json mergeable,mergeStateStatus,autoMergeRequest -q '.'
+```
+
+- `mergeable: "MERGEABLE"` + `mergeStateStatus: "CLEAN"` → auto-merge will proceed, report success.
+- `mergeable: "CONFLICTING"` → auto-merge is blocked. Report the conflict immediately and offer to resolve it (fetch base branch, merge locally, fix conflicts, push). Do NOT tell the user "auto-merge will proceed" or "wait a moment."
+- `mergeStateStatus: "BLOCKED"` with `mergeable: "MERGEABLE"` → a branch-protection rule (review, required check) is unsatisfied. Report which rule is blocking.
+
+**Never declare a PR will auto-merge based solely on CI status.** The mergeability check is mandatory.
 
 ## On failure
 
