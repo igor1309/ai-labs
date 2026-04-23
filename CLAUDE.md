@@ -23,6 +23,14 @@
 - Tests must cover reasonable edge cases for new or changed behavior.
 - Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
 
+## PR CI Watch
+
+Use the `pr-ci-watch` skill. See `dev-skills/public/pr-ci-watch/SKILL.md`.
+
+Repo-specific details:
+- PR merge strategy: merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
+- `gh pr create` does NOT support `--auto` or `--merge` flags. Auto-merge is a separate step: `gh pr merge <number> --merge --auto --delete-branch`.
+
 ## Specs
 
 Use the `spec-writing` skill. See `dev-skills/public/spec-writing/SKILL.md`.
