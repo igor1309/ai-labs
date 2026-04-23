@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Saved a review document for the new mvp_01 frontend specs at `docs/specs/reviews/notio-frontend-spec-review-2026-04-23.md`, capturing four concrete issues to resolve before implementation: persisted-session bootstrap vs unauthorized state, conflicting Supabase SDK import boundaries across specs, whitespace-only env validation drift, and missing load-more error-state shape in the browse view spec.
+
 - Three new frontend specs completing the mvp_01 spec set: `auth-session-v0.0.1` (auth protocol — magic-link sign-in, sign-out, reactive state, session expiration mapping; notes ADR-001 enforcement extension for auth adapter SDK import), `browse-view-v0.0.1` (Svelte browse component — full state machine with transitions, Load more / refresh interactions, item rendering rules, ADR-003 exclusions), `supabase-config-v0.0.1` (config module — env var reading, validation, sole `import.meta.env` reader, no SDK import). Together with the existing `browse-items-reader` spec, the four specs cover the full mvp_01 frontend surface and are ready for implementation plan writing.
 
 - First frontend spec draft: `docs/specs/browse-items-reader-v0.0.1.md` — the read protocol the `browse` feature uses to page through `captured_items`. Pins the TypeScript types (`CapturedItem`, `PageCursor`, `Page`, `PAGE_SIZE`, `UnauthorizedError`, `ReaderError`), the `BrowseItemsReader` interface (`fetchFirstPage`, `fetchAfter(cursor)`), keyset-cursor semantics, error mapping to the ADR-003 state set, and an enumerated test list covering page shape, cursor semantics, shape fidelity, errors, and query-shape assertions. Anchored in ADR-001/003/004/005/006; next specs are `browse-view`, `auth`, and `config`.
