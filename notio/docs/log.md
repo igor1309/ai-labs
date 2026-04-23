@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Fixed frontend magic-link redirects so `SupabaseAuthSession.signIn` sends the current browser origin as `emailRedirectTo`; deployed Pages builds no longer fall back to the Supabase project's stale `localhost:3000` Site URL.
+
 - Closed the mvp_01 frontend gap plan: added the runnable Svelte/Vite SPA shell and composition root, made `build` a real env-validated Vite bundle, and wired the dedicated `notio-frontend-core` CI workflow with client-only env scaffolding.
 
 - Added implementation plan `docs/plans/notio-frontend-gap-closure.md` to close the remaining mvp_01 frontend gaps before PR creation: add the runnable SPA entry/composition root, replace the fake typecheck-only `build` with a real Vite bundle gate, and add the required frontend-only CI workflow plus `.env.example`.

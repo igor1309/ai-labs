@@ -57,7 +57,7 @@ The `subscribe` signature matches the Svelte store contract: any object with a `
 
 1. **Initial state.** The session starts as `{ status: 'checking' }`. It calls Supabase `auth.getSession()` to detect a persisted session. Once resolved, it transitions to `{ status: 'authenticated', email }` if a session exists, or `{ status: 'unauthenticated' }` if not. Consumers MUST NOT treat `checking` as `unauthenticated`.
 2. **Subscriber notification.** Every subscriber receives the current state synchronously on subscribe, and on every subsequent state change.
-3. **`signIn(email)`.** Calls Supabase `auth.signInWithOtp({ email })`. Resolves when the magic-link request succeeds (the user must check email to complete sign-in). Throws `SignInError` if the request fails.
+3. **`signIn(email)`.** Calls Supabase `auth.signInWithOtp` with the given email and `emailRedirectTo` set to the current browser origin. Resolves when the magic-link request succeeds (the user must check email to complete sign-in). Throws `SignInError` if the request fails.
 4. **`signIn` does not authenticate.** Calling `signIn` does not change the auth state. The state transitions to `authenticated` only when the user completes the magic-link flow and the Supabase `onAuthStateChange` callback fires with `SIGNED_IN`.
 5. **`signOut()`.** Calls Supabase `auth.signOut()`. On success, state transitions to `{ status: 'unauthenticated' }`. Throws `SignOutError` if the call fails.
 6. **Session expiration.** When the Supabase session expires or token refresh fails, state transitions to `{ status: 'unauthenticated' }`. The browse layer maps this to its `unauthorized` state (per ADR-003).
@@ -79,6 +79,7 @@ State lifecycle:
 Sign-in:
 
 - `signIn(email)` calls Supabase `signInWithOtp` with the given email
+- `signIn(email)` passes the current browser origin as `emailRedirectTo`
 - `signIn(email)` resolves without changing auth state
 - `signIn(email)` throws `SignInError` on Supabase error
 - state transitions to `authenticated` when `onAuthStateChange` fires `SIGNED_IN`
