@@ -1,6 +1,6 @@
 ---
 name: pr-ci-watch
-version: "1.2.2"
+version: "1.2.3"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
 
@@ -22,6 +22,7 @@ gh pr checks <pr-number> --watch --fail-fast > /tmp/<repo>-pr-<pr>.log 2>&1
 - `--fail-fast` is the default for fast feedback. Drop it if the user wants to see all failures at once.
 - No PR number given? Resolve from current branch: `gh pr view --json number -q .number`.
 - Set `timeout: 600000` on the Bash tool call — `--watch` can block indefinitely if a check hangs.
+- The `/tmp` redirect may trigger a write permission prompt on first use. This is a one-time grant — worth it to avoid polluting context with hundreds of status lines on every CI watch.
 
 ## Foreground by default
 

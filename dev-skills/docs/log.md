@@ -6,6 +6,8 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-24
 
+- pr-ci-watch v1.2.3: added note about `/tmp` write permission prompt tradeoff. Marketplace v1.36.0.
+
 - pr-ci-watch v1.2.2: always redirect `--watch` output to file to prevent context bloat — branch on exit code, read log only on failure. Marketplace v1.35.0.
 
 - pr-ci-watch v1.2.1: added UNKNOWN mergeability retry (60s, up to 2 retries) with state check (detect already-merged PRs), auto-merge detection (skip re-enabling if already set), success reporting guidance (summarize, don't echo raw output), repo-scoped background log path. Marketplace v1.34.0.
