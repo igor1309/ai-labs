@@ -164,10 +164,10 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 
 - Commit the build-script and bundling changes only after all three frontend gates pass.
 
-- [ ] `package.json` exposes separate `typecheck` and real `build` scripts
-- [ ] `vite build` succeeds and emits `dist/`
-- [ ] Required env vars are enforced on the real build path
-- [ ] Missing-env build failure is verified before the successful placeholder-env build
+- [x] `package.json` exposes separate `typecheck` and real `build` scripts
+- [x] `vite build` succeeds and emits `dist/`
+- [x] Required env vars are enforced on the real build path
+- [x] Missing-env build failure is verified before the successful placeholder-env build
 - [ ] Step 2 committed
 
 ### Step 3 — Add the required environment example and dedicated frontend CI workflow
@@ -219,6 +219,7 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 - Re-run the full frontend local gate set on the final branch state.
 - Update `notio/docs/log.md` with the completed implementation outcome.
 - Self-review the changed files against the three review findings and this plan.
+- Move this completed plan from `notio/docs/plans/notio-frontend-gap-closure.md` to `notio/docs/plans/implemented/notio-frontend-gap-closure.md`.
 - Ensure `git status` is clean before push.
 - Push the execution branch and create the PR only after all prior steps are green.
 
@@ -239,12 +240,13 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 
 **Commit**:
 
-- Commit the final docs/closeout update only after the branch is green and clean.
+- Commit the final docs/closeout update and implemented-plan move only after the branch is green and clean.
 
 - [ ] Frontend tests pass
 - [ ] Frontend typecheck passes
 - [ ] Frontend Vite build passes
 - [ ] `notio/docs/log.md` updated for the completed work
+- [ ] Plan moved to `notio/docs/plans/implemented/notio-frontend-gap-closure.md`
 - [ ] Branch clean and ready for push/PR
 - [ ] Step 4 committed
 
@@ -257,4 +259,5 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 - The repo-level CI workflow dispatches, reports, and notifies on `notio-frontend-core`.
 - The real Vite build fails without the two required public Supabase env vars and passes with placeholder values.
 - The local frontend gate set is green on the final branch state.
+- This plan is moved to `notio/docs/plans/implemented/notio-frontend-gap-closure.md`.
 - The implementation branch is ready for PR creation without open completeness gaps.
