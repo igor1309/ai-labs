@@ -10,6 +10,11 @@ date: 2026-04-23
 
 Accepted
 
+## Related ADRs
+
+- **Frontend ADR-002** — auth model and security boundary for this client.
+- **Capture ADR-003** (`../../adr/adr-003-supabase-backed-storage-implementation.md`) — the write side that owns the Supabase project this frontend reads from.
+
 ## Context
 
 The product needs a minimal frontend for `mvp_01`.
@@ -24,7 +29,7 @@ Scope of this slice:
 
 The question is specifically about **frontend architecture**, not implementation detail.
 
-A separate capture/write side may exist elsewhere in the system. This ADR covers only the read-side frontend for `mvp_01`.
+The capture/write side is defined in capture ADR-003 (`../../adr/adr-003-supabase-backed-storage-implementation.md`); this ADR covers only the read-side consumer of the same Supabase project.
 
 ## Decision
 
@@ -34,11 +39,13 @@ The architecture is:
 
 - frontend application
 - direct connection to Supabase for reads
-- Supabase Row Level Security governs access
+- Supabase Row Level Security governs access (see ADR-002 for the auth model)
 - no backend-for-frontend for this slice
-- no write capability exposed in the frontend
+- no write capability in the frontend
 
-The frontend is a **read-side browse client**, not a general application layer.
+Read-only means the client MUST NOT call any Supabase mutating method (`insert`, `update`, `upsert`, `delete`, or `rpc` with side effects). RLS policies for the browse table MUST deny write to the role used by the client.
+
+The frontend is a **read-side browse client**: the browsed table row IS the read model, and the client MUST NOT own a separate domain model on top of it.
 
 ## Rationale
 
@@ -64,20 +71,22 @@ At the architectural level, the client consists of:
 
 The frontend should treat the table as a **read model** for browsing.
 
+Supabase access MUST be reached through a feature-owned read protocol (e.g. `BrowseItemsReader`) defined alongside its only consumer; the Supabase implementation is wired at the composition root. No Supabase symbol is imported by UI code. This preserves the single realistic escape hatch identified below (a later move to BFF) without changing UI.
+
 The architecture explicitly excludes:
 
 - mutation flows
 - offline support
 - realtime subscriptions
-- client-side domain complexity beyond browse concerns
+- a client-owned domain model on top of the browsed row
 - custom backend aggregation
 - cross-feature abstraction intended for future unimplemented cases
 
 ## Security Model
 
-The frontend uses the Supabase **publishable** client configuration.
+The frontend uses the Supabase **publishable (anon) API key** — no other Supabase key is permitted in the client bundle or its build-time environment; service-role or any privileged key MUST NOT be present.
 
-Access control is enforced through Supabase policies.
+Access control is enforced through Supabase RLS policies. The full auth/authorization boundary (identity, session, role) is defined in ADR-002; this ADR does not duplicate it.
 
 This ADR assumes that direct frontend reads are acceptable for the data exposure model of `mvp_01`.
 
@@ -131,6 +140,16 @@ Cons:
 - a later move to BFF may require refactoring if requirements expand
 - direct dependency on Supabase is accepted for this slice
 - architectural flexibility is intentionally traded for speed and simplicity
+
+## Enforcement
+
+These rules make the decision drift-resistant. Each must be verifiable by review or CI:
+
+- The frontend package MUST NOT import `@supabase/*` outside the single read-data module that implements the feature-owned read protocol.
+- The frontend bundle and its build environment MUST NOT contain the Supabase service-role key; a secret-scan / grep gate MUST fail the build otherwise.
+- A unit or integration test MUST assert the Supabase client is constructed with the publishable (anon) key only.
+- PR review checklist item: "no mutating Supabase calls (`insert`/`update`/`upsert`/`delete`/side-effecting `rpc`) introduced."
+- Any deviation (new server layer, mutation, cross-table composition) requires an ADR amendment before merge.
 
 ## Non-Goals
 

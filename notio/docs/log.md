@@ -1,5 +1,9 @@
 # notio — Change Log
 
+## 2026-04-23
+
+- Frontend ADRs for `mvp_01` (read-only Supabase browse client): ADR-001 (architecture: direct thin client, no BFF, feature-owned read protocol, no mutating Supabase calls) and ADR-002 (auth: Supabase Auth + RLS scoped to the `authenticated` role, no anonymous or service-role access). Both ADRs include Enforcement sections with reviewable rules (MUST/MUST NOT) and cross-link to each other and to capture ADR-003. Added `docs/frontend/adr/README.md` to namespace the frontend ADR numbering; linked frontend ADRs from the top-level `README.md`.
+
 ## 2026-04-19
 
 - Two-phase capture feedback (`notio_v0.3.0`): immediate receipt acknowledgement and final outcome (success/failure) messages sent to Telegram after each capture request. MessageSender/TelegramMessageSender transport, CaptureFeedbackMessenger formatting layer, NotifyingCaptureStore decorator for outcome feedback. CaptureService unchanged — feedback is wired at the boundary. Bot token required in normal mode, optional in diagnostic mode. 144 tests, Docker verified.
