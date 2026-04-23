@@ -38,7 +38,7 @@ export type BrowseStatus =
 
 export type BrowseState =
   | { status: 'loading' }
-  | { status: 'loaded'; items: CapturedItem[]; hasMore: boolean }
+  | { status: 'loaded'; items: CapturedItem[]; hasMore: boolean; loadMoreError: string | null }
   | { status: 'empty' }
   | { status: 'failed'; message: string }
   | { status: 'unauthorized' }
@@ -51,57 +51,63 @@ export type BrowseState =
 
 ### Initial load
 
-1. **Trigger.** On mount, if `authState.status` is `authenticated`, the view enters `{ status: 'loading' }` and calls `reader.fetchFirstPage()`.
-2. **Loaded.** If `fetchFirstPage` returns a page with items, state transitions to `{ status: 'loaded', items, hasMore: nextCursor !== null }`.
-3. **Empty.** If `fetchFirstPage` returns a page with zero items, state transitions to `{ status: 'empty' }`.
-4. **Failed.** If `fetchFirstPage` throws `ReaderError`, state transitions to `{ status: 'failed', message }`.
-5. **Unauthorized from reader.** If `fetchFirstPage` throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and the view calls `onUnauthorized()`.
-6. **Unauthorized from auth.** If `authState.status` is `unauthenticated` on mount, the view enters `{ status: 'unauthorized' }` and calls `onUnauthorized()` without calling the reader.
+1. **Waiting for auth.** On mount, if `authState.status` is `checking`, the view enters `{ status: 'loading' }` and does NOT call the reader. It waits for auth to resolve.
+2. **Trigger.** When `authState.status` becomes `authenticated` (either on mount or after resolving from `checking`), the view enters `{ status: 'loading' }` and calls `reader.fetchFirstPage()`.
+3. **Loaded.** If `fetchFirstPage` returns a page with items, state transitions to `{ status: 'loaded', items, hasMore: nextCursor !== null }`.
+4. **Empty.** If `fetchFirstPage` returns a page with zero items, state transitions to `{ status: 'empty' }`.
+5. **Failed.** If `fetchFirstPage` throws `ReaderError`, state transitions to `{ status: 'failed', message }`.
+6. **Unauthorized from reader.** If `fetchFirstPage` throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and the view calls `onUnauthorized()`.
+7. **Unauthorized from auth.** If `authState.status` is `unauthenticated` (not `checking`) on mount or after resolving from `checking`, the view enters `{ status: 'unauthorized' }` and calls `onUnauthorized()` without calling the reader.
 
 ### Refresh
 
-7. **Trigger.** User clicks "Refresh". State transitions to `{ status: 'refreshing', items }` preserving the current items for display. The view calls `reader.fetchFirstPage()`.
-8. **Success.** On success, state transitions to `loaded` (with items) or `empty` (zero items), replacing the previous item list. The cursor resets.
-9. **Failure.** If refresh throws `ReaderError`, state transitions to `{ status: 'failed', message }`.
-10. **Unauthorized during refresh.** If refresh throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
+8. **Trigger.** User clicks "Refresh". State transitions to `{ status: 'refreshing', items }` preserving the current items for display. The view calls `reader.fetchFirstPage()`.
+9. **Success.** On success, state transitions to `loaded` (with items) or `empty` (zero items), replacing the previous item list. The cursor resets.
+10. **Failure.** If refresh throws `ReaderError`, state transitions to `{ status: 'failed', message }`.
+11. **Unauthorized during refresh.** If refresh throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
 
 ### Load more
 
-11. **Trigger.** User clicks "Load more". The view calls `reader.fetchAfter(cursor)` using the cursor from the last loaded page.
-12. **Success.** Returned items are appended to the existing list. `hasMore` updates based on `nextCursor`.
-13. **Failure.** If `fetchAfter` throws `ReaderError`, the existing items remain displayed and an error is shown.
-14. **Unauthorized during load more.** If `fetchAfter` throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
-15. **Hidden when exhausted.** The "Load more" button is not rendered when `hasMore` is `false`.
+12. **Trigger.** User clicks "Load more". The view calls `reader.fetchAfter(cursor)` using the cursor from the last loaded page.
+13. **Success.** Returned items are appended to the existing list. `hasMore` updates based on `nextCursor`.
+14. **Failure.** If `fetchAfter` throws `ReaderError`, the existing items remain displayed and `loadMoreError` is set to the error message. The state remains `loaded`.
+15. **Unauthorized during load more.** If `fetchAfter` throws `UnauthorizedError`, state transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
+16. **Hidden when exhausted.** The "Load more" button is not rendered when `hasMore` is `false`.
+17. **Error cleared on retry.** When "Load more" is clicked again after a failure, `loadMoreError` is cleared before the new request.
 
 ### Auth state reactivity
 
-16. **Authenticated → unauthenticated.** If `authState` changes to `unauthenticated` while the view is in any state, the view transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
-17. **Unauthenticated → authenticated.** If `authState` changes to `authenticated` while the view is in `unauthorized`, the view transitions to `{ status: 'loading' }` and calls `reader.fetchFirstPage()`.
+18. **Authenticated → unauthenticated.** If `authState` changes to `unauthenticated` while the view is in any state, the view transitions to `{ status: 'unauthorized' }` and calls `onUnauthorized()`.
+19. **Unauthenticated → authenticated.** If `authState` changes to `authenticated` while the view is in `unauthorized`, the view transitions to `{ status: 'loading' }` and calls `reader.fetchFirstPage()`.
 
 ### Item rendering
 
-18. **Displayed fields.** Each item shows: `kind`, `capturedAt`, and the available content fields (`url`, `note`, `capturedTitle`, `capturedDescription`).
-19. **Metadata indicators.** `sourceType` and `enrichment` are shown as secondary metadata.
-20. **Null fields.** Null fields are omitted from display — not rendered as "null", empty string, or placeholder.
-21. **Unknown enum values.** Unknown values for `kind`, `sourceType`, and `enrichment` are displayed verbatim. The view MUST NOT crash, filter, or remap them (per browse-items-reader spec rule 6).
-22. **Page size.** Uses `PAGE_SIZE` (50) from the browse-items-reader module (per ADR-003).
+20. **Displayed fields.** Each item shows: `kind`, `capturedAt`, and the available content fields (`url`, `note`, `capturedTitle`, `capturedDescription`).
+21. **Metadata indicators.** `sourceType` and `enrichment` are shown as secondary metadata.
+22. **Null fields.** Null fields are omitted from display — not rendered as "null", empty string, or placeholder.
+23. **Unknown enum values.** Unknown values for `kind`, `sourceType`, and `enrichment` are displayed verbatim. The view MUST NOT crash, filter, or remap them (per browse-items-reader spec rule 6).
+24. **Page size.** Uses `PAGE_SIZE` (50) from the browse-items-reader module (per ADR-003).
 
 ### Exclusions
 
-23. **No search.** No search input is rendered in any state.
-24. **No filter.** No filter controls are rendered in any state.
-25. **No detail navigation.** No row click, tap, or keyboard navigation opens a detail view.
-26. **No infinite scroll.** No scroll-position listener triggers loading. Pagination is an explicit user action only (per ADR-003 §Enforcement).
+25. **No search.** No search input is rendered in any state.
+26. **No filter.** No filter controls are rendered in any state.
+27. **No detail navigation.** No row click, tap, or keyboard navigation opens a detail view.
+28. **No infinite scroll.** No scroll-position listener triggers loading. Pagination is an explicit user action only (per ADR-003 §Enforcement).
 
 ## Tests (required)
 
 State machine:
 
 - initial state is `loading` when `authState` is `authenticated`
+- initial state is `loading` when `authState` is `checking` (reader not called)
+- reader is called only after `authState` resolves to `authenticated`
+- persisted session does not trigger `onUnauthorized`
 - initial state is `unauthorized` when `authState` is `unauthenticated`
 - state transitions to `loaded` when `fetchFirstPage` returns items
 - `loaded` state has `hasMore: true` when `nextCursor` is non-null
 - `loaded` state has `hasMore: false` when `nextCursor` is null
+- `loaded` state has `loadMoreError: null` initially
 - state transitions to `empty` when `fetchFirstPage` returns zero items
 - state transitions to `failed` on `ReaderError`
 - state transitions to `unauthorized` on `UnauthorizedError`
@@ -122,7 +128,9 @@ Load more:
 - "Load more" appends returned items to existing list
 - "Load more" updates `hasMore` based on `nextCursor`
 - "Load more" button is not rendered when `hasMore` is `false`
-- "Load more" failure preserves existing items
+- "Load more" failure preserves existing items and sets `loadMoreError`
+- "Load more" retry clears `loadMoreError` before request
+- successful "Load more" clears `loadMoreError`
 
 Auth reactivity:
 

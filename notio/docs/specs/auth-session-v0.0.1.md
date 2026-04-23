@@ -14,9 +14,17 @@ type: spec
 
 Manage authentication state for the mvp_01 frontend: magic-link sign-in, sign-out, and reactive session tracking. Owned by the `auth` feature module at `notio/frontend/src/auth/`.
 
-## ADR-001 enforcement note
+## Supabase SDK import boundary
 
-ADR-001 §Enforcement pins `SupabaseBrowseItemsReader.ts` as the single file that imports `@supabase/supabase-js`. The auth adapter (`SupabaseAuthSession.ts`) is a second import site — it needs the `SupabaseClient` type and calls `supabase.auth.*` methods. The rule's intent (no Supabase symbols in UI components) is preserved: only adapter modules import the SDK. Implementation should treat ADR-001's single-import rule as extending to include the auth adapter alongside the data adapter.
+ADR-001 §Enforcement originally pinned `SupabaseBrowseItemsReader.ts` as the single `@supabase/supabase-js` import site. With auth in scope, the allowed set is:
+
+1. `notio/frontend/src/main.ts` — composition root; imports `createClient`, creates the shared `SupabaseClient` instance.
+2. `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` — data adapter; receives `SupabaseClient` as constructor parameter.
+3. `notio/frontend/src/auth/SupabaseAuthSession.ts` — auth adapter; receives `SupabaseClient` as constructor parameter.
+
+No other file in the frontend may import `@supabase/supabase-js`. A single grep gate asserts this set across the entire frontend. The rule's intent (no Supabase symbols in UI components) is preserved: only adapter modules and the composition root import the SDK.
+
+This list is the canonical reference. The browse-items-reader and supabase-config specs defer to it.
 
 ## Public interface
 
@@ -24,6 +32,7 @@ ADR-001 §Enforcement pins `SupabaseBrowseItemsReader.ts` as the single file tha
 
 ```ts
 export type AuthState =
+  | { status: 'checking' }
   | { status: 'authenticated'; email: string }
   | { status: 'unauthenticated' };
 
@@ -46,7 +55,7 @@ The `subscribe` signature matches the Svelte store contract: any object with a `
 
 ## Behavior rules
 
-1. **Initial state.** The session starts as `{ status: 'unauthenticated' }`. If a persisted Supabase session exists, it transitions to `{ status: 'authenticated', email }` once detected.
+1. **Initial state.** The session starts as `{ status: 'checking' }`. It calls Supabase `auth.getSession()` to detect a persisted session. Once resolved, it transitions to `{ status: 'authenticated', email }` if a session exists, or `{ status: 'unauthenticated' }` if not. Consumers MUST NOT treat `checking` as `unauthenticated`.
 2. **Subscriber notification.** Every subscriber receives the current state synchronously on subscribe, and on every subsequent state change.
 3. **`signIn(email)`.** Calls Supabase `auth.signInWithOtp({ email })`. Resolves when the magic-link request succeeds (the user must check email to complete sign-in). Throws `SignInError` if the request fails.
 4. **`signIn` does not authenticate.** Calling `signIn` does not change the auth state. The state transitions to `authenticated` only when the user completes the magic-link flow and the Supabase `onAuthStateChange` callback fires with `SIGNED_IN`.
@@ -62,8 +71,9 @@ The `subscribe` signature matches the Svelte store contract: any object with a `
 
 State lifecycle:
 
-- initial state is `unauthenticated` when no persisted session exists
-- initial state transitions to `authenticated` when a persisted session exists
+- initial state is `checking`
+- state transitions to `unauthenticated` when no persisted session exists
+- state transitions to `authenticated` when a persisted session exists
 - `authenticated` state includes the user's email
 
 Sign-in:

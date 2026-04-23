@@ -36,11 +36,11 @@ export function readConfig(): SupabaseConfig;
 ## Behavior rules
 
 1. **Reads two variables.** `readConfig()` reads `import.meta.env.VITE_SUPABASE_URL` and `import.meta.env.VITE_SUPABASE_ANON_KEY`.
-2. **Missing variable.** If either variable is `undefined` or empty string, throws `ConfigError` with a message naming the missing variable.
-3. **Trimming.** Returned values are trimmed of leading/trailing whitespace.
+2. **Trimming.** Raw values are trimmed of leading/trailing whitespace before validation.
+3. **Missing variable.** If either trimmed value is `undefined`, empty string, or whitespace-only, throws `ConfigError` with a message naming the missing variable.
 4. **No other variables.** This module reads no other `import.meta.env` variables.
 5. **Sole reader.** This is the only module in the frontend that reads `import.meta.env.VITE_*` (per ADR-006 §Enforcement).
-6. **No SDK import.** This module MUST NOT import `@supabase/supabase-js`. Supabase client creation is the composition root's responsibility (`main.ts`), which imports `createClient` and passes the client to adapter modules.
+6. **No SDK import.** This module MUST NOT import `@supabase/supabase-js`. Supabase client creation is the composition root's responsibility (`main.ts`); see auth-session spec §Supabase SDK import boundary for the canonical allowed-import-site list.
 7. **No service-role key.** No env var matching `VITE_SUPABASE_SERVICE` or any pattern interpretable as a service-role key is read, referenced, or documented in this module (per ADR-001/002 §Enforcement).
 
 ## Tests (required)
@@ -52,6 +52,8 @@ Validation:
 - `readConfig()` throws `ConfigError` when `VITE_SUPABASE_ANON_KEY` is missing
 - `readConfig()` throws `ConfigError` when `VITE_SUPABASE_URL` is empty string
 - `readConfig()` throws `ConfigError` when `VITE_SUPABASE_ANON_KEY` is empty string
+- `readConfig()` throws `ConfigError` when `VITE_SUPABASE_URL` is whitespace-only
+- `readConfig()` throws `ConfigError` when `VITE_SUPABASE_ANON_KEY` is whitespace-only
 - error message names the specific missing variable
 
 Shape:

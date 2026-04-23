@@ -115,6 +115,6 @@ Query shape (asserted at the SDK boundary, e.g. by inspecting the built query):
 ## Done criteria
 
 - `CapturedItem`, `PageCursor`, `Page`, `PAGE_SIZE`, `UnauthorizedError`, `ReaderError`, and `BrowseItemsReader` exported from `notio/frontend/src/browse/BrowseItemsReader.ts`.
-- `SupabaseBrowseItemsReader` in `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` implements `BrowseItemsReader` and is the only file in the frontend that imports `@supabase/supabase-js` (per ADR-001 §Enforcement, ADR-006).
+- `SupabaseBrowseItemsReader` in `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` implements `BrowseItemsReader` and is one of the allowed `@supabase/supabase-js` import sites (see auth-session spec §Supabase SDK import boundary for the canonical list).
 - All tests above pass against the Supabase-backed implementation.
 - `SELECT *` appears in zero lines of the `browse` feature module (review / grep gate).
