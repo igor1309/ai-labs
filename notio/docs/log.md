@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Fixed last ADR consistency nit: updated ADR-006 directory-layout example to show all three `@supabase/supabase-js` import sites (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`) and added `AuthSession.ts`/`SupabaseAuthSession.ts` to the `auth/` listing.
+
 - Re-reviewed the latest doc fix and updated the saved review document again. The remaining issue set is down to one ADR consistency nit: ADR-006's directory-layout example still says `SupabaseBrowseItemsReader.ts` is the only `@supabase/supabase-js` import site even though enforcement now allows `main.ts`, `SupabaseBrowseItemsReader.ts`, and `SupabaseAuthSession.ts`.
 
 - Closed re-review findings: aligned ADR-001 and ADR-006 enforcement text with the canonical three-file SDK import allowlist (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`); made every `loaded` transition in browse-view explicit with `loadMoreError: null` (initial load rule 3, refresh rule 9, load-more success rule 13).

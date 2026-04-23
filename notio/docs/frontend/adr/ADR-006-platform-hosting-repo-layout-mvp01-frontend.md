@@ -67,15 +67,17 @@ notio/
     vite.config.ts
     index.html
     src/
-      main.ts
+      main.ts                    # composition root; imports createClient from @supabase/supabase-js
       app.svelte
       config.ts                 # sole reader of import.meta.env.VITE_*
       browse/                   # feature module (per ADR-001)
         BrowseItemsReader.ts    # feature-owned read protocol (interface)
-        SupabaseBrowseItemsReader.ts  # the only file that imports @supabase/supabase-js
+        SupabaseBrowseItemsReader.ts  # data adapter; imports @supabase/supabase-js
         BrowseView.svelte
         ...
       auth/
+        AuthSession.ts           # auth protocol (interface)
+        SupabaseAuthSession.ts   # auth adapter; imports @supabase/supabase-js
         ...
     tests/
     .env.example
