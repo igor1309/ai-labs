@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-24
+
+- pr-ci-watch v1.2.1: added UNKNOWN mergeability retry (60s, up to 2 retries) with state check (detect already-merged PRs), auto-merge detection (skip re-enabling if already set), success reporting guidance (summarize, don't echo raw output), repo-scoped background log path. Marketplace v1.34.0.
+
 ## 2026-04-21
 
 ### Skills repo made public
