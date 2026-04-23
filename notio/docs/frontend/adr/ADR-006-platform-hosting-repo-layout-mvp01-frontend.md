@@ -160,7 +160,7 @@ Cons: visually suggests a separate product; Per-Project CI Isolation is already 
 
 - The frontend CI workflow MUST be `.github/workflows/notio-frontend-core.yml`, installing only `notio/frontend/` dependencies and running only `notio/frontend/` tests.
 - The Vite build MUST fail if `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is unset (explicit check in `config.ts` or `vite.config.ts`).
-- No env var starting `VITE_SUPABASE_SERVICE` (or any name that would be interpretable as a service-role key) MUST be referenced from the frontend codebase; a grep-based check in CI rejects such references.
+- No env var starting `VITE_SUPABASE_SERVICE` (or any name that would be interpretable as a service-role key) MUST appear in the frontend codebase or in any `.env*` file tracked by git; a grep-based CI check rejects such references.
 - The frontend MUST NOT deploy a Cloudflare Pages Function or any server-side runtime for `mvp_01`; the Pages project is static-only.
 - `@supabase/supabase-js` MUST be imported only from `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` (or the single adapter module equivalent), per ADR-001 §Enforcement.
 - PR review checklist item: "no new Node dependencies outside `notio/frontend/package.json`; no new server-runtime code on the Pages target."

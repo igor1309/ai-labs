@@ -149,7 +149,7 @@ Cons:
 
 These rules make the decision drift-resistant. Each must be verifiable by review or CI:
 
-- The frontend package MUST NOT import any Supabase SDK symbol outside the single read-data module that implements the feature-owned read protocol. (The concrete SDK package or module name depends on the chosen platform and will be pinned by the platform ADR; e.g. `@supabase/supabase-js` on web/JS, `Supabase` on Swift.)
+- The frontend package MUST NOT import any Supabase SDK symbol outside the single read-data module that implements the feature-owned read protocol. The concrete SDK package is `@supabase/supabase-js` and the concrete module is `notio/frontend/src/browse/SupabaseBrowseItemsReader.ts` (per ADR-006).
 - The frontend bundle and its build environment MUST NOT contain the Supabase service-role key; a secret-scan / grep gate MUST fail the build otherwise.
 - A unit or integration test MUST assert the Supabase client is constructed with the publishable (anon) key only.
 - PR review checklist item: "no mutating Supabase calls (`insert`/`update`/`upsert`/`delete`/side-effecting `rpc`) introduced."
@@ -159,11 +159,11 @@ These rules make the decision drift-resistant. Each must be verifiable by review
 
 This ADR does not define:
 
-- exact table schema
+- exact table schema (defined in ADR-004)
 - UI design
-- pagination mechanics
-- filtering behavior
-- concrete library wrappers beyond the decision to use the official Supabase client
+- pagination mechanics (decided in ADR-003; mechanics-level UI is spec-level)
+- filtering behavior (out of scope per ADR-003)
+- the concrete Supabase SDK package and its host platform (decided in ADR-006)
 - future edit flows
 - capture-side or write-side architecture
 

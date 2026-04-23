@@ -60,7 +60,7 @@ Rules that make this a contract rather than a description:
 ## Architectural Shape
 
 - One feature-owned read protocol (per ADR-001) returns a value type whose fields correspond 1:1 with the columns above.
-- The Supabase adapter behind that protocol issues `.select("id, kind, source_type, captured_at, url, note, enrichment, captured_title, captured_description")` (or the platform-idiomatic equivalent), never `*`.
+- The Supabase adapter behind that protocol issues `.select("id, kind, source_type, captured_at, url, note, enrichment, captured_title, captured_description")`, never `*`.
 - Ordering for browse is by `captured_at DESC` (tiebreak `id DESC`); this is part of the read contract so pagination, when later added, is deterministic.
 
 ## Security Model
@@ -111,8 +111,8 @@ Cons: contradicts ADR-001's thin-client direction; adds a function to maintain.
 
 ## Non-Goals
 
-- defining pagination mechanics (deferred to spec)
-- defining filtering or search (deferred to spec)
+- defining pagination mechanics (decided in ADR-003: Load more, page size 50; cursor encoding and UI placement are spec-level)
+- defining filtering or search (out of scope per ADR-003)
 - defining column-level display rules (spec)
 - defining the capture-side representation of non-public columns
 

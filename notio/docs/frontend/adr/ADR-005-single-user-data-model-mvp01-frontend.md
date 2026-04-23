@@ -110,7 +110,7 @@ These rules make the decision drift-resistant:
 
 This ADR does not define:
 
-- exact sign-in method (deferred to spec)
+- exact sign-in method (decided in ADR-003: magic link / OTP email)
 - credential rotation policy
 - number of devices the single user may use simultaneously
 - any future multi-user design
