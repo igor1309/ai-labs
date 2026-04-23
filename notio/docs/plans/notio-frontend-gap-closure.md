@@ -203,11 +203,11 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 
 - Commit the env example, dedicated workflow, and repo-level CI dispatch wiring together once the local frontend gates are green and the workflow content matches ADR-006.
 
-- [ ] `.env.example` added with only the two allowed client vars
-- [ ] `notio-frontend-core.yml` added and frontend-isolated
-- [ ] `.github/workflows/ci.yml` dispatches and reports `notio-frontend-core`
-- [ ] No service-role variable appears in tracked frontend files
-- [ ] Service-role grep gate is present in frontend CI
+- [x] `.env.example` added with only the two allowed client vars
+- [x] `notio-frontend-core.yml` added and frontend-isolated
+- [x] `.github/workflows/ci.yml` dispatches and reports `notio-frontend-core`
+- [x] No service-role variable appears in tracked frontend files
+- [x] Service-role grep gate is present in frontend CI
 - [ ] Step 3 committed
 
 ### Step 4 — Final gates, docs, and PR readiness

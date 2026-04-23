@@ -1,0 +1,53 @@
+name: Notio Frontend Core
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        working-directory: notio/frontend
+        run: npm ci
+
+      - name: Reject frontend service-role variables
+        run: |
+          if git grep -n -E "VITE_SUPABASE_SERVICE|SERVICE_ROLE|service_role" -- notio/frontend; then
+            echo "Frontend must not reference Supabase service-role variables."
+            exit 1
+          fi
+
+      - name: Typecheck
+        working-directory: notio/frontend
+        run: npm run typecheck
+
+      - name: Run tests
+        working-directory: notio/frontend
+        run: npm test
+
+      - name: Build
+        env:
+          VITE_SUPABASE_ANON_KEY: test-anon-key
+          VITE_SUPABASE_URL: https://example.supabase.co
+        working-directory: notio/frontend
+        run: npm run build

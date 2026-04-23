@@ -26,6 +26,8 @@ jobs:
       corpus-scout: ${{ steps.filter.outputs.corpus-scout }}
       notio: ${{ steps.filter.outputs.notio }}
       notio-ci: ${{ steps.filter.outputs.notio-ci }}
+      notio-frontend: ${{ steps.filter.outputs.notio-frontend }}
+      notio-frontend-ci: ${{ steps.filter.outputs.notio-frontend-ci }}
       dev-skills: ${{ steps.filter.outputs.dev-skills }}
     steps:
       - name: Checkout
@@ -74,6 +76,10 @@ jobs:
               - "notio/release.toml"
             notio-ci:
               - ".github/workflows/notio-core.yml"
+            notio-frontend:
+              - "notio/frontend/**"
+            notio-frontend-ci:
+              - ".github/workflows/notio-frontend-core.yml"
             dev-skills:
               - "dev-skills/public/**"
 
@@ -81,6 +87,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' || needs.changes.outputs.notio-ci == 'true' }}
     uses: ./.github/workflows/notio-core.yml
+
+  notio-frontend-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio-frontend == 'true' || needs.changes.outputs.notio-frontend-ci == 'true' }}
+    uses: ./.github/workflows/notio-frontend-core.yml
 
   nomos-core:
     needs: [changes]
@@ -168,7 +179,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -179,8 +190,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -193,6 +204,7 @@ jobs:
         web-scout-core=${{ needs.web-scout-core.result }}
         corpus-scout-core=${{ needs.corpus-scout-core.result }}
         notio-core=${{ needs.notio-core.result }}
+        notio-frontend-core=${{ needs.notio-frontend-core.result }}
         release-validation=${{ needs.release-validation.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
         dev-skills-validation=${{ needs.dev-skills-validation.result }}
