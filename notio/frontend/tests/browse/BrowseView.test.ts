@@ -105,6 +105,17 @@ describe("BrowseView", () => {
     await waitFor(() => expect(readStatus()).toBe("empty"));
   });
 
+  it("emptyState shouldNotRenderRefreshButton_onEmptyPage", async () => {
+    const reader = makeReaderDouble({
+      firstPageOutcomes: [makePage([], null)]
+    });
+
+    renderBrowseView({ initialAuthState: makeAuthenticatedState(), reader });
+    await waitFor(() => expect(readStatus()).toBe("empty"));
+
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+  });
+
   it("initialLoad shouldTransitionToFailed_onReaderError", async () => {
     const reader = makeReaderDouble({
       firstPageOutcomes: [new ReaderError("failed to load")]

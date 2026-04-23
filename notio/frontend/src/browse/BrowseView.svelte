@@ -262,7 +262,6 @@
     {/if}
   {:else if state.status === "empty"}
     <p>No items found.</p>
-    <button on:click={refresh} type="button">Refresh</button>
   {:else if state.status === "failed"}
     <p>{state.message}</p>
   {:else if state.status === "unauthorized"}
