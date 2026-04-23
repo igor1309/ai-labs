@@ -1,5 +1,5 @@
 ---
-date: 2026-04-20
+date: 2026-04-24
 model: claude-opus-4-6
 description: "CI/CD architecture overview for the ai-labs monorepo"
 ---
