@@ -64,6 +64,9 @@ jobs:
               - "corpus-scout/**"
             notio:
               - "notio/**"
+              - "!notio/docs/**"
+              - "!notio/research/**"
+              - "!notio/README.md"
             notio-ci:
               - ".github/workflows/notio-core.yml"
             dev-skills:

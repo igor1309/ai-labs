@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-23
+
+- CI: added exclusion patterns to `notio` path filter (`!notio/docs/**`, `!notio/research/**`, `!notio/README.md`) so doc-only changes skip the expensive `notio-core` Swift build.
+
 - regentara: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
 ## 2026-04-21
 
