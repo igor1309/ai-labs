@@ -1,6 +1,6 @@
 ---
 name: pr-ci-watch
-version: "1.1.0"
+version: "1.2.1"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
 
@@ -30,26 +30,51 @@ Switch to **background** only if the user explicitly says they want to keep work
 
 ```bash
 # Bash tool with run_in_background: true
-gh pr checks <pr> --watch --fail-fast > /tmp/pr-<pr>.log 2>&1
+gh pr checks <pr> --watch --fail-fast > /tmp/<repo>-pr-<pr>.log 2>&1
 ```
 
-You will be notified when it completes. Read the log at `/tmp/pr-<pr>.log` if details are needed.
+You will be notified when it completes. Read the log at `/tmp/<repo>-pr-<pr>.log` if details are needed.
 
 ## On success
 
-If the user asked to merge on green:
+### Report
+
+Summarize the final state in 2–3 lines. Do NOT echo the raw `--watch` output — it contains hundreds of duplicate status lines across refreshes. Report:
+
+- PR number and URL
+- Overall status (all green)
+- Notable outcomes: which jobs were skipped (validates path filters), which passed, total CI wall time if visible
+
+### Auto-merge
+
+Check whether auto-merge is already enabled before acting:
+
+```bash
+gh pr view <pr> --json autoMergeRequest -q '.autoMergeRequest'
+```
+
+- **Auto-merge already enabled** → skip to mergeability verification (below). Do not call `gh pr merge` again.
+- **Auto-merge not enabled and user asked to merge on green** → enable it:
 
 ```bash
 gh pr merge <pr> --merge --auto --delete-branch
 ```
 
-## Post-success: verify mergeability
+- **User did not ask to merge** → skip merge, just report CI status.
+
+### Verify mergeability
 
 CI green does NOT mean the PR can merge. Auto-merge is blocked by conflicts, missing approvals, or other branch-protection rules. After checks pass, **always** verify:
 
 ```bash
-gh pr view <pr> --json mergeable,mergeStateStatus,autoMergeRequest -q '.'
+gh pr view <pr> --json state,mergeable,mergeStateStatus,autoMergeRequest -q '.'
 ```
+
+- `state: "MERGED"` → the PR already merged (auto-merge fired while CI was settling). Report success and stop — no further checks needed.
+
+**Handle `UNKNOWN` state:** GitHub often returns `mergeable: "UNKNOWN"` or `mergeStateStatus: "UNKNOWN"` immediately after CI settles — the merge check hasn't finished computing yet. Wait 60 seconds and retry, up to 2 retries. On each retry, check `state` first — the PR may have auto-merged in the meantime. After 2 retries still `UNKNOWN`, report it explicitly as unresolved — do NOT treat it as success.
+
+Interpret the result:
 
 - `mergeable: "MERGEABLE"` + `mergeStateStatus: "CLEAN"` → auto-merge will proceed, report success.
 - `mergeable: "CONFLICTING"` → auto-merge is blocked. Report the conflict immediately and offer to resolve it (fetch base branch, merge locally, fix conflicts, push). Do NOT tell the user "auto-merge will proceed" or "wait a moment."
