@@ -13,7 +13,7 @@ Accepted
 ## Related ADRs
 
 - **Frontend ADR-001** — pins "the browsed table row IS the read model"; this ADR names the concrete table and columns.
-- **Frontend ADR-003** — single-user scope; explains why this contract needs no ownership column.
+- **Frontend ADR-005** — single-user data model; explains why this contract needs no ownership column.
 - **Capture ADR-003** (`../../adr/adr-003-supabase-backed-storage-implementation.md`) — the write side that owns `captured_items`.
 
 ## Context
@@ -63,7 +63,7 @@ Rules that make this a contract rather than a description:
 
 ## Security Model
 
-No change to ADR-002. This ADR only names the columns the publishable-key, authenticated session is allowed to read. RLS policy remains the coarsest authenticated-read on `captured_items` (per ADR-003 §Enforcement).
+No change to ADR-002. This ADR only names the columns the publishable-key, authenticated session is allowed to read. RLS policy remains the coarsest authenticated-read on `captured_items` (per ADR-005 §Enforcement).
 
 ## Alternatives Considered
 

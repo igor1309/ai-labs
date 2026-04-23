@@ -61,8 +61,8 @@ Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/
 
 - [Frontend ADR-001 — frontend architecture for mvp_01 browse client](docs/frontend/adr/ADR-001-frontend-architecture-mvp01-supabase-browse.md)
 - [Frontend ADR-002 — auth model for mvp_01 read-only Supabase frontend](docs/frontend/adr/ADR-002-auth-model-mvp01-readonly-supabase-frontend.md)
-- [Frontend ADR-003 — single-user scope for mvp_01 frontend](docs/frontend/adr/ADR-003-single-user-scope-mvp01-frontend.md)
 - [Frontend ADR-004 — read-model contract for mvp_01 browse](docs/frontend/adr/ADR-004-read-model-contract-mvp01-browse.md)
+- [Frontend ADR-005 — single-user data model for mvp_01 frontend](docs/frontend/adr/ADR-005-single-user-data-model-mvp01-frontend.md)
 
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 

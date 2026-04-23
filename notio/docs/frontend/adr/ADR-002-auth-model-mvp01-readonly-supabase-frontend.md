@@ -13,7 +13,7 @@ Accepted
 ## Related ADRs
 
 - **Frontend ADR-001** — architectural shape (direct, read-only) that this auth boundary sits inside. ADR-001 sets the shape; ADR-002 is the canonical source for the auth/security model it refers to.
-- **Frontend ADR-003** — single-user scope; pins the concrete authorization rule that this ADR leaves open ("any authenticated session reads everything; no per-row ownership").
+- **Frontend ADR-005** — single-user data model; pins the concrete authorization rule that this ADR leaves open ("any authenticated session reads everything; no per-row ownership").
 - **Frontend ADR-004** — read-model contract; names the table and columns this boundary protects.
 
 ## Context
@@ -36,7 +36,7 @@ The frontend will use **Supabase Auth** and access the table as an **authenticat
 
 Every read MUST be made under a Supabase Auth session belonging to a real signed-in user. Supabase anonymous sign-in sessions are out of scope for `mvp_01` and MUST NOT be used.
 
-Access to the browse table will be controlled by **Row Level Security** policies scoped to the Supabase `authenticated` role. The concrete policy body is pinned by ADR-003 (single-user scope): the RLS predicate is the coarsest authenticated-read rule, with no per-row ownership check.
+Access to the browse table will be controlled by **Row Level Security** policies scoped to the Supabase `authenticated` role. The concrete policy body is pinned by ADR-005 (single-user data model): the RLS predicate is the coarsest authenticated-read rule, with no per-row ownership check.
 
 The frontend will not use:
 

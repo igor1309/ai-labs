@@ -1,10 +1,10 @@
 ---
-title: ADR-003 Single-User Scope for mvp_01 Frontend
+title: ADR-005 Single-User Data Model for mvp_01 Frontend
 status: Accepted
 date: 2026-04-23
 ---
 
-# ADR-003: Single-User Scope for mvp_01 Frontend
+# ADR-005: Single-User Data Model for mvp_01 Frontend
 
 ## Status
 
