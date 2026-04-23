@@ -74,7 +74,7 @@ Close the remaining gaps between the implemented frontend modules and the `mvp_0
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-frontend-gap-closure`
 - Expected branch: `codex/notio-frontend-gap-closure`
-- Preflight check: [ ] done
+- Preflight check: [x] done — overridden by direct user instruction to work in this worktree on branch `notio-frontend`
 
 ## Scope Guardrails
 
@@ -128,10 +128,10 @@ Note: at this step, `build` is still the existing typecheck-only script. Step 2 
 
 - Commit the SPA shell and composition root once the targeted gates are green.
 
-- [ ] `index.html`, `src/main.ts`, and `src/app.svelte` added
-- [ ] App-level smoke/integration test added
-- [ ] Existing module tests still pass
-- [ ] Current build gate still passes before changing build semantics
+- [x] `index.html`, `src/main.ts`, and `src/app.svelte` added
+- [x] App-level smoke/integration test added
+- [x] Existing module tests still pass
+- [x] Current build gate still passes before changing build semantics
 - [ ] Step 1 committed
 
 ### Step 2 — Replace fake build success with the real Vite build gate
