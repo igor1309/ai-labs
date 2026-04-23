@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Re-reviewed the frontend spec fixes and updated the saved review document. Three of the original four issues are now closed (`checking` auth bootstrap, trim-before-validate config, explicit `loadMoreError` channel), with two follow-up doc issues left: ADR-001/ADR-006 still enforce the old single Supabase SDK import site, and browse-view still omits `loadMoreError: null` from some `loaded` success examples.
+
 - Addressed all four review findings across specs: (1) added `checking` bootstrap state to `AuthState` so persisted sessions don't flash `unauthorized` — browse-view waits for auth to resolve before reacting; (2) unified Supabase SDK import rule into a single canonical list in auth-session spec §Supabase SDK import boundary (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`), all other specs defer to it; (3) fixed config validation to trim-before-validate so whitespace-only env vars are rejected, added test cases; (4) added `loadMoreError: string | null` field to `BrowseState.loaded` so load-more failures have a defined error channel while preserving items.
 
 - Saved a review document for the new mvp_01 frontend specs at `docs/specs/reviews/notio-frontend-spec-review-2026-04-23.md`, capturing four concrete issues to resolve before implementation: persisted-session bootstrap vs unauthorized state, conflicting Supabase SDK import boundaries across specs, whitespace-only env validation drift, and missing load-more error-state shape in the browse view spec.

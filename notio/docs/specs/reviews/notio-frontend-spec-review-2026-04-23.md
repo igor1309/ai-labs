@@ -77,3 +77,54 @@ Criteria verdicts:
 
 - No spec files were modified as part of this review capture.
 - This document preserves the review only; it does not include an implementation plan.
+
+## Re-review
+
+### Scope
+
+Re-reviewed the spec fixes introduced after the initial review, focused on:
+
+- `notio/docs/specs/auth-session-v0.0.1.md`
+- `notio/docs/specs/browse-items-reader-v0.0.1.md`
+- `notio/docs/specs/browse-view-v0.0.1.md`
+- `notio/docs/specs/supabase-config-v0.0.1.md`
+
+Cross-checked the remaining source-of-truth rules against:
+
+- `notio/docs/frontend/adr/ADR-001-frontend-architecture-mvp01-supabase-browse.md`
+- `notio/docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md`
+
+### Summary
+
+Overall assessment: Needs minor fixes.
+
+Resolved from the initial review:
+
+- persisted-session bootstrap race
+- whitespace-only config validation gap
+- missing load-more error channel
+
+Still open:
+
+- SDK import boundary remains inconsistent with ADR enforcement
+- `loaded` state examples still omit the required `loadMoreError` field
+
+### Findings
+
+#### Re-review Finding 1
+
+- Verdict: fail
+- Title: Canonical SDK import rule still conflicts with ADR enforcement
+- Location: `notio/docs/specs/auth-session-v0.0.1.md:17-27`
+- Why: The spec now defines a three-file canonical allowlist for `@supabase/supabase-js` imports, but ADR-001 and ADR-006 still enforce the older single-import-site rule. That leaves the branch with conflicting source-of-truth documents and an unimplementable grep/CI gate.
+- Fix: Align ADR-001 and ADR-006 enforcement text to the same three-file allowlist, or narrow the spec back down so every document enforces the same import rule.
+- Tests: Keep one repo-level grep/CI gate only, asserting the final allowed import-site set.
+
+#### Re-review Finding 2
+
+- Verdict: warning
+- Title: Loaded-state examples omit required `loadMoreError` field
+- Location: `notio/docs/specs/browse-view-v0.0.1.md:39-45`
+- Why: `BrowseState` now requires `loadMoreError` on every `loaded` state, but the success transitions for initial load and refresh still describe `loaded` objects without that property. The load-more success rule also does not say that a successful request clears stale `loadMoreError`, even though the tests require it.
+- Fix: Make every `loaded` transition explicit as `{ status: 'loaded', items, hasMore, loadMoreError: null }` and state that successful initial load, refresh, and load-more all clear stale load-more errors.
+- Tests: Keep the existing tests that require `loadMoreError: null` initially and that successful load-more clears the field.
