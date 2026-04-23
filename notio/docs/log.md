@@ -2,6 +2,22 @@
 
 ## 2026-04-23
 
+- Archived frontend spec review (all findings resolved). Moved to `docs/specs/reviews/archived/`.
+
+- Fixed last ADR consistency nit: updated ADR-006 directory-layout example to show all three `@supabase/supabase-js` import sites (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`) and added `AuthSession.ts`/`SupabaseAuthSession.ts` to the `auth/` listing.
+
+- Re-reviewed the latest doc fix and updated the saved review document again. The remaining issue set is down to one ADR consistency nit: ADR-006's directory-layout example still says `SupabaseBrowseItemsReader.ts` is the only `@supabase/supabase-js` import site even though enforcement now allows `main.ts`, `SupabaseBrowseItemsReader.ts`, and `SupabaseAuthSession.ts`.
+
+- Closed re-review findings: aligned ADR-001 and ADR-006 enforcement text with the canonical three-file SDK import allowlist (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`); made every `loaded` transition in browse-view explicit with `loadMoreError: null` (initial load rule 3, refresh rule 9, load-more success rule 13).
+
+- Re-reviewed the frontend spec fixes and updated the saved review document. Three of the original four issues are now closed (`checking` auth bootstrap, trim-before-validate config, explicit `loadMoreError` channel), with two follow-up doc issues left: ADR-001/ADR-006 still enforce the old single Supabase SDK import site, and browse-view still omits `loadMoreError: null` from some `loaded` success examples.
+
+- Addressed all four review findings across specs: (1) added `checking` bootstrap state to `AuthState` so persisted sessions don't flash `unauthorized` — browse-view waits for auth to resolve before reacting; (2) unified Supabase SDK import rule into a single canonical list in auth-session spec §Supabase SDK import boundary (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`), all other specs defer to it; (3) fixed config validation to trim-before-validate so whitespace-only env vars are rejected, added test cases; (4) added `loadMoreError: string | null` field to `BrowseState.loaded` so load-more failures have a defined error channel while preserving items.
+
+- Saved a review document for the new mvp_01 frontend specs at `docs/specs/reviews/notio-frontend-spec-review-2026-04-23.md`, capturing four concrete issues to resolve before implementation: persisted-session bootstrap vs unauthorized state, conflicting Supabase SDK import boundaries across specs, whitespace-only env validation drift, and missing load-more error-state shape in the browse view spec.
+
+- Three new frontend specs completing the mvp_01 spec set: `auth-session-v0.0.1` (auth protocol — magic-link sign-in, sign-out, reactive state, session expiration mapping; notes ADR-001 enforcement extension for auth adapter SDK import), `browse-view-v0.0.1` (Svelte browse component — full state machine with transitions, Load more / refresh interactions, item rendering rules, ADR-003 exclusions), `supabase-config-v0.0.1` (config module — env var reading, validation, sole `import.meta.env` reader, no SDK import). Together with the existing `browse-items-reader` spec, the four specs cover the full mvp_01 frontend surface and are ready for implementation plan writing.
+
 - First frontend spec draft: `docs/specs/browse-items-reader-v0.0.1.md` — the read protocol the `browse` feature uses to page through `captured_items`. Pins the TypeScript types (`CapturedItem`, `PageCursor`, `Page`, `PAGE_SIZE`, `UnauthorizedError`, `ReaderError`), the `BrowseItemsReader` interface (`fetchFirstPage`, `fetchAfter(cursor)`), keyset-cursor semantics, error mapping to the ADR-003 state set, and an enumerated test list covering page shape, cursor semantics, shape fidelity, errors, and query-shape assertions. Anchored in ADR-001/003/004/005/006; next specs are `browse-view`, `auth`, and `config`.
 
 - Frontend ADR-006 (platform, hosting, and repo layout for `mvp_01` frontend): locks the stack as a static web SPA in TypeScript + Svelte + Vite, using `@supabase/supabase-js`, hosted on Cloudflare Pages (static only, no Pages Functions), living at `notio/frontend/` with a dedicated `.github/workflows/notio-frontend-core.yml` per Per-Project CI Isolation. Config injection is via `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; the `VITE_*` prefix is the structural boundary that keeps the service-role key out of the bundle. Closes the last architectural gap before spec writing.
