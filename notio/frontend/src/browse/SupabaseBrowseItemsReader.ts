@@ -139,10 +139,7 @@ function toNextCursor(items: CapturedItem[]): PageCursor | null {
 }
 
 function toOlderThanFilter(cursor: PageCursor): string {
-  const encodedCapturedAt = encodeURIComponent(cursor.capturedAt);
-  const encodedId = encodeURIComponent(cursor.id);
-
-  return `captured_at.lt.${encodedCapturedAt},and(captured_at.eq.${encodedCapturedAt},id.lt.${encodedId})`;
+  return `captured_at.lt.${cursor.capturedAt},and(captured_at.eq.${cursor.capturedAt},id.lt.${cursor.id})`;
 }
 
 function readNullableString(value: unknown, fieldName: string): string | null {

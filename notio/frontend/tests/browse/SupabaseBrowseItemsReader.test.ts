@@ -65,6 +65,34 @@ describe("SupabaseBrowseItemsReader", () => {
     expect(queryCalls[0]?.orFilters[0]).toBe(expectedOlderThanFilter(cursor));
   });
 
+  it("fetchAfter shouldEncodeCursorFilterExactlyOnce_onSerializedQuery", async () => {
+    const { client, queryCalls } = makeClient({
+      queryOutcomes: [successfulResponse(makeDescendingRows(2, 1))]
+    });
+    const sut = new SupabaseBrowseItemsReader(client as never);
+
+    await sut.fetchAfter({
+      capturedAt: "2026-04-23T09:00:00.000Z",
+      id: "00000000-0000-0000-0000-000000000100"
+    });
+
+    expect(queryCalls[0]?.serializedOrParam).toContain("09%3A00%3A00.000Z");
+  });
+
+  it("fetchAfter shouldAvoidDoubleEncoding_onSerializedQuery", async () => {
+    const { client, queryCalls } = makeClient({
+      queryOutcomes: [successfulResponse(makeDescendingRows(2, 1))]
+    });
+    const sut = new SupabaseBrowseItemsReader(client as never);
+
+    await sut.fetchAfter({
+      capturedAt: "2026-04-23T09:00:00.000Z",
+      id: "00000000-0000-0000-0000-000000000100"
+    });
+
+    expect(queryCalls[0]?.serializedOrParam).not.toContain("%253A");
+  });
+
   it("fetchAfter shouldReturnEmptyItemsAndNullCursor_onNoOlderRows", async () => {
     const { client } = makeClient({
       queryOutcomes: [successfulResponse([])]
@@ -353,6 +381,7 @@ type QueryCall = {
   orFilters: string[];
   orders: Array<{ ascending: boolean; column: string }>;
   selectedColumns: string | null;
+  serializedOrParam: string | null;
   table: string;
 };
 
@@ -392,6 +421,7 @@ class QueryBuilderDouble implements PromiseLike<QueryResponse> {
 
   or(filter: string): QueryBuilderDouble {
     this.call.orFilters.push(filter);
+    this.call.serializedOrParam = serializeOrFilter(filter);
     return this;
   }
 
@@ -433,10 +463,7 @@ class QueryBuilderDouble implements PromiseLike<QueryResponse> {
 }
 
 function expectedOlderThanFilter(cursor: { capturedAt: string; id: string }): string {
-  const encodedCapturedAt = encodeURIComponent(cursor.capturedAt);
-  const encodedId = encodeURIComponent(cursor.id);
-
-  return `captured_at.lt.${encodedCapturedAt},and(captured_at.eq.${encodedCapturedAt},id.lt.${encodedId})`;
+  return `captured_at.lt.${cursor.capturedAt},and(captured_at.eq.${cursor.capturedAt},id.lt.${cursor.id})`;
 }
 
 function makeClient(options: ClientOptions) {
@@ -463,6 +490,7 @@ function makeClient(options: ClientOptions) {
         orFilters: [],
         orders: [],
         selectedColumns: null,
+        serializedOrParam: null,
         table
       };
       queryCalls.push(call);
@@ -472,6 +500,12 @@ function makeClient(options: ClientOptions) {
   };
 
   return { client, queryCalls };
+}
+
+function serializeOrFilter(filter: string): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set("or", `(${filter})`);
+  return searchParams.toString();
 }
 
 function makeDescendingRows(start: number, count: number): Array<Record<string, unknown>> {
