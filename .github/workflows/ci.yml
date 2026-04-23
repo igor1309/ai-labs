@@ -63,10 +63,15 @@ jobs:
             corpus-scout:
               - "corpus-scout/**"
             notio:
-              - "notio/**"
-              - "!notio/docs/**"
-              - "!notio/research/**"
-              - "!notio/README.md"
+              - "notio/Sources/**"
+              - "notio/Tests/**"
+              - "notio/Package.swift"
+              - "notio/Package.resolved"
+              - "notio/Dockerfile"
+              - "notio/docker-compose.yml"
+              - "notio/scripts/**"
+              - "notio/supabase/**"
+              - "notio/release.toml"
             notio-ci:
               - ".github/workflows/notio-core.yml"
             dev-skills:
