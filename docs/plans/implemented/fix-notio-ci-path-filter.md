@@ -8,38 +8,26 @@ description: "Fix notio path filter in ci.yml to skip notio-core on doc-only cha
 
 ## Problem
 
-PR #210 contains only doc/research changes under `notio/` but triggers `notio-core` (Swift container build + test — expensive). The `notio` filter in `ci.yml` is `notio/**` with no exclusions.
+PR #210 contains only doc/research changes under `notio/` but triggers `notio-core` (Swift container build + test — expensive). The `notio` filter in `ci.yml` is `notio/**` which matches everything.
 
-## Plan
+## Solution
 
-### Step 1: Add exclusion patterns to the `notio` filter
+Switched from catch-all `notio/**` to inclusion-only patterns listing code-relevant paths.
 
-**File:** `.github/workflows/ci.yml`, lines 65-66
+**Initial attempt** (negation patterns) failed: `dorny/paths-filter` OR's all array entries, so `!notio/docs/**` matches everything outside `notio/docs/`, making the filter always true. See [issue #184](https://github.com/dorny/paths-filter/issues/184).
 
-**Current:**
+**Final approach** — inclusion-only:
 ```yaml
 notio:
-  - "notio/**"
+  - "notio/Sources/**"
+  - "notio/Tests/**"
+  - "notio/Package.swift"
+  - "notio/Package.resolved"
+  - "notio/Dockerfile"
+  - "notio/docker-compose.yml"
+  - "notio/scripts/**"
+  - "notio/supabase/**"
+  - "notio/release.toml"
 ```
 
-**Proposed:**
-```yaml
-notio:
-  - "notio/**"
-  - "!notio/docs/**"
-  - "!notio/research/**"
-  - "!notio/README.md"
-```
-
-This uses `dorny/paths-filter` negation syntax. A change that only touches excluded paths will produce `notio: false`, skipping `notio-core`.
-
-Changes that touch both code and docs (e.g., `notio/Sources/Foo.swift` + `notio/docs/log.md`) still trigger the build because at least one path matches the positive pattern and is not negated.
-
-**No other filters need changes:**
-- `release` filter also includes `notio/**` but `release-validation` is cheap (Node scripts only) — no change needed.
-- `notio-ci` filter watches only `.github/workflows/notio-core.yml` — unaffected.
-
-### Verification
-
-- Check the PR #210 changed files against the updated filter — all files (`notio/docs/**`, `notio/research/**`, `notio/README.md`) are excluded, so `notio-core` would be skipped.
-- Commit and push. Observe that the re-triggered CI skips `notio-core`.
+Trade-off: new code directories require updating the filter. But non-code paths (`docs/`, `research/`, `README.md`) no longer trigger expensive Swift builds.
