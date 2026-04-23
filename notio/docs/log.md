@@ -2,6 +2,8 @@
 
 ## 2026-04-23
 
+- Archived frontend spec review (all findings resolved). Moved to `docs/specs/reviews/archived/`.
+
 - Fixed last ADR consistency nit: updated ADR-006 directory-layout example to show all three `@supabase/supabase-js` import sites (`main.ts`, `SupabaseBrowseItemsReader.ts`, `SupabaseAuthSession.ts`) and added `AuthSession.ts`/`SupabaseAuthSession.ts` to the `auth/` listing.
 
 - Re-reviewed the latest doc fix and updated the saved review document again. The remaining issue set is down to one ADR consistency nit: ADR-006's directory-layout example still says `SupabaseBrowseItemsReader.ts` is the only `@supabase/supabase-js` import site even though enforcement now allows `main.ts`, `SupabaseBrowseItemsReader.ts`, and `SupabaseAuthSession.ts`.
