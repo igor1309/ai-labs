@@ -98,7 +98,17 @@ describe("SupabaseAuthSession", () => {
 
     await sut.signIn("magic@example.com");
 
-    expect(client.signInWithOtpCalls).toEqual(["magic@example.com"]);
+    expect(client.signInWithOtpCalls.map(($0) => $0.email)).toEqual(["magic@example.com"]);
+  });
+
+  it("signIn shouldUseCurrentOriginForEmailRedirect_onMagicLinkRequest", async () => {
+    vi.stubGlobal("location", { origin: "https://notio.enoa.ai" });
+    const client = makeClientDouble({});
+    const sut = new SupabaseAuthSession(client.value as never);
+
+    await sut.signIn("redirect@example.com");
+
+    expect(client.signInWithOtpCalls.map(($0) => $0.options?.emailRedirectTo)).toEqual(["https://notio.enoa.ai"]);
   });
 
   it("signIn shouldResolveWithoutStateTransition_onSuccessfulRequest", async () => {
@@ -363,7 +373,7 @@ type SupabaseAuthClientDouble = {
       };
     };
     signInAnonymously(): Promise<{ data: null; error: null }>;
-    signInWithOtp(credentials: { email: string }): Promise<{ data: { messageId: null; session: null; user: null }; error: unknown }>;
+    signInWithOtp(credentials: SignInWithOtpCredentials): Promise<{ data: { messageId: null; session: null; user: null }; error: unknown }>;
     signOut(): Promise<{ error: unknown }>;
     signUp(): Promise<{ data: null; error: null }>;
   };
@@ -371,9 +381,16 @@ type SupabaseAuthClientDouble = {
   emit(event: AuthChangeEvent, session: SessionValue): void;
   initialSessionEmitCount: number;
   signInAnonymouslyCallCount: number;
-  signInWithOtpCalls: string[];
+  signInWithOtpCalls: SignInWithOtpCredentials[];
   signUpCallCount: number;
   value: unknown;
+};
+
+type SignInWithOtpCredentials = {
+  email: string;
+  options?: {
+    emailRedirectTo?: string;
+  };
 };
 
 function makeClientDouble(options: ClientDoubleOptions): SupabaseAuthClientDouble {
@@ -381,7 +398,7 @@ function makeClientDouble(options: ClientDoubleOptions): SupabaseAuthClientDoubl
   let authListenerUnsubscribeCallCount = 0;
   let initialSessionEmitCount = 0;
   let signInAnonymouslyCallCount = 0;
-  const signInWithOtpCalls: string[] = [];
+  const signInWithOtpCalls: SignInWithOtpCredentials[] = [];
   let signUpCallCount = 0;
   const emitInitialSessionEvent = options.emitInitialSessionEvent ?? true;
   const initialSessionEventSession = options.initialSessionEventSession ?? null;
@@ -419,8 +436,8 @@ function makeClientDouble(options: ClientDoubleOptions): SupabaseAuthClientDoubl
         signInAnonymouslyCallCount += 1;
         return { data: null, error: null };
       },
-      async signInWithOtp(credentials: { email: string }) {
-        signInWithOtpCalls.push(credentials.email);
+      async signInWithOtp(credentials: SignInWithOtpCredentials) {
+        signInWithOtpCalls.push(credentials);
         return {
           data: { messageId: null, session: null, user: null },
           error: options.signInError ?? null

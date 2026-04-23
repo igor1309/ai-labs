@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-24
+
+- CI: narrowed `notio` path filter to Swift-only paths (Sources, Tests, Package.swift, Package.resolved), removing infra paths (supabase, Dockerfile, docker-compose, scripts, release.toml) that don't need the 15-min Swift test suite.
+
 ## 2026-04-23
 
 - LOC dashboard: added regentara to known dirs and docs-only list, clearing drift warning.

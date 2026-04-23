@@ -29,7 +29,12 @@ export class SupabaseAuthSession implements AuthSession {
   }
 
   async signIn(email: string): Promise<void> {
-    const result = await this.client.auth.signInWithOtp({ email });
+    const result = await this.client.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: globalThis.location.origin
+      }
+    });
     if (result.error !== null) {
       throw new SignInError("Failed to send magic-link sign-in email");
     }

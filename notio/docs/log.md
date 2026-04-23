@@ -1,6 +1,14 @@
 # notio — Change Log
 
+## 2026-04-24
+
+- CI: narrowed `notio` path filter to Swift-only paths so supabase migrations, Docker, and script changes no longer trigger the 15-min Swift test suite.
+
+- Added the missing `captured_items` authenticated read migration so the frontend's signed-in Supabase session can see the single-user inbox rows under RLS.
+
 ## 2026-04-23
+
+- Fixed frontend magic-link redirects so `SupabaseAuthSession.signIn` sends the current browser origin as `emailRedirectTo`; deployed Pages builds no longer fall back to the Supabase project's stale `localhost:3000` Site URL.
 
 - Closed the mvp_01 frontend gap plan: added the runnable Svelte/Vite SPA shell and composition root, made `build` a real env-validated Vite bundle, and wired the dedicated `notio-frontend-core` CI workflow with client-only env scaffolding.
 
