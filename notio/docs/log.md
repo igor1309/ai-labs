@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Cleaned up Notio release-split docs: product docs now point at backend/frontend component roots, workflow docs describe split tag deploys, and the frontend release checklist asks for the minimum compatible backend tag.
+
 - Added frontend-visible version display from `notio/frontend/package.json`; the Vite build injects the frontend package version and the UI renders it without Git SHA data.
 
 - Split Notio release registration and release workflows into `notio-backend` and `notio-frontend` units: backend tags drive VPS Docker deploys, frontend tags drive Cloudflare Pages deploys, and trunk-push frontend deploys are no longer active.

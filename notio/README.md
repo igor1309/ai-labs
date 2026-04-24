@@ -122,7 +122,7 @@ NOTIO_WEBHOOK_PATH=test-webhook NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token NOTIO_SU
 Docker:
 
 ```bash
-docker build -t notio:dev backend
+docker build -t notio:dev .
 docker run --rm -p 8080:8080 -e NOTIO_WEBHOOK_PATH=test -e NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token -e NOTIO_SUPABASE_URL=https://example.supabase.co -e NOTIO_SUPABASE_KEY=test-service-role-key notio:dev
 ```
 
@@ -134,7 +134,7 @@ NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 
 ## Release
 
-Notio is being split into independently released backend and frontend units. Backend tags will follow `notio-backend_v<version>`; frontend tags will follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
+Notio is split into independently released backend and frontend units. Backend tags follow `notio-backend_v<version>`; frontend tags follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Release checklist guidance is in [docs/release.md](docs/release.md); full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
 
 ## Status
 

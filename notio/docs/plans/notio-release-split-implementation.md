@@ -398,11 +398,11 @@ Remove stale one-unit Notio wording and make component ownership explicit across
 
 - Commit message: `document notio component release split`
 
-- [ ] Product docs updated
-- [ ] Workflow docs updated if needed
-- [ ] Stale old-root backend path references removed or justified
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Product docs updated
+- [x] Workflow docs updated if needed
+- [x] Stale old-root backend path references removed or justified
+- [x] Verification passed
+- [x] Commit created
 
 ## Completion Definition
 
