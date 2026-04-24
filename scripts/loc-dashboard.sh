@@ -130,7 +130,7 @@ emit_row() {
 print_rows() {
   local sorted
   if [[ "$SORT_BY" == "total" ]]; then
-    sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k4 -rn)
+    sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k5,5nr)
   else
     sorted=$(printf '%s\n' "${ROWS[@]}" | sort -t$'\t' -k1)
   fi
