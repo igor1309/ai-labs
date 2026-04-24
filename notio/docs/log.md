@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Planned the Notio release split implementation: release tooling support for explicit nested basenames, backend folder migration, independent backend/frontend CI/CD, frontend version display, and documentation cleanup.
+
 - ADR-007: split Notio into independently released backend and frontend products, make the folder structure symmetric, keep Supabase schema and migrations backend-owned, and require frontend page versioning to use frontend release metadata without a Git SHA.
 
 - Switched Notio frontend deploy env injection to GitHub Actions secrets and provisioned the required Notio Supabase deploy secrets.
