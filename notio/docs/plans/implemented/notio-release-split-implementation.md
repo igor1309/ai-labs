@@ -2,7 +2,7 @@
 date: 2026-04-24
 model: gpt-5
 description: "Implementation plan for splitting Notio backend and frontend into symmetric folders and independent release units"
-status: planned
+status: implemented
 type: plan
 ---
 
