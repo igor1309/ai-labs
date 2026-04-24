@@ -271,6 +271,39 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.5rem;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .product::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(108, 99, 255, 0.12), transparent 40%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .product:hover {
+    transform: translateY(-3px);
+    border-color: rgba(108, 99, 255, 0.3);
+    box-shadow: 0 16px 48px -16px rgba(108, 99, 255, 0.12);
+  }
+
+  .product:hover::before { opacity: 1; }
+
+  /* ── Scroll reveal ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .product-header {
@@ -354,7 +387,7 @@
     <h2 class="section-title">Products</h2>
 
     <div class="product-grid">
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Claude Insights</span>
         <span class="product-type">Automation</span>
@@ -372,7 +405,7 @@
         <span class="tag">Nomos</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Corpus Scout</span>
         <span class="product-type">MCP Server</span>
@@ -388,7 +421,7 @@
         <span class="tag">ripgrep</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Dev Skills</span>
         <span class="product-type">Tooling</span>
@@ -404,7 +437,7 @@
         <span class="tag">GitHub Actions</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Loki</span>
         <span class="product-type">Observability</span>
@@ -422,7 +455,7 @@
         <span class="tag">Cloudflare Tunnel</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Neris</span>
         <span class="product-type">Framework</span>
@@ -438,7 +471,7 @@
         <span class="tag">OpenAI API</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Nexum</span>
         <span class="product-type">Web App</span>
@@ -455,7 +488,7 @@
         <span class="tag">Wasm</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Niora</span>
         <span class="product-type">Concept</span>
@@ -469,7 +502,7 @@
         <span class="tag">Design</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Nomos</span>
         <span class="product-type">Service</span>
@@ -488,7 +521,7 @@
         <span class="tag">VPS</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Notio</span>
         <span class="product-type">Service</span>
@@ -507,7 +540,7 @@
         <span class="tag">Telegram Bot</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Oracle — Am I Done?</span>
         <span class="product-type">Web App</span>
@@ -526,7 +559,7 @@
         <span class="tag">KV Cache</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Regentara</span>
         <span class="product-type">Concept</span>
@@ -542,7 +575,7 @@
         <span class="tag">Multi-Agent</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Sandbox</span>
         <span class="product-type">Research</span>
@@ -557,7 +590,7 @@
         <span class="tag">Prototyping</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Tools</span>
         <span class="product-type">CLI Utilities</span>
@@ -572,7 +605,7 @@
         <span class="tag">Git</span>
       </div>
     </div>
-    <div class="product">
+    <div class="product reveal">
       <div class="product-header">
         <span class="product-name">Web Scout</span>
         <span class="product-type">MCP Server</span>
@@ -659,6 +692,29 @@
     ai-labs &middot; loc-dashboard.sh
   </footer>
 </div>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach((el, i) => {
+  el.style.transitionDelay = (i * 0.06) + 's';
+  observer.observe(el);
+});
+
+// Mouse glow
+document.querySelectorAll('.product').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty('--mouse-x', (e.clientX - rect.left) + 'px');
+    card.style.setProperty('--mouse-y', (e.clientY - rect.top) + 'px');
+  });
+});
+</script>
 
 <script>
 const data = [
