@@ -202,13 +202,13 @@ Wire the browser smoke check into the production Cloudflare Pages deployment pat
 
 - Commit message: `gate notio frontend deploy by page version`
 
-- [ ] Deploy workflow runs the smoke check after Pages deploy
-- [ ] Expected version source differs correctly for tag and manual/ref deploys
-- [ ] Production URL is configured once through workflow environment or inputs
-- [ ] Release fan-in remains covered
-- [ ] Documentation and log are updated
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Deploy workflow runs the smoke check after Pages deploy
+- [x] Expected version source differs correctly for tag and manual/ref deploys
+- [x] Production URL is configured once through workflow environment or inputs
+- [x] Release fan-in remains covered
+- [x] Documentation and log are updated
+- [x] Verification passed
+- [x] Commit created
 
 ## Completion Definition
 

@@ -20,6 +20,22 @@ describe("Notio frontend deploy workflow", () => {
     expect(workflow).toMatch(/wrangler pages deploy dist --project-name notio --branch trunk --cwd notio\/frontend/);
   });
 
+  it("shouldVerifyProductionPageVersionAfterPagesDeploy", () => {
+    const workflow = readText("../../.github/workflows/notio-frontend-deploy.yml");
+    const deployIndex = workflow.indexOf("wrangler pages deploy dist --project-name notio --branch trunk --cwd notio/frontend");
+    const smokeIndex = workflow.indexOf("node scripts/smoke-deployed-version.mjs");
+
+    expect(workflow).toMatch(/NOTIO_FRONTEND_PRODUCTION_URL:\s*\$\{\{\s*vars\.NOTIO_FRONTEND_PRODUCTION_URL\s*\}\}/);
+    expect(workflow).toMatch(/NOTIO_FRONTEND_URL:\s*\$\{\{\s*env\.NOTIO_FRONTEND_PRODUCTION_URL\s*\}\}/);
+    expect(workflow).toMatch(/EXPECTED_VERSION:\s*\$\{\{\s*steps\.expected-version\.outputs\.version\s*\}\}/);
+    expect(workflow).toMatch(/GITHUB_REF_NAME:\s*\$\{\{\s*github\.ref_name\s*\}\}/);
+    expect(workflow).toMatch(/GITHUB_REF_TYPE:\s*\$\{\{\s*github\.ref_type\s*\}\}/);
+    expect(workflow).toMatch(/node scripts\/deploy-expected-version\.mjs/);
+    expect(workflow).toMatch(/npx playwright install chromium/);
+    expect(deployIndex).toBeGreaterThan(-1);
+    expect(smokeIndex).toBeGreaterThan(deployIndex);
+  });
+
   it("shouldPointWranglerToStaticBuildOutput", () => {
     const config = readText("wrangler.toml");
 
