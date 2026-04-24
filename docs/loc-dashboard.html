@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Labs — LOC Dashboard</title>
+<title>AI Labs</title>
 <style>
   :root {
     --bg: #0f1117;
@@ -242,6 +242,80 @@
     margin-bottom: 2rem;
   }
 
+  /* ── Products ── */
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .products { margin-bottom: 3rem; }
+
+  .product {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .product-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .product-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .product-type {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-light);
+    background: #6c63ff18;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .product-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+  }
+
+  .product-desc strong {
+    color: var(--accent-light);
+    font-weight: 500;
+  }
+
+  .product-desc em {
+    color: var(--text);
+    font-style: normal;
+    opacity: 0.85;
+  }
+
+  .product-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tag {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+  }
+
   footer {
     text-align: center;
     color: var(--text-muted);
@@ -260,9 +334,58 @@
 <body>
 <div class="container">
   <header>
-    <h1><span>AI Labs</span> — LOC Dashboard</h1>
-    <p class="subtitle">Lines of code across 16 projects &middot; Generated 2026-04-24</p>
+    <h1><span>AI Labs</span></h1>
+    <p class="subtitle">Exploring AI through small, focused products</p>
   </header>
+
+  <!-- ── Products ── -->
+  <section class="products">
+    <h2 class="section-title">Products</h2>
+
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Oracle — Am I Done?</span>
+        <span class="product-type">Web App</span>
+      </div>
+      <p class="product-desc">
+        <strong>One-shot career outlook tool.</strong> Enter a profession and get a structured AI-generated assessment:
+        risk timeline, key threats, recommended next steps, and a confidence rating.
+        <em>No chat, no accounts</em> — just a single question and a clear answer.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Cloudflare Workers</span>
+        <span class="tag">Cloudflare Pages</span>
+        <span class="tag">Vanilla JS</span>
+        <span class="tag">OpenRouter</span>
+        <span class="tag">D1</span>
+        <span class="tag">KV Cache</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Notio</span>
+        <span class="product-type">Service</span>
+      </div>
+      <p class="product-desc">
+        <strong>Personal capture service.</strong> Send a link or a note from Telegram and it lands in a persistent inbox.
+        The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend.
+        Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Swift 6.1</span>
+        <span class="tag">Hummingbird 2</span>
+        <span class="tag">Supabase</span>
+        <span class="tag">Docker</span>
+        <span class="tag">Cloudflare Tunnel</span>
+        <span class="tag">Telegram Bot</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LOC Dashboard ── -->
+  <section>
+    <h2 class="section-title">Codebase — Lines of Code</h2>
+  </section>
 
   <div class="cards">
     <div class="card code">
