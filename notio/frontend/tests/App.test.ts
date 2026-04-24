@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { render, screen, waitFor } from "@testing-library/svelte";
+import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 
 import App from "../src/app.svelte";
@@ -21,6 +21,16 @@ describe("app shell", () => {
     });
 
     await waitFor(() => expect(screen.getByText("Title 1")).toBeDefined());
+  });
+
+  it("render shouldExposeVersionByAccessibleName_onEveryAuthState", () => {
+    const states: AuthState[] = [{ status: "checking" }, { status: "unauthenticated" }, { email: "reader@example.com", status: "authenticated" }];
+
+    expect(states.map((state) => versionTextForAuthState(state))).toEqual([
+      `v${packageVersion()}`,
+      `v${packageVersion()}`,
+      `v${packageVersion()}`
+    ]);
   });
 
   it("render shouldShowPackageVersion_onAnySession", () => {
@@ -86,4 +96,16 @@ function makePage(): Page {
 
 function packageVersion(): string {
   return JSON.parse(readFileSync("package.json", "utf8")).version;
+}
+
+function versionTextForAuthState(authState: AuthState): string | null {
+  cleanup();
+  render(App, {
+    props: {
+      authSession: new AuthSessionDouble(authState),
+      reader: new ReaderDouble(makePage())
+    }
+  });
+
+  return screen.getByLabelText("Version").textContent;
 }
