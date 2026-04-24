@@ -254,12 +254,23 @@
 
   .products { margin-bottom: 3rem; }
 
+  .product-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 800px) {
+    .product-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
   .product {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.5rem;
-    margin-bottom: 1rem;
   }
 
   .product-header {
@@ -342,6 +353,160 @@
   <section class="products">
     <h2 class="section-title">Products</h2>
 
+    <div class="product-grid">
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Claude Insights</span>
+        <span class="product-type">Automation</span>
+      </div>
+      <p class="product-desc">
+        <strong>Weekly Claude Code usage reports.</strong> Aggregates local session data into
+        metrics — sessions, code churn, tool usage, goals, friction points — then
+        pushes to Supabase and <em>notifies via Telegram</em>.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Python</span>
+        <span class="tag">Supabase</span>
+        <span class="tag">Edge Functions</span>
+        <span class="tag">Telegram Bot</span>
+        <span class="tag">Nomos</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Corpus Scout</span>
+        <span class="product-type">MCP Server</span>
+      </div>
+      <p class="product-desc">
+        <strong>Lexical search over a local text corpus.</strong> A read-only MCP server with two tools —
+        pattern search and section reading over Markdown files. Powered by ripgrep,
+        <em>deterministic and stateless</em>: no embeddings, no indexing, no mutation.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Node.js</span>
+        <span class="tag">MCP</span>
+        <span class="tag">ripgrep</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Dev Skills</span>
+        <span class="product-type">Tooling</span>
+      </div>
+      <p class="product-desc">
+        <strong>Claude Code skills marketplace.</strong> A collection of reusable agent skills —
+        strict TDD, process gates, release management, architecture review, and more.
+        Developed here, <em>published to a public repo</em> via GitHub Actions sync.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Claude Code</span>
+        <span class="tag">Markdown</span>
+        <span class="tag">GitHub Actions</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Loki</span>
+        <span class="product-type">Observability</span>
+      </div>
+      <p class="product-desc">
+        <strong>Centralized logging stack.</strong> Grafana + Loki + Alloy on a VPS —
+        collects Docker container logs and journald units, with
+        <em>label-bounded cardinality</em> enforced by allowlists and CI checks.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Grafana</span>
+        <span class="tag">Loki</span>
+        <span class="tag">Alloy</span>
+        <span class="tag">Docker Compose</span>
+        <span class="tag">Cloudflare Tunnel</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Neris</span>
+        <span class="product-type">Framework</span>
+      </div>
+      <p class="product-desc">
+        <strong>Agentic execution layer in Swift.</strong> Decides who does what across tools,
+        skills, and sub-agents. Provider-agnostic core with pluggable LLM backends —
+        <em>lightweight and adaptive</em>, not infrastructural.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Swift 6.1</span>
+        <span class="tag">Swift Package</span>
+        <span class="tag">OpenAI API</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Nexum</span>
+        <span class="product-type">Web App</span>
+      </div>
+      <p class="product-desc">
+        <strong>Private repo memory system.</strong> Save GitHub repos with personal notes,
+        search and sort the collection, keep metadata current.
+        <em>Full Swift stack</em> — Hummingbird backend, Swift-to-Wasm web UI via JavaScriptKit.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Swift 6.1</span>
+        <span class="tag">Hummingbird 2</span>
+        <span class="tag">JavaScriptKit</span>
+        <span class="tag">Wasm</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Niora</span>
+        <span class="product-type">Concept</span>
+      </div>
+      <p class="product-desc">
+        <strong>Contextual field of emergence.</strong> The ambient environment where agents operate,
+        adapt, and evolve. <em>Not what makes things happen — where things happen.</em>
+        Early-stage design.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Design</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Nomos</span>
+        <span class="product-type">Service</span>
+      </div>
+      <p class="product-desc">
+        <strong>AI sovereignty layer.</strong> A unified proxy between projects and LLM providers —
+        vendor abstraction, per-project budget limits, token usage logging, and basic prompt injection safeguards.
+        <em>No cloud vendor lock-in</em>, just a single Docker service with SQLite.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Node.js</span>
+        <span class="tag">Express</span>
+        <span class="tag">SQLite</span>
+        <span class="tag">Docker</span>
+        <span class="tag">Caddy</span>
+        <span class="tag">VPS</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Notio</span>
+        <span class="product-type">Service</span>
+      </div>
+      <p class="product-desc">
+        <strong>Personal capture service.</strong> Send a link or a note from Telegram and it lands in a persistent inbox.
+        The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend.
+        Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Swift 6.1</span>
+        <span class="tag">Hummingbird 2</span>
+        <span class="tag">Supabase</span>
+        <span class="tag">Docker</span>
+        <span class="tag">Cloudflare Tunnel</span>
+        <span class="tag">Telegram Bot</span>
+      </div>
+    </div>
     <div class="product">
       <div class="product-header">
         <span class="product-name">Oracle — Am I Done?</span>
@@ -363,22 +528,67 @@
     </div>
     <div class="product">
       <div class="product-header">
-        <span class="product-name">Notio</span>
-        <span class="product-type">Service</span>
+        <span class="product-name">Regentara</span>
+        <span class="product-type">Concept</span>
       </div>
       <p class="product-desc">
-        <strong>Personal capture service.</strong> Send a link or a note from Telegram and it lands in a persistent inbox.
-        The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend.
-        Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+        <strong>Recursive produce–review–remediate orchestrator.</strong> Three flow-ignorant agents
+        (Producer, Reviewer, Remediator) coordinated by a loop with pluggable policy.
+        Every input — fresh task or fix — is a <em>verifiable task with done criteria</em>.
+        Early-stage design.
       </p>
       <div class="product-stack">
-        <span class="tag">Swift 6.1</span>
-        <span class="tag">Hummingbird 2</span>
-        <span class="tag">Supabase</span>
-        <span class="tag">Docker</span>
-        <span class="tag">Cloudflare Tunnel</span>
-        <span class="tag">Telegram Bot</span>
+        <span class="tag">Design</span>
+        <span class="tag">Multi-Agent</span>
       </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Sandbox</span>
+        <span class="product-type">Research</span>
+      </div>
+      <p class="product-desc">
+        <strong>Experiments and prototypes.</strong> A scratch space for exploring ideas —
+        AI-assisted development patterns, multi-agent architectures, code review prompts,
+        and <em>early-stage tool prototypes</em> before they graduate into their own projects.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Mixed</span>
+        <span class="tag">Prototyping</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Tools</span>
+        <span class="product-type">CLI Utilities</span>
+      </div>
+      <p class="product-desc">
+        <strong>Developer workflow helpers.</strong> Git worktree manager, Claude account switcher
+        with usage-limit reporting, shared config symlinker for worktrees —
+        <em>small shell scripts</em> that smooth out daily friction.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Bash</span>
+        <span class="tag">Git</span>
+      </div>
+    </div>
+    <div class="product">
+      <div class="product-header">
+        <span class="product-name">Web Scout</span>
+        <span class="product-type">MCP Server</span>
+      </div>
+      <p class="product-desc">
+        <strong>SearXNG search for Claude Code.</strong> An MCP stdio server that exposes
+        web search as a tool — runs locally, connects to a self-hosted SearXNG instance,
+        and returns <em>structured JSON results</em> with per-call logging.
+      </p>
+      <div class="product-stack">
+        <span class="tag">Node.js</span>
+        <span class="tag">MCP</span>
+        <span class="tag">SearXNG</span>
+        <span class="tag">Docker</span>
+      </div>
+    </div>
     </div>
   </section>
 
