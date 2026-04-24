@@ -1,10 +1,14 @@
 import type { AuthSession, AuthState } from "../auth/AuthSession";
 
 export class InMemoryAuthSession implements AuthSession {
+  private destroyed = false;
   private readonly subscribers = new Set<(state: AuthState) => void>();
   private state: AuthState = { status: "unauthenticated" };
 
-  destroy(): void {}
+  destroy(): void {
+    this.destroyed = true;
+    this.subscribers.clear();
+  }
 
   async signIn(email: string): Promise<void> {
     this.setState({ email, status: "authenticated" });
@@ -24,6 +28,10 @@ export class InMemoryAuthSession implements AuthSession {
   }
 
   private setState(nextState: AuthState): void {
+    if (this.destroyed) {
+      return;
+    }
+
     this.state = nextState;
     for (const subscriber of this.subscribers) {
       subscriber(nextState);

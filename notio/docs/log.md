@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Fixed the ADR-008 review warning by making local in-memory auth teardown stop later state emissions, aligning the local adapter with the shared `AuthSession` lifecycle contract.
+
 - Reviewed the ADR-008 local browser-testing implementation and saved one lifecycle warning: `InMemoryAuthSession.destroy()` should stop later local auth emissions to match the public `AuthSession` contract.
 
 - Implemented Frontend ADR-008: `dev:local` now serves an explicit local browser-testing runtime with in-memory auth, deterministic browse scenarios, import-boundary gates, and docs for mock-data browser inspection without Supabase credentials.

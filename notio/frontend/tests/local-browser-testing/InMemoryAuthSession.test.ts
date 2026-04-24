@@ -34,4 +34,17 @@ describe("InMemoryAuthSession", () => {
 
     expect(receivedStates.map(($0) => $0.status)).toEqual(["unauthenticated", "authenticated", "unauthenticated"]);
   });
+
+  it("destroy shouldStopStateChanges_onSubsequentSignIn", async () => {
+    const sut = new InMemoryAuthSession();
+    const receivedStates: AuthState[] = [];
+
+    sut.subscribe(($0) => {
+      receivedStates.push($0);
+    });
+    sut.destroy();
+    await sut.signIn("reader@example.com");
+
+    expect(receivedStates).toEqual([{ status: "unauthenticated" }]);
+  });
 });
