@@ -1,3 +1,9 @@
+---
+date: 2026-04-24
+model: gpt-5
+description: "Release tag naming convention and explicit configured basename amendment"
+---
+
 # ADR-003 --- Tagging Convention
 
 ## 1. Executive Summary
@@ -23,11 +29,33 @@ path**. Example:
 
 The separator between basename and version is `_v`.
 
+## Amendment: Explicit Configured Basenames
+
+For release units discovered through `release-units.config.toml`,
+`<basename>` is the explicit basename recorded in `release-units.toml`.
+
+The basename MAY differ from the unit root leaf directory when needed to
+keep nested release units globally unambiguous.
+
+This amendment supersedes the leaf-directory basename rule for units
+with an explicit configured basename.
+
+Rules:
+
+-   A configured release unit MUST have exactly one basename.
+-   The basename MUST be globally unique.
+-   The basename MUST NOT contain underscores (`_`).
+-   Tags MUST use the configured basename: `<basename>_v<version>`.
+-   Tag lookup MUST use the configured basename, not the filesystem leaf
+    directory.
+
 ## 4. Rules / Invariants
 
 -   Tag MUST follow `<basename>_v<version>`.
--   `<basename>` MUST equal the leaf directory name of the unit root
-    path.
+-   For units without an explicit configured basename, `<basename>` MUST
+    equal the leaf directory name of the unit root path.
+-   For units with an explicit configured basename, the configured
+    basename is authoritative.
 -   Basenames MUST be globally unique across all release units.
 -   A basename previously used by a removed or renamed unit SHOULD NOT
     be reused by a new unit. (Not currently enforced; enforceable
