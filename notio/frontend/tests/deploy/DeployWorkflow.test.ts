@@ -17,7 +17,7 @@ describe("Notio frontend deploy workflow", () => {
     expect(workflow).toMatch(/VITE_SUPABASE_ANON_KEY:\s*\$\{\{\s*secrets\.NOTIO_SUPABASE_ANON_KEY\s*\}\}/);
     expect(workflow).toMatch(/VITE_SUPABASE_URL:\s*\$\{\{\s*secrets\.NOTIO_SUPABASE_URL\s*\}\}/);
     expect(workflow).toMatch(/npm run build/);
-    expect(workflow).toMatch(/wrangler pages deploy dist --project-name notio --cwd notio\/frontend/);
+    expect(workflow).toMatch(/wrangler pages deploy dist --project-name notio --branch trunk --cwd notio\/frontend/);
   });
 
   it("shouldPointWranglerToStaticBuildOutput", () => {

@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Notio frontend v0.1.1: fixed deploy to target production branch (`--branch trunk`); v0.1.0 deployed to preview instead of production.
+
 - Notio frontend v0.1.0: dark theme styling for login form and browse view (2-column card grid, hover effects, mouse-tracking glow). Fixed deploy workflow Cloudflare project name (`notio-frontend` → `notio`).
 
 - Cleaned up Notio release-split docs: product docs now point at backend/frontend component roots, workflow docs describe split tag deploys, and the frontend release checklist asks for the minimum compatible backend tag.

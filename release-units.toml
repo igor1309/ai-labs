@@ -20,5 +20,5 @@ docker = true
 basename = "notio-frontend"
 path = "notio/frontend"
 metadata = "package.json"
-version = "0.1.0"
+version = "0.1.1"
 docker = false
