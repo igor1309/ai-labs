@@ -1,5 +1,7 @@
 # ai-labs
 
+![ai-labs](img/image.PNG)
+
 Applied AI experiments and systems engineering.
 
 This repo also holds a reusable library of agent-oriented instructions, prompts, skills, and exploratory tooling for AI-assisted development.
