@@ -68,7 +68,40 @@ describe('validate-manifest', () => {
     ]);
     const result = runValidator(tmp);
     assert.equal(result.exitCode, 1);
-    assert.ok(result.stderr.includes('does not equal leaf directory name'));
+    assert.ok(result.stderr.includes('is not the leaf directory name "myapp"'));
+  });
+
+  it('passes when basename is declared for a nested path in config', () => {
+    mkdirSync(join(tmp, 'notio', 'backend'), { recursive: true });
+    writeFileSync(join(tmp, 'notio', 'backend', 'release.toml'), 'version = "1.0.0"\n');
+    writeFileSync(
+      join(tmp, 'release-units.config.toml'),
+      'paths = [{ path = "notio/backend", basename = "notio-backend" }]\n',
+    );
+    setupManifest(tmp, [
+      { basename: 'notio-backend', path: 'notio/backend', metadata: 'release.toml', version: '1.0.0', docker: false },
+    ]);
+
+    const result = runValidator(tmp);
+
+    assert.equal(result.exitCode, 0, `Expected pass but got: ${result.stderr}`);
+  });
+
+  it('fails when basename is neither leaf-derived nor declared in config', () => {
+    mkdirSync(join(tmp, 'notio', 'backend'), { recursive: true });
+    writeFileSync(join(tmp, 'notio', 'backend', 'release.toml'), 'version = "1.0.0"\n');
+    writeFileSync(
+      join(tmp, 'release-units.config.toml'),
+      'paths = [{ path = "notio/backend", basename = "configured-backend" }]\n',
+    );
+    setupManifest(tmp, [
+      { basename: 'notio-backend', path: 'notio/backend', metadata: 'release.toml', version: '1.0.0', docker: false },
+    ]);
+
+    const result = runValidator(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('is not the leaf directory name "backend" or configured basename "configured-backend"'));
   });
 
   it('fails on duplicate basenames', () => {

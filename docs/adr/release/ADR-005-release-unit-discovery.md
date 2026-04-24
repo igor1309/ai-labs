@@ -24,6 +24,13 @@ committed `release-units.toml`.
 The generator MUST support explicit configured basenames for nested
 release units.
 
+The config `paths` array accepts legacy string entries and explicit
+entries:
+
+```toml
+paths = ["nomos", { path = "notio/backend", basename = "notio-backend" }]
+```
+
 The committed manifest MUST record both `basename` and `path` for each
 release unit.
 
@@ -31,6 +38,8 @@ CI MUST fail when:
 
 -   two units share a basename
 -   a basename contains `_`
+-   a manifest basename is neither the path leaf name nor the configured
+    explicit basename for that path
 -   a configured path resolves to more than one canonical metadata file
 -   generated manifest output differs from the committed manifest
 

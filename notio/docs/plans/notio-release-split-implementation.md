@@ -23,7 +23,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-release-split`
 - Expected branch: `codex/notio-release-split`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Governing ADR Set
 
@@ -123,11 +123,11 @@ Make release tooling capable of representing nested Notio units as `notio-backen
 
 - Commit message: `support explicit release unit basenames`
 
-- [ ] Release config schema supports explicit basenames
-- [ ] Release ADRs updated for explicit basename rule
-- [ ] Release tests prove new and legacy behavior
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Release config schema supports explicit basenames
+- [x] Release ADRs updated for explicit basename rule
+- [x] Release tests prove new and legacy behavior
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 2: Move Backend Files Under `notio/backend/`
 
