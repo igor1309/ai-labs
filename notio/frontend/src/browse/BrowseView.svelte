@@ -197,76 +197,239 @@
 
 <section data-status={state.status} data-testid="browse-view">
   {#if state.status === "loading"}
-    <p>Loading...</p>
+    <p class="status-text">Loading...</p>
   {:else if state.status === "refreshing"}
-    <p>Refreshing...</p>
-    <ul>
+    <p class="status-text">Refreshing...</p>
+    <ul class="item-grid">
       {#each state.items as item (item.id)}
-        <li>
+        <li class="item-card">
           <article>
-            <p>{item.kind}</p>
-            <p>{item.capturedAt}</p>
+            <div class="item-header">
+              <span class="item-kind">{item.kind}</span>
+              <span class="item-date">{item.capturedAt}</span>
+            </div>
             {#if item.capturedTitle !== null}
-              <p>{item.capturedTitle}</p>
+              <p class="item-title">{item.capturedTitle}</p>
             {/if}
             {#if item.capturedDescription !== null}
-              <p>{item.capturedDescription}</p>
+              <p class="item-desc">{item.capturedDescription}</p>
             {/if}
             {#if item.url !== null}
-              <a href={item.url} rel="noreferrer noopener" target="_blank">{item.url}</a>
+              <a class="item-link" href={item.url} rel="noreferrer noopener" target="_blank">{item.url}</a>
             {/if}
             {#if item.note !== null}
-              <p>{item.note}</p>
+              <p class="item-note">{item.note}</p>
             {/if}
-            {#if item.sourceType !== null}
-              <p>{item.sourceType}</p>
-            {/if}
-            <p>{item.enrichment}</p>
+            <div class="item-meta">
+              {#if item.sourceType !== null}
+                <span class="item-tag">{item.sourceType}</span>
+              {/if}
+              <span class="item-tag">{item.enrichment}</span>
+            </div>
           </article>
         </li>
       {/each}
     </ul>
   {:else if state.status === "loaded"}
-    <button on:click={refresh} type="button">Refresh</button>
+    <div class="toolbar">
+      <button class="action-btn" on:click={refresh} type="button">Refresh</button>
+    </div>
     {#if state.loadMoreError !== null}
-      <p role="alert">{state.loadMoreError}</p>
+      <p class="error-msg" role="alert">{state.loadMoreError}</p>
     {/if}
-    <ul>
+    <ul class="item-grid">
       {#each state.items as item (item.id)}
-        <li>
+        <li class="item-card">
           <article>
-            <p>{item.kind}</p>
-            <p>{item.capturedAt}</p>
+            <div class="item-header">
+              <span class="item-kind">{item.kind}</span>
+              <span class="item-date">{item.capturedAt}</span>
+            </div>
             {#if item.capturedTitle !== null}
-              <p>{item.capturedTitle}</p>
+              <p class="item-title">{item.capturedTitle}</p>
             {/if}
             {#if item.capturedDescription !== null}
-              <p>{item.capturedDescription}</p>
+              <p class="item-desc">{item.capturedDescription}</p>
             {/if}
             {#if item.url !== null}
-              <a href={item.url} rel="noreferrer noopener" target="_blank">{item.url}</a>
+              <a class="item-link" href={item.url} rel="noreferrer noopener" target="_blank">{item.url}</a>
             {/if}
             {#if item.note !== null}
-              <p>{item.note}</p>
+              <p class="item-note">{item.note}</p>
             {/if}
-            {#if item.sourceType !== null}
-              <p>{item.sourceType}</p>
-            {/if}
-            <p>{item.enrichment}</p>
+            <div class="item-meta">
+              {#if item.sourceType !== null}
+                <span class="item-tag">{item.sourceType}</span>
+              {/if}
+              <span class="item-tag">{item.enrichment}</span>
+            </div>
           </article>
         </li>
       {/each}
     </ul>
     {#if state.hasMore}
-      <button on:click={loadMore} type="button">Load more</button>
+      <div class="toolbar">
+        <button class="action-btn" on:click={loadMore} type="button">Load more</button>
+      </div>
     {/if}
   {:else if state.status === "empty"}
-    <p>No items found.</p>
+    <p class="status-text">No items found.</p>
   {:else if state.status === "failed"}
-    <p>{state.message}</p>
+    <p class="error-msg">{state.message}</p>
   {:else if state.status === "unauthorized"}
-    <p>Unauthorized</p>
+    <p class="status-text">Unauthorized</p>
   {:else}
-    <p>Not implemented</p>
+    <p class="status-text">Not implemented</p>
   {/if}
 </section>
+
+<style>
+  section {
+    width: 100%;
+    max-width: 960px;
+  }
+
+  .status-text {
+    color: #8b8fa3;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+
+  .error-msg {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+
+  .action-btn {
+    background: transparent;
+    border: 1px solid #2a2d3a;
+    border-radius: 6px;
+    padding: 0.4rem 1rem;
+    color: #8b8fa3;
+    font-size: 0.8rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .action-btn:hover {
+    border-color: #6c63ff;
+    color: #e1e4ed;
+  }
+
+  .item-grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 800px) {
+    .item-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .item-card {
+    background: #1a1d27;
+    border: 1px solid #2a2d3a;
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .item-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(108, 99, 255, 0.3);
+    box-shadow: 0 12px 36px -12px rgba(108, 99, 255, 0.1);
+  }
+
+  .item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .item-kind {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8b83ff;
+    background: rgba(108, 99, 255, 0.1);
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .item-date {
+    font-size: 0.7rem;
+    color: #4a4d5e;
+  }
+
+  .item-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e1e4ed;
+    margin-bottom: 0.35rem;
+    line-height: 1.4;
+  }
+
+  .item-desc {
+    font-size: 0.8rem;
+    color: #8b8fa3;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+  }
+
+  .item-link {
+    display: block;
+    font-size: 0.75rem;
+    color: #6c63ff;
+    text-decoration: none;
+    word-break: break-all;
+    margin-bottom: 0.5rem;
+    transition: color 0.2s;
+  }
+
+  .item-link:hover {
+    color: #8b83ff;
+  }
+
+  .item-note {
+    font-size: 0.8rem;
+    color: #8b8fa3;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+
+  .item-tag {
+    font-size: 0.65rem;
+    color: #8b8fa3;
+    border: 1px solid #2a2d3a;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+  }
+</style>
