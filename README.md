@@ -42,7 +42,9 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | Component | Type | Description |
 |-----------|------|-------------|
 | nexum | Product | Private single-user repo memory system (full Swift stack) |
-| notio | Product | Personal capture service: Telegram → canonical item → storage adapter (Swift + Hummingbird) |
+| notio | Product family | Personal capture + browse system split into `notio-backend` and `notio-frontend` release units |
+| notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
+| notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
 | nomos | Service | LLM access control proxy — auth, cost budgets, unified API |
 | corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |

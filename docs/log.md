@@ -1,5 +1,25 @@
 # Log
 
+## 2026-04-24
+
+- Notio frontend v0.1.0: dark theme UI, fixed Cloudflare Pages deploy project name.
+
+- AI Labs landing page: product cards for all 14 projects with 2-column grid and scroll/hover animations.
+
+- Release docs: aligned explicit configured basename invariants and README component entries with the Notio backend/frontend release split.
+
+- Release ADRs: clarified explicit configured basenames for nested release units so symmetric component folders can still use globally unambiguous tags.
+
+- LOC dashboard: consolidated oracle into single row, added missing code extensions (.svelte, .sql, .css, .html, .mjs), merged gen/scripts columns into code, renamed text to docs, added per-project .md counting, added nexum/niora/regentara as regular rows, added .wrangler to exclusions.
+
+- CI: narrowed `notio` path filter to Swift-only paths (Sources, Tests, Package.swift, Package.resolved), removing infra paths (supabase, Dockerfile, docker-compose, scripts, release.toml) that don't need the 15-min Swift test suite.
+
+## 2026-04-23
+
+- LOC dashboard: added regentara to known dirs and docs-only list, clearing drift warning.
+- regentara: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
+- CI: switched `notio` path filter from catch-all `notio/**` to inclusion-only (Sources, Tests, Package.swift, Dockerfile, etc.) so doc-only changes skip the expensive `notio-core` Swift build. Negation patterns don't work — `dorny/paths-filter` OR's all lines.
+
 ## 2026-04-21
 
 - dev-skills: made igor1309/skills public for Web Agent plugin access. Added project-level `.claude/settings.json`. Marketplace v1.32.1.

@@ -13,6 +13,22 @@ type: adr
 
 Accepted
 
+## Amendment: Backend Release Identity After ADR-007
+
+ADR-007 supersedes the `notio_v<version>` trigger for future backend
+releases.
+
+After the frontend/backend split, the backend release tag is
+`notio-backend_v<version>`. The runtime version verification rule
+remains unchanged: the deployed backend must report the version from the
+triggering backend tag.
+
+Existing `notio_v<version>` tags remain historical releases of the
+pre-split Notio backend unit.
+
+All later references in this ADR to `notio_v<version>` describe the
+pre-split trigger unless superseded by this amendment.
+
 ## Executive Summary
 
 Releases are triggered by a `notio_v<version>` Git tag, consistent with the repo-level per-unit release model (`docs/adr/release/`).

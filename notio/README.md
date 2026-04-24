@@ -1,3 +1,9 @@
+---
+date: 2026-04-24
+model: gpt-5
+description: "Notio project overview and release architecture references"
+---
+
 # Notio
 
 Notio is a personal capture service: send a link or a short note from Telegram, and it lands in a persistent inbox through a storage adapter. Telegram is only an ingress — the core is independent of Telegram, GitHub, Markdown, and any specific backend.
@@ -56,12 +62,24 @@ Authoritative design lives in [`docs/adr/`](docs/adr/):
 - [ADR-004 — runtime diagnostics via config-driven composition](docs/adr/adr-004-runtime-diagnostics-config-driven-composition.md)
 - [ADR-005 — tag-driven CI/CD to VPS](docs/adr/adr-005-tag-driven-cicd-to-vps.md)
 - [ADR-006 — capture feedback as cross-cutting concern](docs/adr/adr-006-capture-feedback-as-cross-cutting-concern.md)
+- [ADR-007 — frontend and backend release split](docs/adr/adr-007-frontend-backend-release-split.md)
+
+Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/adr/):
+
+- [Frontend ADR-001 — frontend architecture for mvp_01 browse client](docs/frontend/adr/ADR-001-frontend-architecture-mvp01-supabase-browse.md)
+- [Frontend ADR-002 — auth model for mvp_01 read-only Supabase frontend](docs/frontend/adr/ADR-002-auth-model-mvp01-readonly-supabase-frontend.md)
+- [Frontend ADR-003 — mvp_01 product scope for read-only browse frontend](docs/frontend/adr/ADR-003-mvp01-product-scope-readonly-browse-frontend.md)
+- [Frontend ADR-004 — read-model contract for mvp_01 browse](docs/frontend/adr/ADR-004-read-model-contract-mvp01-browse.md)
+- [Frontend ADR-005 — single-user data model for mvp_01 frontend](docs/frontend/adr/ADR-005-single-user-data-model-mvp01-frontend.md)
+- [Frontend ADR-006 — platform, hosting, and repo layout for mvp_01 frontend](docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md)
 
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 
 ## Stack
 
 Swift 6.1 + [Hummingbird 2](https://github.com/hummingbird-project/hummingbird). Single executable (`NotioServer`) built from the `NotioApp` library. Deployed as a Docker container behind Cloudflare Tunnel.
+
+Backend files live under [`backend/`](backend/). Frontend files live under [`frontend/`](frontend/). Product docs remain under [`docs/`](docs/).
 
 ## Deployment topology (v1)
 
@@ -93,6 +111,8 @@ One process initially; ingress and core stay logically separate.
 
 ## Local development
 
+Run backend commands from `notio/backend/`.
+
 ```bash
 swift test              # unit tests
 swift build             # debug build
@@ -114,7 +134,7 @@ NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 
 ## Release
 
-Notio is an independent release unit. Canonical version lives in `release.toml`; tags follow `notio_v<version>`. Flow: push to `trunk` → tag → CI builds, tests, and deploys to VPS. Full policy in repo-level `CLAUDE.md`.
+Notio is split into independently released backend and frontend units. Backend tags follow `notio-backend_v<version>`; frontend tags follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Release checklist guidance is in [docs/release.md](docs/release.md); full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
 
 ## Status
 

@@ -4,12 +4,12 @@
  * Supports:
  *   - Comments (# ...)
  *   - Key/value: key = "string" | true | false | integer
- *   - Arrays: key = ["a", "b"]
+ *   - Arrays: key = ["a", "b"] or inline-table arrays
  *   - Array of tables: [[name]]
  *   - Blank lines
  *
  * Does NOT support:
- *   - Nested tables, inline tables, multi-line strings, dotted keys, etc.
+ *   - Nested tables, multi-line strings, dotted keys, etc.
  */
 
 /**
@@ -74,10 +74,64 @@ function parseValue(raw) {
   if (raw.startsWith('[') && raw.endsWith(']')) {
     const inner = raw.slice(1, -1).trim();
     if (inner === '') return [];
-    return inner.split(',').map(s => parseValue(s.trim()));
+    return splitTopLevel(inner).map(s => parseValue(s.trim()));
+  }
+
+  // Inline table: { path = "notio/backend", basename = "notio-backend" }
+  if (raw.startsWith('{') && raw.endsWith('}')) {
+    const inner = raw.slice(1, -1).trim();
+    if (inner === '') return {};
+    return Object.fromEntries(
+      splitTopLevel(inner).map(entry => {
+        const match = entry.match(/^(\w[\w-]*)\s*=\s*(.+)$/);
+        if (!match) return [entry, undefined];
+        return [match[1], parseValue(match[2].trim())];
+      }),
+    );
   }
 
   return raw;
+}
+
+/**
+ * Split a comma-separated TOML subset value without splitting inside strings,
+ * arrays, or inline tables.
+ *
+ * @param {string} value
+ * @returns {string[]}
+ */
+function splitTopLevel(value) {
+  const parts = [];
+  let current = '';
+  let depth = 0;
+  let inString = false;
+
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i];
+    const previous = value[i - 1];
+
+    if (char === '"' && previous !== '\\') {
+      inString = !inString;
+    }
+
+    if (!inString && (char === '[' || char === '{')) {
+      depth += 1;
+    }
+    if (!inString && (char === ']' || char === '}')) {
+      depth -= 1;
+    }
+
+    if (char === ',' && depth === 0 && !inString) {
+      parts.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  parts.push(current.trim());
+  return parts;
 }
 
 /**
