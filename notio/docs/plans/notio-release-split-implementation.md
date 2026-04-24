@@ -57,6 +57,9 @@ type: plan
 | Tags are distinct and map to own metadata | Phase 1, Phase 3 |
 | Frontend visible version comes from frontend metadata | Phase 4 |
 | Frontend visible version excludes Git SHA | Phase 4 |
+| Frontend schema/read-contract dependencies name a minimum backend tag | Phase 5 |
+| Frontend release PR checklist asks for minimum backend release | Phase 5 |
+| Release manifest tests cover configured basename tag detection | Phase 1 |
 | Docs name component ownership explicitly | Phase 5 |
 
 ## Phase 1: Support Explicit Release Basenames for Nested Units
@@ -73,8 +76,10 @@ Make release tooling capable of representing nested Notio units as `notio-backen
 - Modify: `scripts/release/lib/manifest.js`
 - Modify: `scripts/release/generate-manifest.js`
 - Modify: `scripts/release/validate-manifest.js`
+- Modify: `scripts/release/detect-releases.js` only if configured-basename tag detection tests reveal path-leaf coupling.
 - Modify: `scripts/release/tests/generate-manifest.test.js`
 - Modify: `scripts/release/tests/validate-manifest.test.js`
+- Modify: `scripts/release/tests/detect-releases.test.js`
 - Modify other release tests only when they assert the old leaf-name-only invariant.
 
 ### Required Behavior
@@ -91,7 +96,22 @@ Make release tooling capable of representing nested Notio units as `notio-backen
 - Release tests cover explicit basename discovery for `notio/backend` -> `notio-backend`.
 - Release tests cover explicit basename discovery for `notio/frontend` -> `notio-frontend`.
 - Release validation fails for an undeclared basename override.
+- Release tests cover tag detection using configured basename rather than path leaf.
 - Existing release units such as `nomos` remain unchanged in the generated manifest.
+
+### Dependencies
+
+- Current repo release ADR-003 and ADR-005 amendments are accepted.
+- Existing release unit tests are the safety net for legacy unit behavior.
+
+### Risks
+
+- Relaxing the old leaf-name-only invariant could accidentally allow ambiguous basenames.
+- Tag detection may keep using path leaf names even after manifest generation accepts configured basenames.
+
+### Completion Signal
+
+- `release-units.config.toml` can express `notio/backend` as `notio-backend` and `notio/frontend` as `notio-frontend`, while legacy string entries still generate the same manifest entries.
 
 ### Verification
 
@@ -148,6 +168,19 @@ Fix Notio folder asymmetry without changing backend runtime behavior.
 - `docker build` passes from `notio/backend`.
 - No tracked backend source/test/deploy file remains directly under `notio/` except product-level `README.md`, `docs/`, `frontend/`, `research/` if retained, and component roots.
 
+### Dependencies
+
+- Phase 1 is complete so release metadata can move under `notio/backend/` without losing the required `notio-backend` basename.
+
+### Risks
+
+- SwiftPM and Docker build contexts can silently lose files during the move, especially the `Tests/` directory required by the current Docker build.
+- Historical docs may intentionally mention old paths, so cleanup must distinguish migration history from stale operator instructions.
+
+### Completion Signal
+
+- Backend commands run from `notio/backend/`, and no current backend source, test, deploy, Docker, release metadata, or Supabase migration file remains directly under `notio/`.
+
 ### Verification
 
 - `swift test` from `notio/backend`
@@ -183,7 +216,7 @@ Make backend and frontend independently released and deployed through release-un
 - Modify: `notio/backend/scripts/deploy.sh`
 - Modify: `notio/backend/docker-compose.yml`
 - Modify: `notio/backend/docs/log.md` only if Phase 2 creates component logs; otherwise keep `notio/docs/log.md`.
-- Modify: `notio/docs/backend-deploy-todo.md`
+- Modify: `notio/docs/todo/backend-deploy.md`
 - Modify: release docs that list active units or tag examples.
 
 ### Required Behavior
@@ -203,6 +236,25 @@ Make backend and frontend independently released and deployed through release-un
 - A dry-run or static test proves `notio-frontend_v*` reaches frontend release jobs only.
 - Frontend deploy workflow cannot run without the frontend core gate.
 - Backend deploy workflow cannot run without backend Swift tests.
+- `github-release.needs` includes every Notio backend/frontend test and deploy job added by this phase.
+- The `github-release` success condition requires every Notio backend/frontend release job to be successful or intentionally skipped.
+- `notify.needs`, failure conditions, and notification `job_results` include every Notio backend/frontend test and deploy job added by this phase.
+- A static workflow check proves release fan-in cannot omit a split Notio release job from GitHub Release creation or failure notification.
+
+### Dependencies
+
+- Phase 1 is complete so `verify-tag.js`, manifest validation, tag detection, and release job conditionals can rely on configured basenames.
+- Phase 2 is complete so backend CI and deploy jobs can use `notio/backend/` paths.
+
+### Risks
+
+- The release workflow has static job fan-in; adding split jobs without updating `github-release` or `notify` could hide failed deploys.
+- Trunk-push frontend deployment may remain active and bypass release-unit tags unless it is removed or converted to a reusable release-only workflow.
+- Backend and frontend tag conditionals can overlap or fall through to the generic Node `core` job if basename checks are incomplete.
+
+### Completion Signal
+
+- The release workflow has distinct backend and frontend release paths, and every terminal release/reporting job waits on and reports all split Notio jobs.
 
 ### Verification
 
@@ -210,9 +262,10 @@ Make backend and frontend independently released and deployed through release-un
 - `node scripts/release/validate-manifest.js`
 - `./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js`
 - `./scripts/run_silent.sh "tests" npm test`
-- `npm run typecheck --prefix notio/frontend`
-- `npm test --prefix notio/frontend`
-- `VITE_SUPABASE_ANON_KEY=test-anon-key VITE_SUPABASE_URL=https://example.supabase.co npm run build --prefix notio/frontend`
+- `./scripts/run_silent.sh "notio frontend typecheck" npm --prefix notio/frontend run typecheck`
+- `./scripts/run_silent.sh "notio frontend tests" npm --prefix notio/frontend test`
+- `VITE_SUPABASE_ANON_KEY=test-anon-key VITE_SUPABASE_URL=https://example.supabase.co ./scripts/run_silent.sh "notio frontend build" npm --prefix notio/frontend run build`
+- Static workflow check for `github-release.needs`, `github-release` success conditions, `notify.needs`, notify failure conditions, and notify `job_results`.
 - `swift test` from `notio/backend`
 
 ### Commit
@@ -257,11 +310,24 @@ Expose the frontend release version on the page without showing a Git SHA.
 - No frontend version code reads backend `release.toml`.
 - No frontend UI displays a Git SHA.
 
+### Dependencies
+
+- Phase 3 is complete so `notio/frontend/package.json` is the frontend release unit metadata source.
+
+### Risks
+
+- Build-time version injection can accidentally read backend release metadata or Git state instead of frontend package metadata.
+- Tests may assert only the version module and miss whether the app actually renders the visible version.
+
+### Completion Signal
+
+- The built frontend renders `v<package.json version>` and no frontend version path depends on backend `release.toml` or a Git SHA.
+
 ### Verification
 
-- `npm run typecheck --prefix notio/frontend`
-- `npm test --prefix notio/frontend`
-- `VITE_SUPABASE_ANON_KEY=test-anon-key VITE_SUPABASE_URL=https://example.supabase.co npm run build --prefix notio/frontend`
+- `./scripts/run_silent.sh "notio frontend typecheck" npm --prefix notio/frontend run typecheck`
+- `./scripts/run_silent.sh "notio frontend tests" npm --prefix notio/frontend test`
+- `VITE_SUPABASE_ANON_KEY=test-anon-key VITE_SUPABASE_URL=https://example.supabase.co ./scripts/run_silent.sh "notio frontend build" npm --prefix notio/frontend run build`
 
 ### Commit
 
@@ -286,7 +352,8 @@ Remove stale one-unit Notio wording and make component ownership explicit across
 - Modify: `notio/docs/log.md`
 - Modify: `notio/docs/gotchas.md`
 - Modify: `notio/docs/tunnel.md`
-- Modify: `notio/docs/backend-deploy-todo.md`
+- Modify: `notio/docs/todo/backend-deploy.md`
+- Modify or create the frontend release PR checklist location used by the repo process; if no shared PR template exists, document the checklist item in Notio release docs.
 - Modify: Notio ADR/spec/plan links that still point at old backend paths.
 - Modify: `.github/workflows/README.md` if workflow inventory needs the new Notio deploy split.
 
@@ -297,19 +364,35 @@ Remove stale one-unit Notio wording and make component ownership explicit across
 - Backend-owned Supabase migrations are documented under backend.
 - Frontend deploy docs describe Cloudflare Pages release deployment.
 - No docs instruct operators to run backend commands from the old `notio/` root.
+- Frontend release docs and PR checklist require naming the minimum compatible `notio-backend_v<version>` tag when a frontend change depends on a backend schema/read-contract change.
 
 ### Acceptance Criteria
 
 - `rg "notio/(Package|Sources|Tests|Dockerfile|docker-compose|scripts|supabase|release.toml)"` returns only intentionally historical references or no matches.
 - `rg "notio_v" notio docs .github release-units* scripts` returns only intentionally historical references or migration notes.
 - `rg "notio-backend_v|notio-frontend_v" notio docs .github release-units* scripts` shows the new release vocabulary where deploy/release docs need it.
+- Docs or PR checklist text includes the minimum-compatible-backend-tag question required by ADR-007.
+
+### Dependencies
+
+- Phases 1 through 4 are complete so documentation can describe the final paths, tag names, workflow shape, and visible frontend version source.
+
+### Risks
+
+- Historical `notio_v<version>` references can be deleted when they should remain as release history.
+- Operator docs can keep stale `notio/` backend-root commands even after the component move.
+- Compatibility guidance can drift from ADR-007 if frontend release docs omit the minimum backend tag question.
+
+### Completion Signal
+
+- Product and operator docs consistently describe `notio/backend/` and `notio/frontend/` as component roots, use split release tag vocabulary for new releases, and preserve old `notio_v<version>` only as historical context.
 
 ### Verification
 
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `./scripts/run_silent.sh "tests" npm test`
 - `swift test` from `notio/backend`
-- `npm test --prefix notio/frontend`
+- `./scripts/run_silent.sh "notio frontend tests" npm --prefix notio/frontend test`
 
 ### Commit
 
