@@ -2,7 +2,7 @@
 date: 2026-04-24
 model: gpt-5
 description: "Implementation plan for Frontend ADR-008 local browser-testing runtime"
-status: planned
+status: implemented
 type: plan
 ---
 
@@ -235,13 +235,13 @@ For the `dev:local` server check, stop the Vite process after confirming it star
 - The frontend SDK import allowlist remains unchanged.
 - CI/build gates still use the production build path.
 
-- [ ] Step 1: Write or update tests/gates for local fake SDK-import isolation if no existing gate covers it.
-- [ ] Step 2: Run the targeted gate and verify RED if the gate is new.
-- [ ] Step 3: Add docs and the minimal gate implementation.
-- [ ] Step 4: Run targeted gates and verify GREEN.
-- [ ] Step 5: Run full frontend gates.
-- [ ] Step 6: Update `notio/docs/log.md`.
-- [ ] Step 7: Commit with a short imperative message, for example `document notio local browser testing`.
+- [x] Step 1: Write or update tests/gates for local fake SDK-import isolation if no existing gate covers it.
+- [x] Step 2: Run the targeted gate and verify RED if the gate is new.
+- [x] Step 3: Add docs and the minimal gate implementation.
+- [x] Step 4: Run targeted gates and verify GREEN.
+- [x] Step 5: Run full frontend gates.
+- [x] Step 6: Update `notio/docs/log.md`.
+- [x] Step 7: Commit with a short imperative message, for example `document notio local browser testing`.
 
 **Targeted verification:**
 
