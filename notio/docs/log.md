@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Documented backend deploy hardening follow-ups.
+
 - CI: narrowed `notio` path filter to Swift-only paths so supabase migrations, Docker, and script changes no longer trigger the 15-min Swift test suite.
 
 - Added the missing `captured_items` authenticated read migration so the frontend's signed-in Supabase session can see the single-user inbox rows under RLS.
