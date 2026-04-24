@@ -52,8 +52,10 @@ Rules:
 ## 4. Rules / Invariants
 
 -   Tag MUST follow `<basename>_v<version>`.
--   `<basename>` MUST equal the leaf directory name of the unit root
-    path.
+-   For units without an explicit configured basename, `<basename>` MUST
+    equal the leaf directory name of the unit root path.
+-   For units with an explicit configured basename, the configured
+    basename is authoritative.
 -   Basenames MUST be globally unique across all release units.
 -   A basename previously used by a removed or renamed unit SHOULD NOT
     be reused by a new unit. (Not currently enforced; enforceable

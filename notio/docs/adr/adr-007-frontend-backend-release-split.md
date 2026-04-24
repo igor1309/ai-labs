@@ -95,7 +95,7 @@ The frontend page version must be the frontend release version. It must not disp
 - The frontend visible version MUST come from frontend release metadata.
 - The frontend visible version MUST NOT include a Git SHA.
 - The frontend MUST NOT own Supabase schema or migrations.
-- Frontend changes that depend on a backend schema or read-contract change MUST declare the minimum compatible backend release tag in the frontend PR description and in the frontend release notes or changelog entry, using the exact `notio-backend_v<version>` tag.
+- Frontend changes that depend on a backend schema or read-contract change MUST declare the minimum compatible backend release tag in the frontend PR description and in `notio/docs/log.md`, using the exact `notio-backend_v<version>` tag.
 - The frontend release PR checklist MUST include: "Does this frontend release require a minimum backend release? If yes, name the backend tag."
 - The product-level `notio/docs/` documentation MAY describe cross-component architecture, but component-owned release/deploy mechanics MUST name the owning component explicitly.
 - Release manifest tests MUST cover explicit basename `notio-backend` for path `notio/backend`, explicit basename `notio-frontend` for path `notio/frontend`, duplicate basename rejection, underscore-in-basename rejection, and tag detection using configured basename rather than path leaf.
