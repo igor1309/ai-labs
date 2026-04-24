@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Tightened ADR-007 review fixes: Notio backend/frontend tags are explicitly `notio-backend_v<version>` and `notio-frontend_v<version>`, compatibility declarations name the minimum backend tag, and ADR namespaces now distinguish frontend-only ADRs from product/capture/backend ADRs.
+
 - Planned the Notio release split implementation: release tooling support for explicit nested basenames, backend folder migration, independent backend/frontend CI/CD, frontend version display, and documentation cleanup.
 
 - ADR-007: split Notio into independently released backend and frontend products, make the folder structure symmetric, keep Supabase schema and migrations backend-owned, and require frontend page versioning to use frontend release metadata without a Git SHA.

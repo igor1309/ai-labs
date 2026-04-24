@@ -1,3 +1,9 @@
+---
+date: 2026-04-24
+model: gpt-5
+description: "Notio project overview and release architecture references"
+---
+
 # Notio
 
 Notio is a personal capture service: send a link or a short note from Telegram, and it lands in a persistent inbox through a storage adapter. Telegram is only an ingress — the core is independent of Telegram, GitHub, Markdown, and any specific backend.
@@ -56,6 +62,7 @@ Authoritative design lives in [`docs/adr/`](docs/adr/):
 - [ADR-004 — runtime diagnostics via config-driven composition](docs/adr/adr-004-runtime-diagnostics-config-driven-composition.md)
 - [ADR-005 — tag-driven CI/CD to VPS](docs/adr/adr-005-tag-driven-cicd-to-vps.md)
 - [ADR-006 — capture feedback as cross-cutting concern](docs/adr/adr-006-capture-feedback-as-cross-cutting-concern.md)
+- [ADR-007 — frontend and backend release split](docs/adr/adr-007-frontend-backend-release-split.md)
 
 Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/adr/):
 
@@ -123,7 +130,7 @@ NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 
 ## Release
 
-Notio is an independent release unit. Canonical version lives in `release.toml`; tags follow `notio_v<version>`. Flow: push to `trunk` → tag → CI builds, tests, and deploys to VPS. Full policy in repo-level `CLAUDE.md`.
+Notio is being split into independently released backend and frontend units. Backend tags will follow `notio-backend_v<version>`; frontend tags will follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
 
 ## Status
 

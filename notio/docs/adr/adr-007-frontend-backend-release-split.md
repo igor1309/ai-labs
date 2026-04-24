@@ -22,6 +22,13 @@ The frontend owns the Svelte/Vite browse experience, Cloudflare Pages deployment
 The current asymmetric layout, where backend files live directly under `notio/` while frontend files live under `notio/frontend/`, is rejected because it makes `notio/` mean both product root and backend root.
 This ADR defines ownership, release identity, and layout direction; it does not perform the file move.
 
+## Related ADRs
+
+- **Repo release ADR-003** — amended to allow explicit configured basenames for nested release units.
+- **Repo release ADR-005** — amended to require manifest generation and validation for explicit basenames.
+- **Notio ADR-005** — backend CI/CD behavior remains, but future backend tags move from `notio_v<version>` to `notio-backend_v<version>`.
+- **Frontend ADR-006** — frontend remains under `notio/frontend/`; ADR-007 adds the symmetric backend root and independent frontend release identity.
+
 ## Context
 
 Notio started as a backend-only capture service. The Swift/Hummingbird service, Docker deployment files, release metadata, deploy scripts, and Supabase migrations were placed directly under `notio/`.
@@ -66,7 +73,9 @@ Release-unit metadata must follow the component roots:
 
 - backend release metadata lives under `notio/backend/`
 - frontend release metadata lives under `notio/frontend/`
-- release-unit names distinguish the deployables, for example `notio-backend` and `notio-frontend`
+- the backend release unit basename MUST be `notio-backend`; backend tags MUST be `notio-backend_v<version>`
+- the frontend release unit basename MUST be `notio-frontend`; frontend tags MUST be `notio-frontend_v<version>`
+- the historical `notio_v<version>` tag namespace remains historical for the pre-split backend release unit and MUST NOT be reused for either split component
 
 The frontend page version must be the frontend release version. It must not display a Git SHA.
 
@@ -78,14 +87,18 @@ The frontend page version must be the frontend release version. It must not disp
 - Supabase schema and migrations MUST live under `notio/backend/`.
 - Frontend source, tests, Vite config, Pages config, and frontend package metadata MUST live under `notio/frontend/`.
 - The backend release unit MUST be distinct from the frontend release unit.
+- The backend release unit basename MUST be `notio-backend`.
+- The frontend release unit basename MUST be `notio-frontend`.
 - The backend release unit MUST be Docker-producing.
 - The frontend release unit MUST NOT be Docker-producing.
 - Backend tags and frontend tags MUST be distinct and must map to their own release metadata.
 - The frontend visible version MUST come from frontend release metadata.
 - The frontend visible version MUST NOT include a Git SHA.
 - The frontend MUST NOT own Supabase schema or migrations.
-- Frontend changes that depend on a schema/read-contract change MUST declare their dependency on the backend release that introduced the compatible contract.
+- Frontend changes that depend on a backend schema or read-contract change MUST declare the minimum compatible backend release tag in the frontend PR description and in the frontend release notes or changelog entry, using the exact `notio-backend_v<version>` tag.
+- The frontend release PR checklist MUST include: "Does this frontend release require a minimum backend release? If yes, name the backend tag."
 - The product-level `notio/docs/` documentation MAY describe cross-component architecture, but component-owned release/deploy mechanics MUST name the owning component explicitly.
+- Release manifest tests MUST cover explicit basename `notio-backend` for path `notio/backend`, explicit basename `notio-frontend` for path `notio/frontend`, duplicate basename rejection, underscore-in-basename rejection, and tag detection using configured basename rather than path leaf.
 
 ## Consequences
 
