@@ -195,13 +195,13 @@ For the `dev:local` server check, stop the Vite process after confirming it star
 - Failure scenario throws `ReaderError` deterministically.
 - Scenario selection is local-only and explicit, for example via a local query parameter or local env value consumed only by the local runtime.
 
-- [ ] Step 1: Write the failing local browse adapter and scenario tests.
-- [ ] Step 2: Run targeted tests and verify RED is an assertion failure.
-- [ ] Step 3: Implement the minimal in-memory browse reader and scenario catalog.
-- [ ] Step 4: Wire scenario selection into the local runtime.
-- [ ] Step 5: Run targeted tests and verify GREEN.
-- [ ] Step 6: Run full frontend gates.
-- [ ] Step 7: Commit with a short imperative message, for example `add local browse scenarios`.
+- [x] Step 1: Write the failing local browse adapter and scenario tests.
+- [x] Step 2: Run targeted tests and verify RED is an assertion failure.
+- [x] Step 3: Implement the minimal in-memory browse reader and scenario catalog.
+- [x] Step 4: Wire scenario selection into the local runtime.
+- [x] Step 5: Run targeted tests and verify GREEN.
+- [x] Step 6: Run full frontend gates.
+- [x] Step 7: Commit with a short imperative message, for example `add local browse scenarios`.
 
 **Targeted verification:**
 
