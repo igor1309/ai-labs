@@ -17,13 +17,13 @@ describe("Notio frontend deploy workflow", () => {
     expect(workflow).toMatch(/VITE_SUPABASE_ANON_KEY:\s*\$\{\{\s*secrets\.NOTIO_SUPABASE_ANON_KEY\s*\}\}/);
     expect(workflow).toMatch(/VITE_SUPABASE_URL:\s*\$\{\{\s*secrets\.NOTIO_SUPABASE_URL\s*\}\}/);
     expect(workflow).toMatch(/npm run build/);
-    expect(workflow).toMatch(/wrangler pages deploy dist --project-name notio-frontend --cwd notio\/frontend/);
+    expect(workflow).toMatch(/wrangler pages deploy dist --project-name notio --cwd notio\/frontend/);
   });
 
   it("shouldPointWranglerToStaticBuildOutput", () => {
     const config = readText("wrangler.toml");
 
-    expect(config).toMatch(/^name = "notio-frontend"$/m);
+    expect(config).toMatch(/^name = "notio"$/m);
     expect(config).toMatch(/^pages_build_output_dir = "dist"$/m);
   });
 });
