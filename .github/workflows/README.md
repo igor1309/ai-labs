@@ -28,7 +28,7 @@ Notio has separate backend and frontend release units:
 - `notio-core.yml` runs Swift tests from `notio/backend/`.
 - `notio-frontend-core.yml` runs the frontend typecheck, tests, and build from `notio/frontend/`.
 - `release-unit.yml` deploys `notio-backend_v<version>` tags to the VPS Docker service.
-- `notio-frontend-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `notio-frontend_v<version>` tags after the frontend core gate.
+- `notio-frontend-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `notio-frontend_v<version>` tags after the frontend core gate. A Notio frontend release succeeds only after the production Cloudflare Pages app renders the expected `Version` text in the browser-rendered page-version smoke check.
 
 There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 

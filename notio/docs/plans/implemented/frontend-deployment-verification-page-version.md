@@ -23,7 +23,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-frontend-deployment-version-smoke`
 - Expected branch: `codex/notio-frontend-deployment-version-smoke`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 Before any implementation edit, run the process-gate preflight and report:
 
@@ -103,12 +103,12 @@ Define a tested contract for deriving the exact rendered version text expected b
 
 - Commit message: `derive notio frontend deploy version`
 
-- [ ] Expected-version helper exists
-- [ ] Tests cover tag-derived expected version
-- [ ] Tests cover package-json-derived expected version
-- [ ] Invalid tag behavior is tested
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Expected-version helper exists
+- [x] Tests cover tag-derived expected version
+- [x] Tests cover package-json-derived expected version
+- [x] Invalid tag behavior is tested
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 2: Browser-Rendered Version Smoke Check
 
@@ -152,12 +152,12 @@ Add a browser-based smoke check that validates the visible deployed version with
 
 - Commit message: `verify notio frontend page version`
 
-- [ ] Browser-rendered smoke script exists
-- [ ] Failure modes are tested
-- [ ] `Version` accessibility contract is tested for all auth states
-- [ ] Static-only frontend boundary is preserved
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Browser-rendered smoke script exists
+- [x] Failure modes are tested
+- [x] `Version` accessibility contract is tested for all auth states
+- [x] Static-only frontend boundary is preserved
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 3: Deployment Workflow Gate
 
@@ -202,13 +202,13 @@ Wire the browser smoke check into the production Cloudflare Pages deployment pat
 
 - Commit message: `gate notio frontend deploy by page version`
 
-- [ ] Deploy workflow runs the smoke check after Pages deploy
-- [ ] Expected version source differs correctly for tag and manual/ref deploys
-- [ ] Production URL is configured once through workflow environment or inputs
-- [ ] Release fan-in remains covered
-- [ ] Documentation and log are updated
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Deploy workflow runs the smoke check after Pages deploy
+- [x] Expected version source differs correctly for tag and manual/ref deploys
+- [x] Production URL is configured once through workflow environment or inputs
+- [x] Release fan-in remains covered
+- [x] Documentation and log are updated
+- [x] Verification passed
+- [x] Commit created
 
 ## Completion Definition
 
