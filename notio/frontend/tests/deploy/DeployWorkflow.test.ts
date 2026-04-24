@@ -12,6 +12,8 @@ describe("Notio frontend deploy workflow", () => {
     expect(workflow).toMatch(/uses:\s*\.\/\.github\/workflows\/notio-frontend-core\.yml/);
     expect(workflow).toMatch(/CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/);
     expect(workflow).toMatch(/CLOUDFLARE_ACCOUNT_ID:\s*\$\{\{\s*secrets\.CLOUDFLARE_ACCOUNT_ID\s*\}\}/);
+    expect(workflow).toMatch(/VITE_SUPABASE_ANON_KEY:\s*\$\{\{\s*secrets\.NOTIO_SUPABASE_ANON_KEY\s*\}\}/);
+    expect(workflow).toMatch(/VITE_SUPABASE_URL:\s*\$\{\{\s*secrets\.NOTIO_SUPABASE_URL\s*\}\}/);
     expect(workflow).toMatch(/npm run build/);
     expect(workflow).toMatch(/wrangler pages deploy dist --project-name notio-frontend --cwd notio\/frontend/);
   });

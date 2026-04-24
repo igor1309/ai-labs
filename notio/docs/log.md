@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Switched Notio frontend deploy env injection to GitHub Actions secrets and provisioned the required Notio Supabase deploy secrets.
+
 - Documented backend deploy hardening follow-ups.
 
 - Added automated Cloudflare Pages deployment wiring for the Notio frontend.
