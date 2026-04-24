@@ -2,6 +2,10 @@
 
 ## 2026-04-24
 
+- Frontend ADR-008: local browser testing uses a Vite-served mock runtime behind the existing auth and browse interfaces so the authenticated UI can be exercised locally without production Supabase credentials.
+
+- Frontend ADR-007: made Notio frontend production deploy success depend on loading the deployed Cloudflare Pages app and verifying the rendered visible version matches the expected frontend version from the release tag or checked-out `package.json`.
+
 - Notio frontend v0.1.1: fixed deploy to target production branch (`--branch trunk`); v0.1.0 deployed to preview instead of production.
 
 - Notio frontend v0.1.0: dark theme styling for login form and browse view (2-column card grid, hover effects, mouse-tracking glow). Fixed deploy workflow Cloudflare project name (`notio-frontend` → `notio`).

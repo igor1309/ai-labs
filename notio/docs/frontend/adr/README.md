@@ -19,3 +19,5 @@ Filenames use uppercase `ADR-NNN-...` to make the namespace visually distinct fr
 - [ADR-004 — read-model contract for mvp_01 browse](ADR-004-read-model-contract-mvp01-browse.md)
 - [ADR-005 — single-user data model for mvp_01 frontend](ADR-005-single-user-data-model-mvp01-frontend.md)
 - [ADR-006 — platform, hosting, and repo layout for mvp_01 frontend](ADR-006-platform-hosting-repo-layout-mvp01-frontend.md)
+- [ADR-007 — frontend deployment verification by page version](ADR-007-frontend-deployment-verification-page-version.md)
+- [ADR-008 — local browser testing for mvp_01 frontend](ADR-008-local-browser-testing-mvp01-frontend.md)
