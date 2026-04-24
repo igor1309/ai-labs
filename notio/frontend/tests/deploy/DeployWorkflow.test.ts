@@ -31,6 +31,9 @@ describe("Notio frontend deploy workflow", () => {
     expect(workflow).toMatch(/GITHUB_REF_NAME:\s*\$\{\{\s*github\.ref_name\s*\}\}/);
     expect(workflow).toMatch(/GITHUB_REF_TYPE:\s*\$\{\{\s*github\.ref_type\s*\}\}/);
     expect(workflow).toMatch(/node scripts\/deploy-expected-version\.mjs/);
+    expect(workflow).not.toMatch(/echo\s+"version=\$\(node scripts\/deploy-expected-version\.mjs\)"/);
+    expect(workflow).toMatch(/version="\$\(node scripts\/deploy-expected-version\.mjs\)"/);
+    expect(workflow).toMatch(/echo\s+"version=\$\{version\}"\s*>>\s*"\$GITHUB_OUTPUT"/);
     expect(workflow).toMatch(/npx playwright install chromium/);
     expect(deployIndex).toBeGreaterThan(-1);
     expect(smokeIndex).toBeGreaterThan(deployIndex);

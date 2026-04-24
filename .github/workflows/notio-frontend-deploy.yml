@@ -70,7 +70,9 @@ jobs:
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_REF_TYPE: ${{ github.ref_type }}
-        run: echo "version=$(node scripts/deploy-expected-version.mjs)" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(node scripts/deploy-expected-version.mjs)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy frontend
         run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages deploy dist --project-name notio --branch trunk --cwd notio/frontend
