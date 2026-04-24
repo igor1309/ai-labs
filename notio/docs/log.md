@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- ADR-007: split Notio into independently released backend and frontend products, make the folder structure symmetric, keep Supabase schema and migrations backend-owned, and require frontend page versioning to use frontend release metadata without a Git SHA.
+
 - Switched Notio frontend deploy env injection to GitHub Actions secrets and provisioned the required Notio Supabase deploy secrets.
 
 - Documented backend deploy hardening follow-ups.
