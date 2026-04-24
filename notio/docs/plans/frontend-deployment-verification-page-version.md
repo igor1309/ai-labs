@@ -23,7 +23,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-frontend-deployment-version-smoke`
 - Expected branch: `codex/notio-frontend-deployment-version-smoke`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 Before any implementation edit, run the process-gate preflight and report:
 
@@ -103,12 +103,12 @@ Define a tested contract for deriving the exact rendered version text expected b
 
 - Commit message: `derive notio frontend deploy version`
 
-- [ ] Expected-version helper exists
-- [ ] Tests cover tag-derived expected version
-- [ ] Tests cover package-json-derived expected version
-- [ ] Invalid tag behavior is tested
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Expected-version helper exists
+- [x] Tests cover tag-derived expected version
+- [x] Tests cover package-json-derived expected version
+- [x] Invalid tag behavior is tested
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 2: Browser-Rendered Version Smoke Check
 
