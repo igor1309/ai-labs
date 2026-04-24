@@ -10,13 +10,13 @@ description: "Known pitfalls and gotchas for the notio project"
 
 SwiftPM 6.1 requires the `Tests/<TargetName>/` directory to exist even when building a specific product (`--product NotioServer`). If the directory is missing, SwiftPM falls back to scanning `Sources/` for the test target and reports "overlapping sources." Reproduces on both macOS and Linux.
 
-This means `Tests/` must survive the full deploy path: SCP source list (`release-unit.yml`) → deploy script (`scripts/deploy.sh`) → `.dockerignore` → Dockerfile `COPY . .`.
+This means `Tests/` must survive the full deploy path: SCP source list (`release-unit.yml`) → deploy script (`backend/scripts/deploy.sh`) → `backend/.dockerignore` → `backend/Dockerfile` `COPY . .`.
 
 **Rule:** never exclude `Tests/` from any layer of the deploy pipeline.
 
 ## Deploy script: stale directories on VPS
 
-The deploy script (`scripts/deploy.sh`) copies fresh `Sources/` and `scripts/` to `/opt/notio/` but must also clean any directories that are no longer shipped. If a directory was previously deployed and is later removed from the SCP source list, it persists on the VPS and gets picked up by `COPY . .` in the Dockerfile.
+The deploy script (`backend/scripts/deploy.sh`) copies fresh `Sources/` and `scripts/` to `/opt/notio/` but must also clean any directories that are no longer shipped. If a directory was previously deployed and is later removed from the SCP source list, it persists on the VPS and gets picked up by `COPY . .` in the Dockerfile.
 
 **Rule:** when removing a directory from the SCP source list in `release-unit.yml`, add a corresponding `rm -rf` to `deploy.sh`.
 

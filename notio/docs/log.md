@@ -2,6 +2,14 @@
 
 ## 2026-04-24
 
+- Cleaned up Notio release-split docs: product docs now point at backend/frontend component roots, workflow docs describe split tag deploys, and the frontend release checklist asks for the minimum compatible backend tag.
+
+- Added frontend-visible version display from `notio/frontend/package.json`; the Vite build injects the frontend package version and the UI renders it without Git SHA data.
+
+- Split Notio release registration and release workflows into `notio-backend` and `notio-frontend` units: backend tags drive VPS Docker deploys, frontend tags drive Cloudflare Pages deploys, and trunk-push frontend deploys are no longer active.
+
+- Moved backend-owned Swift, Docker, deploy, release metadata, and Supabase migration files under `notio/backend/` so the backend and frontend now have symmetric component roots.
+
 - Closed ADR-007 review follow-ups: explicit configured basenames now override path leaves, frontend compatibility declarations use `notio/docs/log.md`, and the repo Components table names the Notio backend/frontend release units.
 
 - Tightened ADR-007 review fixes: Notio backend/frontend tags are explicitly `notio-backend_v<version>` and `notio-frontend_v<version>`, compatibility declarations name the minimum backend tag, and ADR namespaces now distinguish frontend-only ADRs from product/capture/backend ADRs.

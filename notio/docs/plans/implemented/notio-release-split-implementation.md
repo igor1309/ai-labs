@@ -2,7 +2,7 @@
 date: 2026-04-24
 model: gpt-5
 description: "Implementation plan for splitting Notio backend and frontend into symmetric folders and independent release units"
-status: planned
+status: implemented
 type: plan
 ---
 
@@ -23,7 +23,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-release-split`
 - Expected branch: `codex/notio-release-split`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Governing ADR Set
 
@@ -123,11 +123,11 @@ Make release tooling capable of representing nested Notio units as `notio-backen
 
 - Commit message: `support explicit release unit basenames`
 
-- [ ] Release config schema supports explicit basenames
-- [ ] Release ADRs updated for explicit basename rule
-- [ ] Release tests prove new and legacy behavior
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Release config schema supports explicit basenames
+- [x] Release ADRs updated for explicit basename rule
+- [x] Release tests prove new and legacy behavior
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 2: Move Backend Files Under `notio/backend/`
 
@@ -192,11 +192,11 @@ Fix Notio folder asymmetry without changing backend runtime behavior.
 
 - Commit message: `move notio backend under component root`
 
-- [ ] Backend files moved under `notio/backend/`
-- [ ] Supabase migrations moved under `notio/backend/supabase/`
-- [ ] Backend docs path references updated
-- [ ] Backend build/test/Docker verification passed
-- [ ] Commit created
+- [x] Backend files moved under `notio/backend/`
+- [x] Supabase migrations moved under `notio/backend/supabase/`
+- [x] Backend docs path references updated
+- [x] Backend build/test/Docker verification passed
+- [x] Commit created
 
 ## Phase 3: Split Release Units and CI/CD Workflows
 
@@ -272,12 +272,12 @@ Make backend and frontend independently released and deployed through release-un
 
 - Commit message: `split notio release units`
 
-- [ ] Manifest contains `notio-backend`
-- [ ] Manifest contains `notio-frontend`
-- [ ] CI filters use component roots
-- [ ] Release workflow deploys backend and frontend from distinct tags
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Manifest contains `notio-backend`
+- [x] Manifest contains `notio-frontend`
+- [x] CI filters use component roots
+- [x] Release workflow deploys backend and frontend from distinct tags
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 4: Display Frontend Version from Frontend Metadata
 
@@ -333,11 +333,11 @@ Expose the frontend release version on the page without showing a Git SHA.
 
 - Commit message: `show notio frontend version`
 
-- [ ] Frontend version module added
-- [ ] UI renders package version
-- [ ] Tests prove version display
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Frontend version module added
+- [x] UI renders package version
+- [x] Tests prove version display
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 5: Final Documentation and Cross-Reference Cleanup
 
@@ -398,11 +398,11 @@ Remove stale one-unit Notio wording and make component ownership explicit across
 
 - Commit message: `document notio component release split`
 
-- [ ] Product docs updated
-- [ ] Workflow docs updated if needed
-- [ ] Stale old-root backend path references removed or justified
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Product docs updated
+- [x] Workflow docs updated if needed
+- [x] Stale old-root backend path references removed or justified
+- [x] Verification passed
+- [x] Commit created
 
 ## Completion Definition
 

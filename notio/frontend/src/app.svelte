@@ -4,6 +4,7 @@
   import type { AuthSession, AuthState } from "./auth/AuthSession";
   import type { BrowseItemsReader } from "./browse/BrowseItemsReader";
   import BrowseView from "./browse/BrowseView.svelte";
+  import { frontendVersion } from "./version";
 
   export let authSession: AuthSession;
   export let reader: BrowseItemsReader;
@@ -70,4 +71,13 @@
     </header>
     <BrowseView authState={authSession} onUnauthorized={transitionToUnauthenticated} {reader} />
   {/if}
+  <p aria-label="Version" class="version">v{frontendVersion}</p>
 </main>
+
+<style>
+  .version {
+    color: #667085;
+    font-size: 0.75rem;
+    margin: 1.5rem 0 0;
+  }
+</style>

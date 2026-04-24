@@ -12,11 +12,11 @@ Add e2e coverage for Notio in layers, starting with the lowest-operational-risk 
 
 ## Backend Smoke
 
-- [ ] Add `notio/scripts/e2e-smoke.sh`.
+- [ ] Add `notio/backend/scripts/e2e-smoke.sh`.
 - [ ] Verify `GET https://inbox.enoa.ai/version` returns the expected deployed version.
 - [ ] Verify `GET https://inbox.enoa.ai/health` returns the expected healthy response.
 - [ ] Verify `POST https://inbox.enoa.ai/$NOTIO_WEBHOOK_PATH` accepts a Telegram-shaped JSON payload and returns `200 ok`.
-- [ ] Wire the smoke script into `deploy-notio` after the existing deployed-version check.
+- [ ] Wire the smoke script into `deploy-notio-backend` after the existing deployed-version check.
 - [ ] Keep the first slice free of real Telegram automation.
 
 ## Persistence Verification
@@ -46,7 +46,7 @@ Add e2e coverage for Notio in layers, starting with the lowest-operational-risk 
 
 ## CI Notes
 
-- [ ] Keep backend Swift tests in `test-notio`.
+- [ ] Keep backend Swift tests in `test-notio-backend`.
 - [ ] Add frontend unit/type/build checks separately from backend Swift tests.
 - [ ] Add frontend e2e only after dependency installation, browser installation, and environment requirements are documented.
 - [ ] Use `python3` explicitly in any helper script that needs Python.
