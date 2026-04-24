@@ -4,6 +4,8 @@
 
 - Planned Frontend ADR-007 implementation: derive deployment expected version from frontend tags or package metadata, verify the deployed production page with a browser-rendered `Version` check, and gate Cloudflare Pages releases on that smoke result.
 
+- Planned Frontend ADR-008 implementation: explicit `dev:local` runtime selection, in-memory auth and browse adapters, deterministic local browse scenarios, and documentation/import gates.
+
 - Frontend ADR-008: local browser testing uses a Vite-served mock runtime behind the existing auth and browse interfaces so the authenticated UI can be exercised locally without production Supabase credentials.
 
 - Frontend ADR-007: made Notio frontend production deploy success depend on loading the deployed Cloudflare Pages app and verifying the rendered visible version matches the expected frontend version from the release tag or checked-out `package.json`.
