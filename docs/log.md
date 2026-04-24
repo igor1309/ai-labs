@@ -2,6 +2,10 @@
 
 ## 2026-04-24
 
+- Notio frontend v0.1.0: dark theme UI, fixed Cloudflare Pages deploy project name.
+
+- AI Labs landing page: product cards for all 14 projects with 2-column grid and scroll/hover animations.
+
 - Release docs: aligned explicit configured basename invariants and README component entries with the Notio backend/frontend release split.
 
 - Release ADRs: clarified explicit configured basenames for nested release units so symmetric component folders can still use globally unambiguous tags.

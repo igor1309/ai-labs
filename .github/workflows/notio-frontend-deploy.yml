@@ -60,4 +60,4 @@ jobs:
         run: npm run build
 
       - name: Deploy frontend
-        run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages deploy dist --project-name notio-frontend --cwd notio/frontend
+        run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages deploy dist --project-name notio --cwd notio/frontend
