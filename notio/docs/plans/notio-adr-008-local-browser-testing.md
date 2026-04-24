@@ -31,7 +31,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-adr-008-local-browser-testing`
 - Expected branch: `codex/notio-adr-008-local-browser-testing`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 Before Step 1, run:
 
@@ -111,12 +111,12 @@ VITE_SUPABASE_URL=https://example.supabase.co VITE_SUPABASE_ANON_KEY=test-anon-k
 - Missing Supabase env vars alone do not select local composition.
 - `dev:local` launches Vite with the explicit local flag and does not require Supabase env vars.
 
-- [ ] Step 1: Write the failing runtime-selection tests.
-- [ ] Step 2: Run the targeted test and verify RED is an assertion failure, not a compilation error.
-- [ ] Step 3: Add the minimal explicit local-mode branch and `dev:local` npm script; do not change `package-lock.json` unless a dependency change is actually required.
-- [ ] Step 4: Run the targeted test and verify GREEN.
-- [ ] Step 5: Run full frontend gates.
-- [ ] Step 6: Commit with a short imperative message, for example `add notio local runtime selection`.
+- [x] Step 1: Write the failing runtime-selection tests.
+- [x] Step 2: Run the targeted test and verify RED is an assertion failure, not a compilation error.
+- [x] Step 3: Add the minimal explicit local-mode branch and `dev:local` npm script; do not change `package-lock.json` unless a dependency change is actually required.
+- [x] Step 4: Run the targeted test and verify GREEN.
+- [x] Step 5: Run full frontend gates.
+- [x] Step 6: Commit with a short imperative message, for example `add notio local runtime selection`.
 
 **Targeted verification:**
 
