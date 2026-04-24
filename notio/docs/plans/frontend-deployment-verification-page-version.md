@@ -152,12 +152,12 @@ Add a browser-based smoke check that validates the visible deployed version with
 
 - Commit message: `verify notio frontend page version`
 
-- [ ] Browser-rendered smoke script exists
-- [ ] Failure modes are tested
-- [ ] `Version` accessibility contract is tested for all auth states
-- [ ] Static-only frontend boundary is preserved
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Browser-rendered smoke script exists
+- [x] Failure modes are tested
+- [x] `Version` accessibility contract is tested for all auth states
+- [x] Static-only frontend boundary is preserved
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 3: Deployment Workflow Gate
 
