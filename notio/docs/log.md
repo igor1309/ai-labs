@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Split Notio release registration and release workflows into `notio-backend` and `notio-frontend` units: backend tags drive VPS Docker deploys, frontend tags drive Cloudflare Pages deploys, and trunk-push frontend deploys are no longer active.
+
 - Moved backend-owned Swift, Docker, deploy, release metadata, and Supabase migration files under `notio/backend/` so the backend and frontend now have symmetric component roots.
 
 - Closed ADR-007 review follow-ups: explicit configured basenames now override path leaves, frontend compatibility declarations use `notio/docs/log.md`, and the repo Components table names the Notio backend/frontend release units.

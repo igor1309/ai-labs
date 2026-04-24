@@ -65,16 +65,14 @@ jobs:
             corpus-scout:
               - "corpus-scout/**"
             notio:
-              - "notio/Sources/**"
-              - "notio/Tests/**"
-              - "notio/Package.swift"
-              - "notio/Package.resolved"
+              - "notio/backend/**"
             notio-ci:
               - ".github/workflows/notio-core.yml"
             notio-frontend:
               - "notio/frontend/**"
             notio-frontend-ci:
               - ".github/workflows/notio-frontend-core.yml"
+              - ".github/workflows/notio-frontend-deploy.yml"
             dev-skills:
               - "dev-skills/public/**"
 

@@ -272,12 +272,12 @@ Make backend and frontend independently released and deployed through release-un
 
 - Commit message: `split notio release units`
 
-- [ ] Manifest contains `notio-backend`
-- [ ] Manifest contains `notio-frontend`
-- [ ] CI filters use component roots
-- [ ] Release workflow deploys backend and frontend from distinct tags
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Manifest contains `notio-backend`
+- [x] Manifest contains `notio-frontend`
+- [x] CI filters use component roots
+- [x] Release workflow deploys backend and frontend from distinct tags
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 4: Display Frontend Version from Frontend Metadata
 

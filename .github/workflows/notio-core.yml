@@ -24,5 +24,5 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
 
       - name: Run tests
-        working-directory: notio
+        working-directory: notio/backend
         run: swift test
