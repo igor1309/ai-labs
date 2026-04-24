@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { render, screen, waitFor } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
@@ -21,6 +21,17 @@ describe("app shell", () => {
     });
 
     await waitFor(() => expect(screen.getByText("Title 1")).toBeDefined());
+  });
+
+  it("render shouldShowPackageVersion_onAnySession", () => {
+    render(App, {
+      props: {
+        authSession: new AuthSessionDouble({ status: "unauthenticated" }),
+        reader: new ReaderDouble(makePage())
+      }
+    });
+
+    expect(screen.getByText(`v${packageVersion()}`)).toBeDefined();
   });
 });
 
@@ -71,4 +82,8 @@ function makePage(): Page {
     ],
     nextCursor: null
   };
+}
+
+function packageVersion(): string {
+  return JSON.parse(readFileSync("package.json", "utf8")).version;
 }

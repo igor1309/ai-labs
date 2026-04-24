@@ -333,11 +333,11 @@ Expose the frontend release version on the page without showing a Git SHA.
 
 - Commit message: `show notio frontend version`
 
-- [ ] Frontend version module added
-- [ ] UI renders package version
-- [ ] Tests prove version display
-- [ ] Verification passed
-- [ ] Commit created
+- [x] Frontend version module added
+- [x] UI renders package version
+- [x] Tests prove version display
+- [x] Verification passed
+- [x] Commit created
 
 ## Phase 5: Final Documentation and Cross-Reference Cleanup
 
