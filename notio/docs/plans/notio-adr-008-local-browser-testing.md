@@ -153,13 +153,13 @@ For the `dev:local` server check, stop the Vite process after confirming it star
 - Subscribers receive current and subsequent auth states.
 - The local app shell can reach the authenticated browse path without Supabase.
 
-- [ ] Step 1: Write the failing auth adapter tests.
-- [ ] Step 2: Run the targeted tests and verify RED is an assertion failure.
-- [ ] Step 3: Implement the minimal in-memory `AuthSession`.
-- [ ] Step 4: Wire local auth into the local runtime.
-- [ ] Step 5: Run targeted tests and verify GREEN.
-- [ ] Step 6: Run full frontend gates.
-- [ ] Step 7: Commit with a short imperative message, for example `add local in-memory auth`.
+- [x] Step 1: Write the failing auth adapter tests.
+- [x] Step 2: Run the targeted tests and verify RED is an assertion failure.
+- [x] Step 3: Implement the minimal in-memory `AuthSession`.
+- [x] Step 4: Wire local auth into the local runtime.
+- [x] Step 5: Run targeted tests and verify GREEN.
+- [x] Step 6: Run full frontend gates.
+- [x] Step 7: Commit with a short imperative message, for example `add local in-memory auth`.
 
 **Targeted verification:**
 

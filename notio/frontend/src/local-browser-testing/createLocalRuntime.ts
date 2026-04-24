@@ -1,6 +1,7 @@
-import type { AuthSession, AuthState } from "../auth/AuthSession";
+import type { AuthSession } from "../auth/AuthSession";
 import type { BrowseItemsReader, Page, PageCursor } from "../browse/BrowseItemsReader";
 import { ReaderError } from "../browse/BrowseItemsReader";
+import { InMemoryAuthSession } from "./InMemoryAuthSession";
 
 export type NotioRuntime = {
   authSession: AuthSession;
@@ -9,23 +10,9 @@ export type NotioRuntime = {
 
 export function createLocalRuntime(): NotioRuntime {
   return {
-    authSession: new LocalAuthSession(),
+    authSession: new InMemoryAuthSession(),
     reader: new LocalBrowseItemsReader()
   };
-}
-
-class LocalAuthSession implements AuthSession {
-  destroy(): void {}
-
-  async signIn(): Promise<void> {}
-
-  async signOut(): Promise<void> {}
-
-  subscribe(callback: (state: AuthState) => void): () => void {
-    callback({ status: "unauthenticated" });
-
-    return () => undefined;
-  }
 }
 
 class LocalBrowseItemsReader implements BrowseItemsReader {
