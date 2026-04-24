@@ -192,11 +192,11 @@ Fix Notio folder asymmetry without changing backend runtime behavior.
 
 - Commit message: `move notio backend under component root`
 
-- [ ] Backend files moved under `notio/backend/`
-- [ ] Supabase migrations moved under `notio/backend/supabase/`
-- [ ] Backend docs path references updated
-- [ ] Backend build/test/Docker verification passed
-- [ ] Commit created
+- [x] Backend files moved under `notio/backend/`
+- [x] Supabase migrations moved under `notio/backend/supabase/`
+- [x] Backend docs path references updated
+- [x] Backend build/test/Docker verification passed
+- [x] Commit created
 
 ## Phase 3: Split Release Units and CI/CD Workflows
 

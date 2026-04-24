@@ -10,8 +10,8 @@ version = "0.8.4"
 docker = true
 
 [[units]]
-basename = "notio"
-path = "notio"
+basename = "notio-backend"
+path = "notio/backend"
 metadata = "release.toml"
 version = "0.3.0"
 docker = true

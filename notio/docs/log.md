@@ -2,6 +2,8 @@
 
 ## 2026-04-24
 
+- Moved backend-owned Swift, Docker, deploy, release metadata, and Supabase migration files under `notio/backend/` so the backend and frontend now have symmetric component roots.
+
 - Closed ADR-007 review follow-ups: explicit configured basenames now override path leaves, frontend compatibility declarations use `notio/docs/log.md`, and the repo Components table names the Notio backend/frontend release units.
 
 - Tightened ADR-007 review fixes: Notio backend/frontend tags are explicitly `notio-backend_v<version>` and `notio-frontend_v<version>`, compatibility declarations name the minimum backend tag, and ADR namespaces now distinguish frontend-only ADRs from product/capture/backend ADRs.

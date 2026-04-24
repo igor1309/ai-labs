@@ -79,6 +79,8 @@ Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 
 Swift 6.1 + [Hummingbird 2](https://github.com/hummingbird-project/hummingbird). Single executable (`NotioServer`) built from the `NotioApp` library. Deployed as a Docker container behind Cloudflare Tunnel.
 
+Backend files live under [`backend/`](backend/). Frontend files live under [`frontend/`](frontend/). Product docs remain under [`docs/`](docs/).
+
 ## Deployment topology (v1)
 
 `Telegram → https://inbox.enoa.ai/<secret-webhook-path> → Cloudflare → Cloudflare Tunnel → VPS (Swift/Hummingbird app in Docker)`
@@ -109,6 +111,8 @@ One process initially; ingress and core stay logically separate.
 
 ## Local development
 
+Run backend commands from `notio/backend/`.
+
 ```bash
 swift test              # unit tests
 swift build             # debug build
@@ -118,7 +122,7 @@ NOTIO_WEBHOOK_PATH=test-webhook NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token NOTIO_SU
 Docker:
 
 ```bash
-docker build -t notio:dev .
+docker build -t notio:dev backend
 docker run --rm -p 8080:8080 -e NOTIO_WEBHOOK_PATH=test -e NOTIO_TELEGRAM_BOT_TOKEN=test-bot-token -e NOTIO_SUPABASE_URL=https://example.supabase.co -e NOTIO_SUPABASE_KEY=test-service-role-key notio:dev
 ```
 
