@@ -9,6 +9,14 @@ scope: agent settings
 
 # ADR: Agent Settings for Regentara-Defined Agents
 
+## Executive Summary
+
+Regentara configures known agents declaratively through a single schema-validated YAML file, `agents.yaml`, discovered first locally (`./.regentara/`) then globally (`~/.regentara/`) with no merging.
+
+This makes agent behavior inspectable, repository-portable, and verifiable before execution, replacing hardcoded model, prompt, and output choices in application code.
+
+Scope: file format, discovery order, startup validation, runtime output validation, and install behavior for the YAML format. Out of scope: TOML, XDG paths, custom or plugin-defined agents, schema versioning, and secret loading.
+
 ## Status
 
 Accepted
@@ -59,6 +67,8 @@ Repository-local settings win over global settings.
 If `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
 
 Regentara will not merge local and global agent settings.
+
+If no `agents.yaml` is found in either location, Regentara must fail immediately at startup.
 
 ## Settings Format
 
@@ -203,7 +213,7 @@ On update, existing settings remain untouched unless a separate explicit migrati
 - No merging means local configs must duplicate the full workflow-required agent configuration when repository-local settings are present.
 - Install/update scripts must avoid overwriting user configuration.
 
-## Non-Decisions
+## Non-Goals
 
 This ADR does not decide:
 
@@ -220,6 +230,7 @@ This ADR does not decide:
 - schema versioning for `agents.yaml`
 - future migration tooling
 - TOML support
+- the secret-loading mechanism for provider credentials, API keys, and access tokens
 
 Schema versioning is intentionally out of scope for the first version.
 
