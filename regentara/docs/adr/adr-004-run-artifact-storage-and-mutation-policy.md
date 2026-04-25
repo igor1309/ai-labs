@@ -102,7 +102,7 @@ The concrete metadata file (name, schema, format) is a non-decision.
 
 ## Failure Interaction
 
-Artifact preservation under runtime failure is governed by `regentara-adr-failure-policy.md` (Artifact Preservation). This ADR adds no new failure-handling rules; it only defines where preserved artifacts live and which of them are immutable.
+Artifact preservation under runtime failure is governed by `adr-005-failure-policy.md` (Artifact Preservation). This ADR adds no new failure-handling rules; it only defines where preserved artifacts live and which of them are immutable.
 
 ## Consequences
 

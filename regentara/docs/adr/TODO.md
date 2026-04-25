@@ -10,6 +10,6 @@ Missing/next ADRs:
 
 2. **Observability** — what Regentara logs: command, agent, provider CLI, model tier, artifact paths, exit status, duration, references.
 
-3. **Settings Topology** — relationship between `agents.yaml`, possible `models.yaml`, secrets exclusion, local/global precedence consistency.
+3. **Settings Topology** — relationship between `agents.yaml` and `models.yaml`, secrets exclusion, local/global precedence consistency.
 
 4. **Review Contract** — verdict schema, authority of reviewer, required evidence, handoff to fixer.
