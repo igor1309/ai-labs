@@ -77,8 +77,6 @@ The selected `models.yaml` must define every Regentara-defined route key listed 
 
 A `models.yaml` that omits any of `sonnet`, `opus`, `gpt`, or `codex` must be rejected at startup.
 
-If no `models.yaml` is found in either location, Regentara must fail immediately at startup.
-
 ## Model Settings File
 
 Model route keys are resolved through a separate settings file:
@@ -101,6 +99,8 @@ Repository-local model settings win over global model settings.
 If `./.regentara/models.yaml` exists, it fully replaces `~/.regentara/models.yaml`.
 
 Regentara will not merge local and global model settings.
+
+If no `models.yaml` is found in either location, Regentara must fail immediately at startup.
 
 If the local file exists and is invalid, Regentara must fail immediately and must not fall back to the global file.
 
@@ -174,8 +174,6 @@ For MVP routing:
 | `anthropic` | `claude-code` |
 
 Regentara invokes these runners as headless subprocesses.
-
-Regentara does not manage provider credentials.
 
 ## Consequences
 
