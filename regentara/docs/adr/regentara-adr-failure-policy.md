@@ -9,6 +9,10 @@ scope: failure policy
 
 # ADR: MVP Fail-Fast Failure Policy
 
+## Executive Summary
+
+Regentara uses a fail-fast failure policy for the MVP. Any runtime failure after workflow execution has started stops the current run immediately and marks it failed; pre-run validation failures must not create a run. Regentara does not retry failed steps, does not continue past a failed step, does not impose subprocess timeouts, and does not define advanced cancellation semantics. Already-created artifacts are preserved. Failed runs return a non-zero exit code and print a concise failure reason. Workflow execution semantics, process-control, artifact layout, diagnostics, and observability are out of scope and deferred to dedicated ADRs.
+
 ## Status
 
 Accepted
