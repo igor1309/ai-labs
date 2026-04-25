@@ -46,20 +46,6 @@ Direct provider APIs are out of scope.
 - Regentara MUST NOT directly run build, test, or format commands; those belong to agents running through provider CLIs.
 - Regentara MUST NOT create, clean up, or manage worktrees, branches, commits, or pull requests.
 
-Regentara does not manage provider credentials or provider sessions.
-
-Credentials, authentication state, provider accounts, and provider CLI sessions remain owned by the provider CLIs and the user environment.
-
-## Startup Validation
-
-Regentara must validate that every provider CLI required by the selected workflow and model routing settings is available before workflow execution starts.
-
-If a required CLI is unavailable, Regentara must fail during startup validation.
-
-Startup validation failure is a pre-run failure and must not create a Regentara run.
-
-If a provider CLI is available but rejects authentication or session state during execution, Regentara treats that as a runtime failure.
-
 ## Input Boundary
 
 Regentara passes prepared execution input to the provider CLI.
@@ -89,38 +75,17 @@ Regentara does not need to persist full provider CLI logs in this ADR.
 
 Detailed observability, trace schema, and session reference model are deferred.
 
-## Working Directory Boundary
+## Working Directory and Workspace Boundary
 
 Regentara runs the provider CLI from the working directory selected for the Regentara invocation.
 
 For MVP, Regentara does not create or select a separate managed workspace.
 
-Regentara does not create, clean up, or manage worktrees.
-
-Regentara does not own workspace preparation or repository lifecycle management.
-
-## Workspace Operations Out of Scope
-
-The following operations are out of scope for Regentara:
-
-- worktree creation
-- worktree cleanup
-- branch management
-- commits
-- pull request creation
-- repository cleanup
-
 Git operations are performed by agents through provider CLIs.
 
 ## Project Execution Boundary
 
-Regentara does not directly run build, test, or format commands.
-
-This is not only an MVP limitation.
-
-Execution of project work belongs to agents running through provider CLIs.
-
-If a workflow requires build, test, format, verification, or repository modification, the relevant agent performs that work through its provider CLI.
+This is not only an MVP limitation — execution of project work belongs to agents running through provider CLIs.
 
 ## Sandboxing and Permissions
 
@@ -196,5 +161,3 @@ The implementation should keep the following boundaries clear:
 - agents perform project work
 - Regentara observes exit status and boundary-level references
 - failure policy decides how Regentara reacts to failed execution
-
-Regentara should not infer successful execution from partial files, logs, or side effects if the provider CLI exits unsuccessfully.
