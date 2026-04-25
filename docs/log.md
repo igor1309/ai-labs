@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-25
+
+- regentara: MVP ADR set complete (agent settings, model routing, CLI execution boundary, failure policy, run artifact storage). All reviewed and accepted. See `regentara/docs/log.md`.
+
 ## 2026-04-24
 
 - Notio frontend v0.1.0: dark theme UI, fixed Cloudflare Pages deploy project name.
