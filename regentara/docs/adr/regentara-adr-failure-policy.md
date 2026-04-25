@@ -72,7 +72,7 @@ Regentara must not fabricate missing artifacts.
 
 If an expected artifact is missing, Regentara must treat that as a runtime failure.
 
-The exact artifact model, file naming, layout, and metadata are deferred to the Run Artifact Storage and Mutation Policy ADR.
+The exact artifact model, file naming, layout, and metadata are deferred to the Run Artifacts ADR.
 
 ## Invalid Runtime JSON Output
 

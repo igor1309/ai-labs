@@ -1,5 +1,5 @@
 ---
-title: "ADR: Run Artifact Storage and Mutation Policy"
+title: "ADR: Run Artifacts"
 date: 2026-04-25
 model: gpt-5.5-thinking
 description: "Regentara run artifact storage location, run ID format, and authored-artifact mutation policy for the MVP."
@@ -8,7 +8,7 @@ product: Regentara
 scope: run artifacts
 ---
 
-# ADR: Run Artifact Storage and Mutation Policy
+# ADR: Run Artifacts
 
 ## Executive Summary
 
