@@ -2,6 +2,7 @@
 
 ## 2026-04-25
 
+- ADR TODO: dropped Review Contract item. Verdict schema and required evidence are agent I/O (spec); reviewer's flow authority and handoff to remediator already settled by adr-006 (orchestrator delegates routing to ReviewFixPolicy). Schema-reuse note (existing review skill) belongs in spec or `agents.yaml`.
 - ADR TODO: dropped Settings Topology item. Discovery/precedence already consistent across adr-001 and adr-002; no shared "settings file" abstraction exists; secrets exclusion is permanent (Regentara does not manage credentials per adr-002), not a deferral. No new ADR needed; nothing to tighten in adr-002 (illustrative shape, not exhaustive lockdown).
 - ReviewFixPolicy seam ADR (adr-006): accepted. Locks in that the Orchestrator delegates post-review routing to an injected protocol and does not adjudicate; threads an opaque session across rounds. Internals (decision values, session schema, budget mechanics) stay in spec. Orchestration doc tightened: "owns the workspace" → "runs within a selected workspace" with workspace lifecycle explicitly out of Orchestrator scope.
 - Failure policy ADR (adr-005): tightened front-matter (description), defined "workflow execution has started", fixed artifact ADR cross-reference, specified pre-run interruption; renamed to `adr-005-failure-policy.md` to match numbered convention (collision with adr-004 run-artifacts resolved by renumbering failure-policy).

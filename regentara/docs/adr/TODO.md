@@ -12,6 +12,4 @@ description: "Backlog of missing or follow-up Regentara architecture decision re
 
 2. **Observability** — what Regentara logs: command, agent, provider CLI, model tier, artifact paths, exit status, duration, references.
 
-3. **Review Contract** — verdict schema, authority of reviewer, required evidence, handoff to fixer.
-
-4. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
+3. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
