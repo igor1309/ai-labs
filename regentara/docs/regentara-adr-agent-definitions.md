@@ -114,6 +114,14 @@ If validation fails, Regentara must fail immediately.
 
 Regentara must not execute with invalid, partially loaded, or partially understood agent settings.
 
+## Runtime Output Validation
+
+Regentara must validate each agent runtime output against the JSON Schema declared in that agent definition.
+
+If runtime output validation fails, Regentara must treat the agent execution as failed.
+
+Regentara must not pass invalid agent output to the next workflow step.
+
 ## Local Override Failure Behavior
 
 If both files exist:
@@ -167,6 +175,7 @@ This ADR does not decide:
 - whether prompts are inline strings, file references, or both
 - the exact model registry format
 - output destination semantics beyond the required JSON output contract
+- retry, repair, or recovery behavior after runtime output validation failure
 - future support for `agents.d/*.yaml`
 - future migration tooling
 - TOML support
