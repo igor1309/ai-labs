@@ -17,5 +17,3 @@ description: "Backlog of missing or follow-up Regentara architecture decision re
 4. **Review Contract** — verdict schema, authority of reviewer, required evidence, handoff to fixer.
 
 5. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
-
-6. **ReviewFixPolicy Seam** — Orchestrator delegates routing to an injected protocol and does not adjudicate; declares the seam only (budget shape, decision values, session contents stay in spec).
