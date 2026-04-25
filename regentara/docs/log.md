@@ -2,8 +2,8 @@
 
 ## 2026-04-25
 
-- Failure policy ADR (adr-004): tightened front-matter (description), defined "workflow execution has started", fixed artifact ADR cross-reference, specified pre-run interruption; renamed to `adr-004-failure-policy.md` to match numbered convention.
-- ADR set complete for MVP scope: agent settings (adr-001), model routing (adr-002), CLI execution boundary (adr-003), failure policy (adr-004), run artifact storage and mutation policy. All accepted after review.
+- Failure policy ADR (adr-005): tightened front-matter (description), defined "workflow execution has started", fixed artifact ADR cross-reference, specified pre-run interruption; renamed to `adr-005-failure-policy.md` to match numbered convention (collision with adr-004 run-artifacts resolved by renumbering failure-policy).
+- ADR set complete for MVP scope: agent settings (adr-001), model routing (adr-002), CLI execution boundary (adr-003), run artifact storage and mutation policy (adr-004), failure policy (adr-005). All accepted after review.
 - Reviewed and tightened all ADRs: added executive summaries, rules/invariants sections, aligned runner identifiers across ADRs, resolved cross-ADR deferral chains.
 - Established ADR naming convention: `adr-NNN-<slug>.md` for numbered decisions, `regentara-adr-<slug>.md` for unnumbered.
 

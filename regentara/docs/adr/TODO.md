@@ -6,7 +6,7 @@ model: gpt-5.5-thinking
 
 Missing/next ADRs:
 
-1. ~~**Artifact Model**~~ — accepted as `regentara-adr-run-artifact-storage-and-mutation-policy.md` (canonical files, naming, location, mutation rules).
+1. ~~**Artifact Model**~~ — accepted as `adr-004-run-artifact-storage-and-mutation-policy.md` (canonical files, naming, location, mutation rules).
 
 2. ~~**CLI Execution Boundary**~~ — accepted as `adr-003-cli-execution-boundary.md` (Regentara invokes Claude Code/Codex as headless subprocesses; owns orchestration, not credentials or provider sessions).
 
