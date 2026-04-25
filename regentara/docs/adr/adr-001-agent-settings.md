@@ -131,11 +131,15 @@ The agent settings schema must reject unknown agent identifiers unless Regentara
 
 Agent settings are intentionally centralized in a single `agents.yaml` file so Regentara can validate the configured agent set as one inventory, reject unknown identifiers, and detect missing required agent settings before execution.
 
-The selected `agents.yaml` must configure every Regentara-defined agent required by the workflow being executed.
-
-Regentara currently has one workflow, so this is equivalent to configuring the full required Regentara agent set.
-
 Regentara owns the canonical agent names. The optional `name` field is a display-name override only and does not create, rename, or identify an agent.
+
+## MVP Coverage Requirement
+
+For the MVP, Regentara has exactly one workflow.
+
+The selected `agents.yaml` must define every Regentara-defined agent identifier required by that workflow. This is non-negotiable.
+
+An `agents.yaml` that omits any required agent identifier must be rejected at startup.
 
 ## Required Agent Fields
 
@@ -155,6 +159,14 @@ This ADR requires that such a schema exists and that Regentara validates agent s
 ## Validation
 
 Regentara must validate the selected `agents.yaml` against the agent schema during command startup, before any command execution or agent work begins.
+
+Validation must reject:
+
+- missing required Regentara agent identifiers
+- unknown agent identifiers
+- missing required fields
+- unsupported prompt reference
+- unsupported output schema reference
 
 If validation fails, Regentara must fail immediately.
 
