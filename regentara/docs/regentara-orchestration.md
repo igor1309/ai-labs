@@ -28,7 +28,7 @@ Three agents, all flow-ignorant peers. Each is defined by a typed input/output c
 
 - **Remediator** (Opus-level). Input: the task, the work, and the review verdict. Produces a valid task — a fix plan conforming to the same verifiable-task contract the Orchestrator accepts at entry. Knows nothing about the flow.
 
-The **Orchestrator** coordinates the flow: owns the workspace, sequences agent calls, enforces stop-on-failure. It does not adjudicate — it consults `ReviewFixPolicy` for every routing decision. The call graph is a tree: Orchestrator → {Producer, Reviewer, Remediator, ReviewFixPolicy}. Agents never invoke each other or the Orchestrator.
+The **Orchestrator** coordinates the flow: runs within a selected workspace, sequences agent calls, enforces stop-on-failure. Workspace lifecycle (creation, integration, cleanup) is intentionally out of the Orchestrator's scope. It does not adjudicate — it consults `ReviewFixPolicy` for every routing decision. The call graph is a tree: Orchestrator → {Producer, Reviewer, Remediator, ReviewFixPolicy}. Agents never invoke each other or the Orchestrator.
 
 ## Flow
 
