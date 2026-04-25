@@ -30,6 +30,8 @@ For the MVP, Regentara should define only the storage and mutation invariants th
 
 A Regentara run is not bound to a single repository or working directory. The same run may be invoked from different cwds, against worktrees that are later removed, or with no project context at all. Run history must remain inspectable across these conditions.
 
+For the MVP, Regentara targets Unix-like systems (macOS, Linux). Behavior on non-Unix platforms is a non-decision.
+
 ## Decision
 
 Regentara will store run artifacts under a global run directory.
@@ -136,6 +138,7 @@ This ADR does not decide:
 - retention policy
 - archival policy
 - export format
+- behavior on non-Unix platforms (path resolution, permissions, separators)
 
 ## Implementation Notes
 
