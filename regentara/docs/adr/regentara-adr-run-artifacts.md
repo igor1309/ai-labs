@@ -28,6 +28,8 @@ The artifact model must support inspection and later analysis without prematurel
 
 For the MVP, Regentara should define only the storage and mutation invariants that are needed to keep run artifacts understandable and safe.
 
+A Regentara run is not bound to a single repository or working directory. The same run may be invoked from different cwds, against worktrees that are later removed, or with no project context at all. Run history must remain inspectable across these conditions.
+
 ## Decision
 
 Regentara will store run artifacts under a global run directory.
@@ -55,6 +57,10 @@ Example:
 The timestamp represents the run start time.
 
 The short random suffix prevents collisions when multiple runs start close together.
+
+### Rejected Alternative: Project-Local Storage
+
+A project-local root such as `<cwd>/.regentara/runs/` was rejected because cwd may be ephemeral (worktrees), runs may span multiple working directories, and repository-local cleanup would unintentionally erase run history.
 
 ## Artifact Format Policy
 
