@@ -1,6 +1,7 @@
 ---
 title: "ADR: Agent Settings for Regentara-Defined Agents"
 date: 2026-04-25
+model: gpt-5.5-thinking
 status: accepted
 product: Regentara
 scope: agent settings
