@@ -1,13 +1,18 @@
 ---
 title: "ADR: Run Artifact Storage and Mutation Policy"
 date: 2026-04-25
-model:got-5.5.-thinking
+model: gpt-5.5-thinking
+description: "Regentara run artifact storage location, run ID format, and authored-artifact mutation policy for the MVP."
 status: accepted
 product: Regentara
 scope: run artifacts
 ---
 
 # ADR: Run Artifact Storage and Mutation Policy
+
+## Executive Summary
+
+Regentara stores run artifacts under a per-run directory at `~/.regentara/runs/<run-id>/`. The run ID combines a run-start timestamp with a short random suffix. Authored artifacts are immutable after creation; Regentara must not mutate authored artifacts to record execution progress. Run metadata may be updated as run state changes. Canonical artifact taxonomy, file naming, internal layout, schemas, progress-recording mechanism, and retention are intentionally deferred.
 
 ## Status
 
