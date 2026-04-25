@@ -66,6 +66,16 @@ This ADR does not require every artifact to have both human-readable and machine
 
 ## Mutation Policy
 
+### Artifact Categories
+
+This ADR distinguishes three categories of files inside a run directory:
+
+- **Authored artifact** — a deliberate output produced by an agent, the user, or Regentara itself that records a decision, result, or evidence (e.g., task description, implementation result, review verdict, fix plan, final report).
+- **Run metadata** — small, structured state describing the run itself (e.g., run ID, start time, end time, status, exit code).
+- **Execution progress** — transient state that records ongoing execution events between authored artifacts.
+
+The mutation rules below apply to these categories distinctly.
+
 Authored artifacts are immutable after creation.
 
 Regentara must not rely on mutating authored artifacts to record execution progress.
