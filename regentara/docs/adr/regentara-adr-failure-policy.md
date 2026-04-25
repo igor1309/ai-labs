@@ -2,6 +2,7 @@
 title: "ADR: MVP Fail-Fast Failure Policy"
 date: 2026-04-25
 model: gpt-5.5-thinking
+description: "MVP fail-fast failure policy: stop runs on first runtime failure; pre-run validation must not create a run."
 status: accepted
 product: Regentara
 scope: failure policy
@@ -24,6 +25,8 @@ Regentara orchestrates an agent workflow by invoking existing provider CLIs as h
 For the MVP, Regentara should keep failure handling simple, deterministic, and easy to reason about.
 
 Regentara must not introduce retry, repair, timeout, or process-control behavior before those behaviors are explicitly designed.
+
+"Workflow execution has started" means startup validation passed and Regentara created a run record. Failures from that point are runtime failures; failures before that point are pre-run failures.
 
 ## Decision
 
@@ -69,7 +72,7 @@ Regentara must not fabricate missing artifacts.
 
 If an expected artifact is missing, Regentara must treat that as a runtime failure.
 
-The exact artifact model, file naming, layout, and metadata are deferred to the Artifact Model ADR.
+The exact artifact model, file naming, layout, and metadata are deferred to the Run Artifact Storage and Mutation Policy ADR.
 
 ## Invalid Runtime JSON Output
 
@@ -98,6 +101,8 @@ Timeout behavior is deferred to the CLI Execution Boundary ADR.
 Regentara does not define advanced cancellation semantics in the MVP.
 
 If the user interrupts Regentara, the current run stops.
+
+If the user interrupts Regentara before workflow execution has started, no run is created and Regentara exits with a non-zero code.
 
 If workflow execution had already started, Regentara marks the run failed.
 
