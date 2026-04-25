@@ -59,7 +59,7 @@ Regentara will not merge local and global agent settings.
 
 Agent settings are expressed in YAML.
 
-Minimal shape:
+Illustrative shape for one configured Regentara-defined agent:
 
 ```yaml
 agents:
@@ -139,7 +139,7 @@ Regentara must not execute with invalid, partially loaded, or partially understo
 
 ## Runtime Output Validation
 
-Regentara must validate each agent runtime output against the JSON Schema declared for that configured agent.
+Regentara must parse each agent runtime output as JSON and validate it against the JSON Schema declared for that configured agent.
 
 If runtime output validation fails, Regentara must treat the agent execution as failed.
 
@@ -158,7 +158,7 @@ and the local file is invalid, Regentara must fail immediately.
 
 It must not fall back to the global file.
 
-Reason: the presence of a repository-local file expresses local intent. Falling back to global settings would silently execute a different agent definition than the repository requested.
+Reason: the presence of a repository-local file expresses local intent. Falling back to global settings would silently execute a different agent configuration than the repository requested.
 
 ## Installation Behavior
 
@@ -217,6 +217,6 @@ The implementation should keep the following boundaries clear:
 - agent registry construction
 - command execution
 
-Command execution must depend on validated agent definitions only.
+Command execution must depend on validated agent settings only.
 
 No command should parse or interpret raw YAML directly.
