@@ -38,6 +38,10 @@ The canonical file is:
 agents.yaml
 ```
 
+Agent settings are stored in a single `agents.yaml` file.
+
+Regentara defines the supported agent identifiers. The `agents.yaml` file may configure only those known identifiers.
+
 Regentara will look for agent settings in the following locations:
 
 ```text
@@ -45,7 +49,9 @@ Regentara will look for agent settings in the following locations:
 ~/.regentara/agents.yaml
 ```
 
-Repository-local settings win over global settings: if `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
+Repository-local settings win over global settings.
+
+If `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
 
 Regentara will not merge local and global agent settings.
 
@@ -66,9 +72,11 @@ agents:
       schema: xxx
 ```
 
-The `agents` key contains named agent definitions.
+The `agents` key contains settings for Regentara-defined agents.
 
-The key under `agents` is the stable agent identifier used by Regentara internally and by commands.
+Each key under `agents` must match a supported agent identifier from Regentara’s agent inventory.
+
+The key is not a free-form user-defined name.
 
 Each agent must define its expected output as JSON.
 
@@ -89,9 +97,23 @@ agents:
       schema: schemas/review-output.schema.json
 ```
 
+In this example, `reviewer` is a Regentara-defined agent identifier.
+
+The settings file customizes the known `reviewer` agent; it does not create a new agent type.
+
+## Agent Inventory
+
+Regentara defines the supported agent inventory.
+
+Users must not introduce arbitrary agent identifiers through `agents.yaml`.
+
+The agent settings schema must reject unknown agent identifiers unless Regentara explicitly supports extension points for custom agents in a later ADR.
+
+Agent settings are intentionally centralized in a single `agents.yaml` file so Regentara can validate the configured agent set as one inventory, reject unknown identifiers, and detect missing required agent settings before execution.
+
 ## Required Agent Fields
 
-Each agent definition must include:
+Each configured Regentara-defined agent must include:
 
 | Field | Required | Meaning |
 |---|---:|---|
@@ -174,7 +196,11 @@ This ADR does not decide:
 - the exact model registry format
 - output destination semantics beyond the required JSON output contract
 - retry, repair, or recovery behavior after runtime output validation failure
+- future support for per-agent files such as `agents/reviewer.yaml`
 - future support for `agents.d/*.yaml`
+- custom user-defined agents
+- plugin-defined agent inventory
+- dynamic agent discovery
 - future migration tooling
 - TOML support
 
