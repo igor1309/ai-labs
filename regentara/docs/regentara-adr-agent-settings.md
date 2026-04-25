@@ -49,6 +49,10 @@ Regentara will look for agent settings in the following locations:
 ~/.regentara/agents.yaml
 ```
 
+This ADR intentionally uses `~/.regentara/agents.yaml` as the global configuration path.
+
+XDG-compatible configuration paths are out of scope for this ADR.
+
 Repository-local settings win over global settings.
 
 If `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
@@ -83,6 +87,12 @@ The `output` field must point to or embed a JSON Schema definition.
 
 Regentara must validate the agent settings file structurally at startup, including the presence and shape of this output schema reference or inline schema.
 
+## Secrets Boundary
+
+Agent settings must not contain secrets.
+
+Provider credentials, API keys, access tokens, and other sensitive values must be supplied through a separate secret mechanism.
+
 Example:
 
 ```yaml
@@ -110,13 +120,15 @@ The agent settings schema must reject unknown agent identifiers unless Regentara
 
 Agent settings are intentionally centralized in a single `agents.yaml` file so Regentara can validate the configured agent set as one inventory, reject unknown identifiers, and detect missing required agent settings before execution.
 
-Every known Regentara agent must be configured in the selected `agents.yaml`.
+The selected `agents.yaml` must configure every Regentara-defined agent required by the workflow being executed.
+
+Regentara currently has one workflow, so this is equivalent to configuring the full required Regentara agent set.
 
 Regentara owns the canonical agent names. The optional `name` field is a display-name override only and does not create, rename, or identify an agent.
 
 ## Required Agent Fields
 
-Every known Regentara-defined agent must be present in `agents.yaml` and must include:
+Every Regentara-defined agent required by the executed workflow must be present in `agents.yaml` and must include:
 
 | Field | Required | Meaning |
 |---|---:|---|
@@ -187,7 +199,7 @@ On update, existing settings remain untouched unless a separate explicit migrati
 ### Negative
 
 - YAML requires strict schema validation because malformed structure can be easy to miss.
-- No merging means local configs must duplicate the full known-agent configuration when repository-local settings are present.
+- No merging means local configs must duplicate the full workflow-required agent configuration when repository-local settings are present.
 - Install/update scripts must avoid overwriting user configuration.
 
 ## Non-Decisions
@@ -204,8 +216,13 @@ This ADR does not decide:
 - custom user-defined agents
 - plugin-defined agent inventory
 - dynamic agent discovery
+- schema versioning for `agents.yaml`
 - future migration tooling
 - TOML support
+
+Schema versioning is intentionally out of scope for the first version.
+
+Regentara may introduce a top-level `schemaVersion` field once the agent settings schema needs backward compatibility, migration support, or stable external release guarantees.
 
 ## Implementation Notes
 
