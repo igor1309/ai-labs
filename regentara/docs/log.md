@@ -2,6 +2,7 @@
 
 ## 2026-04-25
 
+- ADR TODO: dropped Session & Trace Model item. Capture is already declared in adr-003 (runner and provider session references); persistence location in adr-004 (run directory, deferred metadata schema). Link/schema shape is an implementation finding against Codex/Claude Code; revisit only if implementation surfaces a non-trivial cross-reference decision.
 - ADR TODO: dropped Review Contract item. Verdict schema and required evidence are agent I/O (spec); reviewer's flow authority and handoff to remediator already settled by adr-006 (orchestrator delegates routing to ReviewFixPolicy). Schema-reuse note (existing review skill) belongs in spec or `agents.yaml`.
 - ADR TODO: dropped Settings Topology item. Discovery/precedence already consistent across adr-001 and adr-002; no shared "settings file" abstraction exists; secrets exclusion is permanent (Regentara does not manage credentials per adr-002), not a deferral. No new ADR needed; nothing to tighten in adr-002 (illustrative shape, not exhaustive lockdown).
 - ReviewFixPolicy seam ADR (adr-006): accepted. Locks in that the Orchestrator delegates post-review routing to an injected protocol and does not adjudicate; threads an opaque session across rounds. Internals (decision values, session schema, budget mechanics) stay in spec. Orchestration doc tightened: "owns the workspace" → "runs within a selected workspace" with workspace lifecycle explicitly out of Orchestrator scope.

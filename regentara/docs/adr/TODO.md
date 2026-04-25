@@ -8,8 +8,6 @@ description: "Backlog of missing or follow-up Regentara architecture decision re
 
 ## Missing/Next ADRs
 
-1. **Session & Trace Model** — Regentara session ID, links to Codex/Claude Code sessions, persisted references.
+1. **Observability** — what Regentara logs: command, agent, provider CLI, model tier, artifact paths, exit status, duration, references.
 
-2. **Observability** — what Regentara logs: command, agent, provider CLI, model tier, artifact paths, exit status, duration, references.
-
-3. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
+2. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
