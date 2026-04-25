@@ -1,12 +1,21 @@
 ---
 title: "ADR: Model Routing via Regentara-Defined Semantic Route Keys"
 date: 2026-04-25
+model: opus-4.7
 status: accepted
 product: Regentara
 scope: model routing
 ---
 
 # ADR: Model Routing via Regentara-Defined Semantic Route Keys
+
+## Executive Summary
+
+Regentara routes workflow phases through Regentara-defined semantic model route keys (`sonnet`, `opus`, `gpt`, `codex`) resolved through a schema-validated YAML file, `models.yaml`, discovered first locally (`./.regentara/`) then globally (`~/.regentara/`) with no merging.
+
+Workflow definitions reference stable semantic keys; concrete model versions live in settings and may change without touching workflow code.
+
+Scope: route-key inventory, settings file discovery, startup validation, and provider/runner mapping for the MVP. Out of scope: CLI flags, sandboxing, retries, credentials, fallbacks, schema versioning.
 
 ## Status
 
@@ -37,7 +46,7 @@ The supported MVP route keys are:
 sonnet
 opus
 gpt
-gpt-codex
+codex
 ```
 
 These route keys are owned by Regentara.
@@ -53,10 +62,22 @@ phaseModels:
   implement: sonnet
   review: gpt
   fix: opus
-  codeReview: gpt-codex
+  codeReview: codex
 ```
 
-In this example, `sonnet`, `gpt`, `opus`, and `gpt-codex` are Regentara-defined route keys.
+In this example, `sonnet`, `gpt`, `opus`, and `codex` are Regentara-defined route keys.
+
+Two distinct route keys may legitimately resolve to the same `(provider, runner)` tuple but a different concrete `model`. The route key, not the tuple, carries the routing semantics.
+
+## MVP Coverage Requirement
+
+For the MVP, Regentara has exactly one workflow.
+
+The selected `models.yaml` must define every Regentara-defined route key listed above. This is non-negotiable.
+
+A `models.yaml` that omits any of `sonnet`, `opus`, `gpt`, or `codex` must be rejected at startup.
+
+If no `models.yaml` is found in either location, Regentara must fail immediately at startup.
 
 ## Model Settings File
 
@@ -112,7 +133,7 @@ models:
     runner: codex
     model: gpt-x
 
-  gpt-codex:
+  codex:
     provider: openai
     runner: codex
     model: gpt-x-codex
