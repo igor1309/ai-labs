@@ -10,7 +10,7 @@ Missing/next ADRs:
 
 2. **CLI Execution Boundary** — Regentara invokes Claude Code/Codex as headless subprocesses; owns orchestration, not credentials or provider sessions.
 
-3. **Model Tier & Routing** — `mid`/`high` tiers, provider mapping, `models.yaml`, OpenAI→Codex, Anthropic→Claude Code.
+3. ~~**Model Tier & Routing**~~ — superseded by `adr-002-model-routing.md` (semantic route keys: `sonnet`, `opus`, `gpt`, `codex`; `models.yaml`; OpenAI→Codex, Anthropic→Claude Code). Tiered `mid`/`high` naming was rejected in favor of behavior-aware keys.
 
 4. **Session & Trace Model** — Regentara session ID, links to Codex/Claude Code sessions, persisted references.
 
