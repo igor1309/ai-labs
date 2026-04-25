@@ -1,12 +1,12 @@
 ---
-title: "ADR: Agent Definitions via Schema-Validated YAML Settings"
+title: "ADR: Agent Settings for Regentara-Defined Agents"
 date: 2026-04-25
 status: accepted
 product: Regentara
-scope: agent definitions
+scope: agent settings
 ---
 
-# ADR: Agent Definitions via Schema-Validated YAML Settings
+# ADR: Agent Settings for Regentara-Defined Agents
 
 ## Status
 
@@ -14,9 +14,9 @@ Accepted
 
 ## Context
 
-Regentara needs a deterministic way to define agents without hardcoding every agent role, prompt, model, and output contract in application code.
+Regentara needs a deterministic way to configure known agents without hardcoding every model, prompt, and output contract in application code.
 
-Agent definitions must be:
+Agent settings must be:
 
 - editable by the user
 - portable across machines and repositories
@@ -30,7 +30,7 @@ TOML is explicitly out of scope for this ADR.
 
 ## Decision
 
-Regentara will define agents declaratively through a schema-validated YAML settings file.
+Regentara will configure known agents declaratively through a schema-validated YAML settings file.
 
 The canonical file is:
 
@@ -64,7 +64,6 @@ Minimal shape:
 ```yaml
 agents:
   reviewer:
-    name: Reviewer
     model: xxx
     prompt: xxx
     output:
@@ -111,16 +110,20 @@ The agent settings schema must reject unknown agent identifiers unless Regentara
 
 Agent settings are intentionally centralized in a single `agents.yaml` file so Regentara can validate the configured agent set as one inventory, reject unknown identifiers, and detect missing required agent settings before execution.
 
+Every known Regentara agent must be configured in the selected `agents.yaml`.
+
+Regentara owns the canonical agent names. The optional `name` field is a display-name override only and does not create, rename, or identify an agent.
+
 ## Required Agent Fields
 
-Each configured Regentara-defined agent must include:
+Every known Regentara-defined agent must be present in `agents.yaml` and must include:
 
 | Field | Required | Meaning |
 |---|---:|---|
-| `name` | yes | Human-readable agent name |
 | `model` | yes | Model identifier selected for this agent |
 | `prompt` | yes | Prompt definition, validated as either an inline prompt or a supported prompt reference |
 | `output` | yes | JSON output contract, defined by a supported JSON Schema reference or inline schema |
+| `name` | no | Optional display-name override for a Regentara-defined agent |
 
 The exact schema belongs to the implementation spec.
 
@@ -136,7 +139,7 @@ Regentara must not execute with invalid, partially loaded, or partially understo
 
 ## Runtime Output Validation
 
-Regentara must validate each agent runtime output against the JSON Schema declared in that agent definition.
+Regentara must validate each agent runtime output against the JSON Schema declared for that configured agent.
 
 If runtime output validation fails, Regentara must treat the agent execution as failed.
 
@@ -176,7 +179,7 @@ On update, existing settings remain untouched unless a separate explicit migrati
 ### Positive
 
 - Agent behavior becomes inspectable and configurable.
-- Agent definitions can be versioned inside repositories.
+- Repository-specific agent settings can be versioned inside repositories.
 - Repository-specific workflows can override global defaults.
 - Startup validation prevents broken settings from reaching execution.
 - YAML supports nested structures and multiline prompt-related settings cleanly.
@@ -184,7 +187,7 @@ On update, existing settings remain untouched unless a separate explicit migrati
 ### Negative
 
 - YAML requires strict schema validation because malformed structure can be easy to miss.
-- No merging means local configs may need to duplicate global defaults.
+- No merging means local configs must duplicate the full known-agent configuration when repository-local settings are present.
 - Install/update scripts must avoid overwriting user configuration.
 
 ## Non-Decisions
