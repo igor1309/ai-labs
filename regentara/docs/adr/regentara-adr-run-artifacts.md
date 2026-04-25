@@ -96,11 +96,7 @@ Run metadata may be updated as the run state changes.
 
 ## Failure Interaction
 
-If a runtime failure occurs after a run has started, Regentara must preserve artifacts that were already created before the failure.
-
-Regentara must not fabricate missing artifacts.
-
-This follows the MVP failure policy ADR.
+Artifact preservation under runtime failure is governed by `regentara-adr-failure-policy.md` (Artifact Preservation). This ADR adds no new failure-handling rules; it only defines where preserved artifacts live and which of them are immutable.
 
 ## Consequences
 
