@@ -2,7 +2,7 @@
 date: 2026-04-24
 model: gpt-5
 description: "Implementation plan for Frontend ADR-008 local browser-testing runtime"
-status: planned
+status: implemented
 type: plan
 ---
 
@@ -31,7 +31,7 @@ type: plan
 - Worktree required: yes
 - Expected worktree: `worktrees/notio-adr-008-local-browser-testing`
 - Expected branch: `codex/notio-adr-008-local-browser-testing`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 Before Step 1, run:
 
@@ -111,12 +111,12 @@ VITE_SUPABASE_URL=https://example.supabase.co VITE_SUPABASE_ANON_KEY=test-anon-k
 - Missing Supabase env vars alone do not select local composition.
 - `dev:local` launches Vite with the explicit local flag and does not require Supabase env vars.
 
-- [ ] Step 1: Write the failing runtime-selection tests.
-- [ ] Step 2: Run the targeted test and verify RED is an assertion failure, not a compilation error.
-- [ ] Step 3: Add the minimal explicit local-mode branch and `dev:local` npm script; do not change `package-lock.json` unless a dependency change is actually required.
-- [ ] Step 4: Run the targeted test and verify GREEN.
-- [ ] Step 5: Run full frontend gates.
-- [ ] Step 6: Commit with a short imperative message, for example `add notio local runtime selection`.
+- [x] Step 1: Write the failing runtime-selection tests.
+- [x] Step 2: Run the targeted test and verify RED is an assertion failure, not a compilation error.
+- [x] Step 3: Add the minimal explicit local-mode branch and `dev:local` npm script; do not change `package-lock.json` unless a dependency change is actually required.
+- [x] Step 4: Run the targeted test and verify GREEN.
+- [x] Step 5: Run full frontend gates.
+- [x] Step 6: Commit with a short imperative message, for example `add notio local runtime selection`.
 
 **Targeted verification:**
 
@@ -153,13 +153,13 @@ For the `dev:local` server check, stop the Vite process after confirming it star
 - Subscribers receive current and subsequent auth states.
 - The local app shell can reach the authenticated browse path without Supabase.
 
-- [ ] Step 1: Write the failing auth adapter tests.
-- [ ] Step 2: Run the targeted tests and verify RED is an assertion failure.
-- [ ] Step 3: Implement the minimal in-memory `AuthSession`.
-- [ ] Step 4: Wire local auth into the local runtime.
-- [ ] Step 5: Run targeted tests and verify GREEN.
-- [ ] Step 6: Run full frontend gates.
-- [ ] Step 7: Commit with a short imperative message, for example `add local in-memory auth`.
+- [x] Step 1: Write the failing auth adapter tests.
+- [x] Step 2: Run the targeted tests and verify RED is an assertion failure.
+- [x] Step 3: Implement the minimal in-memory `AuthSession`.
+- [x] Step 4: Wire local auth into the local runtime.
+- [x] Step 5: Run targeted tests and verify GREEN.
+- [x] Step 6: Run full frontend gates.
+- [x] Step 7: Commit with a short imperative message, for example `add local in-memory auth`.
 
 **Targeted verification:**
 
@@ -195,13 +195,13 @@ For the `dev:local` server check, stop the Vite process after confirming it star
 - Failure scenario throws `ReaderError` deterministically.
 - Scenario selection is local-only and explicit, for example via a local query parameter or local env value consumed only by the local runtime.
 
-- [ ] Step 1: Write the failing local browse adapter and scenario tests.
-- [ ] Step 2: Run targeted tests and verify RED is an assertion failure.
-- [ ] Step 3: Implement the minimal in-memory browse reader and scenario catalog.
-- [ ] Step 4: Wire scenario selection into the local runtime.
-- [ ] Step 5: Run targeted tests and verify GREEN.
-- [ ] Step 6: Run full frontend gates.
-- [ ] Step 7: Commit with a short imperative message, for example `add local browse scenarios`.
+- [x] Step 1: Write the failing local browse adapter and scenario tests.
+- [x] Step 2: Run targeted tests and verify RED is an assertion failure.
+- [x] Step 3: Implement the minimal in-memory browse reader and scenario catalog.
+- [x] Step 4: Wire scenario selection into the local runtime.
+- [x] Step 5: Run targeted tests and verify GREEN.
+- [x] Step 6: Run full frontend gates.
+- [x] Step 7: Commit with a short imperative message, for example `add local browse scenarios`.
 
 **Targeted verification:**
 
@@ -235,13 +235,13 @@ For the `dev:local` server check, stop the Vite process after confirming it star
 - The frontend SDK import allowlist remains unchanged.
 - CI/build gates still use the production build path.
 
-- [ ] Step 1: Write or update tests/gates for local fake SDK-import isolation if no existing gate covers it.
-- [ ] Step 2: Run the targeted gate and verify RED if the gate is new.
-- [ ] Step 3: Add docs and the minimal gate implementation.
-- [ ] Step 4: Run targeted gates and verify GREEN.
-- [ ] Step 5: Run full frontend gates.
-- [ ] Step 6: Update `notio/docs/log.md`.
-- [ ] Step 7: Commit with a short imperative message, for example `document notio local browser testing`.
+- [x] Step 1: Write or update tests/gates for local fake SDK-import isolation if no existing gate covers it.
+- [x] Step 2: Run the targeted gate and verify RED if the gate is new.
+- [x] Step 3: Add docs and the minimal gate implementation.
+- [x] Step 4: Run targeted gates and verify GREEN.
+- [x] Step 5: Run full frontend gates.
+- [x] Step 6: Update `notio/docs/log.md`.
+- [x] Step 7: Commit with a short imperative message, for example `document notio local browser testing`.
 
 **Targeted verification:**
 

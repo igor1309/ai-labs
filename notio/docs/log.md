@@ -2,6 +2,14 @@
 
 ## 2026-04-24
 
+- Fixed the ADR-008 review warning by making local in-memory auth teardown stop later state emissions, aligning the local adapter with the shared `AuthSession` lifecycle contract.
+
+- Reviewed the ADR-008 local browser-testing implementation and saved one lifecycle warning: `InMemoryAuthSession.destroy()` should stop later local auth emissions to match the public `AuthSession` contract.
+
+- Implemented Frontend ADR-008: `dev:local` now serves an explicit local browser-testing runtime with in-memory auth, deterministic browse scenarios, import-boundary gates, and docs for mock-data browser inspection without Supabase credentials.
+
+- Implemented Frontend ADR-007 deployment verification: Cloudflare Pages deploys now derive the expected frontend version, load the configured production URL through Playwright, and fail the release unless the rendered `Version` element matches.
+
 - Planned Frontend ADR-007 implementation: derive deployment expected version from frontend tags or package metadata, verify the deployed production page with a browser-rendered `Version` check, and gate Cloudflare Pages releases on that smoke result.
 
 - Planned Frontend ADR-008 implementation: explicit `dev:local` runtime selection, in-memory auth and browse adapters, deterministic local browse scenarios, and documentation/import gates.

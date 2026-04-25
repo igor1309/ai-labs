@@ -34,6 +34,7 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      NOTIO_FRONTEND_PRODUCTION_URL: ${{ vars.NOTIO_FRONTEND_PRODUCTION_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.NOTIO_SUPABASE_ANON_KEY }}
       VITE_SUPABASE_URL: ${{ secrets.NOTIO_SUPABASE_URL }}
     steps:
@@ -55,9 +56,30 @@ jobs:
         working-directory: notio/frontend
         run: npm ci
 
+      - name: Install Playwright browser
+        working-directory: notio/frontend
+        run: npx playwright install chromium
+
       - name: Build frontend
         working-directory: notio/frontend
         run: npm run build
 
+      - name: Derive expected frontend version
+        id: expected-version
+        working-directory: notio/frontend
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+        run: |
+          version="$(node scripts/deploy-expected-version.mjs)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy frontend
         run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages deploy dist --project-name notio --branch trunk --cwd notio/frontend
+
+      - name: Verify production page version
+        working-directory: notio/frontend
+        env:
+          EXPECTED_VERSION: ${{ steps.expected-version.outputs.version }}
+          NOTIO_FRONTEND_URL: ${{ env.NOTIO_FRONTEND_PRODUCTION_URL }}
+        run: node scripts/smoke-deployed-version.mjs

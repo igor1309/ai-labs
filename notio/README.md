@@ -134,6 +134,14 @@ Diagnostic-only local run without Telegram feedback or persistence:
 NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 ```
 
+Run the frontend local browser-testing runtime from `notio/frontend/`.
+
+```bash
+npm run dev:local
+```
+
+This serves the same Svelte app through Vite with deterministic in-memory auth and browse data. It is for local browser inspection only: it uses mock local data and does not validate Supabase RLS, magic-link delivery, network behavior, or real database ordering.
+
 ## Release
 
 Notio is split into independently released backend and frontend units. Backend tags follow `notio-backend_v<version>`; frontend tags follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Release checklist guidance is in [docs/release.md](docs/release.md); full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
