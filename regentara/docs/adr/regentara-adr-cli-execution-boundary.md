@@ -8,6 +8,10 @@ scope: cli execution
 
 # ADR: CLI Execution Boundary
 
+## Executive Summary
+
+Regentara invokes supported provider CLIs (`claude-code`, `codex`) as headless subprocesses and owns only the invocation boundary: input preparation, exit-status capture, and boundary-level references. Regentara does not manage credentials, workspaces, Git operations, builds, tests, formatting, sandboxing, or direct provider APIs. Startup validation must confirm required CLIs are available before any run is created. Scope: CLI invocation, input/capture boundaries, and working-directory policy for the MVP.
+
 ## Status
 
 Accepted
@@ -28,10 +32,19 @@ For the MVP, the supported provider CLI mapping is:
 
 | Provider | Runner |
 |---|---|
-| `openai` | Codex CLI |
-| `anthropic` | Claude Code CLI |
+| `openai` | `codex` |
+| `anthropic` | `claude-code` |
 
 Direct provider APIs are out of scope.
+
+## Rules / Invariants
+
+- Regentara MUST validate that every provider CLI required by the selected workflow and model routing settings is available before workflow execution starts.
+- Startup validation failure MUST NOT create a Regentara run.
+- Regentara MUST NOT manage provider credentials, authentication state, or provider sessions.
+- Regentara MUST NOT infer successful execution from partial files, logs, or side effects if the provider CLI exits with a non-zero status.
+- Regentara MUST NOT directly run build, test, or format commands; those belong to agents running through provider CLIs.
+- Regentara MUST NOT create, clean up, or manage worktrees, branches, commits, or pull requests.
 
 Regentara does not manage provider credentials or provider sessions.
 
@@ -142,6 +155,8 @@ Failure handling follows the MVP fail-fast failure policy ADR.
 - Workspace lifecycle automation is intentionally excluded.
 
 ## Non-Decisions
+
+The MVP failure-policy ADR defers subprocess timeout, signal forwarding, graceful termination, and force-kill behavior to this ADR. This ADR intentionally re-defers those concerns to a future dedicated process-control ADR.
 
 This ADR does not decide:
 
