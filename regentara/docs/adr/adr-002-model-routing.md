@@ -1,7 +1,8 @@
 ---
 title: "ADR: Model Routing via Regentara-Defined Semantic Route Keys"
 date: 2026-04-25
-model: opus-4.7
+model: gpt-5.5-thinking
+description: "Regentara semantic model route keys, settings discovery, validation, and provider runner mapping for the MVP."
 status: accepted
 product: Regentara
 scope: model routing

@@ -1,6 +1,8 @@
 ---
 title: "ADR: CLI Execution Boundary"
 date: 2026-04-25
+model: gpt-5.5-thinking
+description: "Regentara provider CLI invocation boundary, capture responsibilities, and workspace ownership limits for the MVP."
 status: accepted
 product: Regentara
 scope: cli execution
@@ -121,7 +123,7 @@ Failure handling follows the MVP fail-fast failure policy ADR.
 
 ## Non-Decisions
 
-The MVP failure-policy ADR defers subprocess timeout, signal forwarding, graceful termination, and force-kill behavior to this ADR. This ADR intentionally re-defers those concerns to a future dedicated process-control ADR.
+Subprocess timeout, signal forwarding, graceful termination, force-kill behavior, process-group handling, and cleanup are intentionally deferred to a future dedicated process-control ADR.
 
 This ADR does not decide:
 

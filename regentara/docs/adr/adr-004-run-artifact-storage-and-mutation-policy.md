@@ -12,7 +12,7 @@ scope: run artifacts
 
 ## Executive Summary
 
-Regentara stores run artifacts under a per-run directory at `~/.regentara/runs/<run-id>/`. The run ID combines a run-start timestamp with a short random suffix. Authored artifacts are immutable after creation; Regentara must not mutate authored artifacts to record execution progress. Run metadata may be updated as run state changes. Canonical artifact taxonomy, file naming, internal layout, schemas, progress-recording mechanism, and retention are intentionally deferred.
+Regentara stores run artifacts under a per-run directory at `~/.regentara/runs/<run-id>/`. The run ID combines a UTC run-start timestamp with an 8-character lowercase alphanumeric random suffix. Authored artifacts are immutable after creation; Regentara must not mutate authored artifacts to record execution progress. Run metadata may be updated as run state changes. Canonical artifact taxonomy, file naming, internal layout, schemas, progress-recording mechanism, and retention are intentionally deferred.
 
 ## Status
 
@@ -44,21 +44,27 @@ The storage root is:
 
 The run ID is created when the Regentara run starts.
 
-The run ID must use:
+The run ID must match:
 
 ```text
-<run-start-timestamp>-<short-random-suffix>
+^[0-9]{8}T[0-9]{6}Z-[a-z0-9]{8}$
 ```
 
 Example:
 
 ```text
-20260425T132530Z-a7f3
+20260425T132530Z-a7f3k9m2
 ```
 
-The timestamp represents the run start time.
+The timestamp segment must represent the run start time in UTC using compact basic format:
 
-The short random suffix prevents collisions when multiple runs start close together.
+```text
+YYYYMMDDTHHMMSSZ
+```
+
+The suffix segment must be exactly 8 lowercase alphanumeric characters (`a-z`, `0-9`) generated from at least 40 bits of randomness.
+
+The random suffix prevents collisions when multiple runs start close together.
 
 ### Rejected Alternative: Project-Local Storage
 
@@ -99,6 +105,15 @@ Run metadata is the only mutable state defined by this ADR. Allowed mutations ar
 - recording the final exit code
 
 The concrete metadata file (name, schema, format) is a non-decision.
+
+## Verification
+
+Implementation must include tests that verify:
+
+- run IDs use the UTC timestamp format and suffix grammar defined by this ADR
+- authored artifact creation rejects overwrite or rewrite attempts
+- execution progress is not recorded by mutating authored artifacts
+- run metadata status updates remain allowed for the limited fields defined above
 
 ## Failure Interaction
 

@@ -94,7 +94,7 @@ Regentara does not impose subprocess timeouts in the MVP.
 
 If the underlying CLI hangs, stalls, or waits indefinitely, Regentara does not apply an automatic timeout.
 
-Timeout behavior is deferred to the CLI Execution Boundary ADR.
+Timeout behavior is deferred to a future dedicated process-control ADR.
 
 ## Cancellation Policy
 
@@ -108,7 +108,7 @@ If workflow execution had already started, Regentara marks the run failed.
 
 Regentara records only the subprocess outcome it can observe.
 
-Detailed signal forwarding, graceful termination, force-kill behavior, process-group handling, and subprocess cleanup are deferred to the CLI Execution Boundary ADR.
+Detailed signal forwarding, graceful termination, force-kill behavior, process-group handling, and subprocess cleanup are deferred to a future dedicated process-control ADR.
 
 ## Exit Behavior
 

@@ -2,6 +2,7 @@
 title: "ADR: Agent Settings for Regentara-Defined Agents"
 date: 2026-04-25
 model: gpt-5.5-thinking
+description: "Regentara agent settings format, discovery order, validation, and install behavior for the MVP."
 status: accepted
 product: Regentara
 scope: agent settings
