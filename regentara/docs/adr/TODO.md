@@ -8,6 +8,4 @@ description: "Backlog of missing or follow-up Regentara architecture decision re
 
 ## Missing/Next ADRs
 
-1. **Observability** — what Regentara logs: command, agent, provider CLI, model tier, artifact paths, exit status, duration, references.
-
-2. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
+1. **Process Control** — subprocess timeouts, signal forwarding, graceful termination, force-kill behavior, process groups, and cleanup.
