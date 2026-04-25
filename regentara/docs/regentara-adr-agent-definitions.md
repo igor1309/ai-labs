@@ -45,9 +45,7 @@ Regentara will look for agent settings in the following locations:
 ~/.regentara/agents.yaml
 ```
 
-Repository-local settings win over global settings.
-
-If `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
+Repository-local settings win over global settings: if `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
 
 Regentara will not merge local and global agent settings.
 
