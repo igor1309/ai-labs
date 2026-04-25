@@ -2,6 +2,7 @@
 
 ## 2026-04-25
 
+- ADR TODO: dropped Process Control item; TODO file removed (now empty). MVP behavior already committed by adr-005 (no timeouts; interruption stops the run); the deferral chain in adr-003 and adr-005 explicitly names a future process-control ADR and stands as the marker. Write the targeted ADR (or split into focused ADRs) when implementation surfaces a concrete pain point — hung subprocess, Ctrl+C UX, or orphaned descendants.
 - ADR TODO: dropped Observability item. Observability emission inherits adr-005's fail-fast invariant (no carve-out): a failure to emit stops the run. For MVP shape (in-process, in-run-directory writes), the realistic failure modes overlap with artifact-write failures already covered. Best-effort semantics would be the right ADR trigger only when observability later crosses a network boundary (external collector, remote sink) — not now.
 - ADR TODO: dropped Session & Trace Model item. Capture is already declared in adr-003 (runner and provider session references); persistence location in adr-004 (run directory, deferred metadata schema). Link/schema shape is an implementation finding against Codex/Claude Code; revisit only if implementation surfaces a non-trivial cross-reference decision.
 - ADR TODO: dropped Review Contract item. Verdict schema and required evidence are agent I/O (spec); reviewer's flow authority and handoff to remediator already settled by adr-006 (orchestrator delegates routing to ReviewFixPolicy). Schema-reuse note (existing review skill) belongs in spec or `agents.yaml`.
