@@ -92,7 +92,13 @@ Progress recording is a separate concern from authored artifact content.
 
 The exact progress-recording mechanism is deferred because it must account for possible concurrent writes from provider CLIs, sub-agents, or internal runner machinery.
 
-Run metadata may be updated as the run state changes.
+Run metadata is the only mutable state defined by this ADR. Allowed mutations are limited to:
+
+- recording the run end time
+- updating run status (e.g., `running` → `succeeded` / `failed`)
+- recording the final exit code
+
+The concrete metadata file (name, schema, format) is a non-decision.
 
 ## Failure Interaction
 
@@ -135,6 +141,7 @@ This ADR does not decide:
 - archival policy
 - export format
 - behavior on non-Unix platforms (path resolution, permissions, separators)
+- run metadata file name, schema, and format
 
 ## Implementation Notes
 
