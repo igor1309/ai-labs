@@ -1,7 +1,7 @@
 ---
 title: "ADR: Agent Definitions via Schema-Validated YAML Settings"
 date: 2026-04-25
-status: proposed
+status: accepted
 product: Regentara
 scope: agent definitions
 ---
@@ -10,7 +10,7 @@ scope: agent definitions
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -49,7 +49,7 @@ Repository-local settings win over global settings.
 
 If `./.regentara/agents.yaml` exists, it fully replaces `~/.regentara/agents.yaml`.
 
-Regentara will not merge local and global agent settings in the first version.
+Regentara will not merge local and global agent settings.
 
 ## Settings Format
 
@@ -63,12 +63,20 @@ agents:
     name: Reviewer
     model: xxx
     prompt: xxx
-    output: xxx
+    output:
+      format: json
+      schema: xxx
 ```
 
 The `agents` key contains named agent definitions.
 
 The key under `agents` is the stable agent identifier used by Regentara internally and by commands.
+
+Each agent must define its expected output as JSON.
+
+The `output` field must point to or embed a JSON Schema definition.
+
+Regentara must validate the agent settings file structurally at startup, including the presence and shape of this output schema reference or inline schema.
 
 Example:
 
@@ -76,11 +84,11 @@ Example:
 agents:
   reviewer:
     name: Reviewer
-    model: claude-sonnet
+    model: provider/model
     prompt: prompts/reviewer.md
     output:
-      format: markdown
-      destination: review.md
+      format: json
+      schema: schemas/review-output.schema.json
 ```
 
 ## Required Agent Fields
@@ -91,8 +99,8 @@ Each agent definition must include:
 |---|---:|---|
 | `name` | yes | Human-readable agent name |
 | `model` | yes | Model identifier selected for this agent |
-| `prompt` | yes | Prompt content or prompt reference |
-| `output` | yes | Output contract or output destination |
+| `prompt` | yes | Prompt definition, validated as either an inline prompt or a supported prompt reference |
+| `output` | yes | JSON output contract, defined by a supported JSON Schema reference or inline schema |
 
 The exact schema belongs to the implementation spec.
 
@@ -100,7 +108,7 @@ This ADR requires that such a schema exists and that Regentara validates agent s
 
 ## Validation
 
-Regentara must validate the selected `agents.yaml` against the agent schema during startup, before any command execution or agent work begins.
+Regentara must validate the selected `agents.yaml` against the agent schema during command startup, before any command execution or agent work begins.
 
 If validation fails, Regentara must fail immediately.
 
@@ -123,7 +131,7 @@ Reason: the presence of a repository-local file expresses local intent. Falling 
 
 ## Installation Behavior
 
-The install script should create default agent settings at:
+The install script must create default agent settings at:
 
 ```text
 ~/.regentara/agents.yaml
@@ -148,7 +156,7 @@ On update, existing settings remain untouched unless a separate explicit migrati
 ### Negative
 
 - YAML requires strict schema validation because malformed structure can be easy to miss.
-- No first-version merging means local configs may need to duplicate global defaults.
+- No merging means local configs may need to duplicate global defaults.
 - Install/update scripts must avoid overwriting user configuration.
 
 ## Non-Decisions
@@ -158,7 +166,7 @@ This ADR does not decide:
 - the full final schema
 - whether prompts are inline strings, file references, or both
 - the exact model registry format
-- output destination semantics
+- output destination semantics beyond the required JSON output contract
 - future support for `agents.d/*.yaml`
 - future migration tooling
 - TOML support
