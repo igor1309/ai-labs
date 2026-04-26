@@ -164,7 +164,7 @@ Tests call `main(argv, stdout, stderr)` in-process with captured streams (`Writa
 
 **GREEN — minimal code:**
 
-- Export `main(argv: string[], stdout: Writable, stderr: Writable): Promise<number>`.
+- Export `main(argv: string[], stdout: Writable, stderr: Writable, deps?: MainDeps): Promise<number>` where `MainDeps = { clock?: () => Date; baseDir?: string; fsLike?: Pick<typeof fs.promises, "stat" | "readFile" | "writeFile" | "mkdir"> }`. All `deps` fields are optional; defaults wire at the composition root (this function): `clock = () => new Date()`, `baseDir = path.join(os.homedir(), ".session-digests")`, `fsLike = fs.promises`. Tests pass explicit `deps` to control time, output location, and filesystem behavior. **Do not mutate `process.env.HOME` in tests** — `deps.baseDir` is the explicit injection point. This `deps` bag is the single composition-root injection for the entire CLI; later tasks (3, 6, 7, 8, 9) thread its fields into the helpers they introduce, never adding new globals.
 - Parse argv manually (no `commander` / `yargs` — those introduce flag surface). Accept exactly one positional argument; reject any token starting with `-`.
 - On violation: write a one-line error to `stderr`, return non-zero.
 - **Production code under `src/` MUST write to the injected `stdout`/`stderr` streams. `console.log` and `console.error` are forbidden in `src/**/*.ts`.** This is the structural defense for spec test 11 (stdout contains exactly the digest path).
@@ -193,16 +193,17 @@ Tests call `main(argv, stdout, stderr)` in-process with captured streams (`Writa
 - `test_missing_file_returns_error` (path under `mkdtemp()` that does not exist).
 - `test_path_pointing_at_directory_returns_error` (path is a directory, not a file). A directory-as-input fails reliably under all dev environments and covers a real user mistake.
 - `test_path_pointing_at_broken_symlink_returns_error` (`fs.symlink('/nonexistent', linkPath)`).
-- `test_file_under_unreadable_parent_directory_returns_error` — under `mkdtemp()`: create `parent/`, write `parent/session.jsonl`, then `chmod(parent, 0o000)`. Assert `cli.main` returns non-zero with an `EACCES`-style message on `stderr`. `afterEach` MUST `chmod(parent, 0o700)` before `rm -rf` so cleanup succeeds. If `process.geteuid?.() === 0`, fail the test with a clear message ("run as non-root") rather than skipping — root bypasses mode-000 and would silently pass. This is the dedicated coverage for spec test 2 ("permission or IO error"); mode-000 on the *parent* directory is honored on macOS and Linux for non-root users (mode-000 on the *file* itself was unreliable under macOS ACLs, which is why the file-mode approach was abandoned).
+- `test_eacces_from_stat_maps_to_unreadable_error` — pass a recording `fsLike` stub via `cli.main`'s `deps.fsLike` (Task 2 signature) whose `stat(path)` rejects with `Object.assign(new Error("EACCES"), { code: "EACCES" })`. Assert: `cli.main` returns non-zero, `stderr` carries an `EACCES`-style message, AND the stub recorded a `stat` call with the input path. Recording the call is what ties the test to production — without it, a regression where `validateInputPath` reaches around `fsLike` to `import * as fs from "node:fs"` would still pass. This formulation is portable across root, Docker, macOS ACLs, and CI; the previous parent-mode-000 approach was none of those things.
+- `test_validate_input_path_invokes_injected_fs_stat_on_happy_path` — pass a recording `fsLike` stub whose `stat(path)` resolves with a regular-file `Stats` (`isFile() === true`, `size === 100`). After `validateInputPath` returns, assert the stub recorded `stat` was called with the input path. Pairs with the EACCES test above to enforce that production goes through the injection on **both** branches; without this complement, the EACCES test alone does not prove the injection point is wired and a buggy impl could ignore `fsLike` entirely on the success path.
 - `test_empty_file_returns_error` (write zero bytes).
 - `test_file_over_one_megabyte_returns_oversize_error` (write 1 MB + 1 byte). Also asserts `stderr` contains the substring `1 MB` to pin the user-facing wording without locking exact prose.
 
-Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`, no output file written under a temp `HOME`.
+Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`, no output file written under a temp `baseDir`.
 
 **GREEN:**
 
-- `validateInputPath(path: string): Promise<void>` throws a typed `InputError` per failure mode; `cli.main` catches and translates to `(exitCode, stderrMessage)`.
-- 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size and file-type checks both use `fs.stat`. After `stat`, branch on `stat.isFile()` (false → `InputError.NotAFile`) before checking size. Broken symlinks surface as `ENOENT` from `stat` and map to `InputError.MissingFile`. `EACCES` from `stat` (or any subsequent open/read) maps to `InputError.Unreadable`.
+- `validateInputPath(path: string, fsLike: Pick<typeof fs.promises, "stat">): Promise<void>` throws a typed `InputError` per failure mode; `cli.main` catches and translates to `(exitCode, stderrMessage)`. `fsLike` is supplied by `cli.main` from `deps.fsLike ?? fs.promises` (Task 2 signature). Production code under `inputs.ts` MUST route every fs operation through `fsLike` — direct `import * as fs from "node:fs"` inside `inputs.ts` is a layering violation that the happy-path recording test is designed to catch.
+- 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size and file-type checks both use `fsLike.stat`. After `stat`, branch on `stat.isFile()` (false → `InputError.NotAFile`) before checking size. Broken symlinks surface as `ENOENT` from `stat` and map to `InputError.MissingFile`. `EACCES` from `stat` (or any subsequent `fsLike.open`/`fsLike.readFile`) maps to `InputError.Unreadable`.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/inputs.test.ts`.
 
@@ -306,10 +307,9 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 **GREEN:**
 
-- `computeDigestPath(inputPath, nowUtc, baseDir)` returns the target path.
-- `writeDigest(path, body)` creates the parent dir (`fs.mkdir({ recursive: true })`) and writes only the body. No copy of input.
-- Inject the clock as a parameter; default to `() => new Date()` returning UTC.
-- The `nowUtc` instant is captured **once** at the top of `cli.main` and threaded into both `computeDigestPath` and the front-matter assembler in Task 7. Two `new Date()` calls straddling a second boundary would otherwise let the filename's timestamp diverge from `generated_at`; capturing once removes that flake source.
+- `computeDigestPath(inputPath, nowUtc, baseDir)` returns the target path. `nowUtc` is a `Date` value (not a clock function) — the clock lives at `cli.main`'s composition root via `deps.clock` (Task 2 signature).
+- `writeDigest(path, body, fsLike)` creates the parent dir (`fsLike.mkdir({ recursive: true })`) and writes only the body via `fsLike.writeFile`. No copy of input. `fsLike` flows in from `cli.main`.
+- `cli.main` calls `clock()` **exactly once**, stores the result as `nowUtc`, and threads the same instant into both `computeDigestPath` and the front-matter assembler in Task 7. Two `new Date()` calls straddling a second boundary would otherwise let the filename's timestamp diverge from `generated_at`; one call removes that flake source. The single-call invariant is enforced at runtime by Task 7's advancing-clock test and statically by Task 7's `test_cli_main_uses_at_most_one_date_now_call_in_source` check.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/output.test.ts`.
 
@@ -335,7 +335,8 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
   - `model === <configured NVIDIA_MODEL>`.
   - `source_path === path.resolve(<cli arg>)` (no symlink follow; do NOT use `fs.realpath`). The fixture path passed to `cli.main` MUST be absolute (constructed via `path.join(mkdtemp(), "session.jsonl")`) so `path.resolve` is idempotent and the assertion proves the production contract rather than tautologically matching test-side computation. A relative-path scenario, if needed later, is its own test.
   - `generated_at` matches `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/` (RFC 3339 / ISO 8601, second precision, literal `Z`).
-- `test_generated_at_matches_the_filename_timestamp` — inject a clock returning a fixed `Date`; assert the filename's UTC timestamp seconds equal `generated_at`'s seconds. Pins the single-clock-instant invariant from Task 6 GREEN against future regressions.
+- `test_clock_is_invoked_at_most_once_and_filename_matches_generated_at` — pass `deps.clock` to `cli.main` as a recording stub that returns strictly increasing instants on successive calls (`t0`, `t0 + 5s`, `t0 + 10s`, ...). After `cli.main` returns 0, assert: (a) `clock.callCount === 1` (the load-bearing assertion — catches an impl that calls the injected clock more than once and would diverge filename from `generated_at`), AND (b) the filename's UTC second-truncation equals the `generated_at` second-truncation. A fixed-instant clock cannot catch a multi-call impl because both calls return the same value; an advancing clock with a call-count assertion catches the actual bug class.
+- `test_cli_main_uses_at_most_one_date_now_call_in_source` — static check: read `session-digest/src/cli.ts` and `session-digest/src/output.ts` as text and count occurrences of `new Date(` and `Date.now(`. Assert the combined count across both files is `<= 1`. This is the only deterministic defense against an impl that bypasses the injected `deps.clock` and reaches for the global `Date` constructor directly — runtime tests cannot catch that bug if both bypassed calls land in the same millisecond. Excluded from the count: occurrences inside `/* */` or `//` comments, and inside string literals (use a tolerant regex; pin the exact pattern in the test source so review can verify it isn't over-permissive).
 - `test_body_contains_six_h2_sections_in_documented_order`:
   - exact sequence: `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`, `Next-session improvements`, `Evidence notes`.
   - extracted by regex over `^## ` headers; assert the list equals the expected list.
@@ -354,30 +355,33 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 ---
 
-## Task 7.5 — Deep Agents API spike (ends with docs commit)
+## Task 7.5 — Deep Agents API spike + architecture amendment (ends with docs commit)
 
-**Goal:** verify `deepagents` and `@langchain/openai` API shape against actually-installed versions, before any Task 8 RED test is written. This task pays down the integration risk that would otherwise force a Task 8 mid-flight redesign.
+**Goal:** observe `deepagents` and `@langchain/openai` API behavior against the actually-installed versions, and write a binding architecture amendment that either confirms or replaces Task 8's section-ownership model. The amendment is the gate for Task 8 — if it contradicts the assumed model, Task 8's RED list is redrafted before any test is written.
+
+**Why this is bigger than a "spike":** Task 8 currently assumes (a) `createDeepAgent` exposes per-subagent JSON envelopes the orchestrator can merge by ownership, and (b) section-ownership is a viable extraction strategy. Both are unverified. If either fails, "merge by subagent identity" is meaningless and a different extraction strategy must be designed. Pretending otherwise pushes architectural risk into the middle of Task 8 RED. An amendment file (not an in-place edit) is required because observed findings may *replace* prior assumptions, not just fill them in.
 
 **Steps:**
 
 1. From `session-digest/`, install the runtime deps if not yet installed: `deepagents`, `@langchain/openai`, `@langchain/core`.
 2. Write a throwaway probe script (e.g., `session-digest/scripts/probe-deepagents.ts`, ignored under `.gitignore` and deleted before the closing commit) that:
    - constructs `createDeepAgent` with three trivial subagents named per ADR-001 (`Extractor`, `Improver`, `Evidence checker`);
-   - passes a `FakeListChatModel` (from `@langchain/core/utils/testing`) seeded with ~50 sentinel responses tagged with their array index;
+   - passes a recording `FakeListChatModel` (from `@langchain/core/utils/testing`) seeded with ~50 sentinel responses tagged with their array index; if exhausted, log the observed call count and re-run with a larger array rather than failing silently;
    - invokes the agent on a 3-message fixture;
-   - **logs the first 200 chars of every `BaseChatModel._call` `messages[]` argument across the run**, and reports whether any prompt seen by the model contains the literal substring `Extractor`, `Improver`, or `Evidence checker`. This is the load-bearing input for choosing Task 8's fake-LLM strategy below;
-   - logs: total `model._call` invocation count, the `name` field accepted by `createDeepAgent` (does it reject spaces? require kebab-case?), and the constructor field names that `ChatOpenAI` accepts for NIM (`apiKey` vs `openAIApiKey`, top-level `baseURL` vs `configuration: { baseURL }`).
-3. **Update Task 8's "Architecture" subsection in this plan in place, even when defaults are confirmed.** Write the pinned values verbatim:
-   - **Subagent name format** — record the format `createDeepAgent` actually accepted (kebab-case ids vs ADR prose names); if kebab-case is required, document the mapping in `agents.ts`.
-   - **Model constructor field names** — record the literal field names accepted by the installed `ChatOpenAI`.
-   - **Per-run LLM call count** — record the observed invocation count for the trivial 3-message fixture.
-   - **Routing-substring observation** — record whether subagent names appeared in any model-facing prompt. This selects between the two Task 8 fake-LLM strategies.
+   - logs the first 200 chars of every `BaseChatModel._call` `messages[]` argument across the run, and reports whether any prompt seen by the model contains the literal substring `Extractor`, `Improver`, or `Evidence checker`;
+   - logs the **structure of the agent's return value**: per-subagent outputs the orchestrator can attribute by subagent identity, vs a single aggregated final message, vs something else;
+   - logs total `model._call` invocation count, the `name` field accepted by `createDeepAgent` (does it reject spaces? require kebab-case?), and the constructor field names that `ChatOpenAI` accepts for NIM (`apiKey` vs `openAIApiKey`, top-level `baseURL` vs `configuration: { baseURL }`).
+3. Write `session-digest/docs/plans/session-digest-architecture-amendment.md` with required front matter (`date`, `model`, `description` per CLAUDE.md markdown conventions) and these four required sections:
+   - **API observations** — the pinned values verbatim: subagent name format accepted, `ChatOpenAI` constructor field names, per-run LLM call count for the 3-message fixture, routing-substring observation, final-message structure. End with an **Other findings** subsection for anything observed that the predefined questions did not anticipate (this is the explicit slot for unknown unknowns).
+   - **Section-extraction strategy decision** — explicitly answer: *does `createDeepAgent` expose per-subagent outputs the orchestrator can attribute to a specific subagent?* If YES, confirm Task 8's section-ownership model. If NO, propose the replacement strategy (e.g., "single prompt asking the model for all six sections in one envelope; ADR-001's three-subagent invariant becomes a generation-time concern, not an extraction-time concern"). The decision is binding for Task 8.
+   - **Fake-LLM strategy** — name the strategy Task 8 will use (RoutingFake, IdempotentEnvelopeFake, or other) and justify it against the API observations. RoutingFake requires the routing-substring observation = YES. IdempotentEnvelopeFake means each subagent sees the same envelope on every call and the orchestrator filters by subagent identity (only viable if per-subagent attribution exists). A third option may be introduced if findings demand it.
+   - **Task 8 redraft required?** — explicit `YES` or `NO`. If `YES`, list the specific subsections of Task 8 that must be redrafted (Architecture / Section extraction strategy / Test injection / RED tests / GREEN flow) before its RED begins.
 4. Delete the probe script.
-5. Commit (docs-only): `session-digest plan: pin deepagents api findings`.
+5. Commit (docs-only): `session-digest plan: deepagents architecture amendment`.
 
-**Verification:** the four pinned values are written into Task 8's "Architecture" subsection (no `TBD` placeholders) and the commit lands on a green test suite (the existing suite remains green; only docs change).
+**Verification:** the amendment file exists under `session-digest/docs/plans/`, has the required front matter, and contains explicit (not `TBD`) answers in all four required sections. Gate command: `test -f session-digest/docs/plans/session-digest-architecture-amendment.md && ! grep -E '^\s*(YES|NO|.*: )TBD\b' session-digest/docs/plans/session-digest-architecture-amendment.md`. The commit lands on a green test suite (only docs change).
 
-**Why this task ends with a commit even when "nothing changed":** a spike whose findings live in volatile chat or in a deleted probe script is unauditable. Committing the amendment makes Task 8's pre-condition verifiable by `grep` and preserves the "commit on green every task" gate without carving out an exception.
+**Why a separate amendment file rather than editing Task 8 in place:** observed findings may invalidate Task 8's premises. An amendment can replace, not just fill in, prior assumptions; an in-place edit cannot. Reviewers can also diff the amendment against Task 8 to see exactly which assumptions changed and why.
 
 ---
 
@@ -385,13 +389,13 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 **Goal:** end-to-end success with a fake LLM. Subagent prompts are first-class artifacts of this task — quality of the digest is dominated by them.
 
-**Pre-condition:** Task 7.5 has been run and committed; subagent name format, model constructor field names, per-run LLM call count, and the routing-substring observation are pinned in the Architecture subsection below. **Reject this task if any of those values still read as `TBD`** — Task 7.5 must close before Task 8 RED begins.
+**Pre-condition:** Task 7.5 has been run and committed, and `session-digest/docs/plans/session-digest-architecture-amendment.md` exists with explicit (not `TBD`) answers in its four required sections. **If the amendment's "Task 8 redraft required?" section says `YES`, redraft the listed subsections of this Task 8 as a docs-only commit *before* any RED test is written.** The amendment supersedes any architectural assumptions in the rest of Task 8 if they conflict — the prose below describes the *expected default* (section-ownership model) but is provisional until the amendment confirms it.
 
 **Files:**
 
-- `session-digest/src/agents.ts`.
-- `session-digest/src/cli.ts` — wire the full flow.
-- `session-digest/src/prompts/extractor.md`, `improver.md`, `evidence-checker.md` — checked-in prompt files. Each prompt names its inputs (parsed messages, prior subagent outputs) and the output schema (named sections in a JSON envelope; see "Section extraction strategy" below).
+- `session-digest/src/agents.ts` — exports `agents.run(messages, model)`, `agents.buildAgent({ model })`, and `defaultNimModel(config: Config): ChatOpenAI`. `defaultNimModel` constructs `ChatOpenAI` directly using the field names pinned by Task 7.5's amendment (no provider abstraction, no wrapper). Dependency direction: `agents.ts → config.ts` (agents imports `Config`); never the reverse. `agents.ts` is necessarily NIM-aware per ADR-001's no-abstraction rule — this is by design, not a layering violation.
+- `session-digest/src/cli.ts` — wire the full flow; composition root for `MainDeps` (Task 2 signature).
+- `session-digest/src/prompts/extractor.md`, `improver.md`, `evidence-checker.md` — checked-in prompt files. Each prompt names its inputs (parsed messages, prior subagent outputs) and the output schema (named sections in a JSON envelope; see "Section extraction strategy" below). The exact prompt-shape is provisional pending Task 7.5's amendment — if the amendment changes the section-extraction strategy, prompts are redrafted accordingly.
 - `session-digest/tests/agents-fake.test.ts`.
 - `session-digest/tests/fixtures/session.valid.jsonl`.
 
@@ -417,13 +421,14 @@ The orchestrator parses each subagent's final message via `withStructuredOutput(
 
 The orchestrator merges the three `sections` maps into one `Record<SectionName, string>` and passes it to `assembleDigest`. A missing required section MUST raise an error inside `agents.run` (caught by `cli.main` → non-zero exit). This makes section extraction deterministic and testable with a routing fake.
 
-**Test injection (strategy selected by Task 7.5's routing-substring observation):**
+**Test injection (provisional — superseded by Task 7.5's amendment "Fake-LLM strategy" section if it names a different approach):**
 
 - `agents.buildAgent({ model })` accepts a model object.
 - `cli.main` calls `agents.buildAgent({ model: defaultNimModel(config) })`; tests bypass the default by calling `agents.run(messages, fake)` directly.
-- **Strategy A — RoutingFake** (use ONLY if Task 7.5 confirmed the substrings `Extractor`, `Improver`, `Evidence checker` appear in at least one model-facing prompt per subagent): a small custom subclass of `BaseChatModel` (or wrapper around `FakeListChatModel`) returns a canned response keyed by substring match on the incoming prompt — when the prompt contains `Extractor`, return the Extractor JSON envelope; same for Improver and Evidence checker. Eliminates dependence on planner call-ordering.
-- **Strategy B — SingleEnvelopeFake** (fallback if Task 7.5 found the substrings do NOT reach the model): a counting fake returns one fixed envelope containing **all six sections** in a single response on its first call, and throws on any subsequent call. Loses per-subagent routing fidelity but still tests the merge/assemble path, the section-non-emptiness invariant, and the failure modes below. The "missing required section" RED test (below) becomes "fake returns an envelope missing the `Next-session improvements` key"; the rest of the RED list is unaffected.
-- The chosen strategy is recorded in this Architecture subsection during Task 7.5's docs commit.
+- **Strategy A — RoutingFake** (viable only if the amendment confirms subagent-name substrings reach the model AND per-subagent attribution exists in the return value): a small custom subclass of `BaseChatModel` (or wrapper around `FakeListChatModel`) returns a canned response keyed by substring match on the incoming prompt — when the prompt contains `Extractor`, return the Extractor JSON envelope; same for Improver and Evidence checker.
+- **Strategy B — IdempotentEnvelopeFake** (viable only if the amendment confirms per-subagent attribution exists but substrings do NOT reach the model): a fake whose `_call` returns the **same** envelope on **every** invocation. The envelope contains all six sections. Each subagent sees the same envelope; the orchestrator filters the merge by subagent identity (Extractor → owns 4 sections, Improver → 1, Evidence checker → 1). The "missing required section" RED test removes the `Next-session improvements` key from the shared envelope. Loses the ability to detect "orchestrator routed Improver's response to Evidence checker" (since responses are identical) — that bug is only catchable under Strategy A.
+- **Strategy C — single-call envelope** (viable if the amendment finds NO per-subagent attribution at all — `createDeepAgent` returns one aggregated final message): the architecture collapses to one model call returning all six sections; the section-ownership model is replaced and Task 8's RED list is redrafted. This case forces the amendment's "Task 8 redraft required?" answer to `YES`.
+- The chosen strategy is named in the amendment's "Fake-LLM strategy" section before Task 8 RED begins.
 
 **RED:**
 
@@ -440,7 +445,7 @@ The orchestrator merges the three `sections` maps into one `Record<SectionName, 
   - states its input shape;
   - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with the exact section names this subagent owns enumerated);
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
-- `cli.main` flow: validate argv → validate input → parse JSONL → load config → capture `nowUtc = new Date()` once → build NIM model from config → run agent → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file → write absolute path to stdout → return 0.
+- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? (() => new Date())` and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL → load config from `baseDir` → call `clock()` **exactly once**, store as `nowUtc` → build NIM model from config → run agent → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-fake.test.ts`.
 
@@ -464,8 +469,9 @@ The orchestrator merges the three `sections` maps into one `Record<SectionName, 
 - **Credential plumbing (in this exact order):**
   1. Read `NVIDIA_API_KEY` and `NVIDIA_MODEL` from `process.env` if non-empty; otherwise read them from the user's real `$HOME/.session-digests/.env` via `loadConfig`. Fail the test (do not skip) if either value is missing or empty after both sources are consulted.
   2. `mkdtemp()` a `tmpHome`. Write `tmpHome/.session-digests/.env` containing the two values from step 1.
-  3. Set `HOME=tmpHome` (or pass `baseDir=tmpHome/.session-digests` if `cli.main` accepts it) for the duration of the run; invoke `cli.main` as the SUT.
-  4. After: assert the digest exists under `tmpHome/.session-digests/`, and that the user's real `~/.session-digests/` mtime is unchanged.
+  3. Snapshot the user's real `~/.session-digests/` directory listing (filenames + sizes) into `before`.
+  4. Invoke `cli.main(argv, stdout, stderr, { baseDir: path.join(tmpHome, ".session-digests") })` — the explicit `deps.baseDir` is the **only** sanctioned mechanism. **Do not mutate `process.env.HOME`.** HOME mutation in an in-process `node:test` runner leaks across parallel/sequential tests and survives thrown exceptions; `deps.baseDir` is leak-free, type-checked, and self-documenting in the SUT signature.
+  5. After: assert the digest exists under `tmpHome/.session-digests/`. Snapshot the user's real `~/.session-digests/` listing (filenames + sizes) into `after` and assert `before === after`. A listing snapshot is deterministic on shared dev machines; the previous mtime check was racy because background daemons or other shells could bump the parent dir's mtime independently of this test.
 - When credentials are present, the test runs the CLI against `session.valid.jsonl` and asserts:
   - exit code 0;
   - a digest file is created under the temp `~/.session-digests/`;
