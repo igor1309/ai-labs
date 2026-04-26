@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Added `.env` loading for NVIDIA credentials, `.env.example` bootstrap behavior, required-key validation, and process-env isolation.
 - Added lenient Claude Code JSONL parsing with whitespace tolerance, skipped malformed lines, usable message extraction, and injected read-file error handling.
 - Added input path validation for missing, unreadable, non-file, empty, and oversized session files before parsing or output work begins.
 - Added CLI arity validation so v1 rejects missing paths, extra paths, and flags before any file or config work.
