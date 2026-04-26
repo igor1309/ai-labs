@@ -66,6 +66,22 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - No content scrubbing/redaction before NIM calls.
 - Never copy or persist the raw input JSONL.
 
+## ADR traceability matrix
+
+| ADR-001 concern | Invariant | Responsible task(s) | Verification gate |
+|---|---|---:|---|
+| Surface | Local CLI only; no HTTP, watched folder, or service deployment | 2 | CLI arity/flag tests; out-of-scope guardrail |
+| Provider | NVIDIA NIM only; no provider abstraction | 8, 9 | `defaultNimModel` constructor test; live NIM smoke |
+| Orchestration | LangChain Deep Agents only; exactly Extractor, Improver, Evidence checker | 7.5, 8 | Architecture amendment; fake-agent wiring tests; prompt ownership test |
+| Model tier | One configured NIM model serves all roles | 5, 8, 9 | Required `NVIDIA_MODEL`; shared model wiring; live smoke front matter assertion |
+| Input | Exactly one Claude Code JSONL file, max 1 MB; no chunking/adapters | 2, 3, 4 | Argv tests; input validation tests; JSONL parsing tests |
+| Output | Exactly one Markdown digest with fixed front matter and six ordered sections | 6, 7, 8 | Output path/write tests; front matter tests; section order/non-empty tests |
+| Output location | Output and config live under `~/.session-digests/`; directory is created | 5, 6, 8, 9 | Config bootstrap tests; output mkdir test; missing-baseDir test; temp-home live smoke |
+| Persistence | Generated Markdown digest is the only persisted artifact; no raw input copy, index, or cross-session state | 6, 8, 9 | "Writes only digest" test; raw-input hash check; temp output isolation |
+| Configuration | `.env` under config dir; `NVIDIA_API_KEY` and `NVIDIA_MODEL` required; no default model; no preflight; no CLI API-key arg | 2, 5, 8, 9 | Flag rejection; config validation tests; first-model-call sequencing test; live smoke |
+| Privacy/retention | No redaction/secret scanning; raw input is not copied; source path appears in front matter | 6, 7, 8 | No raw-input-copy test; front matter source path test; end-to-end digest tests |
+| Non-Goals | HTTP, watched folder, CI, multi-session, indexing, repo awareness, provider abstraction, scheduling, chunking, adapters, redaction, raw-input copy, CLI API-key args remain out of scope | all | Out-of-scope section plus review during each task boundary |
+
 **Process gates:**
 
 - Task 1 is non-TDD scaffolding. It exists only to install the workspace, loader, and permanent bootstrap sanity test.

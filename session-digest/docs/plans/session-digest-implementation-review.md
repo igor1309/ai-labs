@@ -54,3 +54,4 @@ Reviewed `session-digest/docs/plans/session-digest-implementation.md` against th
 - Location: `session-digest/docs/plans/session-digest-implementation.md:60`
 - Problem: ADR governance requires implementation plans derived from ADRs to map each ADR invariant to its implementation phase. The plan has an invariant list and spec test map, but no ADR traceability matrix.
 - Fix: Add a matrix mapping ADR-001 Surface, Provider, Orchestration, Model tier, Input, Output, Output location, Persistence, Configuration, Privacy/retention, and Non-Goals to the responsible tasks and verification gates.
+- Resolution: resolved in `session-digest/docs/plans/session-digest-implementation.md` by adding an ADR traceability matrix with task and verification-gate mappings for each listed ADR-001 concern.
