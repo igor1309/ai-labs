@@ -17,7 +17,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F3 — `parseSession` lacks `fsLike` injection | ✅ resolved | `f0177be3` |
 | F4 — `loadConfig` outside `fsLike` injection regime | ✅ resolved | `0ae0bf3a` |
 | F5 — `.env.example` idempotency, EACCES on `.env` | open | — |
-| F6 — global `--import tsx` regression risk | ✅ resolved | (this commit) |
+| F6 — global `--import tsx` regression risk | ✅ resolved | `cf6a0e00` |
 | F7 — `~/.session-digests/` snapshot ENOENT | open | — |
 | F8 — Task 9 tmpdir cleanup | open | — |
 | F9 — empty-string vs missing-section conflation | open | — |
