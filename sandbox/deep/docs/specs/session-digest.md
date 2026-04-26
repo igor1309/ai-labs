@@ -10,6 +10,15 @@ description: "Spec for the session-digest CLI prototype defined by ADR-001."
 
 Implement the `session-digest` CLI prototype defined by [ADR-001](../adr/adr-001-session-digest-deepagents-nim.md): turn one Claude Code JSONL session into one Markdown postmortem digest under `~/.session-digests/`, using LangChain Deep Agents over NVIDIA NIM.
 
+## Required architecture
+
+Per ADR-001, the implementation MUST:
+
+- use LangChain Deep Agents as the sole orchestrator for digest generation;
+- use exactly three subagents with the responsibilities defined in ADR-001: Extractor, Improver, Evidence checker;
+- use a single configured NVIDIA NIM model for all subagents;
+- not introduce a provider abstraction layer.
+
 ## Public interface
 
 ### Command
@@ -77,6 +86,10 @@ The CLI MUST NOT create a real `.env` file with empty secrets.
 
 ## Behavior rules
 
+### Argument validation
+
+The CLI MUST fail fast with a non-zero exit and a concise `stderr` error when invoked with zero positional arguments, more than one positional argument, or any flag.
+
 ### Input validation
 
 The CLI MUST fail fast with a non-zero exit and a concise `stderr` error for each of:
@@ -114,6 +127,7 @@ The CLI MUST:
 - write exactly one digest file per successful invocation;
 - never copy or persist the raw input JSONL;
 - include the source path, provider, model, and generation timestamp in the digest front matter as defined in ADR-001;
+- emit the digest body with the six H2 sections defined in ADR-001 (`Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`, `Next-session improvements`, `Evidence notes`) in that order;
 - emit only the created file path on `stdout`.
 
 ### Filename collision
@@ -139,6 +153,8 @@ Local tests only; CI is out of scope per ADR-001.
 13. At least one local integration or smoke test calls NVIDIA NIM directly. The test MUST fail (not skip) when `NVIDIA_API_KEY` or `NVIDIA_MODEL` is absent or empty.
 14. Successful run does not create or copy the raw input JSONL anywhere under `~/.session-digests/`.
 15. Generated digest front matter contains `title`, `source_path`, `provider`, `model`, and `generated_at` keys with the values defined in ADR-001.
+16. Invalid CLI argument count (zero or more than one positional, or any flag) → non-zero exit, error on `stderr`.
+17. Generated digest body contains the six H2 sections defined by ADR-001 in the documented order.
 
 ## Done criteria
 
