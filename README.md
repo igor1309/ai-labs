@@ -53,6 +53,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | web-scout | MCP tool | Web search via SearXNG |
 | loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
 | claude-insights | Service | Weekly Claude Code usage aggregator with Telegram bot and LLM trend analysis |
+| session-digest | CLI (planning) | Converts a Claude Code JSONL session into a Markdown postmortem digest via LangChain Deep Agents over NVIDIA NIM |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 
 ## Architecture

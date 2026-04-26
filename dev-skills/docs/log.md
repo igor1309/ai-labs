@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-26
+
+- process-gates v1.0.1: clarified that pre-commit, step closeout, pre-push, hard-gate reporting, and completion checklists run scope-appropriate verification (docs-only changes don't require full test/build gates). Marketplace v1.37.0.
+
 ## 2026-04-24
 
 - pr-ci-watch v1.2.3: added note about `/tmp` write permission prompt tradeoff. Marketplace v1.36.0.

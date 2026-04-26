@@ -13,8 +13,11 @@
 - Make small, reviewable changes and stop after each step for review.
 - Add tests alongside changes, not later.
 - Always run tests on code changes.
-- Require a full test suite pass before declaring completion.
-- Require a full test suite pass for each phase step before moving to the next step.
+- Require scope-appropriate verification before declaring completion.
+- Full test/build gates are required for code, config, dependency, CI, release, or generated-artifact changes.
+- Docs-only changes do not require test/build runs unless the docs change executable examples, generated outputs, CI/release behavior, or package/tooling configuration.
+- For docs-only changes, verify Markdown structure, required front matter, required sections, links/references when relevant, and git diff scope.
+- Require scope-appropriate verification for each phase step before moving to the next step.
 - Commit only when tests are passing for the current branch state.
 - `trunk` is a protected branch. Never commit or push directly to `trunk`. All changes must go through a PR from a dedicated branch.
 - PR merge strategy: use merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
@@ -43,6 +46,15 @@ The `## Components` table in `README.md` lists every component with its type and
 - Update the Type or Description when a component's role changes.
 - Remove the row when a component is deleted from the repo.
 
+## New Project Checklist
+
+When a new top-level project directory is added (or an existing one is renamed/removed), update all of the following in the same change set:
+
+- `scripts/loc-dashboard.sh`: add the project to the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`.
+- `README.md` `## Components` table: add a row with type and one-line description.
+- `release-units.config.toml` (only if the project ships a release unit).
+- Per-project CI workflow (`<project>-core.yml`) per the "Per-Project CI Isolation" section, only if the project has tests/build to run.
+
 ## Log
 
 - Log entries are in reverse chronological order (newest first).
@@ -61,7 +73,7 @@ Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
 Use the `process-gates` skill. See `dev-skills/public/process-gates/SKILL.md`.
 
 Repo-specific details:
-- Pre-commit/pre-push verification for Node/TypeScript: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
+- Pre-commit/pre-push verification for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
 - Swift-only scopes: `swift test` / `swift build`.
 - Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
 - Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
