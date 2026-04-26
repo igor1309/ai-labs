@@ -3,8 +3,11 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-import { computeDigestPath, writeDigest } from "../src/output.js";
+import { assembleDigest, computeDigestPath, type FrontMatter, writeDigest } from "../src/output.js";
+
+const srcDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src");
 
 test("test_output_path_uses_input_stem_and_utc_second_timestamp", async () => {
   const digestPath = computeDigestPath(
@@ -52,3 +55,83 @@ test("test_write_digest_creates_parent_directory_and_writes_only_requested_diges
   assert.deepEqual(mkdirCalls, [{ path: "/tmp/digests", options: { recursive: true } }]);
   assert.deepEqual(writeFileCalls, [{ path: "/tmp/digests/session.digest.md", body: "digest body" }]);
 });
+
+test("test_front_matter_contains_required_keys_with_correct_values", async () => {
+  const digest = assembleDigest({
+    title: "Session Digest",
+    source_path: "/tmp/session.jsonl",
+    provider: "nvidia_nim",
+    model: "nim-model",
+    generated_at: new Date("2026-04-26T01:02:03.456Z"),
+  }, {});
+
+  assert.match(digest, /^---\ntitle: Session Digest\nsource_path: \/tmp\/session\.jsonl\nprovider: nvidia_nim\nmodel: nim-model\ngenerated_at: 2026-04-26T01:02:03Z\n---/);
+});
+
+test("test_output_contains_no_direct_date_construction", async () => {
+  const outputSource = await fs.readFile(path.join(srcDir, "output.ts"), "utf8");
+
+  assert.equal(countDateConstruction(outputSource), 0);
+});
+
+test("test_default_clock_file_contains_single_sanctioned_date_constructor", async () => {
+  const clockSource = await fs.readFile(path.join(srcDir, "clock.ts"), "utf8");
+
+  assert.equal(clockSource.trim(), "export const defaultClock: () => Date = () => new Date();");
+  assert.equal((clockSource.match(/Date\.now\(/g) ?? []).length, 0);
+});
+
+test("test_body_contains_six_h2_sections_in_documented_order", async () => {
+  const digest = assembleDigest(makeFrontMatter(), {});
+
+  assert.deepEqual(h2Headers(digest), [
+    "Session summary",
+    "Outcome",
+    "Useful decisions",
+    "Failure or friction points",
+    "Next-session improvements",
+    "Evidence notes",
+  ]);
+});
+
+test("test_body_order_is_independent_of_input_record_iteration_order", async () => {
+  const sections = {
+    "Evidence notes": "evidence",
+    "Next-session improvements": "improve",
+    "Failure or friction points": "friction",
+    "Useful decisions": "decisions",
+    "Outcome": "outcome",
+    "Session summary": "summary",
+  };
+
+  const digest = assembleDigest(makeFrontMatter(), sections);
+
+  assert.deepEqual(h2Headers(digest), [
+    "Session summary",
+    "Outcome",
+    "Useful decisions",
+    "Failure or friction points",
+    "Next-session improvements",
+    "Evidence notes",
+  ]);
+});
+
+function countDateConstruction(source: string): number {
+  return (source.match(/new Date\(|Date\.now\(/g) ?? []).length;
+}
+
+function h2Headers(markdown: string): string[] {
+  return markdown.split("\n")
+    .filter(($0) => $0.startsWith("## "))
+    .map(($0) => $0.slice(3));
+}
+
+function makeFrontMatter(): FrontMatter {
+  return {
+    title: "Session Digest",
+    source_path: "/tmp/session.jsonl",
+    provider: "nvidia_nim",
+    model: "nim-model",
+    generated_at: new Date("2026-04-26T01:02:03.000Z"),
+  };
+}
