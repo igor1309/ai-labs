@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Loosened missing-section handling to emit placeholders and hardened prompts to treat Claude session JSON as transcript data instead of live instructions.
 - Recorded NVIDIA NIM model probe results to preserve which free hosted models returned, timed out, or supported Deep Agents tool calls.
 - Added a local README with repo-root and anywhere-safe CLI invocation examples for real Claude session JSONL files.
 - Made the documented `tsx src/cli.ts <path>` invocation execute the CLI instead of silently exiting.

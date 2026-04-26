@@ -182,7 +182,7 @@ test("test_each_section_has_at_least_one_non_blank_line_of_content", async (t) =
   assert.deepEqual(nonBlankLineCountsBySection(digest), Object.fromEntries(SECTION_NAMES.map(($0) => [$0, 1])));
 });
 
-test("test_missing_or_blank_required_section_in_subagent_output_fails_run", async (t) => {
+test("test_missing_or_blank_required_section_in_subagent_output_uses_placeholder", async (t) => {
   const cases: Array<Record<string, string>> = [
     {},
     { "Next-session improvements": "" },
@@ -204,9 +204,13 @@ test("test_missing_or_blank_required_section_in_subagent_output_fails_run", asyn
       model: new RoutingFake([], sections),
     });
 
-    assert.notEqual(exitCode, 0);
-    assert.equal(stdout.toString(), "");
-    assert.match(stderr.toString(), /Missing digest section: Next-session improvements\./);
+    assert.equal(exitCode, 0);
+    assert.notEqual(stdout.toString().trim(), "");
+    assert.equal(stderr.toString(), "");
+
+    const digest = await fs.readFile(stdout.toString().trim(), "utf8");
+
+    assert.equal(sectionBody(digest, "Next-session improvements"), "Not generated.");
   }
 });
 
@@ -359,6 +363,18 @@ test("test_rendered_prompts_use_section_owners_without_manual_section_name_drift
 
     assert.deepEqual(includedSectionNames, SECTION_OWNERS[role]);
   }
+});
+
+test("test_agent_prompts_treat_session_messages_as_data_not_live_instructions", async () => {
+  const agentSource = await fs.readFile(path.join(srcDir, "agents.ts"), "utf8");
+  const promptSources = await Promise.all([
+    fs.readFile(path.join(srcDir, "prompts", "extractor.md"), "utf8"),
+    fs.readFile(path.join(srcDir, "prompts", "improver.md"), "utf8"),
+    fs.readFile(path.join(srcDir, "prompts", "evidence-checker.md"), "utf8"),
+  ]);
+
+  assert.match(agentSource, /session transcript data/i);
+  assert.equal(promptSources.every(($0) => /session transcript data/i.test($0)), true);
 });
 
 class StringSink extends Writable {
@@ -661,6 +677,17 @@ function nonBlankLineCountsBySection(markdown: string): Record<string, number> {
   }
 
   return counts;
+}
+
+function sectionBody(markdown: string, sectionName: string): string {
+  const start = markdown.indexOf(`## ${sectionName}\n`);
+  const next = SECTION_NAMES[SECTION_NAMES.indexOf(sectionName as (typeof SECTION_NAMES)[number]) + 1];
+  const end = next ? markdown.indexOf(`## ${next}\n`, start) : markdown.length;
+
+  return markdown.slice(start, end)
+    .split("\n")
+    .filter(($0) => $0.trim() !== "" && !$0.startsWith("## "))
+    .join("\n");
 }
 
 function h2Headers(markdown: string): string[] {
