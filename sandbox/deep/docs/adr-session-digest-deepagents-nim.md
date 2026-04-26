@@ -12,17 +12,25 @@ version: 1.0
 
 Accepted.
 
-## Context
+## Executive Summary
+
+Build a local CLI prototype, `session-digest`, that turns one real Claude Code JSONL session into one Markdown postmortem digest using LangChain Deep Agents over NVIDIA NIM.
 
 The goal is to learn and evaluate LangChain Deep Agents with free NVIDIA NIM APIs through a practical, bounded utility: generating a postmortem mini-digest from one real Claude Code session.
 
-The prototype should avoid a toy “hello world” while staying small enough to support fast exploration. It should exercise Deep Agents’ orchestration, filesystem/context use, role delegation, and artifact generation without introducing product-scale concerns such as indexing, scheduling, persistence, provider abstraction, or service deployment. This prototype intentionally exercises Deep Agents’ filesystem/context handling on a real local session artifact without introducing an index.
+The prototype should avoid a toy “hello world” while staying small enough to support fast exploration. It should exercise Deep Agents’ orchestration, filesystem/context use, role delegation, and artifact generation without introducing product-scale concerns such as indexing, scheduling, persistence, provider abstraction, or service deployment.
 
 ## Decision
 
-Build a local CLI prototype named `session-digest`.
+The prototype commits to the following architectural invariants for v1:
 
-The CLI accepts one real Claude Code local session JSONL file and generates one Markdown postmortem digest into `~/.session-digests`.
+- **Surface:** a local CLI named `session-digest`. No HTTP, watched folder, or service deployment.
+- **Provider:** NVIDIA NIM is the sole LLM provider. No provider abstraction layer.
+- **Orchestration:** LangChain Deep Agents is the sole orchestrator for digest generation, with a fixed three-role subagent split (Extractor, Improver, Evidence checker).
+- **Model tier:** a single configured NIM model serves all roles in v1. Multi-tier model routing is deferred.
+- **Input:** exactly one real Claude Code local session JSONL file per invocation, ≤1 MB. No chunking, multi-session, or generic transcript adapters.
+- **Output:** exactly one Markdown digest written to `~/.session-digests/`, with a fixed action-oriented section structure and traceability front matter.
+- **Persistence:** generated Markdown files are the only persisted artifact. No index, no raw input copy, no cross-session state.
 
 Command shape:
 
@@ -43,7 +51,6 @@ On success, stdout prints only the created digest path.
 - Fixed digest section structure.
 - NVIDIA NIM as the LLM provider.
 - Deep Agents used for digest orchestration.
-- Local live tests that may call NVIDIA NIM.
 - Output and local config under `~/.session-digests`.
 
 ### Out of scope
@@ -107,10 +114,10 @@ The output directory is fixed:
 
 The CLI creates this directory automatically if it does not exist.
 
-Output filenames always include a timestamp suffix. This also avoids filename collisions, for example:
+Output filenames always include a timestamp suffix. This uses second-precision timestamps to avoid filename collisions during exploration, for example:
 
 ```text
-session.2026-04-26-1015.digest.md
+session.2026-04-26-101547.digest.md
 ```
 
 The CLI writes only the generated Markdown digest. It never copies the raw Claude JSONL input.
@@ -143,7 +150,7 @@ The hard quality constraint is factual traceability: non-obvious claims should b
 
 The prototype uses lightweight evidence notes.
 
-Important claims should include short source references when available, such as section, line, record, or turn markers.
+Non-obvious claims should include short source references when available, such as section, line, record, or turn markers.
 
 The prototype does not require exhaustive claim-level citations.
 
@@ -166,7 +173,7 @@ The prototype uses a fixed role split:
 |---|---|
 | Extractor | Identifies summary, outcome, decisions, and friction points. |
 | Improver | Proposes concrete next-session improvements. |
-| Evidence checker | Verifies that important claims have lightweight evidence notes. |
+| Evidence checker | Verifies that non-obvious claims have lightweight evidence notes. |
 
 ## NVIDIA NIM usage
 
@@ -256,7 +263,7 @@ On success, stdout prints the created digest path only.
 Example:
 
 ```text
-/Users/example/.session-digests/session.2026-04-26-1015.digest.md
+/Users/example/.session-digests/session.2026-04-26-101547.digest.md
 ```
 
 ### Invalid input
@@ -265,10 +272,10 @@ The CLI fails fast with a concise stderr error and non-zero exit for:
 
 - missing input file;
 - unreadable input file;
-- unsupported input shape, meaning the file is not JSONL or contains no extractable Claude Code messages;
 - empty file;
 - file larger than 1 MB;
-- no usable messages found;
+- file is not JSONL;
+- file parses as JSONL but no usable Claude Code messages are found;
 - missing `NVIDIA_API_KEY`;
 - missing `NVIDIA_MODEL`.
 
@@ -278,18 +285,18 @@ The exploration prototype uses local tests.
 
 CI is explicitly out of scope for this phase.
 
-Test coverage should include:
+Test coverage must include:
 
 - invalid input fails;
 - oversized input fails;
 - valid fixture writes Markdown to `~/.session-digests`;
 - stdout prints the created path only;
-- timestamp suffix avoids filename collisions;
+- second-precision timestamp suffix avoids filename collisions;
 - missing `.env` creates `.env.example`;
 - missing `NVIDIA_API_KEY` fails;
 - missing `NVIDIA_MODEL` fails.
 
-At least one local integration test or smoke test should call NVIDIA NIM directly. CI remains out of scope for the exploration phase.
+At least one local integration test or smoke test should call NVIDIA NIM directly.
 
 ## Success criterion
 
