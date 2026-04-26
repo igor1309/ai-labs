@@ -82,6 +82,15 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 | Privacy/retention | No redaction/secret scanning; raw input is not copied; source path appears in front matter | 6, 7, 8 | No raw-input-copy test; front matter source path test; end-to-end digest tests |
 | Non-Goals | HTTP, watched folder, CI, multi-session, indexing, repo awareness, provider abstraction, scheduling, chunking, adapters, redaction, raw-input copy, CLI API-key args remain out of scope | all, final | Static out-of-scope checks plus ADR non-goal review checklist |
 
+**Execution lock:**
+
+- Worktree required: yes.
+- Expected worktree: `*/worktrees/session-digest-implementation` or an equivalent dedicated non-root worktree.
+- Expected branch: `codex/session-digest-implementation`.
+- Preflight check: [ ] done.
+- Before Task 1, run `git worktree list --porcelain` and `git branch --show-current`; halt if the current worktree/branch do not match the expected dedicated worktree and branch.
+- Execute one task at a time. After each task: self-review the task scope, run the task gate plus the full-suite gate, update the relevant log/plan tracker when applicable, commit only task files, push the branch unless explicitly told not to, and stop for review.
+
 **Process gates:**
 
 - Task 1 is non-TDD scaffolding. It exists only to install the workspace, loader, and permanent bootstrap sanity test.
@@ -116,10 +125,10 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 | 9 (.env.example bootstrap) | 5 |
 | 7 (missing API key) | 5 |
 | 8 (missing model) | 5 |
-| 14 (no raw-input copy) | 6 |
+| 14 (no raw-input copy) | 8 |
 | 12 (no filename collision) | 6 |
-| 15 (front matter keys + values) | 7 |
-| 17 (six H2 sections, ordered) | 7 |
+| 15 (front matter keys + values) | 8 |
+| 17 (six H2 sections, ordered) | 8 |
 | 10 (valid fixture → digest) | 8 |
 | 11 (stdout = path only) | 8 |
 | 13 (live NIM smoke, fail-on-missing-creds) | 9 |
@@ -323,9 +332,9 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 ---
 
-## Task 6 — Output path + write discipline (spec tests 12, 14)
+## Task 6 — Output path + write discipline (spec test 12; helper coverage for test 14)
 
-**Goal:** deterministic output path, directory creation, and "no raw input copy" guarantee.
+**Goal:** deterministic output path and digest-write helper discipline. Full CLI-level "no raw input copy" coverage waits for Task 8, after the fake-model success path exists.
 
 **Files:**
 
@@ -337,15 +346,14 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `test_output_path_uses_input_stem_and_utc_second_timestamp` — assert pattern `<stem>.YYYY-MM-DD-HHMMSS.digest.md` and that the timestamp is UTC (inject a clock).
 - `test_two_runs_with_different_input_stems_in_same_second_produce_distinct_paths`.
 - `test_output_directory_is_created_when_missing`.
-- `test_successful_run_writes_only_the_digest_file_under_session_digests` — after `cli.main`, list every regular file under `<HOME>/.session-digests/` and assert the listing is exactly `[computedDigestPath]`. Additionally assert no file under that dir has the same SHA-256 as the input file (defense in depth against a future feature that adds a second file there). This is a stronger expression of the spec's "exactly one digest file per successful invocation" + "never copy or persist the raw input" than naive bytes-equality, which has rare false-positive modes when a digest body legitimately quotes a small fixture.
+- `test_write_digest_creates_parent_directory_and_writes_only_requested_digest_body` — call `writeDigest` with a recording `fsLike`; assert exactly one `mkdir` for the digest directory and exactly one `writeFile` to the computed digest path with the digest body. Use output helpers only; full no-raw-copy CLI coverage moves to Task 8 after the fake model path exists.
 
 > Spec line 179 documents same-input-within-one-second as a non-target case. No test asserts behavior in that scenario; the second-precision timestamp is sufficient for normal interactive use, and v1 is not required to retry on collision.
 
 **GREEN:**
 
-- `computeDigestPath(inputPath, nowUtc, baseDir)` returns the target path. `nowUtc` is a `Date` value (not a clock function) — the clock lives at `cli.main`'s composition root via `deps.clock` (Task 2 signature).
-- `writeDigest(path, body, fsLike)` creates the parent dir (`fsLike.mkdir({ recursive: true })`) and writes only the body via `fsLike.writeFile`. No copy of input. `fsLike` flows in from `cli.main`.
-- `cli.main` calls `clock()` **exactly once**, stores the result as `nowUtc`, and threads the same instant into both `computeDigestPath` and the front-matter assembler in Task 7. Two `new Date()` calls straddling a second boundary would otherwise let the filename's timestamp diverge from `generated_at`; one call removes that flake source. The single-call invariant is enforced at runtime by Task 7's advancing-clock test and statically by Task 7's `test_cli_main_and_output_contain_no_direct_date_construction` check (which forbids `new Date(` and `Date.now(` in `cli.ts` + `output.ts`; the only sanctioned `Date` construction lives in `clock.ts`).
+- `computeDigestPath(inputPath, nowUtc, baseDir)` returns the target path. `nowUtc` is a `Date` value supplied by the caller; no clock function or date construction lives in `output.ts`.
+- `writeDigest(path, body, fsLike)` creates the parent dir (`fsLike.mkdir({ recursive: true })`) and writes only the body via `fsLike.writeFile`. No copy of input.
 
 **Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/output.test.ts`.
 
@@ -353,9 +361,9 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 ---
 
-## Task 7 — Front matter and body skeleton (spec tests 15, 17)
+## Task 7 — Front matter and body skeleton (helper coverage for spec tests 15, 17)
 
-**Goal:** structural correctness of the generated Markdown.
+**Goal:** structural correctness of the generated Markdown helpers. Full CLI-level front matter and section structure coverage waits for Task 8, after the fake-model success path exists.
 
 **Files:**
 
@@ -370,10 +378,9 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
   - `title === "Session Digest"` (literal — pinned by ADR-001 front-matter example).
   - `provider === "nvidia_nim"` (literal).
   - `model === <configured NVIDIA_MODEL>`.
-  - `source_path === path.resolve(<cli arg>)` (no symlink follow; do NOT use `fs.realpath`). The fixture path passed to `cli.main` MUST be absolute (constructed via `path.join(mkdtemp(), "session.jsonl")`) so `path.resolve` is idempotent and the assertion proves the production contract rather than tautologically matching test-side computation. A relative-path scenario, if needed later, is its own test.
+  - `source_path === path.resolve(<input path>)` (no symlink follow; do NOT use `fs.realpath`). Pass an absolute fixture path to the front-matter assembler so `path.resolve` is idempotent and the assertion proves the production contract rather than tautologically matching test-side computation. A relative-path scenario, if needed later, is its own test.
   - `generated_at` matches `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/` (RFC 3339 / ISO 8601, second precision, literal `Z`).
-- `test_clock_is_invoked_at_most_once_and_filename_matches_generated_at` — pass `deps.clock` to `cli.main` as a recording stub that returns strictly increasing instants on successive calls (`t0`, `t0 + 5s`, `t0 + 10s`, ...). After `cli.main` returns 0, assert: (a) `clock.callCount === 1` (the load-bearing assertion — catches an impl that calls the injected clock more than once and would diverge filename from `generated_at`), AND (b) the filename's UTC second-truncation equals the `generated_at` second-truncation. A fixed-instant clock cannot catch a multi-call impl because both calls return the same value; an advancing clock with a call-count assertion catches the actual bug class.
-- `test_cli_main_and_output_contain_no_direct_date_construction` — static check: read `session-digest/src/cli.ts` and `session-digest/src/output.ts` as text and count occurrences of `new Date(` and `Date.now(`. Assert the combined count across both files is `0`. The serializer must use the already-`Date`-typed `nowUtc` parameter (`nowUtc.toISOString()`) and the composition root must use `defaultClock` from `./clock.js` — neither file is allowed to construct a `Date` directly. `clock.ts` is the single sanctioned `new Date(` site and is excluded from the count by construction (it is not in the file list). Without this segregation, runtime tests cannot catch a bypass impl whose two `new Date()` calls land in the same millisecond. Excluded from the count: occurrences inside `/* */` or `//` comments, and inside string literals (use a tolerant regex; pin the exact pattern in the test source so review can verify it isn't over-permissive).
+- `test_output_contains_no_direct_date_construction` — static check: read `session-digest/src/output.ts` as text and count occurrences of `new Date(` and `Date.now(`. Assert the count is `0`. The serializer must use the already-`Date`-typed `nowUtc` parameter (`nowUtc.toISOString()`). `clock.ts` is the single sanctioned `new Date(` site and is excluded from the count by construction. The `cli.ts` static/runtime clock checks move to Task 8 after the full success path exists.
 - `test_default_clock_file_contains_single_sanctioned_date_constructor` — static check: read `session-digest/src/clock.ts` as text and assert it contains exactly the single exported default clock implementation `export const defaultClock: () => Date = () => new Date();` and no `Date.now(` occurrence. This pins the file that Task 7's broader static check intentionally excludes; without it, an implementor could add a second date constructor inside `clock.ts` and still pass the `cli.ts` + `output.ts` scan.
 - `test_body_contains_six_h2_sections_in_documented_order`:
   - exact sequence: `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`, `Next-session improvements`, `Evidence notes`.
@@ -386,7 +393,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `SECTION_NAMES` lives in `sections.ts` as a module-level `as const` tuple so the order is single-sourced across output assembly, agent merging, and prompt rendering.
 - `SectionName` is derived from `SECTION_NAMES` (`type SectionName = typeof SECTION_NAMES[number]`); no duplicate section-name union is hand-written.
 - `FrontMatter` is a `type` with the five required fields; serializer emits YAML between `---` lines (hand-rolled — do not introduce a YAML lib for five string fields).
-- `generated_at` is serialized as `nowUtc.toISOString().replace(/\.\d{3}Z$/, "Z")` (drop milliseconds, keep `Z`). `nowUtc: Date` is threaded in from `cli.main` (Task 6 GREEN) — the front-matter assembler MUST NOT call `new Date(...)` itself; doing so would both duplicate the clock reach and break Task 7 RED's static count assertion.
+- `generated_at` is serialized as `nowUtc.toISOString().replace(/\.\d{3}Z$/, "Z")` (drop milliseconds, keep `Z`). `nowUtc: Date` is supplied by the caller — the front-matter assembler MUST NOT call `new Date(...)` itself.
 
 **Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/output.test.ts`.
 
@@ -453,7 +460,7 @@ Each subagent's prompt MUST instruct the model to emit a single JSON object as i
 { "sections": { "<Section Name>": "<markdown body>", ... } }
 ```
 
-The orchestrator parses each subagent's final message via `withStructuredOutput(z.object({ sections: z.record(z.string()) }))` (or, if `withStructuredOutput` does not chain through `createDeepAgent`, by parsing the final assistant message as JSON inside `agents.run`). Section ownership is represented once in `SECTION_OWNERS`:
+The orchestrator parses the relevant final assistant message JSON inside `agents.run` with `JSON.parse` plus local type guards. Do not import Zod in v1 unless Task 7.5 explicitly redrafts this task to use `withStructuredOutput`; if that happens, `zod` must be added as a direct `session-digest` dependency before any code imports it. Section ownership is represented once in `SECTION_OWNERS`:
 
 - Extractor → `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`.
 - Improver → `Next-session improvements`.
@@ -480,6 +487,10 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
 
 - `test_valid_session_produces_digest_at_expected_path` — given the fixture, a temp `baseDir`, and `deps.model = fake`, calling `cli.main(argv, stdout, stderr, deps)` writes a Markdown file under `<baseDir>/`; file exists; body has the six sections in order. **No `process.env.HOME` mutation; no direct call to `agents.run`.**
 - `test_stdout_contains_only_created_digest_path` — assert exact equality (path string + single trailing `\n`) and that `stderr` is empty on success.
+- `test_successful_run_writes_only_the_digest_file_under_session_digests` — after `cli.main` succeeds with `deps.model = fake`, list every regular file under `<baseDir>` and assert the listing is exactly `[computedDigestPath]`. Additionally assert no file under that dir has the same SHA-256 as the input file (defense in depth against a future feature that adds a second file there). This is a stronger expression of the spec's "exactly one digest file per successful invocation" + "never copy or persist the raw input" than naive bytes-equality, which has rare false-positive modes when a digest body legitimately quotes a small fixture.
+- `test_front_matter_contains_required_keys_with_correct_values_from_cli_success_path` — after `cli.main` succeeds with `deps.model = fake`, read the generated digest and assert the required front matter keys and values: `title`, `source_path`, `provider`, `model`, and `generated_at`.
+- `test_clock_is_invoked_once_and_filename_matches_generated_at` — pass `deps.clock` to `cli.main` as a recording stub that returns strictly increasing instants on successive calls (`t0`, `t0 + 5s`, `t0 + 10s`, ...). After `cli.main` returns 0, assert: (a) `clock.callCount === 1` (the load-bearing assertion — catches an impl that calls the injected clock more than once and would diverge filename from `generated_at`), AND (b) the filename's UTC second-truncation equals the `generated_at` second-truncation. A fixed-instant clock cannot catch a multi-call impl because both calls return the same value; an advancing clock with a call-count assertion catches the actual bug class.
+- `test_cli_main_and_output_contain_no_direct_date_construction` — static check: read `session-digest/src/cli.ts` and `session-digest/src/output.ts` as text and count occurrences of `new Date(` and `Date.now(`. Assert the combined count across both files is `0`. The serializer must use the already-`Date`-typed `nowUtc` parameter (`nowUtc.toISOString()`) and the composition root must use `defaultClock` from `./clock.js` — neither file is allowed to construct a `Date` directly. `clock.ts` is the single sanctioned `new Date(` site and is excluded from the count by construction. Excluded from the count: occurrences inside `/* */` or `//` comments, and inside string literals (use a tolerant regex; pin the exact pattern in the test source so review can verify it isn't over-permissive).
 - `test_each_section_has_at_least_one_non_blank_line_of_content` — for every H2 in the generated digest, assert there is at least one non-blank line between this header and the next (or EOF). This is a structural quality gate that catches the empty-agent failure mode; it does not assert any specific content.
 - `test_missing_or_blank_required_section_in_subagent_output_fails_run` — feed the fake a response where `Next-session improvements` is absent, then a response where it is present but empty (`""`), and then a response where it is present but whitespace-only. Strategy A: malformed Improver envelopes such as `{"sections": {}}`, `{"sections": {"Next-session improvements": ""}}`, and `{"sections": {"Next-session improvements": " \n\t "}}`; Strategy B: the same malformed shapes in the shared envelope. For each case, assert `cli.main` returns non-zero with the same concise stderr/error class. Test calls `cli.main` with `deps.model = fake`; does NOT call `agents.run` directly.
 - `test_invalid_creds_fail_on_first_model_call_not_before` — `deps.model` is a fake whose `_call` throws a synthetic auth error on first invocation, with a counter on `_call` invocations. Call `cli.main(argv, stdout, stderr, deps)`. Assert: `loadConfig` succeeded (the fake's call counter would be `0` if config had thrown first), `_call` counter is exactly `1`, and `cli.main` returned non-zero. This pins spec line 113's "no preflight" sequencing invariant — the fake substitutes for the real NIM endpoint, so this is a sequencing assertion, not an auth assertion. Real-credential auth is covered by Task 9.
@@ -497,7 +508,7 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
   - states its input shape;
   - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with exact owned section names rendered from `SECTION_OWNERS`, not typed manually in the prompt file);
   - is referenced from `agents.ts` by `loadPromptTemplates(readFile)` using `new URL("./prompts/<name>.md", import.meta.url)`, but the actual read goes through the injected `readFile`.
-- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.js`, per NodeNext ESM import specifier rules) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → `await fsLike.mkdir(baseDir, { recursive: true })` (preflight: ensures `<baseDir>` exists for `loadConfig`'s `.env.example` bootstrap on first run; idempotent on subsequent runs; uses the `mkdir` already declared in `MainDeps.fsLike` Pick set at line 168 — no widening) → `await loadConfig(baseDir, fsLike)` (Task 5 signature; `loadConfig` is `async` and routes all `.env` reads/`.env.example` writes through `fsLike`) → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → `await loadPromptTemplates(fsLike.readFile)` → build/run agent with `model` and loaded prompts → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
+- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.js`, per NodeNext ESM import specifier rules) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → `await fsLike.mkdir(baseDir, { recursive: true })` (preflight: ensures `<baseDir>` exists for `loadConfig`'s `.env.example` bootstrap on first run; idempotent on subsequent runs; uses the `mkdir` already declared in `MainDeps.fsLike` Pick set at line 168 — no widening) → `await loadConfig(baseDir, fsLike)` (Task 5 signature; `loadConfig` is `async` and routes all `.env` reads/`.env.example` writes through `fsLike`) → call `clock()` **exactly once**, store as `nowUtc` (runtime-pinned by the Task 8 clock test; this is intentionally not asserted before the fake success path exists) → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → `await loadPromptTemplates(fsLike.readFile)` → build/run agent with `model` and loaded prompts → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
 
 **Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/agents-fake.test.ts`.
 
