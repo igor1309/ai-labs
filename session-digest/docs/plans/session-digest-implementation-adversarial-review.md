@@ -17,7 +17,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F3 — `parseSession` lacks `fsLike` injection | ✅ resolved | `f0177be3` |
 | F4 — `loadConfig` outside `fsLike` injection regime | ✅ resolved | `0ae0bf3a` |
 | F5 — `.env.example` idempotency, EACCES on `.env` | open | — |
-| F6 — global `--import tsx` regression risk | open | — |
+| F6 — global `--import tsx` regression risk | ✅ resolved | (this commit) |
 | F7 — `~/.session-digests/` snapshot ENOENT | open | — |
 | F8 — Task 9 tmpdir cleanup | open | — |
 | F9 — empty-string vs missing-section conflation | open | — |
@@ -40,12 +40,6 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 - **Location:** `session-digest-implementation.md` Task 5 GREEN.
 - **Why:** What if `.env.example` already exists when `.env` is missing — overwrite, leave alone, or error? F4's bootstrap test stubs `writeFile` to always resolve, so an impl that overwrites an existing `.env.example` would still pass. EACCES on `.env` was closed by F4; idempotency was not.
 - **Fix:** add one sentence: "If `.env.example` already exists, do not overwrite; emit the same `ConfigError` and proceed." Pre-seed an `.env.example` via the stub and assert the second call's `writeFile` count is `0`.
-
-#### F6. Task 1 risks regressing existing test paths via global `--import tsx`
-
-- **Location:** `:115-117` and `:139`.
-- **Why:** "Prepend `--import tsx` to the existing `node --test` invocation" applies tsx's ESM loader to *every* path Node walks, including `oracle/packages/*`, `oracle/apps/*`, `scripts/release/tests/*`, `scripts/tests/*`. tsx is generally backwards-compatible with plain JS, but legacy `.test.js` that use bare `require()` under a `"type": "module"` parent — or that rely on Node's default CJS resolution timing — can break. The plan's mitigation ("regression is a Task 1 blocker") is reactive, not preventive.
-- **Fix:** before Task 1's commit, run the full root `npm test` twice — once with the proposed change, once with HEAD — and diff timing/output. If any path is fragile, scope tsx narrowly: add a *separate* `test:session-digest` script that does `node --import tsx --test session-digest/tests/`, and have root `scripts.test` chain `&& npm run test:session-digest`. This eliminates loader contamination.
 
 #### F7. Task 9 `before === after` snapshot can fail if `~/.session-digests/` doesn't exist
 

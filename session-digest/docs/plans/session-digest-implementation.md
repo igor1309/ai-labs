@@ -114,7 +114,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - Create `session-digest/tests/_bootstrap.test.ts` containing a single trivially-passing assertion (`test("bootstrap", () => {})`). This file is **kept permanently**, not deleted in Task 2. It guarantees the test runner has at least one test to discover under directory-based discovery and acts as a sanity check that the `tsx` loader is wired correctly. The leading underscore makes its purpose obvious in alphabetical listings.
 - Edit root `package.json`:
   - append `"session-digest"` to `workspaces`;
-  - prepend `--import tsx` to the existing `node --test` invocation, append `session-digest/tests/` to the path list, and hoist `tsx` to the root `devDependencies`.
+  - do NOT modify the existing `node --test` invocation in `scripts.test`. Instead, add a new `scripts["test:session-digest"]` entry equal to `node --import tsx --test session-digest/tests/`, and chain it onto `scripts.test` with ` && npm run test:session-digest`. Hoist `tsx` to the root `devDependencies`. This isolates the `tsx` ESM loader to a child process that only walks `session-digest/tests/`, eliminating loader contamination of legacy `oracle/`, `nomos/`, `web-scout/`, `corpus-scout/`, and `scripts/` test paths (closes F6 of the adversarial review).
   - Do NOT migrate to `npm test --workspaces --if-present`. The current root `scripts.test` runs tests from non-workspace paths (`oracle/packages/*`, `oracle/apps/*`, `scripts/release/tests/*`, `scripts/tests/*`) that a workspace-delegated form would silently drop. A workspace migration, if desired later, is its own ADR-able change with explicit decisions about those paths.
 
 **`session-digest/package.json` essentials:**
@@ -133,7 +133,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 **Steps:**
 
 1. Write `package.json`, `tsconfig.json`, placeholder `src/cli.ts`, `tests/_bootstrap.test.ts`, `.gitignore`.
-2. Update root `package.json`: append `"session-digest"` to workspaces; prepend `--import tsx` to the existing `node --test` invocation; append `session-digest/tests/` to its path list; hoist `tsx` to root devDeps. Run `npm install` so the workspace links and the lockfile updates.
+2. Update root `package.json`: append `"session-digest"` to workspaces; add `scripts["test:session-digest"]` = `node --import tsx --test session-digest/tests/`; chain it onto `scripts.test` by appending ` && npm run test:session-digest` (do NOT alter the legacy `node --test` invocation); hoist `tsx` to root devDeps. Run `npm install` so the workspace links and the lockfile updates.
 3. Verify both gates with the bootstrap test:
    - `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest` → green.
    - `./scripts/run_silent.sh "tests" npm test -w session-digest` → green (one passing bootstrap test).
