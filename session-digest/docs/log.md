@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Added a local README with repo-root and anywhere-safe CLI invocation examples for real Claude session JSONL files.
 - Made the documented `tsx src/cli.ts <path>` invocation execute the CLI instead of silently exiting.
 - Added scoped shell-proxy support for NVIDIA NIM calls so the CLI can use configured proxy env vars without global HTTP transport changes.
 - Wired the fake Deep Agents success path end to end, including prompt ownership, task-message section extraction, and CLI digest writing.
