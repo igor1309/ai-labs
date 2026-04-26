@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Recorded Deep Agents API observations and the Task 8 redraft decision: extract section envelopes from task tool messages correlated by `tool_call_id`.
 - Added digest front matter serialization and fixed six-section Markdown assembly from a shared section-name tuple.
 - Added timestamped digest path computation and disciplined digest writing that creates only the target Markdown file.
 - Added `.env` loading for NVIDIA credentials, `.env.example` bootstrap behavior, required-key validation, and process-env isolation.
