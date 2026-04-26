@@ -28,6 +28,7 @@ Reviewed `session-digest/docs/plans/session-digest-implementation.md` against th
 - Location: `session-digest/docs/plans/session-digest-implementation.md:74`
 - Problem: The plan repeatedly uses `npm test -w session-digest -- --test-only tests/<file>`, but Node's `--test-only` means run tests marked `only`; it does not select a file. This makes the per-task verification command misleading or broken.
 - Fix: Use `node --import tsx --test session-digest/tests/<file>.test.ts` for targeted runs, or change the workspace script so appended file paths are the only test inputs.
+- Resolution: Resolved on 2026-04-26 by adding a `test:file` workspace script that delegates appended file paths to `node --import tsx --test`, replacing every targeted `--test-only` command, and keeping the full-suite gate on `npm test -w session-digest`.
 
 ### Finding 3: Strict TDD Instruction Conflicts with Batched REDs
 

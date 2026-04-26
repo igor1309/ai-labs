@@ -71,8 +71,8 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - TDD: every task starts with a failing test, then minimal code to green, then refactor.
 - **Commit on green, every task.** Each task MUST end with a passing-test commit. Do not start the next task until the previous task's commit lands on a green suite. Do not bundle multiple tasks into one commit. Do not commit on red, ever.
 - Per-project CI isolation (CLAUDE.md): if any CI is added later, it goes in a dedicated `session-digest-core.yml` workflow — but ADR-001 puts CI out of scope for v1, so this plan does NOT add CI.
-- Local test command per task: `node --import tsx --test session-digest/tests/<file>` during a tight iteration loop, or `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/<file>` as the wrapped form.
-- Local iteration without NIM creds: `node --import tsx --test session-digest/tests/ --test-skip-pattern='live nim'`. The live test (Task 9) is unconditionally collected and unconditionally fails on missing creds per spec test 13; the skip pattern is a developer aid for tight iteration loops on non-live tasks, never a CI gate.
+- Local targeted test command per task: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/<file>.test.ts`. Direct tight-loop equivalent: `node --import tsx --test session-digest/tests/<file>.test.ts`.
+- Local iteration without NIM creds: `node --import tsx --test session-digest/tests/*.test.ts --test-skip-pattern='live nim'`. The live test (Task 9) is unconditionally collected and unconditionally fails on missing creds per spec test 13; the skip pattern is a developer aid for tight iteration loops on non-live tasks, never a CI gate.
 - Full-suite gate before commit at the end of each task: `./scripts/run_silent.sh "tests" npm test -w session-digest` AND `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest` MUST both pass before staging files. If either fails, fix on the same task — do not commit.
 - Commits are short, imperative, lowercase per AGENTS.md.
 
@@ -114,7 +114,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - Create `session-digest/tests/_bootstrap.test.ts` containing a single trivially-passing assertion (`test("bootstrap", () => {})`). This file is **kept permanently**, not deleted in Task 2. It guarantees the test runner has at least one test to discover under directory-based discovery and acts as a sanity check that the `tsx` loader is wired correctly. The leading underscore makes its purpose obvious in alphabetical listings.
 - Edit root `package.json`:
   - append `"session-digest"` to `workspaces`;
-  - do NOT modify the existing `node --test` invocation in `scripts.test`. Instead, add a new `scripts["test:session-digest"]` entry equal to `node --import tsx --test session-digest/tests/`, and chain it onto `scripts.test` with ` && npm run test:session-digest`. Hoist `tsx` to the root `devDependencies`. This isolates the `tsx` ESM loader to a child process that only walks `session-digest/tests/`, eliminating loader contamination of legacy `oracle/`, `nomos/`, `web-scout/`, `corpus-scout/`, and `scripts/` test paths.
+  - do NOT modify the existing `node --test` invocation in `scripts.test`. Instead, add a new `scripts["test:session-digest"]` entry equal to `node --import tsx --test session-digest/tests/*.test.ts`, and chain it onto `scripts.test` with ` && npm run test:session-digest`. Hoist `tsx` to the root `devDependencies`. This isolates the `tsx` ESM loader to a child process that only walks `session-digest/tests/*.test.ts`, eliminating loader contamination of legacy `oracle/`, `nomos/`, `web-scout/`, `corpus-scout/`, and `scripts/` test paths.
   - Do NOT migrate to `npm test --workspaces --if-present`. The current root `scripts.test` runs tests from non-workspace paths (`oracle/packages/*`, `oracle/apps/*`, `scripts/release/tests/*`, `scripts/tests/*`) that a workspace-delegated form would silently drop. A workspace migration, if desired later, is its own ADR-able change with explicit decisions about those paths.
 
 **`session-digest/package.json` essentials:**
@@ -123,7 +123,8 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - `engines: { node: ">=20.10 <23" }`.
 - Dependencies: `deepagents`, `@langchain/openai`, `@langchain/core`, `dotenv`.
 - Dev dependencies: `tsx`, `typescript`, `@types/node`.
-- `scripts.test`: `node --import tsx --test tests/`. Directory-based discovery (Node ≥18 walks the dir for `*.test.*` files) avoids shell globstar variance across zsh/bash/sh.
+- `scripts.test`: `node --import tsx --test tests/*.test.ts`.
+- `scripts["test:file"]`: `node --import tsx --test`. This script accepts explicit file paths after `--` and MUST NOT use `--test-only`.
 - No `bin` field. The CLI is invoked via `npx -w session-digest tsx src/cli.ts <path>`.
 
 **`tsconfig.json` essentials:**
@@ -133,7 +134,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 **Steps:**
 
 1. Write `package.json`, `tsconfig.json`, placeholder `src/cli.ts`, `tests/_bootstrap.test.ts`, `.gitignore`.
-2. Update root `package.json`: append `"session-digest"` to workspaces; add `scripts["test:session-digest"]` = `node --import tsx --test session-digest/tests/`; chain it onto `scripts.test` by appending ` && npm run test:session-digest` (do NOT alter the legacy `node --test` invocation); hoist `tsx` to root devDeps. Run `npm install` so the workspace links and the lockfile updates.
+2. Update root `package.json`: append `"session-digest"` to workspaces; add `scripts["test:session-digest"]` = `node --import tsx --test session-digest/tests/*.test.ts`; chain it onto `scripts.test` by appending ` && npm run test:session-digest` (do NOT alter the legacy `node --test` invocation); hoist `tsx` to root devDeps. Run `npm install` so the workspace links and the lockfile updates.
 3. Verify both gates with the bootstrap test:
    - `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest` → green.
    - `./scripts/run_silent.sh "tests" npm test -w session-digest` → green (one passing bootstrap test).
@@ -173,7 +174,7 @@ Tests call `main(argv, stdout, stderr)` in-process with captured streams (`Writa
 
 **Run:**
 
-- `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/cli-args.test.ts`.
+- `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/cli-args.test.ts`.
 - Advisory check (manual review aid, not a gate): `grep -rEn '\bconsole\.' session-digest/src` should produce no matches. Treat any match as a smell to investigate at PR review, not an automatic failure (false positives in comments/strings are possible).
 
 **Commit:** `cli: enforce single positional argument`.
@@ -207,7 +208,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `validateInputPath(path: string, fsLike: Pick<typeof fs.promises, "stat">): Promise<void>` throws a typed `InputError` per failure mode; `cli.main` catches and translates to `(exitCode, stderrMessage)`. `fsLike` is supplied by `cli.main` from `deps.fsLike ?? fs.promises` (Task 2 signature). Production code under `inputs.ts` MUST route every fs operation through `fsLike` — direct `import * as fs from "node:fs"` inside `inputs.ts` is a layering violation that the happy-path recording test is designed to catch.
 - 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size and file-type checks both use `fsLike.stat`. After `stat`, branch on `stat.isFile()` (false → `InputError.NotAFile`) before checking size. Broken symlinks surface as `ENOENT` from `stat` and map to `InputError.MissingFile`. `EACCES` from `stat` (or any subsequent `fsLike.open`/`fsLike.readFile`) maps to `InputError.Unreadable`.
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/inputs.test.ts`.
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/inputs.test.ts`.
 
 **Commit:** `cli: validate input file presence, readability, size`.
 
@@ -253,7 +254,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - Records of any other shape (including `tool_use`, `tool_result`, `system`, summary, unknown) are skipped without error.
 - Zero usable messages after at least one parsed line → `InputError.NoUsableMessages`.
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/inputs.test.ts`.
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/inputs.test.ts`.
 
 **Commit:** `inputs: parse JSONL best-effort with whitespace tolerance`.
 
@@ -291,7 +292,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - No model-validation network call.
 - Do not import `agents.ts` from `config.ts`.
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/config.test.ts`.
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/config.test.ts`.
 
 **Commit:** `config: bootstrap .env.example and validate required keys`.
 
@@ -321,7 +322,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `writeDigest(path, body, fsLike)` creates the parent dir (`fsLike.mkdir({ recursive: true })`) and writes only the body via `fsLike.writeFile`. No copy of input. `fsLike` flows in from `cli.main`.
 - `cli.main` calls `clock()` **exactly once**, stores the result as `nowUtc`, and threads the same instant into both `computeDigestPath` and the front-matter assembler in Task 7. Two `new Date()` calls straddling a second boundary would otherwise let the filename's timestamp diverge from `generated_at`; one call removes that flake source. The single-call invariant is enforced at runtime by Task 7's advancing-clock test and statically by Task 7's `test_cli_main_and_output_contain_no_direct_date_construction` check (which forbids `new Date(` and `Date.now(` in `cli.ts` + `output.ts`; the only sanctioned `Date` construction lives in `clock.ts`).
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/output.test.ts`.
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/output.test.ts`.
 
 **Commit:** `output: compute timestamped digest path and write body`.
 
@@ -362,7 +363,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `FrontMatter` is a `type` with the five required fields; serializer emits YAML between `---` lines (hand-rolled — do not introduce a YAML lib for five string fields).
 - `generated_at` is serialized as `nowUtc.toISOString().replace(/\.\d{3}Z$/, "Z")` (drop milliseconds, keep `Z`). `nowUtc: Date` is threaded in from `cli.main` (Task 6 GREEN) — the front-matter assembler MUST NOT call `new Date(...)` itself; doing so would both duplicate the clock reach and break Task 7 RED's static count assertion.
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/output.test.ts`.
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/output.test.ts`.
 
 **Commit:** `output: assemble front matter and six-section body`.
 
@@ -471,7 +472,7 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
 - `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.js`, per NodeNext ESM import specifier rules) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → `await fsLike.mkdir(baseDir, { recursive: true })` (preflight: ensures `<baseDir>` exists for `loadConfig`'s `.env.example` bootstrap on first run; idempotent on subsequent runs; uses the `mkdir` already declared in `MainDeps.fsLike` Pick set at line 168 — no widening) → `await loadConfig(baseDir, fsLike)` (Task 5 signature; `loadConfig` is `async` and routes all `.env` reads/`.env.example` writes through `fsLike`) → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → run agent with `model` → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-fake.test.ts`.
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/agents-fake.test.ts`.
 
 **Commit:** `agents: wire deep agents end-to-end with fake llm test`.
 
@@ -510,7 +511,7 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
 - Test exists and exercises `cli.main`.
 - No production code changes expected unless an integration bug surfaces; if so, fix it minimally inside `agents.ts`.
 
-**Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-live.test.ts` (requires real `NVIDIA_API_KEY` / `NVIDIA_MODEL`; this test is intentionally not isolated from the network).
+**Run:** `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/agents-live.test.ts` (requires real `NVIDIA_API_KEY` / `NVIDIA_MODEL`; this test is intentionally not isolated from the network).
 
 **Commit:** `tests: live nim smoke against real endpoint`.
 
