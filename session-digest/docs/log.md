@@ -2,6 +2,8 @@
 
 ## 2026-04-26
 
+- Added JSON salvage for fenced/prose-wrapped Deep Agents task outputs and hardened parent delegation to pass transcript JSON into each subagent task.
+- Confirmed full-transcript delegation for the larger real session now hits repeated `x-ai/grok-4.1-fast` upstream timeouts through production Nomos.
 - Confirmed the production Nomos path reaches `x-ai/grok-4.1-fast` for the larger real session, but the run fails because a Deep Agents task returns non-JSON output.
 - Confirmed the local Nomos proxy can route `session-digest` through OpenRouter `x-ai/grok-4.1-fast` and write a real small-session digest.
 - Made Nomos the preferred configured provider so project-scoped proxy usage wins over direct OpenRouter once `NOMOS_API_KEY` is present.
