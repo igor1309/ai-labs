@@ -196,19 +196,87 @@ function roleFromToolCallArgs(args: Record<string, unknown>): AgentRole | undefi
 }
 
 function parseSectionEnvelope(content: string): { sections: Record<string, unknown> } {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    throw new AgentError("Deep Agents task output was not valid JSON.");
-  }
+  const parsed = parseJsonTaskOutput(content);
 
   if (!isRecord(parsed) || !isRecord(parsed.sections)) {
     throw new AgentError("Deep Agents task output did not include sections.");
   }
 
   return { sections: parsed.sections };
+}
+
+function parseJsonTaskOutput(content: string): unknown {
+  const candidates = [
+    content,
+    fencedJsonContent(content),
+    firstJsonObjectContent(content),
+  ].filter((value): value is string => value !== undefined);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+  }
+
+  throw new AgentError("Deep Agents task output was not valid JSON.");
+}
+
+function fencedJsonContent(content: string): string | undefined {
+  const match = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(content);
+
+  return match?.[1];
+}
+
+function firstJsonObjectContent(content: string): string | undefined {
+  const start = content.indexOf("{");
+
+  if (start === -1) {
+    return undefined;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let index = start; index < content.length; index += 1) {
+    const character = content[index];
+
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+
+    if (character === "\\") {
+      isEscaped = inString;
+      continue;
+    }
+
+    if (character === "\"") {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (character === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (character === "}") {
+      depth -= 1;
+
+      if (depth === 0) {
+        return content.slice(start, index + 1);
+      }
+    }
+  }
+
+  return undefined;
 }
 
 function requireCompleteSections(sections: Partial<Record<SectionName, string>>): Record<SectionName, string> {

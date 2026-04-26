@@ -288,6 +288,106 @@ test("test_run_extracts_sections_from_task_tool_messages_by_tool_call_id", async
   });
 });
 
+test("test_run_extracts_sections_from_fenced_json_task_output", async () => {
+  const agent = {
+    invoke: async () => ({
+      messages: [
+        new AIMessage({
+          content: "",
+          tool_calls: [
+            { id: "call-extractor", name: "task", args: { subagent_type: "Extractor" } },
+            { id: "call-improver", name: "task", args: { subagent_type: "Improver" } },
+            { id: "call-evidence", name: "task", args: { subagent_type: "Evidence checker" } },
+          ],
+        }),
+        new ToolMessage({
+          name: "task",
+          tool_call_id: "call-extractor",
+          content: fencedJson({
+            sections: {
+              "Session summary": "summary",
+              "Outcome": "outcome",
+              "Useful decisions": "decisions",
+              "Failure or friction points": "friction",
+            },
+          }),
+        }),
+        new ToolMessage({
+          name: "task",
+          tool_call_id: "call-improver",
+          content: fencedJson({ sections: { "Next-session improvements": "improve" } }),
+        }),
+        new ToolMessage({
+          name: "task",
+          tool_call_id: "call-evidence",
+          content: fencedJson({ sections: { "Evidence notes": "evidence" } }),
+        }),
+      ],
+    }),
+  } as Parameters<typeof run>[1];
+
+  const sections = await run([], agent);
+
+  assert.deepEqual(sections, {
+    "Session summary": "summary",
+    "Outcome": "outcome",
+    "Useful decisions": "decisions",
+    "Failure or friction points": "friction",
+    "Next-session improvements": "improve",
+    "Evidence notes": "evidence",
+  });
+});
+
+test("test_run_extracts_sections_from_prose_wrapped_json_task_output", async () => {
+  const agent = {
+    invoke: async () => ({
+      messages: [
+        new AIMessage({
+          content: "",
+          tool_calls: [
+            { id: "call-extractor", name: "task", args: { subagent_type: "Extractor" } },
+            { id: "call-improver", name: "task", args: { subagent_type: "Improver" } },
+            { id: "call-evidence", name: "task", args: { subagent_type: "Evidence checker" } },
+          ],
+        }),
+        new ToolMessage({
+          name: "task",
+          tool_call_id: "call-extractor",
+          content: proseWrappedJson({
+            sections: {
+              "Session summary": "summary",
+              "Outcome": "outcome",
+              "Useful decisions": "decisions",
+              "Failure or friction points": "friction",
+            },
+          }),
+        }),
+        new ToolMessage({
+          name: "task",
+          tool_call_id: "call-improver",
+          content: proseWrappedJson({ sections: { "Next-session improvements": "improve" } }),
+        }),
+        new ToolMessage({
+          name: "task",
+          tool_call_id: "call-evidence",
+          content: proseWrappedJson({ sections: { "Evidence notes": "evidence" } }),
+        }),
+      ],
+    }),
+  } as Parameters<typeof run>[1];
+
+  const sections = await run([], agent);
+
+  assert.deepEqual(sections, {
+    "Session summary": "summary",
+    "Outcome": "outcome",
+    "Useful decisions": "decisions",
+    "Failure or friction points": "friction",
+    "Next-session improvements": "improve",
+    "Evidence notes": "evidence",
+  });
+});
+
 test("test_invalid_creds_fail_on_first_model_call_not_before", async (t) => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
   t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
@@ -740,6 +840,14 @@ function sectionBody(markdown: string, sectionName: string): string {
     .split("\n")
     .filter(($0) => $0.trim() !== "" && !$0.startsWith("## "))
     .join("\n");
+}
+
+function fencedJson(value: unknown): string {
+  return ["```json", JSON.stringify(value), "```"].join("\n");
+}
+
+function proseWrappedJson(value: unknown): string {
+  return ["Here is the requested JSON:", JSON.stringify(value), "Done."].join("\n");
 }
 
 function h2Headers(markdown: string): string[] {
