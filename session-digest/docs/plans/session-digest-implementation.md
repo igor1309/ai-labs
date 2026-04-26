@@ -12,20 +12,11 @@ description: "Implementation plan for the session-digest CLI prototype defined b
 
 **Source of truth:** the spec. Acceptance is the 18 acceptance behaviors enumerated in `specs/session-digest.md` "Tests (required)" plus the behavior rules. Do not invent tests outside that envelope; do not skip tests inside it.
 
-## Pre-execution blockers
-
-These MUST be resolved before Task 4 starts. They are spec-level questions, not plan-level decisions:
-
-- **JSONL parse-error semantics.** The spec says "skip records with unknown shapes" (line 119) and "fail with no-usable-messages only when zero usable messages are found" (line 122), but spec test 5 says "Non-JSONL input → error". A line that looks like JSON but fails `JSON.parse` could be either case. The spec must spell out one rule before Task 4:
-  - **Lenient:** unparseable lines are skipped like unknown shapes; the "non-JSONL" error fires only when zero non-blank lines parse to JSON. Recommended — matches "best-effort" framing.
-  - **Strict:** any unparseable non-blank line ⇒ "non-JSONL" error.
-  Either is implementable; pick one in the spec, then Task 4 inherits it.
-
 ## Tech stack
 
 - Node.js ≥ 20.10, < 23. TypeScript, ESM modules.
 - [`deepagents`](https://www.npmjs.com/package/deepagents) (LangChain Deep Agents, TypeScript port).
-- [`@langchain/openai`](https://www.npmjs.com/package/@langchain/openai) `ChatOpenAI` configured for NIM via OpenAI-compatible endpoint at `https://integrate.api.nvidia.com/v1`. ADR-001 forbids a provider abstraction layer; `ChatOpenAI` is used directly. The exact constructor field names (`apiKey` vs `openAIApiKey`, top-level `baseURL` vs nested `configuration.baseURL`) are discovered against the installed version during Task 8 — see [langchainjs#7356](https://github.com/langchain-ai/langchainjs/issues/7356).
+- [`@langchain/openai`](https://www.npmjs.com/package/@langchain/openai) `ChatOpenAI` configured for NIM via OpenAI-compatible endpoint at `https://integrate.api.nvidia.com/v1`. ADR-001 forbids a provider abstraction layer; `ChatOpenAI` is used directly. The exact constructor field names (`apiKey` vs `openAIApiKey`, top-level `baseURL` vs nested `configuration.baseURL`) are discovered during the Task 7.5 spike against the installed version and pinned into Task 8 before any RED test is written — see [langchainjs#7356](https://github.com/langchain-ai/langchainjs/issues/7356).
 - `dotenv` for `~/.session-digests/.env`.
 - `node:test` + `node:assert/strict` for tests (matches `corpus-scout` precedent).
 - `tsx` as the runtime loader so `tsc --noEmit` is the only TypeScript build gate.
@@ -47,18 +38,19 @@ session-digest/
       improver.md
       evidence-checker.md
   tests/
-    scaffold.test.ts      # placeholder; removed in Task 2
+    _bootstrap.test.ts      # permanent — guarantees runner has ≥1 test
     cli-args.test.ts
     inputs.test.ts
     config.test.ts
     output.test.ts
-    agents-fake.test.ts   # fake-LLM integration; happy path
-    agents-live.test.ts   # live NIM smoke; hits the real NIM endpoint
+    agents-fake.test.ts     # fake-LLM integration; happy path
+    agents-live.test.ts     # live NIM smoke; hits the real NIM endpoint
     fixtures/
       session.valid.jsonl
       session.empty.jsonl
       session.no-usable.jsonl
       session.whitespace.jsonl
+      session.garbage-then-valid.jsonl
       session.not-jsonl.txt
 ```
 
@@ -79,6 +71,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - **Commit on green, every task.** Each task MUST end with a passing-test commit. Do not start the next task until the previous task's commit lands on a green suite. Do not bundle multiple tasks into one commit. Do not commit on red, ever.
 - Per-project CI isolation (CLAUDE.md): if any CI is added later, it goes in a dedicated `session-digest-core.yml` workflow — but ADR-001 puts CI out of scope for v1, so this plan does NOT add CI.
 - Local test command per task: `node --import tsx --test session-digest/tests/<file>` during a tight iteration loop, or `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/<file>` as the wrapped form.
+- Local iteration without NIM creds: `node --import tsx --test session-digest/tests/ --test-skip-pattern='live nim'`. The live test (Task 9) is unconditionally collected and unconditionally fails on missing creds per spec test 13; the skip pattern is a developer aid for tight iteration loops on non-live tasks, never a CI gate.
 - Full-suite gate before commit at the end of each task: `./scripts/run_silent.sh "tests" npm test -w session-digest` AND `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest` MUST both pass before staging files. If either fails, fix on the same task — do not commit.
 - Commits are short, imperative, lowercase per AGENTS.md.
 
@@ -109,7 +102,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 
 ## Task 1 — Scaffold the TypeScript workspace
 
-**Goal:** bootable, empty package wired into the root npm workspaces; `tsc --noEmit` and `node --test` both green with one trivially-passing scaffold test.
+**Goal:** bootable, empty package wired into the root npm workspaces; `tsc --noEmit` and `node --test` both green with one trivially-passing bootstrap test.
 
 **Files:**
 
@@ -117,11 +110,11 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - Create `session-digest/tsconfig.json`.
 - Create `session-digest/src/cli.ts` (one-line `export {}` placeholder).
 - Create `session-digest/.gitignore` (`node_modules/`, `dist/`, `*.log`).
-- Create `session-digest/tests/scaffold.test.ts` containing a single trivially-passing assertion. This test is removed in Task 2 once real CLI tests land. It exists only to make Task 1's "tests pass" gate deterministic across Node minor versions.
+- Create `session-digest/tests/_bootstrap.test.ts` containing a single trivially-passing assertion (`test("bootstrap", () => {})`). This file is **kept permanently**, not deleted in Task 2. It guarantees the test runner has at least one test to discover under directory-based discovery and acts as a sanity check that the `tsx` loader is wired correctly. The leading underscore makes its purpose obvious in alphabetical listings.
 - Edit root `package.json`:
   - append `"session-digest"` to `workspaces`;
-  - migrate root `scripts.test` from a single hard-coded glob list to a workspace-delegated form: `npm test --workspaces --if-present`. Each existing workspace gains its own `scripts.test` mirroring its current root glob, so behavior is preserved. `session-digest` then declares its own `scripts.test` with the `tsx` loader. This matches CLAUDE.md's per-project isolation principle and avoids spreading TS-loader flags across JS workspaces.
-  - if the workspace migration is judged out of scope for this plan, fall back to: prepend `--import tsx` to the existing `node --test` invocation, append `session-digest/tests/**/*.test.ts` to the glob list, and hoist `tsx` to the root `devDependencies`. Document the choice at commit time.
+  - prepend `--import tsx` to the existing `node --test` invocation, append `session-digest/tests/` to the path list, and hoist `tsx` to the root `devDependencies`.
+  - Do NOT migrate to `npm test --workspaces --if-present`. The current root `scripts.test` runs tests from non-workspace paths (`oracle/packages/*`, `oracle/apps/*`, `scripts/release/tests/*`, `scripts/tests/*`) that a workspace-delegated form would silently drop. A workspace migration, if desired later, is its own ADR-able change with explicit decisions about those paths.
 
 **`session-digest/package.json` essentials:**
 
@@ -129,7 +122,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - `engines: { node: ">=20.10 <23" }`.
 - Dependencies: `deepagents`, `@langchain/openai`, `@langchain/core`, `dotenv`.
 - Dev dependencies: `tsx`, `typescript`, `@types/node`.
-- `scripts.test`: `node --import tsx --test tests/**/*.test.ts`.
+- `scripts.test`: `node --import tsx --test tests/`. Directory-based discovery (Node ≥18 walks the dir for `*.test.*` files) avoids shell globstar variance across zsh/bash/sh.
 - No `bin` field. The CLI is invoked via `npx -w session-digest tsx src/cli.ts <path>`.
 
 **`tsconfig.json` essentials:**
@@ -138,15 +131,15 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 
 **Steps:**
 
-1. Write `package.json`, `tsconfig.json`, placeholder `src/cli.ts`, scaffold test, `.gitignore`.
-2. Update root `package.json` (workspaces + delegated test script — or fallback path), add per-workspace `scripts.test` to existing JS workspaces if the delegated form is chosen, and run `npm install` so the workspace links and the lockfile updates.
-3. Verify both gates with the scaffold test:
+1. Write `package.json`, `tsconfig.json`, placeholder `src/cli.ts`, `tests/_bootstrap.test.ts`, `.gitignore`.
+2. Update root `package.json`: append `"session-digest"` to workspaces; prepend `--import tsx` to the existing `node --test` invocation; append `session-digest/tests/` to its path list; hoist `tsx` to root devDeps. Run `npm install` so the workspace links and the lockfile updates.
+3. Verify both gates with the bootstrap test:
    - `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest` → green.
-   - `./scripts/run_silent.sh "tests" npm test -w session-digest` → green (one passing scaffold test).
-4. Run the full root `npm test` to confirm all existing JS workspaces still pass after the root-script change. Treat any regression as a Task 1 blocker.
+   - `./scripts/run_silent.sh "tests" npm test -w session-digest` → green (one passing bootstrap test).
+4. Run the full root `npm test` to confirm all existing test paths (including `oracle/*` and `scripts/*` non-workspace paths) still pass. Treat any regression as a Task 1 blocker.
 5. Commit: `scaffold session-digest typescript workspace`.
 
-**Verification:** typecheck passes; `node --test` runs and exits 0 with one passing scaffold test; root `npm test` is unchanged in behavior for all other workspaces.
+**Verification:** typecheck passes; `node --test` runs and exits 0 with one passing bootstrap test; root `npm test` is unchanged in behavior for all other test paths.
 
 ---
 
@@ -158,7 +151,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 
 - `session-digest/src/cli.ts` (replace placeholder with real entry).
 - `session-digest/tests/cli-args.test.ts`.
-- Delete `session-digest/tests/scaffold.test.ts` (now superseded by real tests).
+- Keep `session-digest/tests/_bootstrap.test.ts` as-is.
 
 **RED — write failing tests first:**
 
@@ -179,7 +172,7 @@ Tests call `main(argv, stdout, stderr)` in-process with captured streams (`Writa
 **Run:**
 
 - `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/cli-args.test.ts`.
-- `! grep -rn "console\\." session-digest/src` — must return no matches. Treat any match as a Task 2 failure.
+- Advisory check (manual review aid, not a gate): `grep -rEn '\bconsole\.' session-digest/src` should produce no matches. Treat any match as a smell to investigate at PR review, not an automatic failure (false positives in comments/strings are possible).
 
 **Commit:** `cli: enforce single positional argument`.
 
@@ -198,16 +191,17 @@ Tests call `main(argv, stdout, stderr)` in-process with captured streams (`Writa
 **RED:**
 
 - `test_missing_file_returns_error` (path under `mkdtemp()` that does not exist).
-- `test_unreadable_file_returns_error` (`chmod(path, 0o000)` inside try/finally; restore mode in finally so cleanup works).
+- `test_path_pointing_at_directory_returns_error` (path is a directory, not a file). Replaces the prior `chmod(path, 0o000)` approach because mode-000 is bypassed under euid=0 and can be overridden by macOS extended ACLs. A directory-as-input fails reliably under all dev environments and covers a real user mistake.
+- `test_path_pointing_at_broken_symlink_returns_error` (`fs.symlink('/nonexistent', linkPath)`).
 - `test_empty_file_returns_error` (write zero bytes).
-- `test_file_over_one_megabyte_returns_oversize_error` (write 1 MB + 1 byte).
+- `test_file_over_one_megabyte_returns_oversize_error` (write 1 MB + 1 byte). Also asserts `stderr` contains the substring `1 MB` to pin the user-facing wording without locking exact prose.
 
 Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`, no output file written under a temp `HOME`.
 
 **GREEN:**
 
 - `validateInputPath(path: string): Promise<void>` throws a typed `InputError` per failure mode; `cli.main` catches and translates to `(exitCode, stderrMessage)`.
-- 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size check uses `fs.stat`.
+- 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size and file-type checks both use `fs.stat`. After `stat`, branch on `stat.isFile()` (false → `InputError.NotAFile`) before checking size. Broken symlinks surface as `ENOENT` from `stat` and map to `InputError.MissingFile`.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/inputs.test.ts`.
 
@@ -217,33 +211,39 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 ## Task 4 — JSONL parsing rules (spec tests 5, 6, 18)
 
-**Goal:** best-effort JSONL extraction matching the spec.
-
-**Pre-condition:** the JSONL parse-error semantics under "Pre-execution blockers" are pinned in the spec. Do not start Task 4 until that is done.
+**Goal:** best-effort JSONL extraction matching the spec's pinned lenient semantics and Claude Code message shape.
 
 **Files:**
 
-- `session-digest/src/inputs.ts` — extend with `parseSession(path): Promise<Message[]>`.
+- `session-digest/src/inputs.ts` — extend with `parseSession(path): Promise<Message[]>` where `Message = { role: string; content: string }` (post-flatten).
 - `session-digest/tests/inputs.test.ts` — extend.
-- Fixtures: `session-digest/tests/fixtures/session.not-jsonl.txt`, `session.no-usable.jsonl`, `session.whitespace.jsonl`, `session.valid.jsonl`.
+- Fixtures (sampled or hand-built to match real Claude Code shape):
+  - `session-digest/tests/fixtures/session.not-jsonl.txt` — no parseable lines.
+  - `session.no-usable.jsonl` — only `tool_use` / `tool_result` / unknown-shape records.
+  - `session.whitespace.jsonl` — interleaved blank and whitespace-only lines around one usable record.
+  - `session.valid.jsonl` — at least one user record and one assistant record using the nested `{type, message: {role, content}}` shape with `content` as both string form and array-of-text-blocks form, plus at least one interleaved `tool_use` record that MUST be skipped without error.
+  - `session.garbage-then-valid.jsonl` — one unparseable line followed by one valid usable record (lenient-interpretation regression fixture).
 
 **RED:**
 
-- `test_non_jsonl_input_returns_error` (uses `not-jsonl.txt` — no parseable lines under either interpretation).
-- `test_jsonl_with_zero_usable_messages_returns_error` (records with empty `role`/`content` or unknown shapes).
-- `test_jsonl_with_interleaved_blank_and_whitespace_lines_parses_when_one_usable_message_present` (`whitespace.jsonl`).
-- One additional test pinned to the chosen interpretation:
-  - **Lenient interpretation:** `test_unparseable_line_is_skipped_when_other_lines_yield_usable_messages` — a fixture with one garbage line and one valid usable record returns the valid record without raising "non-JSONL".
-  - **Strict interpretation:** `test_any_unparseable_line_triggers_non_jsonl_error_even_when_other_lines_are_valid`.
+- `test_non_jsonl_input_returns_error` (uses `not-jsonl.txt`).
+- `test_jsonl_with_only_tool_use_and_unknown_shapes_returns_no_usable_messages_error` (uses `no-usable.jsonl`).
+- `test_jsonl_with_interleaved_blank_and_whitespace_lines_parses_when_one_usable_message_present` (uses `whitespace.jsonl`).
+- `test_unparseable_line_is_skipped_when_other_lines_yield_usable_messages` (uses `garbage-then-valid.jsonl`; pins the lenient parse-error semantics from the spec).
+- `test_content_array_with_text_blocks_is_flattened_to_concatenated_text` — record with `message.content` = `[{type:"text",text:"a"},{type:"text",text:"b"},{type:"tool_use",...}]` flattens to `"ab"` and is usable.
+- `test_content_array_with_no_text_blocks_is_not_usable` — record with only `tool_use` blocks under `message.content` is skipped.
 
 **GREEN:**
 
 - Iterate lines (`readline` on a stream, or split-then-parse for ≤1 MB inputs).
 - Lines that are empty after `.trim()` are skipped silently.
-- Apply the parse-error rule pinned in the spec.
-- A record is "usable" iff `role` and `content` are both non-empty strings.
-- Records with unknown shapes are skipped (no error).
-- Zero usable messages → `InputError.NoUsableMessages`.
+- Lines that fail `JSON.parse` are skipped silently. Track a counter of "parsed JSON values"; if zero non-blank lines parse, raise `InputError.NonJsonl`.
+- For each parsed JSON value, evaluate against the spec's "usable Claude Code message" shape: `record.type ∈ {"user","assistant"}`, `record.message.role` is a non-empty string, and `flattenContent(record.message.content)` returns a non-empty string. `flattenContent`:
+  - if `content` is a string, return it;
+  - if `content` is an array, return the concatenation of `block.text` for each entry where `block.type === "text"` and `block.text` is a non-empty string;
+  - otherwise return `""`.
+- Records of any other shape (including `tool_use`, `tool_result`, `system`, summary, unknown) are skipped without error.
+- Zero usable messages after at least one parsed line → `InputError.NoUsableMessages`.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/inputs.test.ts`.
 
@@ -265,8 +265,8 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 **RED:**
 
 - `test_missing_env_creates_env_example_and_exits_nonzero` — asserts `.env.example` is created with the documented contents AND a real `.env` is **not** created (spec: never create real `.env` with empty secrets).
-- `test_missing_api_key_returns_error` — `.env` exists but `NVIDIA_API_KEY` is empty/absent.
-- `test_missing_model_returns_error` — `.env` exists but `NVIDIA_MODEL` is empty/absent.
+- `test_missing_api_key_returns_error` — `.env` exists but `NVIDIA_API_KEY` is empty/absent. `stderr` MUST contain the substring `NVIDIA_API_KEY`.
+- `test_missing_model_returns_error` — `.env` exists but `NVIDIA_MODEL` is empty/absent. `stderr` MUST contain the substring `NVIDIA_MODEL`.
 
 > The "no preflight call" rule from spec line 111 is a non-functional requirement that no automated test can prove cleanly. The user-visible behaviors that depend on it (fail-fast on missing creds) are already covered by spec tests 7 and 8 above. The structural defense — `config.ts` does not import `agents.ts` — is enforced implicitly by the file's actual import list and reviewable at PR time. No dedicated "no-preflight" test is added.
 
@@ -329,7 +329,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
   - `title === "Session Digest"` (literal — pinned by ADR-001 front-matter example).
   - `provider === "nvidia_nim"` (literal).
   - `model === <configured NVIDIA_MODEL>`.
-  - `source_path === <absolute path of input>` (`path.resolve`).
+  - `source_path === path.resolve(<cli arg>)` (no symlink follow; do NOT use `fs.realpath`). Both production code and the test MUST use `path.resolve` to keep results consistent across macOS (`/var → /private/var` symlink) and Linux dev machines.
   - `generated_at` matches `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/` (RFC 3339 / ISO 8601, second precision, literal `Z`).
 - `test_body_contains_six_h2_sections_in_documented_order`:
   - exact sequence: `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`, `Next-session improvements`, `Evidence notes`.
@@ -348,44 +348,87 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 ---
 
+## Task 7.5 — Deep Agents API spike (no commit unless plan changes)
+
+**Goal:** verify `deepagents` and `@langchain/openai` API shape against actually-installed versions, before any Task 8 RED test is written. This task pays down the integration risk that would otherwise force a Task 8 mid-flight redesign.
+
+**Steps:**
+
+1. From `session-digest/`, install the runtime deps if not yet installed: `deepagents`, `@langchain/openai`, `@langchain/core`.
+2. Write a throwaway probe script (e.g., `session-digest/scripts/probe-deepagents.ts`, ignored under `.gitignore`'s pattern or simply deleted before commit) that:
+   - constructs `createDeepAgent` with three trivial subagents named per ADR-001 (`Extractor`, `Improver`, `Evidence checker`);
+   - passes a `FakeListChatModel` (from `@langchain/core/utils/testing`) seeded with ~50 sentinel responses tagged with their array index;
+   - invokes the agent on a 3-message fixture;
+   - logs: total `model._call` invocation count, the `name` field accepted by `createDeepAgent` (does it reject spaces? require kebab-case?), and the constructor field names that `ChatOpenAI` accepts for NIM (`apiKey` vs `openAIApiKey`, top-level `baseURL` vs `configuration: { baseURL }`).
+3. Record the findings in this plan as Task 8 amendments:
+   - **Subagent name format** — pin kebab-case ids vs ADR prose names; if kebab-case is required, document the mapping in `agents.ts`.
+   - **Model constructor field names** — pin literal field names in `agents.ts`.
+   - **LLM call count per run** — pin the canned-response array length needed by the fake-LLM test, OR switch to a routing fake (see Task 8) if call ordering is non-trivial.
+4. Delete the probe script.
+
+**Verification:** the three pinned values are written into Task 8's "Architecture" subsection before Task 8 RED begins.
+
+**No commit** unless the spike surfaces a finding that requires a plan amendment (in which case the amendment is a docs-only commit and Task 8 starts on the amended plan).
+
+---
+
 ## Task 8 — Deep Agents wiring + happy path (spec tests 10, 11)
 
 **Goal:** end-to-end success with a fake LLM. Subagent prompts are first-class artifacts of this task — quality of the digest is dominated by them.
+
+**Pre-condition:** Task 7.5 has been run; subagent name format, model constructor field names, and per-run LLM call count are pinned in this section.
 
 **Files:**
 
 - `session-digest/src/agents.ts`.
 - `session-digest/src/cli.ts` — wire the full flow.
-- `session-digest/src/prompts/extractor.md`, `improver.md`, `evidence-checker.md` — checked-in prompt files. Each prompt names its inputs (parsed messages, prior subagent outputs) and the output schema (which sections it owns).
+- `session-digest/src/prompts/extractor.md`, `improver.md`, `evidence-checker.md` — checked-in prompt files. Each prompt names its inputs (parsed messages, prior subagent outputs) and the output schema (named sections in a JSON envelope; see "Section extraction strategy" below).
 - `session-digest/tests/agents-fake.test.ts`.
 - `session-digest/tests/fixtures/session.valid.jsonl`.
 
 **Architecture (per ADR-001):**
 
-- One Deep Agent built via `createDeepAgent` with exactly three subagents matching the ADR-001 roles: Extractor, Improver, Evidence checker. The mapping from ADR prose names to `createDeepAgent`'s `name` field is verified during implementation against the installed `deepagents` version's name validation (spaces, casing). If `deepagents` rejects spaces, normalize to kebab-case ids while keeping ADR prose as the display label in prompts.
-- One model instance (`ChatOpenAI` configured for NIM), shared across all subagents — pass it via `createDeepAgent`'s `model` option so subagents inherit it.
-- Subagents return structured section content per their prompt; the orchestrator hands sections to `assembleDigest`.
-- No provider abstraction layer — `ChatOpenAI` is constructed directly inside `agents.ts`. The exact constructor field names (`apiKey`/`openAIApiKey`, top-level `baseURL` vs `configuration: { baseURL }`) are determined against the installed version per [langchainjs#7356](https://github.com/langchain-ai/langchainjs/issues/7356) and pinned in `agents.ts`. The fake-LLM test (below) is the regression gate.
+- One Deep Agent built via `createDeepAgent` with exactly three subagents matching the ADR-001 roles: Extractor, Improver, Evidence checker. Subagent id format is whatever Task 7.5 pinned (kebab-case if required by the installed `deepagents` version; ADR prose names otherwise). Display labels in prompts always use ADR prose.
+- One model instance (`ChatOpenAI` configured for NIM), shared across all subagents — passed via `createDeepAgent`'s `model` option so subagents inherit it.
+- No provider abstraction layer — `ChatOpenAI` is constructed directly inside `agents.ts`. Constructor field names are pinned by Task 7.5; if [langchainjs#7356](https://github.com/langchain-ai/langchainjs/issues/7356) bites, switch to nested `configuration: { baseURL }` form per the spike's findings.
+
+**Section extraction strategy (pinned):**
+
+Each subagent's prompt MUST instruct the model to emit a single JSON object as its final response, with the shape:
+
+```
+{ "sections": { "<Section Name>": "<markdown body>", ... } }
+```
+
+The orchestrator parses each subagent's final message via `withStructuredOutput(z.object({ sections: z.record(z.string()) }))` (or, if `withStructuredOutput` does not chain through `createDeepAgent`, by parsing the final assistant message as JSON inside `agents.run`). Section ownership:
+
+- Extractor → `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`.
+- Improver → `Next-session improvements`.
+- Evidence checker → `Evidence notes`.
+
+The orchestrator merges the three `sections` maps into one `Record<SectionName, string>` and passes it to `assembleDigest`. A missing required section MUST raise an error inside `agents.run` (caught by `cli.main` → non-zero exit). This makes section extraction deterministic and testable with a routing fake.
 
 **Test injection:**
 
-- `agents.buildAgent({ model })` accepts a model object. Tests pass a `FakeListChatModel` (from `@langchain/core/utils/testing`) returning canned section text per role.
-- `cli.main` calls `agents.buildAgent({ model: defaultNimModel(config) })`; tests bypass the default by calling `agents.run(messages, fakeModel)` directly.
+- `agents.buildAgent({ model })` accepts a model object.
+- Tests pass a `RoutingFake` chat model (small custom subclass of `BaseChatModel` or wrapper around `FakeListChatModel`) that returns a canned response keyed by substring match on the incoming prompt: when the prompt contains `Extractor`, return the Extractor JSON envelope; same for Improver and Evidence checker. This eliminates dependence on the planner's call-ordering and the per-run call count.
+- `cli.main` calls `agents.buildAgent({ model: defaultNimModel(config) })`; tests bypass the default by calling `agents.run(messages, routingFake)` directly.
 
 **RED:**
 
 - `test_valid_session_produces_digest_at_expected_path` — given the fixture and a temp `HOME`, the run writes a Markdown file under `<HOME>/.session-digests/`; file exists; body has the six sections in order.
 - `test_stdout_contains_only_created_digest_path` — assert exact equality (path string + single trailing `\n`) and that `stderr` is empty on success.
 - `test_each_section_has_at_least_one_non_blank_line_of_content` — for every H2 in the generated digest, assert there is at least one non-blank line between this header and the next (or EOF). This is a structural quality gate that catches the empty-agent failure mode; it does not assert any specific content.
+- `test_missing_required_section_in_subagent_output_fails_run` — feed the routing fake a malformed Improver response (`{"sections": {}}`); assert `cli.main` returns non-zero with a concise stderr.
 
 **GREEN:**
 
 - Implement `agents.run(messages, model): Promise<Record<SectionName, string>>` (section name → content).
 - Write the three prompt files. Each prompt:
   - states its input shape;
-  - states its output schema (named sections, in Markdown);
+  - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with the exact section names this subagent owns enumerated);
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
-- `cli.main` flow: validate argv → validate input → parse JSONL → load config → build NIM model from config → run agent → assemble digest → write file → write absolute path to stdout → return 0.
+- `cli.main` flow: validate argv → validate input → parse JSONL → load config → build NIM model from config → run agent → merge sections → assemble digest → write file → write absolute path to stdout → return 0.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-fake.test.ts`.
 
