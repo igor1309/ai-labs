@@ -46,6 +46,7 @@ Reviewed `session-digest/docs/plans/session-digest-implementation.md` against th
 - Location: `session-digest/docs/plans/session-digest-implementation.md:13`
 - Problem: The plan says not to invent tests outside the spec envelope, but later adds many structural and supporting tests, and the done criteria explicitly include supporting tests. That creates permission ambiguity for executors.
 - Fix: Reword line 13 to forbid new user-facing behavior while allowing implementation-safety tests, or remove the extra tests from the plan.
+- Status: resolved on 2026-04-26 by rewording the source-of-truth rule to allow implementation-safety tests while forbidding new user-facing behavior outside the spec/ADR envelope.
 
 ### Finding 5: ADR Traceability Matrix Is Missing
 

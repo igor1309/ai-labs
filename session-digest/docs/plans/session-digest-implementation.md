@@ -10,7 +10,7 @@ description: "Implementation plan for the session-digest CLI prototype defined b
 
 **Goal:** Implement the `session-digest` CLI per [`../specs/session-digest.md`](../specs/session-digest.md) and [`../adr/adr-001-session-digest-deepagents-nim.md`](../adr/adr-001-session-digest-deepagents-nim.md): one Claude Code JSONL → one Markdown digest under `~/.session-digests/`, using LangChain Deep Agents over NVIDIA NIM.
 
-**Source of truth:** the spec. Acceptance is the 18 acceptance behaviors enumerated in `specs/session-digest.md` "Tests (required)" plus the behavior rules. Do not invent tests outside that envelope; do not skip tests inside it.
+**Source of truth:** the spec and ADR-001 define product behavior. The 18 acceptance behaviors enumerated in `specs/session-digest.md` "Tests (required)" are the minimum acceptance suite, and every one must be covered. Additional implementation-safety tests are allowed only when they enforce those specified behavior rules or ADR invariants, prevent regressions in testability or wiring, or make an existing requirement observable. They must not introduce new user-facing behavior, CLI surface, config keys, output fields, digest sections, providers, persistence, or network calls outside the spec/ADR envelope.
 
 ## Tech stack
 
