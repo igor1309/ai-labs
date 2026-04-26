@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { Writable } from "node:stream";
+import { fileURLToPath } from "node:url";
 
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
@@ -78,4 +79,8 @@ export async function main(
   }
 
   return 0;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = await main(process.argv.slice(2), process.stdout, process.stderr);
 }

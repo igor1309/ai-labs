@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { Writable } from "node:stream";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import { main } from "../src/cli.js";
+
+const execFileAsync = promisify(execFile);
+const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 
 test("test_main_exits_nonzero_when_no_positional_arg", async () => {
   const stdout = new StringSink();
@@ -37,6 +43,34 @@ test("test_main_exits_nonzero_when_any_flag_is_passed", async () => {
     assert.notEqual(stderr.toString(), "");
   }
 });
+
+test("test_cli_script_shouldInvokeMain_onDirectExecution", async () => {
+  const result = await execFileResult(process.execPath, ["--import", "tsx", cliPath]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /Expected exactly one session JSONL path\./);
+});
+
+async function execFileResult(command: string, args: string[]): Promise<{ code: number; stderr: string }> {
+  try {
+    await execFileAsync(command, args);
+
+    return { code: 0, stderr: "" };
+  } catch (error) {
+    if (isExecError(error)) {
+      return { code: error.code ?? 1, stderr: error.stderr };
+    }
+
+    throw error;
+  }
+}
+
+function isExecError(error: unknown): error is { code?: number; stderr: string } {
+  return typeof error === "object"
+    && error !== null
+    && "stderr" in error
+    && typeof error.stderr === "string";
+}
 
 class StringSink extends Writable {
   readonly chunks: string[] = [];
