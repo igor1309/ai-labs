@@ -19,7 +19,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F5 — `.env.example` idempotency, EACCES on `.env` | open | — |
 | F6 — global `--import tsx` regression risk | ✅ resolved | `cf6a0e00` |
 | F7 — `~/.session-digests/` snapshot ENOENT | open | — |
-| F8 — Task 9 tmpdir cleanup | open | — |
+| F8 — Task 9 tmpdir cleanup | ✅ resolved | (this commit) |
 | F9 — empty-string vs missing-section conflation | open | — |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
 | F11 — section-name drift between prompts and tuple | open | — |
@@ -46,12 +46,6 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 - **Location:** Task 9 rules.
 - **Why:** A first-time user (or a fresh dev machine) has no `~/.session-digests/` until the live test runs. `fs.readdir` throws `ENOENT`. The "before snapshot" step doesn't say how to handle the missing-dir case. Tying the assertion to absolute equality also makes the test brittle if the user runs the live test interactively while another shell writes to that dir.
 - **Fix:** treat missing dir as `[]`; document the assertion as "no entry present in `before` was modified or removed in `after`, and any new entry in `after` is the digest under `tmpHome`'s separate baseDir" — which is trivially true since the SUT's `baseDir` is `tmpHome/.session-digests`, never the real one. Then the listing snapshot is defense-in-depth, not the primary assertion.
-
-#### F8. Task 9 cred plumbing leaves a real `NVIDIA_API_KEY` in a tmpdir with no cleanup contract
-
-- **Location:** Task 9 rules.
-- **Why:** Step 2 writes `tmpHome/.session-digests/.env` containing the real key. `mkdtemp()` does NOT auto-clean. If the test crashes mid-run (assertion failure throws), the tmpdir persists with the key on disk under `os.tmpdir()`. Plan never says "delete `tmpHome` in a `finally`".
-- **Fix:** wrap the test body in `try/finally` with `fs.rm(tmpHome, { recursive: true, force: true })` in `finally`. State this explicitly in Task 9 rules.
 
 #### F9. Task 8 conflates "missing required section" with "empty-string section"
 
