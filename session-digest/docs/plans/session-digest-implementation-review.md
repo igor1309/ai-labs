@@ -14,11 +14,12 @@ Reviewed `session-digest/docs/plans/session-digest-implementation.md` against th
 
 ### Finding 1: Live Smoke Can Write to Real Home
 
-- Verdict: fail
+- Verdict: pass
 - Priority: P1
 - Location: `session-digest/docs/plans/session-digest-implementation.md:494`
 - Problem: Step 1 says to read the user's real `~/.session-digests/.env` via `loadConfig`, but `loadConfig` is specified to create `.env.example` when `.env` is missing. That violates the same task's rule that live-test artifacts must never land under the user's actual `~/.session-digests/`.
 - Fix: Read the real `.env` with a read-only helper or `dotenv.parse`, and forbid writes in credential discovery.
+- Resolution: Resolved on 2026-04-26 by changing Task 9 to use a read-only `fs.readFile` + `dotenv.parse` helper for real-home credential discovery and keeping all CLI writes confined to an explicit temp `deps.baseDir`.
 
 ### Finding 2: Targeted Test Command Is Not a File Selector
 
