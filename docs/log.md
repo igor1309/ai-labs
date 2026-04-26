@@ -2,7 +2,7 @@
 
 ## 2026-04-26
 
-- session-digest: resolved the implementation-plan TDD process mismatch by carving out scaffold setup and requiring one-test strict-TDD micro-steps from Task 2 onward.
+- session-digest: exploration docs complete (ADR-001, CLI spec, Deep Agents/NVIDIA NIM use cases, and TypeScript implementation plan). See `session-digest/docs/log.md`.
 
 ## 2026-04-25
 
