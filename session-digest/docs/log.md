@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-27
+
+- Captured the V1 discovery postmortem: the Deep Agents full-session architecture failed on real session scale and needs a separate V2 design decision.
+
 ## 2026-04-26
 
 - Confirmed raw JSONL pass-through preserves more session structure but is not viable through the current Deep Agents request path because a real iOS session hit a `413` request-size limit before model context was useful.
