@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-26
+
+Register local `session-digest` live client for Nomos development testing and confirm it can route OpenRouter-backed chat/tool calls with usage logged under the project.
+
 ## 2026-03-09
 v0.8.4: add compose-level healthcheck to staging stack, replace deploy script sleep+wget race with --wait flag. Fix release-unit core job (install ripgrep for corpus-scout tests). Fix deploy-prod cleanup deleting notify script before notification step runs.
 
