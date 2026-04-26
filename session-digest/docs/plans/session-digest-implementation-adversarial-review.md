@@ -20,7 +20,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F6 — global `--import tsx` regression risk | ✅ resolved | `cf6a0e00` |
 | F7 — `~/.session-digests/` snapshot ENOENT | ✅ resolved | `562ee970` |
 | F8 — Task 9 tmpdir cleanup | ✅ resolved | `9c1bcc88` |
-| F9 — empty-string vs missing-section conflation | open | — |
+| F9 — empty-string vs missing-section conflation | ✅ resolved | this docs update |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
 | F11 — section-name drift between prompts and tuple | open | — |
 | F12 — Task 7.5 `.gitignore` vs delete-before-commit | open | — |
@@ -37,7 +37,7 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 - **F7 verdict: pass.** `session-digest-implementation.md:487-489` now treats `ENOENT` as an empty map and changes the real-directory assertion from strict equality to `before ⊆ after` by name+size, with the real output path still isolated under `deps.baseDir`.
 - **F14 verdict: pass.** `session-digest-implementation.md:315` explicitly states that same-input-within-one-second collision retry is out of scope per spec line 179, so the unit-level distinct-stem coverage is intentional.
 - **F4-N1 verdict: pass.** `session-digest-implementation.md:454` adds a missing-`baseDir` CLI test, and `:463` hoists `fsLike.mkdir(baseDir, { recursive: true })` before `loadConfig`, which is the cleaner alternative noted in the original follow-up.
-- **F9 verdict: fail.** `session-digest-implementation.md:431` still only rejects missing section keys, while `:451-452` tests missing keys separately from empty body content. Fix: normalize a required section with zero non-blank lines as missing inside `agents.run`, and add a RED case where `Next-session improvements` is present but empty and fails with the same error as an absent key.
+- **F9 verdict: pass.** `session-digest-implementation.md:431` now treats required sections with zero non-blank lines as missing inside `agents.run`, and `:452` pins absent, empty, and whitespace-only `Next-session improvements` to the same concise error path.
 - **F11 verdict: warning.** `session-digest-implementation.md:357` single-sources `SECTION_NAMES`, but `:459-462` still asks each prompt to enumerate owned section names manually. Fix: either generate prompt section-name text from `SECTION_NAMES` or add a unit/static test that prompt-owned names match the tuple.
 - **F12 verdict: warning.** `session-digest-implementation.md:376` still says the throwaway probe script is ignored under `.gitignore` while `:388` deletes it before commit. Fix: drop the `.gitignore` mention.
 - **F13 verdict: warning.** `session-digest-implementation.md:375` still says to install runtime deps that Task 1 already installs. Fix: replace with `npm ls -w session-digest deepagents @langchain/openai @langchain/core`.
@@ -45,14 +45,6 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 ---
 
 ## Open findings
-
-### P2 — Warning
-
-#### F9. Task 8 conflates "missing required section" with "empty-string section"
-
-- **Location:** `session-digest-implementation.md:431` and `:451-452`.
-- **Why:** The orchestrator merges `sections` maps and checks "missing required section". An LLM legitimately returning `{"Next-session improvements": ""}` (key present, value empty) would pass the missing-section check but fail the non-blank-line gate. Two errors will collide on the same failure mode with different exit messages, and reviewers will not be able to tell whether a regression is in extraction or in body assembly.
-- **Fix:** in Task 8 GREEN, normalize: a section whose flattened body has zero non-blank lines is treated as missing. One predicate, one error class. Update the RED test to pin "key present but empty body" → same error as "key absent."
 
 ### P3 — Minor
 
@@ -146,4 +138,4 @@ No material follow-ups. The fix mirrors Task 3's `validateInputPath` injection p
 
 ## Recommendation
 
-All four original blocking findings (F1–F4) are closed, and the later plan edits also close F5, F7, F8, F14, and F4-N1. Before any RED test is written, the implementor should still fold two small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension) and **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike). The remaining open findings (**F9, F11, F12, F13**) are real but not blocking; fold them into a small docs-only revision when convenient.
+All four original blocking findings (F1–F4) are closed, and the later plan edits also close F5, F7, F8, F9, F14, and F4-N1. Before any RED test is written, the implementor should still fold two small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension) and **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike). The remaining open findings (**F11, F12, F13**) are real but not blocking; fold them into a small docs-only revision when convenient.
