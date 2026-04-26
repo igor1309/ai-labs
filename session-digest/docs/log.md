@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Confirmed the local Nomos proxy can route `session-digest` through OpenRouter `x-ai/grok-4.1-fast` and write a real small-session digest.
 - Made Nomos the preferred configured provider so project-scoped proxy usage wins over direct OpenRouter once `NOMOS_API_KEY` is present.
 - Added OpenAI-compatible provider routing for OpenRouter and Nomos while keeping NVIDIA NIM as the legacy fallback path.
 - Captured ADR-002 and updated local docs after NVIDIA NIM probes showed model stalls or missing Deep Agents-owned sections.

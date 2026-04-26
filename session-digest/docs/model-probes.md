@@ -32,6 +32,12 @@ These results were gathered against `https://integrate.api.nvidia.com/v1` throug
 | `meta/llama-3.3-70b-instruct` | Not separately raw-chat probed | `200`, tool call present in about `1.3s` | Not tested through CLI | Possible fallback candidate. |
 | `mistralai/mistral-large` | Not separately raw-chat probed | Returned `404` | Not tested after `404` | The listed model id did not work on chat completions in this probe. |
 
+## OpenAI-Compatible Provider Probe Results
+
+| Provider path | Model | Raw chat | Tool call | Small `session-digest` CLI run | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Nomos local proxy to OpenRouter | `x-ai/grok-4.1-fast` | `200`, returned `ok` | `200`, returned a function tool call | Succeeded and wrote a digest in about `25s` | Required bypassing shell proxy for local `http://localhost:8080/v1`; front matter recorded `provider: nomos` and `model: x-ai/grok-4.1-fast`. |
+
 ## Current Recommendation
 
 Prefer the OpenAI-compatible provider-routing path from ADR-002 for the next live run. Public OpenRouter catalog metadata showed two plausible cheap candidates:
@@ -41,6 +47,6 @@ Prefer the OpenAI-compatible provider-routing path from ADR-002 for the next liv
 | `deepseek/deepseek-v3.2` | `131072` | `$0.252 / 1M tokens` | `$0.378 / 1M tokens` | `tools`, `tool_choice`, `reasoning`, `structured_outputs` |
 | `x-ai/grok-4.1-fast` | `2000000` | `$0.200 / 1M tokens` | `$0.500 / 1M tokens` | `tools`, `tool_choice`, `reasoning`, `structured_outputs` |
 
-No OpenRouter or Nomos live probe has been run yet in this worktree because no `OPENROUTER_API_KEY`, `NOMOS_VENDOR_API_KEY`, or `NOMOS_API_KEY` was present in the inspected environment.
+Nomos plus `x-ai/grok-4.1-fast` is now the preferred local path because it completed a small real session through the project-scoped proxy and records usage under the `session-digest` project.
 
 Use `moonshotai/kimi-k2-instruct` only for continued NVIDIA-local smoke testing. It is fast, available, and supports tool calls, but the full Deep Agents run did not produce owned digest sections.

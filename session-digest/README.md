@@ -38,6 +38,12 @@ If more than one provider is configured, the CLI uses Nomos first, then OpenRout
 
 If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for model requests.
 
+For Nomos mode, start the local proxy from the repository root before running `session-digest`:
+
+```bash
+set -a; source nomos/.env; set +a; npm start -w nomos
+```
+
 ## Usage
 
 From the repository root:
