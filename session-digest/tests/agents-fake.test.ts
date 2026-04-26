@@ -529,6 +529,12 @@ test("test_agent_prompts_treat_session_messages_as_data_not_live_instructions", 
   assert.equal(promptSources.every(($0) => /session transcript data/i.test($0)), true);
 });
 
+test("test_parent_prompt_instructs_each_task_to_include_session_transcript_json", async () => {
+  const agentSource = await fs.readFile(path.join(srcDir, "agents.ts"), "utf8");
+
+  assert.match(agentSource, /include the full session transcript JSON/i);
+});
+
 class StringSink extends Writable {
   readonly chunks: string[] = [];
 
