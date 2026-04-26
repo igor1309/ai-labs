@@ -37,6 +37,7 @@ These results were gathered against `https://integrate.api.nvidia.com/v1` throug
 | Provider path | Model | Raw chat | Tool call | Small `session-digest` CLI run | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Nomos local proxy to OpenRouter | `x-ai/grok-4.1-fast` | `200`, returned `ok` | `200`, returned a function tool call | Succeeded and wrote a digest in about `25s` | Required bypassing shell proxy for local `http://localhost:8080/v1`; front matter recorded `provider: nomos` and `model: x-ai/grok-4.1-fast`. |
+| Nomos production proxy to OpenRouter | `x-ai/grok-4.1-fast` | `200`, returned `ok` | Not separately probed after local tool-call success | Small session succeeded; larger `574130` byte session failed with `Deep Agents task output was not valid JSON.` | Larger run logged five completed model calls, multiple upstream timeout errors, no digest file, and about `$0.0120` of logged usage. |
 
 ## Current Recommendation
 
@@ -47,6 +48,6 @@ Prefer the OpenAI-compatible provider-routing path from ADR-002 for the next liv
 | `deepseek/deepseek-v3.2` | `131072` | `$0.252 / 1M tokens` | `$0.378 / 1M tokens` | `tools`, `tool_choice`, `reasoning`, `structured_outputs` |
 | `x-ai/grok-4.1-fast` | `2000000` | `$0.200 / 1M tokens` | `$0.500 / 1M tokens` | `tools`, `tool_choice`, `reasoning`, `structured_outputs` |
 
-Nomos plus `x-ai/grok-4.1-fast` is now the preferred local path because it completed a small real session through the project-scoped proxy and records usage under the `session-digest` project.
+Nomos plus `x-ai/grok-4.1-fast` is the preferred path for small sessions because it completed a small real session through the project-scoped proxy and records usage under the `session-digest` project. Larger sessions still need prompt/output hardening because the `574130` byte session reached the model but failed the Deep Agents JSON contract.
 
 Use `moonshotai/kimi-k2-instruct` only for continued NVIDIA-local smoke testing. It is fast, available, and supports tool calls, but the full Deep Agents run did not produce owned digest sections.
