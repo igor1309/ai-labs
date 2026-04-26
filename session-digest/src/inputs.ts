@@ -3,6 +3,12 @@ import type * as fs from "node:fs";
 const ONE_MB = 1024 * 1024;
 
 export type StatFs = Pick<typeof fs.promises, "stat">;
+export type ReadFileFs = Pick<typeof fs.promises, "readFile">;
+
+export type Message = {
+  role: string;
+  content: string;
+};
 
 export class InputError extends Error {
   static missingFile(path: string): InputError {
@@ -24,6 +30,104 @@ export class InputError extends Error {
   static oversize(path: string): InputError {
     return new InputError(`Input file exceeds 1 MB max size: ${path}`);
   }
+
+  static nonJsonl(path: string): InputError {
+    return new InputError(`Input file is not valid JSONL: ${path}`);
+  }
+
+  static noUsableMessages(path: string): InputError {
+    return new InputError(`Input JSONL contains no usable Claude Code messages: ${path}`);
+  }
+}
+
+export async function parseSession(inputPath: string, fsLike: ReadFileFs): Promise<Message[]> {
+  let contents: string;
+
+  try {
+    contents = await fsLike.readFile(inputPath, "utf8");
+  } catch (error) {
+    if (isNodeError(error) && error.code === "EACCES") {
+      throw InputError.unreadable(inputPath, error.code);
+    }
+
+    throw error;
+  }
+
+  let parsedValues = 0;
+  const messages: Message[] = [];
+
+  for (const line of contents.split(/\r?\n/)) {
+    if (line.trim() === "") {
+      continue;
+    }
+
+    try {
+      const value = JSON.parse(line) as unknown;
+      parsedValues += 1;
+      const message = usableMessage(value);
+
+      if (message) {
+        messages.push(message);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  if (parsedValues === 0) {
+    throw InputError.nonJsonl(inputPath);
+  }
+
+  if (messages.length === 0) {
+    throw InputError.noUsableMessages(inputPath);
+  }
+
+  return messages;
+}
+
+function usableMessage(value: unknown): Message | undefined {
+  if (!isRecord(value) || (value.type !== "user" && value.type !== "assistant")) {
+    return undefined;
+  }
+
+  if (!isRecord(value.message) || typeof value.message.role !== "string" || value.message.role === "") {
+    return undefined;
+  }
+
+  const content = flattenContent(value.message.content);
+
+  if (content === "") {
+    return undefined;
+  }
+
+  return {
+    role: value.message.role,
+    content,
+  };
+}
+
+function flattenContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    return content.map(textFromBlock).join("");
+  }
+
+  return "";
+}
+
+function textFromBlock(block: unknown): string {
+  if (!isRecord(block) || block.type !== "text" || typeof block.text !== "string" || block.text === "") {
+    return "";
+  }
+
+  return block.text;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export async function validateInputPath(inputPath: string, fsLike: StatFs): Promise<void> {
