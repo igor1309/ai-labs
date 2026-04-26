@@ -267,22 +267,25 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `session-digest/src/config.ts`.
 - `session-digest/tests/config.test.ts`.
 
-**Test isolation:** override `HOME` (or pass an explicit `baseDir` argument) so `~/.session-digests/` resolves under `mkdtemp()`. Provide a small fixture helper that yields the resolved config dir.
+**Test isolation:** pass an explicit `baseDir` argument so `~/.session-digests/` resolves under `mkdtemp()`; do not mutate `HOME`. Failure-mode tests (EACCES, write-side wiring, `process.env` non-mutation) inject a recording `fsLike` stub instead of touching real fs, mirroring Task 3's pattern. Provide a small fixture helper that yields the resolved config dir for any happy-path tests that still use real fs.
 
 **RED:**
 
-- `test_missing_env_creates_env_example_and_exits_nonzero` — asserts `.env.example` is created with the documented contents AND a real `.env` is **not** created (spec: never create real `.env` with empty secrets).
-- `test_missing_api_key_returns_error` — `.env` exists but `NVIDIA_API_KEY` is empty/absent. `stderr` MUST contain the substring `NVIDIA_API_KEY`.
-- `test_missing_model_returns_error` — `.env` exists but `NVIDIA_MODEL` is empty/absent. `stderr` MUST contain the substring `NVIDIA_MODEL`.
+- `test_missing_env_creates_env_example_via_injected_fs_writefile` — recording `fsLike` stub: `readFile(<baseDir>/.env, "utf8")` rejects with `Object.assign(new Error("ENOENT"), { code: "ENOENT" })`; `writeFile` resolves. Assert: `loadConfig` rejects with `ConfigError` whose message contains the substring `.env.example`; the stub recorded exactly one `writeFile` call with path `<baseDir>/.env.example` and the documented body; the stub recorded **no** `writeFile` to `<baseDir>/.env` (spec: never create real `.env` with empty secrets). This test pins the bootstrap branch's injection — without recording the `writeFile` call, an impl that bypasses `fsLike` for the write would still pass.
+- `test_missing_api_key_returns_error` — stub `readFile` resolves with a `.env` body containing `NVIDIA_MODEL=foo` only. Assert `loadConfig` rejects with `ConfigError` whose message contains the substring `NVIDIA_API_KEY`.
+- `test_missing_model_returns_error` — symmetric; stub `readFile` resolves with `NVIDIA_API_KEY=k` only; substring `NVIDIA_MODEL`.
+- `test_load_config_eacces_on_env_read_returns_config_error` — stub `readFile` rejects with `Object.assign(new Error("EACCES"), { code: "EACCES" })`. Assert `ConfigError` whose message contains the substring `permission` (distinct from the `.env.example` and `NVIDIA_*` substrings above so the three error branches are reviewably distinguishable); stub recorded exactly one `readFile` at `<baseDir>/.env` and **zero** `writeFile` calls. Closes the EACCES-on-`.env` branch that Task 3's discipline already promises but that real-fs tests cannot reach on a stock dev box.
+- `test_load_config_invokes_injected_fs_read_file_on_happy_path` — stub `readFile` resolves with a valid `.env` body (`NVIDIA_API_KEY=k\nNVIDIA_MODEL=m`). After `loadConfig` resolves, assert the returned value equals `{apiKey: "k", model: "m"}` AND the stub recorded one `readFile` at `<baseDir>/.env`. Pairs with the EACCES test to enforce injection on **both** branches; without this complement, a buggy impl could ignore `fsLike` on the success path (mirrors Task 3 line 199).
+- `test_load_config_does_not_mutate_process_env` — stub `readFile` resolves with `NVIDIA_API_KEY=sentinel-${randomUUID()}\nNVIDIA_MODEL=m`. After `loadConfig` resolves, assert `process.env.NVIDIA_API_KEY` does not equal the sentinel value. Confirms `dotenv.parse(buffer)` is used and `dotenv.config()` is not — `process.env` must remain untouched so successive tests cannot leak credentials between fixtures.
 
 > The "no preflight call" rule from spec line 111 is a sequencing invariant: invalid creds MUST surface on the first NIM call, not before. A structural defense IS added in Task 8 (`test_invalid_creds_fail_on_first_model_call_not_before`): a fake model whose first `_call` throws asserts `cli.main` reaches `agents.run` and exits non-zero only after the model is invoked exactly once. This distinguishes "preflight ran" from "first NIM call failed" cheaply and closes spec line 113. The complementary structural check — `config.ts` does not import `agents.ts` — remains a PR-review concern.
 
 **GREEN:**
 
-- `loadConfig(baseDir: string): Config` returns `{ apiKey, model }` or throws `ConfigError`.
-- If `<baseDir>/.env` is missing: write `.env.example` with the documented body, throw `ConfigError("create ~/.session-digests/.env from .env.example")`.
-- If `.env` exists but `NVIDIA_API_KEY` is empty/missing → `ConfigError`.
-- Same for `NVIDIA_MODEL`.
+- `loadConfig(baseDir: string, fsLike: Pick<typeof fs.promises, "readFile" | "writeFile">): Promise<Config>` returns `{ apiKey, model }` or rejects with `ConfigError`. `fsLike` is supplied by `cli.main` from `deps.fsLike ?? fs.promises` (Task 2 signature; line 168's `Pick` set already covers `readFile | writeFile`, no widening needed). Production code in `loadConfig` MUST route every fs operation through `fsLike` — direct `import * as fs from "node:fs"` inside `config.ts` is a layering violation that the recording-stub tests above are designed to catch (mirrors Task 3 GREEN's `inputs.ts` discipline for `validateInputPath`).
+- Read `.env` via a single `await fsLike.readFile(path.join(baseDir, ".env"), "utf8")`. Map errors by `code`: `ENOENT` → bootstrap branch (write `.env.example` via `fsLike.writeFile` with the documented body, throw `ConfigError("create ~/.session-digests/.env from .env.example")`); `EACCES` → `ConfigError("cannot read ~/.session-digests/.env: permission denied")`; other errors rethrow. The single-syscall probe avoids a `stat`+`read` TOCTOU and keeps the `Pick` set minimal (no `stat` needed).
+- Parse the body with `dotenv.parse(buffer)` — pure, returns a plain object, never mutates `process.env`. Do **not** call `dotenv.config()`.
+- If parsed `NVIDIA_API_KEY` is absent or empty → `ConfigError` whose message contains `NVIDIA_API_KEY`. Same for `NVIDIA_MODEL`.
 - No model-validation network call.
 - Do not import `agents.ts` from `config.ts`.
 
@@ -455,7 +458,7 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
   - states its input shape;
   - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with the exact section names this subagent owns enumerated);
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
-- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.ts`) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → load config from `baseDir` → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → run agent with `model` → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
+- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.ts`) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → `await loadConfig(baseDir, fsLike)` (Task 5 signature; `loadConfig` is `async` and routes all `.env` reads/`.env.example` writes through `fsLike`) → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → run agent with `model` → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-fake.test.ts`.
 
