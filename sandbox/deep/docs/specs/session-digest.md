@@ -115,9 +115,14 @@ The CLI MUST NOT perform a preflight model-validation call. Invalid API key or m
 The CLI MUST:
 
 - read valid JSONL records;
+- tolerate blank lines and lines containing only whitespace without raising a parse error;
 - skip records with unknown shapes;
 - treat a record as a "usable Claude Code message" when it has both a non-empty role and non-empty content;
 - fail with the "no usable messages" error only when zero usable messages are found.
+
+### Content handling
+
+The CLI MUST NOT perform redaction, secret scanning, PII filtering, or any other content scrubbing on session content before sending it to NVIDIA NIM.
 
 ### Output writing
 
@@ -152,9 +157,10 @@ Local tests only; CI is out of scope per ADR-001.
 12. Two successful runs in the same second over different inputs do not collide on filename when input stems differ; same input within one second is documented as a non-target case.
 13. At least one local integration or smoke test calls NVIDIA NIM directly. The test MUST fail (not skip) when `NVIDIA_API_KEY` or `NVIDIA_MODEL` is absent or empty.
 14. Successful run does not create or copy the raw input JSONL anywhere under `~/.session-digests/`.
-15. Generated digest front matter contains `title`, `source_path`, `provider`, `model`, and `generated_at` keys with the values defined in ADR-001.
+15. Generated digest front matter contains `title`, `source_path`, `provider`, `model`, and `generated_at` keys; `provider` MUST equal the literal `nvidia_nim`; `model` MUST equal the configured `NVIDIA_MODEL`; `source_path` MUST equal the absolute path of the input file.
 16. Invalid CLI argument count (zero or more than one positional, or any flag) → non-zero exit, error on `stderr`.
 17. Generated digest body contains the six H2 sections defined by ADR-001 in the documented order.
+18. Input JSONL with interleaved blank or whitespace-only lines parses successfully when at least one usable Claude Code message is present.
 
 ## Done criteria
 
