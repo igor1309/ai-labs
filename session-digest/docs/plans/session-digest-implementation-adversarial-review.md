@@ -109,6 +109,24 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 
 ---
 
+## Round 2 — F1 follow-ups (post-fix)
+
+After commit `827ea343` (F1 fix via `clock.ts` segregation): the original blocking defect is resolved (threshold `0` over `cli.ts` + `output.ts` now matches the prescribed implementation). Two residual nits surfaced in the post-fix review.
+
+### N1. NodeNext ESM import extension — real footgun — warning
+
+- **Location:** `session-digest-implementation.md:168` and `:450`.
+- **Why:** Both sites say "imported from `./clock.ts`". Under TypeScript NodeNext + ESM (Task 1's `tsconfig` essentials at `:130`), TS source `clock.ts` must be imported with the `.js` specifier (`from "./clock.js"`) — the `.ts` form will not resolve at runtime under `tsx` ESM loader semantics, and `tsc --noEmit` will reject it. Cosmetic in plan prose, but the implementor will hit it on first compile.
+- **Fix:** change both occurrences to "imported from `./clock.js`" (the documented NodeNext contract). One-line edit in two places.
+
+### N2. Segregation invariant is load-bearing on `clock.ts` discipline — minor
+
+- **Location:** `session-digest-implementation.md:341` (static check excludes `clock.ts` by construction).
+- **Why:** The static test excludes `clock.ts` from the file list. A future implementor could legally add a second `new Date(` inside `clock.ts` (e.g., `defaultClock = () => new Date(Date.now())`) and the static test would still pass — the single-call invariant would silently break. The runtime test (`clock.callCount === 1`) catches this at the orchestration level, so it is defense-in-depth, not a hole. Worth noting but not worth fixing unless drift becomes a real concern; `clock.ts` is one line.
+- **Optional fix:** pin `clock.ts` content via a separate static assertion that the file matches `/^export const defaultClock: \(\) => Date = \(\) => new Date\(\);?\s*$/m`. Gold-plating for a one-line file; take it or leave it.
+
+---
+
 ## Strengths
 
 - Spec-test-to-task map (`:80-99`) is exhaustive and reviewable.
