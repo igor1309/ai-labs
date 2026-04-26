@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Made Nomos the preferred configured provider so project-scoped proxy usage wins over direct OpenRouter once `NOMOS_API_KEY` is present.
 - Added OpenAI-compatible provider routing for OpenRouter and Nomos while keeping NVIDIA NIM as the legacy fallback path.
 - Captured ADR-002 and updated local docs after NVIDIA NIM probes showed model stalls or missing Deep Agents-owned sections.
 - Confirmed the Nemotron 3 Super full CLI probe still stalls for the small real session despite fast raw tool-call support.

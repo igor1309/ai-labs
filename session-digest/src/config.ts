@@ -59,7 +59,7 @@ export async function loadConfig(baseDir: string, fsLike: ConfigFs): Promise<Con
   }
 
   const parsed = parse(envBody);
-  const config = openRouterConfig(parsed) ?? nomosConfig(parsed) ?? nvidiaConfig(parsed);
+  const config = nomosConfig(parsed) ?? openRouterConfig(parsed) ?? nvidiaConfig(parsed);
 
   if (config) {
     return config;

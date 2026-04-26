@@ -31,7 +31,7 @@ The next useful experiment is still the same CLI and Deep Agents workflow, but w
 2. Nomos local proxy: `NOMOS_API_KEY`, `NOMOS_MODEL`, and optional `NOMOS_BASE_URL`, defaulting to `http://localhost:8080/v1`.
 3. NVIDIA NIM legacy path: `NVIDIA_API_KEY` and `NVIDIA_MODEL`, base URL `https://integrate.api.nvidia.com/v1`.
 
-When more than one complete provider key pair is present, selection order is OpenRouter, then Nomos, then NVIDIA NIM.
+When more than one complete provider key pair is present, selection order is Nomos, then OpenRouter, then NVIDIA NIM. This keeps direct OpenRouter available for simple local probes while preferring the project-scoped Nomos control plane once its client token is configured.
 
 This is provider routing, not a provider abstraction layer. The code keeps one model constructor, one Deep Agents orchestration path, and one configured model for all subagents. There is no role-based model routing, fallback retry chain, vendor-specific client wrapper, or provider plugin interface.
 

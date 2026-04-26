@@ -114,6 +114,25 @@ test("test_load_config_returns_nomos_config_when_nomos_keys_exist", async () => 
   });
 });
 
+test("test_load_config_prefers_nomos_when_nomos_and_openrouter_keys_exist", async () => {
+  const { loadConfig } = await loadConfigModule();
+  const fsLike = makeReadOnlyFsLike([
+    "OPENROUTER_API_KEY=or-key",
+    "OPENROUTER_MODEL=x-ai/grok-4.1-fast",
+    "NOMOS_API_KEY=nomos-key",
+    "NOMOS_MODEL=deepseek/deepseek-v3.2",
+  ].join("\n"));
+
+  const config = await loadConfig("/tmp/session-digests", fsLike);
+
+  assert.deepEqual(config, {
+    apiKey: "nomos-key",
+    baseURL: "http://localhost:8080/v1",
+    model: "deepseek/deepseek-v3.2",
+    provider: "nomos",
+  });
+});
+
 test("test_missing_model_returns_error", async () => {
   const { loadConfig } = await loadConfigModule();
   const fsLike = makeReadOnlyFsLike("NVIDIA_API_KEY=k\n");

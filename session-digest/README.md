@@ -34,7 +34,7 @@ NVIDIA_API_KEY=...
 NVIDIA_MODEL=moonshotai/kimi-k2-instruct
 ```
 
-If more than one provider is configured, the CLI uses OpenRouter first, then Nomos, then NVIDIA NIM.
+If more than one provider is configured, the CLI uses Nomos first, then OpenRouter, then NVIDIA NIM.
 
 If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for model requests.
 

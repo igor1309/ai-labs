@@ -79,7 +79,7 @@ Trim the session or choose a smaller Claude Code JSONL file.
   NVIDIA_MODEL=
   ```
 
-- Provider priority when more than one complete pair is present: OpenRouter, then Nomos, then NVIDIA NIM.
+- Provider priority when more than one complete pair is present: Nomos, then OpenRouter, then NVIDIA NIM.
 - No default model for any provider.
 - API key MUST NOT be passed via CLI argument.
 
