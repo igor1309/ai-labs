@@ -31,6 +31,8 @@ session-digest <path-to-session.jsonl>
 - No flags in v1.
 - No API-key CLI argument in v1.
 
+In v1 the CLI is invoked as `npx -w session-digest tsx src/cli.ts <path>` from the repo root. A `bin`-shimmed `session-digest` command is deferred to a future packaging ADR.
+
 ### Success output
 
 - Exit code `0`.
@@ -112,13 +114,32 @@ The CLI MUST NOT perform a preflight model-validation call. Invalid API key or m
 
 ### JSONL extraction
 
-The CLI MUST:
+A "usable Claude Code message" is a record matching this shape:
 
-- read valid JSONL records;
-- tolerate blank lines and lines containing only whitespace without raising a parse error;
-- skip records with unknown shapes;
-- treat a record as a "usable Claude Code message" when it has both a non-empty role and non-empty content;
-- fail with the "no usable messages" error only when zero usable messages are found.
+```
+{ "type": "user" | "assistant",
+  "message": {
+    "role": "user" | "assistant" | "system",
+    "content": string | Array<{ "type": "text", "text": string, ... }>
+  },
+  ...
+}
+```
+
+A record is usable iff `message.role` is a non-empty string AND `message.content`, after flattening, yields a non-empty string. Flattening rules:
+
+- if `message.content` is a string, it is used directly;
+- if `message.content` is an array, the flattened string is the concatenation of `block.text` for each `block` where `block.type === "text"` and `block.text` is a non-empty string;
+- any other content shape contributes nothing to the flattened string.
+
+Records of any other shape — including `type: "tool_use"`, `type: "tool_result"`, `type: "system"`, summary records, or unknown — MUST be skipped without error.
+
+Parse-error semantics (lenient):
+
+- lines that are empty or contain only whitespace MUST be skipped silently;
+- a non-blank line that fails `JSON.parse` MUST be skipped silently;
+- the "non-JSONL" error MUST fire only when zero non-blank lines yield a parsed JSON value;
+- the "no usable messages" error MUST fire when at least one line parses but zero records are usable.
 
 ### Content handling
 
@@ -132,6 +153,7 @@ The CLI MUST:
 - write exactly one digest file per successful invocation;
 - never copy or persist the raw input JSONL;
 - include the source path, provider, model, and generation timestamp in the digest front matter as defined in ADR-001;
+- set `source_path` in the front matter to the literal `path.resolve(<cli arg>)`; symlinks MUST NOT be followed;
 - emit the digest body with the six H2 sections defined in ADR-001 (`Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`, `Next-session improvements`, `Evidence notes`) in that order;
 - emit only the created file path on `stdout`.
 
