@@ -12,7 +12,7 @@ import { AIMessage, ToolMessage, type BaseMessage } from "@langchain/core/messag
 import type { ChatResult } from "@langchain/core/outputs";
 import { ChatOpenAI } from "@langchain/openai";
 
-import { buildAgent, defaultNimModel, loadPromptTemplates, renderPrompt, run } from "../src/agents.js";
+import { buildAgent, defaultChatModel, loadPromptTemplates, renderPrompt, run } from "../src/agents.js";
 import { main } from "../src/cli.js";
 import { computeDigestPath } from "../src/output.js";
 import { SECTION_NAMES, SECTION_OWNERS, type AgentRole } from "../src/sections.js";
@@ -121,6 +121,30 @@ test("test_front_matter_contains_required_keys_with_correct_values_from_cli_succ
     "generated_at: 2026-04-26T01:02:03Z",
     "---",
   ].join("\\n")));
+});
+
+test("test_front_matter_uses_selected_provider_from_config", async (t) => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const baseDir = path.join(tempDir, ".session-digests");
+  await fs.mkdir(baseDir, { recursive: true });
+  await fs.writeFile(
+    path.join(baseDir, ".env"),
+    "OPENROUTER_API_KEY=fake\nOPENROUTER_MODEL=x-ai/grok-4.1-fast\n",
+  );
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+
+  const exitCode = await main([validSessionPath], stdout, stderr, {
+    baseDir,
+    clock: () => new Date("2026-04-26T01:02:03.000Z"),
+    model: new RoutingFake(),
+  });
+
+  const digest = await fs.readFile(stdout.toString().trim(), "utf8");
+
+  assert.equal(exitCode, 0);
+  assert.match(digest, /^provider: openrouter\nmodel: x-ai\/grok-4\.1-fast$/m);
 });
 
 test("test_clock_is_invoked_once_and_filename_matches_generated_at", async (t) => {
@@ -298,20 +322,31 @@ test("test_build_agent_does_not_call_model_before_run", async () => {
   assert.equal(model.callCount, 0);
 });
 
-test("test_default_nim_model_is_pure_constructor", () => {
-  const model = defaultNimModel({ apiKey: "fake", model: "fake" });
+test("test_default_chat_model_is_pure_constructor", () => {
+  const model = defaultChatModel({
+    apiKey: "fake",
+    baseURL: "https://example.test/v1",
+    model: "fake",
+    provider: "test",
+  });
 
   assert.equal(model instanceof ChatOpenAI, true);
+  assert.equal(chatOpenAIConfiguration(model).baseURL, "https://example.test/v1");
 });
 
-test("test_default_nim_model_shouldUseShellProxy_onHttpsProxyConfigured", (t) => {
+test("test_default_chat_model_shouldUseShellProxy_onHttpsProxyConfigured", (t) => {
   const originalProxyEnv = proxyEnv();
   t.after(() => restoreProxyEnv(originalProxyEnv));
   delete process.env.ALL_PROXY;
   delete process.env.HTTP_PROXY;
   process.env.HTTPS_PROXY = "http://proxy.example:3128";
 
-  const model = defaultNimModel({ apiKey: "fake", model: "fake" });
+  const model = defaultChatModel({
+    apiKey: "fake",
+    baseURL: "https://example.test/v1",
+    model: "fake",
+    provider: "test",
+  });
 
   assert.equal(typeof chatOpenAIConfiguration(model).fetch, "function");
 });
@@ -331,7 +366,7 @@ test("test_first_run_with_missing_basedir_writes_env_example_and_exits_with_boot
 
   assert.notEqual(exitCode, 0);
   assert.match(stderr.toString(), /\.env\.example/);
-  assert.equal(await fs.readFile(path.join(baseDir, ".env.example"), "utf8"), "NVIDIA_API_KEY=\nNVIDIA_MODEL=\n");
+  assert.match(await fs.readFile(path.join(baseDir, ".env.example"), "utf8"), /OPENROUTER_MODEL=/);
   assert.deepEqual(await regularFilesUnder(baseDir), new Set([path.join(baseDir, ".env.example")]));
   assert.equal(stdout.toString(), "");
 });

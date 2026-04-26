@@ -1,7 +1,7 @@
 ---
 title: ADR-001 — Session Digest Exploration Prototype with Deep Agents and NVIDIA NIM
 date: 2026-04-26
-status: accepted
+status: "accepted; provider invariant superseded by ADR-002"
 model: GPT-5.5 Thinking
 version: 1.1
 ---
@@ -10,7 +10,7 @@ version: 1.1
 
 ## Status
 
-Accepted.
+Accepted. The NVIDIA-only provider invariant is superseded by [ADR-002](adr-002-session-digest-openai-compatible-routing.md).
 
 ## Executive Summary
 

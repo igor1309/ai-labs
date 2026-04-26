@@ -12,12 +12,31 @@ description: "Local usage notes for the session-digest CLI prototype."
 
 Create `~/.session-digests/.env`:
 
+For direct OpenRouter:
+
 ```bash
-NVIDIA_API_KEY=...
-NVIDIA_MODEL=deepseek-ai/deepseek-v4-pro
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=x-ai/grok-4.1-fast
 ```
 
-If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for NVIDIA NIM requests.
+For a local Nomos proxy:
+
+```bash
+NOMOS_API_KEY=...
+NOMOS_MODEL=deepseek/deepseek-v3.2
+NOMOS_BASE_URL=http://localhost:8080/v1
+```
+
+For the legacy NVIDIA NIM path:
+
+```bash
+NVIDIA_API_KEY=...
+NVIDIA_MODEL=moonshotai/kimi-k2-instruct
+```
+
+If more than one provider is configured, the CLI uses OpenRouter first, then Nomos, then NVIDIA NIM.
+
+If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for model requests.
 
 ## Usage
 

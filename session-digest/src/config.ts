@@ -5,12 +5,31 @@ import { parse } from "dotenv";
 
 export type Config = {
   apiKey: string;
+  baseURL: string;
   model: string;
+  provider: string;
 };
 
 export type ConfigFs = Pick<typeof fs.promises, "readFile" | "writeFile">;
 
-const envExampleBody = "NVIDIA_API_KEY=\nNVIDIA_MODEL=\n";
+const openRouterBaseURL = "https://openrouter.ai/api/v1";
+const nvidiaBaseURL = "https://integrate.api.nvidia.com/v1";
+
+const envExampleBody = [
+  "# OpenRouter direct",
+  "OPENROUTER_API_KEY=",
+  "OPENROUTER_MODEL=",
+  "",
+  "# Nomos local proxy",
+  "NOMOS_API_KEY=",
+  "NOMOS_MODEL=",
+  "NOMOS_BASE_URL=http://localhost:8080/v1",
+  "",
+  "# NVIDIA NIM legacy path",
+  "NVIDIA_API_KEY=",
+  "NVIDIA_MODEL=",
+  "",
+].join("\n");
 
 export class ConfigError extends Error {}
 
@@ -40,16 +59,80 @@ export async function loadConfig(baseDir: string, fsLike: ConfigFs): Promise<Con
   }
 
   const parsed = parse(envBody);
+  const config = openRouterConfig(parsed) ?? nomosConfig(parsed) ?? nvidiaConfig(parsed);
 
-  if (!parsed.NVIDIA_API_KEY) {
-    throw new ConfigError("Missing NVIDIA_API_KEY in ~/.session-digests/.env.");
+  if (config) {
+    return config;
   }
 
-  if (!parsed.NVIDIA_MODEL) {
-    throw new ConfigError("Missing NVIDIA_MODEL in ~/.session-digests/.env.");
+  throw missingConfigError(parsed);
+}
+
+function openRouterConfig(parsed: Record<string, string>): Config | undefined {
+  return configFromPair({
+    apiKey: parsed.OPENROUTER_API_KEY,
+    baseURL: openRouterBaseURL,
+    model: parsed.OPENROUTER_MODEL,
+    provider: "openrouter",
+  });
+}
+
+function nomosConfig(parsed: Record<string, string>): Config | undefined {
+  return configFromPair({
+    apiKey: parsed.NOMOS_API_KEY,
+    baseURL: parsed.NOMOS_BASE_URL ?? "http://localhost:8080/v1",
+    model: parsed.NOMOS_MODEL,
+    provider: "nomos",
+  });
+}
+
+function nvidiaConfig(parsed: Record<string, string>): Config | undefined {
+  return configFromPair({
+    apiKey: parsed.NVIDIA_API_KEY,
+    baseURL: nvidiaBaseURL,
+    model: parsed.NVIDIA_MODEL,
+    provider: "nvidia_nim",
+  });
+}
+
+function configFromPair(config: Config): Config | undefined {
+  if (!config.apiKey || !config.model) {
+    return undefined;
   }
 
-  return { apiKey: parsed.NVIDIA_API_KEY, model: parsed.NVIDIA_MODEL };
+  return { ...config, baseURL: trimTrailingSlash(config.baseURL) };
+}
+
+function missingConfigError(parsed: Record<string, string>): ConfigError {
+  if (parsed.OPENROUTER_MODEL) {
+    return new ConfigError("Missing OPENROUTER_API_KEY in ~/.session-digests/.env.");
+  }
+
+  if (parsed.OPENROUTER_API_KEY) {
+    return new ConfigError("Missing OPENROUTER_MODEL in ~/.session-digests/.env.");
+  }
+
+  if (parsed.NOMOS_MODEL) {
+    return new ConfigError("Missing NOMOS_API_KEY in ~/.session-digests/.env.");
+  }
+
+  if (parsed.NOMOS_API_KEY) {
+    return new ConfigError("Missing NOMOS_MODEL in ~/.session-digests/.env.");
+  }
+
+  if (parsed.NVIDIA_MODEL) {
+    return new ConfigError("Missing NVIDIA_API_KEY in ~/.session-digests/.env.");
+  }
+
+  if (parsed.NVIDIA_API_KEY) {
+    return new ConfigError("Missing NVIDIA_MODEL in ~/.session-digests/.env.");
+  }
+
+  return new ConfigError("Missing provider credentials in ~/.session-digests/.env.");
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "");
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

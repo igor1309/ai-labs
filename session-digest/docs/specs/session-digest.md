@@ -1,14 +1,14 @@
 ---
 date: 2026-04-26
 model: claude-opus-4-7
-description: "Spec for the session-digest CLI prototype defined by ADR-001."
+description: "Spec for the session-digest CLI prototype defined by ADR-001 and ADR-002."
 ---
 
 # Spec: `session-digest` CLI
 
 ## Goal
 
-Implement the `session-digest` CLI prototype defined by [ADR-001](../adr/adr-001-session-digest-deepagents-nim.md): turn one Claude Code JSONL session into one Markdown postmortem digest under `~/.session-digests/`, using LangChain Deep Agents over NVIDIA NIM.
+Implement the `session-digest` CLI prototype defined by [ADR-001](../adr/adr-001-session-digest-deepagents-nim.md) and amended by [ADR-002](../adr/adr-002-session-digest-openai-compatible-routing.md): turn one Claude Code JSONL session into one Markdown postmortem digest under `~/.session-digests/`, using LangChain Deep Agents over one configured OpenAI-compatible chat-completions endpoint.
 
 ## Required architecture
 
@@ -16,8 +16,8 @@ Per ADR-001, the implementation MUST:
 
 - use LangChain Deep Agents as the sole orchestrator for digest generation;
 - use exactly three subagents with the responsibilities defined in ADR-001: Extractor, Improver, Evidence checker;
-- use a single configured NVIDIA NIM model for all subagents;
-- not introduce a provider abstraction layer.
+- use a single configured model for all subagents;
+- keep provider routing in configuration only; no runtime model router, role-based routing, or provider-specific wrapper layer.
 
 ## Public interface
 
@@ -65,14 +65,22 @@ Trim the session or choose a smaller Claude Code JSONL file.
 ### Configuration file
 
 - Path: `~/.session-digests/.env`.
-- Required keys:
+- Supported provider key pairs:
 
   ```env
+  OPENROUTER_API_KEY=
+  OPENROUTER_MODEL=
+
+  NOMOS_API_KEY=
+  NOMOS_MODEL=
+  NOMOS_BASE_URL=http://localhost:8080/v1
+
   NVIDIA_API_KEY=
   NVIDIA_MODEL=
   ```
 
-- No default model.
+- Provider priority when more than one complete pair is present: OpenRouter, then Nomos, then NVIDIA NIM.
+- No default model for any provider.
 - API key MUST NOT be passed via CLI argument.
 
 ### `.env.example` bootstrap
@@ -80,6 +88,13 @@ Trim the session or choose a smaller Claude Code JSONL file.
 If `~/.session-digests/.env` does not exist, the CLI MUST create `~/.session-digests/.env.example` with the following contents:
 
 ```env
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=
+
+NOMOS_API_KEY=
+NOMOS_MODEL=
+NOMOS_BASE_URL=http://localhost:8080/v1
+
 NVIDIA_API_KEY=
 NVIDIA_MODEL=
 ```
@@ -107,10 +122,11 @@ The CLI MUST fail fast with a non-zero exit and a concise `stderr` error for eac
 
 The CLI MUST fail fast with a non-zero exit and a concise `stderr` error for each of:
 
-1. `NVIDIA_API_KEY` missing or empty in `~/.session-digests/.env`.
-2. `NVIDIA_MODEL` missing or empty in `~/.session-digests/.env`.
+1. Provider API key missing or empty in `~/.session-digests/.env` when the matching model key is present.
+2. Provider model missing or empty in `~/.session-digests/.env` when the matching API key is present.
+3. No complete supported provider key pair is present.
 
-The CLI MUST NOT perform a preflight model-validation call. Invalid API key or model values fail on the first NIM call.
+The CLI MUST NOT perform a preflight model-validation call. Invalid API key or model values fail on the first model call.
 
 ### JSONL extraction
 
@@ -143,7 +159,7 @@ Parse-error semantics (lenient):
 
 ### Content handling
 
-The CLI MUST NOT perform redaction, secret scanning, PII filtering, or any other content scrubbing on session content before sending it to NVIDIA NIM.
+The CLI MUST NOT perform redaction, secret scanning, PII filtering, or any other content scrubbing on session content before sending it to the configured model endpoint.
 
 ### Output writing
 
@@ -171,15 +187,15 @@ Local tests only; CI is out of scope per ADR-001.
 4. Input file > 1 MB → non-zero exit, oversize error on `stderr`.
 5. Non-JSONL input → non-zero exit, error on `stderr`.
 6. JSONL with zero usable Claude Code messages → non-zero exit, error on `stderr`.
-7. Missing `NVIDIA_API_KEY` → non-zero exit, error on `stderr`.
-8. Missing `NVIDIA_MODEL` → non-zero exit, error on `stderr`.
+7. Missing provider API key when that provider's model key is present → non-zero exit, error on `stderr`.
+8. Missing provider model when that provider's API key is present → non-zero exit, error on `stderr`.
 9. Missing `~/.session-digests/.env` → CLI creates `~/.session-digests/.env.example` with the documented contents and exits non-zero.
 10. Valid fixture session → CLI writes a Markdown digest to `~/.session-digests/` and exits zero.
 11. Successful run → `stdout` contains exactly the created digest path and no other content.
 12. Two successful runs in the same second over different inputs do not collide on filename when input stems differ; same input within one second is documented as a non-target case.
-13. At least one local integration or smoke test calls NVIDIA NIM directly. The test MUST fail (not skip) when `NVIDIA_API_KEY` or `NVIDIA_MODEL` is absent or empty.
+13. At least one local integration or smoke test calls the configured endpoint directly. The test MUST fail (not skip) when the configured provider credentials are absent or empty.
 14. Successful run does not create or copy the raw input JSONL anywhere under `~/.session-digests/`.
-15. Generated digest front matter contains `title`, `source_path`, `provider`, `model`, and `generated_at` keys; `provider` MUST equal the literal `nvidia_nim`; `model` MUST equal the configured `NVIDIA_MODEL`; `source_path` MUST equal the absolute path of the input file.
+15. Generated digest front matter contains `title`, `source_path`, `provider`, `model`, and `generated_at` keys; `provider` MUST equal the selected provider id; `model` MUST equal the selected configured model; `source_path` MUST equal the absolute path of the input file.
 16. Invalid CLI argument count (zero or more than one positional, or any flag) → non-zero exit, error on `stderr`.
 17. Generated digest body contains the six H2 sections defined by ADR-001 in the documented order.
 18. Input JSONL with interleaved blank or whitespace-only lines parses successfully when at least one usable Claude Code message is present.

@@ -1,10 +1,10 @@
 ---
 date: 2026-04-26
 model: gpt-5
-description: "NVIDIA NIM model probe results for session-digest Deep Agents experiments."
+description: "NVIDIA NIM and OpenRouter model probe results for session-digest Deep Agents experiments."
 ---
 
-# NVIDIA NIM Model Probes
+# Model Probes
 
 These results were gathered against `https://integrate.api.nvidia.com/v1` through the configured shell proxy. They are diagnostic observations for choosing a free NVIDIA-hosted model for the local `session-digest` prototype.
 
@@ -34,4 +34,13 @@ These results were gathered against `https://integrate.api.nvidia.com/v1` throug
 
 ## Current Recommendation
 
-Use `moonshotai/kimi-k2-instruct` for local free-model smoke testing. It is fast, available, and supports tool calls. The next blocker is not model availability; it is the current `session-digest` extraction path requiring every owned section to be present in the exact JSON envelope returned by each Deep Agents task.
+Prefer the OpenAI-compatible provider-routing path from ADR-002 for the next live run. Public OpenRouter catalog metadata showed two plausible cheap candidates:
+
+| Model | Context | Prompt pricing | Completion pricing | Supported parameters |
+| --- | ---: | ---: | ---: | --- |
+| `deepseek/deepseek-v3.2` | `131072` | `$0.252 / 1M tokens` | `$0.378 / 1M tokens` | `tools`, `tool_choice`, `reasoning`, `structured_outputs` |
+| `x-ai/grok-4.1-fast` | `2000000` | `$0.200 / 1M tokens` | `$0.500 / 1M tokens` | `tools`, `tool_choice`, `reasoning`, `structured_outputs` |
+
+No OpenRouter or Nomos live probe has been run yet in this worktree because no `OPENROUTER_API_KEY`, `NOMOS_VENDOR_API_KEY`, or `NOMOS_API_KEY` was present in the inspected environment.
+
+Use `moonshotai/kimi-k2-instruct` only for continued NVIDIA-local smoke testing. It is fast, available, and supports tool calls, but the full Deep Agents run did not produce owned digest sections.

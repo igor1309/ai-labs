@@ -66,14 +66,14 @@ export async function run(messages: Message[], agent: DigestAgentRunner): Promis
   return extractSections(result);
 }
 
-export function defaultNimModel(config: Config): ChatOpenAI {
+export function defaultChatModel(config: Config): ChatOpenAI {
   const proxyFetch = fetchForShellProxy(process.env);
 
   return new ChatOpenAI({
     apiKey: config.apiKey,
     model: config.model,
     configuration: {
-      baseURL: "https://integrate.api.nvidia.com/v1",
+      baseURL: config.baseURL,
       ...(proxyFetch ? { fetch: proxyFetch } : {}),
     },
   });

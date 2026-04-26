@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
-import { AgentError, buildAgent, defaultNimModel, loadPromptTemplates, run } from "./agents.js";
+import { AgentError, buildAgent, defaultChatModel, loadPromptTemplates, run } from "./agents.js";
 import { defaultClock } from "./clock.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { InputError, parseSession, validateInputPath } from "./inputs.js";
@@ -47,7 +47,7 @@ export async function main(
     await fsLike.mkdir(baseDir, { recursive: true });
     const config = await loadConfig(baseDir, fsLike);
     const nowUtc = clock();
-    const model = deps.model ?? defaultNimModel(config);
+    const model = deps.model ?? defaultChatModel(config);
     const prompts = await loadPromptTemplates(fsLike.readFile);
     const agent = buildAgent({ model, prompts });
     const sections = await run(messages, agent);
@@ -55,7 +55,7 @@ export async function main(
     const digest = assembleDigest({
       title: "Session Digest",
       source_path: argv[0],
-      provider: "nvidia_nim",
+      provider: config.provider,
       model: config.model,
       generated_at: nowUtc,
     }, sections);

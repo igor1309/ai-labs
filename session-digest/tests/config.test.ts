@@ -11,7 +11,21 @@ type LoadConfig = (
   },
 ) => Promise<unknown>;
 
-const envExampleBody = "NVIDIA_API_KEY=\nNVIDIA_MODEL=\n";
+const envExampleBody = [
+  "# OpenRouter direct",
+  "OPENROUTER_API_KEY=",
+  "OPENROUTER_MODEL=",
+  "",
+  "# Nomos local proxy",
+  "NOMOS_API_KEY=",
+  "NOMOS_MODEL=",
+  "NOMOS_BASE_URL=http://localhost:8080/v1",
+  "",
+  "# NVIDIA NIM legacy path",
+  "NVIDIA_API_KEY=",
+  "NVIDIA_MODEL=",
+  "",
+].join("\n");
 
 test("test_missing_env_creates_env_example_via_injected_fs_writefile", async () => {
   const baseDir = "/tmp/session-digests";
@@ -72,6 +86,34 @@ test("test_missing_api_key_returns_error", async () => {
   );
 });
 
+test("test_load_config_returns_openrouter_config_when_openrouter_keys_exist", async () => {
+  const { loadConfig } = await loadConfigModule();
+  const fsLike = makeReadOnlyFsLike("OPENROUTER_API_KEY=or-key\nOPENROUTER_MODEL=x-ai/grok-4.1-fast\n");
+
+  const config = await loadConfig("/tmp/session-digests", fsLike);
+
+  assert.deepEqual(config, {
+    apiKey: "or-key",
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "x-ai/grok-4.1-fast",
+    provider: "openrouter",
+  });
+});
+
+test("test_load_config_returns_nomos_config_when_nomos_keys_exist", async () => {
+  const { loadConfig } = await loadConfigModule();
+  const fsLike = makeReadOnlyFsLike("NOMOS_API_KEY=nomos-key\nNOMOS_MODEL=deepseek/deepseek-v3.2\nNOMOS_BASE_URL=http://127.0.0.1:8080/v1\n");
+
+  const config = await loadConfig("/tmp/session-digests", fsLike);
+
+  assert.deepEqual(config, {
+    apiKey: "nomos-key",
+    baseURL: "http://127.0.0.1:8080/v1",
+    model: "deepseek/deepseek-v3.2",
+    provider: "nomos",
+  });
+});
+
 test("test_missing_model_returns_error", async () => {
   const { loadConfig } = await loadConfigModule();
   const fsLike = makeReadOnlyFsLike("NVIDIA_API_KEY=k\n");
@@ -120,7 +162,12 @@ test("test_load_config_invokes_injected_fs_read_file_on_happy_path", async () =>
 
   const config = await loadConfig(baseDir, fsLike);
 
-  assert.deepEqual(config, { apiKey: "k", model: "m" });
+  assert.deepEqual(config, {
+    apiKey: "k",
+    baseURL: "https://integrate.api.nvidia.com/v1",
+    model: "m",
+    provider: "nvidia_nim",
+  });
   assert.deepEqual(readFileCalls, [{ path: path.join(baseDir, ".env"), encoding: "utf8" }]);
 });
 

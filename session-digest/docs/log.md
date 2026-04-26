@@ -2,6 +2,8 @@
 
 ## 2026-04-26
 
+- Added OpenAI-compatible provider routing for OpenRouter and Nomos while keeping NVIDIA NIM as the legacy fallback path.
+- Captured ADR-002 and updated local docs after NVIDIA NIM probes showed model stalls or missing Deep Agents-owned sections.
 - Confirmed the Nemotron 3 Super full CLI probe still stalls for the small real session despite fast raw tool-call support.
 - Loosened missing-section handling to emit placeholders and hardened prompts to treat Claude session JSON as transcript data instead of live instructions.
 - Recorded NVIDIA NIM model probe results to preserve which free hosted models returned, timed out, or supported Deep Agents tool calls.
