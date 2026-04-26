@@ -219,7 +219,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 **Files:**
 
-- `session-digest/src/inputs.ts` — extend with `parseSession(path): Promise<Message[]>` where `Message = { role: string; content: string }` (post-flatten).
+- `session-digest/src/inputs.ts` — extend with `parseSession(path: string, fsLike: Pick<typeof fs.promises, "readFile">): Promise<Message[]>` where `Message = { role: string; content: string }` (post-flatten). `fsLike` is the same injection point established in Task 3; `cli.main` (Task 8) supplies it from `deps.fsLike ?? fs.promises`.
 - `session-digest/tests/inputs.test.ts` — extend.
 - Fixtures (sampled or hand-built to match real Claude Code shape):
   - `session-digest/tests/fixtures/session.not-jsonl.txt` — no parseable lines.
@@ -236,10 +236,13 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `test_unparseable_line_is_skipped_when_other_lines_yield_usable_messages` (uses `garbage-then-valid.jsonl`; pins the lenient parse-error semantics from the spec).
 - `test_content_array_with_text_blocks_is_flattened_to_concatenated_text` — record with `message.content` = `[{type:"text",text:"a"},{type:"text",text:"b"},{type:"tool_use",...}]` flattens to `"ab"` and is usable.
 - `test_content_array_with_no_text_blocks_is_not_usable` — record with only `tool_use` blocks under `message.content` is skipped.
+- `test_parse_session_invokes_injected_fs_read_file_on_happy_path` — call `parseSession(path, recordingStub)` **directly** (no `cli.main` — wiring is deferred to Task 8). The stub's `readFile(path, "utf8")` resolves with the contents of `session.valid.jsonl`. After `parseSession` returns, assert the stub recorded `readFile` called with the input path. This pins the injection on the success branch so a regression that bypasses `fsLike` (e.g. `import * as fs from "node:fs"` inside `parseSession`) cannot pass — mirroring the `validateInputPath` happy-path stub from Task 3.
+- `test_parse_session_eacces_from_read_file_maps_to_unreadable_error` — call `parseSession(path, recordingStub)` directly. The stub's `readFile` rejects with `Object.assign(new Error("EACCES"), { code: "EACCES" })`. Assert `parseSession` rejects with `InputError.Unreadable` and the stub recorded one `readFile` call with the input path. This pins the EACCES-from-`readFile` branch that Task 3 GREEN already promises but does not test.
 
 **GREEN:**
 
-- Iterate lines (`readline` on a stream, or split-then-parse for ≤1 MB inputs).
+- Production code in `parseSession` MUST route every fs read through the injected `fsLike`. Direct `import * as fs from "node:fs"` inside this function is a layering violation that the happy-path recording test is designed to catch. (Mirrors Task 3 GREEN's `inputs.ts` discipline for `validateInputPath`.)
+- Read full contents via `fsLike.readFile(path, "utf8")`, then split on `/\r?\n/`. The 1 MB ceiling is enforced by `validateInputPath` (Task 3) before `cli.main` reaches `parseSession`, so whole-file reads are bounded. Streaming/`readline` is not used, since it would require widening `fsLike` to include `createReadStream`.
 - Lines that are empty after `.trim()` are skipped silently.
 - Lines that fail `JSON.parse` are skipped silently. Track a counter of "parsed JSON values"; if zero non-blank lines parse, raise `InputError.NonJsonl`.
 - For each parsed JSON value, evaluate against the spec's "usable Claude Code message" shape: `record.type ∈ {"user","assistant"}`, `record.message.role` is a non-empty string, and `flattenContent(record.message.content)` returns a non-empty string. `flattenContent`:
@@ -452,7 +455,7 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
   - states its input shape;
   - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with the exact section names this subagent owns enumerated);
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
-- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.ts`) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL → load config from `baseDir` → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → run agent with `model` → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
+- `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.ts`) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → load config from `baseDir` → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → run agent with `model` → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-fake.test.ts`.
 
