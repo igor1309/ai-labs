@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Added CLI arity validation so v1 rejects missing paths, extra paths, and flags before any file or config work.
 - Scaffolded the `session-digest` TypeScript workspace and root test wiring so the CLI prototype has isolated package-local build and test gates.
 - Recorded explicit user approval to auto-continue through RED/GREEN micro-steps and task boundaries without human-review stops when gates pass.
 - Broke the plan-review loop by removing the transient review artifact and tightening the implementation plan around ADR-preserving Deep Agents probing, fake-run file assertions, and new-project checklist state.
