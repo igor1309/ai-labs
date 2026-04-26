@@ -5,7 +5,7 @@
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
 #   claude-insights, corpus-scout, dev-skills, loki, neris, nexum, niora,
-#   nomos, notio, oracle, regentara, sandbox, tools, web-scout
+#   nomos, notio, oracle, regentara, sandbox, session-digest, tools, web-scout
 
 set -euo pipefail
 
@@ -143,7 +143,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts tests tools vendor web-scout worktrees _inbox"
+  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
   local unknown=""
   for d in */; do
     d="${d%/}"
@@ -167,7 +167,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in claude-insights corpus-scout dev-skills loki neris nexum niora nomos notio oracle regentara sandbox tools web-scout; do
+for proj in claude-insights corpus-scout dev-skills loki neris nexum niora nomos notio oracle regentara sandbox session-digest tools web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"
