@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+Register `session-digest` as a production Nomos live client on `nomos.enoa.ai`, verify authenticated remote chat-completions traffic, and update local CLI config to use the production Nomos endpoint.
 Register local `session-digest` live client for Nomos development testing and confirm it can route OpenRouter-backed chat/tool calls with usage logged under the project.
 
 ## 2026-03-09
