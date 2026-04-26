@@ -109,6 +109,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - Local targeted test command per task: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/<file>.test.ts`. Direct tight-loop equivalent: `node --import tsx --test session-digest/tests/<file>.test.ts`.
 - Local iteration without NIM creds: `node --import tsx --test session-digest/tests/*.test.ts --test-skip-pattern='live nim'`. The live test (Task 9) is unconditionally collected and unconditionally fails on missing creds per spec test 13; the skip pattern is a developer aid for tight iteration loops on non-live tasks, never a CI gate.
 - Full-suite gate before commit at the end of each task: `./scripts/run_silent.sh "tests" npm test -w session-digest` AND `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest` MUST both pass before staging files. If either fails, fix on the same task — do not commit.
+- At plan completion, after the final task gates pass, move this plan from `session-digest/docs/plans/` to `session-digest/docs/plans/implemented/`, commit the move, and create the PR from the dedicated branch.
 - Commits are short, imperative, lowercase per AGENTS.md.
 
 **Spec test coverage map** (each acceptance behavior maps to the task that closes it):
