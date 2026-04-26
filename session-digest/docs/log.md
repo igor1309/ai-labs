@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Rechecked NVIDIA/Kimi after JSON salvage and transcript-passing changes; a `484229` byte iOS session completed but still omitted Extractor-owned sections.
 - Confirmed a `293236` byte real session succeeds through production Nomos with `x-ai/grok-4.1-fast`, producing a structurally complete digest in about one minute.
 - Added JSON salvage for fenced/prose-wrapped Deep Agents task outputs and hardened parent delegation to pass transcript JSON into each subagent task.
 - Confirmed full-transcript delegation for the larger real session now hits repeated `x-ai/grok-4.1-fast` upstream timeouts through production Nomos.
