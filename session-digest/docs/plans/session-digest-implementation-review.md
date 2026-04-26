@@ -8,30 +8,30 @@ description: "Adversarial review findings for the session-digest implementation 
 
 ## Scope
 
-Reviewed `session-digest/docs/plans/session-digest-implementation.md` for architecture-plan drift, missing process gates, and implementation risks.
+Review findings for `session-digest/docs/plans/session-digest-implementation.md`.
 
 ## Findings
 
-### Finding 1: Prompt Loading Contradicts the Injection Boundary
+### Finding 1: Task 6/7 Require Successful CLI Before the Pipeline Exists
 
-- Verdict: warning.
+- Priority: P1.
+- Location: `session-digest/docs/plans/session-digest-implementation.md:340`.
+- Status: added.
+- Finding: Task 6 and Task 7 ask for `cli.main` success-path assertions before config, digest assembly, and agent wiring are implemented. Under strict TDD this forces either placeholder product behavior or prematurely implementing Task 8 work.
+- Fix: Split these into pure output tests now, then move CLI integration checks for no raw copy, front matter, stdout, and clock threading into Task 8 after the fake LLM path exists.
+
+### Finding 2: Plan Is Missing the Required Execution Lock
+
+- Priority: P1.
+- Location: `session-digest/docs/plans/session-digest-implementation.md:85`.
+- Status: added.
+- Finding: The repo process-gates skill requires implementation plans to include explicit `Worktree required`, expected worktree, expected branch, and preflight checkbox fields, plus step closeout discipline. This plan has process gates, but not the mandatory execution-lock fields, so execution can start without proving the branch/worktree is correct.
+- Fix: Add the required execution-lock fields and step closeout discipline before using the plan for implementation.
+
+### Finding 3: Structured-Output Plan References Zod Without Declaring It
+
 - Priority: P2.
-- Location: `session-digest/docs/plans/session-digest-implementation.md:194`.
-- Why: Task 2 defines `MainDeps.fsLike` as the single composition-root filesystem injection point for the CLI, but Task 8 later instructs `agents.ts` to call `fs.readFileSync(...)` directly. That creates hidden production I/O outside the declared dependency boundary and makes prompt-loading failures harder to test or fake.
-- Fix: Either explicitly carve out checked-in prompt templates as allowed static module resources, or add a prompt-loader function that receives an injected async `readFile` from `fsLike` and is wired through `cli.main` or `agents.buildAgent`.
-
-### Finding 2: Task 7.5 Verification Can Pass With an Invalid Amendment
-
-- Verdict: warning.
-- Priority: P2.
-- Location: `session-digest/docs/plans/session-digest-implementation.md:413`.
-- Why: The amendment gate only checks file existence and a narrow `TBD` regex, but the task requires front matter and four explicit sections with binding answers. A malformed amendment with missing headings or vague prose can still pass the command.
-- Fix: Make the gate check required headings and front matter fields explicitly, for example `rg '^date:|^model:|^description:|^## API observations|^## Section-extraction strategy decision|^## Fake-LLM strategy|^## Task 8 redraft required\?' session-digest/docs/plans/session-digest-architecture-amendment.md` plus the no-`TBD` check.
-
-### Finding 3: Out-of-Scope Guardrail Is Named but Not Specified
-
-- Verdict: warning.
-- Priority: P2.
-- Location: `session-digest/docs/plans/session-digest-implementation.md:73`.
-- Why: The ADR traceability matrix lists an `out-of-scope guardrail` for surface and non-goals, but no task defines an enforceable test or review checklist for it. That is drift-prone because HTTP, watch mode, service deployment, and provider abstraction regressions are exactly the kind of scope creep ADR-001 forbids.
-- Fix: Add a concrete Task 8 or final-check item, such as static checks for forbidden dependencies or files (`express`, `fastify`, `chokidar`, provider adapter modules) and a review checklist mapping each ADR non-goal to `not introduced`.
+- Location: `session-digest/docs/plans/session-digest-implementation.md:456`.
+- Status: added.
+- Finding: Task 8 suggests `withStructuredOutput(z.object(...))`, but Task 1's dependency list does not add `zod`. If the selected approach uses Zod directly, add it as an explicit dependency; otherwise make the JSON-parse fallback the planned path so implementation does not rely on a transitive package.
+- Fix: Either add `zod` to the declared dependencies or revise Task 8 to use the JSON-parse fallback as the planned path.
