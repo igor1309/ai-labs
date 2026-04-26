@@ -48,7 +48,7 @@ Trim the session or choose a smaller Claude Code JSONL file.
 ### Output file
 
 - Directory: `~/.session-digests/` (created if missing).
-- Filename pattern: `<input-stem>.<YYYY-MM-DD-HHMMSS>.digest.md`, second-precision local-time timestamp.
+- Filename pattern: `<input-stem>.<YYYY-MM-DD-HHMMSS>.digest.md`, second-precision UTC timestamp.
 - Body: Markdown digest with the fixed section structure and front matter defined in ADR-001.
 
 ### Configuration file
@@ -136,7 +136,9 @@ Local tests only; CI is out of scope per ADR-001.
 10. Valid fixture session → CLI writes a Markdown digest to `~/.session-digests/` and exits zero.
 11. Successful run → `stdout` contains exactly the created digest path and no other content.
 12. Two successful runs in the same second over different inputs do not collide on filename when input stems differ; same input within one second is documented as a non-target case.
-13. At least one local integration or smoke test calls NVIDIA NIM directly using a real `NVIDIA_API_KEY`/`NVIDIA_MODEL`.
+13. At least one local integration or smoke test calls NVIDIA NIM directly. The test MUST fail (not skip) when `NVIDIA_API_KEY` or `NVIDIA_MODEL` is absent or empty.
+14. Successful run does not create or copy the raw input JSONL anywhere under `~/.session-digests/`.
+15. Generated digest front matter contains `title`, `source_path`, `provider`, `model`, and `generated_at` keys with the values defined in ADR-001.
 
 ## Done criteria
 
