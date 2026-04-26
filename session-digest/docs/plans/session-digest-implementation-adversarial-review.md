@@ -22,7 +22,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F8 — Task 9 tmpdir cleanup | ✅ resolved | `9c1bcc88` |
 | F9 — empty-string vs missing-section conflation | ✅ resolved | this docs update |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
-| F11 — section-name drift between prompts and tuple | open | — |
+| F11 — section-name drift between prompts and tuple | ✅ resolved | this docs update |
 | F12 — Task 7.5 `.gitignore` vs delete-before-commit | open | — |
 | F13 — Task 7.5 step 1 redundant `npm install` | open | — |
 | F14 — spec test 12 satisfied at unit level — pin explicitly | ✅ resolved | `a7a8c825` |
@@ -38,7 +38,7 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 - **F14 verdict: pass.** `session-digest-implementation.md:315` explicitly states that same-input-within-one-second collision retry is out of scope per spec line 179, so the unit-level distinct-stem coverage is intentional.
 - **F4-N1 verdict: pass.** `session-digest-implementation.md:454` adds a missing-`baseDir` CLI test, and `:463` hoists `fsLike.mkdir(baseDir, { recursive: true })` before `loadConfig`, which is the cleaner alternative noted in the original follow-up.
 - **F9 verdict: pass.** `session-digest-implementation.md:431` now treats required sections with zero non-blank lines as missing inside `agents.run`, and `:452` pins absent, empty, and whitespace-only `Next-session improvements` to the same concise error path.
-- **F11 verdict: warning.** `session-digest-implementation.md:357` single-sources `SECTION_NAMES`, but `:459-462` still asks each prompt to enumerate owned section names manually. Fix: either generate prompt section-name text from `SECTION_NAMES` or add a unit/static test that prompt-owned names match the tuple.
+- **F11 verdict: pass.** `session-digest-implementation.md:358-359` now moves `SECTION_NAMES` and `SectionName` into shared `sections.ts`, `:428` represents ownership once in `SECTION_OWNERS`, `:458` adds a rendered-prompt drift test that also forbids literal section names in raw prompt templates, and `:463-466` requires prompt text to be rendered from `SECTION_OWNERS` instead of manually typed in prompt files.
 - **F12 verdict: warning.** `session-digest-implementation.md:376` still says the throwaway probe script is ignored under `.gitignore` while `:388` deletes it before commit. Fix: drop the `.gitignore` mention.
 - **F13 verdict: warning.** `session-digest-implementation.md:375` still says to install runtime deps that Task 1 already installs. Fix: replace with `npm ls -w session-digest deepagents @langchain/openai @langchain/core`.
 
@@ -47,11 +47,6 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 ## Open findings
 
 ### P3 — Minor
-
-#### F11. Section names duplicated as prose in prompts — drift risk vs `SECTION_NAMES` tuple
-
-- **Location:** `session-digest-implementation.md:357` and `:459-462`.
-- **Fix:** generate prompt headers from `SECTION_NAMES` at build/load time, or add a unit test that grep-matches each prompt file for its owned section names against `SECTION_NAMES`. Cheap.
 
 #### F12. Task 7.5 probe script mentions `.gitignore` and "delete before commit" — pick one
 
@@ -138,4 +133,4 @@ No material follow-ups. The fix mirrors Task 3's `validateInputPath` injection p
 
 ## Recommendation
 
-All four original blocking findings (F1–F4) are closed, and the later plan edits also close F5, F7, F8, F9, F14, and F4-N1. Before any RED test is written, the implementor should still fold two small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension) and **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike). The remaining open findings (**F11, F12, F13**) are real but not blocking; fold them into a small docs-only revision when convenient.
+All four original blocking findings (F1–F4) are closed, and the later plan edits also close F5, F7, F8, F9, F11, F14, and F4-N1. Before any RED test is written, the implementor should still fold two small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension) and **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike). The remaining open findings (**F12, F13**) are real but not blocking; fold them into a small docs-only revision when convenient.

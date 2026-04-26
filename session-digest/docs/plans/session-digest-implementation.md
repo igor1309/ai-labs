@@ -333,6 +333,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 **Files:**
 
 - `session-digest/src/output.ts` — extend.
+- `session-digest/src/sections.ts` — shared section constants and types.
 - `session-digest/tests/output.test.ts` — extend.
 
 **RED:**
@@ -354,7 +355,8 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 **GREEN:**
 
 - `assembleDigest(frontMatter: FrontMatter, sections: Record<SectionName, string>): string`.
-- `SECTION_NAMES` is a module-level `as const` tuple so the order is single-sourced.
+- `SECTION_NAMES` lives in `sections.ts` as a module-level `as const` tuple so the order is single-sourced across output assembly, agent merging, and prompt rendering.
+- `SectionName` is derived from `SECTION_NAMES` (`type SectionName = typeof SECTION_NAMES[number]`); no duplicate section-name union is hand-written.
 - `FrontMatter` is a `type` with the five required fields; serializer emits YAML between `---` lines (hand-rolled — do not introduce a YAML lib for five string fields).
 - `generated_at` is serialized as `nowUtc.toISOString().replace(/\.\d{3}Z$/, "Z")` (drop milliseconds, keep `Z`). `nowUtc: Date` is threaded in from `cli.main` (Task 6 GREEN) — the front-matter assembler MUST NOT call `new Date(...)` itself; doing so would both duplicate the clock reach and break Task 7 RED's static count assertion.
 
@@ -404,7 +406,8 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 - `session-digest/src/agents.ts` — exports `agents.run(messages, model)`, `agents.buildAgent({ model })`, and `defaultNimModel(config: Config): ChatOpenAI`. `defaultNimModel` constructs `ChatOpenAI` directly using the field names pinned by Task 7.5's amendment (no provider abstraction, no wrapper). Dependency direction: `agents.ts → config.ts` (agents imports `Config`); never the reverse. `agents.ts` is necessarily NIM-aware per ADR-001's no-abstraction rule — this is by design, not a layering violation.
 - `session-digest/src/cli.ts` — wire the full flow; composition root for `MainDeps` (Task 2 signature).
-- `session-digest/src/prompts/extractor.md`, `improver.md`, `evidence-checker.md` — checked-in prompt files. Each prompt names its inputs (parsed messages, prior subagent outputs) and the output schema (named sections in a JSON envelope; see "Section extraction strategy" below). The exact prompt-shape is provisional pending Task 7.5's amendment — if the amendment changes the section-extraction strategy, prompts are redrafted accordingly.
+- `session-digest/src/prompts/extractor.md`, `improver.md`, `evidence-checker.md` — checked-in prompt template files. Each prompt names its inputs (parsed messages, prior subagent outputs) and the output schema via an owned-section placeholder rendered from `SECTION_OWNERS`; prompt files MUST NOT manually duplicate literal owned section names. The exact prompt-shape is provisional pending Task 7.5's amendment — if the amendment changes the section-extraction strategy, prompts are redrafted accordingly.
+- `session-digest/src/sections.ts` — extended with `SECTION_OWNERS`, keyed by ADR role labels and typed from `SectionName`.
 - `session-digest/tests/agents-fake.test.ts`.
 - `session-digest/tests/fixtures/session.valid.jsonl`.
 
@@ -422,7 +425,7 @@ Each subagent's prompt MUST instruct the model to emit a single JSON object as i
 { "sections": { "<Section Name>": "<markdown body>", ... } }
 ```
 
-The orchestrator parses each subagent's final message via `withStructuredOutput(z.object({ sections: z.record(z.string()) }))` (or, if `withStructuredOutput` does not chain through `createDeepAgent`, by parsing the final assistant message as JSON inside `agents.run`). Section ownership:
+The orchestrator parses each subagent's final message via `withStructuredOutput(z.object({ sections: z.record(z.string()) }))` (or, if `withStructuredOutput` does not chain through `createDeepAgent`, by parsing the final assistant message as JSON inside `agents.run`). Section ownership is represented once in `SECTION_OWNERS`:
 
 - Extractor → `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`.
 - Improver → `Next-session improvements`.
@@ -452,13 +455,15 @@ Each RED test below seeds a placeholder `<tmpHome>/.session-digests/.env` contai
 - `test_missing_or_blank_required_section_in_subagent_output_fails_run` — feed the fake a response where `Next-session improvements` is absent, then a response where it is present but empty (`""`), and then a response where it is present but whitespace-only. Strategy A: malformed Improver envelopes such as `{"sections": {}}`, `{"sections": {"Next-session improvements": ""}}`, and `{"sections": {"Next-session improvements": " \n\t "}}`; Strategy B: the same malformed shapes in the shared envelope. For each case, assert `cli.main` returns non-zero with the same concise stderr/error class. Test calls `cli.main` with `deps.model = fake`; does NOT call `agents.run` directly.
 - `test_invalid_creds_fail_on_first_model_call_not_before` — `deps.model` is a fake whose `_call` throws a synthetic auth error on first invocation, with a counter on `_call` invocations. Call `cli.main(argv, stdout, stderr, deps)`. Assert: `loadConfig` succeeded (the fake's call counter would be `0` if config had thrown first), `_call` counter is exactly `1`, and `cli.main` returned non-zero. This pins spec line 113's "no preflight" sequencing invariant — the fake substitutes for the real NIM endpoint, so this is a sequencing assertion, not an auth assertion. Real-credential auth is covered by Task 9.
 - `test_first_run_with_missing_basedir_writes_env_example_and_exits_with_bootstrap_error` — set `deps.baseDir = path.join(mkdtemp(), "session-digests-subdir")` (parent exists, subdir does NOT); do not seed `.env` or `.env.example`. Call `cli.main(argv, stdout, stderr, deps)` with the valid fixture and `deps.model = fake`. Assert: `cli.main` returns non-zero; `stderr` contains the substring `.env.example`; `<baseDir>` now exists on disk; `<baseDir>/.env.example` exists on disk with the documented body; no other files exist under `<baseDir>`. Pins the preflight `mkdir(baseDir, { recursive: true })` step — without it, the first-run flow rejects with raw `ENOENT` from `writeFile` instead of the user-facing bootstrap `ConfigError`, and the regression class F5 closes silently reopens.
+- `test_rendered_prompts_use_section_owners_without_manual_section_name_drift` — render all three prompt templates through the production prompt renderer. Assert each rendered prompt includes exactly the section names owned by its ADR role (`Extractor`, `Improver`, `Evidence checker`) and no other `SECTION_NAMES` values. Also read the raw prompt template files and assert none of them contains any literal `SECTION_NAMES` value; they must contain only the owned-section placeholder. This pins prompt section names to `SECTION_OWNERS` instead of duplicated prose.
 
 **GREEN:**
 
 - Implement `agents.run(messages, model): Promise<Record<SectionName, string>>` (section name → content). Validation happens before calling `assembleDigest`: for each `SECTION_NAMES` entry, require at least one non-blank line after flattening the section body; treat absent, empty, and whitespace-only values as the same missing-section error.
-- Write the three prompt files. Each prompt:
+- Implement `renderPrompt(role, template)` (or equivalent local helper) that replaces the owned-section placeholder with section names derived from `SECTION_OWNERS[role]`. The rendered text, not the raw template, is passed to Deep Agents.
+- Write the three prompt template files. Each prompt:
   - states its input shape;
-  - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with the exact section names this subagent owns enumerated);
+  - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with exact owned section names rendered from `SECTION_OWNERS`, not typed manually in the prompt file);
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
 - `cli.main` flow: validate argv → resolve `baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests")` → resolve `clock = deps.clock ?? defaultClock` (imported from `./clock.ts`) and `fsLike = deps.fsLike ?? fs.promises` → validate input (passing `fsLike`) → parse JSONL (passing `fsLike`) → `await fsLike.mkdir(baseDir, { recursive: true })` (preflight: ensures `<baseDir>` exists for `loadConfig`'s `.env.example` bootstrap on first run; idempotent on subsequent runs; uses the `mkdir` already declared in `MainDeps.fsLike` Pick set at line 168 — no widening) → `await loadConfig(baseDir, fsLike)` (Task 5 signature; `loadConfig` is `async` and routes all `.env` reads/`.env.example` writes through `fsLike`) → call `clock()` **exactly once**, store as `nowUtc` → resolve `model = deps.model ?? defaultNimModel(config)` (pure constructor; no network) → run agent with `model` → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file under `baseDir` (passing `fsLike`) → write absolute path to stdout → return 0.
 
