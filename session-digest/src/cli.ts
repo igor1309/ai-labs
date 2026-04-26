@@ -4,6 +4,7 @@ import * as path from "node:path";
 import type { Writable } from "node:stream";
 
 import { defaultClock } from "./clock.js";
+import { InputError, validateInputPath } from "./inputs.js";
 
 export type MainDeps = {
   clock?: () => Date;
@@ -35,7 +36,18 @@ export async function main(
 
   void clock;
   void baseDir;
-  void fsLike;
+
+  try {
+    await validateInputPath(argv[0], fsLike);
+  } catch (error) {
+    if (error instanceof InputError) {
+      stderr.write(`${error.message}\n`);
+
+      return 1;
+    }
+
+    throw error;
+  }
 
   return 0;
 }
