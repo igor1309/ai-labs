@@ -191,8 +191,9 @@ Tests call `main(argv, stdout, stderr)` in-process with captured streams (`Writa
 **RED:**
 
 - `test_missing_file_returns_error` (path under `mkdtemp()` that does not exist).
-- `test_path_pointing_at_directory_returns_error` (path is a directory, not a file). Replaces the prior `chmod(path, 0o000)` approach because mode-000 is bypassed under euid=0 and can be overridden by macOS extended ACLs. A directory-as-input fails reliably under all dev environments and covers a real user mistake.
+- `test_path_pointing_at_directory_returns_error` (path is a directory, not a file). A directory-as-input fails reliably under all dev environments and covers a real user mistake.
 - `test_path_pointing_at_broken_symlink_returns_error` (`fs.symlink('/nonexistent', linkPath)`).
+- `test_file_under_unreadable_parent_directory_returns_error` — under `mkdtemp()`: create `parent/`, write `parent/session.jsonl`, then `chmod(parent, 0o000)`. Assert `cli.main` returns non-zero with an `EACCES`-style message on `stderr`. `afterEach` MUST `chmod(parent, 0o700)` before `rm -rf` so cleanup succeeds. If `process.geteuid?.() === 0`, fail the test with a clear message ("run as non-root") rather than skipping — root bypasses mode-000 and would silently pass. This is the dedicated coverage for spec test 2 ("permission or IO error"); mode-000 on the *parent* directory is honored on macOS and Linux for non-root users (mode-000 on the *file* itself was unreliable under macOS ACLs, which is why the file-mode approach was abandoned).
 - `test_empty_file_returns_error` (write zero bytes).
 - `test_file_over_one_megabyte_returns_oversize_error` (write 1 MB + 1 byte). Also asserts `stderr` contains the substring `1 MB` to pin the user-facing wording without locking exact prose.
 
@@ -201,7 +202,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 **GREEN:**
 
 - `validateInputPath(path: string): Promise<void>` throws a typed `InputError` per failure mode; `cli.main` catches and translates to `(exitCode, stderrMessage)`.
-- 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size and file-type checks both use `fs.stat`. After `stat`, branch on `stat.isFile()` (false → `InputError.NotAFile`) before checking size. Broken symlinks surface as `ENOENT` from `stat` and map to `InputError.MissingFile`.
+- 1 MB constant lives in `inputs.ts` as a module-level `const ONE_MB = 1024 * 1024`; size and file-type checks both use `fs.stat`. After `stat`, branch on `stat.isFile()` (false → `InputError.NotAFile`) before checking size. Broken symlinks surface as `ENOENT` from `stat` and map to `InputError.MissingFile`. `EACCES` from `stat` (or any subsequent open/read) maps to `InputError.Unreadable`.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/inputs.test.ts`.
 
@@ -268,7 +269,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `test_missing_api_key_returns_error` — `.env` exists but `NVIDIA_API_KEY` is empty/absent. `stderr` MUST contain the substring `NVIDIA_API_KEY`.
 - `test_missing_model_returns_error` — `.env` exists but `NVIDIA_MODEL` is empty/absent. `stderr` MUST contain the substring `NVIDIA_MODEL`.
 
-> The "no preflight call" rule from spec line 111 is a non-functional requirement that no automated test can prove cleanly. The user-visible behaviors that depend on it (fail-fast on missing creds) are already covered by spec tests 7 and 8 above. The structural defense — `config.ts` does not import `agents.ts` — is enforced implicitly by the file's actual import list and reviewable at PR time. No dedicated "no-preflight" test is added.
+> The "no preflight call" rule from spec line 111 is a sequencing invariant: invalid creds MUST surface on the first NIM call, not before. A structural defense IS added in Task 8 (`test_invalid_creds_fail_on_first_model_call_not_before`): a fake model whose first `_call` throws asserts `cli.main` reaches `agents.run` and exits non-zero only after the model is invoked exactly once. This distinguishes "preflight ran" from "first NIM call failed" cheaply and closes spec line 113. The complementary structural check — `config.ts` does not import `agents.ts` — remains a PR-review concern.
 
 **GREEN:**
 
@@ -299,13 +300,16 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 - `test_output_path_uses_input_stem_and_utc_second_timestamp` — assert pattern `<stem>.YYYY-MM-DD-HHMMSS.digest.md` and that the timestamp is UTC (inject a clock).
 - `test_two_runs_with_different_input_stems_in_same_second_produce_distinct_paths`.
 - `test_output_directory_is_created_when_missing`.
-- `test_successful_run_does_not_copy_raw_input_anywhere_under_session_digests` — after a run, walk the digest directory and assert no file's bytes equal the input file's bytes. Bytes-equality is the canonical check for "MUST NOT copy raw input"; filename heuristics are not used.
+- `test_successful_run_writes_only_the_digest_file_under_session_digests` — after `cli.main`, list every regular file under `<HOME>/.session-digests/` and assert the listing is exactly `[computedDigestPath]`. Additionally assert no file under that dir has the same SHA-256 as the input file (defense in depth against a future feature that adds a second file there). This is a stronger expression of the spec's "exactly one digest file per successful invocation" + "never copy or persist the raw input" than naive bytes-equality, which has rare false-positive modes when a digest body legitimately quotes a small fixture.
+
+> Spec line 179 documents same-input-within-one-second as a non-target case. No test asserts behavior in that scenario; the second-precision timestamp is sufficient for normal interactive use, and v1 is not required to retry on collision.
 
 **GREEN:**
 
 - `computeDigestPath(inputPath, nowUtc, baseDir)` returns the target path.
 - `writeDigest(path, body)` creates the parent dir (`fs.mkdir({ recursive: true })`) and writes only the body. No copy of input.
 - Inject the clock as a parameter; default to `() => new Date()` returning UTC.
+- The `nowUtc` instant is captured **once** at the top of `cli.main` and threaded into both `computeDigestPath` and the front-matter assembler in Task 7. Two `new Date()` calls straddling a second boundary would otherwise let the filename's timestamp diverge from `generated_at`; capturing once removes that flake source.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/output.test.ts`.
 
@@ -329,11 +333,13 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
   - `title === "Session Digest"` (literal — pinned by ADR-001 front-matter example).
   - `provider === "nvidia_nim"` (literal).
   - `model === <configured NVIDIA_MODEL>`.
-  - `source_path === path.resolve(<cli arg>)` (no symlink follow; do NOT use `fs.realpath`). Both production code and the test MUST use `path.resolve` to keep results consistent across macOS (`/var → /private/var` symlink) and Linux dev machines.
+  - `source_path === path.resolve(<cli arg>)` (no symlink follow; do NOT use `fs.realpath`). The fixture path passed to `cli.main` MUST be absolute (constructed via `path.join(mkdtemp(), "session.jsonl")`) so `path.resolve` is idempotent and the assertion proves the production contract rather than tautologically matching test-side computation. A relative-path scenario, if needed later, is its own test.
   - `generated_at` matches `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/` (RFC 3339 / ISO 8601, second precision, literal `Z`).
+- `test_generated_at_matches_the_filename_timestamp` — inject a clock returning a fixed `Date`; assert the filename's UTC timestamp seconds equal `generated_at`'s seconds. Pins the single-clock-instant invariant from Task 6 GREEN against future regressions.
 - `test_body_contains_six_h2_sections_in_documented_order`:
   - exact sequence: `Session summary`, `Outcome`, `Useful decisions`, `Failure or friction points`, `Next-session improvements`, `Evidence notes`.
   - extracted by regex over `^## ` headers; assert the list equals the expected list.
+- `test_body_order_is_independent_of_input_record_iteration_order` — call `assembleDigest` with a `sections` object whose keys are inserted in **reverse** of the documented order; assert the body still emits the documented order. The previous test would pass on an `Object.keys(sections)`-iterating impl (because JS preserves insertion order); this one pins the invariant to the `SECTION_NAMES` tuple — the actual contract.
 
 **GREEN:**
 
@@ -348,27 +354,30 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 ---
 
-## Task 7.5 — Deep Agents API spike (no commit unless plan changes)
+## Task 7.5 — Deep Agents API spike (ends with docs commit)
 
 **Goal:** verify `deepagents` and `@langchain/openai` API shape against actually-installed versions, before any Task 8 RED test is written. This task pays down the integration risk that would otherwise force a Task 8 mid-flight redesign.
 
 **Steps:**
 
 1. From `session-digest/`, install the runtime deps if not yet installed: `deepagents`, `@langchain/openai`, `@langchain/core`.
-2. Write a throwaway probe script (e.g., `session-digest/scripts/probe-deepagents.ts`, ignored under `.gitignore`'s pattern or simply deleted before commit) that:
+2. Write a throwaway probe script (e.g., `session-digest/scripts/probe-deepagents.ts`, ignored under `.gitignore` and deleted before the closing commit) that:
    - constructs `createDeepAgent` with three trivial subagents named per ADR-001 (`Extractor`, `Improver`, `Evidence checker`);
    - passes a `FakeListChatModel` (from `@langchain/core/utils/testing`) seeded with ~50 sentinel responses tagged with their array index;
    - invokes the agent on a 3-message fixture;
+   - **logs the first 200 chars of every `BaseChatModel._call` `messages[]` argument across the run**, and reports whether any prompt seen by the model contains the literal substring `Extractor`, `Improver`, or `Evidence checker`. This is the load-bearing input for choosing Task 8's fake-LLM strategy below;
    - logs: total `model._call` invocation count, the `name` field accepted by `createDeepAgent` (does it reject spaces? require kebab-case?), and the constructor field names that `ChatOpenAI` accepts for NIM (`apiKey` vs `openAIApiKey`, top-level `baseURL` vs `configuration: { baseURL }`).
-3. Record the findings in this plan as Task 8 amendments:
-   - **Subagent name format** — pin kebab-case ids vs ADR prose names; if kebab-case is required, document the mapping in `agents.ts`.
-   - **Model constructor field names** — pin literal field names in `agents.ts`.
-   - **LLM call count per run** — pin the canned-response array length needed by the fake-LLM test, OR switch to a routing fake (see Task 8) if call ordering is non-trivial.
+3. **Update Task 8's "Architecture" subsection in this plan in place, even when defaults are confirmed.** Write the pinned values verbatim:
+   - **Subagent name format** — record the format `createDeepAgent` actually accepted (kebab-case ids vs ADR prose names); if kebab-case is required, document the mapping in `agents.ts`.
+   - **Model constructor field names** — record the literal field names accepted by the installed `ChatOpenAI`.
+   - **Per-run LLM call count** — record the observed invocation count for the trivial 3-message fixture.
+   - **Routing-substring observation** — record whether subagent names appeared in any model-facing prompt. This selects between the two Task 8 fake-LLM strategies.
 4. Delete the probe script.
+5. Commit (docs-only): `session-digest plan: pin deepagents api findings`.
 
-**Verification:** the three pinned values are written into Task 8's "Architecture" subsection before Task 8 RED begins.
+**Verification:** the four pinned values are written into Task 8's "Architecture" subsection (no `TBD` placeholders) and the commit lands on a green test suite (the existing suite remains green; only docs change).
 
-**No commit** unless the spike surfaces a finding that requires a plan amendment (in which case the amendment is a docs-only commit and Task 8 starts on the amended plan).
+**Why this task ends with a commit even when "nothing changed":** a spike whose findings live in volatile chat or in a deleted probe script is unauditable. Committing the amendment makes Task 8's pre-condition verifiable by `grep` and preserves the "commit on green every task" gate without carving out an exception.
 
 ---
 
@@ -376,7 +385,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 
 **Goal:** end-to-end success with a fake LLM. Subagent prompts are first-class artifacts of this task — quality of the digest is dominated by them.
 
-**Pre-condition:** Task 7.5 has been run; subagent name format, model constructor field names, and per-run LLM call count are pinned in this section.
+**Pre-condition:** Task 7.5 has been run and committed; subagent name format, model constructor field names, per-run LLM call count, and the routing-substring observation are pinned in the Architecture subsection below. **Reject this task if any of those values still read as `TBD`** — Task 7.5 must close before Task 8 RED begins.
 
 **Files:**
 
@@ -408,18 +417,21 @@ The orchestrator parses each subagent's final message via `withStructuredOutput(
 
 The orchestrator merges the three `sections` maps into one `Record<SectionName, string>` and passes it to `assembleDigest`. A missing required section MUST raise an error inside `agents.run` (caught by `cli.main` → non-zero exit). This makes section extraction deterministic and testable with a routing fake.
 
-**Test injection:**
+**Test injection (strategy selected by Task 7.5's routing-substring observation):**
 
 - `agents.buildAgent({ model })` accepts a model object.
-- Tests pass a `RoutingFake` chat model (small custom subclass of `BaseChatModel` or wrapper around `FakeListChatModel`) that returns a canned response keyed by substring match on the incoming prompt: when the prompt contains `Extractor`, return the Extractor JSON envelope; same for Improver and Evidence checker. This eliminates dependence on the planner's call-ordering and the per-run call count.
-- `cli.main` calls `agents.buildAgent({ model: defaultNimModel(config) })`; tests bypass the default by calling `agents.run(messages, routingFake)` directly.
+- `cli.main` calls `agents.buildAgent({ model: defaultNimModel(config) })`; tests bypass the default by calling `agents.run(messages, fake)` directly.
+- **Strategy A — RoutingFake** (use ONLY if Task 7.5 confirmed the substrings `Extractor`, `Improver`, `Evidence checker` appear in at least one model-facing prompt per subagent): a small custom subclass of `BaseChatModel` (or wrapper around `FakeListChatModel`) returns a canned response keyed by substring match on the incoming prompt — when the prompt contains `Extractor`, return the Extractor JSON envelope; same for Improver and Evidence checker. Eliminates dependence on planner call-ordering.
+- **Strategy B — SingleEnvelopeFake** (fallback if Task 7.5 found the substrings do NOT reach the model): a counting fake returns one fixed envelope containing **all six sections** in a single response on its first call, and throws on any subsequent call. Loses per-subagent routing fidelity but still tests the merge/assemble path, the section-non-emptiness invariant, and the failure modes below. The "missing required section" RED test (below) becomes "fake returns an envelope missing the `Next-session improvements` key"; the rest of the RED list is unaffected.
+- The chosen strategy is recorded in this Architecture subsection during Task 7.5's docs commit.
 
 **RED:**
 
 - `test_valid_session_produces_digest_at_expected_path` — given the fixture and a temp `HOME`, the run writes a Markdown file under `<HOME>/.session-digests/`; file exists; body has the six sections in order.
 - `test_stdout_contains_only_created_digest_path` — assert exact equality (path string + single trailing `\n`) and that `stderr` is empty on success.
 - `test_each_section_has_at_least_one_non_blank_line_of_content` — for every H2 in the generated digest, assert there is at least one non-blank line between this header and the next (or EOF). This is a structural quality gate that catches the empty-agent failure mode; it does not assert any specific content.
-- `test_missing_required_section_in_subagent_output_fails_run` — feed the routing fake a malformed Improver response (`{"sections": {}}`); assert `cli.main` returns non-zero with a concise stderr.
+- `test_missing_required_section_in_subagent_output_fails_run` — feed the fake a response missing the `Next-session improvements` section (Strategy A: malformed Improver envelope `{"sections": {}}`; Strategy B: single envelope omitting that key); assert `cli.main` returns non-zero with a concise stderr.
+- `test_invalid_creds_fail_on_first_model_call_not_before` — fake model whose first `_call` throws a synthetic auth error. Assert: `loadConfig` succeeded (no throw before agent construction), `agents.run` was entered, `model._call` was reached **exactly once**, and `cli.main` returned non-zero. This pins spec line 113's "no preflight" sequencing invariant — distinguishes "config-time check leaked into a network probe" from "first NIM call failed". Cheap, structural, removes a recurring code-review concern.
 
 **GREEN:**
 
@@ -428,7 +440,7 @@ The orchestrator merges the three `sections` maps into one `Record<SectionName, 
   - states its input shape;
   - states its output schema (the JSON envelope `{ "sections": { "<owned section name>": "<markdown>" } }`, with the exact section names this subagent owns enumerated);
   - is referenced from `agents.ts` via `fs.readFileSync(new URL("./prompts/<name>.md", import.meta.url), "utf8")`.
-- `cli.main` flow: validate argv → validate input → parse JSONL → load config → build NIM model from config → run agent → merge sections → assemble digest → write file → write absolute path to stdout → return 0.
+- `cli.main` flow: validate argv → validate input → parse JSONL → load config → capture `nowUtc = new Date()` once → build NIM model from config → run agent → merge sections → assemble digest (passing `nowUtc` to both `computeDigestPath` and the front-matter assembler) → write file → write absolute path to stdout → return 0.
 
 **Run:** `./scripts/run_silent.sh "tests" npm test -w session-digest -- --test-only tests/agents-fake.test.ts`.
 
@@ -447,8 +459,13 @@ The orchestrator merges the three `sections` maps into one `Record<SectionName, 
 **Rules:**
 
 - Test is collected and runs unconditionally — no `t.skip`, no `node:test --skip`, no environment-gated skip markers.
-- Missing or empty `NVIDIA_API_KEY` or `NVIDIA_MODEL` is a **test failure**, not a skip (spec test 13). The test reads from `process.env` first, then falls back to `~/.session-digests/.env` via `loadConfig`.
-- **Test artifacts MUST NEVER land under the user's actual `~/.session-digests/`.** The test overrides `HOME` (or passes an explicit `baseDir`) to a `mkdtemp()` location for the duration of the run, even when reading creds from the real `~/.session-digests/.env`. The credential-reading path and the digest-output path are decoupled in the test setup. Verify by asserting that the user's real digest directory size is unchanged before/after the test (or by assertion that the `baseDir` passed to `writeDigest` is under `mkdtemp()`).
+- Missing or empty `NVIDIA_API_KEY` or `NVIDIA_MODEL` is a **test failure**, not a skip (spec test 13).
+- **Test artifacts MUST NEVER land under the user's actual `~/.session-digests/`.** The credential-reading path and the digest-output path are decoupled in the test setup. The SUT (`cli.main`) only reads creds via `loadConfig(baseDir)` from `<HOME>/.session-digests/.env`; the test materializes that file under a temp `HOME` so there is one source of truth.
+- **Credential plumbing (in this exact order):**
+  1. Read `NVIDIA_API_KEY` and `NVIDIA_MODEL` from `process.env` if non-empty; otherwise read them from the user's real `$HOME/.session-digests/.env` via `loadConfig`. Fail the test (do not skip) if either value is missing or empty after both sources are consulted.
+  2. `mkdtemp()` a `tmpHome`. Write `tmpHome/.session-digests/.env` containing the two values from step 1.
+  3. Set `HOME=tmpHome` (or pass `baseDir=tmpHome/.session-digests` if `cli.main` accepts it) for the duration of the run; invoke `cli.main` as the SUT.
+  4. After: assert the digest exists under `tmpHome/.session-digests/`, and that the user's real `~/.session-digests/` mtime is unchanged.
 - When credentials are present, the test runs the CLI against `session.valid.jsonl` and asserts:
   - exit code 0;
   - a digest file is created under the temp `~/.session-digests/`;
