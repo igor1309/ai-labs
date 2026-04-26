@@ -16,18 +16,31 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F2 — fake LLM cannot inject through `cli.main` | ✅ resolved | `746aa528` |
 | F3 — `parseSession` lacks `fsLike` injection | ✅ resolved | `f0177be3` |
 | F4 — `loadConfig` outside `fsLike` injection regime | ✅ resolved | `0ae0bf3a` |
-| F5 — `.env.example` idempotency, EACCES on `.env` | open | — |
+| F5 — `.env.example` idempotency, EACCES on `.env` | ✅ resolved | `dff272fb` |
 | F6 — global `--import tsx` regression risk | ✅ resolved | `cf6a0e00` |
-| F7 — `~/.session-digests/` snapshot ENOENT | open | — |
+| F7 — `~/.session-digests/` snapshot ENOENT | ✅ resolved | `562ee970` |
 | F8 — Task 9 tmpdir cleanup | ✅ resolved | `9c1bcc88` |
 | F9 — empty-string vs missing-section conflation | open | — |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
 | F11 — section-name drift between prompts and tuple | open | — |
 | F12 — Task 7.5 `.gitignore` vs delete-before-commit | open | — |
 | F13 — Task 7.5 step 1 redundant `npm install` | open | — |
-| F14 — spec test 12 satisfied at unit level — pin explicitly | open | — |
+| F14 — spec test 12 satisfied at unit level — pin explicitly | ✅ resolved | `a7a8c825` |
 
 Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
+
+---
+
+## Closure review
+
+- **F5 verdict: pass.** `session-digest-implementation.md:274-275` now pins exclusive-create `writeFile(..., { flag: "wx" })`, simulates `EEXIST`, and requires the same `.env.example` `ConfigError`; `:287` swallows `EEXIST` without overwriting and maps `.env` `EACCES` to a permission `ConfigError`.
+- **F7 verdict: pass.** `session-digest-implementation.md:487-489` now treats `ENOENT` as an empty map and changes the real-directory assertion from strict equality to `before ⊆ after` by name+size, with the real output path still isolated under `deps.baseDir`.
+- **F14 verdict: pass.** `session-digest-implementation.md:315` explicitly states that same-input-within-one-second collision retry is out of scope per spec line 179, so the unit-level distinct-stem coverage is intentional.
+- **F4-N1 verdict: pass.** `session-digest-implementation.md:454` adds a missing-`baseDir` CLI test, and `:463` hoists `fsLike.mkdir(baseDir, { recursive: true })` before `loadConfig`, which is the cleaner alternative noted in the original follow-up.
+- **F9 verdict: fail.** `session-digest-implementation.md:431` still only rejects missing section keys, while `:451-452` tests missing keys separately from empty body content. Fix: normalize a required section with zero non-blank lines as missing inside `agents.run`, and add a RED case where `Next-session improvements` is present but empty and fails with the same error as an absent key.
+- **F11 verdict: warning.** `session-digest-implementation.md:357` single-sources `SECTION_NAMES`, but `:459-462` still asks each prompt to enumerate owned section names manually. Fix: either generate prompt section-name text from `SECTION_NAMES` or add a unit/static test that prompt-owned names match the tuple.
+- **F12 verdict: warning.** `session-digest-implementation.md:376` still says the throwaway probe script is ignored under `.gitignore` while `:388` deletes it before commit. Fix: drop the `.gitignore` mention.
+- **F13 verdict: warning.** `session-digest-implementation.md:375` still says to install runtime deps that Task 1 already installs. Fix: replace with `npm ls -w session-digest deepagents @langchain/openai @langchain/core`.
 
 ---
 
@@ -35,21 +48,9 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 
 ### P2 — Warning
 
-#### F5. Task 5 silent on idempotent `.env.example` rewrites and `.env`-unreadable case
-
-- **Location:** `session-digest-implementation.md` Task 5 GREEN.
-- **Why:** What if `.env.example` already exists when `.env` is missing — overwrite, leave alone, or error? F4's bootstrap test stubs `writeFile` to always resolve, so an impl that overwrites an existing `.env.example` would still pass. EACCES on `.env` was closed by F4; idempotency was not.
-- **Fix:** add one sentence: "If `.env.example` already exists, do not overwrite; emit the same `ConfigError` and proceed." Pre-seed an `.env.example` via the stub and assert the second call's `writeFile` count is `0`.
-
-#### F7. Task 9 `before === after` snapshot can fail if `~/.session-digests/` doesn't exist
-
-- **Location:** Task 9 rules.
-- **Why:** A first-time user (or a fresh dev machine) has no `~/.session-digests/` until the live test runs. `fs.readdir` throws `ENOENT`. The "before snapshot" step doesn't say how to handle the missing-dir case. Tying the assertion to absolute equality also makes the test brittle if the user runs the live test interactively while another shell writes to that dir.
-- **Fix:** treat missing dir as `[]`; document the assertion as "no entry present in `before` was modified or removed in `after`, and any new entry in `after` is the digest under `tmpHome`'s separate baseDir" — which is trivially true since the SUT's `baseDir` is `tmpHome/.session-digests`, never the real one. Then the listing snapshot is defense-in-depth, not the primary assertion.
-
 #### F9. Task 8 conflates "missing required section" with "empty-string section"
 
-- **Location:** Task 8 GREEN merge logic and `test_each_section_has_at_least_one_non_blank_line_of_content`.
+- **Location:** `session-digest-implementation.md:431` and `:451-452`.
 - **Why:** The orchestrator merges `sections` maps and checks "missing required section". An LLM legitimately returning `{"Next-session improvements": ""}` (key present, value empty) would pass the missing-section check but fail the non-blank-line gate. Two errors will collide on the same failure mode with different exit messages, and reviewers will not be able to tell whether a regression is in extraction or in body assembly.
 - **Fix:** in Task 8 GREEN, normalize: a section whose flattened body has zero non-blank lines is treated as missing. One predicate, one error class. Update the RED test to pin "key present but empty body" → same error as "key absent."
 
@@ -57,25 +58,19 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 
 #### F11. Section names duplicated as prose in prompts — drift risk vs `SECTION_NAMES` tuple
 
-- **Location:** Task 7 single-source tuple vs Task 8 prompts enumerating owned section names.
+- **Location:** `session-digest-implementation.md:357` and `:459-462`.
 - **Fix:** generate prompt headers from `SECTION_NAMES` at build/load time, or add a unit test that grep-matches each prompt file for its owned section names against `SECTION_NAMES`. Cheap.
 
 #### F12. Task 7.5 probe script mentions `.gitignore` and "delete before commit" — pick one
 
-- **Location:** Task 7.5 step 2 and step 4.
+- **Location:** `session-digest-implementation.md:376` and `:388`.
 - **Fix:** drop the `.gitignore` mention. The script is created → run → deleted within the task. No git surface.
 
 #### F13. Task 7.5 step 1 — runtime deps were already added in Task 1
 
-- **Location:** Task 7.5 step 1.
+- **Location:** `session-digest-implementation.md:375`.
 - **Why:** Task 1's `package.json` already lists `deepagents`, `@langchain/openai`, `@langchain/core`. Task 7.5 says "install if not yet installed." Either Task 1 didn't run `npm install` (it did), or this step is a no-op.
 - **Fix:** delete step 1 or replace with "verify they're installed: `npm ls -w session-digest deepagents @langchain/openai @langchain/core`."
-
-#### F14. Spec test 12 satisfied at unit level only — pin explicitly
-
-- **Location:** Task 6.
-- **Why:** Task 6 tests `computeDigestPath` for distinct stems. It does NOT exercise `cli.main` end-to-end twice in one second. That's fine per spec line 179, but worth pinning explicitly so a reviewer doesn't ask for an e2e double-run.
-- **Fix:** add one sentence to Task 6: "Spec test 12 is satisfied at the unit level; an e2e double-run is not required because v1 does not retry on collision (spec line 179)."
 
 ---
 
@@ -87,7 +82,7 @@ Residual nits or newly surfaced concerns observed during fix review.
 
 #### F1-N1. NodeNext ESM import extension — warning
 
-- **Location:** `session-digest-implementation.md:168` and `:450`.
+- **Location:** `session-digest-implementation.md:168` and `:463`.
 - **Why:** Both sites say "imported from `./clock.ts`". Under TypeScript NodeNext + ESM (Task 1's `tsconfig` essentials at `:130`), TS source `clock.ts` must be imported with the `.js` specifier (`from "./clock.js"`) — the `.ts` form will not resolve at runtime under `tsx` ESM loader semantics, and `tsc --noEmit` will reject it. Cosmetic in plan prose, but the implementor will hit it on first compile.
 - **Fix:** change both occurrences to "imported from `./clock.js`" (the documented NodeNext contract). One-line edit in two places.
 
@@ -107,7 +102,7 @@ Residual nits or newly surfaced concerns observed during fix review.
 
 #### F2-N2. `BaseChatModel` import subpath is unverified — minor
 
-- **Location:** Task 8 Test injection (`import type { BaseChatModel } from "@langchain/core/language_models/chat_models"`).
+- **Location:** `session-digest-implementation.md:382` and `:435`.
 - **Why:** The exact subpath under `@langchain/core` is package-version-dependent. Could be `@langchain/core/language_models` or `@langchain/core/language_models/chat_models` depending on the installed version's `exports` map. The plan trusts the path is right.
 - **Fix:** make Task 7.5's API-observations section explicitly pin the `BaseChatModel` import subpath alongside `ChatOpenAI` constructor field names. One more bullet in the existing spike — no new task needed.
 
@@ -125,11 +120,11 @@ No material follow-ups. The fix mirrors Task 3's `validateInputPath` injection p
 
 > F4 also closed F10 in passing — the sentinel-UUID `process.env` non-mutation assertion plus the "use `dotenv.parse(buffer)`, not `dotenv.config()`" rule remove the pollution risk without needing a separate commit.
 
-#### F4-N1. Bootstrap `writeFile` fails when `<baseDir>` does not exist — warning
+#### F4-N1. Bootstrap `writeFile` fails when `<baseDir>` does not exist — resolved by `dff272fb`
 
-- **Location:** Task 5 GREEN bootstrap branch (`ENOENT` → `writeFile(<baseDir>/.env.example, ...)`).
-- **Why:** On a fresh dev machine, `~/.session-digests/` does not exist. First invocation hits this sequence: `readFile(<baseDir>/.env)` → ENOENT → bootstrap → `writeFile(<baseDir>/.env.example)` → **ENOENT again** because the parent dir does not exist. The plan never says "ensure `<baseDir>` exists before write." `MainDeps.fsLike` already includes `mkdir`, but the local `Pick` for `loadConfig` is `"readFile" | "writeFile"` only — adding `mkdir` widens it.
-- **Fix:** in the GREEN bootstrap branch, prepend `await fsLike.mkdir(baseDir, { recursive: true })` before `writeFile`. Widen the local `Pick` to `"readFile" | "writeFile" | "mkdir"`. Add one assertion to `test_missing_env_creates_env_example_via_injected_fs_writefile`: stub records `mkdir(<baseDir>, { recursive: true })` exactly once before the `writeFile`. Alternative: hoist `mkdir` into `cli.main` ahead of `loadConfig` — cleaner separation, but adds a step to the flow narrative. Either is fine; the bootstrap-failure on a fresh dev box is the real bug.
+- **Location:** `session-digest-implementation.md:454` and `:463`.
+- **Why:** The plan now uses the cleaner alternative from the original follow-up: `cli.main` creates `baseDir` before calling `loadConfig`, and a RED test covers the first-run missing-`baseDir` case. `loadConfig` can keep its narrower `"readFile" | "writeFile"` `Pick`.
+- **Fix:** none; closed.
 
 #### F4-N2. UTF-8 BOM + lenient parse semantics — informational
 
@@ -151,4 +146,4 @@ No material follow-ups. The fix mirrors Task 3's `validateInputPath` injection p
 
 ## Recommendation
 
-All four blocking findings (F1–F4) are closed. Before any RED test is written, the implementor should fold three small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension), **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike), and **F4-N1** (mkdir-on-bootstrap). Each is a one-paragraph plan edit. The remaining open findings (F5–F9, F11–F14) are real but not blocking — fold into a single docs-only revision when convenient.
+All four original blocking findings (F1–F4) are closed, and the later plan edits also close F5, F7, F8, F14, and F4-N1. Before any RED test is written, the implementor should still fold two small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension) and **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike). The remaining open findings (**F9, F11, F12, F13**) are real but not blocking; fold them into a small docs-only revision when convenient.
