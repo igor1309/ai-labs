@@ -6,7 +6,7 @@ description: "Implementation plan for the session-digest CLI prototype defined b
 
 # Session Digest Implementation Plan
 
-> **For Claude:** Task 1 is scaffold-only harness setup, not a RED/GREEN task: compilation errors are not RED, and the bootstrap test is a runner sanity check. From Task 2 onward, use the `dev-skills:strict-tdd` skill. Each task's RED list is a queue of one-test micro-steps, not a batch: write exactly one listed test, run that one test, confirm a compiling failing assertion for the missing behavior, stop after RED unless the user explicitly approved auto-continue, then write only enough production code to make that one test pass before moving to the next listed test. Each task still ends with a targeted test run, the full task gates, and a commit on a passing state.
+> **For Claude:** Task 1 is scaffold-only harness setup, not a RED/GREEN task: compilation errors are not RED, and the bootstrap test is a runner sanity check. From Task 2 onward, use the `dev-skills:strict-tdd` skill. Each task's RED list is a queue of one-test micro-steps, not a batch: write exactly one listed test, run that one test, confirm a compiling failing assertion for the missing behavior, then write only enough production code to make that one test pass before moving to the next listed test. The user explicitly approved auto-continue on 2026-04-26: do not stop for human review after RED, after GREEN, or between tasks as long as the required gates pass. Each task still ends with a targeted test run, the full task gates, and a commit on a passing state.
 
 **Goal:** Implement the `session-digest` CLI per [`../specs/session-digest.md`](../specs/session-digest.md) and [`../adr/adr-001-session-digest-deepagents-nim.md`](../adr/adr-001-session-digest-deepagents-nim.md): one Claude Code JSONL → one Markdown digest under `~/.session-digests/`, using LangChain Deep Agents over NVIDIA NIM.
 
@@ -88,8 +88,9 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - Expected worktree: `*/worktrees/session-digest-implementation` or an equivalent dedicated non-root worktree.
 - Expected branch: `codex/session-digest-implementation`.
 - Preflight check: [ ] done.
+- Human-review stop: not required. The user explicitly approved auto-continue on 2026-04-26; continue from one RED micro-step to GREEN, from one task to the next, and through commits without waiting for human review, provided every required verification gate passes.
 - Before Task 1, run `git worktree list --porcelain` and `git branch --show-current`; halt if the current worktree/branch do not match the expected dedicated worktree and branch.
-- Execute one task at a time. After each task: self-review the task scope, run the task gate plus the full-suite gate, update the relevant log/plan tracker when applicable, commit only task files, push the branch unless explicitly told not to, and stop for review.
+- Execute one task at a time. After each task: self-review the task scope, run the task gate plus the full-suite gate, update the relevant log/plan tracker when applicable, commit only task files, push the branch unless explicitly told not to, and continue to the next task without waiting for human review. Halt only on failed gates, scope ambiguity, missing required credentials/tooling, or an ADR/spec conflict that this plan says requires a new decision.
 
 **Process gates:**
 
@@ -98,7 +99,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
   1. Add exactly one test from the current task's RED queue.
   2. Run that test by file and test-name pattern, for example `node --import tsx --test session-digest/tests/<file>.test.ts --test-name-pattern '^<test_name>$'`.
   3. Confirm the code compiles and fails by assertion for the missing behavior. Compilation errors are not RED.
-  4. Stop after RED unless the user explicitly approved auto-continue for the task.
+  4. Continue after RED without human review; the user explicitly approved auto-continue on 2026-04-26.
   5. Implement the minimum production code for that one failing test.
   6. Re-run the same targeted command to reach GREEN.
   7. Repeat with the next RED bullet only after the current one is green.

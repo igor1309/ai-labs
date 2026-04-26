@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Recorded explicit user approval to auto-continue through RED/GREEN micro-steps and task boundaries without human-review stops when gates pass.
 - Broke the plan-review loop by removing the transient review artifact and tightening the implementation plan around ADR-preserving Deep Agents probing, fake-run file assertions, and new-project checklist state.
 - Closed implementation-plan review gaps by adding the execution lock, moving CLI success assertions behind the fake-model task, and making JSON parsing the declared v1 structured-output path.
 - Hardened the implementation plan through review: live smoke tests stay out of the real home directory, targeted test commands select files correctly, strict TDD is expressed as one-test micro-steps, and support tests are allowed only when they enforce the spec/ADR envelope.
