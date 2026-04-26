@@ -87,7 +87,7 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 - Worktree required: yes.
 - Expected worktree: `*/worktrees/session-digest-implementation` or an equivalent dedicated non-root worktree.
 - Expected branch: `codex/session-digest-implementation`.
-- Preflight check: [ ] done.
+- Preflight check: [x] done — verified with `git worktree list --porcelain` and `git branch --show-current`: worktree `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/session-digest-implementation`, branch `codex/session-digest-implementation`.
 - Human-review stop: not required. The user explicitly approved auto-continue on 2026-04-26; continue from one RED micro-step to GREEN, from one task to the next, and through commits without waiting for human review, provided every required verification gate passes.
 - Before Task 1, run `git worktree list --porcelain` and `git branch --show-current`; halt if the current worktree/branch do not match the expected dedicated worktree and branch.
 - Execute one task at a time. After each task: self-review the task scope, run the task gate plus the full-suite gate, update the relevant log/plan tracker when applicable, commit only task files, push the branch unless explicitly told not to, and continue to the next task without waiting for human review. Halt only on failed gates, scope ambiguity, missing required credentials/tooling, or an ADR/spec conflict that this plan says requires a new decision.
