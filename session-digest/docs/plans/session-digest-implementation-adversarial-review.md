@@ -20,11 +20,11 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F6 — global `--import tsx` regression risk | ✅ resolved | `cf6a0e00` |
 | F7 — `~/.session-digests/` snapshot ENOENT | ✅ resolved | `562ee970` |
 | F8 — Task 9 tmpdir cleanup | ✅ resolved | `9c1bcc88` |
-| F9 — empty-string vs missing-section conflation | ✅ resolved | this docs update |
+| F9 — empty-string vs missing-section conflation | ✅ resolved | `bcc74a98` |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
-| F11 — section-name drift between prompts and tuple | ✅ resolved | this docs update |
-| F12 — Task 7.5 `.gitignore` vs delete-before-commit | ✅ resolved | this docs update |
-| F13 — Task 7.5 step 1 redundant `npm install` | ✅ resolved | this docs update |
+| F11 — section-name drift between prompts and tuple | ✅ resolved | `50ef05c0` |
+| F12 — Task 7.5 `.gitignore` vs delete-before-commit | ✅ resolved | `bc518d48` |
+| F13 — Task 7.5 step 1 redundant `npm install` | ✅ resolved | `43f47476` |
 | F14 — spec test 12 satisfied at unit level — pin explicitly | ✅ resolved | `a7a8c825` |
 
 Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
@@ -37,10 +37,12 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 - **F7 verdict: pass.** `session-digest-implementation.md:487-489` now treats `ENOENT` as an empty map and changes the real-directory assertion from strict equality to `before ⊆ after` by name+size, with the real output path still isolated under `deps.baseDir`.
 - **F14 verdict: pass.** `session-digest-implementation.md:315` explicitly states that same-input-within-one-second collision retry is out of scope per spec line 179, so the unit-level distinct-stem coverage is intentional.
 - **F4-N1 verdict: pass.** `session-digest-implementation.md:454` adds a missing-`baseDir` CLI test, and `:463` hoists `fsLike.mkdir(baseDir, { recursive: true })` before `loadConfig`, which is the cleaner alternative noted in the original follow-up.
-- **F9 verdict: pass.** `session-digest-implementation.md:431` now treats required sections with zero non-blank lines as missing inside `agents.run`, and `:452` pins absent, empty, and whitespace-only `Next-session improvements` to the same concise error path.
+- **F9 verdict: pass.** `session-digest-implementation.md:434` now treats required sections with zero non-blank lines as missing inside `agents.run`, `:455` pins absent, empty, and whitespace-only `Next-session improvements` to the same concise error path, and `:462` requires validation before `assembleDigest`.
 - **F11 verdict: pass.** `session-digest-implementation.md:358-359` now moves `SECTION_NAMES` and `SectionName` into shared `sections.ts`, `:428` represents ownership once in `SECTION_OWNERS`, `:458` adds a rendered-prompt drift test that also forbids literal section names in raw prompt templates, and `:463-466` requires prompt text to be rendered from `SECTION_OWNERS` instead of manually typed in prompt files.
 - **F12 verdict: pass.** `session-digest-implementation.md:378` now describes the probe as a throwaway script only, while `:390` still requires deleting it before the docs commit. There is no `.gitignore` surface for this task-local file.
-- **F13 verdict: pass.** `session-digest-implementation.md:375` now verifies the runtime deps installed by Task 1 with `npm ls -w session-digest deepagents @langchain/openai @langchain/core`, keeping Task 7.5 as an observation/docs task instead of a dependency mutation task.
+- **F13 verdict: pass.** `session-digest-implementation.md:377` now verifies the runtime deps installed by Task 1 with `npm ls -w session-digest deepagents @langchain/openai @langchain/core`, keeping Task 7.5 as an observation/docs task instead of a dependency mutation task.
+- **F1-N1 verdict: pass.** `session-digest-implementation.md:168`, `:349`, and `:468` now use `./clock.js` when referring to the NodeNext ESM import specifier, while still naming `clock.ts` as the source file that owns the single sanctioned `new Date(` call.
+- **F2-N2 verdict: pass.** `session-digest-implementation.md:384` now requires the Task 7.5 probe to log the installed-version `BaseChatModel` import subpath, `:386` requires the architecture amendment to pin it in API observations, and `:438` makes Task 8 import `BaseChatModel` from that pinned subpath instead of trusting the provisional default.
 
 ---
 
@@ -56,11 +58,11 @@ Residual nits or newly surfaced concerns observed during fix review.
 
 ### F1 follow-ups (commit `827ea343`)
 
-#### F1-N1. NodeNext ESM import extension — warning
+#### F1-N1. NodeNext ESM import extension — resolved by this docs update
 
-- **Location:** `session-digest-implementation.md:168` and `:463`.
-- **Why:** Both sites say "imported from `./clock.ts`". Under TypeScript NodeNext + ESM (Task 1's `tsconfig` essentials at `:130`), TS source `clock.ts` must be imported with the `.js` specifier (`from "./clock.js"`) — the `.ts` form will not resolve at runtime under `tsx` ESM loader semantics, and `tsc --noEmit` will reject it. Cosmetic in plan prose, but the implementor will hit it on first compile.
-- **Fix:** change both occurrences to "imported from `./clock.js`" (the documented NodeNext contract). One-line edit in two places.
+- **Location:** `session-digest-implementation.md:168`, `:349`, and `:468`.
+- **Why:** The plan now distinguishes the TypeScript source file (`clock.ts`) from the runtime import specifier (`./clock.js`) required by TypeScript NodeNext + ESM. The implementor will not hit a compile/runtime mismatch from following the plan prose.
+- **Fix:** none; closed.
 
 #### F1-N2. Segregation invariant is load-bearing on `clock.ts` discipline — minor
 
@@ -76,11 +78,11 @@ Residual nits or newly surfaced concerns observed during fix review.
 - **Why:** The fake throws on first invocation. If a hypothetical buggy `buildAgent` made a preflight call, the counter would still read `1` and the test would still pass — externally indistinguishable from the correct "first call inside `agents.run`" sequence. The original phrasing asserted "`agents.run` was entered" explicitly; the new phrasing relies on inference. In practice this is fine because `deps.model = fake` bypasses `defaultNimModel` entirely (the canonical preflight risk site), and the "pure constructor" rule on `defaultNimModel` is the real defense; the counter is just confirmation.
 - **Optional fix:** add a spy on the agent object asserting `agentRunCalled === true` before the first failure. Or accept the current weakening — the fix is fine as-is given the pure-constructor rule.
 
-#### F2-N2. `BaseChatModel` import subpath is unverified — minor
+#### F2-N2. `BaseChatModel` import subpath is unverified — resolved by this docs update
 
-- **Location:** `session-digest-implementation.md:382` and `:435`.
-- **Why:** The exact subpath under `@langchain/core` is package-version-dependent. Could be `@langchain/core/language_models` or `@langchain/core/language_models/chat_models` depending on the installed version's `exports` map. The plan trusts the path is right.
-- **Fix:** make Task 7.5's API-observations section explicitly pin the `BaseChatModel` import subpath alongside `ChatOpenAI` constructor field names. One more bullet in the existing spike — no new task needed.
+- **Location:** `session-digest-implementation.md:384`, `:386`, and `:438`.
+- **Why:** The exact subpath under `@langchain/core` is package-version-dependent, and the plan now makes Task 7.5 observe and pin the installed-version subpath before Task 8 imports `BaseChatModel`.
+- **Fix:** none; closed.
 
 #### F2-N3. `defaultNimModel` "pure constructor" is a code-review-only invariant — minor
 
@@ -122,4 +124,4 @@ No material follow-ups. The fix mirrors Task 3's `validateInputPath` injection p
 
 ## Recommendation
 
-All four original blocking findings (F1–F4) are closed, and the later plan edits also close F5, F7, F8, F9, F11, F12, F13, F14, and F4-N1. Before any RED test is written, the implementor should still fold two small follow-ups into the plan: **F1-N1** (NodeNext `.js` extension) and **F2-N2** (pin `BaseChatModel` import subpath in the Task 7.5 spike).
+All original blocking findings (F1–F14) are closed. The two previously actionable follow-ups, **F1-N1** and **F2-N2**, are also closed in the implementation plan. Remaining post-fix notes are optional or informational and do not block the next RED test.
