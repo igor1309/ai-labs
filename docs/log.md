@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-26
+
+- session-digest: resolved the implementation-plan TDD process mismatch by carving out scaffold setup and requiring one-test strict-TDD micro-steps from Task 2 onward.
+
 ## 2026-04-25
 
 - regentara: MVP ADR set complete (agent settings, model routing, CLI execution boundary, failure policy, run artifact storage). All reviewed and accepted. See `regentara/docs/log.md`.

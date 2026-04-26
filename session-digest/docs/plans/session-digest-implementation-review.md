@@ -32,11 +32,12 @@ Reviewed `session-digest/docs/plans/session-digest-implementation.md` against th
 
 ### Finding 3: Strict TDD Instruction Conflicts with Batched REDs
 
-- Verdict: fail
+- Verdict: resolved
 - Priority: P2
 - Location: `session-digest/docs/plans/session-digest-implementation.md:9`
 - Problem: The plan tells executors to use `strict-tdd`, but each task lists multiple RED tests at once and Task 1 starts with scaffolding plus a passing bootstrap test instead of a failing assertion. `strict-tdd` requires one test at a time and a stop after RED.
 - Fix: Either remove `strict-tdd` as the execution mode, or rewrite each task into one-test micro-steps with explicit RED stop gates.
+- Resolution: Kept `strict-tdd`, carved Task 1 out as non-TDD harness setup, and made Task 2 onward treat every RED bullet as an independent one-test micro-step with an explicit RED stop gate.
 
 ### Finding 4: Source-of-Truth Rule Contradicts Support Tests
 

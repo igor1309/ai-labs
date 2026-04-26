@@ -6,7 +6,7 @@ description: "Implementation plan for the session-digest CLI prototype defined b
 
 # Session Digest Implementation Plan
 
-> **For Claude:** Use the `dev-skills:strict-tdd` skill while executing this plan. Each task ends with a targeted test run and a commit on a passing state.
+> **For Claude:** Task 1 is scaffold-only harness setup, not a RED/GREEN task: compilation errors are not RED, and the bootstrap test is a runner sanity check. From Task 2 onward, use the `dev-skills:strict-tdd` skill. Each task's RED list is a queue of one-test micro-steps, not a batch: write exactly one listed test, run that one test, confirm a compiling failing assertion for the missing behavior, stop after RED unless the user explicitly approved auto-continue, then write only enough production code to make that one test pass before moving to the next listed test. Each task still ends with a targeted test run, the full task gates, and a commit on a passing state.
 
 **Goal:** Implement the `session-digest` CLI per [`../specs/session-digest.md`](../specs/session-digest.md) and [`../adr/adr-001-session-digest-deepagents-nim.md`](../adr/adr-001-session-digest-deepagents-nim.md): one Claude Code JSONL → one Markdown digest under `~/.session-digests/`, using LangChain Deep Agents over NVIDIA NIM.
 
@@ -68,7 +68,16 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 
 **Process gates:**
 
-- TDD: every task starts with a failing test, then minimal code to green, then refactor.
+- Task 1 is non-TDD scaffolding. It exists only to install the workspace, loader, and permanent bootstrap sanity test.
+- Strict TDD applies from Task 2 onward. Every `RED` bullet is one independent micro-step:
+  1. Add exactly one test from the current task's RED queue.
+  2. Run that test by file and test-name pattern, for example `node --import tsx --test session-digest/tests/<file>.test.ts --test-name-pattern '^<test_name>$'`.
+  3. Confirm the code compiles and fails by assertion for the missing behavior. Compilation errors are not RED.
+  4. Stop after RED unless the user explicitly approved auto-continue for the task.
+  5. Implement the minimum production code for that one failing test.
+  6. Re-run the same targeted command to reach GREEN.
+  7. Repeat with the next RED bullet only after the current one is green.
+- TDD: every behavior task starts with one failing test, then minimal code to green, then refactor.
 - **Commit on green, every task.** Each task MUST end with a passing-test commit. Do not start the next task until the previous task's commit lands on a green suite. Do not bundle multiple tasks into one commit. Do not commit on red, ever.
 - Per-project CI isolation (CLAUDE.md): if any CI is added later, it goes in a dedicated `session-digest-core.yml` workflow — but ADR-001 puts CI out of scope for v1, so this plan does NOT add CI.
 - Local targeted test command per task: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/<file>.test.ts`. Direct tight-loop equivalent: `node --import tsx --test session-digest/tests/<file>.test.ts`.
@@ -101,9 +110,9 @@ There is **no** `bin` field. The CLI is invoked as `npx -w session-digest tsx sr
 
 ---
 
-## Task 1 — Scaffold the TypeScript workspace
+## Task 1 — Scaffold the TypeScript workspace (non-TDD setup)
 
-**Goal:** bootable, empty package wired into the root npm workspaces; `tsc --noEmit` and `node --test` both green with one trivially-passing bootstrap test.
+**Goal:** bootable, empty package wired into the root npm workspaces; `tsc --noEmit` and `node --test` both green with one trivially-passing bootstrap test. This task is harness setup, not strict TDD: the bootstrap test verifies test discovery and the `tsx` loader, but it is not a RED for missing product behavior.
 
 **Files:**
 
