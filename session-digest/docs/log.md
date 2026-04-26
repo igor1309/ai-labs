@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Tried OpenRouter free `nvidia/nemotron-3-super-120b-a12b:free` through production Nomos; the agentic run failed after many short completions and malformed response handling.
 - Rechecked NVIDIA/Kimi after JSON salvage and transcript-passing changes; a `484229` byte iOS session completed but still omitted Extractor-owned sections.
 - Confirmed a `293236` byte real session succeeds through production Nomos with `x-ai/grok-4.1-fast`, producing a structurally complete digest in about one minute.
 - Added JSON salvage for fenced/prose-wrapped Deep Agents task outputs and hardened parent delegation to pass transcript JSON into each subagent task.
