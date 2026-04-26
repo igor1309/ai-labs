@@ -19,7 +19,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F5 — `.env.example` idempotency, EACCES on `.env` | open | — |
 | F6 — global `--import tsx` regression risk | ✅ resolved | `cf6a0e00` |
 | F7 — `~/.session-digests/` snapshot ENOENT | open | — |
-| F8 — Task 9 tmpdir cleanup | ✅ resolved | (this commit) |
+| F8 — Task 9 tmpdir cleanup | ✅ resolved | `9c1bcc88` |
 | F9 — empty-string vs missing-section conflation | open | — |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
 | F11 — section-name drift between prompts and tuple | open | — |
