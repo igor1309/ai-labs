@@ -67,7 +67,7 @@ export async function run(messages: Message[], agent: DigestAgentRunner): Promis
 }
 
 export function defaultChatModel(config: Config): ChatOpenAI {
-  const proxyFetch = fetchForShellProxy(process.env);
+  const proxyFetch = fetchForShellProxy(config.baseURL, process.env);
 
   return new ChatOpenAI({
     apiKey: config.apiKey,
@@ -79,7 +79,11 @@ export function defaultChatModel(config: Config): ChatOpenAI {
   });
 }
 
-function fetchForShellProxy(env: NodeJS.ProcessEnv): typeof fetch | undefined {
+function fetchForShellProxy(baseURL: string, env: NodeJS.ProcessEnv): typeof fetch | undefined {
+  if (isLocalBaseURL(baseURL)) {
+    return undefined;
+  }
+
   const proxyUrl = proxyUrlFromEnv(env);
 
   if (!proxyUrl) {
@@ -96,6 +100,12 @@ function fetchForShellProxy(env: NodeJS.ProcessEnv): typeof fetch | undefined {
 
     return response as unknown as Response;
   };
+}
+
+function isLocalBaseURL(baseURL: string): boolean {
+  const { hostname } = new URL(baseURL);
+
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function proxyUrlFromEnv(env: NodeJS.ProcessEnv): string | undefined {

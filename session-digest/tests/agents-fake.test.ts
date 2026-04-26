@@ -351,6 +351,23 @@ test("test_default_chat_model_shouldUseShellProxy_onHttpsProxyConfigured", (t) =
   assert.equal(typeof chatOpenAIConfiguration(model).fetch, "function");
 });
 
+test("test_default_chat_model_shouldBypassShellProxy_onLocalNomosBaseURL", (t) => {
+  const originalProxyEnv = proxyEnv();
+  t.after(() => restoreProxyEnv(originalProxyEnv));
+  delete process.env.ALL_PROXY;
+  delete process.env.HTTP_PROXY;
+  process.env.HTTPS_PROXY = "http://proxy.example:3128";
+
+  const model = defaultChatModel({
+    apiKey: "fake",
+    baseURL: "http://localhost:8080/v1",
+    model: "fake",
+    provider: "nomos",
+  });
+
+  assert.equal(chatOpenAIConfiguration(model).fetch, undefined);
+});
+
 test("test_first_run_with_missing_basedir_writes_env_example_and_exits_with_bootstrap_error", async (t) => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
   t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
