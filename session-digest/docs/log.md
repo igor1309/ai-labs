@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Recorded an empirical compression probe showing a real `1.54 MB` Claude Code session can be reduced to a `40,978` byte model-facing semantic context by local JSONL-aware compilation.
 - Captured the V1 discovery postmortem: the Deep Agents full-session architecture failed on real session scale and needs a separate V2 design decision.
 
 ## 2026-04-26
