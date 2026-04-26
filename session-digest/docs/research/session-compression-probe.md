@@ -94,3 +94,19 @@ This keeps the information needed for a digest while avoiding raw output duplica
 The next design discussion should treat local session interpretation as a grounded option. The model should probably receive a compact semantic context with evidence anchors, not raw JSONL and not the current flattened `{ role, content }` transcript.
 
 Embeddings are not required to explain this first compression win. They may still be useful later for retrieval over very large or multi-session corpora, but this probe shows that schema-aware local compilation alone can produce a major size reduction.
+
+## Artifact Reproducibility
+
+If local semantic compression becomes part of the product path, the local ledger becomes an essential artifact boundary rather than a temporary implementation detail. Any digest or downstream artifact derived from a compressed ledger should preserve enough metadata to explain how it was produced.
+
+At minimum, derived artifacts should record:
+
+- the compressor name or strategy identifier;
+- the compressor version;
+- the source session path or stable source identifier;
+- the source byte size and record count;
+- the generated ledger byte size;
+- the model-facing context byte size;
+- the generation timestamp.
+
+Without this metadata, two digests from the same raw session may not be comparable after the compressor evolves. Versioning the compression strategy is what makes later quality regressions, evidence mismatches, and reproduction failures diagnosable.
