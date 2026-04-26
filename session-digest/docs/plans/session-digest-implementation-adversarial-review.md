@@ -23,7 +23,7 @@ Reviewed against [`../specs/session-digest.md`](../specs/session-digest.md) and 
 | F9 — empty-string vs missing-section conflation | ✅ resolved | this docs update |
 | F10 — `dotenv` pollution of `process.env` | ✅ resolved | `0ae0bf3a` (closed in passing by F4) |
 | F11 — section-name drift between prompts and tuple | ✅ resolved | this docs update |
-| F12 — Task 7.5 `.gitignore` vs delete-before-commit | open | — |
+| F12 — Task 7.5 `.gitignore` vs delete-before-commit | ✅ resolved | this docs update |
 | F13 — Task 7.5 step 1 redundant `npm install` | open | — |
 | F14 — spec test 12 satisfied at unit level — pin explicitly | ✅ resolved | `a7a8c825` |
 
@@ -39,7 +39,7 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 - **F4-N1 verdict: pass.** `session-digest-implementation.md:454` adds a missing-`baseDir` CLI test, and `:463` hoists `fsLike.mkdir(baseDir, { recursive: true })` before `loadConfig`, which is the cleaner alternative noted in the original follow-up.
 - **F9 verdict: pass.** `session-digest-implementation.md:431` now treats required sections with zero non-blank lines as missing inside `agents.run`, and `:452` pins absent, empty, and whitespace-only `Next-session improvements` to the same concise error path.
 - **F11 verdict: pass.** `session-digest-implementation.md:358-359` now moves `SECTION_NAMES` and `SectionName` into shared `sections.ts`, `:428` represents ownership once in `SECTION_OWNERS`, `:458` adds a rendered-prompt drift test that also forbids literal section names in raw prompt templates, and `:463-466` requires prompt text to be rendered from `SECTION_OWNERS` instead of manually typed in prompt files.
-- **F12 verdict: warning.** `session-digest-implementation.md:376` still says the throwaway probe script is ignored under `.gitignore` while `:388` deletes it before commit. Fix: drop the `.gitignore` mention.
+- **F12 verdict: pass.** `session-digest-implementation.md:378` now describes the probe as a throwaway script only, while `:390` still requires deleting it before the docs commit. There is no `.gitignore` surface for this task-local file.
 - **F13 verdict: warning.** `session-digest-implementation.md:375` still says to install runtime deps that Task 1 already installs. Fix: replace with `npm ls -w session-digest deepagents @langchain/openai @langchain/core`.
 
 ---
@@ -47,11 +47,6 @@ Post-fix follow-ups surfaced during fix review: see "Post-fix follow-ups" below.
 ## Open findings
 
 ### P3 — Minor
-
-#### F12. Task 7.5 probe script mentions `.gitignore` and "delete before commit" — pick one
-
-- **Location:** `session-digest-implementation.md:376` and `:388`.
-- **Fix:** drop the `.gitignore` mention. The script is created → run → deleted within the task. No git surface.
 
 #### F13. Task 7.5 step 1 — runtime deps were already added in Task 1
 

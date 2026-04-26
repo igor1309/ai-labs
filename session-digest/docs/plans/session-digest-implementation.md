@@ -375,7 +375,7 @@ Each test asserts: non-zero exit through `cli.main`, concise message on `stderr`
 **Steps:**
 
 1. From `session-digest/`, install the runtime deps if not yet installed: `deepagents`, `@langchain/openai`, `@langchain/core`.
-2. Write a throwaway probe script (e.g., `session-digest/scripts/probe-deepagents.ts`, ignored under `.gitignore` and deleted before the closing commit) that:
+2. Write a throwaway probe script (e.g., `session-digest/scripts/probe-deepagents.ts`) that:
    - constructs `createDeepAgent` with three trivial subagents named per ADR-001 (`Extractor`, `Improver`, `Evidence checker`);
    - passes a recording `FakeListChatModel` (from `@langchain/core/utils/testing`) seeded with ~50 sentinel responses tagged with their array index; if exhausted, log the observed call count and re-run with a larger array rather than failing silently;
    - invokes the agent on a 3-message fixture;
