@@ -28,7 +28,7 @@ These results were gathered against `https://integrate.api.nvidia.com/v1` throug
 | `qwen/qwen3-next-80b-a3b-instruct` | Not separately raw-chat probed | `200`, tool call present in about `1.3s` | Not tested through CLI | Possible fallback candidate. |
 | `openai/gpt-oss-120b` | Not separately raw-chat probed | `200`, tool call present in about `0.8s` | Returned in about `2.7s`, then failed contract validation with `Missing digest section: Session summary.` | Fast tool-call behavior; output contract still fails. |
 | `openai/gpt-oss-20b` | Not separately raw-chat probed | `200`, tool call present in about `1s` | Not tested through CLI | Possible fallback candidate. |
-| `nvidia/nemotron-3-super-120b-a12b` | Not separately raw-chat probed | `200`, tool call present in about `2s` | Timed out at `120s` in the small CLI probe | Tool calls work, but full Deep Agents run stalled. |
+| `nvidia/nemotron-3-super-120b-a12b` | Not separately raw-chat probed | `200`, tool call present in about `2s` | Timed out with no stdout/stderr at `120s`, then again at `300s` after placeholder handling and transcript-data prompt hardening | Tool calls work, but the full Deep Agents run stalls for the small real session. |
 | `meta/llama-3.3-70b-instruct` | Not separately raw-chat probed | `200`, tool call present in about `1.3s` | Not tested through CLI | Possible fallback candidate. |
 | `mistralai/mistral-large` | Not separately raw-chat probed | Returned `404` | Not tested after `404` | The listed model id did not work on chat completions in this probe. |
 
