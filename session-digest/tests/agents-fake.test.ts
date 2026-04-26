@@ -300,6 +300,18 @@ test("test_default_nim_model_is_pure_constructor", () => {
   assert.equal(model instanceof ChatOpenAI, true);
 });
 
+test("test_default_nim_model_shouldUseShellProxy_onHttpsProxyConfigured", (t) => {
+  const originalProxyEnv = proxyEnv();
+  t.after(() => restoreProxyEnv(originalProxyEnv));
+  delete process.env.ALL_PROXY;
+  delete process.env.HTTP_PROXY;
+  process.env.HTTPS_PROXY = "http://proxy.example:3128";
+
+  const model = defaultNimModel({ apiKey: "fake", model: "fake" });
+
+  assert.equal(typeof chatOpenAIConfiguration(model).fetch, "function");
+});
+
 test("test_first_run_with_missing_basedir_writes_env_example_and_exits_with_bootstrap_error", async (t) => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
   t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
@@ -563,6 +575,41 @@ function contentToString(content: BaseMessage["content"]): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+type ProxyEnv = {
+  ALL_PROXY: string | undefined;
+  HTTPS_PROXY: string | undefined;
+  HTTP_PROXY: string | undefined;
+};
+
+function proxyEnv(): ProxyEnv {
+  return {
+    ALL_PROXY: process.env.ALL_PROXY,
+    HTTPS_PROXY: process.env.HTTPS_PROXY,
+    HTTP_PROXY: process.env.HTTP_PROXY,
+  };
+}
+
+function restoreProxyEnv(env: ProxyEnv): void {
+  setOrDeleteEnv("ALL_PROXY", env.ALL_PROXY);
+  setOrDeleteEnv("HTTPS_PROXY", env.HTTPS_PROXY);
+  setOrDeleteEnv("HTTP_PROXY", env.HTTP_PROXY);
+}
+
+function setOrDeleteEnv(name: keyof ProxyEnv, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
+function chatOpenAIConfiguration(model: ChatOpenAI): { fetch?: unknown } {
+  const lcKwargs = model.lc_kwargs as { configuration?: { fetch?: unknown } };
+
+  return lcKwargs.configuration ?? {};
 }
 
 function promptTemplates(): Parameters<typeof buildAgent>[0]["prompts"] {

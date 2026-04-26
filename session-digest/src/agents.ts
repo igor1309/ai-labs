@@ -4,6 +4,7 @@ import type { BaseChatModel } from "@langchain/core/language_models/chat_models"
 import { AIMessage, HumanMessage, ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
 import { createDeepAgent, type DeepAgent, type SubAgent } from "deepagents";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 import type { Config } from "./config.js";
 import type { Message } from "./inputs.js";
@@ -65,13 +66,44 @@ export async function run(messages: Message[], agent: DigestAgentRunner): Promis
 }
 
 export function defaultNimModel(config: Config): ChatOpenAI {
+  const proxyFetch = fetchForShellProxy(process.env);
+
   return new ChatOpenAI({
     apiKey: config.apiKey,
     model: config.model,
     configuration: {
       baseURL: "https://integrate.api.nvidia.com/v1",
+      ...(proxyFetch ? { fetch: proxyFetch } : {}),
     },
   });
+}
+
+function fetchForShellProxy(env: NodeJS.ProcessEnv): typeof fetch | undefined {
+  const proxyUrl = proxyUrlFromEnv(env);
+
+  if (!proxyUrl) {
+    return undefined;
+  }
+
+  const dispatcher = new ProxyAgent(proxyUrl);
+
+  return async (input, init) => {
+    const response = await undiciFetch(input as unknown as Parameters<typeof undiciFetch>[0], {
+      ...(init as unknown as Parameters<typeof undiciFetch>[1]),
+      dispatcher,
+    });
+
+    return response as unknown as Response;
+  };
+}
+
+function proxyUrlFromEnv(env: NodeJS.ProcessEnv): string | undefined {
+  return env.HTTPS_PROXY
+    ?? env.https_proxy
+    ?? env.HTTP_PROXY
+    ?? env.http_proxy
+    ?? env.ALL_PROXY
+    ?? env.all_proxy;
 }
 
 function parentPrompt(): string {

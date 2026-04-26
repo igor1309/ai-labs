@@ -11,7 +11,8 @@
     "@langchain/core": "^1.1.41",
     "@langchain/openai": "^1.4.4",
     "deepagents": "^1.9.0",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "undici": "^6.25.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.2",

@@ -2,6 +2,7 @@
 
 ## 2026-04-26
 
+- Added scoped shell-proxy support for NVIDIA NIM calls so the CLI can use configured proxy env vars without global HTTP transport changes.
 - Wired the fake Deep Agents success path end to end, including prompt ownership, task-message section extraction, and CLI digest writing.
 - Redrafted Task 8 around the observed Deep Agents task-message API and made the `@langchain/anthropic` runtime dependency decision explicit.
 - Recorded Deep Agents API observations and the Task 8 redraft decision: extract section envelopes from task tool messages correlated by `tool_call_id`.
