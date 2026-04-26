@@ -2,7 +2,7 @@
 title: "Deep Agents + NVIDIA NIM Use Cases"
 date: 2026-04-26
 model: GPT-5.5 Thinking
-version: 1.1
+version: 1.2
 status: draft
 ---
 
@@ -38,3 +38,23 @@ Context: small, useful exploration cases for LangChain Deep Agents with free NVI
 ## Suggested first pick
 
 **Spec-to-Test-Names Generator** is the safest first case: narrow scope, clear output, easy manual evaluation, and enough structure to exercise planning plus critique without fragile integrations.
+
+## Top 5
+
+| Rank | Case | Why |
+|---:|---|---|
+| 1 | **Spec-to-Test-Names Generator** | Best first experiment. Narrow scope, objectively reviewable output, direct utility, and a clear Deep Agents pattern: generation subagent + adversarial coverage critic. |
+| 2 | **Agent Session Postmortem Mini-Digest** | Strong utility for current agent workflow. Tests filesystem/context handling on real artifacts without requiring a mature index, repo crawling, or external integrations. |
+| 3 | **Agent Task Brief Normalizer** | High leverage because it improves input quality for every downstream agent task. Simple input, useful output, and easy to evaluate against “would I hand this to an agent?” |
+| 4 | **Document Scope Guard** | Fits ADR/spec discipline well. It has a crisp declared-scope contract, supports surgical patching, and exercises critique against document structure rather than generic summarization. |
+| 5 | **PR Review Prompt Builder** | Practical bridge into the implementation → adversarial review loop. Bounded, reusable, and directly tests whether Deep Agents can synthesize constraints, diff context, and review lenses into a better prompt. |
+
+### Why these beat the rest
+
+They score highest on three axes:
+
+1. **Real utility now** — they map directly to existing workflows.
+2. **Bounded execution** — no fragile web, auth, repo crawling, or large indexing required.
+3. **Deep Agents fit** — each benefits from planning, context handling, critique subagents, or structured artifact generation.
+
+Recommended order: start with **Spec-to-Test-Names Generator**, then evolve into **Agent Session Postmortem Mini-Digest** once the basic agent pattern is working.
