@@ -317,27 +317,27 @@ Commit: `session-digest: compile local session ledger`
 - Modify: `session-digest/src/ledger.ts`
 - Modify/Test: `session-digest/tests/ledger.test.ts`
 
-- [ ] **Step 1: Add compile-only model-context serializer stub**
+- [x] **Step 1: Add compile-only model-context serializer stub**
 
 Add an exported `serializeModelContext` placeholder if it does not already exist. This step exists only to keep imports compiling.
 
-- [ ] **Step 2: RED for model context byte count**
+- [x] **Step 2: RED for model context byte count**
 
 Assert `model_context.bytes` equals the UTF-8 byte length of serialized `model_context`, excluding synthesis instructions.
 
-- [ ] **Step 3: GREEN for stable serialization**
+- [x] **Step 3: GREEN for stable serialization**
 
 Implement a deterministic serializer helper, for example `serializeModelContext(modelContext): string`, and compute bytes from that string.
 
-- [ ] **Step 4: RED/GREEN for `250,000` budget overflow**
+- [x] **Step 4: RED/GREEN for `250,000` budget overflow**
 
 Add fixture or generated events that compile over budget. Assert compiler/CLI-facing function throws `model context budget exceeded` before model call.
 
-- [ ] **Step 5: RED/GREEN for no silent truncation**
+- [x] **Step 5: RED/GREEN for no silent truncation**
 
 Assert overflow does not return a shortened context.
 
-- [ ] **Step 6: Task gate and commit**
+- [x] **Step 6: Task gate and commit**
 
 Run full session-digest test and build gates.
 

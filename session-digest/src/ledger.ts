@@ -4,6 +4,17 @@ export const COMPRESSOR_STRATEGY = "claude-jsonl-v1";
 export const COMPRESSOR_VERSION = "1.0.0";
 export const LEDGER_SCHEMA = "session-digest-ledger";
 export const LEDGER_SCHEMA_VERSION = "1.0.0";
+export const DEFAULT_MODEL_CONTEXT_MAX_BYTES = 250_000;
+
+export class ModelContextBudgetError extends Error {
+  constructor(bytes: number, maxBytes: number) {
+    super(`model context budget exceeded: ${bytes} bytes > ${maxBytes} bytes`);
+  }
+}
+
+export type CompileLedgerOptions = {
+  maxModelContextBytes?: number;
+};
 
 export type LedgerEvent = {
   anchor: string;
@@ -39,13 +50,14 @@ export type Ledger = {
   model_context: ModelContext;
 };
 
-export function compileLedger(parsedSession: ParsedSession): Ledger {
+export function compileLedger(parsedSession: ParsedSession, options: CompileLedgerOptions = {}): Ledger {
   const events = compileEvents(parsedSession);
-  const modelContext = { bytes: 0, sections: [{ title: "events", events }] };
-  const modelContextWithBytes = {
-    ...modelContext,
-    bytes: Buffer.byteLength(serializeModelContext(modelContext)),
-  };
+  const modelContextWithBytes = measuredModelContext({ bytes: 0, sections: [{ title: "events", events }] });
+  const maxModelContextBytes = options.maxModelContextBytes ?? DEFAULT_MODEL_CONTEXT_MAX_BYTES;
+
+  if (modelContextWithBytes.bytes > maxModelContextBytes) {
+    throw new ModelContextBudgetError(modelContextWithBytes.bytes, maxModelContextBytes);
+  }
 
   return {
     schema: LEDGER_SCHEMA,
@@ -69,6 +81,20 @@ export function compressorVersionRules(): Record<"major" | "minor" | "patch", st
 
 export function serializeModelContext(modelContext: ModelContext): string {
   return JSON.stringify(modelContext);
+}
+
+function measuredModelContext(modelContext: ModelContext): ModelContext {
+  let measuredContext = modelContext;
+
+  while (true) {
+    const bytes = Buffer.byteLength(serializeModelContext(measuredContext));
+
+    if (bytes === measuredContext.bytes) {
+      return measuredContext;
+    }
+
+    measuredContext = { ...measuredContext, bytes };
+  }
 }
 
 function compileEvents(parsedSession: ParsedSession): LedgerEvent[] {

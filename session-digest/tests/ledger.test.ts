@@ -8,6 +8,7 @@ import {
   compressorVersionRules,
   LEDGER_SCHEMA,
   LEDGER_SCHEMA_VERSION,
+  serializeModelContext,
 } from "../src/ledger.js";
 import type { ParsedRecord, ParsedSession } from "../src/session-records.js";
 
@@ -119,6 +120,28 @@ test("test_compressorVersionRules_shouldNameSpecVersionBumpRules", () => {
   });
 });
 
+test("test_compileLedger_shouldMeasureSerializedModelContextBytes", () => {
+  const ledger = compileLedger(parsedSession([userRecord(1, "hello")]));
+
+  assert.equal(ledger.model_context.bytes, Buffer.byteLength(serializeModelContext(ledger.model_context)));
+});
+
+test("test_compileLedger_shouldThrowBeforeReturningContext_onModelContextBudgetExceeded", () => {
+  assert.throws(
+    () => compileLedger(parsedSession(manyUserRecords()), { maxModelContextBytes: 400 }),
+    /model context budget exceeded/,
+  );
+});
+
+test("test_compileLedger_shouldNotReturnSilentlyTruncatedContext_onModelContextBudgetExceeded", () => {
+  const parsed = parsedSession(manyUserRecords());
+
+  assert.throws(
+    () => compileLedger(parsed, { maxModelContextBytes: 400 }),
+    (error: unknown) => error instanceof Error && !("model_context" in error),
+  );
+});
+
 function parsedSession(records: ParsedRecord[]): ParsedSession {
   return {
     source: { path: "/tmp/session.jsonl", bytes: 123, records: 2 },
@@ -132,6 +155,10 @@ function userRecord(sourceRecord: number, text: string): ParsedRecord {
     message: { role: "user", content: text },
     type: "user",
   });
+}
+
+function manyUserRecords(): ParsedRecord[] {
+  return Array.from({ length: 30 }, (_, index) => userRecord(index + 1, `message ${index} `.repeat(20)));
 }
 
 function assistantRecord(sourceRecord: number, content: unknown): ParsedRecord {
