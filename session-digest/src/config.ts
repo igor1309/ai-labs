@@ -6,6 +6,7 @@ import { parse } from "dotenv";
 export type Config = {
   apiKey: string;
   baseURL: string;
+  digestSchemaPath?: string;
   model: string;
   provider: string;
 };
@@ -28,6 +29,9 @@ const envExampleBody = [
   "# NVIDIA NIM legacy path",
   "NVIDIA_API_KEY=",
   "NVIDIA_MODEL=",
+  "",
+  "# Optional digest schema",
+  "SESSION_DIGEST_SCHEMA_PATH=",
   "",
 ].join("\n");
 
@@ -62,10 +66,16 @@ export async function loadConfig(baseDir: string, fsLike: ConfigFs): Promise<Con
   const config = nomosConfig(parsed) ?? openRouterConfig(parsed) ?? nvidiaConfig(parsed);
 
   if (config) {
-    return config;
+    return configWithDigestSchemaPath(config, parsed);
   }
 
   throw missingConfigError(parsed);
+}
+
+function configWithDigestSchemaPath(config: Config, parsed: Record<string, string>): Config {
+  const digestSchemaPath = parsed.SESSION_DIGEST_SCHEMA_PATH?.trim();
+
+  return hasValue(digestSchemaPath) ? { ...config, digestSchemaPath } : config;
 }
 
 function openRouterConfig(parsed: Record<string, string>): Config | undefined {

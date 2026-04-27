@@ -25,6 +25,9 @@ const envExampleBody = [
   "NVIDIA_API_KEY=",
   "NVIDIA_MODEL=",
   "",
+  "# Optional digest schema",
+  "SESSION_DIGEST_SCHEMA_PATH=",
+  "",
 ].join("\n");
 
 test("test_missing_env_creates_env_example_via_injected_fs_writefile", async () => {
@@ -109,6 +112,25 @@ test("test_load_config_returns_nomos_config_when_nomos_keys_exist", async () => 
   assert.deepEqual(config, {
     apiKey: "nomos-key",
     baseURL: "http://127.0.0.1:8080/v1",
+    model: "deepseek/deepseek-v3.2",
+    provider: "nomos",
+  });
+});
+
+test("test_load_config_returns_digest_schema_path_whenConfigured", async () => {
+  const { loadConfig } = await loadConfigModule();
+  const fsLike = makeReadOnlyFsLike([
+    "NOMOS_API_KEY=nomos-key",
+    "NOMOS_MODEL=deepseek/deepseek-v3.2",
+    "SESSION_DIGEST_SCHEMA_PATH=/tmp/custom-digest-schema.yaml",
+  ].join("\n"));
+
+  const config = await loadConfig("/tmp/session-digests", fsLike);
+
+  assert.deepEqual(config, {
+    apiKey: "nomos-key",
+    baseURL: "http://localhost:8080/v1",
+    digestSchemaPath: "/tmp/custom-digest-schema.yaml",
     model: "deepseek/deepseek-v3.2",
     provider: "nomos",
   });

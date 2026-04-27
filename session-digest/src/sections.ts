@@ -14,6 +14,8 @@ export type DigestSchema = {
   version: number;
 };
 
+export type DigestSchemaFs = Pick<typeof fs.promises, "readFile">;
+
 export type SectionName = string;
 
 export const DEFAULT_DIGEST_SCHEMA_PATH = path.join(
@@ -28,6 +30,10 @@ export const DEFAULT_DIGEST_SCHEMA = parseDigestSchemaYaml(
 
 export const SECTION_IDS = DEFAULT_DIGEST_SCHEMA.sections.map(($0) => $0.id);
 export const SECTION_NAMES = DEFAULT_DIGEST_SCHEMA.sections.map(($0) => $0.heading);
+
+export async function loadDigestSchema(schemaPath: string, fsLike: DigestSchemaFs): Promise<DigestSchema> {
+  return parseDigestSchemaYaml(await fsLike.readFile(schemaPath, "utf8"));
+}
 
 export function parseDigestSchemaYaml(body: string): DigestSchema {
   const lines = body.split(/\r?\n/);

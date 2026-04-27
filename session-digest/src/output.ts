@@ -8,6 +8,8 @@ export type WriteDigestFs = Pick<typeof fs.promises, "mkdir" | "writeFile">;
 export type FrontMatter = {
   compressor_strategy?: string;
   compressor_version?: string;
+  digest_schema_path?: string;
+  digest_schema_version?: number;
   title: string;
   source_path: string;
   provider: string;
@@ -66,6 +68,8 @@ function optionalFrontMatterLines(frontMatter: FrontMatter): string[] {
   const entries: Array<[keyof FrontMatter, string]> = [
     ["compressor_strategy", "compressor_strategy"],
     ["compressor_version", "compressor_version"],
+    ["digest_schema_path", "digest_schema_path"],
+    ["digest_schema_version", "digest_schema_version"],
     ["ledger_path", "ledger_path"],
     ["source_bytes", "source_bytes"],
     ["source_records", "source_records"],

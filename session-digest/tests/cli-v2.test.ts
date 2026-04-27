@@ -157,6 +157,47 @@ test("test_main_shouldWriteDigestSectionsInDocumentedOrder_onSuccess", async (t)
   assert.deepEqual(h2Headers(await fs.readFile(stdout.toString().trim(), "utf8")), [...SECTION_NAMES]);
 });
 
+test("test_main_shouldUseConfiguredDigestSchemaPath_onSuccess", async (t) => {
+  const { baseDir, tempDir } = await makeBaseDir();
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const now = new Date("2026-04-26T01:02:03.000Z");
+  const schemaPath = path.join(tempDir, "custom-digest-schema.yaml");
+  const stdout = new StringSink();
+
+  await fs.writeFile(schemaPath, [
+    "version: 3",
+    "sections:",
+    "  - id: custom_summary",
+    "    heading: Custom Summary",
+    "    required: true",
+    "    description: Custom summary section.",
+  ].join("\n"));
+  await fs.writeFile(path.join(baseDir, ".env"), [
+    "NOMOS_API_KEY=fake",
+    "NOMOS_MODEL=fake-model",
+    `SESSION_DIGEST_SCHEMA_PATH=${schemaPath}`,
+  ].join("\n"));
+
+  const exitCode = await main([validSessionPath], stdout, new StringSink(), {
+    baseDir,
+    clock: () => now,
+    model: new ConfiguredSchemaDigestModel(),
+  });
+  const digest = await fs.readFile(stdout.toString().trim(), "utf8");
+
+  assert.deepEqual({
+    exitCode,
+    frontMatterHasSchemaPath: digest.includes(`digest_schema_path: ${schemaPath}`),
+    frontMatterHasSchemaVersion: digest.includes("digest_schema_version: 3"),
+    headings: h2Headers(digest),
+  }, {
+    exitCode: 0,
+    frontMatterHasSchemaPath: true,
+    frontMatterHasSchemaVersion: true,
+    headings: ["Custom Summary"],
+  });
+});
+
 class FakeDigestModel implements DigestModel {
   readonly inputs: unknown[] = [];
 
@@ -166,6 +207,22 @@ class FakeDigestModel implements DigestModel {
     return {
       content: JSON.stringify({
         sections: Object.fromEntries(SECTION_IDS.map(($0) => [$0, `${$0} body record:1`])),
+      }),
+    };
+  }
+}
+
+class ConfiguredSchemaDigestModel implements DigestModel {
+  readonly inputs: unknown[] = [];
+
+  async invoke(input: unknown): Promise<unknown> {
+    this.inputs.push(input);
+
+    return {
+      content: JSON.stringify({
+        sections: {
+          custom_summary: "custom summary body record:1",
+        },
       }),
     };
   }
