@@ -11,6 +11,14 @@ type LoadConfig = (
   },
 ) => Promise<unknown>;
 
+type LoadSettings = (
+  baseDir: string,
+  fsLike: {
+    readFile: (path: string, encoding: BufferEncoding) => Promise<string>;
+  },
+  environment?: Record<string, string | undefined>,
+) => Promise<unknown>;
+
 const envExampleBody = [
   "# OpenRouter direct",
   "OPENROUTER_API_KEY=",
@@ -259,12 +267,48 @@ test("test_load_config_does_not_mutate_process_env", async () => {
   assert.notEqual(process.env.NVIDIA_API_KEY, apiKey);
 });
 
-async function loadConfigModule(): Promise<{ loadConfig: LoadConfig }> {
+test("test_loadSettings_shouldReturnModelContextMaxBytes_onSettingsEnv", async () => {
+  const { loadSettings } = await loadConfigModule();
+
+  const settings = await loadSettings(
+    "/tmp/session-digests",
+    makeReadOnlySettingsFsLike("MODEL_CONTEXT_MAX_BYTES=12345\n"),
+  );
+
+  assert.deepEqual(settings, { modelContextMaxBytes: 12345 });
+});
+
+test("test_loadSettings_shouldPreferSessionDigestEnvOverride_onModelContextMaxBytes", async () => {
+  const { loadSettings } = await loadConfigModule();
+
+  const settings = await loadSettings(
+    "/tmp/session-digests",
+    makeReadOnlySettingsFsLike("MODEL_CONTEXT_MAX_BYTES=12345\n"),
+    { SESSION_DIGEST_MODEL_CONTEXT_MAX_BYTES: "45678" },
+  );
+
+  assert.deepEqual(settings, { modelContextMaxBytes: 45678 });
+});
+
+test("test_loadSettings_shouldRejectInvalidModelContextMaxBytes_onSettingsEnv", async () => {
+  const { loadSettings } = await loadConfigModule();
+
+  await assert.rejects(
+    () => loadSettings(
+      "/tmp/session-digests",
+      makeReadOnlySettingsFsLike("MODEL_CONTEXT_MAX_BYTES=not-a-number\n"),
+    ),
+    (error: unknown) => error instanceof Error && error.message.includes("MODEL_CONTEXT_MAX_BYTES"),
+  );
+});
+
+async function loadConfigModule(): Promise<{ loadConfig: LoadConfig; loadSettings: LoadSettings }> {
   const config = await import("../src/config.js")
-    .catch(() => ({})) as Partial<{ loadConfig: LoadConfig }>;
+    .catch(() => ({})) as Partial<{ loadConfig: LoadConfig; loadSettings: LoadSettings }>;
 
   return {
     loadConfig: config.loadConfig ?? (async () => undefined),
+    loadSettings: config.loadSettings ?? (async () => ({})),
   };
 }
 
@@ -272,5 +316,11 @@ function makeReadOnlyFsLike(contents: string): Parameters<LoadConfig>[1] {
   return {
     readFile: async () => contents,
     writeFile: async () => {},
+  };
+}
+
+function makeReadOnlySettingsFsLike(contents: string): Parameters<LoadSettings>[1] {
+  return {
+    readFile: async () => contents,
   };
 }

@@ -13,7 +13,7 @@ import {
   writeLedger,
 } from "./artifacts.js";
 import { defaultClock } from "./clock.js";
-import { ConfigError, loadConfig } from "./config.js";
+import { ConfigError, loadConfig, loadSettings } from "./config.js";
 import { InputError, validateInputPath } from "./inputs.js";
 import { compileLedger, ModelContextBudgetError } from "./ledger.js";
 import { defaultChatModel } from "./model.js";
@@ -57,12 +57,13 @@ export async function main(
     await validateInputPath(inputPath, fsLike);
     const parsedSession = await parseSessionRecords(inputPath, fsLike);
     await fsLike.mkdir(baseDir, { recursive: true });
+    const settings = await loadSettings(baseDir, fsLike);
     const nowUtc = clock();
     const artifactPaths = computeArtifactPaths(inputPath, nowUtc, baseDir);
     await (ledgerOnly
       ? assertLedgerPathAvailable(artifactPaths, fsLike)
       : assertArtifactPathsAvailable(artifactPaths, fsLike));
-    const ledger = compileLedger(parsedSession);
+    const ledger = compileLedger(parsedSession, { maxModelContextBytes: settings.modelContextMaxBytes });
 
     if (ledgerOnly) {
       await writeLedger(artifactPaths.ledgerPath, ledger, fsLike);

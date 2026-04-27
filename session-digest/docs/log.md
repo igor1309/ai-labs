@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Implemented ADR-004 settings support: `settings.env` can set the model-context byte budget, and `SESSION_DIGEST_MODEL_CONTEXT_MAX_BYTES` can override it for one run.
 - Accepted ADR-004 to split home-scoped non-secret `settings.env` from credential `.env`, keep settings independent of cwd, and lock ledger-only mode as the next local-ergonomics direction.
 - Added `--ledger-only` mode so sessions can be compiled into derived ledger artifacts without provider configuration or model synthesis.
 - Retained structured tool-call identity in V2 ledgers so skill invocations and tool-result relationships no longer require text scraping.

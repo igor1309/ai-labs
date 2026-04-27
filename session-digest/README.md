@@ -46,6 +46,14 @@ If more than one provider is configured, the CLI uses Nomos first, then OpenRout
 
 If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for model requests.
 
+Optional non-secret settings live in `~/.session-digests/settings.env`:
+
+```bash
+MODEL_CONTEXT_MAX_BYTES=250000
+```
+
+For a one-off run, `SESSION_DIGEST_MODEL_CONTEXT_MAX_BYTES` overrides `MODEL_CONTEXT_MAX_BYTES`.
+
 For Nomos mode, start the local proxy from the repository root before running `session-digest`:
 
 ```bash

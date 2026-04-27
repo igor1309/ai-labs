@@ -209,6 +209,40 @@ test("test_main_shouldLeaveLedgerAndWriteNoDigest_onModelSchemaFailure", async (
   });
 });
 
+test("test_main_shouldUseSettingsModelContextBudget_beforeModelCall", async (t) => {
+  const { baseDir, tempDir } = await makeBaseDir();
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const now = new Date("2026-04-26T01:02:03.000Z");
+  const paths = computeArtifactPaths(validSessionPath, now, baseDir);
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+  const model = new FakeDigestModel();
+
+  await fs.writeFile(path.join(baseDir, "settings.env"), "MODEL_CONTEXT_MAX_BYTES=400\n");
+
+  const exitCode = await main([validSessionPath], stdout, stderr, {
+    baseDir,
+    clock: () => now,
+    model,
+  });
+
+  assert.deepEqual({
+    digestExists: await exists(paths.digestPath),
+    exitCode,
+    ledgerExists: await exists(paths.ledgerPath),
+    modelInvocations: model.inputs.length,
+    stderrMentionsBudget: stderr.toString().includes("model context budget exceeded"),
+    stdout: stdout.toString(),
+  }, {
+    digestExists: false,
+    exitCode: 1,
+    ledgerExists: false,
+    modelInvocations: 0,
+    stderrMentionsBudget: true,
+    stdout: "",
+  });
+});
+
 test("test_main_shouldWriteDigestSectionsInDocumentedOrder_onSuccess", async (t) => {
   const { baseDir, tempDir } = await makeBaseDir();
   t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
