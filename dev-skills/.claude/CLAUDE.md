@@ -11,9 +11,12 @@ When publishing skills:
 2. Update `public/.claude-plugin/marketplace.json`: add/update the skill entry in the skills array, and bump `metadata.version`
 3. Update `public/README.md`
 4. Update `dev-skills/docs/log.md` for project-scoped changes. Update repo-root `docs/log.md` too only when the change is genuinely repo-wide.
-5. Stop to commit.
-6. Push to trunk.
-7. After ~1 min, verify CI and skills repo:
+5. Stop to commit on a dedicated branch (never directly on `trunk` — it is protected at the repo level).
+6. Push the branch and open a PR into `trunk`, then enable auto-merge:
+   - `git push -u origin <branch>`
+   - `gh pr create --base trunk --title "<title>" --body "<body>"`
+   - `gh pr merge <number> --merge --auto --delete-branch`
+7. After the PR merges, ~1 min later, verify CI and skills repo:
    - Check CI completed: `gh run list --repo igor1309/skills --limit 1 --json status,conclusion,name`
    - Verify release version matches marketplace version: `gh release list --repo igor1309/skills --limit 1`
    - Verify skill exists in skills repo: `gh api repos/igor1309/skills/contents/<skill-name>/SKILL.md --jq '.name'`
