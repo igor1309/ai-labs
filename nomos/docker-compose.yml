@@ -8,9 +8,6 @@ services:
       - nomos-data:/app/data
     expose:
       - "8080"
-    networks:
-      - default
-      - nomos-shared
     labels:
       com.logging.project: nomos
       com.logging.service: api
@@ -28,16 +25,9 @@ services:
       - caddy-config:/config
     depends_on:
       - nomos
-    networks:
-      - default
-      - nomos-shared
     labels:
       com.logging.project: nomos
       com.logging.service: caddy
-
-networks:
-  nomos-shared:
-    external: true
 
 volumes:
   nomos-data:
