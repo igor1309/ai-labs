@@ -1,5 +1,9 @@
 # Regentara Log
 
+## 2026-04-27
+
+- Created the MVP workflow runner implementation plan from the accepted Regentara spec and ADRs. The plan incorporates the updated process guardrails from `63a14b3ad256f1728d5b4766df8d13c406fd1436`: explicit execution mode, worktree mode, push policy, auto-continue behavior, and final archive move.
+
 ## 2026-04-25
 
 - ADR TODO: dropped Process Control item; TODO file removed (now empty). MVP behavior already committed by adr-005 (no timeouts; interruption stops the run); the deferral chain in adr-003 and adr-005 explicitly names a future process-control ADR and stands as the marker. Write the targeted ADR (or split into focused ADRs) when implementation surfaces a concrete pain point — hung subprocess, Ctrl+C UX, or orphaned descendants.
