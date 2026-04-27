@@ -133,6 +133,44 @@ test("test_load_config_prefers_nomos_when_nomos_and_openrouter_keys_exist", asyn
   });
 });
 
+test("test_load_config_prefers_openrouter_when_openrouter_and_nvidia_keys_exist", async () => {
+  const { loadConfig } = await loadConfigModule();
+  const fsLike = makeReadOnlyFsLike([
+    "OPENROUTER_API_KEY=or-key",
+    "OPENROUTER_MODEL=x-ai/grok-4.1-fast",
+    "NVIDIA_API_KEY=nvidia-key",
+    "NVIDIA_MODEL=nvidia-model",
+  ].join("\n"));
+
+  const config = await loadConfig("/tmp/session-digests", fsLike);
+
+  assert.deepEqual(config, {
+    apiKey: "or-key",
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "x-ai/grok-4.1-fast",
+    provider: "openrouter",
+  });
+});
+
+test("test_load_config_skips_whitespace_only_nomos_pair_when_openrouter_is_complete", async () => {
+  const { loadConfig } = await loadConfigModule();
+  const fsLike = makeReadOnlyFsLike([
+    "NOMOS_API_KEY=\"   \"",
+    "NOMOS_MODEL=\"\t\"",
+    "OPENROUTER_API_KEY=or-key",
+    "OPENROUTER_MODEL=x-ai/grok-4.1-fast",
+  ].join("\n"));
+
+  const config = await loadConfig("/tmp/session-digests", fsLike);
+
+  assert.deepEqual(config, {
+    apiKey: "or-key",
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "x-ai/grok-4.1-fast",
+    provider: "openrouter",
+  });
+});
+
 test("test_missing_model_returns_error", async () => {
   const { loadConfig } = await loadConfigModule();
   const fsLike = makeReadOnlyFsLike("NVIDIA_API_KEY=k\n");

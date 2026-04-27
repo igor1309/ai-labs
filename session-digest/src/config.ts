@@ -96,39 +96,52 @@ function nvidiaConfig(parsed: Record<string, string>): Config | undefined {
 }
 
 function configFromPair(config: Config): Config | undefined {
-  if (!config.apiKey || !config.model) {
+  if (!isCompletePair(config.apiKey, config.model)) {
     return undefined;
   }
 
-  return { ...config, baseURL: trimTrailingSlash(config.baseURL) };
+  return {
+    ...config,
+    apiKey: config.apiKey.trim(),
+    baseURL: trimTrailingSlash(config.baseURL),
+    model: config.model.trim(),
+  };
 }
 
 function missingConfigError(parsed: Record<string, string>): ConfigError {
-  if (parsed.OPENROUTER_MODEL) {
+  if (hasValue(parsed.OPENROUTER_MODEL)) {
     return new ConfigError("Missing OPENROUTER_API_KEY in ~/.session-digests/.env.");
   }
 
-  if (parsed.OPENROUTER_API_KEY) {
+  if (hasValue(parsed.OPENROUTER_API_KEY)) {
     return new ConfigError("Missing OPENROUTER_MODEL in ~/.session-digests/.env.");
   }
 
-  if (parsed.NOMOS_MODEL) {
+  if (hasValue(parsed.NOMOS_MODEL)) {
     return new ConfigError("Missing NOMOS_API_KEY in ~/.session-digests/.env.");
   }
 
-  if (parsed.NOMOS_API_KEY) {
+  if (hasValue(parsed.NOMOS_API_KEY)) {
     return new ConfigError("Missing NOMOS_MODEL in ~/.session-digests/.env.");
   }
 
-  if (parsed.NVIDIA_MODEL) {
+  if (hasValue(parsed.NVIDIA_MODEL)) {
     return new ConfigError("Missing NVIDIA_API_KEY in ~/.session-digests/.env.");
   }
 
-  if (parsed.NVIDIA_API_KEY) {
+  if (hasValue(parsed.NVIDIA_API_KEY)) {
     return new ConfigError("Missing NVIDIA_MODEL in ~/.session-digests/.env.");
   }
 
   return new ConfigError("Missing provider credentials in ~/.session-digests/.env.");
+}
+
+function isCompletePair(apiKey: string, model: string): boolean {
+  return hasValue(apiKey) && hasValue(model);
+}
+
+function hasValue(value: string | undefined): value is string {
+  return typeof value === "string" && value.trim() !== "";
 }
 
 function trimTrailingSlash(value: string): string {

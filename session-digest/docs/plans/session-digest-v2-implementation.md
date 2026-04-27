@@ -153,7 +153,7 @@ Commit: `session-digest: update v2 input gates`
 - Modify: `session-digest/src/config.ts`
 - Modify/Test: `session-digest/tests/config.test.ts`
 
-- [ ] **Step 1: RED for incomplete provider pair skip**
+- [x] **Step 1: RED for incomplete provider pair skip**
 
 Add a test with whitespace-only `NOMOS_API_KEY` / `NOMOS_MODEL` and complete OpenRouter config. Assert OpenRouter is selected.
 
@@ -161,15 +161,15 @@ Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tes
 
 Expected: FAIL because current config treats whitespace-only strings as complete.
 
-- [ ] **Step 2: GREEN for complete-pair rule**
+- [x] **Step 2: GREEN for complete-pair rule**
 
 Implement `isCompletePair(apiKey, model)` using trim. Skip incomplete pairs during selection. If zero complete pairs exist, keep concise missing-credentials errors.
 
-- [ ] **Step 3: RED/GREEN for provider order among complete pairs**
+- [x] **Step 3: RED/GREEN for provider order among complete pairs**
 
 Assert Nomos wins over OpenRouter and OpenRouter wins over NVIDIA when each pair is complete.
 
-- [ ] **Step 4: Task gate and commit**
+- [x] **Step 4: Task gate and commit**
 
 Run full session-digest test and build gates.
 
