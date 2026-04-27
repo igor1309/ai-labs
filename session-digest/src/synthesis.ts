@@ -1,5 +1,5 @@
 import { serializeModelContext, type ModelContext } from "./ledger.js";
-import { SECTION_NAMES, type SectionName } from "./sections.js";
+import { DEFAULT_DIGEST_SCHEMA, type DigestSchema } from "./sections.js";
 
 export type DigestModel = {
   invoke(input: unknown): Promise<unknown>;
@@ -8,19 +8,23 @@ export type DigestModel = {
 export class SynthesisError extends Error {}
 
 export async function synthesizeDigest(
-  { model, modelContext }: { model: DigestModel; modelContext: ModelContext },
-): Promise<Record<SectionName, string>> {
+  { model, modelContext, schema = DEFAULT_DIGEST_SCHEMA }: {
+    model: DigestModel;
+    modelContext: ModelContext;
+    schema?: DigestSchema;
+  },
+): Promise<Record<string, string>> {
   const serializedContext = serializeModelContext(modelContext);
-  const result = await model.invoke(synthesisPrompt(serializedContext));
+  const result = await model.invoke(synthesisPrompt(serializedContext, schema));
 
-  return requireCompleteSections(parseSectionsEnvelope(contentFromModelResult(result)).sections);
+  return requireCompleteSections(parseSectionsEnvelope(contentFromModelResult(result)).sections, schema);
 }
 
-function synthesisPrompt(serializedContext: string): string {
+function synthesisPrompt(serializedContext: string, schema: DigestSchema): string {
   return [
     "Create a session digest from this bounded model context.",
     "Return only JSON matching this exact schema:",
-    sectionSchemaPrompt(),
+    sectionSchemaPrompt(schema),
     "Every section value must be a non-empty string.",
     "Do not add, omit, or rename section keys.",
     "Use evidence anchors such as record:1 where relevant.",
@@ -29,9 +33,12 @@ function synthesisPrompt(serializedContext: string): string {
   ].join("\n");
 }
 
-function sectionSchemaPrompt(): string {
+function sectionSchemaPrompt(schema: DigestSchema): string {
   return JSON.stringify({
-    sections: Object.fromEntries(SECTION_NAMES.map(($0) => [$0, "non-empty string"])),
+    sections: Object.fromEntries(schema.sections.map(($0) => [
+      $0.id,
+      `non-empty string; markdown heading: ${$0.heading}; ${$0.description}`,
+    ])),
   }, null, 2);
 }
 
@@ -63,34 +70,34 @@ function parseJsonOutput(content: string): unknown {
   throw new SynthesisError("Synthesis output was not valid JSON.");
 }
 
-function requireCompleteSections(sections: Record<string, unknown>): Record<SectionName, string> {
-  const completeSections: Partial<Record<SectionName, string>> = {};
+function requireCompleteSections(sections: Record<string, unknown>, schema: DigestSchema): Record<string, string> {
+  const completeSections: Record<string, string> = {};
 
-  for (const sectionName of SECTION_NAMES) {
-    const sectionBody = sections[sectionName];
+  for (const section of schema.sections) {
+    const sectionBody = sections[section.id];
 
     if (sectionBody === undefined) {
-      throw new SynthesisError(`Missing digest section: ${sectionName}`);
+      throw new SynthesisError(`Missing digest section: ${section.heading}`);
     }
 
     if (typeof sectionBody !== "string" || sectionBody.trim() === "") {
-      throw new SynthesisError(`Blank digest section: ${sectionName}`);
+      throw new SynthesisError(`Blank digest section: ${section.heading}`);
     }
 
-    completeSections[sectionName] = sectionBody;
+    completeSections[section.id] = sectionBody;
   }
 
   for (const sectionName of Object.keys(sections)) {
-    if (!isSectionName(sectionName)) {
+    if (!isSectionName(sectionName, schema)) {
       throw new SynthesisError(`Unknown digest section: ${sectionName}`);
     }
   }
 
-  return completeSections as Record<SectionName, string>;
+  return completeSections;
 }
 
-function isSectionName(value: string): value is SectionName {
-  return SECTION_NAMES.includes(value as SectionName);
+function isSectionName(value: string, schema: DigestSchema): boolean {
+  return schema.sections.some(($0) => $0.id === value);
 }
 
 function contentFromModelResult(result: unknown): string {

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { main } from "../src/cli.js";
 import { computeArtifactPaths } from "../src/artifacts.js";
-import { SECTION_NAMES } from "../src/sections.js";
+import { SECTION_IDS, SECTION_NAMES } from "../src/sections.js";
 import type { DigestModel } from "../src/synthesis.js";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "v2");
@@ -165,7 +165,7 @@ class FakeDigestModel implements DigestModel {
 
     return {
       content: JSON.stringify({
-        sections: Object.fromEntries(SECTION_NAMES.map(($0) => [$0, `${$0} body record:1`])),
+        sections: Object.fromEntries(SECTION_IDS.map(($0) => [$0, `${$0} body record:1`])),
       }),
     };
   }

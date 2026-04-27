@@ -141,6 +141,21 @@ test("test_body_order_is_independent_of_input_record_iteration_order", async () 
   ]);
 });
 
+test("test_assembleDigest_shouldRenderConfiguredSchemaHeadings_onCustomSchema", () => {
+  const digest = assembleDigest(makeFrontMatter(), {
+    first: "first body",
+    second: "second body",
+  }, {
+    sections: [
+      { description: "First", heading: "First Heading", id: "first", required: true },
+      { description: "Second", heading: "Second Heading", id: "second", required: true },
+    ],
+    version: 3,
+  });
+
+  assert.deepEqual(h2Headers(digest), ["First Heading", "Second Heading"]);
+});
+
 function countDateConstruction(source: string): number {
   return (source.match(/new Date\(|Date\.now\(/g) ?? []).length;
 }

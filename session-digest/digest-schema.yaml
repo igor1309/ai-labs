@@ -1,0 +1,26 @@
+version: 1
+sections:
+  - id: session_summary
+    heading: Session summary
+    required: true
+    description: Concise summary of what happened in the session.
+  - id: outcome
+    heading: Outcome
+    required: true
+    description: Final state of the work and whether it succeeded.
+  - id: useful_decisions
+    heading: Useful decisions
+    required: true
+    description: Decisions worth carrying forward to future sessions.
+  - id: failure_or_friction_points
+    heading: Failure or friction points
+    required: true
+    description: Failures, blocked paths, and friction encountered.
+  - id: next_session_improvements
+    heading: Next-session improvements
+    required: true
+    description: Concrete changes that would improve the next session.
+  - id: evidence_notes
+    heading: Evidence notes
+    required: true
+    description: Evidence anchors supporting non-obvious claims.
