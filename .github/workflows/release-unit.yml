@@ -123,7 +123,7 @@ jobs:
           host: ${{ secrets.NOMOS_VPS_HOST }}
           username: ${{ secrets.NOMOS_VPS_USER }}
           key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
-          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml,nomos/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
+          source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.yml,nomos/docker-compose.staging.yml,nomos/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
           target: /tmp/nomos-deploy
           strip_components: 1
 
