@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+v0.8.8: publish the existing Nomos payload-limit and oversized-request improvements as the next deployable release.
 Add intentional Nomos JSON body-size configuration via `NOMOS_JSON_BODY_LIMIT`, with a 1MB default, validation, docs, and staging-first operator guidance.
 Implement Nomos-owned oversized JSON request rejection: 413 responses now report local rejection plus the effective parser limit.
 Add issue ticket for intentional JSON payload-size configuration, including tests, docs, and staging-gate requirements.
