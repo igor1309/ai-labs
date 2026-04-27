@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+Drop the inert `nomos-shared` declaration from the repo prod compose and remove the orphan `docker build -t nomos:latest .` from `deploy-staging.sh`. CI does not copy `docker-compose.yml` to the VPS, so the repo declaration was a false promise of network membership the deploy pipeline never delivered. The `nomos:latest` image was likewise built and never used now that scripts operate on `nomos-nomos:latest`. The on-VPS prod compose retains its operator-managed `nomos-shared` attachment unchanged.
 Fix rollback by snapshotting and restoring the actual prod compose image (`nomos-nomos:latest`) instead of the orphan `nomos:latest` tag the prod stack never used. Without this, `rollback-prod.sh` was a no-op — every "Rollback successful" message in CI logs was misleading.
 Force `--build` on prod compose so each deploy actually rebuilds the auto-named `nomos-nomos:latest` image. The `nomos:latest` tag the deploy/rollback scripts shuffled was orphan; prod compose uses `nomos-nomos:latest` and was caching at v0.8.6 across every deploy from v0.8.7 onward, masking the real release version. Staging works for the same reason in reverse — its script already passes `--build`.
 v0.8.9: redeploy Nomos with the staging-route compose repair so the staging-gated release pipeline can complete after the v0.8.8 502 outage.
