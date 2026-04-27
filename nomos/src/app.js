@@ -2,6 +2,8 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
+const DEFAULT_JSON_BODY_LIMIT = "100kb";
+
 export function createApp({ logger, db, version = null, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null }) {
   const app = express();
 
@@ -49,6 +51,12 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
   app.use((err, _req, res, _next) => {
     const status = err.status || err.statusCode || 500;
     logger.error("unhandled error", { error: err.message, status });
+    if (status === 413 && err.type === "entity.too.large") {
+      return res.status(status).json({
+        error: `Nomos rejected request body before routing: request body exceeds JSON limit (current limit: ${DEFAULT_JSON_BODY_LIMIT}).`,
+      });
+    }
+
     res.status(status).json({
       error: status < 500 ? err.message : "internal server error",
     });
