@@ -162,48 +162,17 @@ jobs:
           echo "All SKILL.md files present"
 
   real-provider-smoke:
-    needs: [changes, oracle-core, nomos-prod-repair]
-    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' && (needs.nomos-prod-repair.result == 'success' || needs.nomos-prod-repair.result == 'skipped') }}
+    needs: [changes, oracle-core]
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}
     uses: ./.github/workflows/core-real-provider-smoke.yml
     with:
       llm_model: ${{ vars.OPENROUTER_CI_MODEL }}
     secrets:
       LLM_API_KEY: ${{ secrets.NOMOS_ORACLE_TOKEN }}
 
-  nomos-prod-repair:
-    needs: [changes]
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'codex/nomos-prod-data-bind' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Restore production data bind mount
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.NOMOS_VPS_HOST }}
-          username: ${{ secrets.NOMOS_VPS_USER }}
-          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/nomos
-            python3 - <<'PY'
-            from pathlib import Path
-
-            path = Path("docker-compose.yml")
-            text = path.read_text()
-            text = text.replace("      - nomos-data:/app/data\n", "      - ./data:/app/data\n")
-            text = text.replace("  nomos-data:\n", "")
-            if "      - ./data:/app/data\n" not in text:
-                raise SystemExit("production compose does not contain ./data bind mount")
-            path.write_text(text)
-            PY
-            docker compose down
-            docker compose up -d
-            sleep 5
-            docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
-
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, nomos-prod-repair, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
