@@ -48,6 +48,20 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
 
   app.use((err, _req, res, _next) => {
     const status = err.status || err.statusCode || 500;
+    if (status === 413 && err.type === "entity.too.large") {
+      const limitBytes = err.limit;
+      const limit = formatLimit(limitBytes);
+      logger.warn("json request body too large", { limit_bytes: limitBytes, status });
+      return res.status(status).json({
+        error: {
+          code: "json_body_too_large",
+          limit,
+          limit_bytes: limitBytes,
+          message: `Nomos rejected the JSON request body locally before forwarding it to any model provider because it exceeds the ${limit} limit.`,
+          status,
+        },
+      });
+    }
     logger.error("unhandled error", { error: err.message, status });
     res.status(status).json({
       error: status < 500 ? err.message : "internal server error",
@@ -55,4 +69,8 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
   });
 
   return app;
+}
+
+function formatLimit(limitBytes) {
+  return limitBytes % 1024 === 0 ? `${limitBytes / 1024}kb` : `${limitBytes} bytes`;
 }
