@@ -42,7 +42,7 @@ In `auto-continue` mode, RED does not require a human stop. Each RED must still 
 Worktree mode: create new
 Expected worktree: `worktrees/regentara-mvp-workflow-runner`
 Expected branch: `codex/regentara-mvp-workflow-runner`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 Step 0:
 
