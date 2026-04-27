@@ -1,5 +1,10 @@
 # Regentara Log
 
+## 2026-04-27
+
+- Implemented the Regentara MVP workflow runner as a release unit, covering settings/model validation, provider CLI orchestration, run/artifact storage, fail-fast failure handling, and review/remediation routing.
+- Finalized the implementation plan from the accepted Regentara specs and ADRs.
+
 ## 2026-04-25
 
 - ADR TODO: dropped Process Control item; TODO file removed (now empty). MVP behavior already committed by adr-005 (no timeouts; interruption stops the run); the deferral chain in adr-003 and adr-005 explicitly names a future process-control ADR and stands as the marker. Write the targeted ADR (or split into focused ADRs) when implementation surfaces a concrete pain point — hung subprocess, Ctrl+C UX, or orphaned descendants.

@@ -12,13 +12,30 @@ it('reports docs-only components as regular LOC rows', () => {
 
   assert.deepEqual(
     projectRows(output)
-      .filter((line) => /^(nexum|niora|regentara)\s/.test(line.trim()))
+      .filter((line) => /^(nexum|niora)\s/.test(line.trim()))
       .map((line) => line.trim().split(/\s+/).slice(0, 3)),
     [
       ['nexum', '0', '0'],
       ['niora', '0', '0'],
-      ['regentara', '0', '0'],
     ]
+  );
+});
+
+it('reports Regentara as a code component once implementation exists', () => {
+  const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  const regentaraCounts = projectRows(output)
+    .find((line) => line.trimStart().startsWith('regentara'))
+    .trim()
+    .split(/\s+/)
+    .slice(1, 3)
+    .map(Number);
+
+  assert.deepEqual(
+    regentaraCounts.map((count) => count > 0),
+    [true, true]
   );
 });
 
