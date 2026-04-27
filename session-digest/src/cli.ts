@@ -18,6 +18,7 @@ import { compileLedger, ModelContextBudgetError } from "./ledger.js";
 import { defaultChatModel } from "./model.js";
 import { assembleDigest, writeDigest } from "./output.js";
 import { parseSessionRecords } from "./session-records.js";
+import { DEFAULT_DIGEST_SCHEMA_PATH, loadDigestSchema } from "./sections.js";
 import { SynthesisError, synthesizeDigest, type DigestModel } from "./synthesis.js";
 
 export type MainDeps = {
@@ -54,6 +55,8 @@ export async function main(
     const parsedSession = await parseSessionRecords(argv[0], fsLike);
     await fsLike.mkdir(baseDir, { recursive: true });
     const config = await loadConfig(baseDir, fsLike);
+    const digestSchemaPath = config.digestSchemaPath ?? DEFAULT_DIGEST_SCHEMA_PATH;
+    const digestSchema = await loadDigestSchema(digestSchemaPath, fsLike);
     const nowUtc = clock();
     const artifactPaths = computeArtifactPaths(argv[0], nowUtc, baseDir);
     await assertArtifactPathsAvailable(artifactPaths, fsLike);
@@ -61,7 +64,7 @@ export async function main(
     await writeLedger(artifactPaths.ledgerPath, ledger, fsLike);
     const ledgerBytes = await measureLedgerBytes(artifactPaths.ledgerPath, fsLike);
     const model = deps.model ?? defaultChatModel(config);
-    const sections = await synthesizeDigest({ model, modelContext: ledger.model_context })
+    const sections = await synthesizeDigest({ model, modelContext: ledger.model_context, schema: digestSchema })
       .catch((error: unknown) => {
         if (error instanceof Error) {
           throw new SynthesisError(`${error.message}; ledger retained at ${artifactPaths.ledgerPath}`);
@@ -72,6 +75,8 @@ export async function main(
     const digest = assembleDigest({
       compressor_strategy: ledger.compressor_strategy,
       compressor_version: ledger.compressor_version,
+      digest_schema_path: digestSchemaPath,
+      digest_schema_version: digestSchema.version,
       title: "Session Digest",
       source_path: argv[0],
       provider: config.provider,
@@ -82,7 +87,7 @@ export async function main(
       source_records: parsedSession.source.records,
       ledger_bytes: ledgerBytes,
       model_context_bytes: ledger.model_context.bytes,
-    }, sections);
+    }, sections, digestSchema);
 
     await writeDigest(artifactPaths.digestPath, digest, fsLike);
     stdout.write(`${artifactPaths.digestPath}\n`);
