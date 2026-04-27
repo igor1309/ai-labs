@@ -1,6 +1,7 @@
-import { failureResult, StartupValidationFailure } from "./errors.js";
+import { failureResult, RuntimeFailure, StartupValidationFailure } from "./errors.js";
 import { validateProviderCliAvailability } from "./provider-cli-availability.js";
 import { createRun as createStoredRun } from "./run-store.js";
+import { updateRunMetadata as updateStoredRunMetadata } from "./run-store.js";
 import { validateRuntimeOutput } from "./runtime-output.js";
 import { resolveAgentSettings } from "./settings/agent-settings.js";
 import { resolveModelRouting } from "./settings/model-routing.js";
@@ -20,6 +21,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     return failureResult(new StartupValidationFailure("ReviewFixPolicy is required"));
   }
 
+  if (input.interrupted) {
+    return failureResult(new StartupValidationFailure("workflow interrupted before start"));
+  }
+
   const workingDirectory = input.workingDirectory ?? process.cwd();
   const homeDirectory = input.homeDirectory ?? dependencies.homeDirectory;
   const resolveAgents = dependencies.resolveAgentSettings ?? resolveAgentSettings;
@@ -28,12 +33,18 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     dependencies.validateProviderCliAvailability ?? validateProviderCliAvailability;
   const createRun = dependencies.createRun ?? createStoredRun;
   const executeProviderCli = dependencies.executeProviderCli;
+  const updateRunMetadata = dependencies.updateRunMetadata ?? updateStoredRunMetadata;
+  let run;
 
   try {
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     await validateCliAvailability(modelRouting, dependencies);
-    const run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
+    run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
+
+    if (dependencies.interruptAfterRunCreated) {
+      throw new RuntimeFailure("workflow interrupted after start");
+    }
 
     if (!executeProviderCli) {
       return {
@@ -54,6 +65,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         agentId: "producer",
         agentSettings,
         executeProviderCli,
+        artifactExists: dependencies.artifactExists,
         input: {
           task: currentTask,
         },
@@ -64,6 +76,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         agentId: "reviewer",
         agentSettings,
         executeProviderCli,
+        artifactExists: dependencies.artifactExists,
         input: {
           producer: producerResult,
           task: currentTask,
@@ -105,6 +118,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         agentId: "remediator",
         agentSettings,
         executeProviderCli,
+        artifactExists: dependencies.artifactExists,
         input: {
           producer: producerResult,
           task: currentTask,
@@ -116,6 +130,14 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       currentTask = remediatorResult.task;
     }
   } catch (error) {
+    if (run && !(error instanceof StartupValidationFailure)) {
+      await updateRunMetadata(run.runDirectory, {
+        endTime: new Date().toISOString(),
+        exitCode: 1,
+        status: "failed",
+      });
+    }
+
     return failureResult(error);
   }
 }
@@ -123,6 +145,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
 async function executeAgent({
   agentId,
   agentSettings,
+  artifactExists,
   executeProviderCli,
   input,
   modelRouting,
@@ -137,9 +160,15 @@ async function executeAgent({
     workingDirectory,
   });
 
-  return validateRuntimeOutput(
+  const output = validateRuntimeOutput(
     agentId,
     providerResult.jsonOutput ?? providerResult.stdoutReference,
     agent.outputSchema,
   );
+
+  if (output.artifact && artifactExists && !(await artifactExists(output.artifact))) {
+    throw new RuntimeFailure(`expected artifact missing: ${output.artifact}`);
+  }
+
+  return output;
 }

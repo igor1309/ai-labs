@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Implemented fail-fast runtime failure handling, missing-artifact failure, artifact preservation, no retry/continue behavior, and interruption handling before and after run creation.
 - Implemented the Producer, Reviewer, ReviewFixPolicy, and Remediator loop with opaque policy session forwarding and policy-owned post-review routing.
 - Added runtime output parsing and JSON Schema validation so invalid agent output fails the run before later workflow steps consume it.
 - Implemented the provider CLI execution boundary with invocation cwd, model argument passing, output capture, non-zero exit failure, and no automatic timeout.

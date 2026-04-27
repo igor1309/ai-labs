@@ -474,14 +474,14 @@ git commit -m "sequence regentara workflow through review policy"
 
 **Key Work Items:**
 
-- [ ] Write RED/GREEN tests proving already-created artifacts are preserved after runtime failure.
-- [ ] Write RED/GREEN tests proving missing expected artifacts are not fabricated and fail the run.
-- [ ] Write RED/GREEN tests proving execution stops after the first runtime failure.
-- [ ] Write RED/GREEN tests proving failed steps are not retried.
-- [ ] Write RED/GREEN tests proving later workflow steps do not run after failure.
-- [ ] Write RED/GREEN tests proving interruption before workflow start exits non-zero and creates no run.
-- [ ] Write RED/GREEN tests proving interruption after workflow start marks the run failed.
-- [ ] Ensure failed runs return non-zero exit codes and concise failure reasons.
+- [x] Write RED/GREEN tests proving already-created artifacts are preserved after runtime failure.
+- [x] Write RED/GREEN tests proving missing expected artifacts are not fabricated and fail the run.
+- [x] Write RED/GREEN tests proving execution stops after the first runtime failure.
+- [x] Write RED/GREEN tests proving failed steps are not retried.
+- [x] Write RED/GREEN tests proving later workflow steps do not run after failure.
+- [x] Write RED/GREEN tests proving interruption before workflow start exits non-zero and creates no run.
+- [x] Write RED/GREEN tests proving interruption after workflow start marks the run failed.
+- [x] Ensure failed runs return non-zero exit codes and concise failure reasons.
 
 **Validation:**
 
