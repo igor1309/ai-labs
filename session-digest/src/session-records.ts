@@ -30,7 +30,18 @@ export type ParsedSession = {
 };
 
 export async function parseSessionRecords(inputPath: string, fsLike: SessionRecordFs): Promise<ParsedSession> {
-  const contents = await fsLike.readFile(inputPath, "utf8");
+  let contents: string;
+
+  try {
+    contents = await fsLike.readFile(inputPath, "utf8");
+  } catch (error) {
+    if (isNodeError(error) && error.code === "EACCES") {
+      throw InputError.unreadable(inputPath, error.code);
+    }
+
+    throw error;
+  }
+
   let parsedValues = 0;
   let sourceRecords = 0;
   let skippedRecords = 0;
@@ -112,4 +123,8 @@ function stringValue(value: unknown): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
 }

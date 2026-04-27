@@ -119,6 +119,12 @@ test("test_body_contains_six_h2_sections_in_documented_order", async () => {
   ]);
 });
 
+test("test_body_shouldStartWithDocumentedH1_beforeSections", async () => {
+  const digest = assembleDigest(makeFrontMatter(), {});
+
+  assert.match(digest, /^---[\s\S]*---\n\n# Session Digest\n\n## Session summary/m);
+});
+
 test("test_body_order_is_independent_of_input_record_iteration_order", async () => {
   const sections = {
     "Evidence notes": "evidence",

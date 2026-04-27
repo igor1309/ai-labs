@@ -13,6 +13,7 @@
 - Retained structured tool-call identity in V2 ledgers so skill invocations and tool-result relationships no longer require text scraping.
 - Moved digest section ownership into YAML configuration and added `SESSION_DIGEST_SCHEMA_PATH` so runs can use a custom digest schema while recording schema path/version in digest front matter.
 - Hardened synthesis output validation so missing, blank, or unknown digest sections fail instead of writing placeholder-filled digests.
+- Addressed the V2 implementation review: relative CLI inputs now produce absolute source metadata in digest and ledger artifacts, digests restore the documented H1, and V2 parser read-permission failures map to the concise `InputError.unreadable` contract.
 - Saved the V2 implementation review findings covering absolute source paths, the documented digest H1, and V2 parser read-permission errors.
 - Implemented the V2 ledger pipeline: Claude JSONL now compiles into a persisted derived ledger, bounded model context, and digest metadata without retaining raw JSONL or using Deep Agents.
 - Archived the completed V1 session-digest implementation plans and clarified that the V2 plan runs in the existing `deep-nvidia` worktree and branch.

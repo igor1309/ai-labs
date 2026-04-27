@@ -57,7 +57,7 @@ export function assembleDigest(
   const sectionBody = schema.sections.map((section) => `## ${section.heading}\n\n${sections[section.id] ?? ""}`)
     .join("\n\n");
 
-  return `${frontMatterBody}${sectionBody}\n`;
+  return `${frontMatterBody}\n# ${frontMatter.title}\n\n${sectionBody}\n`;
 }
 
 function formatGeneratedAt(generatedAt: Date): string {

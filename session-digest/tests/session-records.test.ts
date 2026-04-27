@@ -4,8 +4,8 @@ import * as path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { parseSessionRecords } from "../src/session-records.js";
 import { InputError } from "../src/inputs.js";
+import { parseSessionRecords } from "../src/session-records.js";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "v2");
 
@@ -26,6 +26,20 @@ test("test_parseSessionRecords_shouldThrowInputError_onNoRecognizedRecords", asy
   await assert.rejects(
     () => parseSessionRecords(path.join(fixturesDir, "no-recognized-records.jsonl"), fs),
     InputError,
+  );
+});
+
+test("test_parseSessionRecords_shouldMapEaccesReadFailureToInputError_onUnreadableFile", async () => {
+  const unreadableError = new Error("permission denied") as NodeJS.ErrnoException;
+  unreadableError.code = "EACCES";
+
+  await assert.rejects(
+    () => parseSessionRecords("/tmp/session.jsonl", {
+      readFile: async () => {
+        throw unreadableError;
+      },
+    }),
+    new InputError("Input file is unreadable (EACCES): /tmp/session.jsonl"),
   );
 });
 

@@ -52,14 +52,15 @@ export async function main(
   const clock = deps.clock ?? defaultClock;
   const baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests");
   const fsLike = deps.fsLike ?? fs.promises;
+  const sourcePath = path.resolve(inputPath);
 
   try {
-    await validateInputPath(inputPath, fsLike);
-    const parsedSession = await parseSessionRecords(inputPath, fsLike);
+    await validateInputPath(sourcePath, fsLike);
+    const parsedSession = await parseSessionRecords(sourcePath, fsLike);
     await fsLike.mkdir(baseDir, { recursive: true });
     const settings = await loadSettings(baseDir, fsLike);
     const nowUtc = clock();
-    const artifactPaths = computeArtifactPaths(inputPath, nowUtc, baseDir);
+    const artifactPaths = computeArtifactPaths(sourcePath, nowUtc, baseDir);
     await (ledgerOnly
       ? assertLedgerPathAvailable(artifactPaths, fsLike)
       : assertArtifactPathsAvailable(artifactPaths, fsLike));
@@ -92,7 +93,7 @@ export async function main(
       digest_schema_path: digestSchemaPath,
       digest_schema_version: digestSchema.version,
       title: "Session Digest",
-      source_path: inputPath,
+      source_path: sourcePath,
       provider: config.provider,
       model: config.model,
       generated_at: nowUtc,

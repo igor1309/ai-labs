@@ -6,8 +6,8 @@ import { Writable } from "node:stream";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { main } from "../src/cli.js";
 import { computeArtifactPaths } from "../src/artifacts.js";
+import { main } from "../src/cli.js";
 import { SECTION_IDS, SECTION_NAMES } from "../src/sections.js";
 import type { DigestModel } from "../src/synthesis.js";
 
@@ -145,6 +145,31 @@ test("test_main_shouldEmitV2FrontMatterThatPointsAtWrittenLedger_onSuccess", asy
     `ledger_bytes: ${(await fs.stat(paths.ledgerPath)).size}`,
     `model_context_bytes: ${ledger.model_context.bytes}`,
   ].join("[\\s\\S]*")));
+});
+
+test("test_main_shouldWriteAbsoluteSourcePath_onRelativeInputPath", async (t) => {
+  const { baseDir, tempDir } = await makeBaseDir();
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const relativeSessionPath = path.relative(process.cwd(), validSessionPath);
+  const absoluteSessionPath = path.resolve(relativeSessionPath);
+  const stdout = new StringSink();
+
+  await main([relativeSessionPath], stdout, new StringSink(), {
+    baseDir,
+    clock: () => new Date("2026-04-26T01:02:03.000Z"),
+    model: new FakeDigestModel(),
+  });
+  const digest = await fs.readFile(stdout.toString().trim(), "utf8");
+  const ledgerPath = digest.match(/^ledger_path: (.+)$/m)?.[1];
+  const ledger = JSON.parse(await fs.readFile(requireMatch(ledgerPath), "utf8")) as { source: { path: string } };
+
+  assert.deepEqual({
+    digestSourcePath: digest.match(/^source_path: (.+)$/m)?.[1],
+    ledgerSourcePath: ledger.source.path,
+  }, {
+    digestSourcePath: absoluteSessionPath,
+    ledgerSourcePath: absoluteSessionPath,
+  });
 });
 
 test("test_main_shouldLeaveLedgerAndWriteNoDigest_onModelFailure", async (t) => {
@@ -390,4 +415,10 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function requireMatch<T>(value: T | undefined): T {
+  assert.notEqual(value, undefined);
+
+  return value as T;
 }
