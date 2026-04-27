@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Tightened ADR-003 by unifying derived-artifact metadata fields, bumping the accepted ADR version to `1.0`, and broadening ADR-001 supersession wording.
 - Clarified accepted ADR-003 with the required executive summary, explicit invariants, persisted derived ledger policy, compressor strategy identity, and overflow-handling requirement.
 - Accepted ADR-003 as the V2 architecture direction: local Claude JSONL ledger compilation, semantic compression, and bounded model synthesis.
 - Proposed ADR-003 to replace the V1 full-session Deep Agents path with local Claude JSONL ledger compilation and bounded model synthesis.

@@ -3,7 +3,7 @@ title: ADR-003 — Session Digest Local Ledger and Bounded Synthesis
 date: 2026-04-27
 status: accepted
 model: gpt-5
-version: 0.1
+version: 1.0
 description: "Supersedes the V1 full-session Deep Agents architecture with local Claude JSONL interpretation, versioned ledgers, and bounded model synthesis."
 ---
 
@@ -43,12 +43,25 @@ V2 will replace the V1 full-session Deep Agents architecture with a local ledger
 - **Evidence anchors**: every retained event or derived fact MUST preserve a stable source anchor, such as a record number or equivalent local reference.
 - **Local semantic compression**: reduce raw session material locally by interpreting Claude Code record structure, linking related records, and replacing bulky machine output with typed facts.
 - **Bounded model context**: send the capable model a compact model-facing context derived from the ledger, not raw JSONL and not the V1 flattened transcript.
-- **Artifact reproducibility**: generated digests MUST record the compressor strategy identifier, compressor version, source size/counts, ledger size, and model-facing context size.
-- **Ledger persistence**: the local ledger MUST be persisted as a derived artifact under `~/.session-digests/`. The V2 spec defines file format, location, and naming, but digest front matter MUST record the ledger artifact identity, compressor metadata, and derived context sizes.
+- **Artifact metadata**: generated digests MUST record the canonical derived-artifact metadata fields defined below.
+- **Ledger persistence**: the local ledger MUST be persisted as a derived artifact under `~/.session-digests/`. The V2 spec defines file format, location, and naming, but digest front matter MUST record the canonical derived-artifact metadata fields.
 - **Oversized input**: the V2 spec MUST define explicit overflow behavior for sessions that exceed the local compiler or bounded-context budget. ADR-003 removes ADR-001's `1 MB` cap, but it does not allow silent truncation or unbounded model input.
 - **Raw input retention**: do not copy or persist the raw JSONL input unless a future ADR explicitly changes retention policy.
 
 Deep Agents are no longer required as the central orchestrator. They MAY be used later over bounded role-specific artifacts, but V2 MUST NOT require each subagent to receive the full session.
+
+### Canonical Derived-Artifact Metadata
+
+Derived digests MUST record these fields:
+
+- compressor strategy identifier;
+- compressor version;
+- ledger artifact identity;
+- source path or stable source identifier;
+- source byte size;
+- source record count;
+- ledger byte size;
+- model-facing context byte size.
 
 ## Local Ledger
 

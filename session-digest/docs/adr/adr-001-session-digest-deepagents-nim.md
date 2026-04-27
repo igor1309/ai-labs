@@ -1,7 +1,7 @@
 ---
 title: ADR-001 — Session Digest Exploration Prototype with Deep Agents and NVIDIA NIM
 date: 2026-04-26
-status: "accepted; provider invariant superseded by ADR-002; orchestration, input-shape, and digest persistence metadata constraints superseded by ADR-003"
+status: "accepted; provider invariant superseded by ADR-002; orchestration, input-shape, and digest persistence constraints superseded by ADR-003"
 model: GPT-5.5 Thinking
 version: 1.1
 ---
@@ -10,7 +10,7 @@ version: 1.1
 
 ## Status
 
-Accepted. The NVIDIA-only provider invariant is superseded by [ADR-002](adr-002-session-digest-openai-compatible-routing.md). The V1 orchestration, input-shape, and digest persistence metadata constraints are superseded by [ADR-003](adr-003-session-digest-local-ledger-synthesis.md).
+Accepted. The NVIDIA-only provider invariant is superseded by [ADR-002](adr-002-session-digest-openai-compatible-routing.md). The V1 orchestration, input-shape, and digest persistence constraints are superseded by [ADR-003](adr-003-session-digest-local-ledger-synthesis.md).
 
 ## Executive Summary
 
