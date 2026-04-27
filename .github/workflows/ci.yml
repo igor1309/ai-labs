@@ -28,6 +28,8 @@ jobs:
       notio-ci: ${{ steps.filter.outputs.notio-ci }}
       notio-frontend: ${{ steps.filter.outputs.notio-frontend }}
       notio-frontend-ci: ${{ steps.filter.outputs.notio-frontend-ci }}
+      regentara: ${{ steps.filter.outputs.regentara }}
+      regentara-ci: ${{ steps.filter.outputs.regentara-ci }}
       dev-skills: ${{ steps.filter.outputs.dev-skills }}
     steps:
       - name: Checkout
@@ -60,6 +62,7 @@ jobs:
               - "nomos/**"
               - "notio/**"
               - "oracle/**"
+              - "regentara/**"
             web-scout:
               - "web-scout/**"
             corpus-scout:
@@ -73,6 +76,10 @@ jobs:
             notio-frontend-ci:
               - ".github/workflows/notio-frontend-core.yml"
               - ".github/workflows/notio-frontend-deploy.yml"
+            regentara:
+              - "regentara/**"
+            regentara-ci:
+              - ".github/workflows/regentara-core.yml"
             dev-skills:
               - "dev-skills/public/**"
 
@@ -105,6 +112,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.corpus-scout == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/corpus-scout-core.yml
+
+  regentara-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.regentara == 'true' || needs.changes.outputs.regentara-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/regentara-core.yml
 
   release-validation:
     needs: [changes]
@@ -172,7 +184,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -183,8 +195,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.regentara-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -196,6 +208,7 @@ jobs:
         oracle-core=${{ needs.oracle-core.result }}
         web-scout-core=${{ needs.web-scout-core.result }}
         corpus-scout-core=${{ needs.corpus-scout-core.result }}
+        regentara-core=${{ needs.regentara-core.result }}
         notio-core=${{ needs.notio-core.result }}
         notio-frontend-core=${{ needs.notio-frontend-core.result }}
         release-validation=${{ needs.release-validation.result }}

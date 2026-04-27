@@ -48,6 +48,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
+| regentara | CLI release unit | Provider-agent workflow orchestrator for governed coding loops |
 | nomos | Service | LLM access control proxy — auth, cost budgets, configurable request body limits, unified API |
 | corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
 | web-scout | MCP tool | Web search via SearXNG |

@@ -22,3 +22,10 @@ path = "notio/frontend"
 metadata = "package.json"
 version = "0.1.1"
 docker = false
+
+[[units]]
+basename = "regentara"
+path = "regentara"
+metadata = "package.json"
+version = "0.0.1"
+docker = false
