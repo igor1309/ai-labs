@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+Fix rollback by snapshotting and restoring the actual prod compose image (`nomos-nomos:latest`) instead of the orphan `nomos:latest` tag the prod stack never used. Without this, `rollback-prod.sh` was a no-op — every "Rollback successful" message in CI logs was misleading.
 Force `--build` on prod compose so each deploy actually rebuilds the auto-named `nomos-nomos:latest` image. The `nomos:latest` tag the deploy/rollback scripts shuffled was orphan; prod compose uses `nomos-nomos:latest` and was caching at v0.8.6 across every deploy from v0.8.7 onward, masking the real release version. Staging works for the same reason in reverse — its script already passes `--build`.
 v0.8.9: redeploy Nomos with the staging-route compose repair so the staging-gated release pipeline can complete after the v0.8.8 502 outage.
 Repair Nomos staging route: declare `nomos-shared` external network in the prod compose so Caddy stays attached after a `docker compose down/up`. Without this, an earlier deploy that overwrote `/opt/nomos/docker-compose.yml` recreated `nomos-caddy` without `nomos-shared`, and every `staging.nomos.enoa.ai/*` request returned 502.

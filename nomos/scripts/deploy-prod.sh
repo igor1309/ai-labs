@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-# Deploy production using the image built during staging.
-# Tags the current image as nomos:rollback before replacing it.
+# Deploy production by rebuilding the prod compose image.
+# Snapshots the currently-running prod image as nomos-nomos:rollback first
+# so rollback-prod.sh can restore it on failure.
 # Called by release-unit.yml via SSH on the VPS.
 
 cd /opt/nomos
-docker tag nomos:latest nomos:rollback || true
+docker tag nomos-nomos:latest nomos-nomos:rollback || true
 docker compose down
 docker compose up -d --build
 sleep 5
