@@ -6,7 +6,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-04-27
 
-- process-gates v1.0.2 and strict-tdd v1.0.1: made execution mode plan-aware, distinguishing self-review from human review and allowing auto-continue after RED/GREEN and task gates when the active plan declares it.
+- process-gates v1.0.2 and strict-tdd v1.0.1: made execution mode plan-aware, distinguishing self-review from human review and allowing auto-continue after RED/GREEN and task gates when the active plan declares it. Marketplace v1.38.0.
 
 ## 2026-04-26
 
