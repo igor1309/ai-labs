@@ -8,7 +8,7 @@ set -e
 cd /opt/nomos
 docker tag nomos:latest nomos:rollback || true
 docker compose down
-docker compose up -d
+docker compose up -d --build
 sleep 5
 docker exec nomos wget -qO- http://127.0.0.1:8080/health | grep -q '"ok"'
 echo "Production deploy successful"
