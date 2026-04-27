@@ -38,12 +38,12 @@ const app = createApp({
   logger,
   db,
   version,
+  jsonBodyLimit: config.jsonBodyLimit,
   liveRunner,
   stubRunner,
   stubEnabled: config.stubEnabled,
   budgetService,
   safeguards,
-  jsonBodyLimit: config.jsonBodyLimit,
 });
 
 const server = app.listen(config.port, config.host, () => {

@@ -2,7 +2,17 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
-export function createApp({ logger, db, version = null, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null, jsonBodyLimit = "100kb" }) {
+export function createApp({
+  logger,
+  db,
+  version = null,
+  jsonBodyLimit = "1MB",
+  liveRunner = null,
+  stubRunner = null,
+  stubEnabled = false,
+  budgetService = null,
+  safeguards = null,
+}) {
   const app = express();
 
   app.get("/health", (_req, res) => {
@@ -48,17 +58,32 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
 
   app.use((err, _req, res, _next) => {
     const status = err.status || err.statusCode || 500;
-    logger.error("unhandled error", { error: err.message, status });
     if (status === 413 && err.type === "entity.too.large") {
+      const limitBytes = err.limit;
+      const limit = formatLimit(limitBytes);
+      logger.warn("json request body too large", { limit_bytes: limitBytes, status });
       return res.status(status).json({
-        error: `Nomos rejected request body before routing: request body exceeds JSON limit (current limit: ${jsonBodyLimit}).`,
+        error: {
+          code: "json_body_too_large",
+          limit,
+          limit_bytes: limitBytes,
+          message: `Nomos rejected the JSON request body locally before forwarding it to any model provider because it exceeds the ${limit} limit.`,
+          status,
+        },
       });
     }
-
+    logger.error("unhandled error", { error: err.message, status });
     res.status(status).json({
       error: status < 500 ? err.message : "internal server error",
     });
   });
 
   return app;
+}
+
+function formatLimit(limitBytes) {
+  if (limitBytes % 1048576 === 0) {
+    return `${limitBytes / 1048576}MB`;
+  }
+  return limitBytes % 1024 === 0 ? `${limitBytes / 1024}kb` : `${limitBytes} bytes`;
 }

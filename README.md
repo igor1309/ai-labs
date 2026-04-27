@@ -49,7 +49,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
 | regentara | CLI release unit | Provider-agent workflow orchestrator for governed coding loops |
-| nomos | Service | LLM access control proxy — auth, cost budgets, request body limits, unified API |
+| nomos | Service | LLM access control proxy — auth, cost budgets, configurable request body limits, unified API |
 | corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
 | web-scout | MCP tool | Web search via SearXNG |
 | loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
