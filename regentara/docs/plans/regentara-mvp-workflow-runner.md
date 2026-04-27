@@ -231,15 +231,15 @@ git commit -m "scaffold regentara workspace package"
 
 **Key Work Items:**
 
-- [ ] Add a helper that creates isolated temporary working directories and fake home directories without touching the real `~/.regentara`.
-- [ ] For each spec test 1-12, repeat: write one failing assertion test, run targeted RED, implement the minimum GREEN, run targeted tests, run full Regentara tests, refactor on green, commit.
-- [ ] Enforce local `./.regentara/agents.yaml` before global `~/.regentara/agents.yaml`.
-- [ ] Enforce no merge and no fallback when a local file exists but is invalid.
-- [ ] Validate exactly the MVP agent identifiers: `producer`, `reviewer`, `remediator`.
-- [ ] Reject unknown identifiers and missing required agents.
-- [ ] Validate required fields `model`, `prompt`, and `output`.
-- [ ] Treat `name` as display-only metadata.
-- [ ] Support only explicit MVP prompt forms and JSON Schema output references/inline schemas chosen in this task. Document the chosen forms in `regentara/README.md`.
+- [x] Add a helper that creates isolated temporary working directories and fake home directories without touching the real `~/.regentara`.
+- [x] For each spec test 1-12, repeat: write one failing assertion test, run targeted RED, implement the minimum GREEN, run targeted tests, run full Regentara tests, refactor on green, commit.
+- [x] Enforce local `./.regentara/agents.yaml` before global `~/.regentara/agents.yaml`.
+- [x] Enforce no merge and no fallback when a local file exists but is invalid.
+- [x] Validate exactly the MVP agent identifiers: `producer`, `reviewer`, `remediator`.
+- [x] Reject unknown identifiers and missing required agents.
+- [x] Validate required fields `model`, `prompt`, and `output`.
+- [x] Treat `name` as display-only metadata.
+- [x] Support only explicit MVP prompt forms and JSON Schema output references/inline schemas chosen in this task. Document the chosen forms in `regentara/README.md`.
 
 **Validation:**
 

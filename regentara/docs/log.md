@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Implemented ADR-001 agent settings resolution and validation for local/global `agents.yaml`, exact MVP agent inventory, supported prompt references, and JSON Schema output forms.
 - Scaffolded Regentara as a Node ESM workspace package and release unit with CI routing, smoke-testable public modules, and root test/build wiring so behavior can be implemented behind compiling boundaries.
 - Addressed architecture-doc review of the MVP workflow runner implementation plan: resolved duplicate spec-test ownership, replaced ambiguous skill references, decided Regentara is an MVP release unit, separated provider CLI availability from execution, added explicit worktree creation, pinned Node minimum, and tightened first-task staging scope.
 - Created the MVP workflow runner implementation plan from the accepted Regentara spec and ADRs. The plan incorporates the updated process guardrails from `63a14b3ad256f1728d5b4766df8d13c406fd1436`: explicit execution mode, worktree mode, push policy, auto-continue behavior, and final archive move.

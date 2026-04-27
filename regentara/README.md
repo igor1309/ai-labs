@@ -11,3 +11,19 @@ Regentara is an MVP workflow runner that orchestrates provider CLI agents throug
 ## MVP Status
 
 The package scaffold is present so behavior can be added behind compiling module boundaries.
+
+## Settings
+
+`agents.yaml` must define exactly `producer`, `reviewer`, and `remediator` under an `agents` mapping. Each agent must include `model`, `prompt`, and `output`.
+
+Supported prompt references are:
+
+- `regentara://prompts/producer`
+- `regentara://prompts/reviewer`
+- `regentara://prompts/remediator`
+
+Supported output schemas are inline JSON Schema objects under `output.schema` or built-in schema references under `output.schemaRef`:
+
+- `regentara://schemas/producer-output`
+- `regentara://schemas/reviewer-output`
+- `regentara://schemas/remediator-output`
