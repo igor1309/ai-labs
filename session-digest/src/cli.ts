@@ -4,20 +4,27 @@ import * as path from "node:path";
 import type { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 
-import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-
-import { AgentError, buildAgent, defaultChatModel, loadPromptTemplates, run } from "./agents.js";
-import { ArtifactCollisionError, assertArtifactPathsAvailable, computeArtifactPaths } from "./artifacts.js";
+import {
+  ArtifactCollisionError,
+  assertArtifactPathsAvailable,
+  computeArtifactPaths,
+  measureLedgerBytes,
+  writeLedger,
+} from "./artifacts.js";
 import { defaultClock } from "./clock.js";
 import { ConfigError, loadConfig } from "./config.js";
-import { InputError, parseSession, validateInputPath } from "./inputs.js";
+import { InputError, validateInputPath } from "./inputs.js";
+import { compileLedger, ModelContextBudgetError } from "./ledger.js";
+import { defaultChatModel } from "./model.js";
 import { assembleDigest, writeDigest } from "./output.js";
+import { parseSessionRecords } from "./session-records.js";
+import { SynthesisError, synthesizeDigest, type DigestModel } from "./synthesis.js";
 
 export type MainDeps = {
   clock?: () => Date;
   baseDir?: string;
   fsLike?: Pick<typeof fs.promises, "access" | "stat" | "readFile" | "writeFile" | "mkdir">;
-  model?: BaseChatModel;
+  model?: DigestModel;
 };
 
 export async function main(
@@ -44,22 +51,37 @@ export async function main(
 
   try {
     await validateInputPath(argv[0], fsLike);
-    const messages = await parseSession(argv[0], fsLike);
+    const parsedSession = await parseSessionRecords(argv[0], fsLike);
     await fsLike.mkdir(baseDir, { recursive: true });
     const config = await loadConfig(baseDir, fsLike);
     const nowUtc = clock();
     const artifactPaths = computeArtifactPaths(argv[0], nowUtc, baseDir);
     await assertArtifactPathsAvailable(artifactPaths, fsLike);
+    const ledger = compileLedger(parsedSession);
+    await writeLedger(artifactPaths.ledgerPath, ledger, fsLike);
+    const ledgerBytes = await measureLedgerBytes(artifactPaths.ledgerPath, fsLike);
     const model = deps.model ?? defaultChatModel(config);
-    const prompts = await loadPromptTemplates(fsLike.readFile);
-    const agent = buildAgent({ model, prompts });
-    const sections = await run(messages, agent);
+    const sections = await synthesizeDigest({ model, modelContext: ledger.model_context })
+      .catch((error: unknown) => {
+        if (error instanceof Error) {
+          throw new SynthesisError(`${error.message}; ledger retained at ${artifactPaths.ledgerPath}`);
+        }
+
+        throw error;
+      });
     const digest = assembleDigest({
+      compressor_strategy: ledger.compressor_strategy,
+      compressor_version: ledger.compressor_version,
       title: "Session Digest",
       source_path: argv[0],
       provider: config.provider,
       model: config.model,
       generated_at: nowUtc,
+      ledger_path: artifactPaths.ledgerPath,
+      source_bytes: parsedSession.source.bytes,
+      source_records: parsedSession.source.records,
+      ledger_bytes: ledgerBytes,
+      model_context_bytes: ledger.model_context.bytes,
     }, sections);
 
     await writeDigest(artifactPaths.digestPath, digest, fsLike);
@@ -68,8 +90,9 @@ export async function main(
     if (
       error instanceof InputError
       || error instanceof ConfigError
-      || error instanceof AgentError
       || error instanceof ArtifactCollisionError
+      || error instanceof ModelContextBudgetError
+      || error instanceof SynthesisError
     ) {
       stderr.write(`${error.message}\n`);
 

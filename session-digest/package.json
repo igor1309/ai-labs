@@ -1,16 +1,14 @@
 {
   "name": "session-digest",
-  "version": "0.0.1",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=20.10 <23"
   },
   "dependencies": {
-    "@langchain/anthropic": "^1.3.26",
     "@langchain/core": "^1.1.41",
     "@langchain/openai": "^1.4.4",
-    "deepagents": "^1.9.0",
     "dotenv": "^17.4.2",
     "undici": "^6.25.0"
   },

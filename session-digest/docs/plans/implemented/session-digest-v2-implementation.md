@@ -415,7 +415,7 @@ Commit: `session-digest: write ledger artifact`
 - Modify/Test: `session-digest/tests/output.test.ts`
 - Modify/Test: `session-digest/tests/cli-v2.test.ts`
 
-- [ ] **Step 1: RED for canonical front matter fields**
+- [x] **Step 1: RED for canonical front matter fields**
 
 Assert digest front matter includes:
 
@@ -427,19 +427,19 @@ Assert digest front matter includes:
 - `ledger_bytes`
 - `model_context_bytes`
 
-- [ ] **Step 2: GREEN for V2 front matter**
+- [x] **Step 2: GREEN for V2 front matter**
 
 Extend `FrontMatter` and `assembleDigest`.
 
-- [ ] **Step 3: RED/GREEN for raw input non-retention**
+- [x] **Step 3: RED/GREEN for raw input non-retention**
 
 Assert successful run writes ledger and digest only, and no raw `.jsonl` copy under `~/.session-digests/`.
 
-- [ ] **Step 4: RED/GREEN for ledger cannot reconstruct every raw fixture line**
+- [x] **Step 4: RED/GREEN for ledger cannot reconstruct every raw fixture line**
 
 Use a fixture with a bulky raw line. Assert ledger does not contain that raw line verbatim.
 
-- [ ] **Step 5: Task gate and commit**
+- [x] **Step 5: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -457,11 +457,11 @@ Commit: `session-digest: emit v2 digest metadata`
 - Create/Test: `session-digest/tests/synthesis.test.ts`
 - Modify: `session-digest/tests/agents-fake.test.ts` only as an intermediate step before deletion
 
-- [ ] **Step 1: Create compile-only synthesis skeleton**
+- [x] **Step 1: Create compile-only synthesis skeleton**
 
 Create `session-digest/src/synthesis.ts` with placeholder exported types and a stub `synthesizeDigest` function. This step exists only to keep imports compiling.
 
-- [ ] **Step 2: RED for fake synthesis client**
+- [x] **Step 2: RED for fake synthesis client**
 
 Define a minimal model seam:
 
@@ -473,23 +473,23 @@ export type DigestModel = {
 
 Add a test that a deterministic fake receives serialized model context and returns six sections.
 
-- [ ] **Step 3: GREEN for synthesis module**
+- [x] **Step 3: GREEN for synthesis module**
 
 Implement `synthesizeDigest({ model, modelContext }): Promise<Record<SectionName, string>>`.
 
-- [ ] **Step 4: RED/GREEN for raw JSONL not sent**
+- [x] **Step 4: RED/GREEN for raw JSONL not sent**
 
 Assert model input does not contain raw JSONL fixture text or V1 flattened transcript shape.
 
-- [ ] **Step 5: RED/GREEN for evidence anchors**
+- [x] **Step 5: RED/GREEN for evidence anchors**
 
 Fake model returns evidence notes with `record:<n>` anchors; assert digest includes them.
 
-- [ ] **Step 6: RED/GREEN for model failure contract**
+- [x] **Step 6: RED/GREEN for model failure contract**
 
 Assert a synthesis failure after ledger creation reports the ledger path and writes no digest.
 
-- [ ] **Step 7: Task gate and commit**
+- [x] **Step 7: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -504,15 +504,15 @@ Commit: `session-digest: synthesize digest from bounded context`
 - Modify: `session-digest/src/agents.ts`
 - Modify: `session-digest/tests/agents-fake.test.ts`
 
-- [ ] **Step 1: RED for model factory import**
+- [x] **Step 1: RED for model factory import**
 
 Add tests around `defaultChatModel` and shell proxy behavior through `session-digest/src/model.ts`.
 
-- [ ] **Step 2: GREEN for model factory extraction**
+- [x] **Step 2: GREEN for model factory extraction**
 
 Move `defaultChatModel`, proxy fetch helper, and config-to-ChatOpenAI construction from `agents.ts` into `model.ts`. Keep behavior unchanged.
 
-- [ ] **Step 3: Task gate and commit**
+- [x] **Step 3: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -530,19 +530,19 @@ Commit: `session-digest: extract chat model factory`
 - Modify: `session-digest/package.json`
 - Modify: `package-lock.json`
 
-- [ ] **Step 1: RED for no Deep Agents import**
+- [x] **Step 1: RED for no Deep Agents import**
 
 Add or adapt a test/static check asserting `session-digest/src/**/*.ts` has no `deepagents` import.
 
-- [ ] **Step 2: Remove Deep Agents files and imports**
+- [x] **Step 2: Remove Deep Agents files and imports**
 
 Delete V1-only prompt files and orchestration tests.
 
-- [ ] **Step 3: Remove unused dependencies**
+- [x] **Step 3: Remove unused dependencies**
 
 Run `npm uninstall -w session-digest deepagents @langchain/anthropic` if no code imports them.
 
-- [ ] **Step 4: Task gate and commit**
+- [x] **Step 4: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -560,7 +560,7 @@ Commit: `session-digest: remove deep agents v1 path`
 - Create/Modify Test: `session-digest/tests/cli-v2.test.ts`
 - Modify existing CLI tests as needed
 
-- [ ] **Step 1: RED for successful V2 run**
+- [x] **Step 1: RED for successful V2 run**
 
 Test `main` with:
 
@@ -572,7 +572,7 @@ Test `main` with:
 Assert exit `0`, stdout digest path only, one ledger and one digest written.
 All test setup must pass a temporary `deps.baseDir` and remove it with `t.after`.
 
-- [ ] **Step 2: GREEN for V2 pipeline**
+- [x] **Step 2: GREEN for V2 pipeline**
 
 Implement pipeline:
 
@@ -590,19 +590,19 @@ Implement pipeline:
 12. write digest;
 13. print digest path.
 
-- [ ] **Step 3: RED/GREEN for pre-artifact failures**
+- [x] **Step 3: RED/GREEN for pre-artifact failures**
 
 Assert argument/input/config/budget failures write no ledger and no digest.
 
-- [ ] **Step 4: RED/GREEN for post-ledger model failure**
+- [x] **Step 4: RED/GREEN for post-ledger model failure**
 
 Assert ledger remains, digest does not exist, stderr includes ledger path.
 
-- [ ] **Step 5: RED/GREEN for final digest section order**
+- [x] **Step 5: RED/GREEN for final digest section order**
 
 Assert generated digest Markdown contains exactly the six documented `## ` section headings in order.
 
-- [ ] **Step 6: Task gate and commit**
+- [x] **Step 6: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -620,38 +620,38 @@ Commit: `session-digest: wire v2 cli pipeline`
 - Modify: root `docs/log.md`
 - Maybe modify: `session-digest/docs/specs/session-digest.md` only to mark it as V1/historical if needed
 
-- [ ] **Step 1: Remove or rewrite V1-only tests**
+- [x] **Step 1: Remove or rewrite V1-only tests**
 
 Remove assertions that successful runs write only one digest file. Replace with V2 assertions where not already covered.
 
-- [ ] **Step 2: Preserve V1 docs as historical**
+- [x] **Step 2: Preserve V1 docs as historical**
 
 Do not delete `session-digest/docs/specs/session-digest.md`. It documents V1. Only add a short note if needed that V2 is specified in `session-digest-v2.md`.
 
-- [ ] **Step 3: Update log**
+- [x] **Step 3: Update log**
 
 Add one concise `session-digest/docs/log.md` entry for implementation completion.
 
-- [ ] **Step 4: Bump package version**
+- [x] **Step 4: Bump package version**
 
 Bump `session-digest/package.json` from `0.0.1` to `2.0.0` and update the corresponding `package-lock.json` workspace entry. Use `npm install --package-lock-only -w session-digest` or an equivalent non-destructive npm command.
 
-- [ ] **Step 5: Update repo-level docs**
+- [x] **Step 5: Update repo-level docs**
 
 Update the root `README.md` Components table row for `session-digest` so it describes the V2 local-ledger and bounded-synthesis architecture rather than Deep Agents/NVIDIA NIM. Add a concise root `docs/log.md` entry because the component role and dependency surface changed at repo scope.
 
-- [ ] **Step 6: Release manifest check**
+- [x] **Step 6: Release manifest check**
 
 Check whether `session-digest` is listed in `release-units.config.toml`. It is not listed at plan creation time. If it remains absent, do not edit `release-units.toml`. If a later change adds it as a release unit, run `node scripts/release/generate-manifest.js` and commit any manifest update.
 
-- [ ] **Step 7: Final gates**
+- [x] **Step 7: Final gates**
 
 Run:
 
 - `./scripts/run_silent.sh "tests" npm test -w session-digest`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest`
 
-- [ ] **Step 8: Manual acceptance run**
+- [x] **Step 8: Manual acceptance run**
 
 Run the CLI against a real Claude Code session larger than `1 MB` using configured Nomos credentials. Confirm:
 
@@ -661,14 +661,14 @@ Run the CLI against a real Claude Code session larger than `1 MB` using configur
 - raw JSONL is not copied;
 - digest front matter points to the ledger.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Commit: `session-digest: complete v2 ledger pipeline`
 
 ## Final Plan Closeout
 
-- [ ] Do not push unless the user explicitly asks.
-- [ ] Run full root gates if implementation touched dependencies or shared package files:
+- [x] Do not push unless the user explicitly asks.
+- [x] Run full root gates if implementation touched dependencies or shared package files:
   - `./scripts/run_silent.sh "tests" npm test`
   - `./scripts/run_silent.sh "build" npx tsc --noEmit`
-- [ ] Archive this plan after implementation completes by moving it to `session-digest/docs/plans/implemented/` and committing the move.
+- [x] Archive this plan after implementation completes by moving it to `session-digest/docs/plans/implemented/` and committing the move.
