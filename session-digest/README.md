@@ -60,6 +60,12 @@ From the repository root:
 npx -w session-digest tsx src/cli.ts /absolute/path/to/session.jsonl
 ```
 
+To compile only the derived ledger without provider configuration or model synthesis:
+
+```bash
+npx -w session-digest tsx src/cli.ts --ledger-only /absolute/path/to/session.jsonl
+```
+
 From another directory, pass the repository root explicitly:
 
 ```bash
@@ -72,4 +78,4 @@ For this worktree's current Claude session:
 npm --prefix /Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/deep-nvidia exec -w session-digest -- tsx src/cli.ts /Users/igormalyarov/.claude/projects/-Users-igormalyarov-Developer-my-apps-ai-labs-ai-labs-worktrees-deep-nvidia/44c1e8f1-3515-4e9e-a7c1-99151cbf657a.jsonl
 ```
 
-On success, stdout contains only the generated digest path.
+On success, stdout contains only the generated digest path. In `--ledger-only` mode, stdout contains only the generated ledger path.

@@ -57,6 +57,72 @@ test("test_main_shouldWriteOnlyLedgerAndDigestWithoutRawCopy_onSuccess", async (
   assert.equal((await regularFilesUnder(baseDir)).some(($0) => $0.endsWith(".jsonl")), false);
 });
 
+test("test_main_shouldWriteOnlyLedger_onLedgerOnlyMode", async (t) => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
+  const baseDir = path.join(tempDir, ".session-digests");
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const now = new Date("2026-04-26T01:02:03.000Z");
+  const paths = computeArtifactPaths(validSessionPath, now, baseDir);
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+  const model = new FakeDigestModel();
+
+  const exitCode = await main(["--ledger-only", validSessionPath], stdout, stderr, {
+    baseDir,
+    clock: () => now,
+    model,
+  });
+
+  assert.deepEqual({
+    digestExists: await exists(paths.digestPath),
+    exitCode,
+    ledgerExists: await exists(paths.ledgerPath),
+    modelInvocations: model.inputs.length,
+    stderr: stderr.toString(),
+    stdout: stdout.toString(),
+  }, {
+    digestExists: false,
+    exitCode: 0,
+    ledgerExists: true,
+    modelInvocations: 0,
+    stderr: "",
+    stdout: `${paths.ledgerPath}\n`,
+  });
+});
+
+test("test_main_shouldIgnoreDigestCollision_onLedgerOnlyMode", async (t) => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
+  const baseDir = path.join(tempDir, ".session-digests");
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const now = new Date("2026-04-26T01:02:03.000Z");
+  const paths = computeArtifactPaths(validSessionPath, now, baseDir);
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+
+  await fs.mkdir(baseDir, { recursive: true });
+  await fs.writeFile(paths.digestPath, "existing digest");
+
+  const exitCode = await main(["--ledger-only", validSessionPath], stdout, stderr, {
+    baseDir,
+    clock: () => now,
+    model: new FakeDigestModel(),
+  });
+
+  assert.deepEqual({
+    digest: await fs.readFile(paths.digestPath, "utf8"),
+    exitCode,
+    ledgerExists: await exists(paths.ledgerPath),
+    stderr: stderr.toString(),
+    stdout: stdout.toString(),
+  }, {
+    digest: "existing digest",
+    exitCode: 0,
+    ledgerExists: true,
+    stderr: "",
+    stdout: `${paths.ledgerPath}\n`,
+  });
+});
+
 test("test_main_shouldEmitV2FrontMatterThatPointsAtWrittenLedger_onSuccess", async (t) => {
   const { baseDir, tempDir } = await makeBaseDir();
   t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
