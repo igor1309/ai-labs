@@ -32,6 +32,35 @@ test("runWorkflow should fail before creating a run when a required provider CLI
   );
 });
 
+test("runWorkflow should fail before creating a run when agents.yaml references a route key not defined in models.yaml", async () => {
+  const workspace = await makeSettingsWorkspace();
+  let createRunCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    producer: {
+      model: "missing-route",
+      output: { schemaRef: "regentara://schemas/producer-output" },
+      prompt: { ref: "regentara://prompts/producer" },
+    },
+  }));
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    createRun: async () => {
+      createRunCalled = true;
+    },
+  });
+
+  assert.deepEqual(
+    { createRunCalled, failureReasonHasRouteKey: result.failureReason?.includes("missing-route"), status: result.status },
+    { createRunCalled: false, failureReasonHasRouteKey: true, status: "failed" },
+  );
+});
+
 test("runWorkflow should create a run after startup validation passes", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());

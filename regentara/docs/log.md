@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- adr-007 closure task 3: orchestrator now fails startup with `StartupValidationFailure` when `agents.yaml` references a route key not defined in `models.yaml`; error message names the offending agent and route key.
 - adr-007 closure task 2: removed `SUPPORTED_PROMPT_REFS` closed whitelist from `agent-settings.js`; arbitrary prompt-ref strings now accepted; `SUPPORTED_SCHEMA_REFS` (structural) preserved.
 - adr-007 closure task 1: removed closed `REQUIRED_ROUTE_KEYS`, `SUPPORTED_COMBINATIONS`, and provider/runner closed lists from `model-routing.js`; user-defined route keys and arbitrary provider/runner strings now accepted; structural field validation preserved.
 - Drafted adr-007 closure plan at `regentara/docs/plans/adr-007-cli-settings-convention-closure.md` — 8 tasks: relax model-routing whitelists, relax agent-settings prompt-ref whitelist, cross-file route-key resolution, agents.yaml.example bootstrap, models.yaml.example bootstrap, partial-bootstrap, named error surface, closeout. Auto-continue mode, no push until closeout.

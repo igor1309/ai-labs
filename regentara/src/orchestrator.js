@@ -31,6 +31,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   try {
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
+    assertRouteReferencesResolve(agentSettings, modelRouting);
     await validateCliAvailability(modelRouting, dependencies);
     run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
     const artifactExists =
@@ -138,6 +139,16 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         runId: run.runId,
       }
       : {});
+  }
+}
+
+function assertRouteReferencesResolve(agentSettings, modelRouting) {
+  for (const [agentId, agent] of Object.entries(agentSettings.agents)) {
+    if (!Object.prototype.hasOwnProperty.call(modelRouting.routes, agent.model)) {
+      throw new StartupValidationFailure(
+        `agents.yaml agent ${agentId} references undefined route key in models.yaml: ${agent.model}`,
+      );
+    }
   }
 }
 
