@@ -25,6 +25,8 @@ description: "Implementation plan for the ADR-003 session-digest V2 CLI with loc
 - Before Step 1, run `git worktree list --porcelain` and `git branch --show-current`.
 - Emit: `Preflight: worktree=<path>, branch=<branch>, separate_worktree=pass`.
 - Do not push. The user has repeatedly instructed not to push.
+- Auto-continue mode is enabled for this plan. After a task reaches GREEN, required gates pass, the plan tracker is updated, and the local commit is created, continue to the next task without waiting for human review.
+- Self-review remains mandatory, but it is an internal agent check, not a human approval checkpoint. Pause only for failed gates, unclear scope, missing credentials or external-service access, destructive operations, or an explicit user interruption.
 - Strict TDD applies: one failing test, run it, make it pass, then continue.
 - Compilation/import errors are not RED. When a task introduces a new module, create the smallest compile-only skeleton first, then write a failing assertion against behavior.
 - Any step labeled `RED/GREEN` below is shorthand for two required sub-steps: first add and run the RED test to capture the failing assertion, then implement the minimum GREEN code and rerun the same targeted command.
@@ -665,9 +667,8 @@ Commit: `session-digest: complete v2 ledger pipeline`
 
 ## Final Plan Closeout
 
+- [ ] Do not push unless the user explicitly asks.
 - [ ] Run full root gates if implementation touched dependencies or shared package files:
   - `./scripts/run_silent.sh "tests" npm test`
   - `./scripts/run_silent.sh "build" npx tsc --noEmit`
-- [ ] Move this plan to `session-digest/docs/plans/implemented/` after implementation completes.
-- [ ] Commit the plan move.
-- [ ] Do not push unless the user explicitly asks.
+- [ ] Archive this plan after implementation completes by moving it to `session-digest/docs/plans/implemented/` and committing the move.
