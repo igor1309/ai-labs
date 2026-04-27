@@ -1,5 +1,12 @@
 # Log
 
+## 2026-04-27
+
+Add intentional Nomos JSON body-size configuration via `NOMOS_JSON_BODY_LIMIT`, with a 1MB default, validation, docs, and staging-first operator guidance.
+Implement Nomos-owned oversized JSON request rejection: 413 responses now report local rejection plus the effective parser limit.
+Add issue ticket for intentional JSON payload-size configuration, including tests, docs, and staging-gate requirements.
+Add issue ticket for improving oversized JSON request errors so Nomos reports local 413 body-limit failures explicitly.
+
 ## 2026-03-09
 v0.8.4: add compose-level healthcheck to staging stack, replace deploy script sleep+wget race with --wait flag. Fix release-unit core job (install ripgrep for corpus-scout tests). Fix deploy-prod cleanup deleting notify script before notification step runs.
 
