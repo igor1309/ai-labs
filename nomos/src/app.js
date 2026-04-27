@@ -2,7 +2,7 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
-export function createApp({ logger, db, version = null, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null }) {
+export function createApp({ logger, db, version = null, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null, jsonBodyLimit = "100kb" }) {
   const app = express();
 
   app.get("/health", (_req, res) => {
@@ -11,7 +11,7 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
     res.json(body);
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: jsonBodyLimit }));
 
   // Live API: /v1/*
   app.use("/v1", createAuthMiddleware({ db, logger, allowedScope: "live" }));
@@ -49,6 +49,12 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
   app.use((err, _req, res, _next) => {
     const status = err.status || err.statusCode || 500;
     logger.error("unhandled error", { error: err.message, status });
+    if (status === 413 && err.type === "entity.too.large") {
+      return res.status(status).json({
+        error: `Nomos rejected request body before routing: request body exceeds JSON limit (current limit: ${jsonBodyLimit}).`,
+      });
+    }
+
     res.status(status).json({
       error: status < 500 ? err.message : "internal server error",
     });

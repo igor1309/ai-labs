@@ -4,6 +4,8 @@ services:
     container_name: nomos
     restart: unless-stopped
     env_file: .env
+    environment:
+      NOMOS_JSON_BODY_LIMIT: ${NOMOS_JSON_BODY_LIMIT:-1mb}
     volumes:
       - nomos-data:/app/data
     expose:
