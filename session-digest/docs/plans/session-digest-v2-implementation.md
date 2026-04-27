@@ -246,11 +246,11 @@ Commit: `session-digest: parse claude session records`
 - Create/Test: `session-digest/tests/ledger.test.ts`
 - Modify: `session-digest/src/session-records.ts` only if parser types need small additions
 
-- [ ] **Step 1: Create compile-only ledger skeleton**
+- [x] **Step 1: Create compile-only ledger skeleton**
 
 Create `session-digest/src/ledger.ts` with exported constants, placeholder ledger types, and a stub `compileLedger` function returning minimal metadata and no events. This step exists only to keep imports compiling.
 
-- [ ] **Step 2: RED for ledger metadata**
+- [x] **Step 2: RED for ledger metadata**
 
 Assert compiling a parsed session returns:
 
@@ -263,7 +263,7 @@ Assert compiling a parsed session returns:
 
 Expected: FAIL.
 
-- [ ] **Step 3: GREEN for ledger metadata using constants**
+- [x] **Step 3: GREEN for ledger metadata using constants**
 
 Expose constants from the start and use them in metadata:
 
@@ -274,11 +274,11 @@ export const COMPRESSOR_VERSION = "1.0.0";
 
 Implement `compileLedger(parsedSession): Ledger` with metadata and empty events/model context.
 
-- [ ] **Step 4: RED/GREEN for event anchors**
+- [x] **Step 4: RED/GREEN for event anchors**
 
 Assert emitted events include `anchor`, `kind`, and `source_record`.
 
-- [ ] **Step 5: RED/GREEN for message/tool event coverage**
+- [x] **Step 5: RED/GREEN for message/tool event coverage**
 
 Add tests for:
 
@@ -288,23 +288,23 @@ Add tests for:
 - `tool_result` event;
 - top-level `toolUseResult` event.
 
-- [ ] **Step 6: RED/GREEN for sub-anchor format**
+- [x] **Step 6: RED/GREEN for sub-anchor format**
 
 Assert at least one content-block-derived event uses an anchor like `record:<n>/block:<m>` while preserving the `record:<n>` prefix.
 
-- [ ] **Step 7: RED/GREEN for tool output compaction**
+- [x] **Step 7: RED/GREEN for tool output compaction**
 
 Use a bulky tool result fixture. Assert ledger records `output_bytes` and selected `key_lines`, while model context does not contain the full output.
 
-- [ ] **Step 8: RED/GREEN for file/error/command events**
+- [x] **Step 8: RED/GREEN for file/error/command events**
 
 Assert observable file paths, Bash commands, failed tool results, and error-like output create typed facts.
 
-- [ ] **Step 9: RED/GREEN for compressor version rules**
+- [x] **Step 9: RED/GREEN for compressor version rules**
 
 Assert tests or docs in this module name the version bump rules from the spec: major for schema changes, minor for retained-event coverage or compaction-rule changes, patch for behavior-preserving fixes.
 
-- [ ] **Step 10: Task gate and commit**
+- [x] **Step 10: Task gate and commit**
 
 Run full session-digest test and build gates.
 
