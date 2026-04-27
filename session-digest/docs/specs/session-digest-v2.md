@@ -106,7 +106,7 @@ provider: nomos
 model: x-ai/grok-4.1-fast
 generated_at: 2026-04-27T00:00:00.000Z
 compressor_strategy: claude-jsonl-v1
-compressor_version: 1.0.0
+compressor_version: 1.1.0
 ledger_path: /Users/example/.session-digests/session.2026-04-27-000000.ledger.json
 source_bytes: 1536754
 source_records: 350
@@ -134,7 +134,7 @@ Ledger top-level shape:
   "schema": "session-digest-ledger",
   "schema_version": "1.0.0",
   "compressor_strategy": "claude-jsonl-v1",
-  "compressor_version": "1.0.0",
+  "compressor_version": "1.1.0",
   "source": {
     "path": "/absolute/path/to/source.jsonl",
     "bytes": 1536754,
@@ -157,7 +157,7 @@ Ledger event objects MUST include:
 - `kind`: event category;
 - `source_record`: one-based source record number.
 
-Ledger event objects MAY include type-specific fields such as `role`, `text`, `tool`, `command`, `status`, `file_path`, `output_bytes`, `key_lines`, and `related_anchor`.
+Ledger event objects MAY include type-specific fields such as `role`, `text`, `tool`, `tool_call_id`, `related_tool_call_id`, `command`, `status`, `file_path`, `output_bytes`, `key_lines`, `related_anchor`, and `skill`.
 
 ## Behavior Rules
 
@@ -219,6 +219,10 @@ The compiler MUST retain anchors for:
 - observable command/test/build outcomes;
 - observable file paths and artifact paths;
 - observable commits or verification milestones.
+
+The compiler MUST retain `tool_use.id` as `tool_call_id` on tool-call events when present.
+The compiler MUST retain `tool_result.tool_use_id` as `related_tool_call_id` on tool-result events when present.
+For `Skill` tool calls, the compiler MUST retain `input.skill` as `skill` when present.
 
 The compiler MUST compact bulky tool output into derived facts. It MUST preserve output byte counts and selected key lines instead of copying full output into the model context.
 

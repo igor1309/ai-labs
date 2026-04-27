@@ -112,6 +112,38 @@ test("test_compileLedger_shouldEmitFileErrorAndCommandFacts_onObservableToolData
   ]);
 });
 
+test("test_compileLedger_shouldRetainSkillAndToolCallIds_onSkillToolCalls", () => {
+  const ledger = compileLedger(parsedSession([
+    assistantRecord(7, [
+      { type: "tool_use", id: "tool-1", name: "Skill", input: { skill: "dev-skills:cold-start-checkpoint" } },
+      { type: "tool_result", tool_use_id: "tool-1", content: "Launching skill: dev-skills:cold-start-checkpoint" },
+    ]),
+  ]));
+
+  assert.deepEqual(ledger.events.map(($0) => ({
+    kind: $0.kind,
+    related_tool_call_id: $0.related_tool_call_id,
+    skill: $0.skill,
+    tool: $0.tool,
+    tool_call_id: $0.tool_call_id,
+  })), [
+    {
+      kind: "tool_call",
+      related_tool_call_id: undefined,
+      skill: "dev-skills:cold-start-checkpoint",
+      tool: "Skill",
+      tool_call_id: "tool-1",
+    },
+    {
+      kind: "tool_result",
+      related_tool_call_id: "tool-1",
+      skill: undefined,
+      tool: undefined,
+      tool_call_id: undefined,
+    },
+  ]);
+});
+
 test("test_compressorVersionRules_shouldNameSpecVersionBumpRules", () => {
   assert.deepEqual(compressorVersionRules(), {
     major: "ledger schema changes",

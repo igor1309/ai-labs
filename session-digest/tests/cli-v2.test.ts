@@ -74,7 +74,7 @@ test("test_main_shouldEmitV2FrontMatterThatPointsAtWrittenLedger_onSuccess", asy
 
   assert.match(digest, new RegExp([
     "compressor_strategy: claude-jsonl-v1",
-    "compressor_version: 1.0.0",
+    "compressor_version: 1.1.0",
     `ledger_path: ${escapeRegExp(paths.ledgerPath)}`,
     `ledger_bytes: ${(await fs.stat(paths.ledgerPath)).size}`,
     `model_context_bytes: ${ledger.model_context.bytes}`,
