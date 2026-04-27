@@ -389,19 +389,19 @@ Commit: `session-digest: compute v2 artifact paths`
 - Modify: `session-digest/src/artifacts.ts`
 - Create/Modify Test: `session-digest/tests/artifacts.test.ts`
 
-- [ ] **Step 1: RED for ledger write**
+- [x] **Step 1: RED for ledger write**
 
 Assert writing a ledger creates parent directory and writes one JSON ledger file.
 
-- [ ] **Step 2: GREEN for ledger writer**
+- [x] **Step 2: GREEN for ledger writer**
 
 Implement `writeLedger(ledgerPath, ledger, fsLike)` using injected fs.
 
-- [ ] **Step 3: RED/GREEN for closed-file byte size**
+- [x] **Step 3: RED/GREEN for closed-file byte size**
 
 Assert `ledger_bytes` source for digest metadata is measured from the closed file on disk, not the in-memory pre-write string.
 
-- [ ] **Step 4: Task gate and commit**
+- [x] **Step 4: Task gate and commit**
 
 Run full session-digest test and build gates.
 

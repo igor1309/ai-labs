@@ -7,6 +7,7 @@ export type ArtifactPaths = {
 };
 
 export type ArtifactCollisionFs = Pick<typeof fs.promises, "access">;
+export type LedgerWriteFs = Pick<typeof fs.promises, "mkdir" | "stat" | "writeFile">;
 
 export class ArtifactCollisionError extends Error {}
 
@@ -30,6 +31,15 @@ export async function assertArtifactPathsAvailable(paths: ArtifactPaths, fsLike:
       throw new ArtifactCollisionError(`Artifact already exists: ${artifactPath}`);
     }
   }
+}
+
+export async function writeLedger(ledgerPath: string, ledger: unknown, fsLike: LedgerWriteFs): Promise<void> {
+  await fsLike.mkdir(path.dirname(ledgerPath), { recursive: true });
+  await fsLike.writeFile(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+}
+
+export async function measureLedgerBytes(ledgerPath: string, fsLike: LedgerWriteFs): Promise<number> {
+  return (await fsLike.stat(ledgerPath)).size;
 }
 
 async function exists(artifactPath: string, fsLike: ArtifactCollisionFs): Promise<boolean> {

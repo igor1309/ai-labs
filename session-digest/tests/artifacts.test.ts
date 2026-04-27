@@ -8,6 +8,8 @@ import {
   ArtifactCollisionError,
   assertArtifactPathsAvailable,
   computeArtifactPaths,
+  measureLedgerBytes,
+  writeLedger,
 } from "../src/artifacts.js";
 
 test("test_computeArtifactPaths_shouldShareUtcSecondTimestamp_onDigestAndLedger", () => {
@@ -43,4 +45,24 @@ test("test_assertArtifactPathsAvailable_shouldThrowBeforeWriting_onLedgerCollisi
   await assert.rejects(() => assertArtifactPathsAvailable(paths, fs), ArtifactCollisionError);
   await assert.rejects(() => fs.access(paths.digestPath));
   assert.equal(await fs.readFile(paths.ledgerPath, "utf8"), "existing");
+});
+
+test("test_writeLedger_shouldCreateParentDirectoryAndWriteJsonLedger", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
+  const ledgerPath = path.join(tempDir, "nested", "session.ledger.json");
+
+  await writeLedger(ledgerPath, { schema: "session-digest-ledger" }, fs);
+
+  assert.deepEqual(JSON.parse(await fs.readFile(ledgerPath, "utf8")), {
+    schema: "session-digest-ledger",
+  });
+});
+
+test("test_measureLedgerBytes_shouldReadClosedFileSize_onDisk", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
+  const ledgerPath = path.join(tempDir, "session.ledger.json");
+
+  await writeLedger(ledgerPath, { value: "é" }, fs);
+
+  assert.equal(await measureLedgerBytes(ledgerPath, fs), (await fs.stat(ledgerPath)).size);
 });
