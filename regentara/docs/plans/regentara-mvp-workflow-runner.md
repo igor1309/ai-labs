@@ -272,13 +272,13 @@ git commit -m "validate regentara agent settings"
 
 **Key Work Items:**
 
-- [ ] For each spec test 13-21, repeat the RED-GREEN-REFACTOR loop with assertion-failing RED evidence.
-- [ ] Resolve local `./.regentara/models.yaml` before global `~/.regentara/models.yaml`.
-- [ ] Reject invalid local models without global fallback.
-- [ ] Enforce exactly the supported route keys: `sonnet`, `opus`, `gpt`, `codex`.
-- [ ] Reject unknown route keys and missing route keys.
-- [ ] Validate `provider`, `runner`, and `model`.
-- [ ] Support only `openai/codex` and `anthropic/claude-code`.
+- [x] For each spec test 13-21, repeat the RED-GREEN-REFACTOR loop with assertion-failing RED evidence.
+- [x] Resolve local `./.regentara/models.yaml` before global `~/.regentara/models.yaml`.
+- [x] Reject invalid local models without global fallback.
+- [x] Enforce exactly the supported route keys: `sonnet`, `opus`, `gpt`, `codex`.
+- [x] Reject unknown route keys and missing route keys.
+- [x] Validate `provider`, `runner`, and `model`.
+- [x] Support only `openai/codex` and `anthropic/claude-code`.
 
 **Validation:**
 

@@ -38,6 +38,20 @@ export function validAgentsYaml(overrides = {}) {
   });
 }
 
+export function validModelsYaml(overrides = {}) {
+  const routes = {
+    codex: makeOpenAiRoute(),
+    gpt: makeOpenAiRoute(),
+    opus: makeAnthropicRoute(),
+    sonnet: makeAnthropicRoute(),
+    ...overrides,
+  };
+
+  return yaml({
+    routes,
+  });
+}
+
 async function writeSettings(directory, fileName, content) {
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, fileName), content);
@@ -52,6 +66,22 @@ function makeAgent(agentId) {
     prompt: {
       ref: `regentara://prompts/${agentId}`,
     },
+  };
+}
+
+function makeAnthropicRoute() {
+  return {
+    model: "claude-sonnet-4-5",
+    provider: "anthropic",
+    runner: "claude-code",
+  };
+}
+
+function makeOpenAiRoute() {
+  return {
+    model: "gpt-5.1-codex",
+    provider: "openai",
+    runner: "codex",
   };
 }
 
