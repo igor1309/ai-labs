@@ -187,11 +187,11 @@ Commit: `session-digest: define provider pair selection`
 - Create/Test: `session-digest/tests/session-records.test.ts`
 - Add fixtures under: `session-digest/tests/fixtures/v2/`
 
-- [ ] **Step 1: Create compile-only parser skeleton**
+- [x] **Step 1: Create compile-only parser skeleton**
 
 Create `session-digest/src/session-records.ts` with exported placeholder types and a stub `parseSessionRecords` function returning an empty parsed session. This step exists only to avoid import/compilation failures; do not implement behavior.
 
-- [ ] **Step 2: RED for source anchors**
+- [x] **Step 2: RED for source anchors**
 
 Create a fixture with two valid JSONL records and one blank line. Assert parsed records preserve one-based source record anchors `record:1` and `record:3`.
 
@@ -199,7 +199,7 @@ Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tes
 
 Expected: FAIL by assertion because the skeleton returns no records.
 
-- [ ] **Step 3: GREEN for parser behavior**
+- [x] **Step 3: GREEN for parser behavior**
 
 Implement:
 
@@ -220,19 +220,19 @@ export type ParsedRecord = {
 
 Read file through injected `readFile`; split by line; skip blanks; parse JSON; count malformed lines.
 
-- [ ] **Step 4: RED/GREEN for malformed-line recovery**
+- [x] **Step 4: RED/GREEN for malformed-line recovery**
 
 Add a malformed line fixture. Assert one valid recognized record succeeds and `parse.skipped_records === 1`.
 
-- [ ] **Step 5: RED/GREEN for no recognized records**
+- [x] **Step 5: RED/GREEN for no recognized records**
 
 Assert parsed JSON with no Claude Code records throws an input error.
 
-- [ ] **Step 6: RED/GREEN for metadata preservation**
+- [x] **Step 6: RED/GREEN for metadata preservation**
 
 Assert `uuid`, `parentUuid`, `sessionId`, `timestamp`, `cwd`, `gitBranch`, message role, content block types, and top-level `toolUseResult` are exposed in parsed record helpers or typed fields. Type-less parsed JSON records are not recognized Claude Code records; they may be counted as parsed JSON but must not produce ledger events.
 
-- [ ] **Step 7: Task gate and commit**
+- [x] **Step 7: Task gate and commit**
 
 Run full session-digest test and build gates.
 
