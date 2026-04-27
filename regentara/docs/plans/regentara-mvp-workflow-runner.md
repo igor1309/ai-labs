@@ -392,11 +392,11 @@ git commit -m "enforce regentara provider cli boundary"
 
 **Key Work Items:**
 
-- [ ] Write RED/GREEN tests for invalid JSON runtime output.
-- [ ] Write RED/GREEN tests for schema-invalid runtime JSON.
-- [ ] Write RED/GREEN tests proving invalid output is not passed to the next workflow step.
-- [ ] Use the JSON Schema configured for the executed agent from `agents.yaml`.
-- [ ] Return runtime failures with concise failure reasons.
+- [x] Write RED/GREEN tests for invalid JSON runtime output.
+- [x] Write RED/GREEN tests for schema-invalid runtime JSON.
+- [x] Write RED/GREEN tests proving invalid output is not passed to the next workflow step.
+- [x] Use the JSON Schema configured for the executed agent from `agents.yaml`.
+- [x] Return runtime failures with concise failure reasons.
 
 **Validation:**
 

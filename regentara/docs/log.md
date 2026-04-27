@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Added runtime output parsing and JSON Schema validation so invalid agent output fails the run before later workflow steps consume it.
 - Implemented the provider CLI execution boundary with invocation cwd, model argument passing, output capture, non-zero exit failure, and no automatic timeout.
 - Added startup validation, provider CLI availability checks before run creation, global run storage, limited metadata mutation, and authored artifact overwrite rejection.
 - Implemented ADR-002 model routing resolution and validation for local/global `models.yaml`, exact MVP route keys, required route fields, and supported provider/runner combinations.
