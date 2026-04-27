@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Nomos: remove inert `nomos-shared` declaration from the repo prod compose (CI never copies it) and the orphan `docker build -t nomos:latest .` from staging deploy. Cleanup of dead promises after the rollback redesign. See `nomos/docs/log.md`.
 - Nomos: rewrite rollback path to operate on the actually-used `nomos-nomos:latest` image so a failed prod deploy can restore the previous version. See `nomos/docs/log.md`.
 - Nomos: force `--build` on prod compose so deploys rebuild the auto-named prod image instead of caching the previously built version. See `nomos/docs/log.md`.
 - Nomos: declare `nomos-shared` external network in the prod compose so Caddy retains staging connectivity across `docker compose down/up`. See `nomos/docs/log.md`.
