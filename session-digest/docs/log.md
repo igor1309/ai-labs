@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Removed the resolved V2 spec review artifact after its findings were addressed in the spec.
 - Addressed the V2 spec review by tightening byte-count semantics, provider selection, malformed-line recovery, timestamp handling, collision behavior, and test-double rules.
 - Reviewed the V2 CLI spec; recorded twelve executable-spec findings (measurement points, provider-pair completeness, anchor grammar, timestamp/timezone, filename collision, automated vs manual done criteria) for resolution before implementation.
 - Added the V2 CLI spec for ADR-003, defining persisted ledger artifacts, bounded model context behavior, canonical digest metadata, and required tests.
