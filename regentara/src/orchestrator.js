@@ -7,15 +7,6 @@ import { validateRuntimeOutput } from "./runtime-output.js";
 import { resolveAgentSettings } from "./settings/agent-settings.js";
 import { resolveModelRouting } from "./settings/model-routing.js";
 
-export class ReviewFixPolicy {
-  async decide() {
-    return {
-      decision: "complete-fail",
-      session: undefined,
-    };
-  }
-}
-
 export async function runWorkflow(input = {}, dependencies = {}) {
   const reviewFixPolicy = input.reviewFixPolicy ?? dependencies.reviewFixPolicy;
   if (!reviewFixPolicy || typeof reviewFixPolicy.decide !== "function") {

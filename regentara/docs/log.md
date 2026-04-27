@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Removed the unused `ReviewFixPolicy` fail-stub export so production code requires injected policy behavior without shipping a misleading default implementation.
 - Closed workflow-runner review gaps: runtime failures now retain run context and mark metadata failed, default artifact checks use the run directory, built-in output schemas enforce required fields, and CLI/provider helpers avoid fragile fallbacks.
 - Wired the CLI entrypoint to production composition with MVP argument parsing, concise failure output, and documented runtime boundaries.
 - Implemented fail-fast runtime failure handling, missing-artifact failure, artifact preservation, no retry/continue behavior, and interruption handling before and after run creation.
