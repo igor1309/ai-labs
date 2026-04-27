@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Adopted the repo-level CLI settings convention via adr-007: supersedes-in-part adr-001 (install behavior, closed prompt-ref whitelist) and adr-002 (closed route-key/provider/runner/combination whitelists, MVP coverage requirement). Classified agent identifiers and output-schema refs as structural; route keys, providers, runners, combinations, and prompt refs as catalog. Pinned first-run bootstrap shape (`agents.yaml.example`/`models.yaml.example` to `~/.regentara/`, runtime-not-installer, idempotent, exits non-zero with `StartupValidationFailure`). Spec/source/test edits and the closure plan are deliberately out of scope for this ADR.
 - Implemented the Regentara MVP workflow runner as a release unit, covering settings/model validation, provider CLI orchestration, run/artifact storage, fail-fast failure handling, and review/remediation routing.
 - Finalized the implementation plan from the accepted Regentara specs and ADRs.
 
