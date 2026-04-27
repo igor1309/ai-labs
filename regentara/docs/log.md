@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- adr-007 closure task 2: removed `SUPPORTED_PROMPT_REFS` closed whitelist from `agent-settings.js`; arbitrary prompt-ref strings now accepted; `SUPPORTED_SCHEMA_REFS` (structural) preserved.
 - adr-007 closure task 1: removed closed `REQUIRED_ROUTE_KEYS`, `SUPPORTED_COMBINATIONS`, and provider/runner closed lists from `model-routing.js`; user-defined route keys and arbitrary provider/runner strings now accepted; structural field validation preserved.
 - Drafted adr-007 closure plan at `regentara/docs/plans/adr-007-cli-settings-convention-closure.md` — 8 tasks: relax model-routing whitelists, relax agent-settings prompt-ref whitelist, cross-file route-key resolution, agents.yaml.example bootstrap, models.yaml.example bootstrap, partial-bootstrap, named error surface, closeout. Auto-continue mode, no push until closeout.
 - Updated MVP workflow runner spec to reflect adr-007: ModelRouting reframed as catalog (no closed route-key/provider/runner whitelists); added cross-file route-key resolution rule; added first-run bootstrap rules (`*.example` writes to `~/.regentara/`, idempotent, no actual settings file creation); replaced closed-whitelist tests (prompt ref, route key inventory, provider, runner, provider/runner combination) with bootstrap and cross-ref tests; tests renumbered to 59.

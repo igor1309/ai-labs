@@ -94,7 +94,7 @@ for (const agentId of ["producer", "reviewer", "remediator"]) {
   });
 }
 
-test("resolveAgentSettings should reject agents yaml with an unsupported prompt reference", async () => {
+test("resolveAgentSettings should accept arbitrary prompt reference strings", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     producer: {
@@ -104,10 +104,11 @@ test("resolveAgentSettings should reject agents yaml with an unsupported prompt 
     },
   }));
 
-  await assert.rejects(
-    () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported prompt reference/,
-  );
+  const settings = await resolveAgentSettings(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
+
+  assert.equal(settings.agents.producer.prompt.ref, "custom://producer");
 });
 
 test("resolveAgentSettings should reject agents yaml with an unsupported output schema reference", async () => {

@@ -8,10 +8,6 @@ import { firstExistingSettingsPath } from "./paths.js";
 const REQUIRED_AGENTS = ["producer", "reviewer", "remediator"];
 const REQUIRED_FIELDS = ["model", "prompt", "output"];
 
-const SUPPORTED_PROMPT_REFS = new Set(
-  REQUIRED_AGENTS.map((agent) => `regentara://prompts/${agent}`),
-);
-
 const SUPPORTED_SCHEMA_REFS = new Map([
   [
     "regentara://schemas/producer-output",
@@ -121,11 +117,7 @@ function validateAgent(agentId, rawAgent) {
 
 function validatePrompt(prompt) {
   if (!isPlainObject(prompt) || typeof prompt.ref !== "string") {
-    throw new StartupValidationFailure("agents.yaml prompt must use a supported ref");
-  }
-
-  if (!SUPPORTED_PROMPT_REFS.has(prompt.ref)) {
-    throw new StartupValidationFailure(`unsupported prompt reference: ${prompt.ref}`);
+    throw new StartupValidationFailure("agents.yaml prompt must define a string ref");
   }
 
   return { ref: prompt.ref };
