@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+Add issue ticket for intentional JSON payload-size configuration, including tests, docs, and staging-gate requirements.
 Add issue ticket for improving oversized JSON request errors so Nomos reports local 413 body-limit failures explicitly.
 
 ## 2026-03-09
