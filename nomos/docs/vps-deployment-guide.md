@@ -186,6 +186,7 @@ YOUR_DOMAIN {
 NOMOS_PORT=8080
 NOMOS_HOST=0.0.0.0
 NOMOS_DB_PATH=data/nomos.db
+NOMOS_JSON_BODY_LIMIT=100kb
 NODE_ENV=production
 
 # Vendor — OpenRouter (default for this deployment)
@@ -202,6 +203,8 @@ NOMOS_SAFEGUARDS_SANITIZE=true
 NOMOS_SAFEGUARDS_REINFORCE=false
 NOMOS_SAFEGUARDS_BLOCK=false
 ```
+
+`NOMOS_JSON_BODY_LIMIT` is enforced by Nomos' Express JSON body parser before a request is authenticated or forwarded to the model provider. Keep the default `100kb` unless trusted workloads, such as large local-ledger synthesis requests, need a larger JSON body. Raise it first in staging, run the staging smoke gate, then promote the same value to production through the normal staging-to-production flow.
 
 Lock down permissions on the env file:
 
@@ -597,6 +600,7 @@ cp /path/to/repo/nomos/.env.staging.example /opt/nomos/.env.staging
 Edit `/opt/nomos/.env.staging` and set:
 - `NOMOS_VENDOR_API_KEY` — same vendor key as production
 - `NOMOS_VENDOR_BASE_URL` — same vendor URL as production
+- `NOMOS_JSON_BODY_LIMIT` — same parser limit you intend to promote to production, after staging smoke tests pass
 
 > **Never commit `.env.staging`**. It contains real secrets. The committed `.env.staging.example` is a template only.
 

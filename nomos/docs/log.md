@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+Add intentional Nomos JSON body-size configuration via `NOMOS_JSON_BODY_LIMIT`, with validation, docs, and staging-first operator guidance.
 Implement Nomos-owned oversized JSON request rejection: 413 responses now report local rejection plus the effective 100kb parser limit.
 Add issue ticket for intentional JSON payload-size configuration, including tests, docs, and staging-gate requirements.
 Add issue ticket for improving oversized JSON request errors so Nomos reports local 413 body-limit failures explicitly.

@@ -2,7 +2,17 @@ import express from "express";
 import { createAuthMiddleware } from "./auth.js";
 import { createChatCompletionsHandler } from "./chat-completions.js";
 
-export function createApp({ logger, db, version = null, liveRunner = null, stubRunner = null, stubEnabled = false, budgetService = null, safeguards = null }) {
+export function createApp({
+  logger,
+  db,
+  version = null,
+  jsonBodyLimit = "100kb",
+  liveRunner = null,
+  stubRunner = null,
+  stubEnabled = false,
+  budgetService = null,
+  safeguards = null,
+}) {
   const app = express();
 
   app.get("/health", (_req, res) => {
@@ -11,7 +21,7 @@ export function createApp({ logger, db, version = null, liveRunner = null, stubR
     res.json(body);
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: jsonBodyLimit }));
 
   // Live API: /v1/*
   app.use("/v1", createAuthMiddleware({ db, logger, allowedScope: "live" }));

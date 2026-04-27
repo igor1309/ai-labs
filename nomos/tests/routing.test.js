@@ -346,6 +346,47 @@ test("oversized JSON body returns Nomos-owned local rejection", async () => {
   }
 });
 
+test("configured JSON body limit accepts requests above default limit", async () => {
+  const { db, tmp } = setupTestDb();
+
+  try {
+    insertProject(db, { id: "p1", name: "proj", token: "tok-p1", scope: "live" });
+    const logger = stubLogger();
+    const app = createApp({
+      logger,
+      db,
+      jsonBodyLimit: "200kb",
+      liveRunner: fakeRunner({ id: "r1" }),
+    });
+    const server = await listen(app);
+
+    try {
+      const { port } = server.address();
+      const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer tok-p1",
+        },
+        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "x".repeat(102400) }] }),
+      });
+      const body = await res.json();
+
+      assert.deepEqual(
+        { status: res.status, body },
+        {
+          status: 200,
+          body: { id: "r1" },
+        }
+      );
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    cleanupTestDb(db, tmp);
+  }
+});
+
 test("POST /v1/chat/completions returns JSON 404 when no liveRunner configured", async () => {
   const { db, tmp } = setupTestDb();
 
