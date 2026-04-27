@@ -6,6 +6,8 @@ services:
     container_name: nomos-staging
     restart: unless-stopped
     env_file: .env.staging
+    environment:
+      NOMOS_JSON_BODY_LIMIT: ${NOMOS_JSON_BODY_LIMIT:-1mb}
     volumes:
       - nomos-staging-data:/app/data
     expose:
