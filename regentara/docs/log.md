@@ -2,19 +2,8 @@
 
 ## 2026-04-27
 
-- Removed the unused `ReviewFixPolicy` fail-stub export so production code requires injected policy behavior without shipping a misleading default implementation.
-- Closed workflow-runner review gaps: runtime failures now retain run context and mark metadata failed, default artifact checks use the run directory, built-in output schemas enforce required fields, and CLI/provider helpers avoid fragile fallbacks.
-- Wired the CLI entrypoint to production composition with MVP argument parsing, concise failure output, and documented runtime boundaries.
-- Implemented fail-fast runtime failure handling, missing-artifact failure, artifact preservation, no retry/continue behavior, and interruption handling before and after run creation.
-- Implemented the Producer, Reviewer, ReviewFixPolicy, and Remediator loop with opaque policy session forwarding and policy-owned post-review routing.
-- Added runtime output parsing and JSON Schema validation so invalid agent output fails the run before later workflow steps consume it.
-- Implemented the provider CLI execution boundary with invocation cwd, model argument passing, output capture, non-zero exit failure, and no automatic timeout.
-- Added startup validation, provider CLI availability checks before run creation, global run storage, limited metadata mutation, and authored artifact overwrite rejection.
-- Implemented ADR-002 model routing resolution and validation for local/global `models.yaml`, exact MVP route keys, required route fields, and supported provider/runner combinations.
-- Implemented ADR-001 agent settings resolution and validation for local/global `agents.yaml`, exact MVP agent inventory, supported prompt references, and JSON Schema output forms.
-- Scaffolded Regentara as a Node ESM workspace package and release unit with CI routing, smoke-testable public modules, and root test/build wiring so behavior can be implemented behind compiling boundaries.
-- Addressed architecture-doc review of the MVP workflow runner implementation plan: resolved duplicate spec-test ownership, replaced ambiguous skill references, decided Regentara is an MVP release unit, separated provider CLI availability from execution, added explicit worktree creation, pinned Node minimum, and tightened first-task staging scope.
-- Created the MVP workflow runner implementation plan from the accepted Regentara spec and ADRs. The plan incorporates the updated process guardrails from `63a14b3ad256f1728d5b4766df8d13c406fd1436`: explicit execution mode, worktree mode, push policy, auto-continue behavior, and final archive move.
+- Implemented the Regentara MVP workflow runner as a release unit, covering settings/model validation, provider CLI orchestration, run/artifact storage, fail-fast failure handling, and review/remediation routing.
+- Finalized the implementation plan from the accepted Regentara specs and ADRs.
 
 ## 2026-04-25
 
