@@ -2,7 +2,7 @@
 title: Implementation Plan
 date: 2026-04-12
 author: Igor Malyarov
-version: 0.0.2
+version: 0.0.3
 format: note
 ---
 
@@ -46,6 +46,21 @@ If the core architecture or behavior is still unclear, the work is not ready for
 5. Attach a validation gate to every slice — no slice is complete without a test/check pass.
 6. Review the plan against the spec and ADRs for drift or scope leakage.
 7. Submit for adversarial review. Fix issues and re-review until clean.
+
+## Execution contract
+
+Every implementation plan must declare its operational contract instead of inheriting it from skills or local memory:
+
+- execution mode: `auto-continue` or `human-review-gated`
+- human review between tasks: `yes` or `no`
+- worktree mode: `create new`, `reuse existing`, or `none`
+- push policy: `no push`, `push after task`, or `push at closeout`
+- stop conditions
+- final archive path
+
+Self-review and human review are different gates. Self-review is always part of disciplined execution; human review happens only when the plan declares it or the user asks for it.
+
+Active plan directories should contain active plans only. Completed plans move to `docs/plans/implemented/` or `<project>/docs/plans/implemented/` as the last plan closeout step.
 
 ## Inputs
 

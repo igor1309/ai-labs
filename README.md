@@ -48,12 +48,12 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
-| nomos | Service | LLM access control proxy — auth, cost budgets, unified API |
+| nomos | Service | LLM access control proxy — auth, cost budgets, request body limits, unified API |
 | corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
 | web-scout | MCP tool | Web search via SearXNG |
 | loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
 | claude-insights | Service | Weekly Claude Code usage aggregator with Telegram bot and LLM trend analysis |
-| session-digest | CLI (planning) | Converts a Claude Code JSONL session into a Markdown postmortem digest via LangChain Deep Agents over NVIDIA NIM |
+| session-digest | CLI | Converts Claude Code JSONL sessions into persisted local ledgers and bounded-model Markdown digests |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 
 ## Architecture
