@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Release pipeline: ensure Nomos tag deploys upload and promote the production Compose file, so production receives Compose-level deployment defaults.
 - Nomos: clarify 413 JSON body-limit errors and add configurable `NOMOS_JSON_BODY_LIMIT` for large prompt payloads. See `nomos/docs/log.md`.
 - session-digest: replaced the Deep Agents prototype role with a V2 local-ledger and bounded-synthesis CLI, including dependency cleanup and component documentation updates.
 - Process docs: made implementation plans explicitly declare execution mode, review stops, worktree mode, push policy, and final archiving so future plan execution can auto-continue without ambiguity.
