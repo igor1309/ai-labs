@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+Repair Nomos staging route: declare `nomos-shared` external network in the prod compose so Caddy stays attached after a `docker compose down/up`. Without this, an earlier deploy that overwrote `/opt/nomos/docker-compose.yml` recreated `nomos-caddy` without `nomos-shared`, and every `staging.nomos.enoa.ai/*` request returned 502.
 v0.8.8: publish the existing Nomos payload-limit and oversized-request improvements as the next deployable release.
 Add intentional Nomos JSON body-size configuration via `NOMOS_JSON_BODY_LIMIT`, with a 1MB default, validation, docs, and staging-first operator guidance.
 Implement Nomos-owned oversized JSON request rejection: 413 responses now report local rejection plus the effective parser limit.
