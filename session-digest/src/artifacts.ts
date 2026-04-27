@@ -33,6 +33,12 @@ export async function assertArtifactPathsAvailable(paths: ArtifactPaths, fsLike:
   }
 }
 
+export async function assertLedgerPathAvailable(paths: ArtifactPaths, fsLike: ArtifactCollisionFs): Promise<void> {
+  if (await exists(paths.ledgerPath, fsLike)) {
+    throw new ArtifactCollisionError(`Artifact already exists: ${paths.ledgerPath}`);
+  }
+}
+
 export async function writeLedger(ledgerPath: string, ledger: unknown, fsLike: LedgerWriteFs): Promise<void> {
   await fsLike.mkdir(path.dirname(ledgerPath), { recursive: true });
   await fsLike.writeFile(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);

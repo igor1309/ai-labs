@@ -7,12 +7,13 @@ import { fileURLToPath } from "node:url";
 import {
   ArtifactCollisionError,
   assertArtifactPathsAvailable,
+  assertLedgerPathAvailable,
   computeArtifactPaths,
   measureLedgerBytes,
   writeLedger,
 } from "./artifacts.js";
 import { defaultClock } from "./clock.js";
-import { ConfigError, loadConfig } from "./config.js";
+import { ConfigError, loadConfig, loadSettings } from "./config.js";
 import { InputError, validateInputPath } from "./inputs.js";
 import { compileLedger, ModelContextBudgetError } from "./ledger.js";
 import { defaultChatModel } from "./model.js";
@@ -28,39 +29,52 @@ export type MainDeps = {
   model?: DigestModel;
 };
 
+type CliArgs = {
+  inputPath: string;
+  ledgerOnly: boolean;
+};
+
 export async function main(
   argv: string[],
   stdout: Writable,
   stderr: Writable,
   deps: MainDeps = {},
 ): Promise<number> {
-  if (argv.length !== 1) {
-    stderr.write("Expected exactly one session JSONL path.\n");
+  const cliArgs = parseCliArgs(argv);
+
+  if (cliArgs instanceof Error) {
+    stderr.write(`${cliArgs.message}\n`);
 
     return 1;
   }
 
-  if (argv[0]?.startsWith("-")) {
-    stderr.write("Flags are not supported. Pass exactly one session JSONL path.\n");
-
-    return 1;
-  }
-
+  const { inputPath, ledgerOnly } = cliArgs;
   const clock = deps.clock ?? defaultClock;
   const baseDir = deps.baseDir ?? path.join(os.homedir(), ".session-digests");
   const fsLike = deps.fsLike ?? fs.promises;
 
   try {
-    await validateInputPath(argv[0], fsLike);
-    const parsedSession = await parseSessionRecords(argv[0], fsLike);
+    await validateInputPath(inputPath, fsLike);
+    const parsedSession = await parseSessionRecords(inputPath, fsLike);
     await fsLike.mkdir(baseDir, { recursive: true });
+    const settings = await loadSettings(baseDir, fsLike);
+    const nowUtc = clock();
+    const artifactPaths = computeArtifactPaths(inputPath, nowUtc, baseDir);
+    await (ledgerOnly
+      ? assertLedgerPathAvailable(artifactPaths, fsLike)
+      : assertArtifactPathsAvailable(artifactPaths, fsLike));
+    const ledger = compileLedger(parsedSession, { maxModelContextBytes: settings.modelContextMaxBytes });
+
+    if (ledgerOnly) {
+      await writeLedger(artifactPaths.ledgerPath, ledger, fsLike);
+      stdout.write(`${artifactPaths.ledgerPath}\n`);
+
+      return 0;
+    }
+
     const config = await loadConfig(baseDir, fsLike);
     const digestSchemaPath = config.digestSchemaPath ?? DEFAULT_DIGEST_SCHEMA_PATH;
     const digestSchema = await loadDigestSchema(digestSchemaPath, fsLike);
-    const nowUtc = clock();
-    const artifactPaths = computeArtifactPaths(argv[0], nowUtc, baseDir);
-    await assertArtifactPathsAvailable(artifactPaths, fsLike);
-    const ledger = compileLedger(parsedSession);
     await writeLedger(artifactPaths.ledgerPath, ledger, fsLike);
     const ledgerBytes = await measureLedgerBytes(artifactPaths.ledgerPath, fsLike);
     const model = deps.model ?? defaultChatModel(config);
@@ -78,7 +92,7 @@ export async function main(
       digest_schema_path: digestSchemaPath,
       digest_schema_version: digestSchema.version,
       title: "Session Digest",
-      source_path: argv[0],
+      source_path: inputPath,
       provider: config.provider,
       model: config.model,
       generated_at: nowUtc,
@@ -114,6 +128,22 @@ export async function main(
   }
 
   return 0;
+}
+
+function parseCliArgs(argv: string[]): CliArgs | Error {
+  if (argv.length === 2 && argv[0] === "--ledger-only") {
+    return { inputPath: argv[1] ?? "", ledgerOnly: true };
+  }
+
+  if (argv.length !== 1) {
+    return new Error("Expected exactly one session JSONL path.");
+  }
+
+  if (argv[0]?.startsWith("-")) {
+    return new Error("Flags are not supported. Pass exactly one session JSONL path.");
+  }
+
+  return { inputPath: argv[0] ?? "", ledgerOnly: false };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
