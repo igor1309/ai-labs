@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Accepted ADR-003 as the V2 architecture direction: local Claude JSONL ledger compilation, semantic compression, and bounded model synthesis.
 - Proposed ADR-003 to replace the V1 full-session Deep Agents path with local Claude JSONL ledger compilation and bounded model synthesis.
 - Noted that local ledgers become essential artifact boundaries once semantic compression is used, so derived digests need compressor strategy/version metadata for reproducibility.
 - Recorded an empirical compression probe showing a real `1.54 MB` Claude Code session can be reduced to a `40,978` byte model-facing semantic context by local JSONL-aware compilation.

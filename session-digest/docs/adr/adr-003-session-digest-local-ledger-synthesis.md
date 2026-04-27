@@ -1,7 +1,7 @@
 ---
 title: ADR-003 — Session Digest Local Ledger and Bounded Synthesis
 date: 2026-04-27
-status: proposed
+status: accepted
 model: gpt-5
 version: 0.1
 description: "Supersedes the V1 full-session Deep Agents architecture with local Claude JSONL interpretation, versioned ledgers, and bounded model synthesis."
@@ -11,7 +11,7 @@ description: "Supersedes the V1 full-session Deep Agents architecture with local
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
