@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Saved the V2 implementation review findings covering absolute source paths, the documented digest H1, and V2 parser read-permission errors.
 - Implemented the V2 ledger pipeline: Claude JSONL now compiles into a persisted derived ledger, bounded model context, and digest metadata without retaining raw JSONL or using Deep Agents.
 - Archived the completed V1 session-digest implementation plans and clarified that the V2 plan runs in the existing `deep-nvidia` worktree and branch.
 - Clarified the V2 implementation plan guardrails so green gates auto-continue without per-step human review, while preserving no-push behavior and final plan archiving.
