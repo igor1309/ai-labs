@@ -126,7 +126,26 @@ The plan MUST define observable completion criteria, including:
 
 ------------------------------------------------------------------------
 
-## 11. Executor Freedom Boundary
+## 11. Operational Contract
+
+The plan MUST define execution mechanics that affect agent behavior:
+
+-   Execution mode: `auto-continue` or `human-review-gated`.
+-   Whether human review is required between tasks or phases.
+-   Worktree mode: create a new worktree, reuse a named existing
+    worktree, or use no separate worktree.
+-   Push policy: no push, push after task, or push at closeout.
+-   Stop conditions, including failed gates, unclear scope, missing
+    credentials/tooling, destructive operations, and explicit user
+    interruption.
+-   Plan archival behavior after implementation completes.
+
+Self-review MUST NOT be treated as human review. Self-review is an
+executor discipline; human review is an explicit coordination gate.
+
+------------------------------------------------------------------------
+
+## 12. Executor Freedom Boundary
 
 The planner MUST NOT prescribe:
 

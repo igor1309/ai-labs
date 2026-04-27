@@ -10,7 +10,7 @@
 - If the user narrows scope or corrects direction, immediately stop the previous plan and follow the new scope.
 - Before making changes, restate the requested scope in one sentence and execute only that scope.
 - Follow the written plan/docs as the source of truth; do not invent steps or rename phases.
-- Make small, reviewable changes and stop after each step for review.
+- Make small, reviewable changes. Stop after each step for human review only when the active plan declares `human-review-gated`; otherwise auto-continue after green gates and local commit.
 - Add tests alongside changes, not later.
 - Always run tests on code changes.
 - Require scope-appropriate verification before declaring completion.
@@ -78,6 +78,9 @@ Repo-specific details:
 - Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
 - Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
 - Worktree convention: `worktrees/<slug>` with branch `codex/<slug>`.
+- Plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
+- Default preferred execution mode is `auto-continue` unless the plan explicitly says `human-review-gated`.
+- Completed plans move to the relevant `implemented/` directory as the final closeout step.
 
 ## Release Process
 
