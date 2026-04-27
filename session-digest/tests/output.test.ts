@@ -68,6 +68,31 @@ test("test_front_matter_contains_required_keys_with_correct_values", async () =>
   assert.match(digest, /^---\ntitle: Session Digest\nsource_path: \/tmp\/session\.jsonl\nprovider: nvidia_nim\nmodel: nim-model\ngenerated_at: 2026-04-26T01:02:03\.456Z\n---/);
 });
 
+test("test_front_matter_contains_v2_derived_artifact_metadata_whenProvided", async () => {
+  const digest = assembleDigest({
+    compressor_strategy: "claude-jsonl-v1",
+    compressor_version: "1.0.0",
+    generated_at: new Date("2026-04-26T01:02:03.456Z"),
+    ledger_bytes: 300,
+    ledger_path: "/tmp/session.ledger.json",
+    model: "nomos-model",
+    model_context_bytes: 200,
+    provider: "nomos",
+    source_bytes: 100,
+    source_path: "/tmp/session.jsonl",
+    source_records: 3,
+    title: "Session Digest",
+  }, {});
+
+  assert.match(digest, /^compressor_strategy: claude-jsonl-v1$/m);
+  assert.match(digest, /^compressor_version: 1\.0\.0$/m);
+  assert.match(digest, /^ledger_path: \/tmp\/session\.ledger\.json$/m);
+  assert.match(digest, /^source_bytes: 100$/m);
+  assert.match(digest, /^source_records: 3$/m);
+  assert.match(digest, /^ledger_bytes: 300$/m);
+  assert.match(digest, /^model_context_bytes: 200$/m);
+});
+
 test("test_output_contains_no_direct_date_construction", async () => {
   const outputSource = await fs.readFile(path.join(srcDir, "output.ts"), "utf8");
 

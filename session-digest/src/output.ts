@@ -6,11 +6,18 @@ import { SECTION_NAMES, type SectionName } from "./sections.js";
 export type WriteDigestFs = Pick<typeof fs.promises, "mkdir" | "writeFile">;
 
 export type FrontMatter = {
+  compressor_strategy?: string;
+  compressor_version?: string;
   title: string;
   source_path: string;
   provider: string;
   model: string;
   generated_at: Date;
+  ledger_path?: string;
+  source_bytes?: number;
+  source_records?: number;
+  ledger_bytes?: number;
+  model_context_bytes?: number;
 };
 
 export function computeDigestPath(inputPath: string, nowUtc: Date, baseDir: string): string {
@@ -37,6 +44,7 @@ export function assembleDigest(frontMatter: FrontMatter, sections: Partial<Recor
     `provider: ${frontMatter.provider}`,
     `model: ${frontMatter.model}`,
     `generated_at: ${formatGeneratedAt(frontMatter.generated_at)}`,
+    ...optionalFrontMatterLines(frontMatter),
     "---",
     "",
   ].join("\n");
@@ -48,4 +56,22 @@ export function assembleDigest(frontMatter: FrontMatter, sections: Partial<Recor
 
 function formatGeneratedAt(generatedAt: Date): string {
   return generatedAt.toISOString();
+}
+
+function optionalFrontMatterLines(frontMatter: FrontMatter): string[] {
+  const entries: Array<[keyof FrontMatter, string]> = [
+    ["compressor_strategy", "compressor_strategy"],
+    ["compressor_version", "compressor_version"],
+    ["ledger_path", "ledger_path"],
+    ["source_bytes", "source_bytes"],
+    ["source_records", "source_records"],
+    ["ledger_bytes", "ledger_bytes"],
+    ["model_context_bytes", "model_context_bytes"],
+  ];
+
+  return entries.flatMap(([key, label]) => {
+    const value = frontMatter[key];
+
+    return value === undefined ? [] : [`${label}: ${value}`];
+  });
 }
