@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-27
+
+Add issue ticket for improving oversized JSON request errors so Nomos reports local 413 body-limit failures explicitly.
+
 ## 2026-03-09
 v0.8.4: add compose-level healthcheck to staging stack, replace deploy script sleep+wget race with --wait flag. Fix release-unit core job (install ripgrep for corpus-scout tests). Fix deploy-prod cleanup deleting notify script before notification step runs.
 
