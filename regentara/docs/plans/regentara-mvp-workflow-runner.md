@@ -355,12 +355,12 @@ git commit -m "create validated regentara runs"
 
 **Key Work Items:**
 
-- [ ] Write RED/GREEN tests proving provider CLIs are invoked from the Regentara invocation `workingDirectory`.
-- [ ] Capture exit status, stdout/stderr references or summaries, runner references, provider session references, and parsed JSON output when available.
-- [ ] Treat non-zero exit status as runtime failure.
-- [ ] Prove Regentara does not infer success from partial files or logs when the subprocess exits non-zero.
-- [ ] Prove no automatic subprocess timeout is configured in the MVP executor.
-- [ ] Keep runtime code free of direct build, test, format, dependency install, Git, branch, commit, PR, worktree, cleanup, sandbox, or permission-management commands.
+- [x] Write RED/GREEN tests proving provider CLIs are invoked from the Regentara invocation `workingDirectory`.
+- [x] Capture exit status, stdout/stderr references or summaries, runner references, provider session references, and parsed JSON output when available.
+- [x] Treat non-zero exit status as runtime failure.
+- [x] Prove Regentara does not infer success from partial files or logs when the subprocess exits non-zero.
+- [x] Prove no automatic subprocess timeout is configured in the MVP executor.
+- [x] Keep runtime code free of direct build, test, format, dependency install, Git, branch, commit, PR, worktree, cleanup, sandbox, or permission-management commands.
 
 **Validation:**
 
