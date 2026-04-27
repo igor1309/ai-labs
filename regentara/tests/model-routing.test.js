@@ -48,34 +48,6 @@ test("resolveModelRouting should fail before creating a run when local models ya
   );
 });
 
-test("resolveModelRouting should reject models yaml with an unknown route key", async () => {
-  const workspace = await makeSettingsWorkspace();
-  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    haiku: {
-      model: "claude-haiku",
-      provider: "anthropic",
-      runner: "claude-code",
-    },
-  }));
-
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unknown route key: haiku/,
-  );
-});
-
-for (const routeKey of ["sonnet", "opus", "gpt", "codex"]) {
-  test(`resolveModelRouting should reject models yaml missing ${routeKey}`, async () => {
-    const workspace = await makeSettingsWorkspace();
-    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ [routeKey]: undefined }));
-
-    await assert.rejects(
-      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-      new RegExp(`missing required route key: ${routeKey}`),
-    );
-  });
-}
-
 test("resolveModelRouting should reject models yaml missing provider, runner, or model for a route key", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
@@ -91,50 +63,37 @@ test("resolveModelRouting should reject models yaml missing provider, runner, or
   );
 });
 
-test("resolveModelRouting should reject models yaml with an unsupported provider", async () => {
+test("resolveModelRouting should accept user-defined route keys outside the legacy MVP set", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    sonnet: {
-      model: "claude-sonnet-4-5",
-      provider: "custom",
+    haiku: {
+      model: "claude-haiku",
+      provider: "anthropic",
       runner: "claude-code",
     },
   }));
 
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported provider: custom/,
-  );
+  const routing = await resolveModelRouting(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
+
+  assert.equal(routing.routes.haiku.model, "claude-haiku");
 });
 
-test("resolveModelRouting should reject models yaml with an unsupported runner", async () => {
+test("resolveModelRouting should accept arbitrary provider and runner strings", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
     sonnet: {
       model: "claude-sonnet-4-5",
-      provider: "anthropic",
-      runner: "custom",
+      provider: "custom-provider",
+      runner: "custom-runner",
     },
   }));
 
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported runner: custom/,
-  );
-});
+  const routing = await resolveModelRouting(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
 
-test("resolveModelRouting should reject models yaml with an invalid provider runner combination", async () => {
-  const workspace = await makeSettingsWorkspace();
-  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    sonnet: {
-      model: "claude-sonnet-4-5",
-      provider: "anthropic",
-      runner: "codex",
-    },
-  }));
-
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported provider\/runner combination: anthropic\/codex/,
-  );
+  assert.equal(routing.routes.sonnet.provider, "custom-provider");
+  assert.equal(routing.routes.sonnet.runner, "custom-runner");
 });
