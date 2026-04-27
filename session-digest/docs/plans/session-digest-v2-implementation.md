@@ -356,27 +356,27 @@ Commit: `session-digest: bound model context`
 - Modify/Test: `session-digest/tests/output.test.ts`
 - Create/Test: `session-digest/tests/artifacts.test.ts`
 
-- [ ] **Step 1: Create compile-only artifacts skeleton**
+- [x] **Step 1: Create compile-only artifacts skeleton**
 
 Create `session-digest/src/artifacts.ts` with placeholder exports for `computeArtifactPaths` and collision checking. This step exists only to keep imports compiling.
 
-- [ ] **Step 2: RED for shared timestamp artifact paths**
+- [x] **Step 2: RED for shared timestamp artifact paths**
 
 Assert digest and ledger paths share the same UTC second timestamp and extensions `.digest.md` / `.ledger.json`.
 
-- [ ] **Step 3: GREEN for artifact path helper**
+- [x] **Step 3: GREEN for artifact path helper**
 
 Implement `computeArtifactPaths(inputPath, nowUtc, baseDir)` returning both paths.
 
-- [ ] **Step 4: RED/GREEN for millisecond `generated_at`**
+- [x] **Step 4: RED/GREEN for millisecond `generated_at`**
 
 Update output formatting to keep millisecond precision, e.g. `2026-04-27T00:00:00.000Z`.
 
-- [ ] **Step 5: RED/GREEN for collision fail-fast**
+- [x] **Step 5: RED/GREEN for collision fail-fast**
 
 Assert if either target path exists, no artifact is written and the CLI exits non-zero.
 
-- [ ] **Step 6: Task gate and commit**
+- [x] **Step 6: Task gate and commit**
 
 Run full session-digest test and build gates.
 

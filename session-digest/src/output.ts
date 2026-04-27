@@ -47,5 +47,5 @@ export function assembleDigest(frontMatter: FrontMatter, sections: Partial<Recor
 }
 
 function formatGeneratedAt(generatedAt: Date): string {
-  return generatedAt.toISOString().replace(/\.\d{3}Z$/, "Z");
+  return generatedAt.toISOString();
 }

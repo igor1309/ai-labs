@@ -118,7 +118,7 @@ test("test_front_matter_contains_required_keys_with_correct_values_from_cli_succ
     `source_path: ${escapeRegExp(validSessionPath)}`,
     "provider: nvidia_nim",
     "model: fake-model",
-    "generated_at: 2026-04-26T01:02:03Z",
+    "generated_at: 2026-04-26T01:02:03.000Z",
     "---",
   ].join("\\n")));
 });
@@ -145,6 +145,30 @@ test("test_front_matter_uses_selected_provider_from_config", async (t) => {
 
   assert.equal(exitCode, 0);
   assert.match(digest, /^provider: openrouter\nmodel: x-ai\/grok-4\.1-fast$/m);
+});
+
+test("test_main_exits_nonzero_without_overwriting_digest_onArtifactCollision", async (t) => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const baseDir = path.join(tempDir, ".session-digests");
+  await fs.mkdir(baseDir, { recursive: true });
+  await fs.writeFile(path.join(baseDir, ".env"), "NVIDIA_API_KEY=fake\nNVIDIA_MODEL=fake\n");
+  const digestPath = computeDigestPath(validSessionPath, new Date("2026-04-26T01:02:03.000Z"), baseDir);
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+
+  await fs.writeFile(digestPath, "existing");
+
+  const exitCode = await main([validSessionPath], stdout, stderr, {
+    baseDir,
+    clock: () => new Date("2026-04-26T01:02:03.000Z"),
+    model: new RoutingFake(),
+  });
+
+  assert.notEqual(exitCode, 0);
+  assert.equal(stdout.toString(), "");
+  assert.match(stderr.toString(), /already exists/i);
+  assert.equal(await fs.readFile(digestPath, "utf8"), "existing");
 });
 
 test("test_clock_is_invoked_once_and_filename_matches_generated_at", async (t) => {
@@ -174,7 +198,7 @@ test("test_clock_is_invoked_once_and_filename_matches_generated_at", async (t) =
   assert.equal(exitCode, 0);
   assert.equal(callCount, 1);
   assert.match(path.basename(digestPath), /\.2026-04-26-010203\.digest\.md$/);
-  assert.match(digest, /^generated_at: 2026-04-26T01:02:03Z$/m);
+  assert.match(digest, /^generated_at: 2026-04-26T01:02:03\.000Z$/m);
 });
 
 test("test_cli_main_and_output_contain_no_direct_date_construction", async () => {

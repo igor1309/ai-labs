@@ -65,7 +65,7 @@ test("test_front_matter_contains_required_keys_with_correct_values", async () =>
     generated_at: new Date("2026-04-26T01:02:03.456Z"),
   }, {});
 
-  assert.match(digest, /^---\ntitle: Session Digest\nsource_path: \/tmp\/session\.jsonl\nprovider: nvidia_nim\nmodel: nim-model\ngenerated_at: 2026-04-26T01:02:03Z\n---/);
+  assert.match(digest, /^---\ntitle: Session Digest\nsource_path: \/tmp\/session\.jsonl\nprovider: nvidia_nim\nmodel: nim-model\ngenerated_at: 2026-04-26T01:02:03\.456Z\n---/);
 });
 
 test("test_output_contains_no_direct_date_construction", async () => {

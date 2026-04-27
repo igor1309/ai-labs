@@ -7,15 +7,16 @@ import { fileURLToPath } from "node:url";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 import { AgentError, buildAgent, defaultChatModel, loadPromptTemplates, run } from "./agents.js";
+import { ArtifactCollisionError, assertArtifactPathsAvailable, computeArtifactPaths } from "./artifacts.js";
 import { defaultClock } from "./clock.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { InputError, parseSession, validateInputPath } from "./inputs.js";
-import { assembleDigest, computeDigestPath, writeDigest } from "./output.js";
+import { assembleDigest, writeDigest } from "./output.js";
 
 export type MainDeps = {
   clock?: () => Date;
   baseDir?: string;
-  fsLike?: Pick<typeof fs.promises, "stat" | "readFile" | "writeFile" | "mkdir">;
+  fsLike?: Pick<typeof fs.promises, "access" | "stat" | "readFile" | "writeFile" | "mkdir">;
   model?: BaseChatModel;
 };
 
@@ -47,11 +48,12 @@ export async function main(
     await fsLike.mkdir(baseDir, { recursive: true });
     const config = await loadConfig(baseDir, fsLike);
     const nowUtc = clock();
+    const artifactPaths = computeArtifactPaths(argv[0], nowUtc, baseDir);
+    await assertArtifactPathsAvailable(artifactPaths, fsLike);
     const model = deps.model ?? defaultChatModel(config);
     const prompts = await loadPromptTemplates(fsLike.readFile);
     const agent = buildAgent({ model, prompts });
     const sections = await run(messages, agent);
-    const digestPath = computeDigestPath(argv[0], nowUtc, baseDir);
     const digest = assembleDigest({
       title: "Session Digest",
       source_path: argv[0],
@@ -60,10 +62,15 @@ export async function main(
       generated_at: nowUtc,
     }, sections);
 
-    await writeDigest(digestPath, digest, fsLike);
-    stdout.write(`${digestPath}\n`);
+    await writeDigest(artifactPaths.digestPath, digest, fsLike);
+    stdout.write(`${artifactPaths.digestPath}\n`);
   } catch (error) {
-    if (error instanceof InputError || error instanceof ConfigError || error instanceof AgentError) {
+    if (
+      error instanceof InputError
+      || error instanceof ConfigError
+      || error instanceof AgentError
+      || error instanceof ArtifactCollisionError
+    ) {
       stderr.write(`${error.message}\n`);
 
       return 1;
