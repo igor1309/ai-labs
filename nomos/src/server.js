@@ -43,7 +43,6 @@ const app = createApp({
   stubEnabled: config.stubEnabled,
   budgetService,
   safeguards,
-  jsonBodyLimit: config.jsonBodyLimit,
 });
 
 const server = app.listen(config.port, config.host, () => {

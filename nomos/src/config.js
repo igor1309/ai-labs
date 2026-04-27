@@ -9,7 +9,6 @@ export function loadConfig() {
     vendorTimeoutMs: parseInt(process.env.NOMOS_VENDOR_TIMEOUT_MS || "30000", 10),
     vendorApiKey: process.env.NOMOS_VENDOR_API_KEY || "",
     fixturesDir: process.env.NOMOS_FIXTURES_DIR || "tests/fixtures",
-    jsonBodyLimit: process.env.NOMOS_JSON_BODY_LIMIT || "100kb",
     safeguardsEnabled: process.env.NOMOS_SAFEGUARDS_ENABLED !== "false",
     safeguardsSanitize: process.env.NOMOS_SAFEGUARDS_SANITIZE !== "false",
     safeguardsReinforce: process.env.NOMOS_SAFEGUARDS_REINFORCE === "true",

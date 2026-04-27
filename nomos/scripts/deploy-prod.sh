@@ -7,7 +7,6 @@ set -e
 
 cd /opt/nomos
 docker tag nomos:latest nomos:rollback || true
-cp /tmp/nomos-deploy/docker-compose.yml .
 docker compose down
 docker compose up -d
 sleep 5
