@@ -314,14 +314,14 @@ git commit -m "validate regentara model routing"
 
 **Key Work Items:**
 
-- [ ] Implement injectable clock and random-byte providers for deterministic run ID tests.
-- [ ] Write RED/GREEN tests for run ID format and global run directory creation.
-- [ ] Validate required provider CLI availability before run creation.
-- [ ] Ensure missing provider CLI causes startup failure with no run directory.
-- [ ] Implement authored artifact creation that rejects overwrite/rewrite attempts.
-- [ ] Implement metadata updates limited to end time, status, and final exit code.
-- [ ] Reject metadata mutation for any other field.
-- [ ] Keep execution progress out of authored artifact mutation.
+- [x] Implement injectable clock and random-byte providers for deterministic run ID tests.
+- [x] Write RED/GREEN tests for run ID format and global run directory creation.
+- [x] Validate required provider CLI availability before run creation.
+- [x] Ensure missing provider CLI causes startup failure with no run directory.
+- [x] Implement authored artifact creation that rejects overwrite/rewrite attempts.
+- [x] Implement metadata updates limited to end time, status, and final exit code.
+- [x] Reject metadata mutation for any other field.
+- [x] Keep execution progress out of authored artifact mutation.
 
 **Validation:**
 

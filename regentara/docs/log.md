@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Added startup validation, provider CLI availability checks before run creation, global run storage, limited metadata mutation, and authored artifact overwrite rejection.
 - Implemented ADR-002 model routing resolution and validation for local/global `models.yaml`, exact MVP route keys, required route fields, and supported provider/runner combinations.
 - Implemented ADR-001 agent settings resolution and validation for local/global `agents.yaml`, exact MVP agent inventory, supported prompt references, and JSON Schema output forms.
 - Scaffolded Regentara as a Node ESM workspace package and release unit with CI routing, smoke-testable public modules, and root test/build wiring so behavior can be implemented behind compiling boundaries.
