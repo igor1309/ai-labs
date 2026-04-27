@@ -18,9 +18,9 @@ description: "Implementation plan for the ADR-003 session-digest V2 CLI with loc
 
 ## Execution Lock
 
-- Worktree required: yes.
-- Expected worktree: `*/ai-labs.worktrees/deep-nvidia`.
-- Expected branch: `deep-nvidia`.
+- Worktree required: use this existing dedicated worktree; do not create a new worktree.
+- Expected worktree: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/deep-nvidia`.
+- Expected branch: `deep-nvidia`; do not create or switch to another branch for this plan.
 - Preflight check: [ ] done.
 - Before Step 1, run `git worktree list --porcelain` and `git branch --show-current`.
 - Emit: `Preflight: worktree=<path>, branch=<branch>, separate_worktree=pass`.

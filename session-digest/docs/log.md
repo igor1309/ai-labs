@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Archived the completed V1 session-digest implementation plans and clarified that the V2 plan runs in the existing `deep-nvidia` worktree and branch.
 - Clarified the V2 implementation plan guardrails so green gates auto-continue without per-step human review, while preserving no-push behavior and final plan archiving.
 - Addressed the V2 implementation-plan review by fixing false-RED cases, clarifying skeleton-before-RED steps, splitting model factory extraction, and adding version/readme/release housekeeping.
 - Added the V2 implementation plan and locked the existing-code decision: keep CLI/config/output foundations, replace lossy parsing and Deep Agents orchestration with local ledger compilation and bounded synthesis.
