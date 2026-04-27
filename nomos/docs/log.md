@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+Default Nomos production and staging Compose deployments to `NOMOS_JSON_BODY_LIMIT=1mb` while preserving explicit environment overrides, so the 0.8.5 deploy raises the live request-body ceiling without manual `.env` edits.
 v0.8.5: clarify oversized JSON request errors and add configurable `NOMOS_JSON_BODY_LIMIT` so large bounded prompts can pass through Nomos when the deployment opts in.
 
 ## 2026-04-26
