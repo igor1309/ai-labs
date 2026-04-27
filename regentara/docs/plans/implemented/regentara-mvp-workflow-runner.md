@@ -556,14 +556,14 @@ Push/PR: follow push policy; create a PR only when the user asks or the active b
 
 Closeout steps:
 
-- [ ] Confirm every spec test 1-56 is represented by a passing test.
-- [ ] Confirm ADR traceability matrix remains accurate.
-- [ ] Confirm `README.md` Components table is current.
-- [ ] Confirm `release-units.config.toml` and `release-units.toml` include Regentara and are aligned.
-- [ ] Confirm `.github/workflows/ci.yml` includes Regentara in changes, report, and notifications.
-- [ ] Confirm `regentara/docs/log.md` has a concise outcome-focused entry.
-- [ ] Move this plan to `regentara/docs/plans/implemented/`.
-- [ ] Commit the archive move.
+- [x] Confirm every spec test 1-56 is represented by a passing test.
+- [x] Confirm ADR traceability matrix remains accurate.
+- [x] Confirm `README.md` Components table is current.
+- [x] Confirm `release-units.config.toml` and `release-units.toml` include Regentara and are aligned.
+- [x] Confirm `.github/workflows/ci.yml` includes Regentara in changes, report, and notifications.
+- [x] Confirm `regentara/docs/log.md` has a concise outcome-focused entry.
+- [x] Move this plan to `regentara/docs/plans/implemented/`.
+- [x] Commit the archive move.
 
 ## Done Criteria
 
