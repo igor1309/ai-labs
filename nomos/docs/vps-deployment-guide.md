@@ -192,6 +192,7 @@ NODE_ENV=production
 NOMOS_VENDOR_BASE_URL=https://openrouter.ai/api/v1
 NOMOS_VENDOR_TIMEOUT_MS=30000
 NOMOS_VENDOR_API_KEY=sk-or-v1-your-openrouter-key-here
+NOMOS_JSON_BODY_LIMIT=1mb
 
 # Stub API (must be disabled in production)
 NOMOS_STUB_ENABLED=false

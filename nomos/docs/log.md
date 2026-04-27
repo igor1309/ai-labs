@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-27
+
+v0.8.5: clarify oversized JSON request errors and add configurable `NOMOS_JSON_BODY_LIMIT` so large bounded prompts can pass through Nomos when the deployment opts in.
+
 ## 2026-04-26
 
 Register `session-digest` as a production Nomos live client on `nomos.enoa.ai`, verify authenticated remote chat-completions traffic, and update local CLI config to use the production Nomos endpoint.
