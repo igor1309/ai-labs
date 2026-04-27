@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Addressed the V2 implementation-plan review by fixing false-RED cases, clarifying skeleton-before-RED steps, splitting model factory extraction, and adding version/readme/release housekeeping.
 - Added the V2 implementation plan and locked the existing-code decision: keep CLI/config/output foundations, replace lossy parsing and Deep Agents orchestration with local ledger compilation and bounded synthesis.
 - Removed the resolved V2 spec review artifact after its findings were addressed in the spec.
 - Addressed the V2 spec review by tightening byte-count semantics, provider selection, malformed-line recovery, timestamp handling, collision behavior, and test-double rules.

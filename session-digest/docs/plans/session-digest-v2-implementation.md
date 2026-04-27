@@ -26,6 +26,9 @@ description: "Implementation plan for the ADR-003 session-digest V2 CLI with loc
 - Emit: `Preflight: worktree=<path>, branch=<branch>, separate_worktree=pass`.
 - Do not push. The user has repeatedly instructed not to push.
 - Strict TDD applies: one failing test, run it, make it pass, then continue.
+- Compilation/import errors are not RED. When a task introduces a new module, create the smallest compile-only skeleton first, then write a failing assertion against behavior.
+- Any step labeled `RED/GREEN` below is shorthand for two required sub-steps: first add and run the RED test to capture the failing assertion, then implement the minimum GREEN code and rerun the same targeted command.
+- All CLI integration tests MUST inject a temporary `deps.baseDir` and clean it up. No test may write to the real `~/.session-digests/`.
 - Each task ends with targeted test, full `session-digest` test gate, build gate, log update if meaningful, and one local commit.
 - Required gates for code/config changes:
   - `./scripts/run_silent.sh "tests" npm test -w session-digest`
@@ -110,11 +113,11 @@ Expected: current worktree is `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-
 
 - [ ] **Step 2: RED for `25 MB` input cap**
 
-Add or update one test that writes `25 * 1024 * 1024 + 1` bytes and asserts non-zero exit before parsing/model work.
+Add or update one test that writes `25 * 1024 * 1024 + 1` bytes and asserts the oversize error mentions `25 MB`.
 
 Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/inputs.test.ts`
 
-Expected: FAIL because current code still reports `1 MB`.
+Expected: FAIL because current code reports `1 MB`.
 
 - [ ] **Step 3: GREEN for `25 MB` input cap**
 
@@ -124,13 +127,13 @@ Run the same targeted command.
 
 Expected: PASS.
 
-- [ ] **Step 4: RED/GREEN for `-`-leading token rejection**
+- [ ] **Step 4: Add regression test for `--` rejection**
 
 Keep existing behavior, but add a test that confirms `--` is rejected, documenting reserved flag behavior.
 
 Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/cli-args.test.ts`
 
-Expected after GREEN: PASS.
+Expected: PASS without production changes.
 
 - [ ] **Step 5: Task gate and commit**
 
@@ -150,11 +153,11 @@ Commit: `session-digest: update v2 input gates`
 
 - [ ] **Step 1: RED for incomplete provider pair skip**
 
-Add a test with incomplete Nomos config and complete OpenRouter config. Assert OpenRouter is selected.
+Add a test with whitespace-only `NOMOS_API_KEY` / `NOMOS_MODEL` and complete OpenRouter config. Assert OpenRouter is selected.
 
 Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/config.test.ts`
 
-Expected: FAIL if current partial-pair errors block fallback.
+Expected: FAIL because current config treats whitespace-only strings as complete.
 
 - [ ] **Step 2: GREEN for complete-pair rule**
 
@@ -182,15 +185,19 @@ Commit: `session-digest: define provider pair selection`
 - Create/Test: `session-digest/tests/session-records.test.ts`
 - Add fixtures under: `session-digest/tests/fixtures/v2/`
 
-- [ ] **Step 1: RED for source anchors**
+- [ ] **Step 1: Create compile-only parser skeleton**
+
+Create `session-digest/src/session-records.ts` with exported placeholder types and a stub `parseSessionRecords` function returning an empty parsed session. This step exists only to avoid import/compilation failures; do not implement behavior.
+
+- [ ] **Step 2: RED for source anchors**
 
 Create a fixture with two valid JSONL records and one blank line. Assert parsed records preserve one-based source record anchors `record:1` and `record:3`.
 
 Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tests/session-records.test.ts`
 
-Expected: FAIL because module does not exist.
+Expected: FAIL by assertion because the skeleton returns no records.
 
-- [ ] **Step 2: GREEN for parser skeleton**
+- [ ] **Step 3: GREEN for parser behavior**
 
 Implement:
 
@@ -204,26 +211,26 @@ export type ParsedSession = {
 export type ParsedRecord = {
   anchor: `record:${number}`;
   source_record: number;
-  type: string;
+  type?: string;
   raw: Record<string, unknown>;
 };
 ```
 
 Read file through injected `readFile`; split by line; skip blanks; parse JSON; count malformed lines.
 
-- [ ] **Step 3: RED/GREEN for malformed-line recovery**
+- [ ] **Step 4: RED/GREEN for malformed-line recovery**
 
 Add a malformed line fixture. Assert one valid recognized record succeeds and `parse.skipped_records === 1`.
 
-- [ ] **Step 4: RED/GREEN for no recognized records**
+- [ ] **Step 5: RED/GREEN for no recognized records**
 
 Assert parsed JSON with no Claude Code records throws an input error.
 
-- [ ] **Step 5: RED/GREEN for metadata preservation**
+- [ ] **Step 6: RED/GREEN for metadata preservation**
 
-Assert `uuid`, `parentUuid`, `sessionId`, `timestamp`, `cwd`, `gitBranch`, message role, content block types, and top-level `toolUseResult` are exposed in parsed record helpers or typed fields.
+Assert `uuid`, `parentUuid`, `sessionId`, `timestamp`, `cwd`, `gitBranch`, message role, content block types, and top-level `toolUseResult` are exposed in parsed record helpers or typed fields. Type-less parsed JSON records are not recognized Claude Code records; they may be counted as parsed JSON but must not produce ledger events.
 
-- [ ] **Step 6: Task gate and commit**
+- [ ] **Step 7: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -237,7 +244,11 @@ Commit: `session-digest: parse claude session records`
 - Create/Test: `session-digest/tests/ledger.test.ts`
 - Modify: `session-digest/src/session-records.ts` only if parser types need small additions
 
-- [ ] **Step 1: RED for ledger metadata**
+- [ ] **Step 1: Create compile-only ledger skeleton**
+
+Create `session-digest/src/ledger.ts` with exported constants, placeholder ledger types, and a stub `compileLedger` function returning minimal metadata and no events. This step exists only to keep imports compiling.
+
+- [ ] **Step 2: RED for ledger metadata**
 
 Assert compiling a parsed session returns:
 
@@ -250,15 +261,22 @@ Assert compiling a parsed session returns:
 
 Expected: FAIL.
 
-- [ ] **Step 2: GREEN for ledger skeleton**
+- [ ] **Step 3: GREEN for ledger metadata using constants**
+
+Expose constants from the start and use them in metadata:
+
+```ts
+export const COMPRESSOR_STRATEGY = "claude-jsonl-v1";
+export const COMPRESSOR_VERSION = "1.0.0";
+```
 
 Implement `compileLedger(parsedSession): Ledger` with metadata and empty events/model context.
 
-- [ ] **Step 3: RED/GREEN for event anchors**
+- [ ] **Step 4: RED/GREEN for event anchors**
 
 Assert emitted events include `anchor`, `kind`, and `source_record`.
 
-- [ ] **Step 4: RED/GREEN for message/tool event coverage**
+- [ ] **Step 5: RED/GREEN for message/tool event coverage**
 
 Add tests for:
 
@@ -268,26 +286,23 @@ Add tests for:
 - `tool_result` event;
 - top-level `toolUseResult` event.
 
-- [ ] **Step 5: RED/GREEN for tool output compaction**
+- [ ] **Step 6: RED/GREEN for sub-anchor format**
+
+Assert at least one content-block-derived event uses an anchor like `record:<n>/block:<m>` while preserving the `record:<n>` prefix.
+
+- [ ] **Step 7: RED/GREEN for tool output compaction**
 
 Use a bulky tool result fixture. Assert ledger records `output_bytes` and selected `key_lines`, while model context does not contain the full output.
 
-- [ ] **Step 6: RED/GREEN for file/error/command events**
+- [ ] **Step 8: RED/GREEN for file/error/command events**
 
 Assert observable file paths, Bash commands, failed tool results, and error-like output create typed facts.
 
-- [ ] **Step 7: RED/GREEN for compressor version rules as constants**
+- [ ] **Step 9: RED/GREEN for compressor version rules**
 
-Expose constants:
+Assert tests or docs in this module name the version bump rules from the spec: major for schema changes, minor for retained-event coverage or compaction-rule changes, patch for behavior-preserving fixes.
 
-```ts
-export const COMPRESSOR_STRATEGY = "claude-jsonl-v1";
-export const COMPRESSOR_VERSION = "1.0.0";
-```
-
-Assert metadata uses them.
-
-- [ ] **Step 8: Task gate and commit**
+- [ ] **Step 10: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -300,23 +315,27 @@ Commit: `session-digest: compile local session ledger`
 - Modify: `session-digest/src/ledger.ts`
 - Modify/Test: `session-digest/tests/ledger.test.ts`
 
-- [ ] **Step 1: RED for model context byte count**
+- [ ] **Step 1: Add compile-only model-context serializer stub**
+
+Add an exported `serializeModelContext` placeholder if it does not already exist. This step exists only to keep imports compiling.
+
+- [ ] **Step 2: RED for model context byte count**
 
 Assert `model_context.bytes` equals the UTF-8 byte length of serialized `model_context`, excluding synthesis instructions.
 
-- [ ] **Step 2: GREEN for stable serialization**
+- [ ] **Step 3: GREEN for stable serialization**
 
 Implement a deterministic serializer helper, for example `serializeModelContext(modelContext): string`, and compute bytes from that string.
 
-- [ ] **Step 3: RED/GREEN for `250,000` budget overflow**
+- [ ] **Step 4: RED/GREEN for `250,000` budget overflow**
 
 Add fixture or generated events that compile over budget. Assert compiler/CLI-facing function throws `model context budget exceeded` before model call.
 
-- [ ] **Step 4: RED/GREEN for no silent truncation**
+- [ ] **Step 5: RED/GREEN for no silent truncation**
 
 Assert overflow does not return a shortened context.
 
-- [ ] **Step 5: Task gate and commit**
+- [ ] **Step 6: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -335,23 +354,27 @@ Commit: `session-digest: bound model context`
 - Modify/Test: `session-digest/tests/output.test.ts`
 - Create/Test: `session-digest/tests/artifacts.test.ts`
 
-- [ ] **Step 1: RED for shared timestamp artifact paths**
+- [ ] **Step 1: Create compile-only artifacts skeleton**
+
+Create `session-digest/src/artifacts.ts` with placeholder exports for `computeArtifactPaths` and collision checking. This step exists only to keep imports compiling.
+
+- [ ] **Step 2: RED for shared timestamp artifact paths**
 
 Assert digest and ledger paths share the same UTC second timestamp and extensions `.digest.md` / `.ledger.json`.
 
-- [ ] **Step 2: GREEN for artifact path helper**
+- [ ] **Step 3: GREEN for artifact path helper**
 
 Implement `computeArtifactPaths(inputPath, nowUtc, baseDir)` returning both paths.
 
-- [ ] **Step 3: RED/GREEN for millisecond `generated_at`**
+- [ ] **Step 4: RED/GREEN for millisecond `generated_at`**
 
 Update output formatting to keep millisecond precision, e.g. `2026-04-27T00:00:00.000Z`.
 
-- [ ] **Step 4: RED/GREEN for collision fail-fast**
+- [ ] **Step 5: RED/GREEN for collision fail-fast**
 
 Assert if either target path exists, no artifact is written and the CLI exits non-zero.
 
-- [ ] **Step 5: Task gate and commit**
+- [ ] **Step 6: Task gate and commit**
 
 Run full session-digest test and build gates.
 
@@ -430,10 +453,13 @@ Commit: `session-digest: emit v2 digest metadata`
 
 - Create: `session-digest/src/synthesis.ts`
 - Create/Test: `session-digest/tests/synthesis.test.ts`
-- Modify: `session-digest/src/agents.ts` or split `defaultChatModel` into `session-digest/src/model.ts`
 - Modify: `session-digest/tests/agents-fake.test.ts` only as an intermediate step before deletion
 
-- [ ] **Step 1: RED for fake synthesis client**
+- [ ] **Step 1: Create compile-only synthesis skeleton**
+
+Create `session-digest/src/synthesis.ts` with placeholder exported types and a stub `synthesizeDigest` function. This step exists only to keep imports compiling.
+
+- [ ] **Step 2: RED for fake synthesis client**
 
 Define a minimal model seam:
 
@@ -445,25 +471,21 @@ export type DigestModel = {
 
 Add a test that a deterministic fake receives serialized model context and returns six sections.
 
-- [ ] **Step 2: GREEN for synthesis module**
+- [ ] **Step 3: GREEN for synthesis module**
 
 Implement `synthesizeDigest({ model, modelContext }): Promise<Record<SectionName, string>>`.
 
-- [ ] **Step 3: RED/GREEN for raw JSONL not sent**
+- [ ] **Step 4: RED/GREEN for raw JSONL not sent**
 
 Assert model input does not contain raw JSONL fixture text or V1 flattened transcript shape.
 
-- [ ] **Step 4: RED/GREEN for evidence anchors**
+- [ ] **Step 5: RED/GREEN for evidence anchors**
 
 Fake model returns evidence notes with `record:<n>` anchors; assert digest includes them.
 
-- [ ] **Step 5: RED/GREEN for model failure contract**
+- [ ] **Step 6: RED/GREEN for model failure contract**
 
 Assert a synthesis failure after ledger creation reports the ledger path and writes no digest.
-
-- [ ] **Step 6: Move reusable model construction**
-
-Move `defaultChatModel`, proxy fetch helper, and config-to-ChatOpenAI construction out of `agents.ts` into `model.ts` or `synthesis.ts`.
 
 - [ ] **Step 7: Task gate and commit**
 
@@ -471,7 +493,30 @@ Run full session-digest test and build gates.
 
 Commit: `session-digest: synthesize digest from bounded context`
 
-### Task 10: Retire Deep Agents path
+### Task 10: Extract chat-model factory
+
+**Files:**
+
+- Create: `session-digest/src/model.ts`
+- Create/Test: `session-digest/tests/model.test.ts`
+- Modify: `session-digest/src/agents.ts`
+- Modify: `session-digest/tests/agents-fake.test.ts`
+
+- [ ] **Step 1: RED for model factory import**
+
+Add tests around `defaultChatModel` and shell proxy behavior through `session-digest/src/model.ts`.
+
+- [ ] **Step 2: GREEN for model factory extraction**
+
+Move `defaultChatModel`, proxy fetch helper, and config-to-ChatOpenAI construction from `agents.ts` into `model.ts`. Keep behavior unchanged.
+
+- [ ] **Step 3: Task gate and commit**
+
+Run full session-digest test and build gates.
+
+Commit: `session-digest: extract chat model factory`
+
+### Task 11: Retire Deep Agents path
 
 **Files:**
 
@@ -505,7 +550,7 @@ Commit: `session-digest: remove deep agents v1 path`
 
 ## Chunk 5: CLI Integration And Acceptance
 
-### Task 11: Wire V2 CLI pipeline
+### Task 12: Wire V2 CLI pipeline
 
 **Files:**
 
@@ -523,6 +568,7 @@ Test `main` with:
 - injected clock.
 
 Assert exit `0`, stdout digest path only, one ledger and one digest written.
+All test setup must pass a temporary `deps.baseDir` and remove it with `t.after`.
 
 - [ ] **Step 2: GREEN for V2 pipeline**
 
@@ -550,18 +596,26 @@ Assert argument/input/config/budget failures write no ledger and no digest.
 
 Assert ledger remains, digest does not exist, stderr includes ledger path.
 
-- [ ] **Step 5: Task gate and commit**
+- [ ] **Step 5: RED/GREEN for final digest section order**
+
+Assert generated digest Markdown contains exactly the six documented `## ` section headings in order.
+
+- [ ] **Step 6: Task gate and commit**
 
 Run full session-digest test and build gates.
 
 Commit: `session-digest: wire v2 cli pipeline`
 
-### Task 12: Final compatibility cleanup
+### Task 13: Final compatibility cleanup
 
 **Files:**
 
 - Modify: tests that still assert V1-only behavior
 - Modify: `session-digest/docs/log.md`
+- Modify: `session-digest/package.json`
+- Modify: `package-lock.json`
+- Modify: root `README.md`
+- Modify: root `docs/log.md`
 - Maybe modify: `session-digest/docs/specs/session-digest.md` only to mark it as V1/historical if needed
 
 - [ ] **Step 1: Remove or rewrite V1-only tests**
@@ -576,14 +630,26 @@ Do not delete `session-digest/docs/specs/session-digest.md`. It documents V1. On
 
 Add one concise `session-digest/docs/log.md` entry for implementation completion.
 
-- [ ] **Step 4: Final gates**
+- [ ] **Step 4: Bump package version**
+
+Bump `session-digest/package.json` from `0.0.1` to `2.0.0` and update the corresponding `package-lock.json` workspace entry. Use `npm install --package-lock-only -w session-digest` or an equivalent non-destructive npm command.
+
+- [ ] **Step 5: Update repo-level docs**
+
+Update the root `README.md` Components table row for `session-digest` so it describes the V2 local-ledger and bounded-synthesis architecture rather than Deep Agents/NVIDIA NIM. Add a concise root `docs/log.md` entry because the component role and dependency surface changed at repo scope.
+
+- [ ] **Step 6: Release manifest check**
+
+Check whether `session-digest` is listed in `release-units.config.toml`. It is not listed at plan creation time. If it remains absent, do not edit `release-units.toml`. If a later change adds it as a release unit, run `node scripts/release/generate-manifest.js` and commit any manifest update.
+
+- [ ] **Step 7: Final gates**
 
 Run:
 
 - `./scripts/run_silent.sh "tests" npm test -w session-digest`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit -p session-digest`
 
-- [ ] **Step 5: Manual acceptance run**
+- [ ] **Step 8: Manual acceptance run**
 
 Run the CLI against a real Claude Code session larger than `1 MB` using configured Nomos credentials. Confirm:
 
@@ -593,7 +659,7 @@ Run the CLI against a real Claude Code session larger than `1 MB` using configur
 - raw JSONL is not copied;
 - digest front matter points to the ledger.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 9: Commit**
 
 Commit: `session-digest: complete v2 ledger pipeline`
 
