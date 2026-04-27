@@ -17,3 +17,10 @@ test("staging compose should default Nomos JSON body limit to 1mb", () => {
 
   assert.match(compose, /NOMOS_JSON_BODY_LIMIT: \$\{NOMOS_JSON_BODY_LIMIT:-1mb\}/);
 });
+
+test("production compose should bind the persistent data directory", () => {
+  const compose = readCompose("../docker-compose.yml");
+
+  assert.match(compose, /- \.\/data:\/app\/data/);
+  assert.doesNotMatch(compose, /- nomos-data:\/app\/data/);
+});

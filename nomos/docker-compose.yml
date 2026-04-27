@@ -7,7 +7,7 @@ services:
     environment:
       NOMOS_JSON_BODY_LIMIT: ${NOMOS_JSON_BODY_LIMIT:-1mb}
     volumes:
-      - nomos-data:/app/data
+      - ./data:/app/data
     expose:
       - "8080"
     labels:
@@ -32,6 +32,5 @@ services:
       com.logging.service: caddy
 
 volumes:
-  nomos-data:
   caddy-data:
   caddy-config:
