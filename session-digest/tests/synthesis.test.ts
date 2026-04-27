@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { ModelContext } from "../src/ledger.js";
 import { SECTION_NAMES } from "../src/sections.js";
-import { synthesizeDigest, type DigestModel } from "../src/synthesis.js";
+import { SynthesisError, synthesizeDigest, type DigestModel } from "../src/synthesis.js";
 
 test("test_synthesizeDigest_shouldSendSerializedModelContextAndReturnSixSections_onFakeModel", async () => {
   const model = new FakeDigestModel(sectionEnvelope());
@@ -28,6 +28,54 @@ test("test_synthesizeDigest_shouldPreserveEvidenceAnchorText_onModelOutput", asy
   const sections = await synthesizeDigest({ model, modelContext: makeModelContext() });
 
   assert.equal(sections["Evidence notes"], "Claim is backed by record:1.");
+});
+
+test("test_synthesizeDigest_shouldSendExactSectionSchema_onFakeModel", async () => {
+  const model = new FakeDigestModel(sectionEnvelope());
+
+  await synthesizeDigest({ model, modelContext: makeModelContext() });
+
+  assert.equal(SECTION_NAMES.every(($0) => String(model.inputs[0]).includes(`"${$0}"`)), true);
+});
+
+test("test_synthesizeDigest_shouldThrowSynthesisError_onWrongSectionKeys", async () => {
+  const model = new FakeDigestModel(JSON.stringify({ sections: { summary: "summary body" } }));
+
+  await assert.rejects(
+    () => synthesizeDigest({ model, modelContext: makeModelContext() }),
+    (error: unknown) => error instanceof SynthesisError && /Missing digest section: Session summary/.test(error.message),
+  );
+});
+
+test("test_synthesizeDigest_shouldThrowSynthesisError_onMissingSection", async () => {
+  const sections = Object.fromEntries(SECTION_NAMES.map(($0) => [$0, `${$0} body`]));
+  delete sections.Outcome;
+  const model = new FakeDigestModel(JSON.stringify({ sections }));
+
+  await assert.rejects(
+    () => synthesizeDigest({ model, modelContext: makeModelContext() }),
+    (error: unknown) => error instanceof SynthesisError && /Missing digest section: Outcome/.test(error.message),
+  );
+});
+
+test("test_synthesizeDigest_shouldThrowSynthesisError_onBlankSection", async () => {
+  const model = new FakeDigestModel(sectionEnvelope({ Outcome: " " }));
+
+  await assert.rejects(
+    () => synthesizeDigest({ model, modelContext: makeModelContext() }),
+    (error: unknown) => error instanceof SynthesisError && /Blank digest section: Outcome/.test(error.message),
+  );
+});
+
+test("test_synthesizeDigest_shouldThrowSynthesisError_onUnknownSection", async () => {
+  const parsed = JSON.parse(sectionEnvelope()) as { sections: Record<string, string> };
+  parsed.sections.summary = "summary body";
+  const model = new FakeDigestModel(JSON.stringify(parsed));
+
+  await assert.rejects(
+    () => synthesizeDigest({ model, modelContext: makeModelContext() }),
+    (error: unknown) => error instanceof SynthesisError && /Unknown digest section: summary/.test(error.message),
+  );
 });
 
 test("test_synthesizeDigest_shouldThrowSynthesisError_onModelFailure", async () => {

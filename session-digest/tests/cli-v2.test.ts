@@ -110,6 +110,39 @@ test("test_main_shouldLeaveLedgerAndWriteNoDigest_onModelFailure", async (t) => 
   });
 });
 
+test("test_main_shouldLeaveLedgerAndWriteNoDigest_onModelSchemaFailure", async (t) => {
+  const { baseDir, tempDir } = await makeBaseDir();
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const now = new Date("2026-04-26T01:02:03.000Z");
+  const paths = computeArtifactPaths(validSessionPath, now, baseDir);
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+
+  const exitCode = await main([validSessionPath], stdout, stderr, {
+    baseDir,
+    clock: () => now,
+    model: {
+      invoke: async () => ({ content: JSON.stringify({ sections: { summary: "summary body" } }) }),
+    },
+  });
+
+  assert.deepEqual({
+    digestExists: await exists(paths.digestPath),
+    exitCode,
+    ledgerExists: await exists(paths.ledgerPath),
+    stderrMentionsLedger: stderr.toString().includes(paths.ledgerPath),
+    stderrMentionsMissingSection: stderr.toString().includes("Missing digest section: Session summary"),
+    stdout: stdout.toString(),
+  }, {
+    digestExists: false,
+    exitCode: 1,
+    ledgerExists: true,
+    stderrMentionsLedger: true,
+    stderrMentionsMissingSection: true,
+    stdout: "",
+  });
+});
+
 test("test_main_shouldWriteDigestSectionsInDocumentedOrder_onSuccess", async (t) => {
   const { baseDir, tempDir } = await makeBaseDir();
   t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
