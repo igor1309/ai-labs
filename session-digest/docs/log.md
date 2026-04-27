@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Accepted ADR-004 to split home-scoped non-secret `settings.env` from credential `.env`, keep settings independent of cwd, and lock ledger-only mode as the next local-ergonomics direction.
 - Added `--ledger-only` mode so sessions can be compiled into derived ledger artifacts without provider configuration or model synthesis.
 - Retained structured tool-call identity in V2 ledgers so skill invocations and tool-result relationships no longer require text scraping.
 - Moved digest section ownership into YAML configuration and added `SESSION_DIGEST_SCHEMA_PATH` so runs can use a custom digest schema while recording schema path/version in digest front matter.
