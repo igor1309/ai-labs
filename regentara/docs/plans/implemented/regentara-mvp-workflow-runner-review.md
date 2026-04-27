@@ -8,6 +8,22 @@ description: "Code review of the Regentara MVP workflow runner implementation ag
 
 Scope: changed/added code on `codex/regentara-mvp-workflow-runner` vs `trunk`. Tests pass (`./scripts/run_silent.sh "regentara-tests" node --test regentara/tests/*.test.js` → ok).
 
+## Resolved Review Items
+
+Resolved in `f49a7afd` (`address regentara workflow review`):
+
+- Item 1: unsupported review policy decisions now throw `RuntimeFailure`, so post-run failures mark metadata as failed.
+- Item 2: artifact existence now defaults to checking paths under the current run directory.
+- Item 3: built-in output schema refs now require `artifact`, `verdict`, and `task` for Producer, Reviewer, and Remediator outputs.
+- Item 4: catch-path runtime failure results now include `runId` and `runDirectory` after run creation.
+- Item 5: provider CLI availability now scans `PATH` directly instead of shelling through `command -v`.
+- Item 6: empty failure results now use `unknown failure` instead of the scaffold placeholder.
+- Item 7: `createRun` snapshots one timestamp for both run ID and `startedAt`.
+- Item 8: CLI main-module detection now compares against `pathToFileURL(process.argv[1]).href`.
+- Item 9: MVP provider invocation limits are documented as requiring a follow-up ADR before end-to-end runner use.
+- Item 10: production composition no longer creates the default fail-stub `ReviewFixPolicy`; callers must inject one.
+- Item 11: runtime output validation now falls back to raw stdout, not the truncated stdout reference.
+
 ## Major findings
 
 ### 1. Bad policy decision is mis-classified as startup failure — leaves run in `running` state
