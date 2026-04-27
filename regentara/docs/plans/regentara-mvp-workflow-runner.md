@@ -183,18 +183,18 @@ Regentara is a release unit in the MVP. After adding `regentara` to `release-uni
 
 **Key Work Items:**
 
-- [ ] Verify current Node/npm versions and dependency state with `node --version`, `npm --version`, and `npm ls js-yaml ajv`.
-- [ ] Add `regentara/package.json` with `"type": "module"`, `"version": "0.0.1"`, `"engines": { "node": ">=20" }`, a `bin` entry, and direct dependencies on `js-yaml` and `ajv`.
-- [ ] Run `npm install` to update the root lockfile.
-- [ ] Inspect installed APIs before implementation: `node -e "import yaml from 'js-yaml'; import Ajv from 'ajv'; console.log(typeof yaml.load, typeof Ajv)"`.
-- [ ] Add minimal exported skeletons for all public modules. Skeletons must compile but return deliberately incomplete results such as `{ status: "failed", exitCode: 1, failureReason: "not implemented" }`.
-- [ ] Add `regentara/tests/smoke.test.js` with one assertion that the package exports `runWorkflow`.
-- [ ] Add `regentara` to the root workspace list and root `npm test` glob.
-- [ ] Add Regentara to the root `README.md` Components table as a product or CLI release unit.
-- [ ] Add `regentara` to `release-units.config.toml` and regenerate `release-units.toml`.
-- [ ] Add `.github/workflows/regentara-core.yml`, modeled on `corpus-scout-core.yml` without unrelated dependencies.
-- [ ] Wire `regentara` path filters and jobs into `.github/workflows/ci.yml`.
-- [ ] Update `regentara/docs/log.md`.
+- [x] Verify current Node/npm versions and dependency state with `node --version`, `npm --version`, and `npm ls js-yaml ajv`.
+- [x] Add `regentara/package.json` with `"type": "module"`, `"version": "0.0.1"`, `"engines": { "node": ">=20" }`, a `bin` entry, and direct dependencies on `js-yaml` and `ajv`.
+- [x] Run `npm install` to update the root lockfile.
+- [x] Inspect installed APIs before implementation: `node -e "import yaml from 'js-yaml'; import Ajv from 'ajv'; console.log(typeof yaml.load, typeof Ajv)"`.
+- [x] Add minimal exported skeletons for all public modules. Skeletons must compile but return deliberately incomplete results such as `{ status: "failed", exitCode: 1, failureReason: "not implemented" }`.
+- [x] Add `regentara/tests/smoke.test.js` with one assertion that the package exports `runWorkflow`.
+- [x] Add `regentara` to the root workspace list and root `npm test` glob.
+- [x] Add Regentara to the root `README.md` Components table as a product or CLI release unit.
+- [x] Add `regentara` to `release-units.config.toml` and regenerate `release-units.toml`.
+- [x] Add `.github/workflows/regentara-core.yml`, modeled on `corpus-scout-core.yml` without unrelated dependencies.
+- [x] Wire `regentara` path filters and jobs into `.github/workflows/ci.yml`.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 

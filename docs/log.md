@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- regentara: scaffolded as a Node ESM workspace package and release unit; LOC dashboard tests now treat it as an implemented code component instead of docs-only.
 - Release pipeline: ensure Nomos tag deploys upload and promote the production Compose file, so production receives Compose-level deployment defaults.
 - Nomos: clarify 413 JSON body-limit errors and add configurable `NOMOS_JSON_BODY_LIMIT` for large prompt payloads. See `nomos/docs/log.md`.
 - session-digest: replaced the Deep Agents prototype role with a V2 local-ledger and bounded-synthesis CLI, including dependency cleanup and component documentation updates.
