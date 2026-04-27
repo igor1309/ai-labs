@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Clarified accepted ADR-003 with the required executive summary, explicit invariants, persisted derived ledger policy, compressor strategy identity, and overflow-handling requirement.
 - Accepted ADR-003 as the V2 architecture direction: local Claude JSONL ledger compilation, semantic compression, and bounded model synthesis.
 - Proposed ADR-003 to replace the V1 full-session Deep Agents path with local Claude JSONL ledger compilation and bounded model synthesis.
 - Noted that local ledgers become essential artifact boundaries once semantic compression is used, so derived digests need compressor strategy/version metadata for reproducibility.
