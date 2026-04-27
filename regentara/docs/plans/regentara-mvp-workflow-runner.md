@@ -6,13 +6,13 @@ description: "Implementation plan: Regentara MVP workflow runner from accepted s
 
 # Regentara MVP Workflow Runner Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use `superpowers:executing-plans` to implement this plan task-by-task. Use `strict-tdd` and `process-gates` for every code, config, CI, dependency, release, or generated-artifact change. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Follow this plan task-by-task. Use `dev-skills/public/strict-tdd` and `dev-skills/public/process-gates` for every code, config, CI, dependency, release, or generated-artifact change. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement the Regentara MVP workflow runner described by `regentara/docs/specs/mvp-workflow-runner.md`, preserving the accepted ADR invariants for settings, model routing, provider CLI boundaries, run artifacts, fail-fast behavior, and the `ReviewFixPolicy` seam.
 
 **Architecture:** Build Regentara as a Node.js ESM workspace package under `regentara/`, following the existing root Node test/build gates. Keep the Orchestrator as the sequencing client that owns `ReviewFixPolicy`, with settings resolution, model routing, provider CLI execution, run storage, artifact mutation rules, and runtime output validation in focused modules that can be tested independently.
 
-**Tech Stack:** Node.js ESM, `node:test`, `node:assert/strict`, `node:fs/promises`, `node:child_process`, `js-yaml`, `ajv`, root npm workspace tooling.
+**Tech Stack:** Node.js >= 20.x, Node.js ESM, `node:test`, `node:assert/strict`, `node:fs/promises`, `node:child_process`, `js-yaml`, `ajv`, root npm workspace tooling.
 
 ---
 
@@ -44,6 +44,12 @@ Expected worktree: `worktrees/regentara-mvp-workflow-runner`
 Expected branch: `codex/regentara-mvp-workflow-runner`
 Preflight check: [ ] done
 
+Step 0:
+
+```bash
+git worktree add worktrees/regentara-mvp-workflow-runner -b codex/regentara-mvp-workflow-runner trunk
+```
+
 Before Step 1:
 
 1. Run `git worktree list --porcelain`.
@@ -69,7 +75,7 @@ Before Step 1:
 |---|---|---|
 | ADR-001 Agent Settings | local-then-global `agents.yaml`, no merge/fallback, known agent inventory, required fields, prompt/output validation, runtime JSON Schema validation | Tasks 2, 5 |
 | ADR-002 Model Routing | local-then-global `models.yaml`, exact route keys, provider/runner/model validation, supported combinations only | Task 3 |
-| ADR-003 CLI Execution Boundary | required CLI availability before run creation, headless subprocesses, invocation cwd, non-zero exit is failure, no Git/build/test/runtime management | Tasks 4, 6 |
+| ADR-003 CLI Execution Boundary | required CLI availability before run creation, headless subprocesses, invocation cwd, non-zero exit is failure, no Git/build/test/runtime management | Tasks 4, 5 |
 | ADR-004 Run Artifacts | global `~/.regentara/runs/<run-id>/`, UTC run ID, immutable authored artifacts, limited mutable metadata | Task 4 |
 | ADR-005 Failure Policy | startup failures create no run, runtime failures fail fast, preserve existing artifacts, no retries, no timeout, interruption semantics | Tasks 4, 6, 8 |
 | ADR-006 ReviewFixPolicy Seam | injected policy owned by Orchestrator module, exactly one policy instance, one decision per review, opaque session threading, no verdict adjudication in Orchestrator | Task 7 |
@@ -86,7 +92,8 @@ Create:
 - `regentara/src/settings/agent-settings.js` — `agents.yaml` discovery, parsing, and validation.
 - `regentara/src/settings/model-routing.js` — `models.yaml` discovery, parsing, and validation.
 - `regentara/src/settings/paths.js` — local/global settings path helpers.
-- `regentara/src/provider-cli-executor.js` — provider CLI availability checks and headless subprocess boundary.
+- `regentara/src/provider-cli-availability.js` — provider CLI availability checks before run creation.
+- `regentara/src/provider-cli-executor.js` — headless provider CLI subprocess boundary.
 - `regentara/src/runtime-output.js` — JSON parsing and JSON Schema validation.
 - `regentara/src/run-store.js` — run ID generation, run directory creation, and run metadata mutations.
 - `regentara/src/artifact-store.js` — authored artifact creation and overwrite rejection.
@@ -100,7 +107,8 @@ Modify:
 - `package.json` — add `regentara` workspace and root test glob.
 - `package-lock.json` — add Regentara workspace and direct dependencies.
 - `README.md` — add Regentara to `## Components`.
-- `release-units.config.toml` — add `regentara` if it ships as a release unit.
+- `release-units.config.toml` — add `regentara` as a release unit.
+- `release-units.toml` — regenerate after adding `regentara` to release discovery.
 - `.github/workflows/ci.yml` — add Regentara path filter, job, report dependency, and notification dependency.
 - `regentara/docs/log.md` — record meaningful implementation progress.
 - `regentara/docs/plans/regentara-mvp-workflow-runner.md` — update checkboxes only after verified evidence.
@@ -141,7 +149,7 @@ node scripts/release/generate-manifest.js --check
 node scripts/release/validate-manifest.js
 ```
 
-If adding `regentara` to `release-units.config.toml`, first regenerate `release-units.toml`, then run the release checks above.
+Regentara is a release unit in the MVP. After adding `regentara` to `release-units.config.toml`, regenerate `release-units.toml`, then run the release checks above.
 
 ## Task 1: Scaffold Regentara Workspace Package
 
@@ -157,6 +165,7 @@ If adding `regentara` to `release-units.config.toml`, first regenerate `release-
 - Create: `regentara/src/settings/agent-settings.js`
 - Create: `regentara/src/settings/model-routing.js`
 - Create: `regentara/src/settings/paths.js`
+- Create: `regentara/src/provider-cli-availability.js`
 - Create: `regentara/src/provider-cli-executor.js`
 - Create: `regentara/src/runtime-output.js`
 - Create: `regentara/src/run-store.js`
@@ -168,20 +177,21 @@ If adding `regentara` to `release-units.config.toml`, first regenerate `release-
 - Modify: `package-lock.json`
 - Modify: `README.md`
 - Modify: `release-units.config.toml`
+- Modify: `release-units.toml`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `regentara/docs/log.md`
 
 **Key Work Items:**
 
 - [ ] Verify current Node/npm versions and dependency state with `node --version`, `npm --version`, and `npm ls js-yaml ajv`.
-- [ ] Add `regentara/package.json` with `"type": "module"`, `"version": "0.0.1"`, a `bin` entry, and direct dependencies on `js-yaml` and `ajv`.
+- [ ] Add `regentara/package.json` with `"type": "module"`, `"version": "0.0.1"`, `"engines": { "node": ">=20" }`, a `bin` entry, and direct dependencies on `js-yaml` and `ajv`.
 - [ ] Run `npm install` to update the root lockfile.
 - [ ] Inspect installed APIs before implementation: `node -e "import yaml from 'js-yaml'; import Ajv from 'ajv'; console.log(typeof yaml.load, typeof Ajv)"`.
 - [ ] Add minimal exported skeletons for all public modules. Skeletons must compile but return deliberately incomplete results such as `{ status: "failed", exitCode: 1, failureReason: "not implemented" }`.
 - [ ] Add `regentara/tests/smoke.test.js` with one assertion that the package exports `runWorkflow`.
 - [ ] Add `regentara` to the root workspace list and root `npm test` glob.
 - [ ] Add Regentara to the root `README.md` Components table as a product or CLI release unit.
-- [ ] Add `regentara` to `release-units.config.toml` and regenerate `release-units.toml` if Regentara is intended to ship independently.
+- [ ] Add `regentara` to `release-units.config.toml` and regenerate `release-units.toml`.
 - [ ] Add `.github/workflows/regentara-core.yml`, modeled on `corpus-scout-core.yml` without unrelated dependencies.
 - [ ] Wire `regentara` path filters and jobs into `.github/workflows/ci.yml`.
 - [ ] Update `regentara/docs/log.md`.
@@ -197,12 +207,12 @@ node scripts/release/generate-manifest.js --check
 node scripts/release/validate-manifest.js
 ```
 
-**Completion Signal:** Regentara is a workspace package with compiling public skeletons, package metadata, CI routing, release metadata when applicable, and a passing smoke test.
+**Completion Signal:** Regentara is a workspace package with compiling public skeletons, package metadata, CI routing, release metadata, and a passing smoke test.
 
 **Commit:**
 
 ```bash
-git add .github/workflows/ci.yml .github/workflows/regentara-core.yml README.md package.json package-lock.json release-units.config.toml release-units.toml regentara
+git add .github/workflows/ci.yml .github/workflows/regentara-core.yml README.md package.json package-lock.json release-units.config.toml release-units.toml regentara/package.json regentara/README.md regentara/src regentara/tests regentara/docs/log.md regentara/docs/plans/regentara-mvp-workflow-runner.md
 git commit -m "scaffold regentara workspace package"
 ```
 
@@ -294,7 +304,7 @@ git commit -m "validate regentara model routing"
 
 - Modify: `regentara/src/run-store.js`
 - Modify: `regentara/src/artifact-store.js`
-- Modify: `regentara/src/provider-cli-executor.js`
+- Modify: `regentara/src/provider-cli-availability.js`
 - Modify: `regentara/src/orchestrator.js`
 - Create: `regentara/tests/run-store.test.js`
 - Create: `regentara/tests/artifact-store.test.js`
@@ -327,7 +337,7 @@ git commit -m "validate regentara model routing"
 **Commit:**
 
 ```bash
-git add regentara/src/run-store.js regentara/src/artifact-store.js regentara/src/provider-cli-executor.js regentara/src/orchestrator.js regentara/tests regentara/docs/log.md regentara/docs/plans/regentara-mvp-workflow-runner.md
+git add regentara/src/run-store.js regentara/src/artifact-store.js regentara/src/provider-cli-availability.js regentara/src/orchestrator.js regentara/tests regentara/docs/log.md regentara/docs/plans/regentara-mvp-workflow-runner.md
 git commit -m "create validated regentara runs"
 ```
 
@@ -451,7 +461,7 @@ git commit -m "sequence regentara workflow through review policy"
 
 ## Task 8: Fail-Fast Runtime Failure and Interruption Behavior
 
-**Objective:** Implement ADR-005 runtime failure behavior and spec tests 48-56.
+**Objective:** Implement ADR-005 runtime failure behavior and spec tests 48-53 and 55-56.
 
 **Files:**
 
@@ -480,7 +490,7 @@ git commit -m "sequence regentara workflow through review policy"
 ./scripts/run_silent.sh "regentara-tests" node --test regentara/tests/*.test.js
 ```
 
-**Completion Signal:** Spec tests 48-56 pass with clean startup-vs-runtime failure separation.
+**Completion Signal:** Spec tests 48-53 and 55-56 pass with clean startup-vs-runtime failure separation.
 
 **Commit:**
 
@@ -549,7 +559,7 @@ Closeout steps:
 - [ ] Confirm every spec test 1-56 is represented by a passing test.
 - [ ] Confirm ADR traceability matrix remains accurate.
 - [ ] Confirm `README.md` Components table is current.
-- [ ] Confirm `release-units.config.toml` and `release-units.toml` are aligned if Regentara is a release unit.
+- [ ] Confirm `release-units.config.toml` and `release-units.toml` include Regentara and are aligned.
 - [ ] Confirm `.github/workflows/ci.yml` includes Regentara in changes, report, and notifications.
 - [ ] Confirm `regentara/docs/log.md` has a concise outcome-focused entry.
 - [ ] Move this plan to `regentara/docs/plans/implemented/`.
