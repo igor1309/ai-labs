@@ -8,6 +8,14 @@ Regentara is an MVP workflow runner that orchestrates provider CLI agents throug
 - Regentara does not manage credentials, authentication state, sessions, worktrees, branches, commits, pull requests, builds, tests, formatting, dependency installation, sandboxing, permissions, cleanup, retries, or subprocess timeouts.
 - Runtime settings are read from `.regentara/agents.yaml` and `.regentara/models.yaml` in the invocation working directory before falling back to `~/.regentara/`.
 
+## CLI
+
+```bash
+regentara --task "implement the accepted task" --working-directory /path/to/project
+```
+
+`--working-directory` selects where provider CLIs are invoked. It does not cause Regentara to create, clean, or manage that workspace.
+
 ## MVP Status
 
 The package scaffold is present so behavior can be added behind compiling module boundaries.

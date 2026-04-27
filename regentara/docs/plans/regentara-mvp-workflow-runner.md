@@ -514,11 +514,11 @@ git commit -m "fail fast in regentara workflow runs"
 
 **Key Work Items:**
 
-- [ ] Add tests for concise startup-validation failure output and non-zero exit behavior.
-- [ ] Add tests for successful composition using injected fakes where provider CLIs are not actually invoked.
-- [ ] Keep real provider credentials and sessions outside Regentara.
-- [ ] Document supported MVP settings file shapes and runner boundaries in `regentara/README.md`.
-- [ ] Confirm CLI code does not run build, test, format, Git, branch, commit, PR, worktree, cleanup, sandbox, or permission-management commands.
+- [x] Add tests for concise startup-validation failure output and non-zero exit behavior.
+- [x] Add tests for successful composition using injected fakes where provider CLIs are not actually invoked.
+- [x] Keep real provider credentials and sessions outside Regentara.
+- [x] Document supported MVP settings file shapes and runner boundaries in `regentara/README.md`.
+- [x] Confirm CLI code does not run build, test, format, Git, branch, commit, PR, worktree, cleanup, sandbox, or permission-management commands.
 
 **Validation:**
 
