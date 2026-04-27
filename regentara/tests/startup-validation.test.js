@@ -17,7 +17,7 @@ test("runWorkflow should fail before creating a run when a required provider CLI
 
   const result = await runWorkflow({
     homeDirectory: workspace.homeDirectory,
-    reviewFixPolicy: {},
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     workingDirectory: workspace.workingDirectory,
   }, {
     commandExists: async () => false,
@@ -39,7 +39,7 @@ test("runWorkflow should create a run after startup validation passes", async ()
 
   const result = await runWorkflow({
     homeDirectory: workspace.homeDirectory,
-    reviewFixPolicy: {},
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     workingDirectory: workspace.workingDirectory,
   }, {
     commandExists: async () => true,

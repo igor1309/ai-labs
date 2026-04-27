@@ -52,7 +52,7 @@ test("runWorkflow should not call the next workflow step after invalid agent out
 
   await runWorkflow({
     homeDirectory: workspace.homeDirectory,
-    reviewFixPolicy: {},
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     task: "implement",
     workingDirectory: workspace.workingDirectory,
   }, {

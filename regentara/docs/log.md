@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Implemented the Producer, Reviewer, ReviewFixPolicy, and Remediator loop with opaque policy session forwarding and policy-owned post-review routing.
 - Added runtime output parsing and JSON Schema validation so invalid agent output fails the run before later workflow steps consume it.
 - Implemented the provider CLI execution boundary with invocation cwd, model argument passing, output capture, non-zero exit failure, and no automatic timeout.
 - Added startup validation, provider CLI availability checks before run creation, global run storage, limited metadata mutation, and authored artifact overwrite rejection.

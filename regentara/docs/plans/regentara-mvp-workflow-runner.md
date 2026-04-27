@@ -429,18 +429,18 @@ git commit -m "validate regentara runtime output"
 
 **Key Work Items:**
 
-- [ ] Define `ReviewFixPolicy` in the Orchestrator module because the Orchestrator is its client.
-- [ ] Require exactly one injected policy before a run can start.
-- [ ] Write RED/GREEN tests for producer-first behavior.
-- [ ] Write RED/GREEN tests for reviewer input after producer succeeds.
-- [ ] Write RED/GREEN tests proving no subsequent agent runs before policy decision.
-- [ ] Write RED/GREEN tests for `complete-ok`, `complete-fail`, and `remediate` decisions.
-- [ ] Write RED/GREEN tests proving Remediator receives task, work/artifact references, and verdict.
-- [ ] Write RED/GREEN tests proving producer receives the remediated valid task.
-- [ ] Write RED/GREEN tests proving policy is called exactly once per completed review.
-- [ ] Write RED/GREEN tests proving returned policy session is forwarded unchanged.
-- [ ] Write RED/GREEN tests proving the Orchestrator does not branch on verdict severity or finding category.
-- [ ] Keep Producer, Reviewer, and Remediator as peer calls; do not let them invoke each other or the Orchestrator.
+- [x] Define `ReviewFixPolicy` in the Orchestrator module because the Orchestrator is its client.
+- [x] Require exactly one injected policy before a run can start.
+- [x] Write RED/GREEN tests for producer-first behavior.
+- [x] Write RED/GREEN tests for reviewer input after producer succeeds.
+- [x] Write RED/GREEN tests proving no subsequent agent runs before policy decision.
+- [x] Write RED/GREEN tests for `complete-ok`, `complete-fail`, and `remediate` decisions.
+- [x] Write RED/GREEN tests proving Remediator receives task, work/artifact references, and verdict.
+- [x] Write RED/GREEN tests proving producer receives the remediated valid task.
+- [x] Write RED/GREEN tests proving policy is called exactly once per completed review.
+- [x] Write RED/GREEN tests proving returned policy session is forwarded unchanged.
+- [x] Write RED/GREEN tests proving the Orchestrator does not branch on verdict severity or finding category.
+- [x] Keep Producer, Reviewer, and Remediator as peer calls; do not let them invoke each other or the Orchestrator.
 
 **Validation:**
 

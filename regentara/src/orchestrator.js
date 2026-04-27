@@ -16,7 +16,7 @@ export class ReviewFixPolicy {
 
 export async function runWorkflow(input = {}, dependencies = {}) {
   const reviewFixPolicy = input.reviewFixPolicy ?? dependencies.reviewFixPolicy;
-  if (!reviewFixPolicy) {
+  if (!reviewFixPolicy || typeof reviewFixPolicy.decide !== "function") {
     return failureResult(new StartupValidationFailure("ReviewFixPolicy is required"));
   }
 
@@ -35,38 +35,86 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     await validateCliAvailability(modelRouting, dependencies);
     const run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
 
-    if (executeProviderCli) {
+    if (!executeProviderCli) {
+      return {
+        agentSettings,
+        exitCode: 0,
+        modelRouting,
+        runDirectory: run.runDirectory,
+        runId: run.runId,
+        status: "succeeded",
+      };
+    }
+
+    let currentTask = input.task;
+    let policySession;
+
+    while (true) {
       const producerResult = await executeAgent({
         agentId: "producer",
         agentSettings,
         executeProviderCli,
         input: {
-          task: input.task,
+          task: currentTask,
         },
         modelRouting,
         workingDirectory,
       });
-      await executeAgent({
+      const reviewerResult = await executeAgent({
         agentId: "reviewer",
         agentSettings,
         executeProviderCli,
         input: {
           producer: producerResult,
-          task: input.task,
+          task: currentTask,
         },
         modelRouting,
         workingDirectory,
       });
-    }
+      const policyResult = await reviewFixPolicy.decide({
+        session: policySession,
+        verdict: reviewerResult,
+      });
 
-    return {
-      agentSettings,
-      exitCode: 0,
-      modelRouting,
-      runDirectory: run.runDirectory,
-      runId: run.runId,
-      status: "succeeded",
-    };
+      policySession = policyResult.session;
+
+      if (policyResult.decision === "complete-ok") {
+        return {
+          exitCode: 0,
+          runDirectory: run.runDirectory,
+          runId: run.runId,
+          status: "succeeded",
+        };
+      }
+
+      if (policyResult.decision === "complete-fail") {
+        return {
+          exitCode: 1,
+          failureReason: "review policy completed with failure",
+          runDirectory: run.runDirectory,
+          runId: run.runId,
+          status: "failed",
+        };
+      }
+
+      if (policyResult.decision !== "remediate") {
+        throw new StartupValidationFailure(`unsupported review policy decision: ${policyResult.decision}`);
+      }
+
+      const remediatorResult = await executeAgent({
+        agentId: "remediator",
+        agentSettings,
+        executeProviderCli,
+        input: {
+          producer: producerResult,
+          task: currentTask,
+          verdict: reviewerResult,
+        },
+        modelRouting,
+        workingDirectory,
+      });
+      currentTask = remediatorResult.task;
+    }
   } catch (error) {
     return failureResult(error);
   }
