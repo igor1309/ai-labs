@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+v0.8.8: move production Compose promotion from staging deploy into production deploy, so production deploy directory changes only after staging passes.
 v0.8.7: align production Compose with the documented `/opt/nomos/data` bind mount so release deploys keep the existing project/token database while applying new Compose defaults.
 v0.8.6: fix Nomos release deploy promotion to upload and copy the production Compose file, ensuring production picks up Compose-level deployment defaults during tag-based releases.
 Default Nomos production and staging Compose deployments to `NOMOS_JSON_BODY_LIMIT=1mb` while preserving explicit environment overrides, so the 0.8.5 deploy raises the live request-body ceiling without manual `.env` edits.

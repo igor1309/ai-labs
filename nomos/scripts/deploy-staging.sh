@@ -8,7 +8,6 @@ cd /opt/nomos
 cp /tmp/nomos-deploy/Dockerfile .
 cp /tmp/nomos-deploy/package.json .
 cp /tmp/nomos-deploy/package-lock.json .
-cp /tmp/nomos-deploy/docker-compose.yml .
 cp /tmp/nomos-deploy/docker-compose.staging.yml .
 rm -rf src && cp -r /tmp/nomos-deploy/src .
 rm -rf scripts && cp -r /tmp/nomos-deploy/scripts .
