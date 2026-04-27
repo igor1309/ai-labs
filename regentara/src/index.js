@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { pathToFileURL } from "node:url";
+
 import { createRegentaraComposition } from "./composition.js";
 
 export async function main(options = {}) {
@@ -43,7 +45,15 @@ export function parseArguments(argv) {
   return parsed;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(importUrl, argvPath) {
+  if (typeof argvPath !== "string") {
+    return false;
+  }
+
+  return importUrl === pathToFileURL(argvPath).href;
+}
+
+if (isMainModule(import.meta.url, process.argv[1])) {
   const exitCode = await main();
   process.exitCode = exitCode;
 }

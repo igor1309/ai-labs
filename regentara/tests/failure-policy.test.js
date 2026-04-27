@@ -62,6 +62,19 @@ test("runWorkflow should fail immediately when an expected artifact is missing",
   );
 });
 
+test("runWorkflow should fail immediately when default artifact lookup cannot find an expected artifact", async () => {
+  const workspace = await makeWorkflowWorkspace();
+
+  const result = await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async () => ({ exitStatus: 0, jsonOutput: { artifact: "producer/missing.json" } }),
+  });
+
+  assert.deepEqual(
+    { failureReason: result.failureReason, status: result.status },
+    { failureReason: "expected artifact missing: producer/missing.json", status: "failed" },
+  );
+});
+
 test("runWorkflow should stop after the first runtime failure", async () => {
   const workspace = await makeWorkflowWorkspace();
   let callCount = 0;
@@ -140,6 +153,64 @@ test("runWorkflow should mark the run failed when interrupted after workflow exe
   const metadata = JSON.parse(await readFile(join(runDirectory, "metadata.json"), "utf8"));
 
   assert.equal(metadata.status, "failed");
+});
+
+test("runWorkflow should mark the run failed when review policy returns an unsupported decision", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  let runDirectory;
+
+  await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "unknown" }) },
+    task: "initial task",
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    artifactExists: async () => true,
+    commandExists: async () => true,
+    createRun: async (runOptions) => {
+      const run = await createRun(runOptions);
+      runDirectory = run.runDirectory;
+      return run;
+    },
+    executeProviderCli: async (input) => {
+      if (input.executionInput.producer) {
+        return { exitStatus: 0, jsonOutput: { verdict: "needs-fix" } };
+      }
+
+      return { exitStatus: 0, jsonOutput: { artifact: "producer/result.json" } };
+    },
+    runStoreOptions: {
+      homeDirectory: workspace.homeDirectory,
+      randomBytes: () => Buffer.from([0, 1, 2, 3, 4]),
+    },
+  });
+
+  const metadata = JSON.parse(await readFile(join(runDirectory, "metadata.json"), "utf8"));
+
+  assert.equal(metadata.status, "failed");
+});
+
+test("runWorkflow should include run context when a runtime failure occurs after run creation", async () => {
+  const workspace = await makeWorkflowWorkspace();
+
+  const result = await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async () => {
+      throw new Error("provider failed");
+    },
+  });
+
+  assert.deepEqual(
+    {
+      hasRunDirectory: typeof result.runDirectory === "string",
+      hasRunId: typeof result.runId === "string",
+      status: result.status,
+    },
+    {
+      hasRunDirectory: true,
+      hasRunId: true,
+      status: "failed",
+    },
+  );
 });
 
 async function makeWorkflowWorkspace() {

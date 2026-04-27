@@ -92,6 +92,7 @@ test("runWorkflow should not branch on verdict severity without consulting Revie
     reviewerOutput: {
       findingCategory: "critical",
       severity: "blocker",
+      verdict: "needs-fix",
     },
   });
 
@@ -126,6 +127,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
     task: "initial task",
     workingDirectory: workspace.workingDirectory,
   }, {
+    artifactExists: async () => true,
     commandExists: async () => true,
     executeProviderCli: async (input) => {
       agentInputs.push(input.executionInput);

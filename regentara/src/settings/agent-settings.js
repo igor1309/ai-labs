@@ -12,12 +12,29 @@ const SUPPORTED_PROMPT_REFS = new Set(
   REQUIRED_AGENTS.map((agent) => `regentara://prompts/${agent}`),
 );
 
-const SUPPORTED_SCHEMA_REFS = new Map(
-  REQUIRED_AGENTS.map((agent) => [
-    `regentara://schemas/${agent}-output`,
-    { type: "object" },
-  ]),
-);
+const SUPPORTED_SCHEMA_REFS = new Map([
+  [
+    "regentara://schemas/producer-output",
+    {
+      required: ["artifact"],
+      type: "object",
+    },
+  ],
+  [
+    "regentara://schemas/reviewer-output",
+    {
+      required: ["verdict"],
+      type: "object",
+    },
+  ],
+  [
+    "regentara://schemas/remediator-output",
+    {
+      required: ["task"],
+      type: "object",
+    },
+  ],
+]);
 
 export async function resolveAgentSettings(workingDirectory, options = {}) {
   const selectedPath = await firstExistingSettingsPath(

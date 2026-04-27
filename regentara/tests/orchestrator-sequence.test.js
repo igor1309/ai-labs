@@ -121,6 +121,7 @@ async function runWorkflowWithCalls(calls, options = {}) {
     task: "initial task",
     workingDirectory: workspace.workingDirectory,
   }, {
+    artifactExists: async () => true,
     commandExists: async () => true,
     executeProviderCli: async (input) => {
       calls.push(input.executionInput);

@@ -11,9 +11,10 @@ export async function createRun(options = {}) {
   const homeDirectory = options.homeDirectory ?? homedir();
   const clock = options.clock ?? (() => new Date());
   const randomBytes = options.randomBytes ?? cryptoRandomBytes;
-  const runId = createRunId({ clock, randomBytes });
+  const now = clock();
+  const runId = createRunId({ clock: () => now, randomBytes });
   const runDirectory = join(homeDirectory, ".regentara", "runs", runId);
-  const startedAt = clock().toISOString();
+  const startedAt = now.toISOString();
 
   await mkdir(runDirectory, { recursive: true });
   await writeMetadata(runDirectory, {

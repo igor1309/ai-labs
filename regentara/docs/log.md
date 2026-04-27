@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- Closed workflow-runner review gaps: runtime failures now retain run context and mark metadata failed, default artifact checks use the run directory, built-in output schemas enforce required fields, and CLI/provider helpers avoid fragile fallbacks.
 - Wired the CLI entrypoint to production composition with MVP argument parsing, concise failure output, and documented runtime boundaries.
 - Implemented fail-fast runtime failure handling, missing-artifact failure, artifact preservation, no retry/continue behavior, and interruption handling before and after run creation.
 - Implemented the Producer, Reviewer, ReviewFixPolicy, and Remediator loop with opaque policy session forwarding and policy-owned post-review routing.

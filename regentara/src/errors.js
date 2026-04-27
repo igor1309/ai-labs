@@ -14,10 +14,11 @@ export class RuntimeFailure extends Error {
   }
 }
 
-export function failureResult(error) {
+export function failureResult(error, context = {}) {
   return {
     status: "failed",
     exitCode: error?.exitCode ?? 1,
-    failureReason: error?.message ?? "not implemented",
+    failureReason: error?.message ?? "unknown failure",
+    ...context,
   };
 }

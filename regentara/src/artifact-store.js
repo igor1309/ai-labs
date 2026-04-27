@@ -1,4 +1,4 @@
-import { mkdir, open } from "node:fs/promises";
+import { access, mkdir, open } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 
 import { RuntimeFailure } from "./errors.js";
@@ -25,6 +25,19 @@ export async function createAuthoredArtifact(runDirectory, relativePath, content
   return {
     path: artifactPath,
   };
+}
+
+export async function artifactExists(runDirectory, relativePath) {
+  try {
+    await access(safeArtifactPath(runDirectory, relativePath));
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
 }
 
 function safeArtifactPath(runDirectory, relativePath) {

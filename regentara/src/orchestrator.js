@@ -1,3 +1,4 @@
+import { artifactExists as artifactExistsInRun } from "./artifact-store.js";
 import { failureResult, RuntimeFailure, StartupValidationFailure } from "./errors.js";
 import { validateProviderCliAvailability } from "./provider-cli-availability.js";
 import { createRun as createStoredRun } from "./run-store.js";
@@ -41,6 +42,8 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     await validateCliAvailability(modelRouting, dependencies);
     run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
+    const artifactExists =
+      dependencies.artifactExists ?? ((relativePath) => artifactExistsInRun(run.runDirectory, relativePath));
 
     if (dependencies.interruptAfterRunCreated) {
       throw new RuntimeFailure("workflow interrupted after start");
@@ -65,7 +68,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         agentId: "producer",
         agentSettings,
         executeProviderCli,
-        artifactExists: dependencies.artifactExists,
+        artifactExists,
         input: {
           task: currentTask,
         },
@@ -76,7 +79,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         agentId: "reviewer",
         agentSettings,
         executeProviderCli,
-        artifactExists: dependencies.artifactExists,
+        artifactExists,
         input: {
           producer: producerResult,
           task: currentTask,
@@ -111,14 +114,14 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       }
 
       if (policyResult.decision !== "remediate") {
-        throw new StartupValidationFailure(`unsupported review policy decision: ${policyResult.decision}`);
+        throw new RuntimeFailure(`unsupported review policy decision: ${policyResult.decision}`);
       }
 
       const remediatorResult = await executeAgent({
         agentId: "remediator",
         agentSettings,
         executeProviderCli,
-        artifactExists: dependencies.artifactExists,
+        artifactExists,
         input: {
           producer: producerResult,
           task: currentTask,
@@ -138,7 +141,12 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       });
     }
 
-    return failureResult(error);
+    return failureResult(error, run
+      ? {
+        runDirectory: run.runDirectory,
+        runId: run.runId,
+      }
+      : {});
   }
 }
 
@@ -162,7 +170,7 @@ async function executeAgent({
 
   const output = validateRuntimeOutput(
     agentId,
-    providerResult.jsonOutput ?? providerResult.stdoutReference,
+    providerResult.jsonOutput ?? providerResult.rawStdout,
     agent.outputSchema,
   );
 

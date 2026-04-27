@@ -30,11 +30,22 @@ test("executeProviderCli should capture exit status output references runner ref
   assert.deepEqual(result, {
     exitStatus: 0,
     jsonOutput: { artifact: "producer/result.json" },
+    rawStdout: "{\"artifact\":\"producer/result.json\"}",
     runnerReference: "runner-123",
     sessionReference: "session-123",
     stderrReference: "warning",
     stdoutReference: "{\"artifact\":\"producer/result.json\"}",
   });
+});
+
+test("executeProviderCli should preserve raw stdout for invalid JSON output validation", async () => {
+  const result = await executeProviderCli(makeInput(), {
+    spawnProvider: async () => makeExecutionResult({
+      stdout: "not json",
+    }),
+  });
+
+  assert.equal(result.rawStdout, "not json");
 });
 
 test("executeProviderCli should treat non-zero exit status as runtime failure", async () => {

@@ -73,3 +73,23 @@ test("createRun should write running metadata without progress fields", async ()
 
   assert.equal(metadata.includes("currentStep"), false);
 });
+
+test("createRun should use the same timestamp for run id and started metadata", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const dates = [
+    new Date("2026-04-27T09:08:07.000Z"),
+    new Date("2026-04-27T09:08:08.000Z"),
+  ];
+  const run = await createRun({
+    clock: () => dates.shift(),
+    homeDirectory: workspace.homeDirectory,
+    randomBytes: () => Buffer.from([0, 1, 2, 3, 4]),
+  });
+
+  const metadata = await readRunMetadata(run.runDirectory);
+
+  assert.deepEqual(
+    { runIdTimestamp: run.runId.slice(0, 16), startedAt: metadata.startedAt },
+    { runIdTimestamp: "20260427T090807Z", startedAt: "2026-04-27T09:08:07.000Z" },
+  );
+});

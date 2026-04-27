@@ -14,6 +14,7 @@ export async function executeProviderCli(input, dependencies = {}) {
   const result = {
     exitStatus: execution.exitStatus,
     jsonOutput: parseJsonOutput(execution.stdout),
+    rawStdout: execution.stdout,
     runnerReference: execution.runnerReference,
     sessionReference: execution.sessionReference,
     stderrReference: summarizeOutput(execution.stderr),
