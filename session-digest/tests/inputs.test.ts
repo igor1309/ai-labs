@@ -109,19 +109,19 @@ test("test_empty_file_returns_error", async () => {
   assert.deepEqual(await regularFilesUnder(baseDir), []);
 });
 
-test("test_file_over_one_megabyte_returns_oversize_error", async () => {
+test("test_file_over_twenty_five_megabytes_returns_oversize_error", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-digest-"));
   const inputPath = path.join(tempDir, "large.jsonl");
   const baseDir = path.join(tempDir, ".session-digests");
   const stdout = new StringSink();
   const stderr = new StringSink();
 
-  await fs.writeFile(inputPath, Buffer.alloc(1024 * 1024 + 1));
+  await fs.writeFile(inputPath, Buffer.alloc(25 * 1024 * 1024 + 1));
 
   const exitCode = await main([inputPath], stdout, stderr, { baseDir });
 
   assert.notEqual(exitCode, 0);
-  assert.match(stderr.toString(), /1 MB/);
+  assert.match(stderr.toString(), /25 MB/);
   assert.deepEqual(await regularFilesUnder(baseDir), []);
 });
 

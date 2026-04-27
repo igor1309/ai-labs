@@ -44,6 +44,16 @@ test("test_main_exits_nonzero_when_any_flag_is_passed", async () => {
   }
 });
 
+test("test_main_exits_nonzero_when_double_dash_reserved_token_is_passed", async () => {
+  const stdout = new StringSink();
+  const stderr = new StringSink();
+
+  const exitCode = await main(["--"], stdout, stderr);
+
+  assert.notEqual(exitCode, 0);
+  assert.notEqual(stderr.toString(), "");
+});
+
 test("test_cli_script_shouldInvokeMain_onDirectExecution", async () => {
   const result = await execFileResult(process.execPath, ["--import", "tsx", cliPath]);
 

@@ -21,7 +21,7 @@ description: "Implementation plan for the ADR-003 session-digest V2 CLI with loc
 - Worktree required: use this existing dedicated worktree; do not create a new worktree.
 - Expected worktree: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/deep-nvidia`.
 - Expected branch: `deep-nvidia`; do not create or switch to another branch for this plan.
-- Preflight check: [ ] done.
+- Preflight check: [x] done.
 - Before Step 1, run `git worktree list --porcelain` and `git branch --show-current`.
 - Emit: `Preflight: worktree=<path>, branch=<branch>, separate_worktree=pass`.
 - Do not push. The user has repeatedly instructed not to push.
@@ -107,13 +107,13 @@ Delete when no longer referenced:
 - Modify/Test: `session-digest/tests/inputs.test.ts`
 - Modify/Test: `session-digest/tests/cli-args.test.ts`
 
-- [ ] **Step 1: Preflight**
+- [x] **Step 1: Preflight**
 
 Run: `git worktree list --porcelain` and `git branch --show-current`.
 
 Expected: current worktree is `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/deep-nvidia`, branch `deep-nvidia`.
 
-- [ ] **Step 2: RED for `25 MB` input cap**
+- [x] **Step 2: RED for `25 MB` input cap**
 
 Add or update one test that writes `25 * 1024 * 1024 + 1` bytes and asserts the oversize error mentions `25 MB`.
 
@@ -121,7 +121,7 @@ Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tes
 
 Expected: FAIL because current code reports `1 MB`.
 
-- [ ] **Step 3: GREEN for `25 MB` input cap**
+- [x] **Step 3: GREEN for `25 MB` input cap**
 
 Change `ONE_MB` to `MAX_INPUT_BYTES = 25 * 1024 * 1024` and update the error text to name `25 MB`.
 
@@ -129,7 +129,7 @@ Run the same targeted command.
 
 Expected: PASS.
 
-- [ ] **Step 4: Add regression test for `--` rejection**
+- [x] **Step 4: Add regression test for `--` rejection**
 
 Keep existing behavior, but add a test that confirms `--` is rejected, documenting reserved flag behavior.
 
@@ -137,7 +137,7 @@ Run: `./scripts/run_silent.sh "tests" npm run test:file -w session-digest -- tes
 
 Expected: PASS without production changes.
 
-- [ ] **Step 5: Task gate and commit**
+- [x] **Step 5: Task gate and commit**
 
 Run:
 

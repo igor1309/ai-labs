@@ -1,6 +1,6 @@
 import type * as fs from "node:fs";
 
-const ONE_MB = 1024 * 1024;
+const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 
 export type StatFs = Pick<typeof fs.promises, "stat">;
 export type ReadFileFs = Pick<typeof fs.promises, "readFile">;
@@ -28,7 +28,7 @@ export class InputError extends Error {
   }
 
   static oversize(path: string): InputError {
-    return new InputError(`Input file exceeds 1 MB max size: ${path}`);
+    return new InputError(`Input file exceeds 25 MB max size: ${path}`);
   }
 
   static nonJsonl(path: string): InputError {
@@ -155,7 +155,7 @@ export async function validateInputPath(inputPath: string, fsLike: StatFs): Prom
     throw InputError.emptyFile(inputPath);
   }
 
-  if (stats.size > ONE_MB) {
+  if (stats.size > MAX_INPUT_BYTES) {
     throw InputError.oversize(inputPath);
   }
 }

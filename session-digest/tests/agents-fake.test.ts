@@ -780,8 +780,8 @@ function setOrDeleteEnv(name: keyof ProxyEnv, value: string | undefined): void {
   process.env[name] = value;
 }
 
-function chatOpenAIConfiguration(model: ChatOpenAI): { fetch?: unknown } {
-  const lcKwargs = model.lc_kwargs as { configuration?: { fetch?: unknown } };
+function chatOpenAIConfiguration(model: ChatOpenAI): { baseURL?: string; fetch?: unknown } {
+  const lcKwargs = model.lc_kwargs as { configuration?: { baseURL?: string; fetch?: unknown } };
 
   return lcKwargs.configuration ?? {};
 }
