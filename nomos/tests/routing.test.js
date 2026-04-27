@@ -319,7 +319,7 @@ test("oversized JSON body returns Nomos-owned local rejection", async () => {
           "Content-Type": "application/json",
           Authorization: "Bearer tok-p1",
         },
-        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "x".repeat(102400) }] }),
+        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "x".repeat(1048576) }] }),
       });
       const body = await res.json();
 
@@ -330,9 +330,9 @@ test("oversized JSON body returns Nomos-owned local rejection", async () => {
           body: {
             error: {
               code: "json_body_too_large",
-              limit: "100kb",
-              limit_bytes: 102400,
-              message: "Nomos rejected the JSON request body locally before forwarding it to any model provider because it exceeds the 100kb limit.",
+              limit: "1MB",
+              limit_bytes: 1048576,
+              message: "Nomos rejected the JSON request body locally before forwarding it to any model provider because it exceeds the 1MB limit.",
               status: 413,
             },
           },
@@ -355,7 +355,7 @@ test("configured JSON body limit accepts requests above default limit", async ()
     const app = createApp({
       logger,
       db,
-      jsonBodyLimit: "200kb",
+      jsonBodyLimit: "2MB",
       liveRunner: fakeRunner({ id: "r1" }),
     });
     const server = await listen(app);
@@ -368,7 +368,7 @@ test("configured JSON body limit accepts requests above default limit", async ()
           "Content-Type": "application/json",
           Authorization: "Bearer tok-p1",
         },
-        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "x".repeat(102400) }] }),
+        body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: "x".repeat(1048576) }] }),
       });
       const body = await res.json();
 

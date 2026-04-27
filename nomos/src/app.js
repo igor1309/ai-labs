@@ -6,7 +6,7 @@ export function createApp({
   logger,
   db,
   version = null,
-  jsonBodyLimit = "100kb",
+  jsonBodyLimit = "1MB",
   liveRunner = null,
   stubRunner = null,
   stubEnabled = false,
@@ -82,5 +82,8 @@ export function createApp({
 }
 
 function formatLimit(limitBytes) {
+  if (limitBytes % 1048576 === 0) {
+    return `${limitBytes / 1048576}MB`;
+  }
   return limitBytes % 1024 === 0 ? `${limitBytes / 1024}kb` : `${limitBytes} bytes`;
 }

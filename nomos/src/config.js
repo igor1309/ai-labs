@@ -1,5 +1,5 @@
 export function loadConfig() {
-  const jsonBodyLimit = process.env.NOMOS_JSON_BODY_LIMIT || "100kb";
+  const jsonBodyLimit = process.env.NOMOS_JSON_BODY_LIMIT || "1MB";
   validateJsonBodyLimit(jsonBodyLimit);
 
   return {

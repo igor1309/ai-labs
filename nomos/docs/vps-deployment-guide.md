@@ -186,7 +186,7 @@ YOUR_DOMAIN {
 NOMOS_PORT=8080
 NOMOS_HOST=0.0.0.0
 NOMOS_DB_PATH=data/nomos.db
-NOMOS_JSON_BODY_LIMIT=100kb
+NOMOS_JSON_BODY_LIMIT=1MB
 NODE_ENV=production
 
 # Vendor — OpenRouter (default for this deployment)
@@ -204,7 +204,7 @@ NOMOS_SAFEGUARDS_REINFORCE=false
 NOMOS_SAFEGUARDS_BLOCK=false
 ```
 
-`NOMOS_JSON_BODY_LIMIT` is enforced by Nomos' Express JSON body parser before a request is authenticated or forwarded to the model provider. Keep the default `100kb` unless trusted workloads, such as large local-ledger synthesis requests, need a larger JSON body. Raise it first in staging, run the staging smoke gate, then promote the same value to production through the normal staging-to-production flow.
+`NOMOS_JSON_BODY_LIMIT` is enforced by Nomos' Express JSON body parser before a request is authenticated or forwarded to the model provider. Keep the default `1MB` unless trusted workloads, such as large local-ledger synthesis requests, need a larger JSON body. Raise it first in staging, run the staging smoke gate, then promote the same value to production through the normal staging-to-production flow.
 
 Lock down permissions on the env file:
 

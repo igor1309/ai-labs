@@ -47,7 +47,7 @@ test("loadConfig returns correct defaults when env is empty", () => {
     assert.equal(config.safeguardsBlockOnDetect, false);
     assert.equal(config.safeguardsReinforcePrepend, "");
     assert.equal(config.safeguardsReinforceAppend, "");
-    assert.equal(config.jsonBodyLimit, "100kb");
+    assert.equal(config.jsonBodyLimit, "1MB");
   } finally {
     restoreConfigEnv(saved);
   }
