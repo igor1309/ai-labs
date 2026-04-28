@@ -53,7 +53,7 @@ description: "Implementation plan for Regentara CLI debug mode."
 ## File Structure
 
 - Create: `regentara/src/debug-reporter.js`
-  - Owns debug line formatting, JSON scalar encoding, unknown-field omission, and disabled reporter behavior.
+  - Owns debug line formatting, JSON scalar encoding, unknown-field omission, disabled reporter behavior, and accumulated settings-path reporting.
 - Create: `regentara/tests/debug-reporter.test.js`
   - Covers deterministic debug line formatting and sensitive multi-line value handling.
 - Modify: `regentara/src/index.js`
@@ -118,6 +118,13 @@ test("formatDebugLine should reject non-scalar field values", () => {
   );
 });
 
+test("formatDebugLine should encode newline values onto one output line", () => {
+  assert.equal(
+    formatDebugLine("failure", { reason: "line one\nline two" }),
+    "regentara debug: failure reason=\"line one\\nline two\"\n",
+  );
+});
+
 test("createDebugReporter should write formatted lines when enabled", () => {
   let stderr = "";
   const reporter = createDebugReporter({
@@ -141,6 +148,26 @@ test("createDebugReporter should do nothing when disabled", () => {
 
   assert.equal(stderr, "");
 });
+
+test("createDebugReporter should accumulate settings paths before reporting", () => {
+  let stderr = "";
+  const reporter = createDebugReporter({
+    enabled: true,
+    stderr: { write: (chunk) => { stderr += chunk; } },
+  });
+
+  reporter.rememberSettings({ policy: "/home/.regentara/policy.yaml" });
+  reporter.rememberSettings({
+    agents: "/work/.regentara/agents.yaml",
+    models: "/work/.regentara/models.yaml",
+  });
+  reporter.reportSettings();
+
+  assert.equal(
+    stderr,
+    "regentara debug: settings agents=\"/work/.regentara/agents.yaml\" models=\"/work/.regentara/models.yaml\" policy=\"/home/.regentara/policy.yaml\"\n",
+  );
+});
 ```
 
 - [ ] **Step 2: Run RED**
@@ -157,11 +184,19 @@ Create `regentara/src/debug-reporter.js`:
 export function createDebugReporter(options = {}) {
   const enabled = options.enabled === true;
   const stderr = options.stderr;
+  const settings = {};
 
   return {
+    rememberSettings: (fields = {}) => {
+      Object.assign(settings, compact(fields));
+    },
     report: (event, fields = {}) => {
       if (!enabled) return;
       stderr.write(formatDebugLine(event, fields));
+    },
+    reportSettings: () => {
+      if (!enabled || Object.keys(settings).length === 0) return;
+      stderr.write(formatDebugLine("settings", settings));
     },
   };
 }
@@ -189,6 +224,12 @@ function encodeScalar(key, value) {
 
   throw new TypeError(`debug field ${key} must be a scalar`);
 }
+
+function compact(fields) {
+  return Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== undefined),
+  );
+}
 ```
 
 - [ ] **Step 4: Run GREEN**
@@ -214,6 +255,27 @@ Run: `git add regentara/src/debug-reporter.js regentara/tests/debug-reporter.tes
 Add tests to `regentara/tests/cli.test.js`:
 
 ```js
+test("parseArguments should parse task without exposing a working directory option", () => {
+  assert.deepEqual(
+    parseArguments(["--task", "ship it"]),
+    {
+      debug: false,
+      task: "ship it",
+    },
+  );
+});
+
+test("parseArguments should parse task file without exposing a working directory option", () => {
+  assert.deepEqual(
+    parseArguments(["--task-file", "tasks/ship-it.md"]),
+    {
+      debug: false,
+      task: "",
+      taskFile: "tasks/ship-it.md",
+    },
+  );
+});
+
 test("parseArguments should enable debug when debug flag is present", () => {
   assert.deepEqual(
     parseArguments(["--debug", "--task-file", "tasks/ship-it.md"]),
@@ -355,7 +417,7 @@ In `regentara/src/composition.js`:
 - after `resolvePolicy(...)`, report:
 
 ```js
-input.debugReporter?.report("settings", { policy: policySettings.selectedPath });
+input.debugReporter?.rememberSettings({ policy: policySettings.selectedPath });
 ```
 
 - on policy bootstrap/resolution catch, report:
@@ -371,18 +433,20 @@ Then return the same `failureResult(error)` as today.
 In `regentara/src/orchestrator.js`:
 
 - read `const debugReporter = input.debugReporter ?? dependencies.debugReporter;`.
-- after resolving agent settings and model routing, report:
+- after resolving agent settings and model routing, remember agent/model paths and report the accumulated settings line:
 
 ```js
-debugReporter?.report("settings", {
+debugReporter?.rememberSettings({
   agents: agentSettings.selectedPath,
   models: modelRouting.selectedPath,
 });
+debugReporter?.reportSettings();
 ```
 
-- in the top-level catch, when no run exists or a startup error occurs, report:
+- in the top-level catch, when no run exists or a startup error occurs, report known settings and failure:
 
 ```js
+debugReporter?.reportSettings();
 debugReporter?.report("failure", { reason: error.message });
 ```
 
