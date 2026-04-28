@@ -1,6 +1,7 @@
 import { artifactExists as artifactExistsInRun } from "./artifact-store.js";
 import { failureResult, RuntimeFailure, StartupValidationFailure } from "./errors.js";
 import { validateProviderCliAvailability } from "./provider-cli-availability.js";
+import { buildAgentPrompt } from "./prompts.js";
 import {
   appendRunEvent,
   createRun as createStoredRun,
@@ -313,7 +314,7 @@ async function executeAgent({
       executionInput: input,
       model: route.model,
       outputSchema: agent.outputSchema,
-      prompt: buildAgentPrompt(agentId, agent, input),
+      prompt: await buildAgentPrompt(agentId, agent, input),
       provider: route.provider,
       reasoningEffort: route.reasoningEffort,
       runner: route.runner,
@@ -380,16 +381,4 @@ function summarizeFailureOutput(output) {
 
 function definedObject(values) {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
-}
-
-function buildAgentPrompt(agentId, agent, input) {
-  return [
-    `Regentara agent: ${agentId}`,
-    `Prompt reference: ${agent.prompt.ref}`,
-    "Task context JSON:",
-    JSON.stringify(input, null, 2),
-    "Final semantic result JSON Schema:",
-    JSON.stringify(agent.outputSchema, null, 2),
-    "Return the final semantic result through the runner native structured-output mode.",
-  ].join("\n\n");
 }
