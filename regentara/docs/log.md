@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Added a follow-up TODO plan comparing Regentara with `agent-develop-review-loop`, focused on demo usability, watch/progress ergonomics, and plain-text provider output bridging.
 - Added research notes on `agent-develop-review-loop`, capturing its Claude implementer, Codex reviewer, cumulative diff review, artifact, and non-committing workflow semantics for Regentara prior-art analysis.
 
 ## 2026-04-27
