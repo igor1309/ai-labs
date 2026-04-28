@@ -126,7 +126,7 @@ test("runWorkflow should append a runtime failure progress event when provider e
 
   assert.deepEqual(events.map(progressEventSummary), [
     { agentId: "producer", currentAgent: "producer", runId, type: "agent-start" },
-    { failureReason: "provider failed", finalStatus: "failed", runId, type: "runtime-failure" },
+    { currentAgent: "producer", failureReason: "provider failed", finalStatus: "failed", runId, type: "runtime-failure" },
   ]);
 });
 

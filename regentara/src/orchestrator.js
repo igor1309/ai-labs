@@ -162,6 +162,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   } catch (error) {
     if (run && !(error instanceof StartupValidationFailure)) {
       await recordRunEvent(run.runDirectory, {
+        currentAgent: error.currentAgent,
         failureReason: error.message,
         finalStatus: "failed",
         runId: run.runId,
@@ -210,33 +211,41 @@ async function executeAgent({
     currentAgent: agentId,
     type: "agent-start",
   });
-  const providerResult = await executeProviderCli({
-    agentId,
-    executionInput: input,
-    model: route.model,
-    outputSchema: agent.outputSchema,
-    prompt: buildAgentPrompt(agentId, agent, input),
-    provider: route.provider,
-    runner: route.runner,
-  });
+  try {
+    const providerResult = await executeProviderCli({
+      agentId,
+      executionInput: input,
+      model: route.model,
+      outputSchema: agent.outputSchema,
+      prompt: buildAgentPrompt(agentId, agent, input),
+      provider: route.provider,
+      runner: route.runner,
+    });
 
-  if (!Object.prototype.hasOwnProperty.call(providerResult, "semanticResult")) {
-    throw new RuntimeFailure(`provider semantic result missing: ${agentId}`);
+    if (!Object.prototype.hasOwnProperty.call(providerResult, "semanticResult")) {
+      throw new RuntimeFailure(`provider semantic result missing: ${agentId}`);
+    }
+
+    const output = validateRuntimeOutput(agentId, providerResult.semanticResult, agent.outputSchema);
+
+    if (output.artifact && artifactExists && !(await artifactExists(output.artifact))) {
+      throw new RuntimeFailure(`expected artifact missing: ${output.artifact}`);
+    }
+
+    await emitEvent?.({
+      agentId,
+      currentAgent: agentId,
+      type: "agent-end",
+    });
+
+    return output;
+  } catch (error) {
+    if (error && typeof error === "object") {
+      error.currentAgent ??= agentId;
+    }
+
+    throw error;
   }
-
-  const output = validateRuntimeOutput(agentId, providerResult.semanticResult, agent.outputSchema);
-
-  if (output.artifact && artifactExists && !(await artifactExists(output.artifact))) {
-    throw new RuntimeFailure(`expected artifact missing: ${output.artifact}`);
-  }
-
-  await emitEvent?.({
-    agentId,
-    currentAgent: agentId,
-    type: "agent-end",
-  });
-
-  return output;
 }
 
 function buildAgentPrompt(agentId, agent, input) {
