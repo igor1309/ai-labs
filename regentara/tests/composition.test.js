@@ -53,6 +53,8 @@ test("createRegentaraComposition should use config-based policy settings when no
 
 test("createRegentaraComposition should return failed result when config-based policy settings are missing", async () => {
   const workspace = await makeSettingsWorkspace();
+  const agentsExamplePath = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
+  const modelsExamplePath = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
   const examplePath = join(workspace.homeDirectory, ".regentara", "policy.yaml.example");
   const composition = createRegentaraComposition({
     commandExists: async () => true,
@@ -68,13 +70,17 @@ test("createRegentaraComposition should return failed result when config-based p
 
   assert.deepEqual(
     {
+      agentsExampleWritten: await pathExists(agentsExamplePath),
       exampleWritten: await pathExists(examplePath),
       failureMentionsPolicy: result.failureReason?.includes("policy.yaml not found"),
+      modelsExampleWritten: await pathExists(modelsExamplePath),
       status: result.status,
     },
     {
+      agentsExampleWritten: true,
       exampleWritten: true,
       failureMentionsPolicy: true,
+      modelsExampleWritten: true,
       status: "failed",
     },
   );
