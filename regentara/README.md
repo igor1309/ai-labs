@@ -1,6 +1,14 @@
+---
+date: 2026-04-28
+model: gpt-5
+description: "Regentara usage, configuration, and orchestration overview"
+---
+
 # Regentara
 
-Regentara is an MVP workflow runner that orchestrates provider CLI agents through a Producer, Reviewer, review policy, and optional Remediator loop.
+Regentara is an MVP workflow runner for governed coding-agent loops. It coordinates provider CLI agents through a Producer, Reviewer, injected review policy, and optional Remediator loop.
+
+The core idea is simple: Regentara does not decide whether a result is good enough by itself. It runs agents, validates their structured outputs, records run progress, and delegates the post-review routing decision to a `ReviewFixPolicy`.
 
 ## Boundaries
 
@@ -8,6 +16,21 @@ Regentara is an MVP workflow runner that orchestrates provider CLI agents throug
 - Regentara does not manage credentials, authentication state, sessions, worktrees, branches, commits, pull requests, builds, tests, formatting, dependency installation, sandboxing, permissions, cleanup, retries, or subprocess timeouts.
 - Runtime settings are read from `.regentara/agents.yaml` and `.regentara/models.yaml` in the invocation working directory before falling back to `~/.regentara/`.
 - Production composition requires an injected `ReviewFixPolicy`; Regentara does not ship a default policy implementation.
+
+## Workflow
+
+Each workflow starts from a task string and proceeds through the same loop:
+
+1. `producer` receives the current task and returns a structured completion claim.
+2. `reviewer` receives the task plus producer output and returns a structured verdict.
+3. `ReviewFixPolicy.decide` receives the verdict plus its opaque session state and returns one of:
+   - `complete-ok`
+   - `complete-fail`
+   - `remediate`
+4. On `remediate`, `remediator` receives the task, producer output, and reviewer verdict, then returns a new task.
+5. The loop repeats with the remediated task.
+
+Any startup or runtime failure is fail-fast. Regentara records the failure when a run directory already exists, then returns a failed result.
 
 ## CLI
 
@@ -17,7 +40,104 @@ regentara --task "implement the accepted task"
 
 Run Regentara from the target workspace. Provider CLIs run in the Regentara invocation working directory; the run directory is reserved for Regentara-owned artifacts and diagnostics.
 
-## Progress
+The bare CLI uses the production composition path, which requires a `ReviewFixPolicy`. Callers that embed Regentara should inject one with `createRegentaraComposition({ reviewFixPolicy })`.
+
+## Settings
+
+Regentara uses two YAML files. Local workspace settings win over global settings:
+
+1. `./.regentara/agents.yaml`
+2. `./.regentara/models.yaml`
+3. `~/.regentara/agents.yaml`
+4. `~/.regentara/models.yaml`
+
+On a first run with missing settings, Regentara writes example files under `~/.regentara/` and fails with a startup error. It never creates active `agents.yaml` or `models.yaml` files for you.
+
+### agents.yaml
+
+`agents.yaml` must define exactly `producer`, `reviewer`, and `remediator` under an `agents` mapping. Each agent must include `model`, `prompt`, and `output`.
+
+```yaml
+agents:
+  producer:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/producer
+    output:
+      schemaRef: regentara://schemas/producer-output
+  reviewer:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/reviewer
+    output:
+      schemaRef: regentara://schemas/reviewer-output
+  remediator:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/remediator
+    output:
+      schemaRef: regentara://schemas/remediator-output
+```
+
+Prompt references are catalog values and may be user-defined. Output schemas can be inline JSON Schema objects under `output.schema` or built-in schema references under `output.schemaRef`:
+
+- `regentara://schemas/producer-output` requires `artifact`
+- `regentara://schemas/reviewer-output` requires `verdict`
+- `regentara://schemas/remediator-output` requires `task`
+
+### models.yaml
+
+`models.yaml` maps agent `model` keys to provider CLI routes.
+
+```yaml
+routes:
+  sonnet:
+    provider: anthropic
+    runner: claude-code
+    model: claude-sonnet-4-5
+  gpt:
+    provider: openai
+    runner: codex
+    model: gpt-5.1-codex
+```
+
+The `runner` selects the provider CLI adapter. Built-in adapters currently support:
+
+- `claude-code`, which invokes `claude`
+- `codex`, which invokes `codex`
+
+Regentara validates only the runners referenced by configured agents.
+
+## ReviewFixPolicy
+
+`ReviewFixPolicy` is the routing seam between review output and workflow control. It owns budget, escalation, severity mapping, convergence checks, and any state it wants to carry across rounds.
+
+The policy interface is intentionally small:
+
+```js
+const reviewFixPolicy = {
+  decide: async ({ session, verdict }) => {
+    if (verdict.verdict === "accepted") {
+      return { decision: "complete-ok", session };
+    }
+
+    return { decision: "complete-fail", session };
+  },
+};
+```
+
+Regentara threads the returned `session` into the next policy call but does not inspect it.
+
+## Provider CLI Execution
+
+Regentara passes each agent prompt and expected JSON Schema to the selected runner's native structured-output mode.
+
+- Claude Code uses `claude -p --output-format json --json-schema ...`.
+- Codex uses `codex exec --output-schema ... --output-last-message ...`.
+
+Provider stdout and stderr are treated as diagnostics. The orchestration loop consumes only the validated semantic JSON result.
+
+## Runs and Progress
 
 Each run appends operational progress events to `~/.regentara/runs/<run-id>/events.jsonl`. Authored artifacts are not rewritten to record progress.
 
@@ -29,23 +149,18 @@ latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"; tail -f "$latest_r
 
 The watched event surface includes the run ID plus current agent, current policy decision, runtime failure reason, or final status when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
 
-## MVP Status
+Run metadata is stored in `metadata.json`. Only `endTime`, `exitCode`, and `status` are mutable after creation.
 
-The package scaffold is present so behavior can be added behind compiling module boundaries.
-Built-in provider CLI runners use native structured-output modes and pass only validated semantic JSON to the orchestration loop.
+## Local Demo
 
-## Settings
+The local demo runs from `regentara/examples/local-demo` and can use fake providers, so it does not require provider credentials:
 
-`agents.yaml` must define exactly `producer`, `reviewer`, and `remediator` under an `agents` mapping. Each agent must include `model`, `prompt`, and `output`.
+```bash
+node regentara/examples/local-demo/run-demo.js --fake-providers
+```
 
-Supported prompt references are:
+The fake demo exercises the same orchestration loop with a demo policy:
 
-- `regentara://prompts/producer`
-- `regentara://prompts/reviewer`
-- `regentara://prompts/remediator`
-
-Supported output schemas are inline JSON Schema objects under `output.schema` or built-in schema references under `output.schemaRef`:
-
-- `regentara://schemas/producer-output` requires `artifact`
-- `regentara://schemas/reviewer-output` requires `verdict`
-- `regentara://schemas/remediator-output` requires `task`
+- accepted review verdicts complete successfully
+- rejected review verdicts remediate up to a configured limit
+- exhausted remediation budget completes with failure
