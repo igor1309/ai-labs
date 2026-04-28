@@ -219,6 +219,27 @@ test("runWorkflow should not validate CLI availability for unused routes", async
   );
 });
 
+test("runWorkflow should not bootstrap example files when settings resolvers are injected", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const agentsExample = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
+  const modelsExample = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
+
+  await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    resolveAgentSettings: async () => { throw new Error("stub agents"); },
+    resolveModelRouting: async () => { throw new Error("stub models"); },
+  });
+
+  assert.deepEqual(
+    { agentsWritten: await pathExists(agentsExample), modelsWritten: await pathExists(modelsExample) },
+    { agentsWritten: false, modelsWritten: false },
+  );
+});
+
 test("runWorkflow should create a run after startup validation passes", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());

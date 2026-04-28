@@ -164,6 +164,28 @@ for (const agentId of ["producer", "reviewer", "remediator"]) {
   });
 }
 
+for (const [label, value] of [
+  ["array", ["sonnet"]],
+  ["object", { name: "sonnet" }],
+  ["whitespace", "   "],
+]) {
+  test(`resolveAgentSettings should reject agents whose model field is ${label}`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+      producer: {
+        model: value,
+        output: { schemaRef: "regentara://schemas/producer-output" },
+        prompt: { ref: "regentara://prompts/producer" },
+      },
+    }));
+
+    await assert.rejects(
+      () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      /agents\.yaml agent producer field model must be a non-empty string/,
+    );
+  });
+}
+
 test("resolveAgentSettings should accept arbitrary prompt reference strings", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({

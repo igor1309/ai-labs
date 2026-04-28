@@ -27,10 +27,16 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   const createRun = dependencies.createRun ?? createStoredRun;
   const executeProviderCli = dependencies.executeProviderCli;
   const updateRunMetadata = dependencies.updateRunMetadata ?? updateStoredRunMetadata;
+  const resolversOverridden =
+    Boolean(dependencies.resolveAgentSettings) || Boolean(dependencies.resolveModelRouting);
+  const runBootstrap = dependencies.bootstrapMissingSettings
+    ?? (resolversOverridden ? null : bootstrapMissingSettings);
   let run;
 
   try {
-    await bootstrapMissingSettings(workingDirectory, { homeDirectory });
+    if (runBootstrap) {
+      await runBootstrap(workingDirectory, { homeDirectory });
+    }
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     assertRouteReferencesResolve(agentSettings, modelRouting);

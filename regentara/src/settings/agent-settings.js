@@ -111,11 +111,17 @@ function validateAgent(agentId, rawAgent) {
     );
   }
 
+  if (typeof rawAgent.model !== "string" || rawAgent.model.trim() === "") {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} field model must be a non-empty string`,
+    );
+  }
+
   const prompt = validatePrompt(rawAgent.prompt);
   const outputSchema = validateOutput(rawAgent.output);
 
   return {
-    model: rawAgent.model,
+    model: rawAgent.model.trim(),
     name: rawAgent.name,
     prompt,
     outputSchema,

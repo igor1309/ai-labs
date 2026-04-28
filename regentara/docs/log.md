@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- adr-007 review follow-up: `validateAgent` now requires `agent.model` to be a non-empty string after `trim()`; arrays/objects/whitespace are rejected with `agents.yaml agent <id> field model must be a non-empty string`. Stored value is trimmed.
+- adr-007 review follow-up: orchestrator skips default `bootstrapMissingSettings` when injected resolvers are present (and exposes `bootstrapMissingSettings` as an injectable seam) so test harnesses don't write example files under the supplied home directory.
 - adr-007 review follow-up: CLI availability now validates only runners referenced by `agentSettings.agents`; unused experimental routes with unavailable runners no longer fail startup. `validateProviderCliAvailability` signature changed to `(runners, options)`.
 - adr-007 review follow-up: `writeSettingsExample` now swallows only `EEXIST`; other write failures throw `StartupValidationFailure` whose message names the example path.
 - adr-007 review follow-up: tightened `models.yaml` route field validation to reject empty or whitespace-only `provider`/`runner`/`model` (trim-then-non-empty); validated values are stored trimmed.
