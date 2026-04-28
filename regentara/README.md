@@ -14,8 +14,8 @@ The core idea is simple: Regentara does not decide whether a result is good enou
 
 - Regentara invokes provider CLIs as subprocesses; it does not call provider APIs directly.
 - Regentara does not manage credentials, authentication state, sessions, worktrees, branches, commits, pull requests, builds, tests, formatting, dependency installation, sandboxing, permissions, cleanup, retries, or subprocess timeouts.
-- Runtime settings are read from `.regentara/agents.yaml` and `.regentara/models.yaml` in the invocation working directory before falling back to `~/.regentara/`.
-- Production composition requires an injected `ReviewFixPolicy`; Regentara does not ship a default policy implementation.
+- Runtime settings are read from `.regentara/agents.yaml`, `.regentara/models.yaml`, and `.regentara/policy.yaml` in the invocation working directory before falling back to `~/.regentara/`.
+- Production composition uses `ConfigBasedReviewFixPolicy` from `policy.yaml` when callers do not inject a custom `ReviewFixPolicy`.
 
 ## Workflow
 
@@ -40,18 +40,20 @@ regentara --task "implement the accepted task"
 
 Run Regentara from the target workspace. Provider CLIs run in the Regentara invocation working directory; the run directory is reserved for Regentara-owned artifacts and diagnostics.
 
-The bare CLI uses the production composition path, which requires a `ReviewFixPolicy`. Callers that embed Regentara should inject one with `createRegentaraComposition({ reviewFixPolicy })`.
+The bare CLI uses the production composition path, which resolves `policy.yaml` and supplies the config-based policy. Callers that embed Regentara can override that policy with `createRegentaraComposition({ reviewFixPolicy })`.
 
 ## Settings
 
-Regentara uses two YAML files. Local workspace settings win over global settings:
+Regentara uses three YAML files. Local workspace settings win over global settings:
 
 1. `./.regentara/agents.yaml`
 2. `./.regentara/models.yaml`
-3. `~/.regentara/agents.yaml`
-4. `~/.regentara/models.yaml`
+3. `./.regentara/policy.yaml`
+4. `~/.regentara/agents.yaml`
+5. `~/.regentara/models.yaml`
+6. `~/.regentara/policy.yaml`
 
-On a first run with missing settings, Regentara writes example files under `~/.regentara/` and fails with a startup error. It never creates active `agents.yaml` or `models.yaml` files for you.
+On a first run with missing settings, Regentara writes example files under `~/.regentara/` and fails with a startup error. It never creates active `agents.yaml`, `models.yaml`, or `policy.yaml` files for you.
 
 ### agents.yaml
 
@@ -108,9 +110,22 @@ The `runner` selects the provider CLI adapter. Built-in adapters currently suppo
 
 Regentara validates only the runners referenced by configured agents.
 
+### policy.yaml
+
+`policy.yaml` configures the built-in `ConfigBasedReviewFixPolicy`.
+
+```yaml
+reviewPolicy:
+  maxRemediationAttempts: 5
+```
+
+`maxRemediationAttempts` counts only Remediator attempts after a failed review. A value of `5` permits the initial Producer/Reviewer round plus up to five Remediator calls.
+
 ## ReviewFixPolicy
 
 `ReviewFixPolicy` is the routing seam between review output and workflow control. It owns budget, escalation, severity mapping, convergence checks, and any state it wants to carry across rounds.
+
+Production composition uses `ConfigBasedReviewFixPolicy` by default. It treats `verdict: "accepted"` as success, treats any other non-empty verdict string as failure, and remediates failed reviews until `maxRemediationAttempts` is exhausted.
 
 The policy interface is intentionally small:
 

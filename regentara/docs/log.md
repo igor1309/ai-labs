@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Implemented the config-based Regentara review policy: `policy.yaml` discovery/bootstrap/validation, budgeted remediation decisions, production composition wiring, and README guidance.
 - Added the config-based `ReviewFixPolicy` spec derived from ADR-008, defining `policy.yaml`, validation, bootstrap, decision behavior, and required tests.
 - Added ADR-008 for a config-based `ReviewFixPolicy`, keeping the Orchestrator-owned interface intact and defining `maxRemediationAttempts` as the remediation budget.
 - Expanded the Regentara README into a practical usage guide covering workflow shape, settings, review policy injection, provider CLI execution, run artifacts, and the fake-provider local demo.
