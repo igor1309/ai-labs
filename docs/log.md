@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-28
+
+- Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; regentara now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
+
 ## 2026-04-27
 
 - ADR: added `docs/adr/cli-settings-convention.md` — repo-level rule covering discovery precedence, first-run bootstrap, structural-vs-catalog split, and settings-error class for CLI tools. Lists known violations in `regentara` and `session-digest` to close via per-tool plans.
