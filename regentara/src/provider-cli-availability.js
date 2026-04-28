@@ -4,13 +4,10 @@ import { delimiter, join } from "node:path";
 
 import { StartupValidationFailure } from "./errors.js";
 
-export async function validateProviderCliAvailability(modelRouting, options = {}) {
+export async function validateProviderCliAvailability(runners, options = {}) {
   const commandExists = options.commandExists ?? ((command) => defaultCommandExists(command, options));
-  const runners = new Set(
-    Object.values(modelRouting.routes ?? {}).map((route) => route.runner),
-  );
 
-  for (const runner of runners) {
+  for (const runner of new Set(runners)) {
     if (!(await commandExists(runner))) {
       throw new StartupValidationFailure(`required provider CLI unavailable: ${runner}`);
     }

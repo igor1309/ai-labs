@@ -5,6 +5,7 @@ import { createRun as createStoredRun } from "./run-store.js";
 import { updateRunMetadata as updateStoredRunMetadata } from "./run-store.js";
 import { validateRuntimeOutput } from "./runtime-output.js";
 import { resolveAgentSettings } from "./settings/agent-settings.js";
+import { bootstrapMissingSettings } from "./settings/example-bootstrap.js";
 import { resolveModelRouting } from "./settings/model-routing.js";
 
 export async function runWorkflow(input = {}, dependencies = {}) {
@@ -26,12 +27,22 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   const createRun = dependencies.createRun ?? createStoredRun;
   const executeProviderCli = dependencies.executeProviderCli;
   const updateRunMetadata = dependencies.updateRunMetadata ?? updateStoredRunMetadata;
+  const resolversOverridden =
+    Boolean(dependencies.resolveAgentSettings) || Boolean(dependencies.resolveModelRouting);
+  const runBootstrap = dependencies.bootstrapMissingSettings
+    ?? (resolversOverridden ? null : bootstrapMissingSettings);
   let run;
 
   try {
+    if (runBootstrap) {
+      await runBootstrap(workingDirectory, { homeDirectory });
+    }
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
-    await validateCliAvailability(modelRouting, dependencies);
+    assertRouteReferencesResolve(agentSettings, modelRouting);
+    const referencedRunners = Object.values(agentSettings.agents)
+      .map((agent) => modelRouting.routes[agent.model].runner);
+    await validateCliAvailability(referencedRunners, dependencies);
     run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
     const artifactExists =
       dependencies.artifactExists ?? ((relativePath) => artifactExistsInRun(run.runDirectory, relativePath));
@@ -138,6 +149,16 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         runId: run.runId,
       }
       : {});
+  }
+}
+
+function assertRouteReferencesResolve(agentSettings, modelRouting) {
+  for (const [agentId, agent] of Object.entries(agentSettings.agents)) {
+    if (!Object.prototype.hasOwnProperty.call(modelRouting.routes, agent.model)) {
+      throw new StartupValidationFailure(
+        `agents.yaml agent ${agentId} references undefined route key in models.yaml: ${agent.model}`,
+      );
+    }
   }
 }
 

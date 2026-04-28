@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 import { StartupValidationFailure } from "../src/errors.js";
@@ -10,13 +12,82 @@ import {
   writeLocalSettings,
 } from "./helpers/settings.js";
 
+async function pathExists(path) {
+  try {
+    await readFile(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 test("resolveModelRouting should fail before creating a run when neither local nor global models yaml exists", async () => {
   const workspace = await makeSettingsWorkspace();
+  const examplePath = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    (error) =>
+      error instanceof StartupValidationFailure
+      && error.message.includes("models.yaml not found")
+      && error.message.includes(examplePath),
+  );
+});
+
+test("resolveModelRouting should write models.yaml.example to the home directory when no models.yaml exists", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const examplePath = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
 
   await assert.rejects(
     () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
     StartupValidationFailure,
   );
+
+  assert.equal(await pathExists(examplePath), true);
+});
+
+test("resolveModelRouting should not overwrite an existing models.yaml.example", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const exampleDir = join(workspace.homeDirectory, ".regentara");
+  const examplePath = join(exampleDir, "models.yaml.example");
+  await mkdir(exampleDir, { recursive: true });
+  await writeFile(examplePath, "user-edited-example");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await readFile(examplePath, "utf8"), "user-edited-example");
+});
+
+test("resolveModelRouting should surface bootstrap write failure as StartupValidationFailure naming the example path", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const blockedHome = join(workspace.rootDirectory, "blocked-home");
+  await writeFile(blockedHome, "not a directory");
+  const expectedExamplePath = join(blockedHome, ".regentara", "models.yaml.example");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: blockedHome }),
+    (error) =>
+      error instanceof StartupValidationFailure
+      && /failed to write example settings file/.test(error.message)
+      && error.message.includes(expectedExamplePath),
+  );
+});
+
+test("resolveModelRouting should not write models.yaml during bootstrap", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const localPath = join(workspace.workingDirectory, ".regentara", "models.yaml");
+  const globalPath = join(workspace.homeDirectory, ".regentara", "models.yaml");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await pathExists(localPath), false);
+  assert.equal(await pathExists(globalPath), false);
 });
 
 test("resolveModelRouting should use local models yaml instead of global models yaml when both exist", async () => {
@@ -48,30 +119,28 @@ test("resolveModelRouting should fail before creating a run when local models ya
   );
 });
 
-test("resolveModelRouting should reject models yaml with an unknown route key", async () => {
-  const workspace = await makeSettingsWorkspace();
-  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    haiku: {
-      model: "claude-haiku",
-      provider: "anthropic",
-      runner: "claude-code",
-    },
-  }));
-
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unknown route key: haiku/,
-  );
-});
-
-for (const routeKey of ["sonnet", "opus", "gpt", "codex"]) {
-  test(`resolveModelRouting should reject models yaml missing ${routeKey}`, async () => {
+for (const field of ["provider", "runner", "model"]) {
+  test(`resolveModelRouting should reject route entries whose ${field} is not a string`, async () => {
     const workspace = await makeSettingsWorkspace();
-    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ [routeKey]: undefined }));
+    const route = { provider: "anthropic", runner: "claude-code", model: "claude-sonnet-4-5" };
+    route[field] = ["not", "a", "string"];
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ sonnet: route }));
 
     await assert.rejects(
       () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-      new RegExp(`missing required route key: ${routeKey}`),
+      new RegExp(`route sonnet field ${field} must be a non-empty string`),
+    );
+  });
+
+  test(`resolveModelRouting should reject route entries whose ${field} is empty or whitespace`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    const route = { provider: "anthropic", runner: "claude-code", model: "claude-sonnet-4-5" };
+    route[field] = "   ";
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ sonnet: route }));
+
+    await assert.rejects(
+      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      new RegExp(`route sonnet field ${field} must be a non-empty string`),
     );
   });
 }
@@ -91,50 +160,37 @@ test("resolveModelRouting should reject models yaml missing provider, runner, or
   );
 });
 
-test("resolveModelRouting should reject models yaml with an unsupported provider", async () => {
+test("resolveModelRouting should accept user-defined route keys outside the legacy MVP set", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    sonnet: {
-      model: "claude-sonnet-4-5",
-      provider: "custom",
+    haiku: {
+      model: "claude-haiku",
+      provider: "anthropic",
       runner: "claude-code",
     },
   }));
 
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported provider: custom/,
-  );
+  const routing = await resolveModelRouting(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
+
+  assert.equal(routing.routes.haiku.model, "claude-haiku");
 });
 
-test("resolveModelRouting should reject models yaml with an unsupported runner", async () => {
+test("resolveModelRouting should accept arbitrary provider and runner strings", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
     sonnet: {
       model: "claude-sonnet-4-5",
-      provider: "anthropic",
-      runner: "custom",
+      provider: "custom-provider",
+      runner: "custom-runner",
     },
   }));
 
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported runner: custom/,
-  );
-});
+  const routing = await resolveModelRouting(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
 
-test("resolveModelRouting should reject models yaml with an invalid provider runner combination", async () => {
-  const workspace = await makeSettingsWorkspace();
-  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    sonnet: {
-      model: "claude-sonnet-4-5",
-      provider: "anthropic",
-      runner: "codex",
-    },
-  }));
-
-  await assert.rejects(
-    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported provider\/runner combination: anthropic\/codex/,
-  );
+  assert.equal(routing.routes.sonnet.provider, "custom-provider");
+  assert.equal(routing.routes.sonnet.runner, "custom-runner");
 });
