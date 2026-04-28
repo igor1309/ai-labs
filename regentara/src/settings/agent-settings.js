@@ -3,14 +3,15 @@ import { readFile } from "node:fs/promises";
 import yaml from "js-yaml";
 
 import { StartupValidationFailure } from "../errors.js";
+import {
+  AGENTS_YAML_EXAMPLE,
+  settingsExamplePath,
+  writeSettingsExample,
+} from "./example-bootstrap.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
 const REQUIRED_AGENTS = ["producer", "reviewer", "remediator"];
 const REQUIRED_FIELDS = ["model", "prompt", "output"];
-
-const SUPPORTED_PROMPT_REFS = new Set(
-  REQUIRED_AGENTS.map((agent) => `regentara://prompts/${agent}`),
-);
 
 const SUPPORTED_SCHEMA_REFS = new Map([
   [
@@ -44,7 +45,9 @@ export async function resolveAgentSettings(workingDirectory, options = {}) {
   );
 
   if (!selectedPath) {
-    throw new StartupValidationFailure("agents.yaml not found");
+    await writeSettingsExample(options, "agents.yaml.example", AGENTS_YAML_EXAMPLE);
+    const examplePath = settingsExamplePath(options, "agents.yaml.example");
+    throw new StartupValidationFailure(`agents.yaml not found; see ${examplePath}`);
   }
 
   const document = await loadYamlDocument(selectedPath, "agents.yaml");
@@ -108,11 +111,17 @@ function validateAgent(agentId, rawAgent) {
     );
   }
 
+  if (typeof rawAgent.model !== "string" || rawAgent.model.trim() === "") {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} field model must be a non-empty string`,
+    );
+  }
+
   const prompt = validatePrompt(rawAgent.prompt);
   const outputSchema = validateOutput(rawAgent.output);
 
   return {
-    model: rawAgent.model,
+    model: rawAgent.model.trim(),
     name: rawAgent.name,
     prompt,
     outputSchema,
@@ -121,11 +130,7 @@ function validateAgent(agentId, rawAgent) {
 
 function validatePrompt(prompt) {
   if (!isPlainObject(prompt) || typeof prompt.ref !== "string") {
-    throw new StartupValidationFailure("agents.yaml prompt must use a supported ref");
-  }
-
-  if (!SUPPORTED_PROMPT_REFS.has(prompt.ref)) {
-    throw new StartupValidationFailure(`unsupported prompt reference: ${prompt.ref}`);
+    throw new StartupValidationFailure("agents.yaml prompt must define a string ref");
   }
 
   return { ref: prompt.ref };
@@ -144,7 +149,9 @@ function validateOutput(output) {
     return SUPPORTED_SCHEMA_REFS.get(output.schemaRef);
   }
 
-  throw new StartupValidationFailure("unsupported output schema reference");
+  throw new StartupValidationFailure(
+    `agents.yaml unsupported output schema reference: ${output.schemaRef ?? "(missing)"}`,
+  );
 }
 
 function isPlainObject(value) {

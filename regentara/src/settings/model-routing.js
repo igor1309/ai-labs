@@ -3,14 +3,14 @@ import { readFile } from "node:fs/promises";
 import yaml from "js-yaml";
 
 import { StartupValidationFailure } from "../errors.js";
+import {
+  MODELS_YAML_EXAMPLE,
+  settingsExamplePath,
+  writeSettingsExample,
+} from "./example-bootstrap.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
-const REQUIRED_ROUTE_KEYS = ["sonnet", "opus", "gpt", "codex"];
 const REQUIRED_FIELDS = ["provider", "runner", "model"];
-const SUPPORTED_COMBINATIONS = new Set([
-  "anthropic/claude-code",
-  "openai/codex",
-]);
 
 export async function resolveModelRouting(workingDirectory, options = {}) {
   const selectedPath = await firstExistingSettingsPath(
@@ -20,7 +20,9 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
   );
 
   if (!selectedPath) {
-    throw new StartupValidationFailure("models.yaml not found");
+    await writeSettingsExample(options, "models.yaml.example", MODELS_YAML_EXAMPLE);
+    const examplePath = settingsExamplePath(options, "models.yaml.example");
+    throw new StartupValidationFailure(`models.yaml not found; see ${examplePath}`);
   }
 
   const document = await loadYamlDocument(selectedPath, "models.yaml");
@@ -30,19 +32,8 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
     throw new StartupValidationFailure("models.yaml must define routes");
   }
 
-  const routeKeys = Object.keys(rawRoutes);
-  const unknownRoute = routeKeys.find((routeKey) => !REQUIRED_ROUTE_KEYS.includes(routeKey));
-  if (unknownRoute) {
-    throw new StartupValidationFailure(`models.yaml contains unknown route key: ${unknownRoute}`);
-  }
-
-  const missingRoute = REQUIRED_ROUTE_KEYS.find((routeKey) => !routeKeys.includes(routeKey));
-  if (missingRoute) {
-    throw new StartupValidationFailure(`models.yaml missing required route key: ${missingRoute}`);
-  }
-
   const routes = {};
-  for (const routeKey of REQUIRED_ROUTE_KEYS) {
+  for (const routeKey of Object.keys(rawRoutes)) {
     routes[routeKey] = validateRoute(routeKey, rawRoutes[routeKey]);
   }
 
@@ -50,10 +41,6 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
     selectedPath,
     routes,
   };
-}
-
-export function requiredRouteKeys() {
-  return [...REQUIRED_ROUTE_KEYS];
 }
 
 async function loadYamlDocument(path, fileName) {
@@ -84,23 +71,19 @@ function validateRoute(routeKey, rawRoute) {
     );
   }
 
-  if (!["anthropic", "openai"].includes(rawRoute.provider)) {
-    throw new StartupValidationFailure(`unsupported provider: ${rawRoute.provider}`);
-  }
-
-  if (!["claude-code", "codex"].includes(rawRoute.runner)) {
-    throw new StartupValidationFailure(`unsupported runner: ${rawRoute.runner}`);
-  }
-
-  const combination = `${rawRoute.provider}/${rawRoute.runner}`;
-  if (!SUPPORTED_COMBINATIONS.has(combination)) {
-    throw new StartupValidationFailure(`unsupported provider/runner combination: ${combination}`);
+  const invalidField = REQUIRED_FIELDS.find(
+    (field) => typeof rawRoute[field] !== "string" || rawRoute[field].trim() === "",
+  );
+  if (invalidField) {
+    throw new StartupValidationFailure(
+      `models.yaml route ${routeKey} field ${invalidField} must be a non-empty string`,
+    );
   }
 
   return {
-    model: rawRoute.model,
-    provider: rawRoute.provider,
-    runner: rawRoute.runner,
+    model: rawRoute.model.trim(),
+    provider: rawRoute.provider.trim(),
+    runner: rawRoute.runner.trim(),
   };
 }
 
