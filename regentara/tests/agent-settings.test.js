@@ -174,7 +174,10 @@ test("resolveAgentSettings should reject agents yaml with an unsupported output 
 
   await assert.rejects(
     () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /unsupported output schema reference/,
+    (error) =>
+      error instanceof StartupValidationFailure
+      && /agents\.yaml/.test(error.message)
+      && /custom:\/\/producer/.test(error.message),
   );
 });
 

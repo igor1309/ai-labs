@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- adr-007 closure task 7: tightened the "unsupported output schema reference" failure to name `agents.yaml` and the offending `schemaRef` in its message; audit confirmed every other `StartupValidationFailure` site already names the offending file or rule.
 - adr-007 closure task 6: confirmed per-file partial-bootstrap independence at the orchestrator level — only the missing file's example is written when one of `agents.yaml`/`models.yaml` is present; no implementation change required, behavior emerges from tasks 4 and 5.
 - adr-007 closure task 5: `resolveModelRouting` now writes `~/.regentara/models.yaml.example` (idempotent, skip if exists) before failing when no `models.yaml` is found at either location; bootstrap never creates an actual `models.yaml`.
 - adr-007 closure task 4: `resolveAgentSettings` now writes `~/.regentara/agents.yaml.example` (idempotent, skip if exists) before failing when no `agents.yaml` is found at either location; bootstrap never creates an actual `agents.yaml`.

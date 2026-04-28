@@ -160,7 +160,9 @@ function validateOutput(output) {
     return SUPPORTED_SCHEMA_REFS.get(output.schemaRef);
   }
 
-  throw new StartupValidationFailure("unsupported output schema reference");
+  throw new StartupValidationFailure(
+    `agents.yaml unsupported output schema reference: ${output.schemaRef ?? "(missing)"}`,
+  );
 }
 
 function isPlainObject(value) {
