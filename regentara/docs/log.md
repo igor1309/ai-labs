@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Added provider structured result adapters for Regentara's built-in Claude Code and Codex runners, so orchestration now consumes only schema-validated semantic JSON and treats stdout/stderr as diagnostics.
 - Final-pass tightened the first `agent-develop-review-loop` learning item so implementation can start from explicit runner-adapter, semantic-result, and invocation-cwd cleanup requirements.
 - Verified current Claude Code and Codex CLI structured-output behavior from the repo root and recorded the adapter contracts in the learning plan.
 - Aligned the `agent-develop-review-loop` learning plan with current Regentara architecture: catalog runner adapters, caller-selected workspace, provider structured result adapters, watch/progress scope, and bootstrap-backed demo settings.

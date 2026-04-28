@@ -12,15 +12,15 @@ Regentara is an MVP workflow runner that orchestrates provider CLI agents throug
 ## CLI
 
 ```bash
-regentara --task "implement the accepted task" --working-directory /path/to/project
+regentara --task "implement the accepted task"
 ```
 
-`--working-directory` selects where provider CLIs are invoked. It does not cause Regentara to create, clean, or manage that workspace.
+Run Regentara from the target workspace. Provider CLIs run in the Regentara invocation working directory; the run directory is reserved for Regentara-owned artifacts and diagnostics.
 
 ## MVP Status
 
 The package scaffold is present so behavior can be added behind compiling module boundaries.
-Provider CLI invocation is intentionally minimal in the MVP. Runner-specific flags beyond the selected model require a follow-up ADR before end-to-end runner use.
+Built-in provider CLI runners use native structured-output modes and pass only validated semantic JSON to the orchestration loop.
 
 ## Settings
 

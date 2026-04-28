@@ -36,7 +36,7 @@ test("runWorkflow should not fabricate an expected artifact when it is missing",
 
   await runWorkflowWithWorkspace(workspace, {
     artifactExists: async () => false,
-    executeProviderCli: async () => ({ exitStatus: 0, jsonOutput: { artifact: "producer/missing.json" } }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json" } }),
     onRunCreated: (run) => {
       runDirectory = run.runDirectory;
     },
@@ -53,7 +53,7 @@ test("runWorkflow should fail immediately when an expected artifact is missing",
 
   const result = await runWorkflowWithWorkspace(workspace, {
     artifactExists: async () => false,
-    executeProviderCli: async () => ({ exitStatus: 0, jsonOutput: { artifact: "producer/missing.json" } }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json" } }),
   });
 
   assert.deepEqual(
@@ -66,12 +66,29 @@ test("runWorkflow should fail immediately when default artifact lookup cannot fi
   const workspace = await makeWorkflowWorkspace();
 
   const result = await runWorkflowWithWorkspace(workspace, {
-    executeProviderCli: async () => ({ exitStatus: 0, jsonOutput: { artifact: "producer/missing.json" } }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json" } }),
   });
 
   assert.deepEqual(
     { failureReason: result.failureReason, status: result.status },
     { failureReason: "expected artifact missing: producer/missing.json", status: "failed" },
+  );
+});
+
+test("runWorkflow should fail immediately when provider returns only diagnostic stdout", async () => {
+  const workspace = await makeWorkflowWorkspace();
+
+  const result = await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async () => ({
+      exitStatus: 0,
+      rawStdout: "{\"artifact\":\"producer/result.json\"}",
+      stdoutReference: "{\"artifact\":\"producer/result.json\"}",
+    }),
+  });
+
+  assert.deepEqual(
+    { failureReason: result.failureReason, status: result.status },
+    { failureReason: "provider semantic result missing: producer", status: "failed" },
   );
 });
 
@@ -174,10 +191,10 @@ test("runWorkflow should mark the run failed when review policy returns an unsup
     },
     executeProviderCli: async (input) => {
       if (input.executionInput.producer) {
-        return { exitStatus: 0, jsonOutput: { verdict: "needs-fix" } };
+        return { exitStatus: 0, semanticResult: { verdict: "needs-fix" } };
       }
 
-      return { exitStatus: 0, jsonOutput: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,
@@ -230,7 +247,7 @@ async function runWorkflowWithWorkspace(workspace, options = {}) {
   }, {
     artifactExists: options.artifactExists,
     commandExists: async () => true,
-    executeProviderCli: options.executeProviderCli ?? (async () => ({ exitStatus: 0, jsonOutput: {} })),
+    executeProviderCli: options.executeProviderCli ?? (async () => ({ exitStatus: 0, semanticResult: {} })),
     interruptAfterRunCreated: options.interruptAfterRunCreated,
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

@@ -19,3 +19,16 @@ test("validateProviderCliAvailability should check runner commands by scanning t
 
   assert.deepEqual(checkedPaths, ["/opt/bin/codex", "/usr/local/bin/codex"]);
 });
+
+test("validateProviderCliAvailability should check built-in adapter command names", async () => {
+  const checkedCommands = [];
+
+  await validateProviderCliAvailability(["claude-code", "codex"], {
+    commandExists: async (command) => {
+      checkedCommands.push(command);
+      return true;
+    },
+  });
+
+  assert.deepEqual(checkedCommands, ["claude", "codex"]);
+});

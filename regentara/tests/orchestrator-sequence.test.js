@@ -21,6 +21,55 @@ test("runWorkflow should call producer first with the input valid task", async (
   });
 });
 
+test("runWorkflow should pass runner adapter input without a workspace field", async () => {
+  const calls = [];
+
+  await runWorkflowWithCalls(calls, {
+    captureFullInput: true,
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  assert.deepEqual(
+    {
+      agentId: calls[0].agentId,
+      executionInput: calls[0].executionInput,
+      hasWorkingDirectory: Object.prototype.hasOwnProperty.call(calls[0], "workingDirectory"),
+      model: calls[0].model,
+      outputSchema: calls[0].outputSchema,
+      provider: calls[0].provider,
+      runner: calls[0].runner,
+    },
+    {
+      agentId: "producer",
+      executionInput: { task: "initial task" },
+      hasWorkingDirectory: false,
+      model: "claude-sonnet-4-5",
+      outputSchema: {
+        required: ["artifact"],
+        type: "object",
+      },
+      provider: "anthropic",
+      runner: "claude-code",
+    },
+  );
+});
+
+test("runWorkflow should build a role prompt with task context and output schema", async () => {
+  const calls = [];
+
+  await runWorkflowWithCalls(calls, {
+    captureFullInput: true,
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  assert.equal(
+    calls[0].prompt.includes("\"task\": \"initial task\"")
+      && calls[0].prompt.includes("\"required\": [")
+      && calls[0].prompt.includes("producer"),
+    true,
+  );
+});
+
 test("runWorkflow should call reviewer with current task and Producer work after producer succeeds", async () => {
   const calls = [];
 
@@ -124,14 +173,14 @@ async function runWorkflowWithCalls(calls, options = {}) {
     artifactExists: async () => true,
     commandExists: async () => true,
     executeProviderCli: async (input) => {
-      calls.push(input.executionInput);
+      calls.push(options.captureFullInput ? input : input.executionInput);
       if (input.executionInput.verdict) {
-        return { exitStatus: 0, jsonOutput: { task: "remediated task" } };
+        return { exitStatus: 0, semanticResult: { task: "remediated task" } };
       }
       if (input.executionInput.producer) {
-        return { exitStatus: 0, jsonOutput: { verdict: "needs-fix" } };
+        return { exitStatus: 0, semanticResult: { verdict: "needs-fix" } };
       }
-      return { exitStatus: 0, jsonOutput: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

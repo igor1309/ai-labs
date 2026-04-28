@@ -11,7 +11,6 @@ export async function main(options = {}) {
   const parsedArguments = parseArguments(argv);
   const result = await composition.runWorkflow({
     task: parsedArguments.task,
-    workingDirectory: parsedArguments.workingDirectory,
   });
 
   if (result.status === "failed") {
@@ -24,7 +23,6 @@ export async function main(options = {}) {
 export function parseArguments(argv) {
   const parsed = {
     task: "",
-    workingDirectory: process.cwd(),
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -36,10 +34,6 @@ export function parseArguments(argv) {
       continue;
     }
 
-    if (argument === "--working-directory") {
-      parsed.workingDirectory = argv[index + 1] ?? process.cwd();
-      index += 1;
-    }
   }
 
   return parsed;

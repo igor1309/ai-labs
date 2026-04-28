@@ -5,7 +5,7 @@ import { createRegentaraComposition } from "../src/composition.js";
 
 test("createRegentaraComposition should require an injected ReviewFixPolicy", async () => {
   const composition = createRegentaraComposition({
-    executeProviderCli: async () => ({ exitStatus: 0, jsonOutput: {} }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: {} }),
   });
 
   const result = await composition.runWorkflow();

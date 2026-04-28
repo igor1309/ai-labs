@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { runWorkflow } from "../src/orchestrator.js";
+import { executeProviderCli } from "../src/provider-cli-executor.js";
 import {
   makeSettingsWorkspace,
   validAgentsYaml,
@@ -216,6 +217,41 @@ test("runWorkflow should not validate CLI availability for unused routes", async
   assert.deepEqual(
     { status: result.status, missingRunnerChecked: checkedCommands.includes("missing-runner") },
     { status: "succeeded", missingRunnerChecked: false },
+  );
+});
+
+test("runWorkflow should accept arbitrary runner settings and fail clearly when execution has no adapter", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    producer: {
+      model: "custom",
+      output: {
+        schemaRef: "regentara://schemas/producer-output",
+      },
+      prompt: { ref: "regentara://prompts/producer" },
+    },
+  }));
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+    custom: { provider: "experimental", runner: "custom-runner", model: "x" },
+  }));
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    task: "initial task",
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    executeProviderCli,
+    runStoreOptions: {
+      homeDirectory: workspace.homeDirectory,
+      randomBytes: () => Buffer.from([0, 1, 2, 3, 4]),
+    },
+  });
+
+  assert.deepEqual(
+    { failureReason: result.failureReason, status: result.status },
+    { failureReason: "no provider structured result adapter for runner: custom-runner", status: "failed" },
   );
 });
 

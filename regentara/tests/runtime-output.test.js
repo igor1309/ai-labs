@@ -59,7 +59,7 @@ test("runWorkflow should not call the next workflow step after invalid agent out
     commandExists: async () => true,
     executeProviderCli: async (input) => {
       executedAgents.push(input.executionInput);
-      return { exitStatus: 0, jsonOutput: {} };
+      return { exitStatus: 0, semanticResult: {} };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

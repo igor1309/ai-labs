@@ -75,7 +75,6 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           task: currentTask,
         },
         modelRouting,
-        workingDirectory,
       });
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
@@ -87,7 +86,6 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           task: currentTask,
         },
         modelRouting,
-        workingDirectory,
       });
       const policyResult = await reviewFixPolicy.decide({
         session: policySession,
@@ -130,7 +128,6 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           verdict: reviewerResult,
         },
         modelRouting,
-        workingDirectory,
       });
       currentTask = remediatorResult.task;
     }
@@ -169,26 +166,40 @@ async function executeAgent({
   executeProviderCli,
   input,
   modelRouting,
-  workingDirectory,
 }) {
   const agent = agentSettings.agents[agentId];
   const route = modelRouting.routes[agent.model];
   const providerResult = await executeProviderCli({
+    agentId,
     executionInput: input,
     model: route.model,
+    outputSchema: agent.outputSchema,
+    prompt: buildAgentPrompt(agentId, agent, input),
+    provider: route.provider,
     runner: route.runner,
-    workingDirectory,
   });
 
-  const output = validateRuntimeOutput(
-    agentId,
-    providerResult.jsonOutput ?? providerResult.rawStdout,
-    agent.outputSchema,
-  );
+  if (!Object.prototype.hasOwnProperty.call(providerResult, "semanticResult")) {
+    throw new RuntimeFailure(`provider semantic result missing: ${agentId}`);
+  }
+
+  const output = validateRuntimeOutput(agentId, providerResult.semanticResult, agent.outputSchema);
 
   if (output.artifact && artifactExists && !(await artifactExists(output.artifact))) {
     throw new RuntimeFailure(`expected artifact missing: ${output.artifact}`);
   }
 
   return output;
+}
+
+function buildAgentPrompt(agentId, agent, input) {
+  return [
+    `Regentara agent: ${agentId}`,
+    `Prompt reference: ${agent.prompt.ref}`,
+    "Task context JSON:",
+    JSON.stringify(input, null, 2),
+    "Final semantic result JSON Schema:",
+    JSON.stringify(agent.outputSchema, null, 2),
+    "Return the final semantic result through the runner native structured-output mode.",
+  ].join("\n\n");
 }

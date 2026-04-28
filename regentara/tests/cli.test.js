@@ -3,12 +3,11 @@ import test from "node:test";
 
 import { isMainModule, main, parseArguments } from "../src/index.js";
 
-test("parseArguments should parse MVP task and working directory inputs", () => {
+test("parseArguments should parse task without exposing a working directory option", () => {
   assert.deepEqual(
-    parseArguments(["--task", "ship it", "--working-directory", "/tmp/project"]),
+    parseArguments(["--task", "ship it"]),
     {
       task: "ship it",
-      workingDirectory: "/tmp/project",
     },
   );
 });
@@ -38,20 +37,27 @@ test("main should print concise startup validation failure output and return non
 });
 
 test("main should return zero for successful composition using injected fakes", async () => {
+  let workflowInput;
   const exitCode = await main({
-    argv: ["--task", "ship it", "--working-directory", "/tmp/project"],
+    argv: ["--task", "ship it"],
     composition: {
-      runWorkflow: async (input) => ({
-        exitCode: input.task === "ship it" ? 0 : 1,
-        status: "succeeded",
-      }),
+      runWorkflow: async (input) => {
+        workflowInput = input;
+        return {
+          exitCode: input.task === "ship it" ? 0 : 1,
+          status: "succeeded",
+        };
+      },
     },
     stderr: {
       write: () => {},
     },
   });
 
-  assert.equal(exitCode, 0);
+  assert.deepEqual(
+    { exitCode, workflowInput },
+    { exitCode: 0, workflowInput: { task: "ship it" } },
+  );
 });
 
 test("isMainModule should compare import url with the file URL for argv path", () => {
