@@ -250,7 +250,7 @@ Run: `git add regentara/src/debug-reporter.js regentara/tests/debug-reporter.tes
 - Modify: `regentara/src/index.js`
 - Modify: `regentara/tests/cli.test.js`
 
-- [ ] **Step 1: Write failing CLI parse and boundary tests**
+- [x] **Step 1: Write failing CLI parse and boundary tests**
 
 Add tests to `regentara/tests/cli.test.js`:
 
@@ -338,13 +338,13 @@ test("main should pass a disabled debug reporter when debug is absent", async ()
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `./scripts/run_silent.sh "cli-debug-red" node --test regentara/tests/cli.test.js`
 
 Expected: FAIL because `debug` is not parsed and no reporter is passed.
 
-- [ ] **Step 3: Implement CLI changes**
+- [x] **Step 3: Implement CLI changes**
 
 Modify `regentara/src/index.js`:
 
@@ -363,13 +363,13 @@ const debugReporter = createDebugReporter({
 
 - pass `debugReporter` into `composition.runWorkflow`.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `./scripts/run_silent.sh "cli-debug-green" node --test regentara/tests/cli.test.js regentara/tests/debug-reporter.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run: `git add regentara/src/index.js regentara/tests/cli.test.js && git commit -m "wire regentara debug flag"`
 

@@ -4,16 +4,22 @@ import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import { createRegentaraComposition } from "./composition.js";
+import { createDebugReporter } from "./debug-reporter.js";
 
 export async function main(options = {}) {
   const argv = options.argv ?? process.argv.slice(2);
   const stderr = options.stderr ?? process.stderr;
   const composition = options.composition ?? createRegentaraComposition();
   const parsedArguments = parseArguments(argv);
+  const debugReporter = createDebugReporter({
+    enabled: parsedArguments.debug,
+    stderr,
+  });
   const task = parsedArguments.taskFile
     ? await readFile(parsedArguments.taskFile, "utf8")
     : parsedArguments.task;
   const result = await composition.runWorkflow({
+    debugReporter,
     task,
     ...(parsedArguments.taskFile ? { taskFile: parsedArguments.taskFile } : {}),
   });
@@ -27,11 +33,17 @@ export async function main(options = {}) {
 
 export function parseArguments(argv) {
   const parsed = {
+    debug: false,
     task: "",
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+
+    if (argument === "--debug") {
+      parsed.debug = true;
+      continue;
+    }
 
     if (argument === "--task") {
       parsed.task = argv[index + 1] ?? "";
