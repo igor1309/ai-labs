@@ -4,7 +4,31 @@ import test from "node:test";
 import { RuntimeFailure } from "../src/errors.js";
 import { createConfigBasedReviewFixPolicy } from "../src/review-policies/config-based-review-fix-policy.js";
 
-test("ConfigBasedReviewFixPolicy.decide should return complete-ok when verdict is accepted", async () => {
+test("ConfigBasedReviewFixPolicy.decide should return complete-ok when verdict is accepted and verification ran", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 1 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "accepted", verification: { ran: true } },
+  });
+
+  assert.equal(decision.decision, "complete-ok");
+});
+
+test("ConfigBasedReviewFixPolicy.decide should refuse complete-ok when verdict is accepted but verification did not run", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 1 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "accepted", verification: { ran: false } },
+  });
+
+  assert.notEqual(decision.decision, "complete-ok");
+});
+
+test("ConfigBasedReviewFixPolicy.decide should refuse complete-ok when verdict is accepted but verification field is missing", async () => {
   const policy = createConfigBasedReviewFixPolicy({
     reviewPolicy: { maxRemediationAttempts: 1 },
   });
@@ -13,7 +37,31 @@ test("ConfigBasedReviewFixPolicy.decide should return complete-ok when verdict i
     verdict: { verdict: "accepted" },
   });
 
-  assert.equal(decision.decision, "complete-ok");
+  assert.notEqual(decision.decision, "complete-ok");
+});
+
+test("ConfigBasedReviewFixPolicy.decide should remediate an unverified accepted verdict when remediation budget remains", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 1 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "accepted", verification: { ran: false } },
+  });
+
+  assert.equal(decision.decision, "remediate");
+});
+
+test("ConfigBasedReviewFixPolicy.decide should complete-fail an unverified accepted verdict when remediation budget is exhausted", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 0 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "accepted", verification: { ran: false } },
+  });
+
+  assert.equal(decision.decision, "complete-fail");
 });
 
 test("ConfigBasedReviewFixPolicy.decide should return remediate on a failed verdict when remediation attempts remain", async () => {
@@ -33,7 +81,7 @@ test("ConfigBasedReviewFixPolicy.decide should consume one remediation attempt o
     reviewPolicy: { maxRemediationAttempts: 1 },
   });
   const acceptedDecision = await policy.decide({
-    verdict: { verdict: "accepted" },
+    verdict: { verdict: "accepted", verification: { ran: true } },
   });
 
   const failedDecision = await policy.decide({

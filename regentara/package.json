@@ -1,6 +1,6 @@
 {
   "name": "regentara",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MVP workflow runner for Regentara provider-agent orchestration.",
   "type": "module",
   "bin": {

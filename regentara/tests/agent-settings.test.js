@@ -305,7 +305,7 @@ test("resolveAgentSettings should expose selected local settings path", async ()
   assert.equal(settings.selectedPath, join(workspace.workingDirectory, ".regentara", "agents.yaml"));
 });
 
-test("resolveAgentSettings should resolve producer output schema ref to require an artifact", async () => {
+test("resolveAgentSettings should resolve producer output schema ref to require an artifact and verification", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
 
@@ -313,10 +313,10 @@ test("resolveAgentSettings should resolve producer output schema ref to require 
     homeDirectory: workspace.homeDirectory,
   });
 
-  assert.deepEqual(settings.agents.producer.outputSchema.required, ["artifact"]);
+  assert.deepEqual(settings.agents.producer.outputSchema.required, ["artifact", "verification"]);
 });
 
-test("resolveAgentSettings should resolve reviewer output schema ref to require a verdict", async () => {
+test("resolveAgentSettings should resolve reviewer output schema ref to require a verdict and verification", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
 
@@ -324,7 +324,7 @@ test("resolveAgentSettings should resolve reviewer output schema ref to require 
     homeDirectory: workspace.homeDirectory,
   });
 
-  assert.deepEqual(settings.agents.reviewer.outputSchema.required, ["verdict"]);
+  assert.deepEqual(settings.agents.reviewer.outputSchema.required, ["verdict", "verification"]);
 });
 
 test("resolveAgentSettings should resolve remediator output schema ref to require a task", async () => {

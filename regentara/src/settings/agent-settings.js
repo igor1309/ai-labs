@@ -13,19 +13,35 @@ import { firstExistingSettingsPath } from "./paths.js";
 const REQUIRED_AGENTS = ["producer", "reviewer", "remediator"];
 const REQUIRED_FIELDS = ["model", "provider", "prompt", "output"];
 
+const VERIFICATION_SCHEMA = {
+  type: "object",
+  required: ["ran"],
+  properties: {
+    ran: { type: "boolean" },
+    command: { type: "string" },
+    exitCode: { type: "integer" },
+  },
+};
+
 const SUPPORTED_SCHEMA_REFS = new Map([
   [
     "regentara://schemas/producer-output",
     {
-      required: ["artifact"],
+      required: ["artifact", "verification"],
       type: "object",
+      properties: {
+        verification: VERIFICATION_SCHEMA,
+      },
     },
   ],
   [
     "regentara://schemas/reviewer-output",
     {
-      required: ["verdict"],
+      required: ["verdict", "verification"],
       type: "object",
+      properties: {
+        verification: VERIFICATION_SCHEMA,
+      },
     },
   ],
   [

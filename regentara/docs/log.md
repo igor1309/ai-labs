@@ -1,5 +1,9 @@
 # Regentara Log
 
+## 2026-04-29
+
+- Added a verification gate to the producer/reviewer prompt contract and the review-fix policy: built-in producer and reviewer output schemas now require a structured `verification` field; the config-based review-fix policy refuses `complete-ok` for an `accepted` verdict whose `verification.ran` is not `true`, degrading to remediation or `complete-fail` per the remaining budget; producer and reviewer prompts explicitly forbid silent success when verification commands cannot be executed.
+
 ## 2026-04-28
 
 - Archived the prompt role boundary inspection task after prompt template extraction, role-boundary tightening, and dollar-token rendering fixes landed on top of debug-mode work.

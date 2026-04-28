@@ -47,8 +47,19 @@ test("runWorkflow should pass runner adapter input without a workspace field", a
       hasWorkingDirectory: false,
       model: "claude-sonnet-4-5",
       outputSchema: {
-        required: ["artifact"],
+        required: ["artifact", "verification"],
         type: "object",
+        properties: {
+          verification: {
+            type: "object",
+            required: ["ran"],
+            properties: {
+              ran: { type: "boolean" },
+              command: { type: "string" },
+              exitCode: { type: "integer" },
+            },
+          },
+        },
       },
       provider: "anthropic",
       runner: "claude-code",
@@ -104,7 +115,7 @@ test("runWorkflow should call reviewer with current task and Producer work after
   });
 
   assert.deepEqual(calls[1], {
-    producer: { artifact: "producer/result.json" },
+    producer: { artifact: "producer/result.json", verification: { ran: true } },
     task: "initial task",
   });
 });
@@ -134,10 +145,10 @@ test("runWorkflow should call remediator with task work and verdict when policy 
   });
 
   assert.deepEqual(calls[2], {
-    producer: { artifact: "producer/result.json" },
-    reviews: [{ verdict: "needs-fix" }],
+    producer: { artifact: "producer/result.json", verification: { ran: true } },
+    reviews: [{ verdict: "needs-fix", verification: { ran: true } }],
     task: "initial task",
-    verdict: { verdict: "needs-fix" },
+    verdict: { verdict: "needs-fix", verification: { ran: true } },
   });
 });
 
@@ -164,19 +175,19 @@ test("runWorkflow should pass all completed reviews to each remediator call", as
     },
     {
       firstRemediation: {
-        producer: { artifact: "producer/result.json" },
-        reviews: [{ verdict: "first failure" }],
+        producer: { artifact: "producer/result.json", verification: { ran: true } },
+        reviews: [{ verdict: "first failure", verification: { ran: true } }],
         task: "initial task",
-        verdict: { verdict: "first failure" },
+        verdict: { verdict: "first failure", verification: { ran: true } },
       },
       secondRemediation: {
-        producer: { artifact: "producer/result.json" },
+        producer: { artifact: "producer/result.json", verification: { ran: true } },
         reviews: [
-          { verdict: "first failure" },
-          { verdict: "second failure" },
+          { verdict: "first failure", verification: { ran: true } },
+          { verdict: "second failure", verification: { ran: true } },
         ],
         task: "remediated task",
-        verdict: { verdict: "second failure" },
+        verdict: { verdict: "second failure", verification: { ran: true } },
       },
     },
   );
@@ -520,13 +531,18 @@ async function runWorkflowWithCalls(calls, options = {}) {
         return { exitStatus: 0, semanticResult: { task: "remediated task" }, ...options.providerReferences };
       }
       if (input.executionInput.producer) {
+        const reviewerOutput = reviewerOutputs.shift() ?? { verdict: "needs-fix" };
         return {
           exitStatus: 0,
-          semanticResult: reviewerOutputs.shift() ?? { verdict: "needs-fix" },
+          semanticResult: { verification: { ran: true }, ...reviewerOutput },
           ...options.providerReferences,
         };
       }
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" }, ...options.providerReferences };
+      return {
+        exitStatus: 0,
+        semanticResult: { artifact: "producer/result.json", verification: { ran: true } },
+        ...options.providerReferences,
+      };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,
