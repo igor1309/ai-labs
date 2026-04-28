@@ -3,7 +3,7 @@
 ## 2026-04-28
 
 - Verified current Claude Code and Codex CLI structured-output behavior from the repo root and recorded the adapter contracts in the learning plan.
-- Aligned the `agent-develop-review-loop` learning plan with current Regentara architecture: catalog runner adapters, caller-selected workspace, structured output capture, watch/progress scope, and bootstrap-backed demo settings.
+- Aligned the `agent-develop-review-loop` learning plan with current Regentara architecture: catalog runner adapters, caller-selected workspace, provider structured result adapters, watch/progress scope, and bootstrap-backed demo settings.
 - Captured `agent-develop-review-loop` as prior art for Regentara, including cumulative diff review, sentinel-based loop control, local artifacts, watcher ergonomics, and non-committing workflow boundaries.
 - adr-007 closure follow-up: marked all 37 checklist items complete in archived `adr-007-cli-settings-convention-closure.md` so the implemented artifact no longer contradicts its location.
 
