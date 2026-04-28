@@ -2,11 +2,9 @@
 
 ## 2026-04-28
 
-- Reframed the first Regentara learning TODO from text bridging to deterministic structured output capture via provider CLI schema/output mechanisms.
-- Reordered the Regentara learning TODO around the agreed implementation sequence: structured output capture, watch/progress events, then local demo.
-- Expanded the `agent-develop-review-loop` comparison in the Regentara learning TODO with runtime flow, sentinel contract, artifact, watcher, and boundary tradeoffs.
-- Added a follow-up TODO plan comparing Regentara with `agent-develop-review-loop`, focused on structured output capture, watch/progress ergonomics, and demo usability.
-- Added research notes on `agent-develop-review-loop`, capturing its Claude implementer, Codex reviewer, cumulative diff review, artifact, and non-committing workflow semantics for Regentara prior-art analysis.
+- Verified current Claude Code and Codex CLI structured-output behavior from the repo root and recorded the adapter contracts in the learning plan.
+- Aligned the `agent-develop-review-loop` learning plan with current Regentara architecture: catalog runner adapters, caller-selected workspace, structured output capture, watch/progress scope, and bootstrap-backed demo settings.
+- Captured `agent-develop-review-loop` as prior art for Regentara, including cumulative diff review, sentinel-based loop control, local artifacts, watcher ergonomics, and non-committing workflow boundaries.
 - adr-007 closure follow-up: marked all 37 checklist items complete in archived `adr-007-cli-settings-convention-closure.md` so the implemented artifact no longer contradicts its location.
 
 ## 2026-04-27

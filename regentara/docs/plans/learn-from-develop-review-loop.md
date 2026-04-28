@@ -33,7 +33,7 @@ The prototype also has intentionally weak boundaries. Claude is prompted not to 
 
 Regentara is the inverse tradeoff. It is a governed orchestration package that validates `agents.yaml` and `models.yaml`, invokes configured provider CLIs, validates runtime JSON against configured schemas, persists runs under `~/.regentara/runs/`, preserves artifact invariants, and delegates every post-review routing decision to an injected `ReviewFixPolicy`. Its core loop is provider-agnostic and policy-driven: Producer creates work evidence, Reviewer returns a structured verdict, policy decides `complete-ok`, `complete-fail`, or `remediate`, and Remediator produces the next valid task.
 
-The lesson is not to copy the Bash script wholesale. Regentara should preserve its stronger contracts and explicit boundaries, but borrow the prototype's product ergonomics where they expose real workflow value: deterministic structured output capture from supported CLIs, a simple way to watch current progress, and a runnable local demo path.
+The lesson is not to copy the Bash script wholesale. Regentara should preserve its stronger contracts and explicit boundaries, but borrow the prototype's product ergonomics where they expose real workflow value: deterministic structured output capture from built-in runner adapters, a simple way to watch current progress, and a runnable local demo path.
 
 ## TODO
 
@@ -41,15 +41,27 @@ Implement in this order: deterministic structured output capture first, watch/pr
 
 ### 1. Add Deterministic Structured Output Capture
 
-- [ ] Verify the installed structured-output surfaces for supported CLIs and document the concrete flags Regentara will use: Claude Code `--output-format json` / `--json-schema`, and Codex `exec --output-schema <FILE>` plus `--output-last-message <FILE>` when needed.
+- [x] Verify the installed structured-output surfaces for the built-in runner adapters Regentara ships first and document the concrete flags Regentara will use: Claude Code `--output-format json` / `--json-schema`, and Codex `exec --output-schema <FILE>` plus `--output-last-message <FILE>` when needed.
+- [ ] Implement the Claude Code adapter around the verified behavior of Claude Code 2.1.112: `claude -p --output-format json --json-schema <schema-json> <prompt>` exits 0 on a valid response and writes a JSON result wrapper to stdout; the semantic payload is `structured_output`, and `session_id` is available in the same wrapper.
+- [ ] Do not use `claude -p --tools "" <prompt>` in adapter invocation as tested; that form was treated as missing a prompt in this CLI version. Revisit tool-disabling separately only with a verified invocation form.
+- [ ] Implement the Codex adapter around the verified behavior of Codex CLI 0.125.0: `codex exec --output-schema <schema-file> --output-last-message <output-file> <prompt>` exits 0 on a valid response, writes clean schema-matching JSON to stdout, and writes the same clean semantic JSON to the output file.
+- [ ] Treat Codex `--json` stdout as diagnostic/event stream, not semantic output; when `--json` is used, `--output-last-message` still provides the clean schema-matching semantic output file.
+- [ ] Capture Codex stderr as diagnostics because it includes warnings, session/header information, and plugin/analytics noise even when the semantic output succeeds.
+- [ ] Define runner adapter selection under ADR-007 catalog semantics: route `runner` values remain catalog strings, so settings validation must not hard-code a closed runner whitelist.
+- [ ] If a selected catalog runner has no structured-output adapter, fail clearly with a named error such as `no structured-output adapter for runner: <runner>`.
 - [ ] Define that each agent's semantic output must be structured JSON matching its configured schema; non-JSON prose is an agent/runtime failure, not an input to be repaired.
 - [ ] Generate or materialize the configured per-agent JSON Schema for the provider CLI invocation.
 - [ ] Build role-specific prompts that include the task context and explicitly require the final semantic result to satisfy the schema.
+- [ ] Lock the workspace rule: for this plan, Regentara is invoked from the target workspace, and provider CLIs run in that same invocation cwd.
+- [ ] Do not treat `runDirectory` as the agent workspace. Use it only for Regentara-owned run artifacts, structured-output capture files if needed, and diagnostic/session references.
+- [ ] Extend `ProviderCliInput` or introduce a runner-adapter input with `agentId`, `provider`, `runner`, `model`, `prompt`, `outputSchema`, and `executionInput`; use the Orchestrator's already-selected invocation cwd for process execution, and include run-scoped artifact/reference paths only for Regentara-owned capture and diagnostics.
 - [ ] Invoke provider CLIs through runner-specific adapters that capture the structured final output separately from diagnostic stdout, stderr, event streams, and session references.
 - [ ] Treat missing structured output, malformed JSON, schema-invalid JSON, or provider CLI schema-enforcement failure as runtime failures under the existing fail-fast ADR.
 - [ ] Preserve stdout, stderr, provider event stream references, and session paths only as diagnostics; the Orchestrator must pass only validated structured output to the next agent.
+- [ ] Remove semantic fallback from raw stdout once structured capture exists; stdout, stderr, and event streams may be diagnostics only.
 - [ ] Reject heuristic extraction from LLM prose, including first-JSON-block scraping, markdown fenced JSON scraping, and marker-delimited JSON emitted as normal assistant text.
 - [ ] Cover Claude-style structured output, Codex-style structured output, missing output file, malformed JSON, schema-invalid JSON, and diagnostic-only stdout in tests.
+- [ ] Cover ADR-007 catalog behavior in tests: arbitrary runner strings remain valid settings, but execution fails clearly when no structured-output adapter exists.
 
 ### 2. Add Watch and Progress Ergonomics
 
@@ -57,7 +69,8 @@ Implement in this order: deterministic structured output capture first, watch/pr
 - [ ] Add an append-only operational event log, likely `events.jsonl`, under each run directory.
 - [ ] Emit events for agent start, agent end, policy decision, runtime failure, and completion.
 - [ ] Keep authored artifacts immutable; progress state belongs in operational events, not artifact rewrites.
-- [ ] Add a `regentara watch [--run latest|<run-id>]` command or a documented shell recipe that follows the event log under `~/.regentara/runs/`.
+- [ ] Start with a documented shell recipe for following the latest run event log.
+- [ ] Treat `regentara watch [--run latest|<run-id>]` as a follow-up unless this task explicitly adds subcommand parsing to the CLI.
 - [ ] Include run ID, current agent, current decision state, and final status in the watched surface.
 - [ ] Verify the watch path against a fake or sample run directory.
 - [ ] Add a short ADR/spec note before implementation if event logging materially defines the deferred progress-recording mechanism from the artifact ADR.
@@ -65,12 +78,13 @@ Implement in this order: deterministic structured output capture first, watch/pr
 ### 3. Add a Batteries-Included Local Demo
 
 - [ ] Create `regentara/examples/local-demo/`.
-- [ ] Add sample `.regentara/agents.yaml` and `.regentara/models.yaml` under the demo.
+- [ ] Use the same `agents.yaml` and `models.yaml` content as the runtime bootstrap examples in `src/settings/example-bootstrap.js`; the local demo must not define a divergent settings template.
 - [ ] Add a demo runner, such as `run-demo.js`, that imports Regentara composition and injects a demo `ReviewFixPolicy`.
 - [ ] Define the demo policy as acceptable review -> `complete-ok`, rejected review with remaining budget -> `remediate`, and exhausted budget -> `complete-fail`.
 - [ ] Keep the demo policy outside production composition so Regentara still requires explicit policy injection for real use.
 - [ ] Make the demo testable without real provider credentials by injecting fake provider execution and fake CLI availability.
 - [ ] Verify the demo path with a local smoke command and document the exact command in the demo README.
+- [ ] Verify demo/bootstrap alignment so first-run examples and local-demo settings do not diverge silently.
 
 ## Verification
 
