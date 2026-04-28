@@ -108,6 +108,35 @@ test("executeProviderCli should classify provider errors from failed CLI output"
   );
 });
 
+test("executeProviderCli should not classify timeout text as provider error on successful output", async () => {
+  const result = await executeProviderCli(makeInput(), {
+    spawnProvider: async (call) => {
+      const outputPath = call.args.at(call.args.indexOf("--output-last-message") + 1);
+      await writeFile(outputPath, JSON.stringify({ artifact: "producer/result.json" }));
+      return makeExecutionResult({
+        stderr: "command timeout configured to 300000ms\nsession id: 019dd441-dfd4-7892-9988-8b23d3e42798\n",
+      });
+    },
+  });
+
+  assert.equal(Object.prototype.hasOwnProperty.call(result, "providerError"), false);
+});
+
+test("executeProviderCli should classify timeout text on failed output", async () => {
+  await assert.rejects(
+    async () => executeProviderCli(makeInput(), {
+      spawnProvider: async () => makeExecutionResult({
+        exitStatus: 1,
+        stderr: "operation timed out",
+      }),
+    }),
+    (error) => {
+      assert.equal(error.cause.providerError, "timeout");
+      return true;
+    },
+  );
+});
+
 test("executeProviderCli should read Codex semantic output from the output-last-message file", async () => {
   const calls = [];
   const result = await executeProviderCli(makeInput(), {

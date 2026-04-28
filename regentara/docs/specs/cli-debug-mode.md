@@ -48,8 +48,8 @@ Representative debug lines:
 ```text
 regentara debug: settings agents="/path/.regentara/agents.yaml" models="/path/.regentara/models.yaml" policy="/path/.regentara/policy.yaml"
 regentara debug: run-created runId="20260428T141417Z-boz0l1nw" runDirectory="/Users/example/.regentara/runs/20260428T141417Z-boz0l1nw"
-regentara debug: agent-start agent="reviewer" provider="openai" tier="high" model="gpt-5.5" runner="codex" reasoningEffort="high"
-regentara debug: agent-end agent="reviewer" provider="openai" tier="high" model="gpt-5.5" runner="codex" sessionReference="019dd471-414b-77a0-9bcc-05bbd4857991"
+regentara debug: agent-start agent="reviewer" route="codex/openai/gpt-5.5/high"
+regentara debug: agent-end agent="reviewer" route="codex/openai/gpt-5.5/high" sessionReference="019dd471-414b-77a0-9bcc-05bbd4857991"
 regentara debug: policy-decision decision="complete-ok"
 regentara debug: completion status="succeeded"
 ```
@@ -69,8 +69,7 @@ Values must be JSON-encoded scalar values on a single line. Optional fields are 
 - If startup fails before all settings paths are known, the `settings` event includes only known paths.
 - If startup fails before run creation, debug output must include a `failure` event with the startup failure reason and must not include `run-created`.
 - After run creation, debug output must include `run-created` with `runId` and `runDirectory`.
-- Agent debug events must include `agent`, `provider`, `tier`, `model`, and `runner` when routing has resolved.
-- Agent debug events include `reasoningEffort` only when configured.
+- Agent debug events must include `agent` and a compact `route` value in `runner/provider/model/tier` form when routing has resolved.
 - Producer `agent-start` includes `taskFile` when a task file is provided.
 - Agent end debug events include provider runner/session references when available.
 - Policy debug events include the returned decision.

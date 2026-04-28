@@ -135,9 +135,51 @@ test("runWorkflow should call remediator with task work and verdict when policy 
 
   assert.deepEqual(calls[2], {
     producer: { artifact: "producer/result.json" },
+    reviews: [{ verdict: "needs-fix" }],
     task: "initial task",
     verdict: { verdict: "needs-fix" },
   });
+});
+
+test("runWorkflow should pass all completed reviews to each remediator call", async () => {
+  const calls = [];
+
+  await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      { decision: "remediate" },
+      { decision: "complete-ok" },
+    ],
+    reviewerOutputs: [
+      { verdict: "first failure" },
+      { verdict: "second failure" },
+      { verdict: "accepted" },
+    ],
+  });
+
+  assert.deepEqual(
+    {
+      firstRemediation: calls[2],
+      secondRemediation: calls[5],
+    },
+    {
+      firstRemediation: {
+        producer: { artifact: "producer/result.json" },
+        reviews: [{ verdict: "first failure" }],
+        task: "initial task",
+        verdict: { verdict: "first failure" },
+      },
+      secondRemediation: {
+        producer: { artifact: "producer/result.json" },
+        reviews: [
+          { verdict: "first failure" },
+          { verdict: "second failure" },
+        ],
+        task: "remediated task",
+        verdict: { verdict: "second failure" },
+      },
+    },
+  );
 });
 
 test("runWorkflow should call producer with the remediated valid task after remediator succeeds", async () => {
@@ -286,7 +328,6 @@ test("runWorkflow should report successful run lifecycle debug events", async ()
       event: "agent-start",
       fields: {
         agent: "reviewer",
-        reasoningEffort: "high",
         route: "codex/openai/gpt-5.5/high",
       },
     },
@@ -432,6 +473,7 @@ test("runWorkflow should mark metadata failed when the review policy completes w
 async function runWorkflowWithCalls(calls, options = {}) {
   const workspace = await makeSettingsWorkspace();
   const policyDecisions = [...options.policyDecisions];
+  const reviewerOutputs = [...(options.reviewerOutputs ?? [])];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     remediator: {
       model: "high",
@@ -478,7 +520,11 @@ async function runWorkflowWithCalls(calls, options = {}) {
         return { exitStatus: 0, semanticResult: { task: "remediated task" }, ...options.providerReferences };
       }
       if (input.executionInput.producer) {
-        return { exitStatus: 0, semanticResult: { verdict: "needs-fix" }, ...options.providerReferences };
+        return {
+          exitStatus: 0,
+          semanticResult: reviewerOutputs.shift() ?? { verdict: "needs-fix" },
+          ...options.providerReferences,
+        };
       }
       return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" }, ...options.providerReferences };
     },

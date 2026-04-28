@@ -53,7 +53,7 @@ The MVP workflow requires exactly these Regentara-defined agent identifiers:
 |---|---|---|---|
 | `producer` | Performs the current valid task. | Current valid task. | JSON output matching the configured `producer` schema and identifying produced work or artifacts. |
 | `reviewer` | Reviews the current task and produced work. | Current valid task plus Producer work or artifact references. | JSON verdict matching the configured `reviewer` schema. |
-| `remediator` | Converts a review verdict into a follow-up valid task. | Current valid task, Producer work or artifact references, and Reviewer verdict. | JSON output matching the configured `remediator` schema and containing a valid task. |
+| `remediator` | Converts review feedback into a follow-up valid task. | Current valid task, Producer work or artifact references, latest Reviewer verdict, and completed review history. | JSON output matching the configured `remediator` schema and containing a valid task. |
 
 `ModelRouting`:
 
@@ -154,7 +154,7 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 - After a successful `reviewer` call, Regentara must invoke `ReviewFixPolicy.decide` before any subsequent agent call.
 - If `ReviewFixPolicy` returns `complete-ok`, the workflow must succeed without invoking `remediator`.
 - If `ReviewFixPolicy` returns `complete-fail`, the workflow must fail without invoking `remediator`.
-- If `ReviewFixPolicy` returns `remediate`, Regentara must invoke `remediator` with the current valid task, Producer work or artifact references, and Reviewer verdict.
+- If `ReviewFixPolicy` returns `remediate`, Regentara must invoke `remediator` with the current valid task, Producer work or artifact references, latest Reviewer verdict, and completed review history.
 - A successful `remediator` call must return a valid task.
 - After a successful `remediator` call, Regentara must repeat the workflow by invoking `producer` with the remediated valid task.
 - `producer`, `reviewer`, and `remediator` must not invoke each other or the Orchestrator.
@@ -234,7 +234,7 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 36. `runWorkflow` should call `producer` first with the input valid task.
 37. `runWorkflow` should call `reviewer` with the current valid task and Producer work or artifact references after `producer` succeeds.
 38. `runWorkflow` should call no subsequent agent before the policy decision after a completed review.
-39. `runWorkflow` should call `remediator` with the current valid task, Producer work or artifact references, and Reviewer verdict when the policy returns `remediate`.
+39. `runWorkflow` should call `remediator` with the current valid task, Producer work or artifact references, latest Reviewer verdict, and completed review history when the policy returns `remediate`.
 40. `runWorkflow` should call `producer` with the remediated valid task after `remediator` succeeds.
 41. `runWorkflow` should not allow `producer`, `reviewer`, or `remediator` to invoke each other or the Orchestrator.
 42. `runWorkflow` should fail before starting a run when no `ReviewFixPolicy` is injected.

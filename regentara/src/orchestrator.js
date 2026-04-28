@@ -105,6 +105,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
 
     let currentTask = input.task;
     let policySession;
+    const reviewHistory = [];
 
     while (true) {
       const producerResult = await executeAgent({
@@ -135,6 +136,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         },
         modelRouting,
       });
+      reviewHistory.push(reviewerResult);
       const policyResult = await reviewFixPolicy.decide({
         session: policySession,
         verdict: reviewerResult,
@@ -198,6 +200,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         recordProviderMetrics: (providerResult) => addProviderMetrics(runMetrics, providerResult),
         input: {
           producer: producerResult,
+          reviews: [...reviewHistory],
           task: currentTask,
           verdict: reviewerResult,
         },
@@ -386,7 +389,6 @@ async function executeAgent({
   const routeLabel = formatRoute(route, agent.model);
   debugReporter?.report("agent-start", definedObject({
     agent: agentId,
-    reasoningEffort: route.reasoningEffort,
     route: routeLabel,
     taskFile: agentId === "producer" ? taskFile : undefined,
   }));

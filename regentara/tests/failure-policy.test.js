@@ -249,6 +249,33 @@ test("runWorkflow should not continue to later workflow steps after a failed ste
   assert.deepEqual(calls, [{ task: "initial task" }]);
 });
 
+test("runWorkflow should stop before reviewer when producer times out", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  const calls = [];
+
+  const result = await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async (input) => {
+      calls.push(input.agentId);
+      throw new RuntimeFailure("provider CLI exited non-zero: 1", {
+        cause: { providerError: "timeout" },
+      });
+    },
+  });
+
+  assert.deepEqual(
+    {
+      calls,
+      failureReason: result.failureReason,
+      status: result.status,
+    },
+    {
+      calls: ["producer"],
+      failureReason: "provider CLI exited non-zero: 1",
+      status: "failed",
+    },
+  );
+});
+
 test("runWorkflow should exit non-zero and create no run when interrupted before workflow execution starts", async () => {
   const workspace = await makeWorkflowWorkspace();
   let createRunCalled = false;

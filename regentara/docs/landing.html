@@ -393,7 +393,7 @@
       <li><strong>Producer</strong> <span>receives the current task and returns a structured completion claim.</span></li>
       <li><strong>Reviewer</strong> <span>receives the task plus producer output and returns a structured verdict.</span></li>
       <li><strong>ReviewFixPolicy.decide</strong> <span>receives the verdict plus its opaque session state and returns one of <code>complete-ok</code>, <code>complete-fail</code>, or <code>remediate</code>.</span></li>
-      <li><strong>Remediator</strong> <span>(on <code>remediate</code>) receives the task, producer output, and reviewer verdict, then returns a new task.</span></li>
+      <li><strong>Remediator</strong> <span>(on <code>remediate</code>) receives the task, producer output, latest reviewer verdict, and completed review history, then returns a new task.</span></li>
       <li><strong>Repeat</strong> <span>with the remediated task until the policy returns a terminal decision.</span></li>
     </ol>
   </div>
@@ -422,7 +422,7 @@
       <div class="card">
         <div class="label">Agent</div>
         <h3>Remediator</h3>
-        <p>Provider CLI agent. Reads task, producer output, and verdict, returns a new task validated against <code>regentara://schemas/remediator-output</code>.</p>
+        <p>Provider CLI agent. Reads task, producer output, latest verdict, and review history, returns a new task validated against <code>regentara://schemas/remediator-output</code>.</p>
       </div>
       <div class="card">
         <div class="label">Runtime</div>

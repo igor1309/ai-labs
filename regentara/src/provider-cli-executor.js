@@ -43,6 +43,7 @@ async function executeClaudeCode(input, dependencies = {}) {
 
   const wrapper = parseOptionalJson(execution.stdout);
   Object.assign(execution, extractProviderDiagnostics({
+    includeProviderError: execution.exitStatus !== 0 || wrapper?.is_error === true,
     stderr: execution.stderr,
     stdout: execution.stdout,
     wrapper,
@@ -86,6 +87,7 @@ async function executeCodex(input, dependencies = {}) {
 
   execution.sessionReference ??= extractCodexSessionReference(execution.stderr);
   Object.assign(execution, extractProviderDiagnostics({
+    includeProviderError: execution.exitStatus !== 0,
     stderr: execution.stderr,
     stdout: execution.stdout,
   }));
@@ -204,12 +206,19 @@ function parseOptionalJson(output) {
   }
 }
 
-function extractProviderDiagnostics({ stderr = "", stdout = "", wrapper }) {
+function extractProviderDiagnostics({
+  includeProviderError = false,
+  stderr = "",
+  stdout = "",
+  wrapper,
+}) {
   const output = `${stdout}\n${stderr}\n${typeof wrapper?.result === "string" ? wrapper.result : ""}`;
   const costUsd = extractCostUsd(wrapper, output);
   const durationMs = numberOrUndefined(wrapper?.duration_ms);
-  const providerStatus = numberOrUndefined(wrapper?.api_error_status) ?? extractHttpStatus(output);
-  const providerError = extractProviderError(wrapper, output);
+  const providerStatus = includeProviderError
+    ? numberOrUndefined(wrapper?.api_error_status) ?? extractHttpStatus(output)
+    : undefined;
+  const providerError = includeProviderError ? extractProviderError(wrapper, output) : undefined;
 
   return compact({
     costUsd,

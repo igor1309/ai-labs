@@ -27,7 +27,7 @@ Each workflow starts from a task file and proceeds through the same loop:
    - `complete-ok`
    - `complete-fail`
    - `remediate`
-4. On `remediate`, `remediator` receives the task, producer output, and reviewer verdict, then returns a new task.
+4. On `remediate`, `remediator` receives the task, producer output, latest reviewer verdict, and all completed review verdicts, then returns a new task.
 5. The loop repeats with the remediated task.
 
 Any startup or runtime failure is fail-fast. Regentara records the failure when a run directory already exists, then returns a failed result.
