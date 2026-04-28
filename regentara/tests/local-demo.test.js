@@ -56,7 +56,7 @@ test("runDemo should complete with injected fake provider execution and fake CLI
 
   assert.deepEqual(
     { agentIds, checkedCommands, status: result.status },
-    { agentIds: ["producer", "reviewer"], checkedCommands: ["claude"], status: "succeeded" },
+    { agentIds: ["producer", "reviewer"], checkedCommands: ["claude", "codex"], status: "succeeded" },
   );
 });
 

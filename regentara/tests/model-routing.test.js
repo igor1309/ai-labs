@@ -94,10 +94,14 @@ test("resolveModelRouting should use local models yaml instead of global models 
   const workspace = await makeSettingsWorkspace();
   await writeGlobalSettings(workspace, "models.yaml", validModelsYaml());
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    gpt: {
-      model: "gpt-5.1-local",
-      provider: "openai",
+    openai: {
       runner: "codex",
+      models: {
+        high: {
+          model: "gpt-5.1-local",
+          reasoningEffort: "high",
+        },
+      },
     },
   }));
 
@@ -105,7 +109,37 @@ test("resolveModelRouting should use local models yaml instead of global models 
     homeDirectory: workspace.homeDirectory,
   });
 
-  assert.equal(routing.routes.gpt.model, "gpt-5.1-local");
+  assert.equal(routing.providers.openai.models.high.model, "gpt-5.1-local");
+});
+
+test("resolveModelRouting should resolve provider model tiers", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "models.yaml", `
+providers:
+  openai:
+    runner: codex
+    models:
+      medium:
+        model: gpt-5.5
+        reasoningEffort: medium
+      high:
+        model: gpt-5.5
+        reasoningEffort: high
+  anthropic:
+    runner: claude-code
+    models:
+      high:
+        model: claude-opus-4-7
+`);
+
+  const routing = await resolveModelRouting(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
+
+  assert.deepEqual(routing.providers.openai.models.medium, {
+    model: "gpt-5.5",
+    reasoningEffort: "medium",
+  });
 });
 
 test("resolveModelRouting should fail before creating a run when local models yaml exists but is invalid", async () => {
@@ -119,54 +153,148 @@ test("resolveModelRouting should fail before creating a run when local models ya
   );
 });
 
-for (const field of ["provider", "runner", "model"]) {
-  test(`resolveModelRouting should reject route entries whose ${field} is not a string`, async () => {
+test("resolveModelRouting should reject models yaml missing providers", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "models.yaml", `
+routes:
+  sonnet:
+    provider: anthropic
+    runner: claude-code
+    model: claude-sonnet-4-5
+`);
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    /models.yaml must define providers/,
+  );
+});
+
+for (const value of [["not", "a", "string"], "   "]) {
+  test(`resolveModelRouting should reject provider runner value ${JSON.stringify(value)}`, async () => {
     const workspace = await makeSettingsWorkspace();
-    const route = { provider: "anthropic", runner: "claude-code", model: "claude-sonnet-4-5" };
-    route[field] = ["not", "a", "string"];
-    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ sonnet: route }));
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+      anthropic: {
+        models: {
+          medium: {
+            model: "claude-sonnet-4-5",
+          },
+        },
+        runner: value,
+      },
+    }));
 
     await assert.rejects(
       () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-      new RegExp(`route sonnet field ${field} must be a non-empty string`),
-    );
-  });
-
-  test(`resolveModelRouting should reject route entries whose ${field} is empty or whitespace`, async () => {
-    const workspace = await makeSettingsWorkspace();
-    const route = { provider: "anthropic", runner: "claude-code", model: "claude-sonnet-4-5" };
-    route[field] = "   ";
-    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ sonnet: route }));
-
-    await assert.rejects(
-      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-      new RegExp(`route sonnet field ${field} must be a non-empty string`),
+      /provider anthropic field runner must be a non-empty string/,
     );
   });
 }
 
-test("resolveModelRouting should reject models yaml missing provider, runner, or model for a route key", async () => {
+test("resolveModelRouting should reject provider entries whose models is not a mapping", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    sonnet: {
-      model: "claude-sonnet-4-5",
-      provider: "anthropic",
+    anthropic: {
+      models: ["not", "a", "mapping"],
+      runner: "claude-code",
     },
   }));
 
   await assert.rejects(
     () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    /route sonnet missing required field: runner/,
+    /provider anthropic models must be a mapping/,
   );
 });
 
-test("resolveModelRouting should accept user-defined route keys outside the legacy MVP set", async () => {
+for (const value of [["not", "a", "string"], "   "]) {
+  test(`resolveModelRouting should reject model tier model value ${JSON.stringify(value)}`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+      anthropic: {
+        models: {
+          medium: {
+            model: value,
+          },
+        },
+        runner: "claude-code",
+      },
+    }));
+
+    await assert.rejects(
+      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      /provider anthropic model medium field model must be a non-empty string/,
+    );
+  });
+}
+
+for (const value of [["not", "a", "string"], "   "]) {
+  test(`resolveModelRouting should reject model tier reasoningEffort value ${JSON.stringify(value)}`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+      openai: {
+        models: {
+          high: {
+            model: "gpt-5.5",
+            reasoningEffort: value,
+          },
+        },
+        runner: "codex",
+      },
+    }));
+
+    await assert.rejects(
+      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      /provider openai model high field reasoningEffort must be a non-empty string/,
+    );
+  });
+}
+
+test("resolveModelRouting should reject provider entries missing runner", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    haiku: {
-      model: "claude-haiku",
-      provider: "anthropic",
+    anthropic: {
+      models: {
+        medium: {
+          model: "claude-sonnet-4-5",
+        },
+      },
+    },
+  }));
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    /provider anthropic missing required field: runner/,
+  );
+});
+
+test("resolveModelRouting should reject model tier entries missing model", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+    anthropic: {
+      models: {
+        medium: {
+          reasoningEffort: "medium",
+        },
+      },
       runner: "claude-code",
+    },
+  }));
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    /provider anthropic model medium missing required field: model/,
+  );
+});
+
+test("resolveModelRouting should accept user-defined model tiers outside the default set", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+    anthropic: {
+      runner: "claude-code",
+      models: {
+        fast: {
+          model: "claude-haiku",
+        },
+      },
     },
   }));
 
@@ -174,16 +302,19 @@ test("resolveModelRouting should accept user-defined route keys outside the lega
     homeDirectory: workspace.homeDirectory,
   });
 
-  assert.equal(routing.routes.haiku.model, "claude-haiku");
+  assert.equal(routing.providers.anthropic.models.fast.model, "claude-haiku");
 });
 
 test("resolveModelRouting should accept arbitrary provider and runner strings", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    sonnet: {
-      model: "claude-sonnet-4-5",
-      provider: "custom-provider",
+    experimental: {
       runner: "custom-runner",
+      models: {
+        medium: {
+          model: "x-model",
+        },
+      },
     },
   }));
 
@@ -191,6 +322,6 @@ test("resolveModelRouting should accept arbitrary provider and runner strings", 
     homeDirectory: workspace.homeDirectory,
   });
 
-  assert.equal(routing.routes.sonnet.provider, "custom-provider");
-  assert.equal(routing.routes.sonnet.runner, "custom-runner");
+  assert.equal(routing.providers.experimental.runner, "custom-runner");
+  assert.equal(routing.providers.experimental.models.medium.model, "x-model");
 });

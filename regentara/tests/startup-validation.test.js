@@ -96,14 +96,15 @@ test("runWorkflow should fail before creating a run when provider execution has 
   );
 });
 
-test("runWorkflow should fail before creating a run when agents.yaml references a route key not defined in models.yaml", async () => {
+test("runWorkflow should fail before creating a run when agents.yaml references a model tier not defined in models.yaml", async () => {
   const workspace = await makeSettingsWorkspace();
   let createRunCalled = false;
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     producer: {
-      model: "missing-route",
+      model: "missing-tier",
       output: { schemaRef: "regentara://schemas/producer-output" },
       prompt: { ref: "regentara://prompts/producer" },
+      provider: "anthropic",
     },
   }));
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
@@ -120,8 +121,104 @@ test("runWorkflow should fail before creating a run when agents.yaml references 
   });
 
   assert.deepEqual(
-    { createRunCalled, failureReasonHasRouteKey: result.failureReason?.includes("missing-route"), status: result.status },
-    { createRunCalled: false, failureReasonHasRouteKey: true, status: "failed" },
+    {
+      createRunCalled,
+      failureReason: result.failureReason,
+      status: result.status,
+    },
+    {
+      createRunCalled: false,
+      failureReason: "agents.yaml agent producer references undefined provider/model in models.yaml: anthropic/missing-tier",
+      status: "failed",
+    },
+  );
+});
+
+test("runWorkflow should fail before creating a run when agents.yaml references a provider not defined in models.yaml", async () => {
+  const workspace = await makeSettingsWorkspace();
+  let createRunCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    producer: {
+      model: "medium",
+      output: { schemaRef: "regentara://schemas/producer-output" },
+      prompt: { ref: "regentara://prompts/producer" },
+      provider: "missing-provider",
+    },
+  }));
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    createRun: async () => {
+      createRunCalled = true;
+    },
+  });
+
+  assert.deepEqual(
+    {
+      createRunCalled,
+      failureReason: result.failureReason,
+      status: result.status,
+    },
+    {
+      createRunCalled: false,
+      failureReason: "agents.yaml agent producer references undefined provider/model in models.yaml: missing-provider/medium",
+      status: "failed",
+    },
+  );
+});
+
+test("runWorkflow should fail before creating a run when agents.yaml references a missing provider model tier", async () => {
+  const workspace = await makeSettingsWorkspace();
+  let createRunCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    reviewer: {
+      model: "critical",
+      output: { schemaRef: "regentara://schemas/reviewer-output" },
+      prompt: { ref: "regentara://prompts/reviewer" },
+      provider: "openai",
+    },
+  }));
+  await writeLocalSettings(workspace, "models.yaml", `
+providers:
+  anthropic:
+    runner: claude-code
+    models:
+      medium:
+        model: claude-sonnet-4-5
+  openai:
+    runner: codex
+    models:
+      high:
+        model: gpt-5.5
+`);
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    createRun: async () => {
+      createRunCalled = true;
+    },
+  });
+
+  assert.deepEqual(
+    {
+      createRunCalled,
+      failureReason: result.failureReason,
+      status: result.status,
+    },
+    {
+      createRunCalled: false,
+      failureReason: "agents.yaml agent reviewer references undefined provider/model in models.yaml: openai/critical",
+      status: "failed",
+    },
   );
 });
 
@@ -203,14 +300,31 @@ test("runWorkflow startup failures should surface failureReason naming the offen
       dependencies: { commandExists: async () => true },
     },
     {
-      label: "cross-ref undefined route key",
-      expected: /agents\.yaml agent producer references undefined route key in models\.yaml: missing-route/,
+      label: "cross-ref undefined provider",
+      expected: /agents\.yaml agent producer references undefined provider\/model in models\.yaml: missing-provider\/medium/,
       setup: async (workspace) => {
         await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
           producer: {
-            model: "missing-route",
+            model: "medium",
             output: { schemaRef: "regentara://schemas/producer-output" },
             prompt: { ref: "regentara://prompts/producer" },
+            provider: "missing-provider",
+          },
+        }));
+        await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+      },
+      dependencies: { commandExists: async () => true },
+    },
+    {
+      label: "cross-ref undefined provider model tier",
+      expected: /agents\.yaml agent producer references undefined provider\/model in models\.yaml: anthropic\/missing-tier/,
+      setup: async (workspace) => {
+        await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+          producer: {
+            model: "missing-tier",
+            output: { schemaRef: "regentara://schemas/producer-output" },
+            prompt: { ref: "regentara://prompts/producer" },
+            provider: "anthropic",
           },
         }));
         await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
@@ -243,11 +357,18 @@ test("runWorkflow startup failures should surface failureReason naming the offen
   }
 });
 
-test("runWorkflow should not validate CLI availability for unused routes", async () => {
+test("runWorkflow should not validate CLI availability for unused providers", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    unused: { provider: "experimental", runner: "missing-runner", model: "x" },
+    unused: {
+      models: {
+        medium: {
+          model: "x",
+        },
+      },
+      runner: "missing-runner",
+    },
   }));
   const checkedCommands = [];
 
@@ -276,7 +397,14 @@ test("runWorkflow should append completion progress event when validation-only e
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    unused: { provider: "experimental", runner: "missing-runner", model: "x" },
+    unused: {
+      models: {
+        medium: {
+          model: "x",
+        },
+      },
+      runner: "missing-runner",
+    },
   }));
 
   const result = await runWorkflow({
@@ -307,10 +435,18 @@ test("runWorkflow should accept arbitrary runner settings and fail clearly when 
         schemaRef: "regentara://schemas/producer-output",
       },
       prompt: { ref: "regentara://prompts/producer" },
+      provider: "experimental",
     },
   }));
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
-    custom: { provider: "experimental", runner: "custom-runner", model: "x" },
+    experimental: {
+      models: {
+        custom: {
+          model: "x",
+        },
+      },
+      runner: "custom-runner",
+    },
   }));
 
   const result = await runWorkflow({

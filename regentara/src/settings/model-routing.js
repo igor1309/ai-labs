@@ -10,7 +10,8 @@ import {
 } from "./example-bootstrap.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
-const REQUIRED_FIELDS = ["provider", "runner", "model"];
+const REQUIRED_PROVIDER_FIELDS = ["runner", "models"];
+const REQUIRED_MODEL_FIELDS = ["model"];
 
 export async function resolveModelRouting(workingDirectory, options = {}) {
   const selectedPath = await firstExistingSettingsPath(
@@ -26,20 +27,18 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
   }
 
   const document = await loadYamlDocument(selectedPath, "models.yaml");
-  const rawRoutes = document.routes;
-
-  if (!isPlainObject(rawRoutes)) {
-    throw new StartupValidationFailure("models.yaml must define routes");
+  if (!isPlainObject(document.providers)) {
+    throw new StartupValidationFailure("models.yaml must define providers");
   }
 
-  const routes = {};
-  for (const routeKey of Object.keys(rawRoutes)) {
-    routes[routeKey] = validateRoute(routeKey, rawRoutes[routeKey]);
+  const providers = {};
+  for (const provider of Object.keys(document.providers)) {
+    providers[provider] = validateProvider(provider, document.providers[provider]);
   }
 
   return {
     selectedPath,
-    routes,
+    providers,
   };
 }
 
@@ -59,31 +58,67 @@ async function loadYamlDocument(path, fileName) {
   return parsed;
 }
 
-function validateRoute(routeKey, rawRoute) {
-  if (!isPlainObject(rawRoute)) {
-    throw new StartupValidationFailure(`models.yaml route ${routeKey} must be a mapping`);
+function validateProvider(provider, rawProvider) {
+  if (!isPlainObject(rawProvider)) {
+    throw new StartupValidationFailure(`models.yaml provider ${provider} must be a mapping`);
   }
 
-  const missingField = REQUIRED_FIELDS.find((field) => rawRoute[field] === undefined);
+  const missingField = REQUIRED_PROVIDER_FIELDS.find((field) => rawProvider[field] === undefined);
   if (missingField) {
     throw new StartupValidationFailure(
-      `models.yaml route ${routeKey} missing required field: ${missingField}`,
+      `models.yaml provider ${provider} missing required field: ${missingField}`,
     );
   }
 
-  const invalidField = REQUIRED_FIELDS.find(
-    (field) => typeof rawRoute[field] !== "string" || rawRoute[field].trim() === "",
-  );
-  if (invalidField) {
+  if (typeof rawProvider.runner !== "string" || rawProvider.runner.trim() === "") {
     throw new StartupValidationFailure(
-      `models.yaml route ${routeKey} field ${invalidField} must be a non-empty string`,
+      `models.yaml provider ${provider} field runner must be a non-empty string`,
+    );
+  }
+
+  if (!isPlainObject(rawProvider.models)) {
+    throw new StartupValidationFailure(`models.yaml provider ${provider} models must be a mapping`);
+  }
+
+  const models = {};
+  for (const tier of Object.keys(rawProvider.models)) {
+    models[tier] = validateProviderModel(provider, tier, rawProvider.models[tier]);
+  }
+
+  return {
+    models,
+    runner: rawProvider.runner.trim(),
+  };
+}
+
+function validateProviderModel(provider, tier, rawModel) {
+  if (!isPlainObject(rawModel)) {
+    throw new StartupValidationFailure(`models.yaml provider ${provider} model ${tier} must be a mapping`);
+  }
+
+  const missingField = REQUIRED_MODEL_FIELDS.find((field) => rawModel[field] === undefined);
+  if (missingField) {
+    throw new StartupValidationFailure(
+      `models.yaml provider ${provider} model ${tier} missing required field: ${missingField}`,
+    );
+  }
+
+  if (typeof rawModel.model !== "string" || rawModel.model.trim() === "") {
+    throw new StartupValidationFailure(
+      `models.yaml provider ${provider} model ${tier} field model must be a non-empty string`,
+    );
+  }
+
+  if (rawModel.reasoningEffort !== undefined
+    && (typeof rawModel.reasoningEffort !== "string" || rawModel.reasoningEffort.trim() === "")) {
+    throw new StartupValidationFailure(
+      `models.yaml provider ${provider} model ${tier} field reasoningEffort must be a non-empty string`,
     );
   }
 
   return {
-    model: rawRoute.model.trim(),
-    provider: rawRoute.provider.trim(),
-    runner: rawRoute.runner.trim(),
+    model: rawModel.model.trim(),
+    ...(rawModel.reasoningEffort ? { reasoningEffort: rawModel.reasoningEffort.trim() } : {}),
   };
 }
 

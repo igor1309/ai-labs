@@ -107,7 +107,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
   const decisions = [...(policy.decisions ?? [])];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     remediator: {
-      model: "gpt",
+      model: "high",
       output: {
         schema: {
           required: ["task"],
@@ -115,6 +115,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
         },
       },
       prompt: { ref: "regentara://prompts/remediator" },
+      provider: "anthropic",
     },
   }));
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());

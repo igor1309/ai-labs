@@ -1,18 +1,21 @@
 agents:
   producer:
-    model: sonnet
+    provider: anthropic
+    model: medium
     prompt:
       ref: regentara://prompts/producer
     output:
       schemaRef: regentara://schemas/producer-output
   reviewer:
-    model: sonnet
+    provider: openai
+    model: high
     prompt:
       ref: regentara://prompts/reviewer
     output:
       schemaRef: regentara://schemas/reviewer-output
   remediator:
-    model: sonnet
+    provider: anthropic
+    model: high
     prompt:
       ref: regentara://prompts/remediator
     output:

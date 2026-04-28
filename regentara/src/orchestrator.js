@@ -45,7 +45,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     assertRouteReferencesResolve(agentSettings, modelRouting);
     const referencedRunners = Object.values(agentSettings.agents)
-      .map((agent) => modelRouting.routes[agent.model].runner);
+      .map((agent) => resolveAgentRoute(agent, modelRouting).runner);
     await validateCliAvailability(referencedRunners, dependencies);
     if (executeProviderCli && !isNonBlankString(input.taskFile)) {
       throw new StartupValidationFailure("task file is required for provider execution");
@@ -218,12 +218,26 @@ async function finalizeRun(updateRunMetadata, runDirectory, status, exitCode) {
 
 function assertRouteReferencesResolve(agentSettings, modelRouting) {
   for (const [agentId, agent] of Object.entries(agentSettings.agents)) {
-    if (!Object.prototype.hasOwnProperty.call(modelRouting.routes, agent.model)) {
-      throw new StartupValidationFailure(
-        `agents.yaml agent ${agentId} references undefined route key in models.yaml: ${agent.model}`,
-      );
-    }
+    resolveAgentRoute(agent, modelRouting, agentId);
   }
+}
+
+function resolveAgentRoute(agent, modelRouting, agentId = "agent") {
+  const provider = modelRouting.providers[agent.provider];
+  const model = provider?.models[agent.model];
+
+  if (!provider || !model) {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} references undefined provider/model in models.yaml: ${agent.provider}/${agent.model}`,
+    );
+  }
+
+  return {
+    model: model.model,
+    provider: agent.provider,
+    reasoningEffort: model.reasoningEffort,
+    runner: provider.runner,
+  };
 }
 
 async function executeAgent({
@@ -237,7 +251,7 @@ async function executeAgent({
   taskFile,
 }) {
   const agent = agentSettings.agents[agentId];
-  const route = modelRouting.routes[agent.model];
+  const route = resolveAgentRoute(agent, modelRouting, agentId);
   await emitEvent?.({
     agentId,
     currentAgent: agentId,
@@ -255,6 +269,7 @@ async function executeAgent({
       outputSchema: agent.outputSchema,
       prompt: buildAgentPrompt(agentId, agent, input),
       provider: route.provider,
+      reasoningEffort: route.reasoningEffort,
       runner: route.runner,
     });
 

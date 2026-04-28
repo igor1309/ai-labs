@@ -1,7 +1,7 @@
 ---
-date: 2026-04-27
-model: Claude Opus 4.7
-description: "MVP workflow runner contract derived from the accepted Regentara ADRs, including adr-007 (CLI settings convention adoption)."
+date: 2026-04-28
+model: gpt-5
+description: "MVP workflow runner contract derived from the accepted Regentara ADRs, including provider/model-tier routing."
 ---
 
 # MVP Workflow Runner Spec
@@ -43,7 +43,7 @@ resolveModelRouting(workingDirectory: Path) -> ModelRouting | StartupValidationF
 
 - contains every Regentara-defined agent required by the MVP workflow.
 - rejects unknown agent identifiers.
-- defines `model`, `prompt`, and `output` for each required agent.
+- defines `provider`, `model`, `prompt`, and `output` for each required agent.
 - treats `name` as an optional display-name override only.
 - defines JSON output contracts through supported JSON Schema references or inline schemas.
 
@@ -57,8 +57,10 @@ The MVP workflow requires exactly these Regentara-defined agent identifiers:
 
 `ModelRouting`:
 
-- maps each route key declared in `models.yaml` to `provider`, `runner`, and `model`.
-- treats route keys, `provider`, and `runner` as catalog values: no closed inventory and no closed whitelist.
+- maps each provider declared in `models.yaml` to a provider CLI `runner` and provider-local model tiers.
+- maps each provider-local model tier to a concrete provider CLI `model`.
+- may define optional tier metadata such as `reasoningEffort` for runners that support it.
+- treats providers, model tiers, and runners as catalog values: no closed inventory and no closed whitelist.
 
 ### Review Fix Policy
 
@@ -86,6 +88,8 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 
 - `runner`: validated runner selected by model routing.
 - `model`: validated concrete model selected by model routing.
+- `provider`: validated provider selected by agent settings.
+- `reasoningEffort`: optional model-tier metadata selected by model routing.
 - `executionInput`: prepared task, artifact, and file references for the agent call.
 
 `ProviderCliResult`:
@@ -110,7 +114,8 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 - Regentara must fail startup validation when no `models.yaml` exists.
 - Regentara must fail startup validation when the selected `models.yaml` is invalid.
 - Regentara must fail startup validation before creating a run when provider execution is requested without a non-empty task file path.
-- Regentara must fail startup validation when `agents.yaml` references a route key that is not defined in `models.yaml`.
+- Regentara must fail startup validation when `agents.yaml` references a provider that is not defined in `models.yaml`.
+- Regentara must fail startup validation when `agents.yaml` references a provider-local model tier that is not defined in `models.yaml`.
 - Regentara must validate that every provider CLI required by the selected workflow and model routing is available before workflow execution starts.
 - When `agents.yaml` is missing at both locations, Regentara must write `~/.regentara/agents.yaml.example` before failing, and must not overwrite an existing `agents.yaml.example`.
 - When `models.yaml` is missing at both locations, Regentara must write `~/.regentara/models.yaml.example` before failing, and must not overwrite an existing `models.yaml.example`.
@@ -201,9 +206,9 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 8. `runWorkflow` should reject `agents.yaml` missing `producer`.
 9. `runWorkflow` should reject `agents.yaml` missing `reviewer`.
 10. `runWorkflow` should reject `agents.yaml` missing `remediator`.
-11. `runWorkflow` should reject `agents.yaml` missing `model`, `prompt`, or `output` for `producer`.
-12. `runWorkflow` should reject `agents.yaml` missing `model`, `prompt`, or `output` for `reviewer`.
-13. `runWorkflow` should reject `agents.yaml` missing `model`, `prompt`, or `output` for `remediator`.
+11. `runWorkflow` should reject `agents.yaml` missing `provider`, `model`, `prompt`, or `output` for `producer`.
+12. `runWorkflow` should reject `agents.yaml` missing `provider`, `model`, `prompt`, or `output` for `reviewer`.
+13. `runWorkflow` should reject `agents.yaml` missing `provider`, `model`, `prompt`, or `output` for `remediator`.
 14. `runWorkflow` should reject `agents.yaml` with an unsupported output schema reference.
 15. `runWorkflow` should fail before creating a run when neither local nor global `models.yaml` exists.
 16. `runWorkflow` should write `~/.regentara/models.yaml.example` when no `models.yaml` exists at either location.
@@ -212,56 +217,58 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 19. `runWorkflow` should write only the missing `*.example` when only one of `agents.yaml` or `models.yaml` is missing.
 20. `runWorkflow` should use local `models.yaml` instead of global `models.yaml` when both exist.
 21. `runWorkflow` should fail before creating a run when local `models.yaml` exists but is invalid.
-22. `runWorkflow` should reject `models.yaml` missing `provider`, `runner`, or `model` for a route key.
-23. `runWorkflow` should fail before creating a run when `agents.yaml` references a route key not defined in `models.yaml`.
-24. `runWorkflow` should fail before creating a run when a required provider CLI is unavailable.
-25. `runWorkflow` should surface a `StartupValidationFailure` naming the offending settings file or rule on every startup-validation failure.
-26. `runWorkflow` should create a run ID with the required UTC timestamp and lowercase alphanumeric suffix format after startup validation passes.
-27. `runWorkflow` should create the run directory under `~/.regentara/runs/<run-id>/` after startup validation passes.
-28. `runWorkflow` should invoke the provider CLI from the invocation working directory.
-29. `runWorkflow` should treat a non-zero provider CLI exit status as a runtime failure.
-30. `runWorkflow` should not infer success from partial files or logs when the provider CLI exits non-zero.
-31. `runWorkflow` should fail immediately when agent runtime output is not valid JSON.
-32. `runWorkflow` should fail immediately when agent runtime JSON does not satisfy the configured output schema.
-33. `runWorkflow` should not call the next workflow step after invalid agent output.
-34. `runWorkflow` should call `producer` first with the input valid task.
-35. `runWorkflow` should call `reviewer` with the current valid task and Producer work or artifact references after `producer` succeeds.
-36. `runWorkflow` should call no subsequent agent before the policy decision after a completed review.
-37. `runWorkflow` should call `remediator` with the current valid task, Producer work or artifact references, and Reviewer verdict when the policy returns `remediate`.
-38. `runWorkflow` should call `producer` with the remediated valid task after `remediator` succeeds.
-39. `runWorkflow` should not allow `producer`, `reviewer`, or `remediator` to invoke each other or the Orchestrator.
-40. `runWorkflow` should fail before starting a run when no `ReviewFixPolicy` is injected.
-41. `runWorkflow` should call `ReviewFixPolicy.decide` exactly once after each completed review.
-42. `runWorkflow` should succeed when the policy returns `complete-ok`.
-43. `runWorkflow` should fail without calling Remediator when the policy returns `complete-fail`.
-44. `runWorkflow` should call Remediator and continue with the remediated task when the policy returns `remediate`.
-45. `runWorkflow` should forward the policy session returned from one decision unchanged into the next decision.
-46. `runWorkflow` should not branch on verdict severity without consulting `ReviewFixPolicy`.
-47. `runWorkflow` should reject authored artifact overwrite attempts.
-48. `runWorkflow` should allow run metadata updates for end time, run status, and final exit code.
-49. `runWorkflow` should reject run metadata updates for fields other than end time, run status, and final exit code.
-50. `runWorkflow` should fail before creating a run when provider execution has no task file.
-51. `runWorkflow` should include the task file on Producer start events.
-52. `runWorkflow` should include provider run references on agent end events.
-53. `runWorkflow` should record the task file in run metadata.
-54. `runWorkflow` should mark run metadata terminal on successful and failed completion decisions.
-55. `runWorkflow` should not record execution progress by mutating authored artifacts.
-56. `runWorkflow` should preserve already-created artifacts when a runtime failure occurs.
-57. `runWorkflow` should not fabricate an expected artifact when it is missing.
-58. `runWorkflow` should fail immediately when an expected artifact is missing.
-59. `runWorkflow` should stop after the first runtime failure.
-60. `runWorkflow` should not retry a failed step.
-61. `runWorkflow` should not continue to later workflow steps after a failed step.
-62. `runWorkflow` should not impose an automatic subprocess timeout.
-63. `runWorkflow` should exit non-zero and create no run when interrupted before workflow execution starts.
-64. `runWorkflow` should mark the run failed when interrupted after workflow execution starts.
+22. `runWorkflow` should reject `models.yaml` missing provider-level `runner`, provider-level `models`, or tier-level `model`.
+23. `runWorkflow` should fail before creating a run when `agents.yaml` references a provider not defined in `models.yaml`.
+24. `runWorkflow` should fail before creating a run when `agents.yaml` references a provider-local model tier not defined in `models.yaml`.
+25. `runWorkflow` should pass provider model-tier routing to the runner adapter.
+26. `runWorkflow` should fail before creating a run when a required provider CLI is unavailable.
+27. `runWorkflow` should surface a `StartupValidationFailure` naming the offending settings file or rule on every startup-validation failure.
+28. `runWorkflow` should create a run ID with the required UTC timestamp and lowercase alphanumeric suffix format after startup validation passes.
+29. `runWorkflow` should create the run directory under `~/.regentara/runs/<run-id>/` after startup validation passes.
+30. `runWorkflow` should invoke the provider CLI from the invocation working directory.
+31. `runWorkflow` should treat a non-zero provider CLI exit status as a runtime failure.
+32. `runWorkflow` should not infer success from partial files or logs when the provider CLI exits non-zero.
+33. `runWorkflow` should fail immediately when agent runtime output is not valid JSON.
+34. `runWorkflow` should fail immediately when agent runtime JSON does not satisfy the configured output schema.
+35. `runWorkflow` should not call the next workflow step after invalid agent output.
+36. `runWorkflow` should call `producer` first with the input valid task.
+37. `runWorkflow` should call `reviewer` with the current valid task and Producer work or artifact references after `producer` succeeds.
+38. `runWorkflow` should call no subsequent agent before the policy decision after a completed review.
+39. `runWorkflow` should call `remediator` with the current valid task, Producer work or artifact references, and Reviewer verdict when the policy returns `remediate`.
+40. `runWorkflow` should call `producer` with the remediated valid task after `remediator` succeeds.
+41. `runWorkflow` should not allow `producer`, `reviewer`, or `remediator` to invoke each other or the Orchestrator.
+42. `runWorkflow` should fail before starting a run when no `ReviewFixPolicy` is injected.
+43. `runWorkflow` should call `ReviewFixPolicy.decide` exactly once after each completed review.
+44. `runWorkflow` should succeed when the policy returns `complete-ok`.
+45. `runWorkflow` should fail without calling Remediator when the policy returns `complete-fail`.
+46. `runWorkflow` should call Remediator and continue with the remediated task when the policy returns `remediate`.
+47. `runWorkflow` should forward the policy session returned from one decision unchanged into the next decision.
+48. `runWorkflow` should not branch on verdict severity without consulting `ReviewFixPolicy`.
+49. `runWorkflow` should reject authored artifact overwrite attempts.
+50. `runWorkflow` should allow run metadata updates for end time, run status, and final exit code.
+51. `runWorkflow` should reject run metadata updates for fields other than end time, run status, and final exit code.
+52. `runWorkflow` should fail before creating a run when provider execution has no task file.
+53. `runWorkflow` should include the task file on Producer start events.
+54. `runWorkflow` should include provider run references on agent end events.
+55. `runWorkflow` should record the task file in run metadata.
+56. `runWorkflow` should mark run metadata terminal on successful and failed completion decisions.
+57. `runWorkflow` should not record execution progress by mutating authored artifacts.
+58. `runWorkflow` should preserve already-created artifacts when a runtime failure occurs.
+59. `runWorkflow` should not fabricate an expected artifact when it is missing.
+60. `runWorkflow` should fail immediately when an expected artifact is missing.
+61. `runWorkflow` should stop after the first runtime failure.
+62. `runWorkflow` should not retry a failed step.
+63. `runWorkflow` should not continue to later workflow steps after a failed step.
+64. `runWorkflow` should not impose an automatic subprocess timeout.
+65. `runWorkflow` should exit non-zero and create no run when interrupted before workflow execution starts.
+66. `runWorkflow` should mark the run failed when interrupted after workflow execution starts.
 
 ## Done Criteria
 
-- Startup validation enforces all `agents.yaml`, `models.yaml`, cross-file route-key resolution, and provider CLI availability rules before run creation.
+- Startup validation enforces all `agents.yaml`, `models.yaml`, cross-file provider/model-tier resolution, and provider CLI availability rules before run creation.
 - First-run bootstrap writes missing `agents.yaml.example` and `models.yaml.example` to `~/.regentara/` without overwriting existing examples and without creating actual settings files.
 - `agents.yaml` validation enforces the MVP agent inventory: `producer`, `reviewer`, and `remediator`.
-- Settings validation rejects only structural problems; route keys, providers, runners, and prompt references are accepted as catalog values.
+- Settings validation rejects only structural problems; providers, model tiers, runners, and prompt references are accepted as catalog values.
 - Startup validation failures surface a `StartupValidationFailure` naming the offending settings file or rule.
 - Successful startup creates a valid run ID and run directory under the global Regentara runs root.
 - Provider CLI execution obeys the invocation, capture, and responsibility boundaries defined above.

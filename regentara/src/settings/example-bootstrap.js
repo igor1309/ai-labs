@@ -7,42 +7,45 @@ import { firstExistingSettingsPath } from "./paths.js";
 
 export const AGENTS_YAML_EXAMPLE = `agents:
   producer:
-    model: sonnet
+    provider: anthropic
+    model: medium
     prompt:
       ref: regentara://prompts/producer
     output:
       schemaRef: regentara://schemas/producer-output
   reviewer:
-    model: sonnet
+    provider: openai
+    model: high
     prompt:
       ref: regentara://prompts/reviewer
     output:
       schemaRef: regentara://schemas/reviewer-output
   remediator:
-    model: sonnet
+    provider: anthropic
+    model: high
     prompt:
       ref: regentara://prompts/remediator
     output:
       schemaRef: regentara://schemas/remediator-output
 `;
 
-export const MODELS_YAML_EXAMPLE = `routes:
-  sonnet:
-    provider: anthropic
+export const MODELS_YAML_EXAMPLE = `providers:
+  anthropic:
     runner: claude-code
-    model: claude-sonnet-4-5
-  opus:
-    provider: anthropic
-    runner: claude-code
-    model: claude-opus-4-7
-  gpt:
-    provider: openai
+    models:
+      medium:
+        model: claude-sonnet-4-5
+      high:
+        model: claude-opus-4-7
+  openai:
     runner: codex
-    model: gpt-5.5
-  codex:
-    provider: openai
-    runner: codex
-    model: gpt-5.5
+    models:
+      medium:
+        model: gpt-5.5
+        reasoningEffort: medium
+      high:
+        model: gpt-5.5
+        reasoningEffort: high
 `;
 
 const SETTINGS_FILES = [

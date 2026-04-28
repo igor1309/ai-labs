@@ -65,6 +65,7 @@ async function executeCodex(input, dependencies = {}) {
       "exec",
       "--model",
       input.model,
+      ...codexConfigArguments(input),
       "--output-schema",
       schemaPath,
       "--output-last-message",
@@ -85,6 +86,14 @@ async function executeCodex(input, dependencies = {}) {
     semanticResult: validateRuntimeOutput(input.agentId, semanticOutput, input.outputSchema),
     sessionReference: execution.sessionReference,
   });
+}
+
+function codexConfigArguments(input) {
+  if (!input.reasoningEffort) {
+    return [];
+  }
+
+  return ["--config", `model_reasoning_effort="${input.reasoningEffort}"`];
 }
 
 function extractCodexSessionReference(stderr) {

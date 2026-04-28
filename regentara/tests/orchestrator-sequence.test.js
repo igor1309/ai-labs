@@ -56,6 +56,30 @@ test("runWorkflow should pass runner adapter input without a workspace field", a
   );
 });
 
+test("runWorkflow should pass provider model tier routing to the runner adapter", async () => {
+  const calls = [];
+
+  await runWorkflowWithCalls(calls, {
+    captureFullInput: true,
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  assert.deepEqual(
+    {
+      model: calls[1].model,
+      provider: calls[1].provider,
+      reasoningEffort: calls[1].reasoningEffort,
+      runner: calls[1].runner,
+    },
+    {
+      model: "gpt-5.5",
+      provider: "openai",
+      reasoningEffort: "high",
+      runner: "codex",
+    },
+  );
+});
+
 test("runWorkflow should build a role prompt with task context and output schema", async () => {
   const calls = [];
 
@@ -293,7 +317,7 @@ async function runWorkflowWithCalls(calls, options = {}) {
   const policyDecisions = [...options.policyDecisions];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     remediator: {
-      model: "gpt",
+      model: "high",
       output: {
         schema: {
           required: ["task"],
@@ -301,6 +325,7 @@ async function runWorkflowWithCalls(calls, options = {}) {
         },
       },
       prompt: { ref: "regentara://prompts/remediator" },
+      provider: "anthropic",
     },
   }));
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());

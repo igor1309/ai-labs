@@ -1,17 +1,17 @@
-routes:
-  sonnet:
-    provider: anthropic
+providers:
+  anthropic:
     runner: claude-code
-    model: claude-sonnet-4-5
-  opus:
-    provider: anthropic
-    runner: claude-code
-    model: claude-opus-4-7
-  gpt:
-    provider: openai
+    models:
+      medium:
+        model: claude-sonnet-4-5
+      high:
+        model: claude-opus-4-7
+  openai:
     runner: codex
-    model: gpt-5.5
-  codex:
-    provider: openai
-    runner: codex
-    model: gpt-5.5
+    models:
+      medium:
+        model: gpt-5.5
+        reasoningEffort: medium
+      high:
+        model: gpt-5.5
+        reasoningEffort: high

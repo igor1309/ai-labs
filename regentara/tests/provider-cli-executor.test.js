@@ -251,6 +251,26 @@ test("executeProviderCli should pass the selected model to Codex arguments", asy
   );
 });
 
+test("executeProviderCli should pass reasoning effort to Codex arguments", async () => {
+  const calls = [];
+
+  await executeProviderCli(makeInput({
+    reasoningEffort: "medium",
+  }), {
+    spawnProvider: async (call) => {
+      calls.push(call);
+      const outputPath = call.args.at(call.args.indexOf("--output-last-message") + 1);
+      await writeFile(outputPath, JSON.stringify({ artifact: "producer/result.json" }));
+      return makeExecutionResult();
+    },
+  });
+
+  assert.deepEqual(
+    calls[0].args.slice(3, 6),
+    ["--config", "model_reasoning_effort=\"medium\"", "--output-schema"],
+  );
+});
+
 function makeInput(overrides = {}) {
   return {
     agentId: "producer",

@@ -59,24 +59,27 @@ On a first run with missing settings, Regentara writes example files under `~/.r
 
 ### agents.yaml
 
-`agents.yaml` must define exactly `producer`, `reviewer`, and `remediator` under an `agents` mapping. Each agent must include `model`, `prompt`, and `output`.
+`agents.yaml` must define exactly `producer`, `reviewer`, and `remediator` under an `agents` mapping. Each agent must include `provider`, `model`, `prompt`, and `output`. The `provider` selects a provider section from `models.yaml`; `model` selects a provider-local tier such as `medium` or `high`.
 
 ```yaml
 agents:
   producer:
-    model: sonnet
+    provider: anthropic
+    model: medium
     prompt:
       ref: regentara://prompts/producer
     output:
       schemaRef: regentara://schemas/producer-output
   reviewer:
-    model: sonnet
+    provider: openai
+    model: high
     prompt:
       ref: regentara://prompts/reviewer
     output:
       schemaRef: regentara://schemas/reviewer-output
   remediator:
-    model: sonnet
+    provider: anthropic
+    model: high
     prompt:
       ref: regentara://prompts/remediator
     output:
@@ -91,26 +94,34 @@ Prompt references are catalog values and may be user-defined. Output schemas can
 
 ### models.yaml
 
-`models.yaml` maps agent `model` keys to provider CLI routes.
+`models.yaml` maps provider-local model tiers to concrete provider CLI models. Provider keys and tier names are catalog values, so users may choose names that fit their environment. Regentara only requires that every configured agent's `(provider, model)` pair resolves.
 
 ```yaml
-routes:
-  sonnet:
-    provider: anthropic
+providers:
+  anthropic:
     runner: claude-code
-    model: claude-sonnet-4-5
-  gpt:
-    provider: openai
+    models:
+      medium:
+        model: claude-sonnet-4-5
+      high:
+        model: claude-opus-4-7
+  openai:
     runner: codex
-    model: gpt-5.5
+    models:
+      medium:
+        model: gpt-5.5
+        reasoningEffort: medium
+      high:
+        model: gpt-5.5
+        reasoningEffort: high
 ```
 
-The `runner` selects the provider CLI adapter. Built-in adapters currently support:
+The provider-level `runner` selects the provider CLI adapter. Built-in adapters currently support:
 
 - `claude-code`, which invokes `claude`
 - `codex`, which invokes `codex`
 
-Regentara validates only the runners referenced by configured agents.
+Regentara validates only the runners referenced by configured agents. `reasoningEffort` is optional and currently passed through to the Codex runner as `model_reasoning_effort`.
 
 ### policy.yaml
 
@@ -150,7 +161,7 @@ Regentara threads the returned `session` into the next policy call but does not 
 Regentara passes each agent prompt and expected JSON Schema to the selected runner's native structured-output mode.
 
 - Claude Code uses `claude -p --model ... --output-format json --json-schema ...`.
-- Codex uses `codex exec --model ... --output-schema ... --output-last-message ...`.
+- Codex uses `codex exec --model ... --config model_reasoning_effort="..." --output-schema ... --output-last-message ...` when `reasoningEffort` is configured, and omits the config argument otherwise.
 
 Provider stdout and stderr are treated as diagnostics. The orchestration loop consumes only the validated semantic JSON result.
 
@@ -164,7 +175,7 @@ Follow the latest run's event log with:
 latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"; tail -f "$latest_run/events.jsonl"
 ```
 
-The watched event surface includes the run ID plus current agent, selected provider route, Producer task file, current policy decision, runtime failure reason, final status, provider runner/session references, and provider stdout/stderr diagnostics when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
+The watched event surface includes the run ID plus current agent, selected provider/model tier, Producer task file, current policy decision, runtime failure reason, final status, provider runner/session references, and provider stdout/stderr diagnostics when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
 
 Run metadata is stored in `metadata.json`. It records the run ID, start time, task file when available, and terminal status fields. Only `endTime`, `exitCode`, and `status` are mutable after creation.
 
