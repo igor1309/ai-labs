@@ -61,16 +61,18 @@ test("resolveModelRouting should not overwrite an existing models.yaml.example",
   assert.equal(await readFile(examplePath, "utf8"), "user-edited-example");
 });
 
-test("resolveModelRouting should still throw StartupValidationFailure when bootstrap write fails", async () => {
+test("resolveModelRouting should surface bootstrap write failure as StartupValidationFailure naming the example path", async () => {
   const workspace = await makeSettingsWorkspace();
   const blockedHome = join(workspace.rootDirectory, "blocked-home");
   await writeFile(blockedHome, "not a directory");
+  const expectedExamplePath = join(blockedHome, ".regentara", "models.yaml.example");
 
   await assert.rejects(
     () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: blockedHome }),
     (error) =>
       error instanceof StartupValidationFailure
-      && /models\.yaml not found/.test(error.message),
+      && /failed to write example settings file/.test(error.message)
+      && error.message.includes(expectedExamplePath),
   );
 });
 

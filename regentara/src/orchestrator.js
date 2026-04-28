@@ -34,7 +34,9 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     assertRouteReferencesResolve(agentSettings, modelRouting);
-    await validateCliAvailability(modelRouting, dependencies);
+    const referencedRunners = Object.values(agentSettings.agents)
+      .map((agent) => modelRouting.routes[agent.model].runner);
+    await validateCliAvailability(referencedRunners, dependencies);
     run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
     const artifactExists =
       dependencies.artifactExists ?? ((relativePath) => artifactExistsInRun(run.runDirectory, relativePath));

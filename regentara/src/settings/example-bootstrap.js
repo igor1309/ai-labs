@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
+import { StartupValidationFailure } from "../errors.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
 export const AGENTS_YAML_EXAMPLE = `agents:
@@ -60,7 +61,13 @@ export async function writeSettingsExample(options, fileName, content) {
   try {
     await mkdir(dirname(examplePath), { recursive: true });
     await writeFile(examplePath, content, { flag: "wx" });
-  } catch {}
+  } catch (error) {
+    if (error?.code === "EEXIST") return;
+    throw new StartupValidationFailure(
+      `failed to write example settings file: ${examplePath}`,
+      { cause: error },
+    );
+  }
 }
 
 export async function bootstrapMissingSettings(workingDirectory, options = {}) {

@@ -61,16 +61,18 @@ test("resolveAgentSettings should not overwrite an existing agents.yaml.example"
   assert.equal(await readFile(examplePath, "utf8"), "user-edited-example");
 });
 
-test("resolveAgentSettings should still throw StartupValidationFailure when bootstrap write fails", async () => {
+test("resolveAgentSettings should surface bootstrap write failure as StartupValidationFailure naming the example path", async () => {
   const workspace = await makeSettingsWorkspace();
   const blockedHome = join(workspace.rootDirectory, "blocked-home");
   await writeFile(blockedHome, "not a directory");
+  const expectedExamplePath = join(blockedHome, ".regentara", "agents.yaml.example");
 
   await assert.rejects(
     () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: blockedHome }),
     (error) =>
       error instanceof StartupValidationFailure
-      && /agents\.yaml not found/.test(error.message),
+      && /failed to write example settings file/.test(error.message)
+      && error.message.includes(expectedExamplePath),
   );
 });
 

@@ -190,6 +190,35 @@ test("runWorkflow startup failures should surface failureReason naming the offen
   }
 });
 
+test("runWorkflow should not validate CLI availability for unused routes", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml({
+    unused: { provider: "experimental", runner: "missing-runner", model: "x" },
+  }));
+  const checkedCommands = [];
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async (command) => {
+      checkedCommands.push(command);
+      return command !== "missing-runner";
+    },
+    runStoreOptions: {
+      homeDirectory: workspace.homeDirectory,
+      randomBytes: () => Buffer.from([0, 1, 2, 3, 4]),
+    },
+  });
+
+  assert.deepEqual(
+    { status: result.status, missingRunnerChecked: checkedCommands.includes("missing-runner") },
+    { status: "succeeded", missingRunnerChecked: false },
+  );
+});
+
 test("runWorkflow should create a run after startup validation passes", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());

@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- adr-007 review follow-up: CLI availability now validates only runners referenced by `agentSettings.agents`; unused experimental routes with unavailable runners no longer fail startup. `validateProviderCliAvailability` signature changed to `(runners, options)`.
+- adr-007 review follow-up: `writeSettingsExample` now swallows only `EEXIST`; other write failures throw `StartupValidationFailure` whose message names the example path.
 - adr-007 review follow-up: tightened `models.yaml` route field validation to reject empty or whitespace-only `provider`/`runner`/`model` (trim-then-non-empty); validated values are stored trimmed.
 - adr-007 review follow-up: orchestrator now calls `bootstrapMissingSettings` before resolution so a true first run writes both `agents.yaml.example` and `models.yaml.example`; missing-settings errors now point to the generated example path; `models.yaml` route validation now rejects non-string `provider`/`runner`/`model`. Templates moved into `example-bootstrap.js` as the single source.
 - adr-007 closure follow-up: extracted shared `writeSettingsExample` into `regentara/src/settings/example-bootstrap.js` (deduped agent/model bootstrap), dropped the redundant readFile probe in favor of `writeFile({flag:"wx"})`, and made bootstrap I/O failures swallow the error so `StartupValidationFailure` always surfaces; added a consolidated startup-validation message-naming test.

@@ -6,13 +6,7 @@ import { validateProviderCliAvailability } from "../src/provider-cli-availabilit
 test("validateProviderCliAvailability should check runner commands by scanning the process PATH", async () => {
   const checkedPaths = [];
 
-  await validateProviderCliAvailability({
-    routes: {
-      codex: {
-        runner: "codex",
-      },
-    },
-  }, {
+  await validateProviderCliAvailability(["codex"], {
     commandExists: undefined,
     environment: {
       PATH: "/opt/bin:/usr/local/bin",
