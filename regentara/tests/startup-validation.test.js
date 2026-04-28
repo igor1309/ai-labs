@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 import { runWorkflow } from "../src/orchestrator.js";
@@ -8,6 +10,15 @@ import {
   validModelsYaml,
   writeLocalSettings,
 } from "./helpers/settings.js";
+
+async function pathExists(path) {
+  try {
+    await readFile(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 test("runWorkflow should fail before creating a run when a required provider CLI is unavailable", async () => {
   const workspace = await makeSettingsWorkspace();
@@ -58,6 +69,46 @@ test("runWorkflow should fail before creating a run when agents.yaml references 
   assert.deepEqual(
     { createRunCalled, failureReasonHasRouteKey: result.failureReason?.includes("missing-route"), status: result.status },
     { createRunCalled: false, failureReasonHasRouteKey: true, status: "failed" },
+  );
+});
+
+test("runWorkflow should write only agents.yaml.example when agents.yaml is missing but models.yaml exists", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+  const agentsExample = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
+  const modelsExample = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
+
+  await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+  });
+
+  assert.deepEqual(
+    { agentsExampleWritten: await pathExists(agentsExample), modelsExampleWritten: await pathExists(modelsExample) },
+    { agentsExampleWritten: true, modelsExampleWritten: false },
+  );
+});
+
+test("runWorkflow should write only models.yaml.example when models.yaml is missing but agents.yaml exists", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  const agentsExample = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
+  const modelsExample = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
+
+  await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+  });
+
+  assert.deepEqual(
+    { agentsExampleWritten: await pathExists(agentsExample), modelsExampleWritten: await pathExists(modelsExample) },
+    { agentsExampleWritten: false, modelsExampleWritten: true },
   );
 });
 
