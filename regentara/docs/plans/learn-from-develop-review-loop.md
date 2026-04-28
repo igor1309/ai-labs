@@ -33,21 +33,23 @@ The prototype also has intentionally weak boundaries. Claude is prompted not to 
 
 Regentara is the inverse tradeoff. It is a governed orchestration package that validates `agents.yaml` and `models.yaml`, invokes configured provider CLIs, validates runtime JSON against configured schemas, persists runs under `~/.regentara/runs/`, preserves artifact invariants, and delegates every post-review routing decision to an injected `ReviewFixPolicy`. Its core loop is provider-agnostic and policy-driven: Producer creates work evidence, Reviewer returns a structured verdict, policy decides `complete-ok`, `complete-fail`, or `remediate`, and Remediator produces the next valid task.
 
-The lesson is not to copy the Bash script wholesale. Regentara should preserve its stronger contracts and explicit boundaries, but borrow the prototype's product ergonomics where they expose real workflow value: a runnable local demo path, a simple way to watch current progress, and a provider-output bridge for CLIs that naturally emit human text before they can satisfy Regentara's JSON-schema contract.
+The lesson is not to copy the Bash script wholesale. Regentara should preserve its stronger contracts and explicit boundaries, but borrow the prototype's product ergonomics where they expose real workflow value: deterministic structured output capture from supported CLIs, a simple way to watch current progress, and a runnable local demo path.
 
 ## TODO
 
-Implement in this order: plain-text provider output bridge first, watch/progress ergonomics second, batteries-included local demo third. The demo should reuse the output bridge and watcher rather than defining parallel behavior.
+Implement in this order: deterministic structured output capture first, watch/progress ergonomics second, batteries-included local demo third. The demo should reuse the structured output capture and watcher rather than defining parallel behavior.
 
-### 1. Add a Plain-Text Provider Output Bridge
+### 1. Add Deterministic Structured Output Capture
 
-- [ ] Specify how Regentara adapts provider CLIs that emit mixed human text instead of clean JSON stdout.
-- [ ] Keep clean JSON stdout as the first accepted path.
-- [ ] Add an explicit marker-based bridge for mixed output, such as `REGENTARA_JSON_START` and `REGENTARA_JSON_END`.
-- [ ] Reject arbitrary prose scraping; only clean JSON or marker-delimited JSON should satisfy the runtime output contract.
-- [ ] Keep malformed, missing, or schema-invalid extracted JSON as runtime failures under the existing fail-fast ADR.
-- [ ] Implement the adapter at the provider-output/runtime-output boundary without changing the Orchestrator's JSON-schema contract.
-- [ ] Cover clean JSON, marker-wrapped JSON, malformed marker JSON, and no extractable JSON in tests.
+- [ ] Verify the installed structured-output surfaces for supported CLIs and document the concrete flags Regentara will use: Claude Code `--output-format json` / `--json-schema`, and Codex `exec --output-schema <FILE>` plus `--output-last-message <FILE>` when needed.
+- [ ] Define that each agent's semantic output must be structured JSON matching its configured schema; non-JSON prose is an agent/runtime failure, not an input to be repaired.
+- [ ] Generate or materialize the configured per-agent JSON Schema for the provider CLI invocation.
+- [ ] Build role-specific prompts that include the task context and explicitly require the final semantic result to satisfy the schema.
+- [ ] Invoke provider CLIs through runner-specific adapters that capture the structured final output separately from diagnostic stdout, stderr, event streams, and session references.
+- [ ] Treat missing structured output, malformed JSON, schema-invalid JSON, or provider CLI schema-enforcement failure as runtime failures under the existing fail-fast ADR.
+- [ ] Preserve stdout, stderr, provider event stream references, and session paths only as diagnostics; the Orchestrator must pass only validated structured output to the next agent.
+- [ ] Reject heuristic extraction from LLM prose, including first-JSON-block scraping, markdown fenced JSON scraping, and marker-delimited JSON emitted as normal assistant text.
+- [ ] Cover Claude-style structured output, Codex-style structured output, missing output file, malformed JSON, schema-invalid JSON, and diagnostic-only stdout in tests.
 
 ### 2. Add Watch and Progress Ergonomics
 

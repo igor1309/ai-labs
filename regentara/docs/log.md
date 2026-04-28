@@ -2,9 +2,10 @@
 
 ## 2026-04-28
 
-- Reordered the Regentara learning TODO around the agreed implementation sequence: provider output bridge, watch/progress events, then local demo.
+- Reframed the first Regentara learning TODO from text bridging to deterministic structured output capture via provider CLI schema/output mechanisms.
+- Reordered the Regentara learning TODO around the agreed implementation sequence: structured output capture, watch/progress events, then local demo.
 - Expanded the `agent-develop-review-loop` comparison in the Regentara learning TODO with runtime flow, sentinel contract, artifact, watcher, and boundary tradeoffs.
-- Added a follow-up TODO plan comparing Regentara with `agent-develop-review-loop`, focused on demo usability, watch/progress ergonomics, and plain-text provider output bridging.
+- Added a follow-up TODO plan comparing Regentara with `agent-develop-review-loop`, focused on structured output capture, watch/progress ergonomics, and demo usability.
 - Added research notes on `agent-develop-review-loop`, capturing its Claude implementer, Codex reviewer, cumulative diff review, artifact, and non-committing workflow semantics for Regentara prior-art analysis.
 
 ## 2026-04-27
