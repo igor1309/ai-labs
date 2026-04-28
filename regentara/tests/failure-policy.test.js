@@ -185,6 +185,37 @@ test("runWorkflow should report runtime failure debug event after run creation",
     event: "failure",
     fields: {
       reason: "provider failed",
+      route: "claude-code/anthropic/claude-sonnet-4-5/medium",
+      status: "failed",
+    },
+  });
+});
+
+test("runWorkflow should report compact provider failure classification in debug output", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  const debugEvents = [];
+
+  await runWorkflowWithWorkspace(workspace, {
+    debugEvents,
+    executeProviderCli: async () => {
+      throw new RuntimeFailure("provider CLI exited non-zero: 1", {
+        cause: {
+          costUsd: 0.25,
+          providerError: "overloaded_error",
+          providerStatus: 529,
+        },
+      });
+    },
+  });
+
+  assert.deepEqual(debugEvents.at(-1), {
+    event: "failure",
+    fields: {
+      cost: "$0.2500",
+      providerError: "overloaded_error",
+      providerStatus: 529,
+      reason: "provider CLI exited non-zero: 1",
+      route: "claude-code/anthropic/claude-sonnet-4-5/medium",
       status: "failed",
     },
   });

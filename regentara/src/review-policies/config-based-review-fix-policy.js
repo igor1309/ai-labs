@@ -12,6 +12,7 @@ export function createConfigBasedReviewFixPolicy(settings) {
       if (verdict.verdict === "accepted") {
         return {
           decision: "complete-ok",
+          maxRemediationAttempts,
           session,
         };
       }
@@ -20,12 +21,14 @@ export function createConfigBasedReviewFixPolicy(settings) {
       if (remediationAttempts >= maxRemediationAttempts) {
         return {
           decision: "complete-fail",
+          maxRemediationAttempts,
           session,
         };
       }
 
       return {
         decision: "remediate",
+        maxRemediationAttempts,
         session: {
           remediationAttempts: remediationAttempts + 1,
         },

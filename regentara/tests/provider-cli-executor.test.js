@@ -60,6 +60,54 @@ test("executeProviderCli should capture Claude Code structured output and sessio
   });
 });
 
+test("executeProviderCli should capture Claude Code cost and duration diagnostics", async () => {
+  const result = await executeProviderCli(makeInput({
+    runner: "claude-code",
+  }), {
+    spawnProvider: async () => makeExecutionResult({
+      stdout: JSON.stringify({
+        duration_ms: 61234,
+        session_id: "session-123",
+        structured_output: { artifact: "producer/result.json" },
+        total_cost_usd: 0.123456,
+      }),
+    }),
+  });
+
+  assert.deepEqual(
+    {
+      costUsd: result.costUsd,
+      durationMs: result.durationMs,
+    },
+    {
+      costUsd: 0.123456,
+      durationMs: 61234,
+    },
+  );
+});
+
+test("executeProviderCli should classify provider errors from failed CLI output", async () => {
+  await assert.rejects(
+    async () => executeProviderCli(makeInput({
+      runner: "claude-code",
+    }), {
+      spawnProvider: async () => makeExecutionResult({
+        exitStatus: 1,
+        stdout: JSON.stringify({
+          api_error_status: 529,
+          is_error: true,
+          result: "API Error: 529 {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\"}}",
+        }),
+      }),
+    }),
+    (error) => {
+      assert.equal(error.cause.providerError, "overloaded_error");
+      assert.equal(error.cause.providerStatus, 529);
+      return true;
+    },
+  );
+});
+
 test("executeProviderCli should read Codex semantic output from the output-last-message file", async () => {
   const calls = [];
   const result = await executeProviderCli(makeInput(), {

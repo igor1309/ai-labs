@@ -269,59 +269,90 @@ test("runWorkflow should report successful run lifecycle debug events", async ()
       event: "agent-start",
       fields: {
         agent: "producer",
-        model: "claude-sonnet-4-5",
-        provider: "anthropic",
-        reasoningEffort: undefined,
-        runner: "claude-code",
+        route: "claude-code/anthropic/claude-sonnet-4-5/medium",
         taskFile: "tasks/initial.md",
-        tier: "medium",
       },
     },
     {
       event: "agent-end",
       fields: {
         agent: "producer",
-        model: "claude-sonnet-4-5",
-        provider: "anthropic",
-        runner: "claude-code",
+        route: "claude-code/anthropic/claude-sonnet-4-5/medium",
         runnerReference: "pid:123",
         sessionReference: "claude-session-123",
-        tier: "medium",
       },
     },
     {
       event: "agent-start",
       fields: {
         agent: "reviewer",
-        model: "gpt-5.5",
-        provider: "openai",
         reasoningEffort: "high",
-        runner: "codex",
-        taskFile: undefined,
-        tier: "high",
+        route: "codex/openai/gpt-5.5/high",
       },
     },
     {
       event: "agent-end",
       fields: {
         agent: "reviewer",
-        model: "gpt-5.5",
-        provider: "openai",
-        runner: "codex",
+        route: "codex/openai/gpt-5.5/high",
         runnerReference: "pid:123",
         sessionReference: "claude-session-123",
-        tier: "high",
       },
     },
     {
       event: "policy-decision",
-      fields: { decision: "complete-ok" },
+      fields: { decision: "complete-ok", remediationsUsed: 0 },
     },
     {
       event: "completion",
-      fields: { status: "succeeded" },
+      fields: { duration: "00:00", status: "succeeded" },
     },
   ]);
+});
+
+test("runWorkflow should accumulate provider cost in debug output and final metadata", async () => {
+  const calls = [];
+  const debugEvents = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    debugEvents,
+    policyDecisions: [{ decision: "complete-ok" }],
+    providerReferences: {
+      costUsd: 0.123456,
+      durationMs: 61000,
+    },
+  });
+
+  const metadata = await readRunMetadata(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      firstAgentEnd: debugEvents.find((event) => event.event === "agent-end").fields,
+      completion: debugEvents.at(-1),
+      metadataDuration: metadata.duration,
+      totalCost: metadata.totalCost,
+      totalCostUsd: metadata.totalCostUsd,
+    },
+    {
+      firstAgentEnd: {
+        agent: "producer",
+        cost: "$0.1235",
+        duration: "01:01",
+        route: "claude-code/anthropic/claude-sonnet-4-5/medium",
+      },
+      completion: {
+        event: "completion",
+        fields: {
+          duration: "00:00",
+          status: "succeeded",
+          totalCost: "$0.2469",
+        },
+      },
+      metadataDuration: "00:00",
+      totalCost: "$0.2469",
+      totalCostUsd: 0.2469,
+    },
+  );
 });
 
 test("runWorkflow should mark metadata succeeded when the review policy completes successfully", async () => {

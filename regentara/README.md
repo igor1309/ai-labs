@@ -46,6 +46,8 @@ Add `--debug` to print compact live progress lines to stderr without changing st
 regentara --debug --task-file tasks/accepted-task.md
 ```
 
+Agent debug lines identify the selected runner/provider/model/tier as a single route label such as `codex/openai/gpt-5.5/high`. When a provider exposes cost or duration diagnostics, debug output includes the compact per-agent cost and duration. Runtime failure debug lines include a short provider error classification when Regentara can infer one from provider diagnostics.
+
 The CLI fails fast before creating a run when provider execution is requested without a task file. The task file path is recorded in the Producer start event and in run metadata.
 
 The bare CLI uses the production composition path, which resolves `policy.yaml` and supplies the config-based policy. Callers that embed Regentara can override that policy with `createRegentaraComposition({ reviewFixPolicy })`.
@@ -181,9 +183,9 @@ Follow the latest run's event log with:
 latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"; tail -f "$latest_run/events.jsonl"
 ```
 
-The watched event surface includes the run ID plus current agent, selected provider/model tier, Producer task file, current policy decision, runtime failure reason, final status, provider runner/session references, and provider stdout/stderr diagnostics when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
+The watched event surface includes the run ID plus current agent, selected provider/model tier, Producer task file, current policy decision, runtime failure reason, final status, provider runner/session references, optional provider cost/error diagnostics, and provider stdout/stderr diagnostics when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
 
-Run metadata is stored in `metadata.json`. It records the run ID, start time, task file when available, and terminal status fields. Only `endTime`, `exitCode`, and `status` are mutable after creation.
+Run metadata is stored in `metadata.json`. It records the run ID, start time, task file when available, terminal status fields, final duration as `mm:ss`, and total provider cost when available. Only `duration`, `endTime`, `exitCode`, `status`, `totalCost`, and `totalCostUsd` are mutable after creation.
 
 ## Local Demo
 

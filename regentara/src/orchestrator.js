@@ -42,6 +42,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   const runBootstrap = dependencies.bootstrapMissingSettings
     ?? (resolversOverridden ? null : bootstrapMissingSettings);
   let run;
+  const runMetrics = createRunMetrics();
   let settingsReported = false;
 
   try {
@@ -90,8 +91,8 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         finalStatus: "succeeded",
         type: "completion",
       });
-      debugReporter?.report("completion", { status: "succeeded" });
-      await finalizeRun(updateRunMetadata, run.runDirectory, "succeeded", 0);
+      debugReporter?.report("completion", completionDebugFields("succeeded", run, runMetrics));
+      await finalizeRun(updateRunMetadata, run, "succeeded", 0, runMetrics);
       return {
         agentSettings,
         exitCode: 0,
@@ -113,6 +114,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         executeProviderCli,
         artifactExists,
         debugReporter,
+        recordProviderMetrics: (providerResult) => addProviderMetrics(runMetrics, providerResult),
         input: {
           task: currentTask,
         },
@@ -126,6 +128,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         executeProviderCli,
         artifactExists,
         debugReporter,
+        recordProviderMetrics: (providerResult) => addProviderMetrics(runMetrics, providerResult),
         input: {
           producer: producerResult,
           task: currentTask,
@@ -140,7 +143,13 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         currentDecision: policyResult.decision,
         type: "policy-decision",
       });
-      debugReporter?.report("policy-decision", { decision: policyResult.decision });
+      debugReporter?.report("policy-decision", definedObject({
+        decision: policyResult.decision,
+        remediationBudget: policyResult.maxRemediationAttempts,
+        remediationsUsed: policyResult.session?.remediationAttempts
+          ?? policySession?.remediationAttempts
+          ?? 0,
+      }));
 
       policySession = policyResult.session;
 
@@ -149,8 +158,8 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           finalStatus: "succeeded",
           type: "completion",
         });
-        debugReporter?.report("completion", { status: "succeeded" });
-        await finalizeRun(updateRunMetadata, run.runDirectory, "succeeded", 0);
+        debugReporter?.report("completion", completionDebugFields("succeeded", run, runMetrics));
+        await finalizeRun(updateRunMetadata, run, "succeeded", 0, runMetrics);
         return {
           exitCode: 0,
           runDirectory: run.runDirectory,
@@ -164,8 +173,8 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           finalStatus: "failed",
           type: "completion",
         });
-        debugReporter?.report("completion", { status: "failed" });
-        await finalizeRun(updateRunMetadata, run.runDirectory, "failed", 1);
+        debugReporter?.report("completion", completionDebugFields("failed", run, runMetrics));
+        await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
         return {
           exitCode: 1,
           failureReason: "review policy completed with failure",
@@ -186,6 +195,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         executeProviderCli,
         artifactExists,
         debugReporter,
+        recordProviderMetrics: (providerResult) => addProviderMetrics(runMetrics, providerResult),
         input: {
           producer: producerResult,
           task: currentTask,
@@ -204,10 +214,15 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     }
 
     if (run && !(error instanceof StartupValidationFailure)) {
-      debugReporter?.report("failure", {
+      addProviderMetrics(runMetrics, error);
+      debugReporter?.report("failure", definedObject({
+        cost: formatCost(error.costUsd),
+        providerError: error.providerError,
+        providerStatus: error.providerStatus,
         reason: error.message,
+        route: error.route,
         status: "failed",
-      });
+      }));
       await recordRunEvent(run.runDirectory, {
         currentAgent: error.currentAgent,
         failureReason: error.message,
@@ -220,16 +235,15 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           sessionReference: error.sessionReference,
           stderrReference: error.stderrReference,
           stdoutReference: error.stdoutReference,
+          costUsd: error.costUsd,
+          providerError: error.providerError,
+          providerStatus: error.providerStatus,
         }),
         runId: run.runId,
         timestamp: new Date().toISOString(),
         type: "runtime-failure",
       });
-      await updateRunMetadata(run.runDirectory, {
-        endTime: new Date().toISOString(),
-        exitCode: 1,
-        status: "failed",
-      });
+      await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
     }
 
     return failureResult(error, run
@@ -245,12 +259,90 @@ function isNonBlankString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-async function finalizeRun(updateRunMetadata, runDirectory, status, exitCode) {
-  await updateRunMetadata(runDirectory, {
-    endTime: new Date().toISOString(),
+async function finalizeRun(updateRunMetadata, run, status, exitCode, runMetrics) {
+  const endTime = new Date().toISOString();
+  await updateRunMetadata(run.runDirectory, {
+    duration: formatDurationBetween(run.startedAt, endTime),
+    endTime,
     exitCode,
     status,
+    ...runCostMetadata(runMetrics),
   });
+}
+
+function createRunMetrics() {
+  return {
+    totalCostUsd: 0,
+    hasCost: false,
+  };
+}
+
+function addProviderMetrics(runMetrics, providerResult = {}) {
+  if (typeof providerResult.costUsd === "number" && Number.isFinite(providerResult.costUsd)) {
+    runMetrics.totalCostUsd += providerResult.costUsd;
+    runMetrics.hasCost = true;
+  }
+}
+
+function runCostMetadata(runMetrics) {
+  if (!runMetrics.hasCost) {
+    return {};
+  }
+
+  const totalCostUsd = roundCost(runMetrics.totalCostUsd);
+  return {
+    totalCost: formatCost(totalCostUsd),
+    totalCostUsd,
+  };
+}
+
+function completionDebugFields(status, run, runMetrics) {
+  return definedObject({
+    duration: formatDurationBetween(run.startedAt, new Date().toISOString()),
+    status,
+    totalCost: runMetrics.hasCost ? formatCost(runMetrics.totalCostUsd) : undefined,
+  });
+}
+
+function formatRoute(route, tier) {
+  return `${route.runner}/${route.provider}/${route.model}/${tier}`;
+}
+
+function formatCost(costUsd) {
+  if (typeof costUsd !== "number" || !Number.isFinite(costUsd)) {
+    return undefined;
+  }
+
+  return `$${roundCost(costUsd).toFixed(4)}`;
+}
+
+function roundCost(costUsd) {
+  return Math.round(costUsd * 10000) / 10000;
+}
+
+function formatDurationBetween(startIso, endIso) {
+  const start = Date.parse(startIso);
+  const end = Date.parse(endIso);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+    return undefined;
+  }
+
+  return formatDurationSeconds(Math.round((end - start) / 1000));
+}
+
+function formatDurationMs(durationMs) {
+  if (typeof durationMs !== "number" || !Number.isFinite(durationMs) || durationMs < 0) {
+    return undefined;
+  }
+
+  return formatDurationSeconds(Math.round(durationMs / 1000));
+}
+
+function formatDurationSeconds(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function assertRouteReferencesResolve(agentSettings, modelRouting) {
@@ -286,19 +378,18 @@ async function executeAgent({
   executeProviderCli,
   input,
   modelRouting,
+  recordProviderMetrics,
   taskFile,
 }) {
   const agent = agentSettings.agents[agentId];
   const route = resolveAgentRoute(agent, modelRouting, agentId);
-  debugReporter?.report("agent-start", {
+  const routeLabel = formatRoute(route, agent.model);
+  debugReporter?.report("agent-start", definedObject({
     agent: agentId,
-    model: route.model,
-    provider: route.provider,
     reasoningEffort: route.reasoningEffort,
-    runner: route.runner,
+    route: routeLabel,
     taskFile: agentId === "producer" ? taskFile : undefined,
-    tier: agent.model,
-  });
+  }));
   await emitEvent?.({
     agentId,
     currentAgent: agentId,
@@ -341,18 +432,24 @@ async function executeAgent({
         sessionReference: providerResult.sessionReference,
         stderrReference: providerResult.stderrReference,
         stdoutReference: providerResult.stdoutReference,
+        costUsd: providerResult.costUsd,
+        durationMs: providerResult.durationMs,
+        providerError: providerResult.providerError,
+        providerStatus: providerResult.providerStatus,
       }),
       type: "agent-end",
     });
-    debugReporter?.report("agent-end", {
+    recordProviderMetrics?.(providerResult);
+    debugReporter?.report("agent-end", definedObject({
       agent: agentId,
-      model: route.model,
-      provider: route.provider,
-      runner: route.runner,
+      cost: formatCost(providerResult.costUsd),
+      duration: formatDurationMs(providerResult.durationMs),
+      providerError: providerResult.providerError,
+      providerStatus: providerResult.providerStatus,
+      route: routeLabel,
       runnerReference: providerResult.runnerReference,
       sessionReference: providerResult.sessionReference,
-      tier: agent.model,
-    });
+    }));
 
     return output;
   } catch (error) {
@@ -360,11 +457,16 @@ async function executeAgent({
       error.currentAgent ??= agentId;
       error.model ??= route.model;
       error.provider ??= route.provider;
+      error.providerError ??= error.cause?.providerError;
+      error.providerStatus ??= error.cause?.providerStatus;
       error.runner ??= route.runner;
       error.runnerReference ??= error.cause?.runnerReference;
+      error.route ??= routeLabel;
       error.sessionReference ??= error.cause?.sessionReference;
       error.stderrReference ??= error.cause?.stderrReference ?? summarizeFailureOutput(error.cause?.stderr);
       error.stdoutReference ??= error.cause?.stdoutReference ?? summarizeFailureOutput(error.cause?.stdout);
+      error.costUsd ??= error.cause?.costUsd;
+      error.durationMs ??= error.cause?.durationMs;
     }
 
     throw error;

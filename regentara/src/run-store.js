@@ -5,7 +5,14 @@ import { join } from "node:path";
 
 import { RuntimeFailure } from "./errors.js";
 
-const MUTABLE_METADATA_FIELDS = new Set(["endTime", "exitCode", "status"]);
+const MUTABLE_METADATA_FIELDS = new Set([
+  "duration",
+  "endTime",
+  "exitCode",
+  "status",
+  "totalCost",
+  "totalCostUsd",
+]);
 
 export async function createRun(options = {}) {
   const homeDirectory = options.homeDirectory ?? homedir();
@@ -27,6 +34,7 @@ export async function createRun(options = {}) {
   return {
     runDirectory,
     runId,
+    startedAt,
   };
 }
 
