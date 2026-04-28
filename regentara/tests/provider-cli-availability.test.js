@@ -32,3 +32,16 @@ test("validateProviderCliAvailability should check built-in adapter command name
 
   assert.deepEqual(checkedCommands, ["claude", "codex"]);
 });
+
+test("validateProviderCliAvailability should leave custom catalog runners to execution adapters", async () => {
+  const checkedCommands = [];
+
+  await validateProviderCliAvailability(["custom-runner"], {
+    commandExists: async (command) => {
+      checkedCommands.push(command);
+      return false;
+    },
+  });
+
+  assert.deepEqual(checkedCommands, []);
+});
