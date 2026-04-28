@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Added ADR-008 for a config-based `ReviewFixPolicy`, keeping the Orchestrator-owned interface intact and defining `maxRemediationAttempts` as the remediation budget.
 - Expanded the Regentara README into a practical usage guide covering workflow shape, settings, review policy injection, provider CLI execution, run artifacts, and the fake-provider local demo.
 - Added a Regentara local demo with bootstrap-aligned settings, an explicit demo review-fix policy, fake-provider smoke mode, and tests that keep the demo aligned with first-run examples.
 - Added Regentara run progress events in `events.jsonl`, covering agent lifecycle, policy decisions, runtime failures, and completion status without mutating authored artifacts.
