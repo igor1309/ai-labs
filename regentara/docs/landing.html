@@ -342,6 +342,7 @@
       and delegates the &ldquo;is this good enough?&rdquo; decision to an injectable policy.
     </p>
     <code>regentara --task-file tasks/accepted-task.md</code>
+    <code style="margin-left: 8px;">regentara --debug --task-file …</code>
   </div>
 </div>
 
@@ -526,6 +527,35 @@
         <div class="label">Runner</div>
         <h3>codex</h3>
 <pre style="font-size: 12px; padding: 12px; margin-top: 12px;">codex exec --model ... --config model_reasoning_effort=... --output-schema ... --output-last-message ...</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Debug mode</h2>
+    <p class="lead">
+      <code>--debug</code> prints compact live progress lines to stderr without changing
+      stdout, exit codes, run metadata, or <code>events.jsonl</code>. It is a read-only
+      observability layer over the same loop.
+    </p>
+<pre>regentara --debug --task-file tasks/accepted-task.md</pre>
+    <div class="grid" style="margin-top: 24px;">
+      <div class="card">
+        <div class="label">Route label</div>
+        <h3>Single line per agent</h3>
+        <p>Selected runner/provider/model/tier is reported as one compact label, e.g. <code>codex/openai/gpt-5.5/high</code>.</p>
+      </div>
+      <div class="card">
+        <div class="label">Cost &amp; duration</div>
+        <h3>Per-agent diagnostics</h3>
+        <p>When a provider exposes cost or duration, debug output includes the compact per-agent figures alongside the route label.</p>
+      </div>
+      <div class="card">
+        <div class="label">Failure classification</div>
+        <h3>Inferred from diagnostics</h3>
+        <p>Runtime failure debug lines include a short provider error classification when Regentara can infer one from provider stdout/stderr.</p>
       </div>
     </div>
   </div>
