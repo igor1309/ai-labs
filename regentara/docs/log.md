@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- Short-circuited the orchestrator on producer-self-declared verification failure: when the producer returns `verification.ran !== true`, the run finalizes as failed immediately without invoking reviewer, policy, or remediator, since the obstruction is environmental (e.g., denied tool permissions) and the loop is structurally guaranteed to fail.
 - Added a verification gate to the producer/reviewer prompt contract and the review-fix policy: built-in producer and reviewer output schemas now require a structured `verification` field; the config-based review-fix policy refuses `complete-ok` for an `accepted` verdict whose `verification.ran` is not `true`, degrading to remediation or `complete-fail` per the remaining budget; producer and reviewer prompts explicitly forbid silent success when verification commands cannot be executed.
 
 ## 2026-04-28

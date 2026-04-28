@@ -122,6 +122,28 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         modelRouting,
         taskFile: input.taskFile,
       });
+
+      if (producerResult.verification?.ran !== true) {
+        const failureReason = "producer reported verification did not run";
+        await emitEvent({
+          failureReason,
+          finalStatus: "failed",
+          type: "completion",
+        });
+        debugReporter?.report("completion", {
+          ...completionDebugFields("failed", run, runMetrics),
+          reason: failureReason,
+        });
+        await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
+        return {
+          exitCode: 1,
+          failureReason,
+          runDirectory: run.runDirectory,
+          runId: run.runId,
+          status: "failed",
+        };
+      }
+
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
         agentSettings,

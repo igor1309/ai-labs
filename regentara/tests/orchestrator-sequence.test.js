@@ -481,10 +481,67 @@ test("runWorkflow should mark metadata failed when the review policy completes w
   );
 });
 
+test("runWorkflow should fail without calling reviewer when producer reports verification did not run", async () => {
+  const calls = [];
+  const policyDecisions = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    onPolicyDecision: (input) => {
+      policyDecisions.push(input);
+    },
+    policyDecisions: [],
+    producerOutputs: [
+      { artifact: "producer/result.json", verification: { ran: false } },
+    ],
+  });
+
+  const metadata = await readRunMetadata(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      callRoles: calls.map(classifyCall),
+      exitCode: result.exitCode,
+      policyCalls: policyDecisions.length,
+      status: result.status,
+      metadataExitCode: metadata.exitCode,
+      metadataStatus: metadata.status,
+    },
+    {
+      callRoles: ["producer"],
+      exitCode: 1,
+      policyCalls: 0,
+      status: "failed",
+      metadataExitCode: 1,
+      metadataStatus: "failed",
+    },
+  );
+});
+
+test("runWorkflow should emit a failed completion event when producer reports verification did not run", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [],
+    producerOutputs: [
+      { artifact: "producer/result.json", verification: { ran: false } },
+    ],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(events.map(progressEventSummary).at(-1), {
+    failureReason: "producer reported verification did not run",
+    finalStatus: "failed",
+    runId: result.runId,
+    type: "completion",
+  });
+});
+
 async function runWorkflowWithCalls(calls, options = {}) {
   const workspace = await makeSettingsWorkspace();
   const policyDecisions = [...options.policyDecisions];
   const reviewerOutputs = [...(options.reviewerOutputs ?? [])];
+  const producerOutputs = [...(options.producerOutputs ?? [])];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     remediator: {
       model: "high",
@@ -538,9 +595,11 @@ async function runWorkflowWithCalls(calls, options = {}) {
           ...options.providerReferences,
         };
       }
+      const producerOutput = producerOutputs.shift()
+        ?? { artifact: "producer/result.json", verification: { ran: true } };
       return {
         exitStatus: 0,
-        semanticResult: { artifact: "producer/result.json", verification: { ran: true } },
+        semanticResult: producerOutput,
         ...options.providerReferences,
       };
     },
