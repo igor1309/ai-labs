@@ -582,29 +582,29 @@ Run: `git add regentara/src/orchestrator.js regentara/tests/orchestrator-sequenc
 - Modify: `regentara/docs/log.md`
 - Move: `regentara/docs/plans/cli-debug-mode-implementation.md` to `regentara/docs/plans/implemented/cli-debug-mode-implementation.md`
 
-- [ ] **Step 1: Run Regentara targeted tests**
+- [x] **Step 1: Run Regentara targeted tests**
 
 Run: `./scripts/run_silent.sh "regentara-tests" node --test regentara/tests/*.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run full repo tests**
+- [x] **Step 2: Run full repo tests**
 
 Run: `./scripts/run_silent.sh "tests" npm test`
 
 Expected: PASS.
 
-- [ ] **Step 3: Run build/typecheck**
+- [x] **Step 3: Run build/typecheck**
 
 Run: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
 Expected: PASS.
 
-- [ ] **Step 4: Run a fake-provider debug smoke if practical**
+- [x] **Step 4: Run a fake-provider debug smoke if practical**
 
 If the local demo supports passing `--debug`, run the closest equivalent. If not, use the CLI tests as the executable smoke and note that the local demo does not expose the flag yet.
 
-- [ ] **Step 5: Update log and README**
+- [x] **Step 5: Update log and README**
 
 Add a concise entry to `regentara/docs/log.md` describing the debug mode implementation.
 
@@ -616,7 +616,7 @@ node regentara/src/index.js --debug --task-file tasks/example.md
 
 Do not document trace mode or watch as implemented.
 
-- [ ] **Step 6: Archive this plan**
+- [x] **Step 6: Archive this plan**
 
 Move this file:
 
@@ -630,7 +630,7 @@ to:
 regentara/docs/plans/implemented/cli-debug-mode-implementation.md
 ```
 
-- [ ] **Step 7: Final verification after docs/archive**
+- [x] **Step 7: Final verification after docs/archive**
 
 Run: `git diff --check`
 
@@ -644,7 +644,7 @@ Run: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
 Expected: PASS.
 
-- [ ] **Step 8: Final commit**
+- [x] **Step 8: Final commit**
 
 Run: `git add regentara/README.md regentara/docs/log.md regentara/docs/plans/implemented/cli-debug-mode-implementation.md && git commit -m "document regentara debug mode"`
 

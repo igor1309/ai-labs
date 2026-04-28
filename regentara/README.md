@@ -40,6 +40,12 @@ regentara --task-file tasks/accepted-task.md
 
 Run Regentara from the target workspace. Provider CLIs run in the Regentara invocation working directory; the run directory is reserved for Regentara-owned artifacts and diagnostics.
 
+Add `--debug` to print compact live progress lines to stderr without changing stdout, exit codes, run metadata, or `events.jsonl`:
+
+```bash
+regentara --debug --task-file tasks/accepted-task.md
+```
+
 The CLI fails fast before creating a run when provider execution is requested without a task file. The task file path is recorded in the Producer start event and in run metadata.
 
 The bare CLI uses the production composition path, which resolves `policy.yaml` and supplies the config-based policy. Callers that embed Regentara can override that policy with `createRegentaraComposition({ reviewFixPolicy })`.
