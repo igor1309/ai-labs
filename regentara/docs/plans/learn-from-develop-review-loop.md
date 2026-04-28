@@ -52,13 +52,15 @@ Implement in this order: provider structured result adapters first, watch/progre
 - [ ] Define that each agent's semantic result must be JSON produced through the runner's native structured-output mode and matching its configured schema; non-JSON prose is an agent/runtime failure, not an input to be repaired.
 - [ ] Generate or materialize the configured per-agent JSON Schema for the provider CLI invocation.
 - [ ] Build role-specific prompts that include the task context and explicitly require the final semantic result to satisfy the schema.
-- [ ] Lock the workspace rule: for this plan, Regentara is invoked from the target workspace, and provider CLIs run in that same invocation cwd.
+- [ ] Lock the workspace rule: for this plan, Regentara is invoked from the target workspace, and provider CLIs run in `process.cwd()` for that invocation.
+- [ ] Remove `--working-directory` from the Regentara CLI surface for this workflow; the caller selects the workspace by invoking Regentara from that directory.
 - [ ] Do not treat `runDirectory` as the agent workspace. Use it only for Regentara-owned run artifacts, provider result files if needed, and diagnostic/session references.
-- [ ] Extend `ProviderCliInput` or introduce a runner-adapter input with `agentId`, `provider`, `runner`, `model`, `prompt`, `outputSchema`, and `executionInput`; use the Orchestrator's already-selected invocation cwd for process execution, and include run-scoped artifact/reference paths only for Regentara-owned capture and diagnostics.
+- [ ] Introduce a runner-adapter input with `agentId`, `provider`, `runner`, `model`, `prompt`, `outputSchema`, and `executionInput`; do not pass a workspace field through this boundary.
+- [ ] Introduce an explicit runner-adapter result field for the validated semantic JSON, such as `semanticResult`, instead of letting the Orchestrator choose between `jsonOutput` and `rawStdout`.
 - [ ] Invoke provider CLIs through runner-specific adapters that declare the exact semantic result channel separately from diagnostic stdout, stderr, event streams, and session references.
 - [ ] Treat missing semantic result, malformed JSON, schema-invalid JSON, or provider CLI schema-enforcement failure as runtime failures under the existing fail-fast ADR.
 - [ ] Preserve stdout, stderr, provider event stream references, and session paths only as diagnostics unless the runner adapter explicitly declares stdout as the native semantic result channel; the Orchestrator must pass only validated semantic JSON to the next agent.
-- [ ] Remove semantic fallback from raw stdout once provider structured result adapters exist; stdout, stderr, and event streams may be diagnostics only.
+- [ ] Remove the current Orchestrator fallback from `providerResult.jsonOutput ?? providerResult.rawStdout`; stdout, stderr, and event streams may be diagnostics only.
 - [ ] Reject heuristic extraction from LLM prose, including first-JSON-block scraping, markdown fenced JSON scraping, and marker-delimited JSON emitted as normal assistant text.
 - [ ] Cover Claude-style structured output, Codex-style structured output, missing output file, malformed JSON, schema-invalid JSON, and diagnostic-only stdout in tests.
 - [ ] Cover ADR-007 catalog behavior in tests: arbitrary runner strings remain valid settings, but execution fails clearly when no provider structured result adapter exists.

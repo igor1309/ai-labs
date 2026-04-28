@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Final-pass tightened the first `agent-develop-review-loop` learning item so implementation can start from explicit runner-adapter, semantic-result, and invocation-cwd cleanup requirements.
 - Verified current Claude Code and Codex CLI structured-output behavior from the repo root and recorded the adapter contracts in the learning plan.
 - Aligned the `agent-develop-review-loop` learning plan with current Regentara architecture: catalog runner adapters, caller-selected workspace, provider structured result adapters, watch/progress scope, and bootstrap-backed demo settings.
 - Captured `agent-develop-review-loop` as prior art for Regentara, including cumulative diff review, sentinel-based loop control, local artifacts, watcher ergonomics, and non-committing workflow boundaries.
