@@ -48,9 +48,11 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       await runBootstrap(workingDirectory, { homeDirectory });
     }
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
-    const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     debugReporter?.rememberSettings({
       agents: agentSettings.selectedPath,
+    });
+    const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
+    debugReporter?.rememberSettings({
       models: modelRouting.selectedPath,
     });
     debugReporter?.reportSettings();

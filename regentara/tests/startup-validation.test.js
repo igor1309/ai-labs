@@ -102,11 +102,40 @@ test("runWorkflow should report selected agent and model settings before run cre
     {
       rememberedSettings: [{
         agents: join(workspace.workingDirectory, ".regentara", "agents.yaml"),
+      }, {
         models: join(workspace.workingDirectory, ".regentara", "models.yaml"),
       }],
       reportSettingsCalled: true,
     },
   );
+});
+
+test("runWorkflow should report known agent settings when model settings resolution fails", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const rememberedSettings = {};
+  const settingsReports = [];
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+
+  await runWorkflow({
+    debugReporter: {
+      rememberSettings: (fields) => {
+        Object.assign(rememberedSettings, fields);
+      },
+      report: () => {},
+      reportSettings: () => {
+        settingsReports.push({ ...rememberedSettings });
+      },
+    },
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+  });
+
+  assert.deepEqual(settingsReports, [{
+    agents: join(workspace.workingDirectory, ".regentara", "agents.yaml"),
+  }]);
 });
 
 test("runWorkflow should report startup failure without run context when validation fails before run creation", async () => {
