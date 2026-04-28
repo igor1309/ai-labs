@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 import { StartupValidationFailure } from "../src/errors.js";
@@ -10,6 +12,15 @@ import {
   writeLocalSettings,
 } from "./helpers/settings.js";
 
+async function pathExists(path) {
+  try {
+    await readFile(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 test("resolveModelRouting should fail before creating a run when neither local nor global models yaml exists", async () => {
   const workspace = await makeSettingsWorkspace();
 
@@ -17,6 +28,47 @@ test("resolveModelRouting should fail before creating a run when neither local n
     () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
     StartupValidationFailure,
   );
+});
+
+test("resolveModelRouting should write models.yaml.example to the home directory when no models.yaml exists", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const examplePath = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await pathExists(examplePath), true);
+});
+
+test("resolveModelRouting should not overwrite an existing models.yaml.example", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const exampleDir = join(workspace.homeDirectory, ".regentara");
+  const examplePath = join(exampleDir, "models.yaml.example");
+  await mkdir(exampleDir, { recursive: true });
+  await writeFile(examplePath, "user-edited-example");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await readFile(examplePath, "utf8"), "user-edited-example");
+});
+
+test("resolveModelRouting should not write models.yaml during bootstrap", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const localPath = join(workspace.workingDirectory, ".regentara", "models.yaml");
+  const globalPath = join(workspace.homeDirectory, ".regentara", "models.yaml");
+
+  await assert.rejects(
+    () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await pathExists(localPath), false);
+  assert.equal(await pathExists(globalPath), false);
 });
 
 test("resolveModelRouting should use local models yaml instead of global models yaml when both exist", async () => {

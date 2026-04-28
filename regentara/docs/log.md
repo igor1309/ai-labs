@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- adr-007 closure task 5: `resolveModelRouting` now writes `~/.regentara/models.yaml.example` (idempotent, skip if exists) before failing when no `models.yaml` is found at either location; bootstrap never creates an actual `models.yaml`.
 - adr-007 closure task 4: `resolveAgentSettings` now writes `~/.regentara/agents.yaml.example` (idempotent, skip if exists) before failing when no `agents.yaml` is found at either location; bootstrap never creates an actual `agents.yaml`.
 - adr-007 closure task 3: orchestrator now fails startup with `StartupValidationFailure` when `agents.yaml` references a route key not defined in `models.yaml`; error message names the offending agent and route key.
 - adr-007 closure task 2: removed `SUPPORTED_PROMPT_REFS` closed whitelist from `agent-settings.js`; arbitrary prompt-ref strings now accepted; `SUPPORTED_SCHEMA_REFS` (structural) preserved.

@@ -1,4 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 
 import yaml from "js-yaml";
 
@@ -6,6 +8,25 @@ import { StartupValidationFailure } from "../errors.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
 const REQUIRED_FIELDS = ["provider", "runner", "model"];
+
+const MODELS_YAML_EXAMPLE = `routes:
+  sonnet:
+    provider: anthropic
+    runner: claude-code
+    model: claude-sonnet-4-5
+  opus:
+    provider: anthropic
+    runner: claude-code
+    model: claude-opus-4-7
+  gpt:
+    provider: openai
+    runner: codex
+    model: gpt-5.1-codex
+  codex:
+    provider: openai
+    runner: codex
+    model: gpt-5.1-codex
+`;
 
 export async function resolveModelRouting(workingDirectory, options = {}) {
   const selectedPath = await firstExistingSettingsPath(
@@ -15,6 +36,7 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
   );
 
   if (!selectedPath) {
+    await writeExampleIfMissing(options);
     throw new StartupValidationFailure("models.yaml not found");
   }
 
@@ -73,4 +95,17 @@ function validateRoute(routeKey, rawRoute) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function writeExampleIfMissing(options) {
+  const homeDirectory = options.homeDirectory ?? homedir();
+  const examplePath = join(homeDirectory, ".regentara", "models.yaml.example");
+
+  try {
+    await readFile(examplePath);
+    return;
+  } catch {}
+
+  await mkdir(dirname(examplePath), { recursive: true });
+  await writeFile(examplePath, MODELS_YAML_EXAMPLE, { flag: "wx" });
 }
