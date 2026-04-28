@@ -1,10 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
 
 import yaml from "js-yaml";
 
 import { StartupValidationFailure } from "../errors.js";
+import { writeSettingsExample } from "./example-bootstrap.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
 const REQUIRED_FIELDS = ["provider", "runner", "model"];
@@ -36,7 +35,7 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
   );
 
   if (!selectedPath) {
-    await writeExampleIfMissing(options);
+    await writeSettingsExample(options, "models.yaml.example", MODELS_YAML_EXAMPLE);
     throw new StartupValidationFailure("models.yaml not found");
   }
 
@@ -95,17 +94,4 @@ function validateRoute(routeKey, rawRoute) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-async function writeExampleIfMissing(options) {
-  const homeDirectory = options.homeDirectory ?? homedir();
-  const examplePath = join(homeDirectory, ".regentara", "models.yaml.example");
-
-  try {
-    await readFile(examplePath);
-    return;
-  } catch {}
-
-  await mkdir(dirname(examplePath), { recursive: true });
-  await writeFile(examplePath, MODELS_YAML_EXAMPLE, { flag: "wx" });
 }

@@ -112,6 +112,65 @@ test("runWorkflow should write only models.yaml.example when models.yaml is miss
   );
 });
 
+test("runWorkflow startup failures should surface failureReason naming the offending file or rule", async () => {
+  const scenarios = [
+    {
+      label: "missing agents.yaml",
+      expected: /agents\.yaml not found/,
+      setup: async (workspace) => {
+        await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+      },
+      dependencies: { commandExists: async () => true },
+    },
+    {
+      label: "missing models.yaml",
+      expected: /models\.yaml not found/,
+      setup: async (workspace) => {
+        await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+      },
+      dependencies: { commandExists: async () => true },
+    },
+    {
+      label: "cross-ref undefined route key",
+      expected: /agents\.yaml agent producer references undefined route key in models\.yaml: missing-route/,
+      setup: async (workspace) => {
+        await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+          producer: {
+            model: "missing-route",
+            output: { schemaRef: "regentara://schemas/producer-output" },
+            prompt: { ref: "regentara://prompts/producer" },
+          },
+        }));
+        await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+      },
+      dependencies: { commandExists: async () => true },
+    },
+    {
+      label: "missing provider CLI",
+      expected: /required provider CLI unavailable/,
+      setup: async (workspace) => {
+        await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+        await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+      },
+      dependencies: { commandExists: async () => false },
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const workspace = await makeSettingsWorkspace();
+    await scenario.setup(workspace);
+
+    const result = await runWorkflow({
+      homeDirectory: workspace.homeDirectory,
+      reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+      workingDirectory: workspace.workingDirectory,
+    }, scenario.dependencies);
+
+    assert.equal(result.status, "failed", scenario.label);
+    assert.match(result.failureReason ?? "", scenario.expected, scenario.label);
+  }
+});
+
 test("runWorkflow should create a run after startup validation passes", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
