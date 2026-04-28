@@ -383,7 +383,7 @@ Run: `git add regentara/src/index.js regentara/tests/cli.test.js && git commit -
 - Modify: `regentara/tests/cli.test.js`
 - Modify: `regentara/tests/startup-validation.test.js`
 
-- [ ] **Step 1: Write failing startup debug tests**
+- [x] **Step 1: Write failing startup debug tests**
 
 Add/adjust tests so:
 
@@ -403,13 +403,13 @@ const debugReporter = {
 };
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `./scripts/run_silent.sh "startup-debug-red" node --test regentara/tests/cli.test.js regentara/tests/startup-validation.test.js`
 
 Expected: FAIL because composition/orchestrator do not call the reporter.
 
-- [ ] **Step 3: Report policy settings in composition**
+- [x] **Step 3: Report policy settings in composition**
 
 In `regentara/src/composition.js`:
 
@@ -428,7 +428,7 @@ input.debugReporter?.report("failure", { reason: error.message });
 
 Then return the same `failureResult(error)` as today.
 
-- [ ] **Step 4: Report agent/model settings in orchestrator**
+- [x] **Step 4: Report agent/model settings in orchestrator**
 
 In `regentara/src/orchestrator.js`:
 
@@ -452,13 +452,13 @@ debugReporter?.report("failure", { reason: error.message });
 
 Do not report a fabricated `runId` or `runDirectory`.
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run: `./scripts/run_silent.sh "startup-debug-green" node --test regentara/tests/cli.test.js regentara/tests/startup-validation.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run: `git add regentara/src/composition.js regentara/src/orchestrator.js regentara/tests/cli.test.js regentara/tests/startup-validation.test.js && git commit -m "report regentara debug startup"`
 

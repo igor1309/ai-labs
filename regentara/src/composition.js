@@ -16,16 +16,21 @@ export function createRegentaraComposition(options = {}) {
     runWorkflow: async (input = {}) => {
       const workingDirectory = input.workingDirectory ?? process.cwd();
       const homeDirectory = input.homeDirectory ?? options.runStoreOptions?.homeDirectory;
+      const debugReporter = input.debugReporter;
       let resolvedReviewFixPolicy;
       try {
         if (!reviewFixPolicy) {
           await bootstrapSettings(workingDirectory, { homeDirectory });
         }
-        resolvedReviewFixPolicy = reviewFixPolicy
-          ?? createConfigBasedReviewFixPolicy(
-            await resolvePolicy(workingDirectory, { homeDirectory }),
-          );
+        if (reviewFixPolicy) {
+          resolvedReviewFixPolicy = reviewFixPolicy;
+        } else {
+          const policySettings = await resolvePolicy(workingDirectory, { homeDirectory });
+          debugReporter?.rememberSettings({ policy: policySettings.selectedPath });
+          resolvedReviewFixPolicy = createConfigBasedReviewFixPolicy(policySettings);
+        }
       } catch (error) {
+        debugReporter?.report("failure", { reason: error.message });
         return failureResult(error);
       }
 

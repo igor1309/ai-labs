@@ -70,6 +70,87 @@ test("runWorkflow should fail before creating a run when provider execution has 
   );
 });
 
+test("runWorkflow should report selected agent and model settings before run creation", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const rememberedSettings = [];
+  let reportSettingsCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  await runWorkflow({
+    debugReporter: {
+      rememberSettings: (fields) => { rememberedSettings.push(fields); },
+      report: () => {},
+      reportSettings: () => { reportSettingsCalled = true; },
+    },
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    runStoreOptions: {
+      homeDirectory: workspace.homeDirectory,
+      randomBytes: () => Buffer.from([0, 1, 2, 3, 4]),
+    },
+  });
+
+  assert.deepEqual(
+    {
+      rememberedSettings,
+      reportSettingsCalled,
+    },
+    {
+      rememberedSettings: [{
+        agents: join(workspace.workingDirectory, ".regentara", "agents.yaml"),
+        models: join(workspace.workingDirectory, ".regentara", "models.yaml"),
+      }],
+      reportSettingsCalled: true,
+    },
+  );
+});
+
+test("runWorkflow should report startup failure without run context when validation fails before run creation", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const debugEvents = [];
+  let createRunCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  await runWorkflow({
+    debugReporter: {
+      rememberSettings: () => {},
+      report: (event, fields) => {
+        debugEvents.push({ event, fields });
+      },
+      reportSettings: () => {},
+    },
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    task: "initial task",
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    createRun: async () => {
+      createRunCalled = true;
+    },
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "" } }),
+  });
+
+  assert.deepEqual(
+    {
+      createRunCalled,
+      debugEvents,
+    },
+    {
+      createRunCalled: false,
+      debugEvents: [{
+        event: "failure",
+        fields: { reason: "task file is required for provider execution" },
+      }],
+    },
+  );
+});
+
 test("runWorkflow should fail before creating a run when provider execution has a blank task file", async () => {
   const workspace = await makeSettingsWorkspace();
   let createRunCalled = false;

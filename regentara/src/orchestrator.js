@@ -13,12 +13,17 @@ import { resolveModelRouting } from "./settings/model-routing.js";
 
 export async function runWorkflow(input = {}, dependencies = {}) {
   const reviewFixPolicy = input.reviewFixPolicy ?? dependencies.reviewFixPolicy;
+  const debugReporter = input.debugReporter ?? dependencies.debugReporter;
   if (!reviewFixPolicy || typeof reviewFixPolicy.decide !== "function") {
-    return failureResult(new StartupValidationFailure("ReviewFixPolicy is required"));
+    const error = new StartupValidationFailure("ReviewFixPolicy is required");
+    debugReporter?.report("failure", { reason: error.message });
+    return failureResult(error);
   }
 
   if (input.interrupted) {
-    return failureResult(new StartupValidationFailure("workflow interrupted before start"));
+    const error = new StartupValidationFailure("workflow interrupted before start");
+    debugReporter?.report("failure", { reason: error.message });
+    return failureResult(error);
   }
 
   const workingDirectory = input.workingDirectory ?? process.cwd();
@@ -36,6 +41,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   const runBootstrap = dependencies.bootstrapMissingSettings
     ?? (resolversOverridden ? null : bootstrapMissingSettings);
   let run;
+  let settingsReported = false;
 
   try {
     if (runBootstrap) {
@@ -43,6 +49,12 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     }
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
+    debugReporter?.rememberSettings({
+      agents: agentSettings.selectedPath,
+      models: modelRouting.selectedPath,
+    });
+    debugReporter?.reportSettings();
+    settingsReported = true;
     assertRouteReferencesResolve(agentSettings, modelRouting);
     const referencedRunners = Object.values(agentSettings.agents)
       .map((agent) => resolveAgentRoute(agent, modelRouting).runner);
@@ -170,6 +182,13 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       currentTask = remediatorResult.task;
     }
   } catch (error) {
+    if (!run || error instanceof StartupValidationFailure) {
+      if (!settingsReported) {
+        debugReporter?.reportSettings();
+      }
+      debugReporter?.report("failure", { reason: error.message });
+    }
+
     if (run && !(error instanceof StartupValidationFailure)) {
       await recordRunEvent(run.runDirectory, {
         currentAgent: error.currentAgent,
