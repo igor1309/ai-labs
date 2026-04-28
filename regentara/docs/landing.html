@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Regentara — Governed coding-agent loops</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-elev: #14181d;
+    --bg-elev-2: #1b2027;
+    --border: #262d36;
+    --text: #e6edf3;
+    --text-dim: #8b96a3;
+    --accent: #6ee7b7;
+    --accent-2: #93c5fd;
+    --warn: #fcd34d;
+    --danger: #fca5a5;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 96px 0 64px;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(ellipse at top, rgba(110, 231, 183, 0.08), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(147, 197, 253, 0.06), transparent 50%);
+  }
+  .hero h1 {
+    font-size: 64px;
+    margin: 0 0 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero .tagline {
+    font-size: 22px;
+    color: var(--text-dim);
+    max-width: 720px;
+    margin: 0 0 32px;
+  }
+  .hero .pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero code {
+    display: inline-block;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+  }
+
+  /* Section */
+  section { padding: 80px 0; border-bottom: 1px solid var(--border); }
+  section h2 {
+    font-size: 32px;
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  section .lead {
+    color: var(--text-dim);
+    font-size: 17px;
+    max-width: 760px;
+    margin: 0 0 40px;
+  }
+
+  /* Architecture diagram */
+  .diagram {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 32px;
+    overflow-x: auto;
+  }
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    min-width: 760px;
+    justify-content: center;
+  }
+  .node {
+    flex: 1;
+    min-width: 140px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 14px;
+    text-align: center;
+    position: relative;
+  }
+  .node .role {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .node .name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .node .desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .node.producer { border-color: rgba(110, 231, 183, 0.4); }
+  .node.reviewer { border-color: rgba(147, 197, 253, 0.4); }
+  .node.policy   { border-color: rgba(252, 211, 77, 0.4); }
+  .node.remediator { border-color: rgba(252, 165, 165, 0.4); }
+  .node.producer .name { color: var(--accent); }
+  .node.reviewer .name { color: var(--accent-2); }
+  .node.policy .name   { color: var(--warn); }
+  .node.remediator .name { color: var(--danger); }
+
+  .arrow {
+    align-self: center;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 18px;
+  }
+  .loopback {
+    text-align: center;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .loopback span { color: var(--danger); }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .card h3 {
+    font-size: 18px;
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .card .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .card p { margin: 0; color: var(--text-dim); font-size: 14px; }
+
+  /* Code blocks */
+  pre {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  pre .key { color: var(--accent-2); }
+  pre .str { color: var(--accent); }
+  pre .com { color: var(--text-dim); font-style: italic; }
+
+  /* Step list */
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: step;
+  }
+  .steps li {
+    counter-increment: step;
+    padding: 16px 16px 16px 56px;
+    margin-bottom: 8px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .steps strong { color: var(--text); }
+  .steps span { color: var(--text-dim); }
+
+  /* Boundary list */
+  .boundaries {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 720px) { .boundaries { grid-template-columns: 1fr; } }
+  .boundary-col h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 12px;
+  }
+  .boundary-col.does h3 { color: var(--accent); }
+  .boundary-col.doesnt h3 { color: var(--danger); }
+  .boundary-col ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .boundary-col li {
+    padding: 8px 0 8px 24px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-dim);
+    position: relative;
+  }
+  .boundary-col li::before {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    font-family: var(--mono);
+  }
+  .boundary-col.does li::before { content: "+"; color: var(--accent); }
+  .boundary-col.doesnt li::before { content: "−"; color: var(--danger); }
+
+  /* Settings layers */
+  .layers {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .layer .order {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 32px;
+  }
+  .layer .path {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .layer .scope {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  footer {
+    padding: 48px 0 64px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer code {
+    font-family: var(--mono);
+    background: var(--bg-elev);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="container">
+    <span class="pill">MVP · Workflow Runner</span>
+    <h1>Regentara</h1>
+    <p class="tagline">
+      A governed loop that coordinates provider CLI agents — Producer, Reviewer, and Remediator —
+      and delegates the &ldquo;is this good enough?&rdquo; decision to an injectable policy.
+    </p>
+    <code>regentara --task-file tasks/accepted-task.md</code>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <h2>The core idea</h2>
+    <p class="lead">
+      Regentara does not decide whether a result is good enough by itself. It runs agents,
+      validates their structured outputs, records run progress, and delegates the post-review
+      routing decision to a <strong>ReviewFixPolicy</strong>.
+    </p>
+
+    <div class="diagram">
+      <div class="flow">
+        <div class="node producer">
+          <div class="role">Step 1</div>
+          <div class="name">Producer</div>
+          <div class="desc">Receives task, returns structured completion claim</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node reviewer">
+          <div class="role">Step 2</div>
+          <div class="name">Reviewer</div>
+          <div class="desc">Returns structured verdict on producer output</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node policy">
+          <div class="role">Step 3</div>
+          <div class="name">ReviewFixPolicy</div>
+          <div class="desc">decide() → complete-ok · complete-fail · remediate</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node remediator">
+          <div class="role">Step 4</div>
+          <div class="name">Remediator</div>
+          <div class="desc">Returns a new task, loop continues</div>
+        </div>
+      </div>
+      <div class="loopback">↻ on <span>remediate</span>, the loop repeats with the remediated task</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Workflow loop</h2>
+    <p class="lead">Each workflow starts from a task file and proceeds through the same loop.</p>
+    <ol class="steps">
+      <li><strong>Producer</strong> <span>receives the current task and returns a structured completion claim.</span></li>
+      <li><strong>Reviewer</strong> <span>receives the task plus producer output and returns a structured verdict.</span></li>
+      <li><strong>ReviewFixPolicy.decide</strong> <span>receives the verdict plus its opaque session state and returns one of <code>complete-ok</code>, <code>complete-fail</code>, or <code>remediate</code>.</span></li>
+      <li><strong>Remediator</strong> <span>(on <code>remediate</code>) receives the task, producer output, and reviewer verdict, then returns a new task.</span></li>
+      <li><strong>Repeat</strong> <span>with the remediated task until the policy returns a terminal decision.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Components</h2>
+    <p class="lead">Four roles, three of them provider CLI agents and one routing seam.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Agent</div>
+        <h3>Producer</h3>
+        <p>Provider CLI agent. Reads the task, performs work, returns an artifact validated against <code>regentara://schemas/producer-output</code>.</p>
+      </div>
+      <div class="card">
+        <div class="label">Agent</div>
+        <h3>Reviewer</h3>
+        <p>Provider CLI agent. Reads task plus producer output, returns a verdict validated against <code>regentara://schemas/reviewer-output</code>.</p>
+      </div>
+      <div class="card">
+        <div class="label">Policy</div>
+        <h3>ReviewFixPolicy</h3>
+        <p>Routing seam between review output and workflow control. Owns budget, escalation, severity mapping, convergence, and cross-round state.</p>
+      </div>
+      <div class="card">
+        <div class="label">Agent</div>
+        <h3>Remediator</h3>
+        <p>Provider CLI agent. Reads task, producer output, and verdict, returns a new task validated against <code>regentara://schemas/remediator-output</code>.</p>
+      </div>
+      <div class="card">
+        <div class="label">Runtime</div>
+        <h3>Orchestrator</h3>
+        <p>Drives the loop, validates structured outputs, threads opaque policy session, and emits operational progress events.</p>
+      </div>
+      <div class="card">
+        <div class="label">Runtime</div>
+        <h3>Provider CLI Executor</h3>
+        <p>Spawns the selected runner (<code>claude-code</code>, <code>codex</code>) in native structured-output mode. Treats stdout/stderr as diagnostics.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Settings layers</h2>
+    <p class="lead">Local workspace settings win over global settings. Three YAML files configure agents, model routes, and the built-in policy.</p>
+    <div class="layers">
+      <div class="layer"><span class="order">1</span><span class="path">./.regentara/agents.yaml</span><span class="scope">workspace</span></div>
+      <div class="layer"><span class="order">2</span><span class="path">./.regentara/models.yaml</span><span class="scope">workspace</span></div>
+      <div class="layer"><span class="order">3</span><span class="path">./.regentara/policy.yaml</span><span class="scope">workspace</span></div>
+      <div class="layer"><span class="order">4</span><span class="path">~/.regentara/agents.yaml</span><span class="scope">global fallback</span></div>
+      <div class="layer"><span class="order">5</span><span class="path">~/.regentara/models.yaml</span><span class="scope">global fallback</span></div>
+      <div class="layer"><span class="order">6</span><span class="path">~/.regentara/policy.yaml</span><span class="scope">global fallback</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>The policy seam</h2>
+    <p class="lead">
+      The interface is intentionally small. Regentara threads the returned <code>session</code>
+      into the next call but does not inspect it.
+    </p>
+<pre><span class="key">const</span> reviewFixPolicy = {
+  decide: <span class="key">async</span> ({ session, verdict }) => {
+    <span class="key">if</span> (verdict.verdict === <span class="str">"accepted"</span>) {
+      <span class="key">return</span> { decision: <span class="str">"complete-ok"</span>, session };
+    }
+
+    <span class="key">return</span> { decision: <span class="str">"complete-fail"</span>, session };
+  },
+};</pre>
+    <p class="lead" style="margin-top: 24px;">
+      Production composition uses <code>ConfigBasedReviewFixPolicy</code> from <code>policy.yaml</code>
+      by default. Embedding callers can override with
+      <code>createRegentaraComposition({ reviewFixPolicy })</code>.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Boundaries</h2>
+    <p class="lead">Regentara is intentionally narrow. Knowing what it does <em>not</em> own is part of the design.</p>
+    <div class="boundaries">
+      <div class="boundary-col does">
+        <h3>Regentara does</h3>
+        <ul>
+          <li>Invoke provider CLIs as subprocesses</li>
+          <li>Validate structured agent outputs against JSON Schema</li>
+          <li>Drive the Producer → Reviewer → Policy → Remediator loop</li>
+          <li>Resolve provider/model routes from <code>models.yaml</code></li>
+          <li>Append events to <code>runs/&lt;run-id&gt;/events.jsonl</code></li>
+          <li>Fail fast on startup or runtime errors</li>
+        </ul>
+      </div>
+      <div class="boundary-col doesnt">
+        <h3>Regentara does NOT</h3>
+        <ul>
+          <li>Call provider APIs directly</li>
+          <li>Manage credentials, sessions, or auth state</li>
+          <li>Manage worktrees, branches, commits, or PRs</li>
+          <li>Run builds, tests, formatting, or installs</li>
+          <li>Sandbox, cleanup, retry, or impose timeouts</li>
+          <li>Decide if a result is &ldquo;good enough&rdquo; — the policy does</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Provider CLI execution</h2>
+    <p class="lead">
+      Each agent prompt and expected JSON Schema is passed to the runner&rsquo;s native
+      structured-output mode. Stdout and stderr are diagnostics; the loop consumes only
+      the validated semantic JSON.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Runner</div>
+        <h3>claude-code</h3>
+<pre style="font-size: 12px; padding: 12px; margin-top: 12px;">claude -p --model ... \
+  --output-format json \
+  --json-schema ...</pre>
+      </div>
+      <div class="card">
+        <div class="label">Runner</div>
+        <h3>codex</h3>
+<pre style="font-size: 12px; padding: 12px; margin-top: 12px;">codex exec --model ... \
+  --config model_reasoning_effort=... \
+  --output-schema ... \
+  --output-last-message ...</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Runs &amp; observability</h2>
+    <p class="lead">
+      Each run appends operational progress events to a per-run JSONL log. Authored
+      artifacts are never rewritten to record progress.
+    </p>
+<pre>latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"
+tail -f "$latest_run/events.jsonl"</pre>
+    <p class="lead" style="margin-top: 24px;">
+      The watched event surface includes run ID, current agent, selected provider route,
+      Producer task file, current policy decision, runtime failure reason, final status,
+      runner/session references, and provider stdout/stderr diagnostics.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Regentara · MVP workflow runner for governed coding-agent loops · See
+    <code>regentara/README.md</code> for the full specification.
+  </div>
+</footer>
+
+</body>
+</html>
