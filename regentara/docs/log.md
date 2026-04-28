@@ -1,5 +1,9 @@
 # Regentara Log
 
+## 2026-04-28
+
+- Added research notes on `agent-develop-review-loop`, capturing its Claude implementer, Codex reviewer, cumulative diff review, artifact, and non-committing workflow semantics for Regentara prior-art analysis.
+
 ## 2026-04-27
 
 - Implemented the Regentara MVP workflow runner as a release unit, covering settings/model validation, provider CLI orchestration, run/artifact storage, fail-fast failure handling, and review/remediation routing.
