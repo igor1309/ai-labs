@@ -441,7 +441,7 @@
 <section>
   <div class="container">
     <h2>Settings layers</h2>
-    <p class="lead">Local workspace settings win over global settings. Three YAML files configure agents, model routes, and the built-in policy.</p>
+    <p class="lead">Local workspace settings win over global settings. Three YAML files configure agents, provider-local model tiers, and the built-in policy.</p>
     <div class="layers">
       <div class="layer"><span class="order">1</span><span class="path">./.regentara/agents.yaml</span><span class="scope">workspace</span></div>
       <div class="layer"><span class="order">2</span><span class="path">./.regentara/models.yaml</span><span class="scope">workspace</span></div>
@@ -488,7 +488,7 @@
           <li>Invoke provider CLIs as subprocesses</li>
           <li>Validate structured agent outputs against JSON Schema</li>
           <li>Drive the Producer → Reviewer → Policy → Remediator loop</li>
-          <li>Resolve provider/model routes from <code>models.yaml</code></li>
+          <li>Resolve provider/model tiers from <code>models.yaml</code></li>
           <li>Append events to <code>runs/&lt;run-id&gt;/events.jsonl</code></li>
           <li>Fail fast on startup or runtime errors</li>
         </ul>
@@ -520,17 +520,12 @@
       <div class="card">
         <div class="label">Runner</div>
         <h3>claude-code</h3>
-<pre style="font-size: 12px; padding: 12px; margin-top: 12px;">claude -p --model ... \
-  --output-format json \
-  --json-schema ...</pre>
+<pre style="font-size: 12px; padding: 12px; margin-top: 12px;">claude -p --model ... --output-format json --json-schema ...</pre>
       </div>
       <div class="card">
         <div class="label">Runner</div>
         <h3>codex</h3>
-<pre style="font-size: 12px; padding: 12px; margin-top: 12px;">codex exec --model ... \
-  --config model_reasoning_effort=... \
-  --output-schema ... \
-  --output-last-message ...</pre>
+<pre style="font-size: 12px; padding: 12px; margin-top: 12px;">codex exec --model ... --config model_reasoning_effort=... --output-schema ... --output-last-message ...</pre>
       </div>
     </div>
   </div>
@@ -546,7 +541,7 @@
 <pre>latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"
 tail -f "$latest_run/events.jsonl"</pre>
     <p class="lead" style="margin-top: 24px;">
-      The watched event surface includes run ID, current agent, selected provider route,
+      The watched event surface includes run ID, current agent, selected provider/model tier,
       Producer task file, current policy decision, runtime failure reason, final status,
       runner/session references, and provider stdout/stderr diagnostics.
     </p>
