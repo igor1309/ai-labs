@@ -25,7 +25,7 @@ description: "Implementation plan for Regentara CLI debug mode."
 - Expected branch: `codex/agent-develop-review-loop-research`
 - Push policy: no push
 - Final archive behavior: move this plan to `regentara/docs/plans/implemented/` after implementation and final verification.
-- Preflight check: [ ] done before implementation edits
+- Preflight check: [x] done before implementation edits
 
 ## Source Documents
 
@@ -77,7 +77,7 @@ description: "Implementation plan for Regentara CLI debug mode."
 - Create: `regentara/src/debug-reporter.js`
 - Create: `regentara/tests/debug-reporter.test.js`
 
-- [ ] **Step 1: Write failing formatter tests**
+- [x] **Step 1: Write failing formatter tests**
 
 Add tests for:
 
@@ -170,13 +170,13 @@ test("createDebugReporter should accumulate settings paths before reporting", ()
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `./scripts/run_silent.sh "debug-reporter-red" node --test regentara/tests/debug-reporter.test.js`
 
 Expected: FAIL because `regentara/src/debug-reporter.js` does not exist.
 
-- [ ] **Step 3: Implement minimal reporter**
+- [x] **Step 3: Implement minimal reporter**
 
 Create `regentara/src/debug-reporter.js`:
 
@@ -232,13 +232,13 @@ function compact(fields) {
 }
 ```
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: `./scripts/run_silent.sh "debug-reporter-green" node --test regentara/tests/debug-reporter.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run: `git add regentara/src/debug-reporter.js regentara/tests/debug-reporter.test.js && git commit -m "add regentara debug reporter"`
 
