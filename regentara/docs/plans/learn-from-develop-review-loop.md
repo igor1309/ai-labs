@@ -79,14 +79,14 @@ Implement in this order: provider structured result adapters first, watch/progre
 
 ### 3. Add a Batteries-Included Local Demo
 
-- [ ] Create `regentara/examples/local-demo/`.
-- [ ] Use the same `agents.yaml` and `models.yaml` content as the runtime bootstrap examples in `src/settings/example-bootstrap.js`; the local demo must not define a divergent settings template.
-- [ ] Add a demo runner, such as `run-demo.js`, that imports Regentara composition and injects a demo `ReviewFixPolicy`.
-- [ ] Define the demo policy as acceptable review -> `complete-ok`, rejected review with remaining budget -> `remediate`, and exhausted budget -> `complete-fail`.
-- [ ] Keep the demo policy outside production composition so Regentara still requires explicit policy injection for real use.
-- [ ] Make the demo testable without real provider credentials by injecting fake provider execution and fake CLI availability.
-- [ ] Verify the demo path with a local smoke command and document the exact command in the demo README.
-- [ ] Verify demo/bootstrap alignment so first-run examples and local-demo settings do not diverge silently.
+- [x] Create `regentara/examples/local-demo/`.
+- [x] Use the same `agents.yaml` and `models.yaml` content as the runtime bootstrap examples in `src/settings/example-bootstrap.js`; the local demo must not define a divergent settings template.
+- [x] Add a demo runner, such as `run-demo.js`, that imports Regentara composition and injects a demo `ReviewFixPolicy`.
+- [x] Define the demo policy as acceptable review -> `complete-ok`, rejected review with remaining budget -> `remediate`, and exhausted budget -> `complete-fail`.
+- [x] Keep the demo policy outside production composition so Regentara still requires explicit policy injection for real use.
+- [x] Make the demo testable without real provider credentials by injecting fake provider execution and fake CLI availability.
+- [x] Verify the demo path with a local smoke command and document the exact command in the demo README.
+- [x] Verify demo/bootstrap alignment so first-run examples and local-demo settings do not diverge silently.
 
 ## Verification
 

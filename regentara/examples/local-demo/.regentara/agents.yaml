@@ -1,0 +1,19 @@
+agents:
+  producer:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/producer
+    output:
+      schemaRef: regentara://schemas/producer-output
+  reviewer:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/reviewer
+    output:
+      schemaRef: regentara://schemas/reviewer-output
+  remediator:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/remediator
+    output:
+      schemaRef: regentara://schemas/remediator-output

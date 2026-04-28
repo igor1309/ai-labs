@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Added a Regentara local demo with bootstrap-aligned settings, an explicit demo review-fix policy, fake-provider smoke mode, and tests that keep the demo aligned with first-run examples.
 - Added Regentara run progress events in `events.jsonl`, covering agent lifecycle, policy decisions, runtime failures, and completion status without mutating authored artifacts.
 - Added provider structured result adapters for Regentara's built-in Claude Code and Codex runners, so orchestration now consumes only schema-validated semantic JSON and treats stdout/stderr as diagnostics.
 - Final-pass tightened the first `agent-develop-review-loop` learning item so implementation can start from explicit runner-adapter, semantic-result, and invocation-cwd cleanup requirements.

@@ -1,0 +1,17 @@
+routes:
+  sonnet:
+    provider: anthropic
+    runner: claude-code
+    model: claude-sonnet-4-5
+  opus:
+    provider: anthropic
+    runner: claude-code
+    model: claude-opus-4-7
+  gpt:
+    provider: openai
+    runner: codex
+    model: gpt-5.1-codex
+  codex:
+    provider: openai
+    runner: codex
+    model: gpt-5.1-codex

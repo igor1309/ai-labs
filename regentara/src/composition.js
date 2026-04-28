@@ -11,7 +11,10 @@ export function createRegentaraComposition(options = {}) {
       ...input,
       reviewFixPolicy,
     }, {
+      artifactExists: options.artifactExists,
+      commandExists: options.commandExists,
       executeProviderCli: providerCliExecutor,
+      runStoreOptions: options.runStoreOptions,
     }),
   };
 }
