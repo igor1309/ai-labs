@@ -6,7 +6,7 @@ description: "Closure plan for adr-007: relax closed catalog whitelists, add cro
 
 # ADR-007 CLI Settings Convention Closure Plan
 
-> **For agentic workers:** REQUIRED: Follow this plan task-by-task. Use `dev-skills/public/strict-tdd` and `dev-skills/public/process-gates` for every code, config, CI, dependency, release, or generated-artifact change. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Follow this plan task-by-task. Use `dev-skills/public/strict-tdd` and `dev-skills/public/process-gates` for every code, config, CI, dependency, release, or generated-artifact change. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Close the violations recorded by `adr-007-cli-settings-convention-adoption.md` against `regentara/src/settings/agent-settings.js`, `regentara/src/settings/model-routing.js`, and the missing first-run bootstrap, and align tests with the updated `mvp-workflow-runner.md` spec.
 
@@ -85,11 +85,11 @@ Full Node/TypeScript gates required before closeout:
 
 **Key Work Items:**
 
-- [ ] Remove tests asserting rejection of unknown route key, missing-of-fixed-set route keys, unsupported provider, unsupported runner, and invalid provider/runner combination. Run RED to confirm they are gone.
-- [ ] Remove `REQUIRED_ROUTE_KEYS`, `SUPPORTED_COMBINATIONS`, and the provider/runner closed-list checks from `model-routing.js`.
-- [ ] Preserve validation for: parse error, missing `routes` mapping, missing required field per route entry.
-- [ ] Confirm structural-field test (missing `provider`, `runner`, or `model`) still passes.
-- [ ] Update `regentara/docs/log.md` with a one-line outcome entry.
+- [x] Remove tests asserting rejection of unknown route key, missing-of-fixed-set route keys, unsupported provider, unsupported runner, and invalid provider/runner combination. Run RED to confirm they are gone.
+- [x] Remove `REQUIRED_ROUTE_KEYS`, `SUPPORTED_COMBINATIONS`, and the provider/runner closed-list checks from `model-routing.js`.
+- [x] Preserve validation for: parse error, missing `routes` mapping, missing required field per route entry.
+- [x] Confirm structural-field test (missing `provider`, `runner`, or `model`) still passes.
+- [x] Update `regentara/docs/log.md` with a one-line outcome entry.
 
 **Validation:**
 
@@ -118,11 +118,11 @@ git commit -m "regentara: relax model routing catalog whitelists per adr-007"
 
 **Key Work Items:**
 
-- [ ] Remove the test asserting rejection of unsupported prompt reference. Run RED to confirm it is gone.
-- [ ] Remove `SUPPORTED_PROMPT_REFS` and the prompt-ref closed-list check from `agent-settings.js`.
-- [ ] Keep prompt structural validation: prompt must be a mapping with a string `ref` field.
-- [ ] Confirm `SUPPORTED_SCHEMA_REFS` remains and the unsupported-output-schema test still passes.
-- [ ] Update `regentara/docs/log.md`.
+- [x] Remove the test asserting rejection of unsupported prompt reference. Run RED to confirm it is gone.
+- [x] Remove `SUPPORTED_PROMPT_REFS` and the prompt-ref closed-list check from `agent-settings.js`.
+- [x] Keep prompt structural validation: prompt must be a mapping with a string `ref` field.
+- [x] Confirm `SUPPORTED_SCHEMA_REFS` remains and the unsupported-output-schema test still passes.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 
@@ -151,11 +151,11 @@ git commit -m "regentara: relax agent settings prompt reference whitelist per ad
 
 **Key Work Items:**
 
-- [ ] Add a RED test asserting that startup fails with `StartupValidationFailure` when `agents.yaml` references a route key not defined in `models.yaml`. Confirm the test fails by assertion.
-- [ ] Add the minimum GREEN check at the smallest reasonable seam.
-- [ ] Confirm error message names the offending agent identifier and the unresolved route key.
-- [ ] Confirm no other startup tests regress.
-- [ ] Update `regentara/docs/log.md`.
+- [x] Add a RED test asserting that startup fails with `StartupValidationFailure` when `agents.yaml` references a route key not defined in `models.yaml`. Confirm the test fails by assertion.
+- [x] Add the minimum GREEN check at the smallest reasonable seam.
+- [x] Confirm error message names the offending agent identifier and the unresolved route key.
+- [x] Confirm no other startup tests regress.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 
@@ -185,14 +185,14 @@ git commit -m "regentara: enforce cross-file route key resolution at startup"
 
 **Key Work Items:**
 
-- [ ] RED: assert `~/.regentara/agents.yaml.example` is written when no `agents.yaml` exists at either location.
-- [ ] GREEN: write the example, then continue with the existing `StartupValidationFailure` throw.
-- [ ] RED: assert an existing `~/.regentara/agents.yaml.example` is not overwritten (e.g., write a sentinel file, run, verify content unchanged).
-- [ ] GREEN: guard the write with an existence check.
-- [ ] RED: assert no `agents.yaml` is written during bootstrap.
-- [ ] GREEN: verify implementation only writes the example file.
-- [ ] Confirm the failing-when-missing test (spec test 1) still passes.
-- [ ] Update `regentara/docs/log.md`.
+- [x] RED: assert `~/.regentara/agents.yaml.example` is written when no `agents.yaml` exists at either location.
+- [x] GREEN: write the example, then continue with the existing `StartupValidationFailure` throw.
+- [x] RED: assert an existing `~/.regentara/agents.yaml.example` is not overwritten (e.g., write a sentinel file, run, verify content unchanged).
+- [x] GREEN: guard the write with an existence check.
+- [x] RED: assert no `agents.yaml` is written during bootstrap.
+- [x] GREEN: verify implementation only writes the example file.
+- [x] Confirm the failing-when-missing test (spec test 1) still passes.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 
@@ -221,9 +221,9 @@ git commit -m "regentara: bootstrap agents.yaml.example on first run"
 
 **Key Work Items:**
 
-- [ ] RED/GREEN cycle for: example written when missing, idempotency, no actual `models.yaml` written.
-- [ ] Confirm the failing-when-missing test (spec test 15) still passes.
-- [ ] Update `regentara/docs/log.md`.
+- [x] RED/GREEN cycle for: example written when missing, idempotency, no actual `models.yaml` written.
+- [x] Confirm the failing-when-missing test (spec test 15) still passes.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 
@@ -252,9 +252,9 @@ git commit -m "regentara: bootstrap models.yaml.example on first run"
 
 **Key Work Items:**
 
-- [ ] RED: assert only `agents.yaml.example` is written when `agents.yaml` is missing but `models.yaml` exists. Symmetric assertion for the reverse case.
-- [ ] GREEN: ensure each settings file's bootstrap is independent of the other's presence.
-- [ ] Update `regentara/docs/log.md`.
+- [x] RED: assert only `agents.yaml.example` is written when `agents.yaml` is missing but `models.yaml` exists. Symmetric assertion for the reverse case.
+- [x] GREEN: ensure each settings file's bootstrap is independent of the other's presence.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 
@@ -284,10 +284,10 @@ git commit -m "regentara: independent per-file first-run bootstrap"
 
 **Key Work Items:**
 
-- [ ] Audit every `throw new StartupValidationFailure(...)` site introduced or touched in Tasks 1–6 plus the existing pre-task sites; confirm each message names the file or rule.
-- [ ] RED: add a test that exercises a representative subset of failure paths and asserts the error name and that the message contains the expected file or rule name.
-- [ ] GREEN: adjust messages where missing.
-- [ ] Update `regentara/docs/log.md`.
+- [x] Audit every `throw new StartupValidationFailure(...)` site introduced or touched in Tasks 1–6 plus the existing pre-task sites; confirm each message names the file or rule.
+- [x] RED: add a test that exercises a representative subset of failure paths and asserts the error name and that the message contains the expected file or rule name.
+- [x] GREEN: adjust messages where missing.
+- [x] Update `regentara/docs/log.md`.
 
 **Validation:**
 
@@ -316,9 +316,9 @@ git commit -m "regentara: name offending file or rule on every startup failure"
 
 **Key Work Items:**
 
-- [ ] Run the full gates and confirm green.
-- [ ] Move plan and (if not already) spec to `implemented/`.
-- [ ] Append a single closeout line to `regentara/docs/log.md` summarizing the closure.
+- [x] Run the full gates and confirm green.
+- [x] Move plan and (if not already) spec to `implemented/`.
+- [x] Append a single closeout line to `regentara/docs/log.md` summarizing the closure.
 
 **Validation:**
 

@@ -1,5 +1,9 @@
 # Regentara Log
 
+## 2026-04-28
+
+- adr-007 closure follow-up: marked all 37 checklist items complete in archived `adr-007-cli-settings-convention-closure.md` so the implemented artifact no longer contradicts its location.
+
 ## 2026-04-27
 
 - adr-007 review follow-up: `validateAgent` now requires `agent.model` to be a non-empty string after `trim()`; arrays/objects/whitespace are rejected with `agents.yaml agent <id> field model must be a non-empty string`. Stored value is trimmed.
