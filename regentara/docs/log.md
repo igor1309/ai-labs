@@ -5,6 +5,7 @@
 - Review follow-up: debug startup settings are now remembered incrementally, so a later `models.yaml` failure can still report the already-selected `agents.yaml` path.
 - Implemented CLI `--debug` mode with stderr-only live progress for settings, run creation, agent lifecycle, policy decisions, completion, and failures while preserving run artifacts and event schemas.
 - Refined ADR-010 into an implementation-ready CLI debug-mode decision and added the matching CLI debug-mode spec.
+- Review follow-up: prompt template rendering now preserves literal dollar replacement tokens from task context, prompt refs, and output schemas.
 - Tightened Regentara role prompt templates: Producer owns implementation and artifact field discipline, Reviewer inspects current repository state without fixing, and Remediator returns revised tasks without editing files.
 - Extracted Regentara agent prompt templates into version-controlled Markdown files under `src/prompts/` without changing prompt wording, making role prompts reviewable independently of Orchestrator code.
 - Drafted ADR-010 for a compact live CLI `--debug` mode and recorded trace/watch as perspective observability extensions outside the first debug task.

@@ -10,12 +10,20 @@ const promptTemplateCache = new Map();
 
 export async function buildAgentPrompt(agentId, agent, input) {
   const template = await loadPromptTemplate(agentId);
+  const replacements = new Map([
+    ["{{agentId}}", agentId],
+    ["{{promptRef}}", agent.prompt.ref],
+    ["{{taskContextJson}}", JSON.stringify(input, null, 2)],
+    ["{{outputSchemaJson}}", JSON.stringify(agent.outputSchema, null, 2)],
+  ]);
 
-  return template
-    .replaceAll("{{agentId}}", agentId)
-    .replaceAll("{{promptRef}}", agent.prompt.ref)
-    .replaceAll("{{taskContextJson}}", JSON.stringify(input, null, 2))
-    .replaceAll("{{outputSchemaJson}}", JSON.stringify(agent.outputSchema, null, 2));
+  let prompt = template;
+
+  for (const [placeholder, value] of replacements) {
+    prompt = prompt.replaceAll(placeholder, () => value);
+  }
+
+  return prompt;
 }
 
 async function loadPromptTemplate(agentId) {

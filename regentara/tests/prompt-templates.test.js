@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
+import { buildAgentPrompt } from "../src/prompts.js";
 
 const PROMPT_DIRECTORY = join("regentara", "src", "prompts");
 
@@ -47,5 +48,34 @@ test("prompt templates should define agent role boundaries", async () => {
       reviewerStateRule: true,
       sharedSemanticRule: true,
     },
+  );
+});
+
+test("buildAgentPrompt should preserve dollar replacement tokens in task context", async () => {
+  const prompt = await buildAgentPrompt(
+    "producer",
+    {
+      outputSchema: {
+        properties: {
+          artifact: {
+            const: "$&",
+          },
+        },
+        type: "object",
+      },
+      prompt: {
+        ref: "regentara://prompt-$&",
+      },
+    },
+    {
+      task: "keep $& and $$ literal",
+    },
+  );
+
+  assert.equal(
+    prompt.includes('"task": "keep $& and $$ literal"')
+      && prompt.includes('"const": "$&"')
+      && prompt.includes("regentara://prompt-$&"),
+    true,
   );
 });
