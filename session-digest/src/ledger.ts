@@ -1,7 +1,7 @@
 import type { ParsedSession } from "./session-records.js";
 
 export const COMPRESSOR_STRATEGY = "claude-jsonl-v1";
-export const COMPRESSOR_VERSION = "1.0.0";
+export const COMPRESSOR_VERSION = "1.1.0";
 export const LEDGER_SCHEMA = "session-digest-ledger";
 export const LEDGER_SCHEMA_VERSION = "1.0.0";
 export const DEFAULT_MODEL_CONTEXT_MAX_BYTES = 250_000;
@@ -24,11 +24,14 @@ export type LedgerEvent = {
   key_lines?: string[];
   output_bytes?: number;
   related_anchor?: string;
+  related_tool_call_id?: string;
   role?: string;
   source_record: number;
   status?: string;
   text?: string;
   tool?: string;
+  tool_call_id?: string;
+  skill?: string;
 };
 
 export type ModelContext = {
@@ -167,13 +170,16 @@ function toolCallEvents(
   const input = isRecord(block.input) ? block.input : {};
   const command = stringValue(input.command);
   const filePath = stringValue(input.file_path) ?? stringValue(input.path);
+  const toolCallId = stringValue(block.id);
   const baseEvent: LedgerEvent = {
     anchor,
     command,
     file_path: filePath,
     kind: "tool_call",
+    skill: stringValue(input.skill),
     source_record: sourceRecord,
     tool: stringValue(block.name),
+    tool_call_id: toolCallId,
   };
   const events = [baseEvent];
 
@@ -209,6 +215,7 @@ function toolResultEvents(
     kind: "tool_result",
     output_bytes: Buffer.byteLength(outputText),
     related_anchor: relatedAnchor,
+    related_tool_call_id: relatedAnchor,
     source_record: sourceRecord,
     status,
   }];

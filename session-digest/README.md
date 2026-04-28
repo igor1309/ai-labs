@@ -34,9 +34,25 @@ NVIDIA_API_KEY=...
 NVIDIA_MODEL=moonshotai/kimi-k2-instruct
 ```
 
+Optional digest schema override:
+
+```bash
+SESSION_DIGEST_SCHEMA_PATH=/absolute/path/to/digest-schema.yaml
+```
+
+If omitted, the CLI uses `session-digest/digest-schema.yaml`.
+
 If more than one provider is configured, the CLI uses Nomos first, then OpenRouter, then NVIDIA NIM.
 
 If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for model requests.
+
+Optional non-secret settings live in `~/.session-digests/settings.env`:
+
+```bash
+MODEL_CONTEXT_MAX_BYTES=250000
+```
+
+For a one-off run, `SESSION_DIGEST_MODEL_CONTEXT_MAX_BYTES` overrides `MODEL_CONTEXT_MAX_BYTES`.
 
 For Nomos mode, start the local proxy from the repository root before running `session-digest`:
 
@@ -52,6 +68,12 @@ From the repository root:
 npx -w session-digest tsx src/cli.ts /absolute/path/to/session.jsonl
 ```
 
+To compile only the derived ledger without provider configuration or model synthesis:
+
+```bash
+npx -w session-digest tsx src/cli.ts --ledger-only /absolute/path/to/session.jsonl
+```
+
 From another directory, pass the repository root explicitly:
 
 ```bash
@@ -64,4 +86,4 @@ For this worktree's current Claude session:
 npm --prefix /Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/deep-nvidia exec -w session-digest -- tsx src/cli.ts /Users/igormalyarov/.claude/projects/-Users-igormalyarov-Developer-my-apps-ai-labs-ai-labs-worktrees-deep-nvidia/44c1e8f1-3515-4e9e-a7c1-99151cbf657a.jsonl
 ```
 
-On success, stdout contains only the generated digest path.
+On success, stdout contains only the generated digest path. In `--ledger-only` mode, stdout contains only the generated ledger path.

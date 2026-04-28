@@ -1,13 +1,15 @@
 import type * as fs from "node:fs";
 import * as path from "node:path";
 
-import { SECTION_NAMES, type SectionName } from "./sections.js";
+import { DEFAULT_DIGEST_SCHEMA, type DigestSchema } from "./sections.js";
 
 export type WriteDigestFs = Pick<typeof fs.promises, "mkdir" | "writeFile">;
 
 export type FrontMatter = {
   compressor_strategy?: string;
   compressor_version?: string;
+  digest_schema_path?: string;
+  digest_schema_version?: number;
   title: string;
   source_path: string;
   provider: string;
@@ -36,7 +38,11 @@ export async function writeDigest(digestPath: string, body: string, fsLike: Writ
   await fsLike.writeFile(digestPath, body);
 }
 
-export function assembleDigest(frontMatter: FrontMatter, sections: Partial<Record<SectionName, string>>): string {
+export function assembleDigest(
+  frontMatter: FrontMatter,
+  sections: Partial<Record<string, string>>,
+  schema: DigestSchema = DEFAULT_DIGEST_SCHEMA,
+): string {
   const frontMatterBody = [
     "---",
     `title: ${frontMatter.title}`,
@@ -48,7 +54,7 @@ export function assembleDigest(frontMatter: FrontMatter, sections: Partial<Recor
     "---",
     "",
   ].join("\n");
-  const sectionBody = SECTION_NAMES.map((sectionName) => `## ${sectionName}\n\n${sections[sectionName] ?? ""}`)
+  const sectionBody = schema.sections.map((section) => `## ${section.heading}\n\n${sections[section.id] ?? ""}`)
     .join("\n\n");
 
   return `${frontMatterBody}${sectionBody}\n`;
@@ -62,6 +68,8 @@ function optionalFrontMatterLines(frontMatter: FrontMatter): string[] {
   const entries: Array<[keyof FrontMatter, string]> = [
     ["compressor_strategy", "compressor_strategy"],
     ["compressor_version", "compressor_version"],
+    ["digest_schema_path", "digest_schema_path"],
+    ["digest_schema_version", "digest_schema_version"],
     ["ledger_path", "ledger_path"],
     ["source_bytes", "source_bytes"],
     ["source_records", "source_records"],
