@@ -126,7 +126,19 @@ for (const field of ["provider", "runner", "model"]) {
 
     await assert.rejects(
       () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-      new RegExp(`route sonnet field ${field} must be a string`),
+      new RegExp(`route sonnet field ${field} must be a non-empty string`),
+    );
+  });
+
+  test(`resolveModelRouting should reject route entries whose ${field} is empty or whitespace`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    const route = { provider: "anthropic", runner: "claude-code", model: "claude-sonnet-4-5" };
+    route[field] = "   ";
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ sonnet: route }));
+
+    await assert.rejects(
+      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      new RegExp(`route sonnet field ${field} must be a non-empty string`),
     );
   });
 }

@@ -71,17 +71,19 @@ function validateRoute(routeKey, rawRoute) {
     );
   }
 
-  const nonStringField = REQUIRED_FIELDS.find((field) => typeof rawRoute[field] !== "string");
-  if (nonStringField) {
+  const invalidField = REQUIRED_FIELDS.find(
+    (field) => typeof rawRoute[field] !== "string" || rawRoute[field].trim() === "",
+  );
+  if (invalidField) {
     throw new StartupValidationFailure(
-      `models.yaml route ${routeKey} field ${nonStringField} must be a string`,
+      `models.yaml route ${routeKey} field ${invalidField} must be a non-empty string`,
     );
   }
 
   return {
-    model: rawRoute.model,
-    provider: rawRoute.provider,
-    runner: rawRoute.runner,
+    model: rawRoute.model.trim(),
+    provider: rawRoute.provider.trim(),
+    runner: rawRoute.runner.trim(),
   };
 }
 
