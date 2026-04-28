@@ -1,8 +1,11 @@
 import { artifactExists as artifactExistsInRun } from "./artifact-store.js";
 import { failureResult, RuntimeFailure, StartupValidationFailure } from "./errors.js";
 import { validateProviderCliAvailability } from "./provider-cli-availability.js";
-import { createRun as createStoredRun } from "./run-store.js";
-import { updateRunMetadata as updateStoredRunMetadata } from "./run-store.js";
+import {
+  appendRunEvent,
+  createRun as createStoredRun,
+  updateRunMetadata as updateStoredRunMetadata,
+} from "./run-store.js";
 import { validateRuntimeOutput } from "./runtime-output.js";
 import { resolveAgentSettings } from "./settings/agent-settings.js";
 import { bootstrapMissingSettings } from "./settings/example-bootstrap.js";
@@ -26,6 +29,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     dependencies.validateProviderCliAvailability ?? validateProviderCliAvailability;
   const createRun = dependencies.createRun ?? createStoredRun;
   const executeProviderCli = dependencies.executeProviderCli;
+  const recordRunEvent = dependencies.recordRunEvent ?? appendRunEvent;
   const updateRunMetadata = dependencies.updateRunMetadata ?? updateStoredRunMetadata;
   const resolversOverridden =
     Boolean(dependencies.resolveAgentSettings) || Boolean(dependencies.resolveModelRouting);
@@ -44,6 +48,11 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       .map((agent) => modelRouting.routes[agent.model].runner);
     await validateCliAvailability(referencedRunners, dependencies);
     run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
+    const emitEvent = (event) => recordRunEvent(run.runDirectory, {
+      ...event,
+      runId: run.runId,
+      timestamp: new Date().toISOString(),
+    });
     const artifactExists =
       dependencies.artifactExists ?? ((relativePath) => artifactExistsInRun(run.runDirectory, relativePath));
 
@@ -52,6 +61,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     }
 
     if (!executeProviderCli) {
+      await emitEvent({
+        finalStatus: "succeeded",
+        type: "completion",
+      });
       return {
         agentSettings,
         exitCode: 0,
@@ -69,6 +82,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       const producerResult = await executeAgent({
         agentId: "producer",
         agentSettings,
+        emitEvent,
         executeProviderCli,
         artifactExists,
         input: {
@@ -79,6 +93,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
         agentSettings,
+        emitEvent,
         executeProviderCli,
         artifactExists,
         input: {
@@ -91,10 +106,18 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         session: policySession,
         verdict: reviewerResult,
       });
+      await emitEvent({
+        currentDecision: policyResult.decision,
+        type: "policy-decision",
+      });
 
       policySession = policyResult.session;
 
       if (policyResult.decision === "complete-ok") {
+        await emitEvent({
+          finalStatus: "succeeded",
+          type: "completion",
+        });
         return {
           exitCode: 0,
           runDirectory: run.runDirectory,
@@ -104,6 +127,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       }
 
       if (policyResult.decision === "complete-fail") {
+        await emitEvent({
+          finalStatus: "failed",
+          type: "completion",
+        });
         return {
           exitCode: 1,
           failureReason: "review policy completed with failure",
@@ -120,6 +147,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       const remediatorResult = await executeAgent({
         agentId: "remediator",
         agentSettings,
+        emitEvent,
         executeProviderCli,
         artifactExists,
         input: {
@@ -133,6 +161,13 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     }
   } catch (error) {
     if (run && !(error instanceof StartupValidationFailure)) {
+      await recordRunEvent(run.runDirectory, {
+        failureReason: error.message,
+        finalStatus: "failed",
+        runId: run.runId,
+        timestamp: new Date().toISOString(),
+        type: "runtime-failure",
+      });
       await updateRunMetadata(run.runDirectory, {
         endTime: new Date().toISOString(),
         exitCode: 1,
@@ -163,12 +198,18 @@ async function executeAgent({
   agentId,
   agentSettings,
   artifactExists,
+  emitEvent,
   executeProviderCli,
   input,
   modelRouting,
 }) {
   const agent = agentSettings.agents[agentId];
   const route = modelRouting.routes[agent.model];
+  await emitEvent?.({
+    agentId,
+    currentAgent: agentId,
+    type: "agent-start",
+  });
   const providerResult = await executeProviderCli({
     agentId,
     executionInput: input,
@@ -188,6 +229,12 @@ async function executeAgent({
   if (output.artifact && artifactExists && !(await artifactExists(output.artifact))) {
     throw new RuntimeFailure(`expected artifact missing: ${output.artifact}`);
   }
+
+  await emitEvent?.({
+    agentId,
+    currentAgent: agentId,
+    type: "agent-end",
+  });
 
   return output;
 }

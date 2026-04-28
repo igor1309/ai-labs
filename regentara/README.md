@@ -17,6 +17,18 @@ regentara --task "implement the accepted task"
 
 Run Regentara from the target workspace. Provider CLIs run in the Regentara invocation working directory; the run directory is reserved for Regentara-owned artifacts and diagnostics.
 
+## Progress
+
+Each run appends operational progress events to `~/.regentara/runs/<run-id>/events.jsonl`. Authored artifacts are not rewritten to record progress.
+
+Follow the latest run's event log with:
+
+```bash
+latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"; tail -f "$latest_run/events.jsonl"
+```
+
+The watched event surface includes the run ID plus current agent, current policy decision, runtime failure reason, or final status when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
+
 ## MVP Status
 
 The package scaffold is present so behavior can be added behind compiling module boundaries.

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { runWorkflow } from "../src/orchestrator.js";
+import { progressEventSummary, readEvents } from "./helpers/events.js";
 import {
   makeSettingsWorkspace,
   validAgentsYaml,
@@ -140,6 +141,41 @@ test("runWorkflow should keep producer reviewer and remediator as peer calls", a
   });
 
   assert.deepEqual(calls.map(classifyCall), ["producer", "reviewer", "remediator", "producer", "reviewer"]);
+});
+
+test("runWorkflow should append watched progress events for a successful run", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(events.map(progressEventSummary), [
+    { agentId: "producer", currentAgent: "producer", runId: result.runId, type: "agent-start" },
+    { agentId: "producer", currentAgent: "producer", runId: result.runId, type: "agent-end" },
+    { agentId: "reviewer", currentAgent: "reviewer", runId: result.runId, type: "agent-start" },
+    { agentId: "reviewer", currentAgent: "reviewer", runId: result.runId, type: "agent-end" },
+    { currentDecision: "complete-ok", runId: result.runId, type: "policy-decision" },
+    { finalStatus: "succeeded", runId: result.runId, type: "completion" },
+  ]);
+});
+
+test("runWorkflow should append failed completion progress event when policy completes with failure", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-fail" }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(events.map(progressEventSummary).at(-1), {
+    finalStatus: "failed",
+    runId: result.runId,
+    type: "completion",
+  });
 });
 
 async function runWorkflowWithCalls(calls, options = {}) {

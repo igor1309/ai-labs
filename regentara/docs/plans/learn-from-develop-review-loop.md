@@ -67,15 +67,15 @@ Implement in this order: provider structured result adapters first, watch/progre
 
 ### 2. Add Watch and Progress Ergonomics
 
-- [ ] Define the minimal run progress surface Regentara should expose without weakening artifact immutability.
-- [ ] Add an append-only operational event log, likely `events.jsonl`, under each run directory.
-- [ ] Emit events for agent start, agent end, policy decision, runtime failure, and completion.
-- [ ] Keep authored artifacts immutable; progress state belongs in operational events, not artifact rewrites.
-- [ ] Start with a documented shell recipe for following the latest run event log.
-- [ ] Treat `regentara watch [--run latest|<run-id>]` as a follow-up unless this task explicitly adds subcommand parsing to the CLI.
-- [ ] Include run ID, current agent, current decision state, and final status in the watched surface.
-- [ ] Verify the watch path against a fake or sample run directory.
-- [ ] Add a short ADR/spec note before implementation if event logging materially defines the deferred progress-recording mechanism from the artifact ADR.
+- [x] Define the minimal run progress surface Regentara should expose without weakening artifact immutability.
+- [x] Add an append-only operational event log, likely `events.jsonl`, under each run directory.
+- [x] Emit events for agent start, agent end, policy decision, runtime failure, and completion.
+- [x] Keep authored artifacts immutable; progress state belongs in operational events, not artifact rewrites.
+- [x] Start with a documented shell recipe for following the latest run event log.
+- [x] Treat `regentara watch [--run latest|<run-id>]` as a follow-up unless this task explicitly adds subcommand parsing to the CLI.
+- [x] Include run ID, current agent, current decision state, and final status in the watched surface.
+- [x] Verify the watch path against a fake or sample run directory.
+- [x] Add a short ADR/spec note before implementation if event logging materially defines the deferred progress-recording mechanism from the artifact ADR.
 
 ### 3. Add a Batteries-Included Local Demo
 

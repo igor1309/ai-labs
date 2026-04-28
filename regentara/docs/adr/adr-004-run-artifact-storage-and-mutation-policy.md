@@ -12,7 +12,7 @@ scope: run artifacts
 
 ## Executive Summary
 
-Regentara stores run artifacts under a per-run directory at `~/.regentara/runs/<run-id>/`. The run ID combines a UTC run-start timestamp with an 8-character lowercase alphanumeric random suffix. Authored artifacts are immutable after creation; Regentara must not mutate authored artifacts to record execution progress. Run metadata may be updated as run state changes. Canonical artifact taxonomy, file naming, internal layout, schemas, progress-recording mechanism, and retention are intentionally deferred.
+Regentara stores run artifacts under a per-run directory at `~/.regentara/runs/<run-id>/`. The run ID combines a UTC run-start timestamp with an 8-character lowercase alphanumeric random suffix. Authored artifacts are immutable after creation; Regentara must not mutate authored artifacts to record execution progress. Run metadata may be updated as run state changes. Operational progress is recorded in an append-only `events.jsonl` file. Canonical artifact taxonomy, file naming beyond the event log, internal layout beyond the run root, schemas, and retention are intentionally deferred.
 
 ## Status
 
@@ -96,7 +96,25 @@ Regentara must not rely on mutating authored artifacts to record execution progr
 
 Progress recording is a separate concern from authored artifact content.
 
-The exact progress-recording mechanism is deferred because it must account for possible concurrent writes from provider CLIs, sub-agents, or internal runner machinery.
+### Operational Event Log
+
+Regentara records execution progress in an append-only operational event log at:
+
+```text
+~/.regentara/runs/<run-id>/events.jsonl
+```
+
+Each line is a JSON object. The minimal watched surface includes `runId`, `type`, and `timestamp`; event-specific fields include `currentAgent`, `currentDecision`, `finalStatus`, and `failureReason` when relevant.
+
+The MVP event types are:
+
+- `agent-start`
+- `agent-end`
+- `policy-decision`
+- `runtime-failure`
+- `completion`
+
+The event log is operational state, not an authored artifact. Appending progress events must not rewrite authored artifacts or encode progress by mutating authored artifact content.
 
 Run metadata is the only mutable state defined by this ADR. Allowed mutations are limited to:
 
@@ -113,6 +131,7 @@ Implementation must include tests that verify:
 - run IDs use the UTC timestamp format and suffix grammar defined by this ADR
 - authored artifact creation rejects overwrite or rewrite attempts
 - execution progress is not recorded by mutating authored artifacts
+- progress events append to `events.jsonl`
 - run metadata status updates remain allowed for the limited fields defined above
 
 ## Failure Interaction
@@ -147,8 +166,6 @@ This ADR does not decide:
 - iteration folder layout
 - artifact schemas
 - whether artifacts need sidecar metadata
-- progress ledger format
-- append-only versus mutable progress state
 - concurrency and race-handling strategy for progress writes
 - write ownership between Regentara and provider CLIs
 - file locking or atomic write strategy

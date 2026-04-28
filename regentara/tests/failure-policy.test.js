@@ -6,6 +6,7 @@ import test from "node:test";
 import { createAuthoredArtifact } from "../src/artifact-store.js";
 import { runWorkflow } from "../src/orchestrator.js";
 import { createRun } from "../src/run-store.js";
+import { progressEventSummary, readEvents } from "./helpers/events.js";
 import {
   makeSettingsWorkspace,
   validAgentsYaml,
@@ -104,6 +105,29 @@ test("runWorkflow should stop after the first runtime failure", async () => {
   });
 
   assert.equal(callCount, 1);
+});
+
+test("runWorkflow should append a runtime failure progress event when provider execution fails", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  let runDirectory;
+  let runId;
+
+  await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async () => {
+      throw new Error("provider failed");
+    },
+    onRunCreated: (run) => {
+      runDirectory = run.runDirectory;
+      runId = run.runId;
+    },
+  });
+
+  const events = await readEvents(runDirectory);
+
+  assert.deepEqual(events.map(progressEventSummary), [
+    { agentId: "producer", currentAgent: "producer", runId, type: "agent-start" },
+    { failureReason: "provider failed", finalStatus: "failed", runId, type: "runtime-failure" },
+  ]);
 });
 
 test("runWorkflow should not retry a failed step", async () => {
