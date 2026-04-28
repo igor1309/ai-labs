@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Archived the prompt role boundary inspection task after prompt template extraction, role-boundary tightening, and dollar-token rendering fixes landed on top of debug-mode work.
 - Review follow-up: debug startup settings are now remembered incrementally, so a later `models.yaml` failure can still report the already-selected `agents.yaml` path.
 - Implemented CLI `--debug` mode with stderr-only live progress for settings, run creation, agent lifecycle, policy decisions, completion, and failures while preserving run artifacts and event schemas.
 - Refined ADR-010 into an implementation-ready CLI debug-mode decision and added the matching CLI debug-mode spec.
