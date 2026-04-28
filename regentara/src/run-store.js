@@ -1,11 +1,18 @@
 import { randomBytes as cryptoRandomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { RuntimeFailure } from "./errors.js";
 
-const MUTABLE_METADATA_FIELDS = new Set(["endTime", "exitCode", "status"]);
+const MUTABLE_METADATA_FIELDS = new Set([
+  "duration",
+  "endTime",
+  "exitCode",
+  "status",
+  "totalCost",
+  "totalCostUsd",
+]);
 
 export async function createRun(options = {}) {
   const homeDirectory = options.homeDirectory ?? homedir();
@@ -21,11 +28,13 @@ export async function createRun(options = {}) {
     runId,
     startedAt,
     status: "running",
+    ...(options.taskFile ? { taskFile: options.taskFile } : {}),
   });
 
   return {
     runDirectory,
     runId,
+    startedAt,
   };
 }
 
@@ -57,6 +66,10 @@ export async function readRunMetadata(runDirectory) {
   return JSON.parse(await readFile(metadataPath(runDirectory), "utf8"));
 }
 
+export async function appendRunEvent(runDirectory, event) {
+  await appendFile(eventLogPath(runDirectory), `${JSON.stringify(event)}\n`);
+}
+
 function formatUtcTimestamp(date) {
   const year = String(date.getUTCFullYear()).padStart(4, "0");
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -70,6 +83,10 @@ function formatUtcTimestamp(date) {
 
 function metadataPath(runDirectory) {
   return join(runDirectory, "metadata.json");
+}
+
+function eventLogPath(runDirectory) {
+  return join(runDirectory, "events.jsonl");
 }
 
 function randomSuffix(randomBytes) {

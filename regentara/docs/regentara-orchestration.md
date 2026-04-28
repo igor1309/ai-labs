@@ -26,7 +26,7 @@ Three agents, all flow-ignorant peers. Each is defined by a typed input/output c
 
 - **Reviewer** (Opus-level). Input: the task and the work. Produces a structured verdict — adversarial and broad: structure, clarity, quality, and completeness beyond the stated criteria. Reviewer assesses *the work*; Producer grounds *the claim*. Review schema is reused from the existing review skill.
 
-- **Remediator** (Opus-level). Input: the task, the work, and the review verdict. Produces a valid task — a fix plan conforming to the same verifiable-task contract the Orchestrator accepts at entry. Knows nothing about the flow.
+- **Remediator** (Opus-level). Input: the task, the work, the latest review verdict, and completed review history. Produces a valid task — a fix plan conforming to the same verifiable-task contract the Orchestrator accepts at entry. Knows nothing about the flow.
 
 The **Orchestrator** coordinates the flow: runs within a selected workspace, sequences agent calls, enforces stop-on-failure. Workspace lifecycle (creation, integration, cleanup) is intentionally out of the Orchestrator's scope. It does not adjudicate — it consults `ReviewFixPolicy` for every routing decision. The call graph is a tree: Orchestrator → {Producer, Reviewer, Remediator, ReviewFixPolicy}. Agents never invoke each other or the Orchestrator.
 

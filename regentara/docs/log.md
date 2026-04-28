@@ -2,6 +2,28 @@
 
 ## 2026-04-28
 
+- Archived the prompt role boundary inspection task after prompt template extraction, role-boundary tightening, and dollar-token rendering fixes landed on top of debug-mode work.
+- Review follow-up: debug startup settings are now remembered incrementally, so a later `models.yaml` failure can still report the already-selected `agents.yaml` path.
+- Implemented CLI `--debug` mode with stderr-only live progress for settings, run creation, agent lifecycle, policy decisions, completion, and failures while preserving run artifacts and event schemas.
+- Refined ADR-010 into an implementation-ready CLI debug-mode decision and added the matching CLI debug-mode spec.
+- Review follow-up: prompt template rendering now preserves literal dollar replacement tokens from task context, prompt refs, and output schemas.
+- Tightened Regentara role prompt templates: Producer owns implementation and artifact field discipline, Reviewer inspects current repository state without fixing, and Remediator returns revised tasks without editing files.
+- Extracted Regentara agent prompt templates into version-controlled Markdown files under `src/prompts/` without changing prompt wording, making role prompts reviewable independently of Orchestrator code.
+- Drafted ADR-010 for a compact live CLI `--debug` mode and recorded trace/watch as perspective observability extensions outside the first debug task.
+- Replaced Regentara flat model route keys with provider/model-tier routing: agents now declare `provider` plus tier (`medium`/`high` by default), `models.yaml` owns provider-local tier mappings, Codex receives configured reasoning effort, examples/docs/user-facing config reflect the new shape, and legacy `routes` settings now fail validation.
+- Fixed Regentara run observability: provider execution now requires task-file provenance, Producer start events and run metadata record the task file, agent lifecycle/failure events include provider route and runner/session diagnostics, terminal metadata is finalized on success and policy failure, and provider CLIs receive the selected model argument.
+- Review follow-up: production composition now bootstraps existing agent/model example settings before resolving the default config-based policy, so first-run missing policy errors do not suppress `agents.yaml.example` or `models.yaml.example`.
+- Implemented the config-based Regentara review policy: `policy.yaml` discovery/bootstrap/validation, budgeted remediation decisions, production composition wiring, and README guidance.
+- Added the config-based `ReviewFixPolicy` spec derived from ADR-008, defining `policy.yaml`, validation, bootstrap, decision behavior, and required tests.
+- Added ADR-008 for a config-based `ReviewFixPolicy`, keeping the Orchestrator-owned interface intact and defining `maxRemediationAttempts` as the remediation budget.
+- Expanded the Regentara README into a practical usage guide covering workflow shape, settings, review policy injection, provider CLI execution, run artifacts, and the fake-provider local demo.
+- Added a Regentara local demo with bootstrap-aligned settings, an explicit demo review-fix policy, fake-provider smoke mode, and tests that keep the demo aligned with first-run examples.
+- Added Regentara run progress events in `events.jsonl`, covering agent lifecycle, policy decisions, runtime failures, and completion status without mutating authored artifacts.
+- Added provider structured result adapters for Regentara's built-in Claude Code and Codex runners, so orchestration now consumes only schema-validated semantic JSON and treats stdout/stderr as diagnostics.
+- Final-pass tightened the first `agent-develop-review-loop` learning item so implementation can start from explicit runner-adapter, semantic-result, and invocation-cwd cleanup requirements.
+- Verified current Claude Code and Codex CLI structured-output behavior from the repo root and recorded the adapter contracts in the learning plan.
+- Aligned the `agent-develop-review-loop` learning plan with current Regentara architecture: catalog runner adapters, caller-selected workspace, provider structured result adapters, watch/progress scope, and bootstrap-backed demo settings.
+- Captured `agent-develop-review-loop` as prior art for Regentara, including cumulative diff review, sentinel-based loop control, local artifacts, watcher ergonomics, and non-committing workflow boundaries.
 - adr-007 closure follow-up: marked all 37 checklist items complete in archived `adr-007-cli-settings-convention-closure.md` so the implemented artifact no longer contradicts its location.
 
 ## 2026-04-27

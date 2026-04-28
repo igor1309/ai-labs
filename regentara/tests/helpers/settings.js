@@ -39,16 +39,14 @@ export function validAgentsYaml(overrides = {}) {
 }
 
 export function validModelsYaml(overrides = {}) {
-  const routes = {
-    codex: makeOpenAiRoute(),
-    gpt: makeOpenAiRoute(),
-    opus: makeAnthropicRoute(),
-    sonnet: makeAnthropicRoute(),
+  const providers = {
+    anthropic: makeAnthropicProvider(),
+    openai: makeOpenAiProvider(),
     ...overrides,
   };
 
   return yaml({
-    routes,
+    providers,
   });
 }
 
@@ -59,28 +57,43 @@ async function writeSettings(directory, fileName, content) {
 
 function makeAgent(agentId) {
   return {
-    model: "sonnet",
+    model: agentId === "producer" ? "medium" : "high",
     output: {
       schemaRef: `regentara://schemas/${agentId}-output`,
     },
     prompt: {
       ref: `regentara://prompts/${agentId}`,
     },
+    provider: agentId === "reviewer" ? "openai" : "anthropic",
   };
 }
 
-function makeAnthropicRoute() {
+function makeAnthropicProvider() {
   return {
-    model: "claude-sonnet-4-5",
-    provider: "anthropic",
+    models: {
+      high: {
+        model: "claude-opus-4-7",
+      },
+      medium: {
+        model: "claude-sonnet-4-5",
+      },
+    },
     runner: "claude-code",
   };
 }
 
-function makeOpenAiRoute() {
+function makeOpenAiProvider() {
   return {
-    model: "gpt-5.1-codex",
-    provider: "openai",
+    models: {
+      high: {
+        model: "gpt-5.5",
+        reasoningEffort: "high",
+      },
+      medium: {
+        model: "gpt-5.5",
+        reasoningEffort: "medium",
+      },
+    },
     runner: "codex",
   };
 }

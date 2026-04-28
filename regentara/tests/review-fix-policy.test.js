@@ -107,7 +107,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
   const decisions = [...(policy.decisions ?? [])];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     remediator: {
-      model: "gpt",
+      model: "high",
       output: {
         schema: {
           required: ["task"],
@@ -115,6 +115,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
         },
       },
       prompt: { ref: "regentara://prompts/remediator" },
+      provider: "anthropic",
     },
   }));
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
@@ -125,6 +126,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
       decide: policy.decide ?? (async () => decisions.shift()),
     },
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     artifactExists: async () => true,
@@ -132,12 +134,12 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
     executeProviderCli: async (input) => {
       agentInputs.push(input.executionInput);
       if (input.executionInput.verdict) {
-        return { exitStatus: 0, jsonOutput: { task: "remediated task" } };
+        return { exitStatus: 0, semanticResult: { task: "remediated task" } };
       }
       if (input.executionInput.producer) {
-        return { exitStatus: 0, jsonOutput: policy.reviewerOutput ?? { verdict: "needs-fix" } };
+        return { exitStatus: 0, semanticResult: policy.reviewerOutput ?? { verdict: "needs-fix" } };
       }
-      return { exitStatus: 0, jsonOutput: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

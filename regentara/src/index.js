@@ -1,17 +1,27 @@
 #!/usr/bin/env node
 
+import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import { createRegentaraComposition } from "./composition.js";
+import { createDebugReporter } from "./debug-reporter.js";
 
 export async function main(options = {}) {
   const argv = options.argv ?? process.argv.slice(2);
   const stderr = options.stderr ?? process.stderr;
   const composition = options.composition ?? createRegentaraComposition();
   const parsedArguments = parseArguments(argv);
+  const debugReporter = createDebugReporter({
+    enabled: parsedArguments.debug,
+    stderr,
+  });
+  const task = parsedArguments.taskFile
+    ? await readFile(parsedArguments.taskFile, "utf8")
+    : parsedArguments.task;
   const result = await composition.runWorkflow({
-    task: parsedArguments.task,
-    workingDirectory: parsedArguments.workingDirectory,
+    debugReporter,
+    task,
+    ...(parsedArguments.taskFile ? { taskFile: parsedArguments.taskFile } : {}),
   });
 
   if (result.status === "failed") {
@@ -23,12 +33,17 @@ export async function main(options = {}) {
 
 export function parseArguments(argv) {
   const parsed = {
+    debug: false,
     task: "",
-    workingDirectory: process.cwd(),
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+
+    if (argument === "--debug") {
+      parsed.debug = true;
+      continue;
+    }
 
     if (argument === "--task") {
       parsed.task = argv[index + 1] ?? "";
@@ -36,9 +51,10 @@ export function parseArguments(argv) {
       continue;
     }
 
-    if (argument === "--working-directory") {
-      parsed.workingDirectory = argv[index + 1] ?? process.cwd();
+    if (argument === "--task-file") {
+      parsed.taskFile = argv[index + 1] ?? "";
       index += 1;
+      continue;
     }
   }
 

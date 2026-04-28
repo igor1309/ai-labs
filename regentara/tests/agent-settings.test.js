@@ -98,6 +98,7 @@ test("resolveAgentSettings should use local agents yaml instead of global agents
       model: "opus",
       output: { schemaRef: "regentara://schemas/producer-output" },
       prompt: { ref: "regentara://prompts/producer" },
+      provider: "anthropic",
     },
   }));
 
@@ -106,6 +107,33 @@ test("resolveAgentSettings should use local agents yaml instead of global agents
   });
 
   assert.equal(settings.agents.producer.model, "opus");
+});
+
+test("resolveAgentSettings should resolve provider and model tier for agents", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    reviewer: {
+      model: "high",
+      output: { schemaRef: "regentara://schemas/reviewer-output" },
+      prompt: { ref: "regentara://prompts/reviewer" },
+      provider: "openai",
+    },
+  }));
+
+  const settings = await resolveAgentSettings(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
+
+  assert.deepEqual(
+    {
+      model: settings.agents.reviewer.model,
+      provider: settings.agents.reviewer.provider,
+    },
+    {
+      model: "high",
+      provider: "openai",
+    },
+  );
 });
 
 test("resolveAgentSettings should fail before creating a run when local agents yaml exists but is invalid", async () => {
@@ -126,6 +154,7 @@ test("resolveAgentSettings should reject agents yaml with an unknown agent ident
       model: "sonnet",
       output: { schemaRef: "regentara://schemas/producer-output" },
       prompt: { ref: "regentara://prompts/producer" },
+      provider: "anthropic",
     },
   }));
 
@@ -148,18 +177,58 @@ for (const agentId of ["producer", "reviewer", "remediator"]) {
 }
 
 for (const agentId of ["producer", "reviewer", "remediator"]) {
-  test(`resolveAgentSettings should reject agents yaml missing model, prompt, or output for ${agentId}`, async () => {
+  test(`resolveAgentSettings should reject agents yaml missing provider, model, prompt, or output for ${agentId}`, async () => {
     const workspace = await makeSettingsWorkspace();
     await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
       [agentId]: {
-        model: "sonnet",
+        model: "medium",
         prompt: { ref: `regentara://prompts/${agentId}` },
+        provider: "anthropic",
       },
     }));
 
     await assert.rejects(
       () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
       new RegExp(`agent ${agentId} missing required field: output`),
+    );
+  });
+}
+
+test("resolveAgentSettings should reject agents yaml missing provider for producer", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    producer: {
+      model: "medium",
+      output: { schemaRef: "regentara://schemas/producer-output" },
+      prompt: { ref: "regentara://prompts/producer" },
+    },
+  }));
+
+  await assert.rejects(
+    () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    /agent producer missing required field: provider/,
+  );
+});
+
+for (const [label, value] of [
+  ["array", ["anthropic"]],
+  ["object", { name: "anthropic" }],
+  ["whitespace", "   "],
+]) {
+  test(`resolveAgentSettings should reject agents whose provider field is ${label}`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+      producer: {
+        model: "medium",
+        output: { schemaRef: "regentara://schemas/producer-output" },
+        prompt: { ref: "regentara://prompts/producer" },
+        provider: value,
+      },
+    }));
+
+    await assert.rejects(
+      () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      /agents\.yaml agent producer field provider must be a non-empty string/,
     );
   });
 }
@@ -176,6 +245,7 @@ for (const [label, value] of [
         model: value,
         output: { schemaRef: "regentara://schemas/producer-output" },
         prompt: { ref: "regentara://prompts/producer" },
+        provider: "anthropic",
       },
     }));
 
@@ -193,6 +263,7 @@ test("resolveAgentSettings should accept arbitrary prompt reference strings", as
       model: "sonnet",
       output: { schemaRef: "regentara://schemas/producer-output" },
       prompt: { ref: "custom://producer" },
+      provider: "anthropic",
     },
   }));
 
@@ -210,6 +281,7 @@ test("resolveAgentSettings should reject agents yaml with an unsupported output 
       model: "sonnet",
       output: { schemaRef: "custom://producer" },
       prompt: { ref: "regentara://prompts/producer" },
+      provider: "anthropic",
     },
   }));
 

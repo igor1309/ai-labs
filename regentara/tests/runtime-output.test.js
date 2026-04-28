@@ -33,7 +33,7 @@ test("runWorkflow should not call the next workflow step after invalid agent out
   const executedAgents = [];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     producer: {
-      model: "gpt",
+      model: "medium",
       output: {
         schema: {
           required: ["artifact"],
@@ -41,11 +41,13 @@ test("runWorkflow should not call the next workflow step after invalid agent out
         },
       },
       prompt: { ref: "regentara://prompts/producer" },
+      provider: "anthropic",
     },
     reviewer: {
-      model: "gpt",
+      model: "high",
       output: { schema: { type: "object" } },
       prompt: { ref: "regentara://prompts/reviewer" },
+      provider: "openai",
     },
   }));
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
@@ -54,12 +56,13 @@ test("runWorkflow should not call the next workflow step after invalid agent out
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     task: "implement",
+    taskFile: "tasks/implement.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     commandExists: async () => true,
     executeProviderCli: async (input) => {
       executedAgents.push(input.executionInput);
-      return { exitStatus: 0, jsonOutput: {} };
+      return { exitStatus: 0, semanticResult: {} };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

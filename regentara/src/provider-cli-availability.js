@@ -4,12 +4,22 @@ import { delimiter, join } from "node:path";
 
 import { StartupValidationFailure } from "./errors.js";
 
+const RUNNER_COMMANDS = new Map([
+  ["claude-code", "claude"],
+  ["codex", "codex"],
+]);
+
 export async function validateProviderCliAvailability(runners, options = {}) {
   const commandExists = options.commandExists ?? ((command) => defaultCommandExists(command, options));
 
   for (const runner of new Set(runners)) {
-    if (!(await commandExists(runner))) {
-      throw new StartupValidationFailure(`required provider CLI unavailable: ${runner}`);
+    const command = RUNNER_COMMANDS.get(runner);
+    if (!command) {
+      continue;
+    }
+
+    if (!(await commandExists(command))) {
+      throw new StartupValidationFailure(`required provider CLI unavailable: ${command}`);
     }
   }
 

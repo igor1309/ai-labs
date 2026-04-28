@@ -11,7 +11,7 @@ import {
 import { firstExistingSettingsPath } from "./paths.js";
 
 const REQUIRED_AGENTS = ["producer", "reviewer", "remediator"];
-const REQUIRED_FIELDS = ["model", "prompt", "output"];
+const REQUIRED_FIELDS = ["model", "provider", "prompt", "output"];
 
 const SUPPORTED_SCHEMA_REFS = new Map([
   [
@@ -117,6 +117,12 @@ function validateAgent(agentId, rawAgent) {
     );
   }
 
+  if (typeof rawAgent.provider !== "string" || rawAgent.provider.trim() === "") {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} field provider must be a non-empty string`,
+    );
+  }
+
   const prompt = validatePrompt(rawAgent.prompt);
   const outputSchema = validateOutput(rawAgent.output);
 
@@ -124,6 +130,7 @@ function validateAgent(agentId, rawAgent) {
     model: rawAgent.model.trim(),
     name: rawAgent.name,
     prompt,
+    provider: rawAgent.provider.trim(),
     outputSchema,
   };
 }
