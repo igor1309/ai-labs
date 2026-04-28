@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Drafted ADR-010 for a compact live CLI `--debug` mode and recorded trace/watch as perspective observability extensions outside the first debug task.
 - Replaced Regentara flat model route keys with provider/model-tier routing: agents now declare `provider` plus tier (`medium`/`high` by default), `models.yaml` owns provider-local tier mappings, Codex receives configured reasoning effort, examples/docs/user-facing config reflect the new shape, and legacy `routes` settings now fail validation.
 - Fixed Regentara run observability: provider execution now requires task-file provenance, Producer start events and run metadata record the task file, agent lifecycle/failure events include provider route and runner/session diagnostics, terminal metadata is finalized on success and policy failure, and provider CLIs receive the selected model argument.
 - Review follow-up: production composition now bootstraps existing agent/model example settings before resolving the default config-based policy, so first-run missing policy errors do not suppress `agents.yaml.example` or `models.yaml.example`.
