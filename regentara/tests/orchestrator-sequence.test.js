@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { runWorkflow } from "../src/orchestrator.js";
+import { readRunMetadata } from "../src/run-store.js";
 import { progressEventSummary, readEvents } from "./helpers/events.js";
 import {
   makeSettingsWorkspace,
@@ -162,6 +163,92 @@ test("runWorkflow should append watched progress events for a successful run", a
   ]);
 });
 
+test("runWorkflow should include the task file on producer start events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  const producerStart = (await readEvents(result.runDirectory))
+    .find((event) => event.type === "agent-start" && event.agentId === "producer");
+
+  assert.equal(producerStart.taskFile, "tasks/initial.md");
+});
+
+test("runWorkflow should include provider run references on agent end events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+    providerReferences: {
+      runnerReference: "pid:123",
+      sessionReference: "claude-session-123",
+      stderrReference: "stderr-summary",
+      stdoutReference: "stdout-summary",
+    },
+  });
+
+  const producerEnd = (await readEvents(result.runDirectory))
+    .find((event) => event.type === "agent-end" && event.agentId === "producer");
+
+  assert.deepEqual(
+    {
+      model: producerEnd.model,
+      provider: producerEnd.provider,
+      runner: producerEnd.runner,
+      runnerReference: producerEnd.runnerReference,
+      sessionReference: producerEnd.sessionReference,
+      stderrReference: producerEnd.stderrReference,
+      stdoutReference: producerEnd.stdoutReference,
+    },
+    {
+      model: "claude-sonnet-4-5",
+      provider: "anthropic",
+      runner: "claude-code",
+      runnerReference: "pid:123",
+      sessionReference: "claude-session-123",
+      stderrReference: "stderr-summary",
+      stdoutReference: "stdout-summary",
+    },
+  );
+});
+
+test("runWorkflow should mark metadata succeeded when the review policy completes successfully", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  const metadata = await readRunMetadata(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      exitCode: metadata.exitCode,
+      hasEndTime: typeof metadata.endTime === "string",
+      status: metadata.status,
+    },
+    {
+      exitCode: 0,
+      hasEndTime: true,
+      status: "succeeded",
+    },
+  );
+});
+
+test("runWorkflow should record the task file in run metadata", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  const metadata = await readRunMetadata(result.runDirectory);
+
+  assert.equal(metadata.taskFile, "tasks/initial.md");
+});
+
 test("runWorkflow should append failed completion progress event when policy completes with failure", async () => {
   const calls = [];
 
@@ -176,6 +263,29 @@ test("runWorkflow should append failed completion progress event when policy com
     runId: result.runId,
     type: "completion",
   });
+});
+
+test("runWorkflow should mark metadata failed when the review policy completes with failure", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-fail" }],
+  });
+
+  const metadata = await readRunMetadata(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      exitCode: metadata.exitCode,
+      hasEndTime: typeof metadata.endTime === "string",
+      status: metadata.status,
+    },
+    {
+      exitCode: 1,
+      hasEndTime: true,
+      status: "failed",
+    },
+  );
 });
 
 async function runWorkflowWithCalls(calls, options = {}) {
@@ -204,6 +314,7 @@ async function runWorkflowWithCalls(calls, options = {}) {
       },
     },
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     artifactExists: async () => true,
@@ -211,12 +322,12 @@ async function runWorkflowWithCalls(calls, options = {}) {
     executeProviderCli: async (input) => {
       calls.push(options.captureFullInput ? input : input.executionInput);
       if (input.executionInput.verdict) {
-        return { exitStatus: 0, semanticResult: { task: "remediated task" } };
+        return { exitStatus: 0, semanticResult: { task: "remediated task" }, ...options.providerReferences };
       }
       if (input.executionInput.producer) {
-        return { exitStatus: 0, semanticResult: { verdict: "needs-fix" } };
+        return { exitStatus: 0, semanticResult: { verdict: "needs-fix" }, ...options.providerReferences };
       }
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" }, ...options.providerReferences };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

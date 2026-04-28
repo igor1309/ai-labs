@@ -54,6 +54,7 @@ test("runWorkflow should not call the next workflow step after invalid agent out
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     task: "implement",
+    taskFile: "tasks/implement.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     commandExists: async () => true,

@@ -86,7 +86,6 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 
 - `runner`: validated runner selected by model routing.
 - `model`: validated concrete model selected by model routing.
-- `workingDirectory`: Regentara invocation working directory.
 - `executionInput`: prepared task, artifact, and file references for the agent call.
 
 `ProviderCliResult`:
@@ -110,6 +109,7 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 - If local `models.yaml` exists, Regentara must not merge it with or fall back to the global file.
 - Regentara must fail startup validation when no `models.yaml` exists.
 - Regentara must fail startup validation when the selected `models.yaml` is invalid.
+- Regentara must fail startup validation before creating a run when provider execution is requested without a non-empty task file path.
 - Regentara must fail startup validation when `agents.yaml` references a route key that is not defined in `models.yaml`.
 - Regentara must validate that every provider CLI required by the selected workflow and model routing is available before workflow execution starts.
 - When `agents.yaml` is missing at both locations, Regentara must write `~/.regentara/agents.yaml.example` before failing, and must not overwrite an existing `agents.yaml.example`.
@@ -172,6 +172,7 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 - Authored artifacts must be immutable after creation.
 - Regentara must reject overwrite or rewrite attempts for authored artifacts.
 - Regentara must not record execution progress by mutating authored artifacts.
+- Run metadata must record the task file path when one is provided at run creation.
 - Run metadata may be updated only to record run end time, run status, and final exit code.
 
 ### Fail-Fast Behavior
@@ -239,16 +240,21 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 47. `runWorkflow` should reject authored artifact overwrite attempts.
 48. `runWorkflow` should allow run metadata updates for end time, run status, and final exit code.
 49. `runWorkflow` should reject run metadata updates for fields other than end time, run status, and final exit code.
-50. `runWorkflow` should not record execution progress by mutating authored artifacts.
-51. `runWorkflow` should preserve already-created artifacts when a runtime failure occurs.
-52. `runWorkflow` should not fabricate an expected artifact when it is missing.
-53. `runWorkflow` should fail immediately when an expected artifact is missing.
-54. `runWorkflow` should stop after the first runtime failure.
-55. `runWorkflow` should not retry a failed step.
-56. `runWorkflow` should not continue to later workflow steps after a failed step.
-57. `runWorkflow` should not impose an automatic subprocess timeout.
-58. `runWorkflow` should exit non-zero and create no run when interrupted before workflow execution starts.
-59. `runWorkflow` should mark the run failed when interrupted after workflow execution starts.
+50. `runWorkflow` should fail before creating a run when provider execution has no task file.
+51. `runWorkflow` should include the task file on Producer start events.
+52. `runWorkflow` should include provider run references on agent end events.
+53. `runWorkflow` should record the task file in run metadata.
+54. `runWorkflow` should mark run metadata terminal on successful and failed completion decisions.
+55. `runWorkflow` should not record execution progress by mutating authored artifacts.
+56. `runWorkflow` should preserve already-created artifacts when a runtime failure occurs.
+57. `runWorkflow` should not fabricate an expected artifact when it is missing.
+58. `runWorkflow` should fail immediately when an expected artifact is missing.
+59. `runWorkflow` should stop after the first runtime failure.
+60. `runWorkflow` should not retry a failed step.
+61. `runWorkflow` should not continue to later workflow steps after a failed step.
+62. `runWorkflow` should not impose an automatic subprocess timeout.
+63. `runWorkflow` should exit non-zero and create no run when interrupted before workflow execution starts.
+64. `runWorkflow` should mark the run failed when interrupted after workflow execution starts.
 
 ## Done Criteria
 
@@ -263,5 +269,5 @@ executeProviderCli(input: ProviderCliInput) -> ProviderCliResult
 - Workflow execution follows the Producer, Reviewer, policy decision, optional Remediator, and repeated Producer sequence defined above.
 - The Orchestrator delegates every post-review routing decision to the injected `ReviewFixPolicy`.
 - Runtime failures stop the workflow immediately, preserve existing artifacts, mark the run failed, and return a non-zero exit code.
-- Authored artifacts are immutable after creation, while run metadata supports only the allowed status/end-time/exit-code updates.
+- Authored artifacts are immutable after creation, while run metadata records task-file provenance at creation and supports only the allowed status/end-time/exit-code updates afterward.
 - The required tests above pass.

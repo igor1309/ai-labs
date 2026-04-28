@@ -45,6 +45,57 @@ test("runWorkflow should fail before creating a run when a required provider CLI
   );
 });
 
+test("runWorkflow should fail before creating a run when provider execution has no task file", async () => {
+  const workspace = await makeSettingsWorkspace();
+  let createRunCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    task: "initial task",
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    createRun: async () => {
+      createRunCalled = true;
+    },
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "" } }),
+  });
+
+  assert.deepEqual(
+    { createRunCalled, failureReason: result.failureReason, status: result.status },
+    { createRunCalled: false, failureReason: "task file is required for provider execution", status: "failed" },
+  );
+});
+
+test("runWorkflow should fail before creating a run when provider execution has a blank task file", async () => {
+  const workspace = await makeSettingsWorkspace();
+  let createRunCalled = false;
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    task: "initial task",
+    taskFile: " ",
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    createRun: async () => {
+      createRunCalled = true;
+    },
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "" } }),
+  });
+
+  assert.deepEqual(
+    { createRunCalled, failureReason: result.failureReason, status: result.status },
+    { createRunCalled: false, failureReason: "task file is required for provider execution", status: "failed" },
+  );
+});
+
 test("runWorkflow should fail before creating a run when agents.yaml references a route key not defined in models.yaml", async () => {
   const workspace = await makeSettingsWorkspace();
   let createRunCalled = false;
@@ -266,6 +317,7 @@ test("runWorkflow should accept arbitrary runner settings and fail clearly when 
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     commandExists: async () => true,

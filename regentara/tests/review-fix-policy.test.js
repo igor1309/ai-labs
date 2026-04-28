@@ -125,6 +125,7 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
       decide: policy.decide ?? (async () => decisions.shift()),
     },
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     artifactExists: async () => true,

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import { createRegentaraComposition } from "./composition.js";
@@ -9,8 +10,12 @@ export async function main(options = {}) {
   const stderr = options.stderr ?? process.stderr;
   const composition = options.composition ?? createRegentaraComposition();
   const parsedArguments = parseArguments(argv);
+  const task = parsedArguments.taskFile
+    ? await readFile(parsedArguments.taskFile, "utf8")
+    : parsedArguments.task;
   const result = await composition.runWorkflow({
-    task: parsedArguments.task,
+    task,
+    ...(parsedArguments.taskFile ? { taskFile: parsedArguments.taskFile } : {}),
   });
 
   if (result.status === "failed") {
@@ -34,6 +39,11 @@ export function parseArguments(argv) {
       continue;
     }
 
+    if (argument === "--task-file") {
+      parsed.taskFile = argv[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
   }
 
   return parsed;

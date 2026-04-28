@@ -2,6 +2,7 @@
 
 ## 2026-04-28
 
+- Fixed Regentara run observability: provider execution now requires task-file provenance, Producer start events and run metadata record the task file, agent lifecycle/failure events include provider route and runner/session diagnostics, terminal metadata is finalized on success and policy failure, and provider CLIs receive the selected model argument.
 - Review follow-up: production composition now bootstraps existing agent/model example settings before resolving the default config-based policy, so first-run missing policy errors do not suppress `agents.yaml.example` or `models.yaml.example`.
 - Implemented the config-based Regentara review policy: `policy.yaml` discovery/bootstrap/validation, budgeted remediation decisions, production composition wiring, and README guidance.
 - Added the config-based `ReviewFixPolicy` spec derived from ADR-008, defining `policy.yaml`, validation, bootstrap, decision behavior, and required tests.

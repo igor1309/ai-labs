@@ -42,6 +42,7 @@ test("createRegentaraComposition should use config-based policy settings when no
   const result = await composition.runWorkflow({
     homeDirectory: workspace.homeDirectory,
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   });
 

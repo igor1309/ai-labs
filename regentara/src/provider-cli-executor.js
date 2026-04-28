@@ -27,6 +27,8 @@ async function executeClaudeCode(input, dependencies = {}) {
   const execution = await spawnProvider({
     args: [
       "-p",
+      "--model",
+      input.model,
       "--output-format",
       "json",
       "--json-schema",
@@ -61,6 +63,8 @@ async function executeCodex(input, dependencies = {}) {
   const execution = await spawnProvider({
     args: [
       "exec",
+      "--model",
+      input.model,
       "--output-schema",
       schemaPath,
       "--output-last-message",
@@ -73,6 +77,7 @@ async function executeCodex(input, dependencies = {}) {
     stdin: "",
   });
 
+  execution.sessionReference ??= extractCodexSessionReference(execution.stderr);
   assertZeroExitStatus(execution);
   const semanticOutput = await readSemanticOutputFile(outputPath, input.runner);
 
@@ -80,6 +85,12 @@ async function executeCodex(input, dependencies = {}) {
     semanticResult: validateRuntimeOutput(input.agentId, semanticOutput, input.outputSchema),
     sessionReference: execution.sessionReference,
   });
+}
+
+function extractCodexSessionReference(stderr) {
+  const match = stderr?.match(/^session id: ([^\s]+)$/m);
+
+  return match?.[1];
 }
 
 function assertZeroExitStatus(execution) {

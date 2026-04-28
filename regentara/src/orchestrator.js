@@ -47,7 +47,13 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     const referencedRunners = Object.values(agentSettings.agents)
       .map((agent) => modelRouting.routes[agent.model].runner);
     await validateCliAvailability(referencedRunners, dependencies);
-    run = await createRun(dependencies.runStoreOptions ?? { homeDirectory });
+    if (executeProviderCli && !isNonBlankString(input.taskFile)) {
+      throw new StartupValidationFailure("task file is required for provider execution");
+    }
+    run = await createRun({
+      ...(dependencies.runStoreOptions ?? { homeDirectory }),
+      ...(input.taskFile ? { taskFile: input.taskFile } : {}),
+    });
     const emitEvent = (event) => recordRunEvent(run.runDirectory, {
       ...event,
       runId: run.runId,
@@ -65,6 +71,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         finalStatus: "succeeded",
         type: "completion",
       });
+      await finalizeRun(updateRunMetadata, run.runDirectory, "succeeded", 0);
       return {
         agentSettings,
         exitCode: 0,
@@ -89,6 +96,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           task: currentTask,
         },
         modelRouting,
+        taskFile: input.taskFile,
       });
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
@@ -118,6 +126,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           finalStatus: "succeeded",
           type: "completion",
         });
+        await finalizeRun(updateRunMetadata, run.runDirectory, "succeeded", 0);
         return {
           exitCode: 0,
           runDirectory: run.runDirectory,
@@ -131,6 +140,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           finalStatus: "failed",
           type: "completion",
         });
+        await finalizeRun(updateRunMetadata, run.runDirectory, "failed", 1);
         return {
           exitCode: 1,
           failureReason: "review policy completed with failure",
@@ -165,6 +175,15 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         currentAgent: error.currentAgent,
         failureReason: error.message,
         finalStatus: "failed",
+        ...definedObject({
+          model: error.model,
+          provider: error.provider,
+          runner: error.runner,
+          runnerReference: error.runnerReference,
+          sessionReference: error.sessionReference,
+          stderrReference: error.stderrReference,
+          stdoutReference: error.stdoutReference,
+        }),
         runId: run.runId,
         timestamp: new Date().toISOString(),
         type: "runtime-failure",
@@ -185,6 +204,18 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   }
 }
 
+function isNonBlankString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+async function finalizeRun(updateRunMetadata, runDirectory, status, exitCode) {
+  await updateRunMetadata(runDirectory, {
+    endTime: new Date().toISOString(),
+    exitCode,
+    status,
+  });
+}
+
 function assertRouteReferencesResolve(agentSettings, modelRouting) {
   for (const [agentId, agent] of Object.entries(agentSettings.agents)) {
     if (!Object.prototype.hasOwnProperty.call(modelRouting.routes, agent.model)) {
@@ -203,12 +234,17 @@ async function executeAgent({
   executeProviderCli,
   input,
   modelRouting,
+  taskFile,
 }) {
   const agent = agentSettings.agents[agentId];
   const route = modelRouting.routes[agent.model];
   await emitEvent?.({
     agentId,
     currentAgent: agentId,
+    model: route.model,
+    provider: route.provider,
+    runner: route.runner,
+    ...(agentId === "producer" ? { taskFile } : {}),
     type: "agent-start",
   });
   try {
@@ -235,6 +271,15 @@ async function executeAgent({
     await emitEvent?.({
       agentId,
       currentAgent: agentId,
+      model: route.model,
+      provider: route.provider,
+      runner: route.runner,
+      ...definedObject({
+        runnerReference: providerResult.runnerReference,
+        sessionReference: providerResult.sessionReference,
+        stderrReference: providerResult.stderrReference,
+        stdoutReference: providerResult.stdoutReference,
+      }),
       type: "agent-end",
     });
 
@@ -242,10 +287,29 @@ async function executeAgent({
   } catch (error) {
     if (error && typeof error === "object") {
       error.currentAgent ??= agentId;
+      error.model ??= route.model;
+      error.provider ??= route.provider;
+      error.runner ??= route.runner;
+      error.runnerReference ??= error.cause?.runnerReference;
+      error.sessionReference ??= error.cause?.sessionReference;
+      error.stderrReference ??= error.cause?.stderrReference ?? summarizeFailureOutput(error.cause?.stderr);
+      error.stdoutReference ??= error.cause?.stdoutReference ?? summarizeFailureOutput(error.cause?.stdout);
     }
 
     throw error;
   }
+}
+
+function summarizeFailureOutput(output) {
+  if (!output) {
+    return undefined;
+  }
+
+  return output.slice(0, 4096);
+}
+
+function definedObject(values) {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
 }
 
 function buildAgentPrompt(agentId, agent, input) {

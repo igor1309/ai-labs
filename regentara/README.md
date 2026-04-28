@@ -19,7 +19,7 @@ The core idea is simple: Regentara does not decide whether a result is good enou
 
 ## Workflow
 
-Each workflow starts from a task string and proceeds through the same loop:
+Each workflow starts from a task file and proceeds through the same loop:
 
 1. `producer` receives the current task and returns a structured completion claim.
 2. `reviewer` receives the task plus producer output and returns a structured verdict.
@@ -35,10 +35,12 @@ Any startup or runtime failure is fail-fast. Regentara records the failure when 
 ## CLI
 
 ```bash
-regentara --task "implement the accepted task"
+regentara --task-file tasks/accepted-task.md
 ```
 
 Run Regentara from the target workspace. Provider CLIs run in the Regentara invocation working directory; the run directory is reserved for Regentara-owned artifacts and diagnostics.
+
+The CLI fails fast before creating a run when provider execution is requested without a task file. The task file path is recorded in the Producer start event and in run metadata.
 
 The bare CLI uses the production composition path, which resolves `policy.yaml` and supplies the config-based policy. Callers that embed Regentara can override that policy with `createRegentaraComposition({ reviewFixPolicy })`.
 
@@ -100,7 +102,7 @@ routes:
   gpt:
     provider: openai
     runner: codex
-    model: gpt-5.1-codex
+    model: gpt-5.5
 ```
 
 The `runner` selects the provider CLI adapter. Built-in adapters currently support:
@@ -147,8 +149,8 @@ Regentara threads the returned `session` into the next policy call but does not 
 
 Regentara passes each agent prompt and expected JSON Schema to the selected runner's native structured-output mode.
 
-- Claude Code uses `claude -p --output-format json --json-schema ...`.
-- Codex uses `codex exec --output-schema ... --output-last-message ...`.
+- Claude Code uses `claude -p --model ... --output-format json --json-schema ...`.
+- Codex uses `codex exec --model ... --output-schema ... --output-last-message ...`.
 
 Provider stdout and stderr are treated as diagnostics. The orchestration loop consumes only the validated semantic JSON result.
 
@@ -162,9 +164,9 @@ Follow the latest run's event log with:
 latest_run="$(ls -td "$HOME"/.regentara/runs/* | head -n 1)"; tail -f "$latest_run/events.jsonl"
 ```
 
-The watched event surface includes the run ID plus current agent, current policy decision, runtime failure reason, or final status when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
+The watched event surface includes the run ID plus current agent, selected provider route, Producer task file, current policy decision, runtime failure reason, final status, provider runner/session references, and provider stdout/stderr diagnostics when those fields apply. A `regentara watch --run latest|<run-id>` command is intentionally deferred.
 
-Run metadata is stored in `metadata.json`. Only `endTime`, `exitCode`, and `status` are mutable after creation.
+Run metadata is stored in `metadata.json`. It records the run ID, start time, task file when available, and terminal status fields. Only `endTime`, `exitCode`, and `status` are mutable after creation.
 
 ## Local Demo
 

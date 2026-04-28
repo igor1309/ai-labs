@@ -38,11 +38,11 @@ export const MODELS_YAML_EXAMPLE = `routes:
   gpt:
     provider: openai
     runner: codex
-    model: gpt-5.1-codex
+    model: gpt-5.5
   codex:
     provider: openai
     runner: codex
-    model: gpt-5.1-codex
+    model: gpt-5.5
 `;
 
 const SETTINGS_FILES = [

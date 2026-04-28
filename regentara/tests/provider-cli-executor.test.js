@@ -85,10 +85,12 @@ test("executeProviderCli should read Codex semantic output from the output-last-
     {
       args: [
         "exec",
+        "--model",
+        "gpt-5.5",
         "--output-schema",
-        calls[0].args.at(2),
+        calls[0].args.at(calls[0].args.indexOf("--output-schema") + 1),
         "--output-last-message",
-        calls[0].args.at(4),
+        calls[0].args.at(calls[0].args.indexOf("--output-last-message") + 1),
         "Use structured output.",
       ],
       command: "codex",
@@ -97,6 +99,20 @@ test("executeProviderCli should read Codex semantic output from the output-last-
       stderrReference: "codex warning",
     },
   );
+});
+
+test("executeProviderCli should capture Codex session diagnostics", async () => {
+  const result = await executeProviderCli(makeInput(), {
+    spawnProvider: async (call) => {
+      const outputPath = call.args.at(call.args.indexOf("--output-last-message") + 1);
+      await writeFile(outputPath, JSON.stringify({ artifact: "producer/result.json" }));
+      return makeExecutionResult({
+        stderr: "session id: 019dd441-dfd4-7892-9988-8b23d3e42798\n",
+      });
+    },
+  });
+
+  assert.equal(result.sessionReference, "019dd441-dfd4-7892-9988-8b23d3e42798");
 });
 
 test("executeProviderCli should fail when a Codex output-last-message file is missing", async () => {
@@ -191,7 +207,48 @@ test("executeProviderCli should pass the selected model to the provider boundary
     },
   });
 
-  assert.equal(calls[0].model, "gpt-5.1-codex");
+  assert.equal(calls[0].model, "gpt-5.5");
+});
+
+test("executeProviderCli should pass the selected model to Claude Code arguments", async () => {
+  const calls = [];
+
+  await executeProviderCli(makeInput({
+    model: "claude-sonnet-4-5",
+    runner: "claude-code",
+  }), {
+    spawnProvider: async (call) => {
+      calls.push(call);
+      return makeExecutionResult({
+        stdout: JSON.stringify({
+          structured_output: { artifact: "producer/result.json" },
+        }),
+      });
+    },
+  });
+
+  assert.deepEqual(
+    calls[0].args.slice(0, 4),
+    ["-p", "--model", "claude-sonnet-4-5", "--output-format"],
+  );
+});
+
+test("executeProviderCli should pass the selected model to Codex arguments", async () => {
+  const calls = [];
+
+  await executeProviderCli(makeInput(), {
+    spawnProvider: async (call) => {
+      calls.push(call);
+      const outputPath = call.args.at(call.args.indexOf("--output-last-message") + 1);
+      await writeFile(outputPath, JSON.stringify({ artifact: "producer/result.json" }));
+      return makeExecutionResult();
+    },
+  });
+
+  assert.deepEqual(
+    calls[0].args.slice(0, 3),
+    ["exec", "--model", "gpt-5.5"],
+  );
 });
 
 function makeInput(overrides = {}) {
@@ -200,7 +257,7 @@ function makeInput(overrides = {}) {
     executionInput: {
       task: "write tests",
     },
-    model: "gpt-5.1-codex",
+    model: "gpt-5.5",
     outputSchema: {
       required: ["artifact"],
       type: "object",

@@ -14,7 +14,7 @@ From the repository root:
 node regentara/examples/local-demo/run-demo.js --fake-providers
 ```
 
-The command runs Regentara from this demo workspace with fake provider execution, fake CLI availability, and the demo review-fix policy, so it does not require provider credentials. The output includes the run ID, status, and run directory. Progress events are written to `events.jsonl` inside the reported run directory.
+The command runs Regentara from this demo workspace with fake provider execution, fake CLI availability, the checked-in `task.md`, and the demo review-fix policy, so it does not require provider credentials. The output includes the run ID, status, and run directory. Progress events are written to `events.jsonl` inside the reported run directory.
 
 ## Settings
 

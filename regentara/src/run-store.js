@@ -21,6 +21,7 @@ export async function createRun(options = {}) {
     runId,
     startedAt,
     status: "running",
+    ...(options.taskFile ? { taskFile: options.taskFile } : {}),
   });
 
   return {

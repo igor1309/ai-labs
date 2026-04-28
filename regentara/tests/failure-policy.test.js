@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { createAuthoredArtifact } from "../src/artifact-store.js";
+import { RuntimeFailure } from "../src/errors.js";
 import { runWorkflow } from "../src/orchestrator.js";
 import { createRun } from "../src/run-store.js";
 import { progressEventSummary, readEvents } from "./helpers/events.js";
@@ -130,6 +131,45 @@ test("runWorkflow should append a runtime failure progress event when provider e
   ]);
 });
 
+test("runWorkflow should append provider diagnostics when provider execution fails", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  let runDirectory;
+
+  await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async () => {
+      throw new RuntimeFailure("provider CLI exited non-zero: 1", {
+        cause: {
+          stderr: "codex stderr",
+          stdout: "codex stdout",
+        },
+      });
+    },
+    onRunCreated: (run) => {
+      runDirectory = run.runDirectory;
+    },
+  });
+
+  const failureEvent = (await readEvents(runDirectory))
+    .find((event) => event.type === "runtime-failure");
+
+  assert.deepEqual(
+    {
+      model: failureEvent.model,
+      provider: failureEvent.provider,
+      runner: failureEvent.runner,
+      stderrReference: failureEvent.stderrReference,
+      stdoutReference: failureEvent.stdoutReference,
+    },
+    {
+      model: "claude-sonnet-4-5",
+      provider: "anthropic",
+      runner: "claude-code",
+      stderrReference: "codex stderr",
+      stdoutReference: "codex stdout",
+    },
+  );
+});
+
 test("runWorkflow should not retry a failed step", async () => {
   const workspace = await makeWorkflowWorkspace();
   let producerCalls = 0;
@@ -204,6 +244,7 @@ test("runWorkflow should mark the run failed when review policy returns an unsup
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: { decide: async () => ({ decision: "unknown" }) },
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     artifactExists: async () => true,
@@ -267,6 +308,7 @@ async function runWorkflowWithWorkspace(workspace, options = {}) {
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     task: "initial task",
+    taskFile: "tasks/initial.md",
     workingDirectory: workspace.workingDirectory,
   }, {
     artifactExists: options.artifactExists,

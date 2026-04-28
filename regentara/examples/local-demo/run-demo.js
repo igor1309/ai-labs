@@ -47,6 +47,7 @@ export async function runDemo(options = {}) {
   return composition.runWorkflow({
     homeDirectory,
     task: options.task ?? "Create a concise local demo artifact.",
+    taskFile: options.taskFile ?? join(DEMO_DIRECTORY, "task.md"),
     workingDirectory: options.workingDirectory ?? DEMO_DIRECTORY,
   });
 }

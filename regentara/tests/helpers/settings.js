@@ -79,7 +79,7 @@ function makeAnthropicRoute() {
 
 function makeOpenAiRoute() {
   return {
-    model: "gpt-5.1-codex",
+    model: "gpt-5.5",
     provider: "openai",
     runner: "codex",
   };
