@@ -3,29 +3,12 @@ import { readFile } from "node:fs/promises";
 import yaml from "js-yaml";
 
 import { StartupValidationFailure } from "../errors.js";
-import { writeSettingsExample } from "./example-bootstrap.js";
+import {
+  AGENTS_YAML_EXAMPLE,
+  settingsExamplePath,
+  writeSettingsExample,
+} from "./example-bootstrap.js";
 import { firstExistingSettingsPath } from "./paths.js";
-
-const AGENTS_YAML_EXAMPLE = `agents:
-  producer:
-    model: sonnet
-    prompt:
-      ref: regentara://prompts/producer
-    output:
-      schemaRef: regentara://schemas/producer-output
-  reviewer:
-    model: sonnet
-    prompt:
-      ref: regentara://prompts/reviewer
-    output:
-      schemaRef: regentara://schemas/reviewer-output
-  remediator:
-    model: sonnet
-    prompt:
-      ref: regentara://prompts/remediator
-    output:
-      schemaRef: regentara://schemas/remediator-output
-`;
 
 const REQUIRED_AGENTS = ["producer", "reviewer", "remediator"];
 const REQUIRED_FIELDS = ["model", "prompt", "output"];
@@ -63,7 +46,8 @@ export async function resolveAgentSettings(workingDirectory, options = {}) {
 
   if (!selectedPath) {
     await writeSettingsExample(options, "agents.yaml.example", AGENTS_YAML_EXAMPLE);
-    throw new StartupValidationFailure("agents.yaml not found");
+    const examplePath = settingsExamplePath(options, "agents.yaml.example");
+    throw new StartupValidationFailure(`agents.yaml not found; see ${examplePath}`);
   }
 
   const document = await loadYamlDocument(selectedPath, "agents.yaml");

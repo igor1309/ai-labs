@@ -23,10 +23,14 @@ async function pathExists(path) {
 
 test("resolveModelRouting should fail before creating a run when neither local nor global models yaml exists", async () => {
   const workspace = await makeSettingsWorkspace();
+  const examplePath = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
 
   await assert.rejects(
     () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    StartupValidationFailure,
+    (error) =>
+      error instanceof StartupValidationFailure
+      && error.message.includes("models.yaml not found")
+      && error.message.includes(examplePath),
   );
 });
 
@@ -112,6 +116,20 @@ test("resolveModelRouting should fail before creating a run when local models ya
     StartupValidationFailure,
   );
 });
+
+for (const field of ["provider", "runner", "model"]) {
+  test(`resolveModelRouting should reject route entries whose ${field} is not a string`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    const route = { provider: "anthropic", runner: "claude-code", model: "claude-sonnet-4-5" };
+    route[field] = ["not", "a", "string"];
+    await writeLocalSettings(workspace, "models.yaml", validModelsYaml({ sonnet: route }));
+
+    await assert.rejects(
+      () => resolveModelRouting(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      new RegExp(`route sonnet field ${field} must be a string`),
+    );
+  });
+}
 
 test("resolveModelRouting should reject models yaml missing provider, runner, or model for a route key", async () => {
   const workspace = await makeSettingsWorkspace();

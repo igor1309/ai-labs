@@ -2,6 +2,7 @@
 
 ## 2026-04-27
 
+- adr-007 review follow-up: orchestrator now calls `bootstrapMissingSettings` before resolution so a true first run writes both `agents.yaml.example` and `models.yaml.example`; missing-settings errors now point to the generated example path; `models.yaml` route validation now rejects non-string `provider`/`runner`/`model`. Templates moved into `example-bootstrap.js` as the single source.
 - adr-007 closure follow-up: extracted shared `writeSettingsExample` into `regentara/src/settings/example-bootstrap.js` (deduped agent/model bootstrap), dropped the redundant readFile probe in favor of `writeFile({flag:"wx"})`, and made bootstrap I/O failures swallow the error so `StartupValidationFailure` always surfaces; added a consolidated startup-validation message-naming test.
 - adr-007 closure task 8: archived `mvp-workflow-runner.md` and `adr-007-cli-settings-convention-closure.md` under their respective `implemented/` directories; full gates green. All adr-007 violations closed.
 - adr-007 closure task 7: tightened the "unsupported output schema reference" failure to name `agents.yaml` and the offending `schemaRef` in its message; audit confirmed every other `StartupValidationFailure` site already names the offending file or rule.

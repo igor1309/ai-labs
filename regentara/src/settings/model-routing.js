@@ -3,29 +3,14 @@ import { readFile } from "node:fs/promises";
 import yaml from "js-yaml";
 
 import { StartupValidationFailure } from "../errors.js";
-import { writeSettingsExample } from "./example-bootstrap.js";
+import {
+  MODELS_YAML_EXAMPLE,
+  settingsExamplePath,
+  writeSettingsExample,
+} from "./example-bootstrap.js";
 import { firstExistingSettingsPath } from "./paths.js";
 
 const REQUIRED_FIELDS = ["provider", "runner", "model"];
-
-const MODELS_YAML_EXAMPLE = `routes:
-  sonnet:
-    provider: anthropic
-    runner: claude-code
-    model: claude-sonnet-4-5
-  opus:
-    provider: anthropic
-    runner: claude-code
-    model: claude-opus-4-7
-  gpt:
-    provider: openai
-    runner: codex
-    model: gpt-5.1-codex
-  codex:
-    provider: openai
-    runner: codex
-    model: gpt-5.1-codex
-`;
 
 export async function resolveModelRouting(workingDirectory, options = {}) {
   const selectedPath = await firstExistingSettingsPath(
@@ -36,7 +21,8 @@ export async function resolveModelRouting(workingDirectory, options = {}) {
 
   if (!selectedPath) {
     await writeSettingsExample(options, "models.yaml.example", MODELS_YAML_EXAMPLE);
-    throw new StartupValidationFailure("models.yaml not found");
+    const examplePath = settingsExamplePath(options, "models.yaml.example");
+    throw new StartupValidationFailure(`models.yaml not found; see ${examplePath}`);
   }
 
   const document = await loadYamlDocument(selectedPath, "models.yaml");
@@ -82,6 +68,13 @@ function validateRoute(routeKey, rawRoute) {
   if (missingField) {
     throw new StartupValidationFailure(
       `models.yaml route ${routeKey} missing required field: ${missingField}`,
+    );
+  }
+
+  const nonStringField = REQUIRED_FIELDS.find((field) => typeof rawRoute[field] !== "string");
+  if (nonStringField) {
+    throw new StartupValidationFailure(
+      `models.yaml route ${routeKey} field ${nonStringField} must be a string`,
     );
   }
 

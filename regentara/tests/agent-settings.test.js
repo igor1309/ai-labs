@@ -23,10 +23,14 @@ async function pathExists(path) {
 
 test("resolveAgentSettings should fail before creating a run when neither local nor global agents yaml exists", async () => {
   const workspace = await makeSettingsWorkspace();
+  const examplePath = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
 
   await assert.rejects(
     () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
-    StartupValidationFailure,
+    (error) =>
+      error instanceof StartupValidationFailure
+      && error.message.includes("agents.yaml not found")
+      && error.message.includes(examplePath),
   );
 });
 

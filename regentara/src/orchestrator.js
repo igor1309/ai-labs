@@ -5,6 +5,7 @@ import { createRun as createStoredRun } from "./run-store.js";
 import { updateRunMetadata as updateStoredRunMetadata } from "./run-store.js";
 import { validateRuntimeOutput } from "./runtime-output.js";
 import { resolveAgentSettings } from "./settings/agent-settings.js";
+import { bootstrapMissingSettings } from "./settings/example-bootstrap.js";
 import { resolveModelRouting } from "./settings/model-routing.js";
 
 export async function runWorkflow(input = {}, dependencies = {}) {
@@ -29,6 +30,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
   let run;
 
   try {
+    await bootstrapMissingSettings(workingDirectory, { homeDirectory });
     const agentSettings = await resolveAgents(workingDirectory, { homeDirectory });
     const modelRouting = await resolveRouting(workingDirectory, { homeDirectory });
     assertRouteReferencesResolve(agentSettings, modelRouting);

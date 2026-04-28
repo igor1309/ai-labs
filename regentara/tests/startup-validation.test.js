@@ -72,6 +72,25 @@ test("runWorkflow should fail before creating a run when agents.yaml references 
   );
 });
 
+test("runWorkflow should write both example files when neither settings file exists", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const agentsExample = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
+  const modelsExample = join(workspace.homeDirectory, ".regentara", "models.yaml.example");
+
+  await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+  });
+
+  assert.deepEqual(
+    { agentsExampleWritten: await pathExists(agentsExample), modelsExampleWritten: await pathExists(modelsExample) },
+    { agentsExampleWritten: true, modelsExampleWritten: true },
+  );
+});
+
 test("runWorkflow should write only agents.yaml.example when agents.yaml is missing but models.yaml exists", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
