@@ -92,8 +92,8 @@ Implement in this order: provider structured result adapters first, watch/progre
 
 Docs-only changes to this plan require:
 
-- [ ] Markdown front matter is present.
-- [ ] Exactly one `#` title is present.
-- [ ] Execution mode, human review behavior, worktree mode, expected worktree, expected branch, push policy, final archive behavior, and preflight status are declared.
-- [ ] Regentara log is updated when this plan is created or materially changed.
-- [ ] Git diff is limited to the plan, relevant log entries, and any later files required by checked TODOs.
+- [x] Markdown front matter is present.
+- [x] Exactly one `#` title is present.
+- [x] Execution mode, human review behavior, worktree mode, expected worktree, expected branch, push policy, final archive behavior, and preflight status are declared.
+- [x] Regentara log is updated when this plan is created or materially changed.
+- [x] Git diff is limited to the plan, relevant log entries, and any later files required by checked TODOs.
