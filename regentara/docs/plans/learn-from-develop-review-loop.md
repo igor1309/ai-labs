@@ -37,26 +37,38 @@ The lesson is not to copy the Bash script wholesale. Regentara should preserve i
 
 ## TODO
 
-### 1. Add a Batteries-Included Local Demo
+Implement in this order: plain-text provider output bridge first, watch/progress ergonomics second, batteries-included local demo third. The demo should reuse the output bridge and watcher rather than defining parallel behavior.
 
-- [ ] Add a sample `.regentara/agents.yaml` and `.regentara/models.yaml` under Regentara docs or examples.
-- [ ] Add a documented demo policy that maps an acceptable review to `complete-ok`, a rejected review to `remediate`, and exhausted budget to `complete-fail`.
-- [ ] Keep the demo clearly outside production composition so Regentara still requires explicit policy injection for real use.
-- [ ] Verify the demo path with a local smoke command and document the exact command.
+### 1. Add a Plain-Text Provider Output Bridge
+
+- [ ] Specify how Regentara adapts provider CLIs that emit mixed human text instead of clean JSON stdout.
+- [ ] Keep clean JSON stdout as the first accepted path.
+- [ ] Add an explicit marker-based bridge for mixed output, such as `REGENTARA_JSON_START` and `REGENTARA_JSON_END`.
+- [ ] Reject arbitrary prose scraping; only clean JSON or marker-delimited JSON should satisfy the runtime output contract.
+- [ ] Keep malformed, missing, or schema-invalid extracted JSON as runtime failures under the existing fail-fast ADR.
+- [ ] Implement the adapter at the provider-output/runtime-output boundary without changing the Orchestrator's JSON-schema contract.
+- [ ] Cover clean JSON, marker-wrapped JSON, malformed marker JSON, and no extractable JSON in tests.
 
 ### 2. Add Watch and Progress Ergonomics
 
 - [ ] Define the minimal run progress surface Regentara should expose without weakening artifact immutability.
-- [ ] Add a follow command or documented shell recipe that tails the latest run output under `~/.regentara/runs/`.
+- [ ] Add an append-only operational event log, likely `events.jsonl`, under each run directory.
+- [ ] Emit events for agent start, agent end, policy decision, runtime failure, and completion.
+- [ ] Keep authored artifacts immutable; progress state belongs in operational events, not artifact rewrites.
+- [ ] Add a `regentara watch [--run latest|<run-id>]` command or a documented shell recipe that follows the event log under `~/.regentara/runs/`.
 - [ ] Include run ID, current agent, current decision state, and final status in the watched surface.
 - [ ] Verify the watch path against a fake or sample run directory.
+- [ ] Add a short ADR/spec note before implementation if event logging materially defines the deferred progress-recording mechanism from the artifact ADR.
 
-### 3. Add a Plain-Text Provider Output Bridge
+### 3. Add a Batteries-Included Local Demo
 
-- [ ] Specify how Regentara should adapt provider CLIs that emit mixed text instead of clean JSON stdout.
-- [ ] Add an adapter boundary that can extract or request the configured JSON payload without changing the Orchestrator's JSON-schema contract.
-- [ ] Decide whether malformed or missing extracted JSON remains a runtime failure under the existing fail-fast ADR.
-- [ ] Cover clean JSON, mixed text with extractable JSON, and mixed text without extractable JSON in tests.
+- [ ] Create `regentara/examples/local-demo/`.
+- [ ] Add sample `.regentara/agents.yaml` and `.regentara/models.yaml` under the demo.
+- [ ] Add a demo runner, such as `run-demo.js`, that imports Regentara composition and injects a demo `ReviewFixPolicy`.
+- [ ] Define the demo policy as acceptable review -> `complete-ok`, rejected review with remaining budget -> `remediate`, and exhausted budget -> `complete-fail`.
+- [ ] Keep the demo policy outside production composition so Regentara still requires explicit policy injection for real use.
+- [ ] Make the demo testable without real provider credentials by injecting fake provider execution and fake CLI availability.
+- [ ] Verify the demo path with a local smoke command and document the exact command in the demo README.
 
 ## Verification
 
