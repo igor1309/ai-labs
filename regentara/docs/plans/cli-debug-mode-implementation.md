@@ -471,7 +471,7 @@ Run: `git add regentara/src/composition.js regentara/src/orchestrator.js regenta
 - Modify: `regentara/tests/orchestrator-sequence.test.js`
 - Modify: `regentara/tests/failure-policy.test.js`
 
-- [ ] **Step 1: Write failing lifecycle debug tests**
+- [x] **Step 1: Write failing lifecycle debug tests**
 
 Add focused tests for:
 
@@ -485,13 +485,13 @@ Add focused tests for:
 - debug mode does not change existing `events.jsonl` content assertions.
 - debug output objects do not include `prompt`, `outputSchema`, `stdoutReference`, or `stderrReference` full values.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `./scripts/run_silent.sh "lifecycle-debug-red" node --test regentara/tests/orchestrator-sequence.test.js regentara/tests/failure-policy.test.js`
 
 Expected: FAIL because lifecycle reporting is not implemented.
 
-- [ ] **Step 3: Add run-created and agent-start reporting**
+- [x] **Step 3: Add run-created and agent-start reporting**
 
 In `runWorkflow`, after `createRun`, report:
 
@@ -518,7 +518,7 @@ debugReporter?.report("agent-start", {
 
 Pass `debugReporter` into `executeAgent`.
 
-- [ ] **Step 4: Add agent-end, policy, failure, and completion reporting**
+- [x] **Step 4: Add agent-end, policy, failure, and completion reporting**
 
 In `executeAgent`, after provider result validation and before return, report only references:
 
@@ -563,13 +563,13 @@ debugReporter?.report("failure", {
 
 Avoid adding full prompt/schema/stdout/stderr to debug fields.
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run: `./scripts/run_silent.sh "lifecycle-debug-green" node --test regentara/tests/orchestrator-sequence.test.js regentara/tests/failure-policy.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run: `git add regentara/src/orchestrator.js regentara/tests/orchestrator-sequence.test.js regentara/tests/failure-policy.test.js && git commit -m "report regentara debug lifecycle"`
 

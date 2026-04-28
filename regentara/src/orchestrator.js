@@ -66,6 +66,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       ...(dependencies.runStoreOptions ?? { homeDirectory }),
       ...(input.taskFile ? { taskFile: input.taskFile } : {}),
     });
+    debugReporter?.report("run-created", {
+      runDirectory: run.runDirectory,
+      runId: run.runId,
+    });
     const emitEvent = (event) => recordRunEvent(run.runDirectory, {
       ...event,
       runId: run.runId,
@@ -83,6 +87,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         finalStatus: "succeeded",
         type: "completion",
       });
+      debugReporter?.report("completion", { status: "succeeded" });
       await finalizeRun(updateRunMetadata, run.runDirectory, "succeeded", 0);
       return {
         agentSettings,
@@ -104,6 +109,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         emitEvent,
         executeProviderCli,
         artifactExists,
+        debugReporter,
         input: {
           task: currentTask,
         },
@@ -116,6 +122,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         emitEvent,
         executeProviderCli,
         artifactExists,
+        debugReporter,
         input: {
           producer: producerResult,
           task: currentTask,
@@ -130,6 +137,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         currentDecision: policyResult.decision,
         type: "policy-decision",
       });
+      debugReporter?.report("policy-decision", { decision: policyResult.decision });
 
       policySession = policyResult.session;
 
@@ -138,6 +146,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           finalStatus: "succeeded",
           type: "completion",
         });
+        debugReporter?.report("completion", { status: "succeeded" });
         await finalizeRun(updateRunMetadata, run.runDirectory, "succeeded", 0);
         return {
           exitCode: 0,
@@ -152,6 +161,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           finalStatus: "failed",
           type: "completion",
         });
+        debugReporter?.report("completion", { status: "failed" });
         await finalizeRun(updateRunMetadata, run.runDirectory, "failed", 1);
         return {
           exitCode: 1,
@@ -172,6 +182,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         emitEvent,
         executeProviderCli,
         artifactExists,
+        debugReporter,
         input: {
           producer: producerResult,
           task: currentTask,
@@ -190,6 +201,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
     }
 
     if (run && !(error instanceof StartupValidationFailure)) {
+      debugReporter?.report("failure", {
+        reason: error.message,
+        status: "failed",
+      });
       await recordRunEvent(run.runDirectory, {
         currentAgent: error.currentAgent,
         failureReason: error.message,
@@ -263,6 +278,7 @@ async function executeAgent({
   agentId,
   agentSettings,
   artifactExists,
+  debugReporter,
   emitEvent,
   executeProviderCli,
   input,
@@ -271,6 +287,15 @@ async function executeAgent({
 }) {
   const agent = agentSettings.agents[agentId];
   const route = resolveAgentRoute(agent, modelRouting, agentId);
+  debugReporter?.report("agent-start", {
+    agent: agentId,
+    model: route.model,
+    provider: route.provider,
+    reasoningEffort: route.reasoningEffort,
+    runner: route.runner,
+    taskFile: agentId === "producer" ? taskFile : undefined,
+    tier: agent.model,
+  });
   await emitEvent?.({
     agentId,
     currentAgent: agentId,
@@ -315,6 +340,15 @@ async function executeAgent({
         stdoutReference: providerResult.stdoutReference,
       }),
       type: "agent-end",
+    });
+    debugReporter?.report("agent-end", {
+      agent: agentId,
+      model: route.model,
+      provider: route.provider,
+      runner: route.runner,
+      runnerReference: providerResult.runnerReference,
+      sessionReference: providerResult.sessionReference,
+      tier: agent.model,
     });
 
     return output;

@@ -238,6 +238,92 @@ test("runWorkflow should include provider run references on agent end events", a
   );
 });
 
+test("runWorkflow should report successful run lifecycle debug events", async () => {
+  const calls = [];
+  const debugEvents = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    debugEvents,
+    policyDecisions: [{ decision: "complete-ok" }],
+    providerReferences: {
+      runnerReference: "pid:123",
+      sessionReference: "claude-session-123",
+      stderrReference: "stderr-summary",
+      stdoutReference: "stdout-summary",
+    },
+  });
+
+  assert.deepEqual(debugEvents, [
+    {
+      event: "settings",
+      fields: {},
+    },
+    {
+      event: "run-created",
+      fields: {
+        runDirectory: result.runDirectory,
+        runId: result.runId,
+      },
+    },
+    {
+      event: "agent-start",
+      fields: {
+        agent: "producer",
+        model: "claude-sonnet-4-5",
+        provider: "anthropic",
+        reasoningEffort: undefined,
+        runner: "claude-code",
+        taskFile: "tasks/initial.md",
+        tier: "medium",
+      },
+    },
+    {
+      event: "agent-end",
+      fields: {
+        agent: "producer",
+        model: "claude-sonnet-4-5",
+        provider: "anthropic",
+        runner: "claude-code",
+        runnerReference: "pid:123",
+        sessionReference: "claude-session-123",
+        tier: "medium",
+      },
+    },
+    {
+      event: "agent-start",
+      fields: {
+        agent: "reviewer",
+        model: "gpt-5.5",
+        provider: "openai",
+        reasoningEffort: "high",
+        runner: "codex",
+        taskFile: undefined,
+        tier: "high",
+      },
+    },
+    {
+      event: "agent-end",
+      fields: {
+        agent: "reviewer",
+        model: "gpt-5.5",
+        provider: "openai",
+        runner: "codex",
+        runnerReference: "pid:123",
+        sessionReference: "claude-session-123",
+        tier: "high",
+      },
+    },
+    {
+      event: "policy-decision",
+      fields: { decision: "complete-ok" },
+    },
+    {
+      event: "completion",
+      fields: { status: "succeeded" },
+    },
+  ]);
+});
+
 test("runWorkflow should mark metadata succeeded when the review policy completes successfully", async () => {
   const calls = [];
 
@@ -331,6 +417,17 @@ async function runWorkflowWithCalls(calls, options = {}) {
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
 
   return runWorkflow({
+    ...(options.debugEvents ? {
+      debugReporter: {
+        rememberSettings: () => {},
+        report: (event, fields) => {
+          options.debugEvents.push({ event, fields });
+        },
+        reportSettings: () => {
+          options.debugEvents.push({ event: "settings", fields: {} });
+        },
+      },
+    } : {}),
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: {
       decide: async (input) => {

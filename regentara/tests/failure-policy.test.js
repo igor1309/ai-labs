@@ -170,6 +170,26 @@ test("runWorkflow should append provider diagnostics when provider execution fai
   );
 });
 
+test("runWorkflow should report runtime failure debug event after run creation", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  const debugEvents = [];
+
+  await runWorkflowWithWorkspace(workspace, {
+    debugEvents,
+    executeProviderCli: async () => {
+      throw new Error("provider failed");
+    },
+  });
+
+  assert.deepEqual(debugEvents.at(-1), {
+    event: "failure",
+    fields: {
+      reason: "provider failed",
+      status: "failed",
+    },
+  });
+});
+
 test("runWorkflow should not retry a failed step", async () => {
   const workspace = await makeWorkflowWorkspace();
   let producerCalls = 0;
@@ -305,6 +325,17 @@ async function makeWorkflowWorkspace() {
 
 async function runWorkflowWithWorkspace(workspace, options = {}) {
   return runWorkflow({
+    ...(options.debugEvents ? {
+      debugReporter: {
+        rememberSettings: () => {},
+        report: (event, fields) => {
+          options.debugEvents.push({ event, fields });
+        },
+        reportSettings: () => {
+          options.debugEvents.push({ event: "settings", fields: {} });
+        },
+      },
+    } : {}),
     homeDirectory: workspace.homeDirectory,
     reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
     task: "initial task",
