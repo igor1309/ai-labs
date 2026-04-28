@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -11,6 +12,15 @@ import {
   writeLocalSettings,
 } from "./helpers/settings.js";
 
+async function pathExists(path) {
+  try {
+    await readFile(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 test("resolveAgentSettings should fail before creating a run when neither local nor global agents yaml exists", async () => {
   const workspace = await makeSettingsWorkspace();
 
@@ -18,6 +28,47 @@ test("resolveAgentSettings should fail before creating a run when neither local 
     () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
     StartupValidationFailure,
   );
+});
+
+test("resolveAgentSettings should write agents.yaml.example to the home directory when no agents.yaml exists", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const examplePath = join(workspace.homeDirectory, ".regentara", "agents.yaml.example");
+
+  await assert.rejects(
+    () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await pathExists(examplePath), true);
+});
+
+test("resolveAgentSettings should not overwrite an existing agents.yaml.example", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const exampleDir = join(workspace.homeDirectory, ".regentara");
+  const examplePath = join(exampleDir, "agents.yaml.example");
+  await mkdir(exampleDir, { recursive: true });
+  await writeFile(examplePath, "user-edited-example");
+
+  await assert.rejects(
+    () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await readFile(examplePath, "utf8"), "user-edited-example");
+});
+
+test("resolveAgentSettings should not write agents.yaml during bootstrap", async () => {
+  const workspace = await makeSettingsWorkspace();
+  const localPath = join(workspace.workingDirectory, ".regentara", "agents.yaml");
+  const globalPath = join(workspace.homeDirectory, ".regentara", "agents.yaml");
+
+  await assert.rejects(
+    () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    StartupValidationFailure,
+  );
+
+  assert.equal(await pathExists(localPath), false);
+  assert.equal(await pathExists(globalPath), false);
 });
 
 test("resolveAgentSettings should use local agents yaml instead of global agents yaml when both exist", async () => {

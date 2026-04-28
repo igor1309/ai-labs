@@ -1,9 +1,32 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 
 import yaml from "js-yaml";
 
 import { StartupValidationFailure } from "../errors.js";
 import { firstExistingSettingsPath } from "./paths.js";
+
+const AGENTS_YAML_EXAMPLE = `agents:
+  producer:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/producer
+    output:
+      schemaRef: regentara://schemas/producer-output
+  reviewer:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/reviewer
+    output:
+      schemaRef: regentara://schemas/reviewer-output
+  remediator:
+    model: sonnet
+    prompt:
+      ref: regentara://prompts/remediator
+    output:
+      schemaRef: regentara://schemas/remediator-output
+`;
 
 const REQUIRED_AGENTS = ["producer", "reviewer", "remediator"];
 const REQUIRED_FIELDS = ["model", "prompt", "output"];
@@ -40,6 +63,7 @@ export async function resolveAgentSettings(workingDirectory, options = {}) {
   );
 
   if (!selectedPath) {
+    await writeExampleIfMissing(options);
     throw new StartupValidationFailure("agents.yaml not found");
   }
 
@@ -141,4 +165,17 @@ function validateOutput(output) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function writeExampleIfMissing(options) {
+  const homeDirectory = options.homeDirectory ?? homedir();
+  const examplePath = join(homeDirectory, ".regentara", "agents.yaml.example");
+
+  try {
+    await readFile(examplePath);
+    return;
+  } catch {}
+
+  await mkdir(dirname(examplePath), { recursive: true });
+  await writeFile(examplePath, AGENTS_YAML_EXAMPLE, { flag: "wx" });
 }
