@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- Implemented ADR-012 reviewer-authored review notes: built-in reviewer schema now requires a non-empty string `summary`; the orchestrator persists each round's summary to `review-NN.md` (two-digit zero-padded) and references it from the reviewer `agent-end` event as `reviewNoteReference`; the orchestrator strips `summary` before passing the verdict to `ReviewFixPolicy.decide` or remediator input. Inline reviewer schemas missing `summary` fail startup. Reviewer prompt now directs the reviewer to author the narrative; local-demo fake reviewer output and run-demo example updated to satisfy the new contract (and the existing verification contract the demo had silently been violating).
 - Added the reviewer-authored review note spec from ADR-012, defining the `summary` schema field, `review-NN.md` persistence, the reviewer `agent-end` `reviewNoteReference`, startup validation for inline schemas, and required tests.
 - Drafted ADR-012 for a Reviewer-authored review note: Reviewer outputs a Markdown narrative each round, Regentara persists it as a durable run artifact and references it from `agent-end`, and the Orchestrator never interprets the content. First concrete instance of the "Reviewer-Owned Durable Artifacts" direction from the review-evidence vision.
 - Captured a future review-evidence vision for Regentara: reviewer-authored artifacts, round-level evidence beads, session references, stale-decision integrity, and human escalation remain future research directions without changing Orchestrator boundaries.

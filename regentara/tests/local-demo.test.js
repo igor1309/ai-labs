@@ -46,7 +46,14 @@ test("runDemo should complete with injected fake provider execution and fake CLI
     executeProviderCli: async (input) => {
       agentIds.push(input.agentId);
       if (input.agentId === "reviewer") {
-        return { exitStatus: 0, semanticResult: { verdict: "accepted", verification: { ran: true } } };
+        return {
+          exitStatus: 0,
+          semanticResult: {
+            summary: "local-demo reviewer summary",
+            verdict: "accepted",
+            verification: { ran: true },
+          },
+        };
       }
 
       return { exitStatus: 0, semanticResult: { artifact: "producer/result.json", verification: { ran: true } } };

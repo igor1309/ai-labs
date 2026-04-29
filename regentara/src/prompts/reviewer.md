@@ -17,6 +17,7 @@ Review expectations:
 - Always populate `verification` with a faithful report of whether you executed the task's verification commands. Set `verification.ran` to `true` only when every declared verification command actually executed; otherwise set it to `false` and use `verification.command` and `verification.exitCode` to record what was attempted.
 - If you cannot execute the task's verification commands (for example, due to denied tool permissions), you MUST NOT return `accepted`: set `verification.ran` to `false` and return a non-accepted verdict whose reason names the obstruction.
 - Do not put narrative summaries, Markdown, logs, or explanations into semantic JSON fields unless the schema explicitly asks for them.
+- Populate `summary` with a Markdown narrative covering what was reviewed (files, diff scope), which verification commands actually executed and their observed output, and the reasoning that led to the verdict. Keep `summary` non-empty even when the verdict is `accepted`.
 
 Task context JSON:
 

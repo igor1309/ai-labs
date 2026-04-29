@@ -160,6 +160,8 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           task: currentTask,
         },
         modelRouting,
+        runDirectory: run.runDirectory,
+        reviewRoundIndex: reviewHistory.length + 1,
       });
       reviewHistory.push(reviewerResult);
       const policyResult = await reviewFixPolicy.decide({
@@ -366,6 +368,25 @@ function validatePolicyTerminalArtifact(policyResult) {
   }
 }
 
+async function persistReviewNote({ agentId, output, reviewRoundIndex, runDirectory }) {
+  if (agentId !== "reviewer" || typeof reviewRoundIndex !== "number" || !runDirectory) {
+    return undefined;
+  }
+
+  const relativePath = `review-${String(reviewRoundIndex).padStart(2, "0")}.md`;
+  await createAuthoredArtifact(runDirectory, relativePath, output.summary);
+  return relativePath;
+}
+
+function stripReviewNoteContent(agentId, output) {
+  if (agentId !== "reviewer" || !Object.prototype.hasOwnProperty.call(output, "summary")) {
+    return output;
+  }
+
+  const { summary: _summary, ...rest } = output;
+  return rest;
+}
+
 function completionDebugFields(status, run, runMetrics) {
   return definedObject({
     duration: formatDurationBetween(run.startedAt, new Date().toISOString()),
@@ -449,6 +470,8 @@ async function executeAgent({
   input,
   modelRouting,
   recordProviderMetrics,
+  reviewRoundIndex,
+  runDirectory,
   taskFile,
 }) {
   const agent = agentSettings.agents[agentId];
@@ -490,6 +513,13 @@ async function executeAgent({
       throw new RuntimeFailure(`expected artifact missing: ${output.artifact}`);
     }
 
+    const reviewNoteReference = await persistReviewNote({
+      agentId,
+      output,
+      reviewRoundIndex,
+      runDirectory,
+    });
+
     await emitEvent?.({
       agentId,
       currentAgent: agentId,
@@ -505,6 +535,7 @@ async function executeAgent({
         durationMs: providerResult.durationMs,
         providerError: providerResult.providerError,
         providerStatus: providerResult.providerStatus,
+        reviewNoteReference,
       }),
       type: "agent-end",
     });
@@ -520,7 +551,7 @@ async function executeAgent({
       sessionReference: providerResult.sessionReference,
     }));
 
-    return output;
+    return stripReviewNoteContent(agentId, output);
   } catch (error) {
     if (error && typeof error === "object") {
       error.currentAgent ??= agentId;

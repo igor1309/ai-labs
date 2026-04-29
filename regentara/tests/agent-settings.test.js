@@ -316,7 +316,7 @@ test("resolveAgentSettings should resolve producer output schema ref to require 
   assert.deepEqual(settings.agents.producer.outputSchema.required, ["artifact", "verification"]);
 });
 
-test("resolveAgentSettings should resolve reviewer output schema ref to require a verdict and verification", async () => {
+test("resolveAgentSettings should resolve reviewer output schema ref to require a verdict, verification, and summary", async () => {
   const workspace = await makeSettingsWorkspace();
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
 
@@ -324,7 +324,14 @@ test("resolveAgentSettings should resolve reviewer output schema ref to require 
     homeDirectory: workspace.homeDirectory,
   });
 
-  assert.deepEqual(settings.agents.reviewer.outputSchema.required, ["verdict", "verification"]);
+  assert.deepEqual(
+    settings.agents.reviewer.outputSchema.required,
+    ["verdict", "verification", "summary"],
+  );
+  assert.deepEqual(
+    settings.agents.reviewer.outputSchema.properties.summary,
+    { type: "string", minLength: 1 },
+  );
 });
 
 test("resolveAgentSettings should resolve remediator output schema ref to require a task", async () => {
@@ -400,23 +407,28 @@ for (const agentId of ["producer", "reviewer"]) {
   test(`resolveAgentSettings should accept ${agentId} inline schema that requires verification.ran`, async () => {
     const workspace = await makeSettingsWorkspace();
     const semanticField = agentId === "producer" ? "artifact" : "verdict";
+    const required = agentId === "reviewer"
+      ? [semanticField, "verification", "summary"]
+      : [semanticField, "verification"];
+    const properties = {
+      [semanticField]: { type: "string" },
+      verification: {
+        type: "object",
+        required: ["ran"],
+        properties: {
+          ran: { type: "boolean" },
+        },
+      },
+      ...(agentId === "reviewer" ? { summary: { type: "string", minLength: 1 } } : {}),
+    };
     await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
       [agentId]: {
         model: agentId === "producer" ? "medium" : "high",
         output: {
           schema: {
             type: "object",
-            required: [semanticField, "verification"],
-            properties: {
-              [semanticField]: { type: "string" },
-              verification: {
-                type: "object",
-                required: ["ran"],
-                properties: {
-                  ran: { type: "boolean" },
-                },
-              },
-            },
+            required,
+            properties,
           },
         },
         prompt: { ref: `regentara://prompts/${agentId}` },
@@ -428,6 +440,74 @@ for (const agentId of ["producer", "reviewer"]) {
       homeDirectory: workspace.homeDirectory,
     });
 
-    assert.deepEqual(settings.agents[agentId].outputSchema.required, [semanticField, "verification"]);
+    assert.deepEqual(settings.agents[agentId].outputSchema.required, required);
   });
 }
+
+test("resolveAgentSettings should reject reviewer inline schema that does not require summary", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    reviewer: {
+      model: "high",
+      output: {
+        schema: {
+          type: "object",
+          required: ["verdict", "verification"],
+          properties: {
+            verdict: { type: "string" },
+            verification: {
+              type: "object",
+              required: ["ran"],
+              properties: { ran: { type: "boolean" } },
+            },
+          },
+        },
+      },
+      prompt: { ref: "regentara://prompts/reviewer" },
+      provider: "openai",
+    },
+  }));
+
+  await assert.rejects(
+    () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+    (error) =>
+      error instanceof StartupValidationFailure
+      && error.message.includes("reviewer")
+      && error.message.includes("summary"),
+  );
+});
+
+test("resolveAgentSettings should accept reviewer inline schema that requires summary as a string", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+    reviewer: {
+      model: "high",
+      output: {
+        schema: {
+          type: "object",
+          required: ["verdict", "verification", "summary"],
+          properties: {
+            verdict: { type: "string" },
+            summary: { type: "string", minLength: 1 },
+            verification: {
+              type: "object",
+              required: ["ran"],
+              properties: { ran: { type: "boolean" } },
+            },
+          },
+        },
+      },
+      prompt: { ref: "regentara://prompts/reviewer" },
+      provider: "openai",
+    },
+  }));
+
+  const settings = await resolveAgentSettings(workspace.workingDirectory, {
+    homeDirectory: workspace.homeDirectory,
+  });
+
+  assert.deepEqual(
+    settings.agents.reviewer.outputSchema.required,
+    ["verdict", "verification", "summary"],
+  );
+});
