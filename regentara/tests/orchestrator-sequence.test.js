@@ -120,6 +120,22 @@ test("runWorkflow should call reviewer with current task and Producer work after
   });
 });
 
+test("runWorkflow should build a reviewer prompt containing the task and producer context", async () => {
+  const calls = [];
+
+  await runWorkflowWithCalls(calls, {
+    captureFullInput: true,
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  assert.equal(
+    calls[1].agentId === "reviewer"
+      && calls[1].prompt.includes("\"task\": \"initial task\"")
+      && calls[1].prompt.includes("\"producer\""),
+    true,
+  );
+});
+
 test("runWorkflow should call no subsequent agent before the policy decision after a completed review", async () => {
   const calls = [];
   const policyCallCounts = [];

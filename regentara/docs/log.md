@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- Tightened reviewer task fidelity: reviewer prompt now explicitly judges whether the implementation and any tests genuinely satisfy the task as written, refusing `accepted` when verification passes against checks that do not exercise what the task asks for; added a regression test asserting the reviewer prompt receives both the task content and producer context.
 - Granted Claude Code producer permission to run regentara verification commands by adding `Bash(./scripts/run_silent.sh:*)` and `Bash(node --test regentara/tests:*)` to project-level `.claude/settings.json`, so the producer can satisfy the verification gate without per-machine local overrides.
 - Short-circuited the orchestrator on producer-self-declared verification failure: when the producer returns `verification.ran !== true`, the run finalizes as failed immediately without invoking reviewer, policy, or remediator, since the obstruction is environmental (e.g., denied tool permissions) and the loop is structurally guaranteed to fail.
 - Added a verification gate to the producer/reviewer prompt contract and the review-fix policy: built-in producer and reviewer output schemas now require a structured `verification` field; the config-based review-fix policy refuses `complete-ok` for an `accepted` verdict whose `verification.ran` is not `true`, degrading to remediation or `complete-fail` per the remaining budget; producer and reviewer prompts explicitly forbid silent success when verification commands cannot be executed.

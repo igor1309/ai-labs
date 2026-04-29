@@ -40,6 +40,7 @@ test("prompt templates should define agent role boundaries", async () => {
       reviewerStateRule: reviewerPrompt.includes("Review the actual current repository state"),
       reviewerVerificationRule: reviewerPrompt.includes("verification"),
       reviewerVerificationFailureRule: reviewerPrompt.includes("cannot execute the task's verification commands"),
+      reviewerTestAdequacyRule: reviewerPrompt.includes("Judge whether the implementation and any tests genuinely satisfy the task"),
       sharedSemanticRule: [producerPrompt, reviewerPrompt, remediatorPrompt]
         .every((prompt) => prompt.includes("Do not put narrative summaries")),
     },
@@ -54,6 +55,7 @@ test("prompt templates should define agent role boundaries", async () => {
       reviewerStateRule: true,
       reviewerVerificationRule: true,
       reviewerVerificationFailureRule: true,
+      reviewerTestAdequacyRule: true,
       sharedSemanticRule: true,
     },
   );
