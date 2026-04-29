@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 import { runWorkflow } from "../src/orchestrator.js";
@@ -168,6 +170,65 @@ test("runWorkflow should call remediator with task work and verdict when policy 
   });
 });
 
+test("runWorkflow should fail when policy returns terminal artifact with remediate", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "remediate",
+      terminalArtifact: { content: "# Terminal Decision\n" },
+    }],
+  });
+
+  assert.deepEqual(
+    {
+      callRoles: calls.map(classifyCall),
+      failureReason: result.failureReason,
+      status: result.status,
+    },
+    {
+      callRoles: ["producer", "reviewer"],
+      failureReason: "terminalArtifact is only valid with terminal policy decisions",
+      status: "failed",
+    },
+  );
+});
+
+test("runWorkflow should fail when terminal artifact content is invalid", async () => {
+  const results = await Promise.all([
+    runWorkflowWithCalls([], {
+      policyDecisions: [{ decision: "complete-ok", terminalArtifact: {} }],
+    }),
+    runWorkflowWithCalls([], {
+      policyDecisions: [{ decision: "complete-ok", terminalArtifact: { content: "" } }],
+    }),
+    runWorkflowWithCalls([], {
+      policyDecisions: [{ decision: "complete-ok", terminalArtifact: { content: 42 } }],
+    }),
+  ]);
+
+  assert.deepEqual(
+    results.map((result) => ({
+      failureReason: result.failureReason,
+      status: result.status,
+    })),
+    [
+      {
+        failureReason: "terminalArtifact.content must be a non-empty string",
+        status: "failed",
+      },
+      {
+        failureReason: "terminalArtifact.content must be a non-empty string",
+        status: "failed",
+      },
+      {
+        failureReason: "terminalArtifact.content must be a non-empty string",
+        status: "failed",
+      },
+    ],
+  );
+});
+
 test("runWorkflow should pass all completed reviews to each remediator call", async () => {
   const calls = [];
 
@@ -254,6 +315,51 @@ test("runWorkflow should append watched progress events for a successful run", a
     { currentDecision: "complete-ok", runId: result.runId, type: "policy-decision" },
     { finalStatus: "succeeded", runId: result.runId, type: "completion" },
   ]);
+});
+
+test("runWorkflow should persist terminal artifact references on complete-ok", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "complete-ok",
+      terminalArtifact: { content: "# Terminal Decision\n\nAccepted by policy.\n" },
+    }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      completionArtifact: events.at(-1).terminalArtifact,
+      persistedContent: await readFileIfExists(join(result.runDirectory, "terminal-decision.md")),
+      resultArtifact: result.terminalArtifact,
+    },
+    {
+      completionArtifact: "terminal-decision.md",
+      persistedContent: "# Terminal Decision\n\nAccepted by policy.\n",
+      resultArtifact: "terminal-decision.md",
+    },
+  );
+});
+
+test("runWorkflow should not persist terminal artifact when policy omits it", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  assert.deepEqual(
+    {
+      persistedContent: await readFileIfExists(join(result.runDirectory, "terminal-decision.md")),
+      resultArtifact: result.terminalArtifact,
+    },
+    {
+      persistedContent: undefined,
+      resultArtifact: undefined,
+    },
+  );
 });
 
 test("runWorkflow should include the task file on producer start events", async () => {
@@ -527,6 +633,35 @@ test("runWorkflow should surface the policy reason on the completion event when 
   );
 });
 
+test("runWorkflow should persist terminal artifact references on complete-fail", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "complete-fail",
+      reason: "remediation budget exhausted",
+      terminalArtifact: { content: "# Terminal Decision\n\nBudget exhausted.\n" },
+    }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      completionArtifact: events.at(-1).terminalArtifact,
+      failureReason: result.failureReason,
+      persistedContent: await readFileIfExists(join(result.runDirectory, "terminal-decision.md")),
+      resultArtifact: result.terminalArtifact,
+    },
+    {
+      completionArtifact: "terminal-decision.md",
+      failureReason: "remediation budget exhausted",
+      persistedContent: "# Terminal Decision\n\nBudget exhausted.\n",
+      resultArtifact: "terminal-decision.md",
+    },
+  );
+});
+
 test("runWorkflow should fail without calling reviewer when producer reports verification did not run", async () => {
   const calls = [];
   const policyDecisions = [];
@@ -666,4 +801,16 @@ function classifyCall(call) {
   }
 
   return "producer";
+}
+
+async function readFileIfExists(path) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return undefined;
+    }
+
+    throw error;
+  }
 }
