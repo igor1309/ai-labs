@@ -38,7 +38,7 @@ When a reviewer round completes successfully, Regentara writes:
 <run-directory>/review-NN.md
 ```
 
-where `NN` is the two-digit zero-padded round index. The first round persists `review-01.md`, the second `review-02.md`, and so on. Round indices count completed reviewer rounds in the current run, starting from 1.
+where `NN` is the two-digit zero-padded round index. The Nth successful reviewer round of a run persists `review-NN.md`: the first persists `review-01.md`, the second `review-02.md`, and so on.
 
 ### Agent-End Event Reference
 
@@ -57,17 +57,16 @@ The field appears only on reviewer `agent-end` events, never on producer or reme
 - The built-in `regentara://schemas/reviewer-output` schema lists `summary` in `required` and declares `summary: { type: "string", minLength: 1 }`.
 - Reviewer outputs missing `summary`, with a non-string `summary`, or with an empty `summary` must fail schema validation as `RuntimeFailure`.
 - Inline reviewer output schemas in `agents.yaml` that omit `summary` from `required` must fail startup with `StartupValidationFailure`. The failure message must point to either `schemaRef: regentara://schemas/reviewer-output` or including `summary` (string, required) in the inline schema.
-- The startup validator reuses the existing reviewer-schema enforcement seam in `agent-settings.js`; it does not duplicate the verification-contract logic for non-reviewer agents.
 
 ### Persistence
 
-- After a reviewer `agent-end` event for a successful reviewer round, Regentara persists the round's `summary` content as `review-NN.md` in the run directory.
-- Round index `NN` is derived from the count of reviewer rounds already completed in the current run, plus one, and is rendered with two-digit zero padding (`01`, `02`, …).
+- On a successful reviewer round, Regentara persists the round's `summary` content as `review-NN.md` in the run directory before emitting the round's `agent-end` event.
+- Round index `NN` is rendered with two-digit zero padding (`01`, `02`, …) and is assigned per the Nth-successful-round rule above.
 - Regentara preserves the reviewer-authored content exactly.
-- Regentara must not overwrite an existing `review-NN.md`. The artifact-store guarantees this via `wx` open mode.
+- Regentara must not overwrite an existing `review-NN.md`.
 - Persistence failure must fail the run with `RuntimeFailure`.
 - Regentara must not inspect, parse, normalize, or branch on `summary` content.
-- Reviewer rounds that fail before producing valid output (e.g. provider error, schema validation failure) do not persist a review note for that round.
+- Reviewer rounds that fail before producing valid output (e.g. provider error, schema validation failure) do not persist a review note for that round and do not consume a round index.
 
 ### Agent-End Event Reference
 
