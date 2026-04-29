@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- Captured a future review-evidence vision for Regentara: reviewer-authored artifacts, round-level evidence beads, session references, stale-decision integrity, and human escalation remain future research directions without changing Orchestrator boundaries.
 - Review follow-up: added explicit no-fabrication regression coverage for startup validation failures and provider runtime failures so terminal decision artifacts remain policy-terminal only.
 - Implemented terminal decision artifacts: `ReviewFixPolicy` can now return validated Markdown content for terminal decisions, Regentara stores it as `terminal-decision.md`, and workflow results plus completion events reference the artifact without interpreting policy semantics.
 - Added the terminal decision artifact spec from ADR-011, defining the policy output surface, `terminal-decision.md` persistence contract, terminal references, Orchestrator boundary rules, and required tests.
