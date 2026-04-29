@@ -718,6 +718,113 @@ test("runWorkflow should emit a failed completion event when producer reports ve
   });
 });
 
+test("runWorkflow should persist review-01.md containing the reviewer summary on the first reviewer round", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const persisted = await readFile(join(result.runDirectory, "review-01.md"), "utf8");
+  assert.equal(persisted, "round one summary");
+});
+
+test("runWorkflow should include reviewNoteReference on the first reviewer agent-end event", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const reviewerEnd = events.find((event) => event.type === "agent-end" && event.agentId === "reviewer");
+  assert.equal(reviewerEnd.reviewNoteReference, "review-01.md");
+});
+
+test("runWorkflow should persist review-01.md and review-02.md across two reviewer rounds", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      { decision: "complete-ok" },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const round1 = await readFile(join(result.runDirectory, "review-01.md"), "utf8");
+  const round2 = await readFile(join(result.runDirectory, "review-02.md"), "utf8");
+  assert.equal(round1, "round one summary");
+  assert.equal(round2, "round two summary");
+});
+
+test("runWorkflow should reference review-NN.md on each reviewer agent-end event in order", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      { decision: "complete-ok" },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const reviewerEnds = events.filter((event) => event.type === "agent-end" && event.agentId === "reviewer");
+  assert.deepEqual(
+    reviewerEnds.map((event) => event.reviewNoteReference),
+    ["review-01.md", "review-02.md"],
+  );
+});
+
+test("runWorkflow should not include reviewNoteReference on producer or remediator agent-end events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      { decision: "complete-ok" },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const nonReviewerEnds = events.filter(
+    (event) => event.type === "agent-end" && event.agentId !== "reviewer",
+  );
+  assert.ok(nonReviewerEnds.length > 0);
+  for (const event of nonReviewerEnds) {
+    assert.equal(Object.prototype.hasOwnProperty.call(event, "reviewNoteReference"), false);
+  }
+});
+
+test("runWorkflow should not pass reviewer summary into ReviewFixPolicy.decide input", async () => {
+  const policyInputs = [];
+
+  await runWorkflowWithCalls([], {
+    onPolicyDecision: (input) => policyInputs.push(input),
+    policyDecisions: [{ decision: "complete-ok" }],
+    reviewerOutputs: [{ verdict: "accepted", summary: "should not leak" }],
+  });
+
+  assert.equal(policyInputs.length, 1);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(policyInputs[0].verdict ?? {}, "summary"),
+    false,
+  );
+});
+
 async function runWorkflowWithCalls(calls, options = {}) {
   const workspace = await makeSettingsWorkspace();
   const policyDecisions = [...options.policyDecisions];
@@ -772,7 +879,11 @@ async function runWorkflowWithCalls(calls, options = {}) {
         const reviewerOutput = reviewerOutputs.shift() ?? { verdict: "needs-fix" };
         return {
           exitStatus: 0,
-          semanticResult: { verification: { ran: true }, ...reviewerOutput },
+          semanticResult: {
+            summary: "default reviewer summary",
+            verification: { ran: true },
+            ...reviewerOutput,
+          },
           ...options.providerReferences,
         };
       }

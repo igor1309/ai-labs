@@ -138,7 +138,14 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
       }
       if (input.executionInput.producer) {
         const reviewerOutput = policy.reviewerOutput ?? { verdict: "needs-fix" };
-        return { exitStatus: 0, semanticResult: { verification: { ran: true }, ...reviewerOutput } };
+        return {
+          exitStatus: 0,
+          semanticResult: {
+            summary: "default reviewer summary",
+            verification: { ran: true },
+            ...reviewerOutput,
+          },
+        };
       }
       return { exitStatus: 0, semanticResult: { artifact: "producer/result.json", verification: { ran: true } } };
     },

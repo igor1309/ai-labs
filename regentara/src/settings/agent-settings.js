@@ -37,9 +37,10 @@ const SUPPORTED_SCHEMA_REFS = new Map([
   [
     "regentara://schemas/reviewer-output",
     {
-      required: ["verdict", "verification"],
+      required: ["verdict", "verification", "summary"],
       type: "object",
       properties: {
+        summary: { type: "string", minLength: 1 },
         verification: VERIFICATION_SCHEMA,
       },
     },
@@ -88,6 +89,7 @@ export async function resolveAgentSettings(workingDirectory, options = {}) {
   for (const agentId of REQUIRED_AGENTS) {
     agents[agentId] = validateAgent(agentId, rawAgents[agentId]);
     assertVerificationContract(agentId, agents[agentId].outputSchema);
+    assertReviewerSummaryContract(agentId, agents[agentId].outputSchema);
   }
 
   return {
@@ -200,6 +202,28 @@ function assertVerificationContract(agentId, outputSchema) {
   if (!verificationRequired.includes("ran")) {
     throw new StartupValidationFailure(
       `agents.yaml agent ${agentId} output schema must require verification.ran; ${recommendation}`,
+    );
+  }
+}
+
+function assertReviewerSummaryContract(agentId, outputSchema) {
+  if (agentId !== "reviewer") {
+    return;
+  }
+
+  const recommendation = "set output.schemaRef to regentara://schemas/reviewer-output, or include summary (string) as required in the inline schema";
+  const required = Array.isArray(outputSchema?.required) ? outputSchema.required : [];
+
+  if (!required.includes("summary")) {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} output schema must require summary; ${recommendation}`,
+    );
+  }
+
+  const summarySchema = outputSchema?.properties?.summary;
+  if (summarySchema?.type !== "string") {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} output schema must declare summary as a string; ${recommendation}`,
     );
   }
 }

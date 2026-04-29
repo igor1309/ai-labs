@@ -64,14 +64,27 @@ export async function runFakeDemo(options = {}) {
 function createDemoProviderCli() {
   return async (input) => {
     if (input.agentId === "producer") {
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
+      return {
+        exitStatus: 0,
+        semanticResult: {
+          artifact: "producer/result.json",
+          verification: { ran: true },
+        },
+      };
     }
 
     if (input.agentId === "reviewer") {
       const verdict = input.executionInput.task.includes("remediated")
         ? "accepted"
         : "rejected";
-      return { exitStatus: 0, semanticResult: { verdict } };
+      return {
+        exitStatus: 0,
+        semanticResult: {
+          summary: `Demo reviewer summary: verdict=${verdict}.`,
+          verdict,
+          verification: { ran: true },
+        },
+      };
     }
 
     return {
