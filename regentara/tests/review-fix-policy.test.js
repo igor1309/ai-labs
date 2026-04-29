@@ -137,9 +137,10 @@ async function runWorkflowWithPolicy(policy, agentInputs = []) {
         return { exitStatus: 0, semanticResult: { task: "remediated task" } };
       }
       if (input.executionInput.producer) {
-        return { exitStatus: 0, semanticResult: policy.reviewerOutput ?? { verdict: "needs-fix" } };
+        const reviewerOutput = policy.reviewerOutput ?? { verdict: "needs-fix" };
+        return { exitStatus: 0, semanticResult: { verification: { ran: true }, ...reviewerOutput } };
       }
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json", verification: { ran: true } } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

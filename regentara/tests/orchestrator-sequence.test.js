@@ -47,8 +47,19 @@ test("runWorkflow should pass runner adapter input without a workspace field", a
       hasWorkingDirectory: false,
       model: "claude-sonnet-4-5",
       outputSchema: {
-        required: ["artifact"],
+        required: ["artifact", "verification"],
         type: "object",
+        properties: {
+          verification: {
+            type: "object",
+            required: ["ran"],
+            properties: {
+              ran: { type: "boolean" },
+              command: { type: "string" },
+              exitCode: { type: "integer" },
+            },
+          },
+        },
       },
       provider: "anthropic",
       runner: "claude-code",
@@ -104,9 +115,25 @@ test("runWorkflow should call reviewer with current task and Producer work after
   });
 
   assert.deepEqual(calls[1], {
-    producer: { artifact: "producer/result.json" },
+    producer: { artifact: "producer/result.json", verification: { ran: true } },
     task: "initial task",
   });
+});
+
+test("runWorkflow should build a reviewer prompt containing the task and producer context", async () => {
+  const calls = [];
+
+  await runWorkflowWithCalls(calls, {
+    captureFullInput: true,
+    policyDecisions: [{ decision: "complete-ok" }],
+  });
+
+  assert.equal(
+    calls[1].agentId === "reviewer"
+      && calls[1].prompt.includes("\"task\": \"initial task\"")
+      && calls[1].prompt.includes("\"producer\""),
+    true,
+  );
 });
 
 test("runWorkflow should call no subsequent agent before the policy decision after a completed review", async () => {
@@ -134,10 +161,10 @@ test("runWorkflow should call remediator with task work and verdict when policy 
   });
 
   assert.deepEqual(calls[2], {
-    producer: { artifact: "producer/result.json" },
-    reviews: [{ verdict: "needs-fix" }],
+    producer: { artifact: "producer/result.json", verification: { ran: true } },
+    reviews: [{ verdict: "needs-fix", verification: { ran: true } }],
     task: "initial task",
-    verdict: { verdict: "needs-fix" },
+    verdict: { verdict: "needs-fix", verification: { ran: true } },
   });
 });
 
@@ -164,19 +191,19 @@ test("runWorkflow should pass all completed reviews to each remediator call", as
     },
     {
       firstRemediation: {
-        producer: { artifact: "producer/result.json" },
-        reviews: [{ verdict: "first failure" }],
+        producer: { artifact: "producer/result.json", verification: { ran: true } },
+        reviews: [{ verdict: "first failure", verification: { ran: true } }],
         task: "initial task",
-        verdict: { verdict: "first failure" },
+        verdict: { verdict: "first failure", verification: { ran: true } },
       },
       secondRemediation: {
-        producer: { artifact: "producer/result.json" },
+        producer: { artifact: "producer/result.json", verification: { ran: true } },
         reviews: [
-          { verdict: "first failure" },
-          { verdict: "second failure" },
+          { verdict: "first failure", verification: { ran: true } },
+          { verdict: "second failure", verification: { ran: true } },
         ],
         task: "remediated task",
-        verdict: { verdict: "second failure" },
+        verdict: { verdict: "second failure", verification: { ran: true } },
       },
     },
   );
@@ -441,6 +468,7 @@ test("runWorkflow should append failed completion progress event when policy com
   const events = await readEvents(result.runDirectory);
 
   assert.deepEqual(events.map(progressEventSummary).at(-1), {
+    failureReason: "review policy completed with failure",
     finalStatus: "failed",
     runId: result.runId,
     type: "completion",
@@ -470,10 +498,96 @@ test("runWorkflow should mark metadata failed when the review policy completes w
   );
 });
 
+test("runWorkflow should surface the policy reason on the completion event when policy completes with failure", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "complete-fail",
+      reason: "reviewer reported verification did not run",
+    }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      completionEvent: events.map(progressEventSummary).at(-1),
+      failureReason: result.failureReason,
+    },
+    {
+      completionEvent: {
+        failureReason: "reviewer reported verification did not run",
+        finalStatus: "failed",
+        runId: result.runId,
+        type: "completion",
+      },
+      failureReason: "reviewer reported verification did not run",
+    },
+  );
+});
+
+test("runWorkflow should fail without calling reviewer when producer reports verification did not run", async () => {
+  const calls = [];
+  const policyDecisions = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    onPolicyDecision: (input) => {
+      policyDecisions.push(input);
+    },
+    policyDecisions: [],
+    producerOutputs: [
+      { artifact: "producer/result.json", verification: { ran: false } },
+    ],
+  });
+
+  const metadata = await readRunMetadata(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      callRoles: calls.map(classifyCall),
+      exitCode: result.exitCode,
+      policyCalls: policyDecisions.length,
+      status: result.status,
+      metadataExitCode: metadata.exitCode,
+      metadataStatus: metadata.status,
+    },
+    {
+      callRoles: ["producer"],
+      exitCode: 1,
+      policyCalls: 0,
+      status: "failed",
+      metadataExitCode: 1,
+      metadataStatus: "failed",
+    },
+  );
+});
+
+test("runWorkflow should emit a failed completion event when producer reports verification did not run", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [],
+    producerOutputs: [
+      { artifact: "producer/result.json", verification: { ran: false } },
+    ],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(events.map(progressEventSummary).at(-1), {
+    failureReason: "producer reported verification did not run",
+    finalStatus: "failed",
+    runId: result.runId,
+    type: "completion",
+  });
+});
+
 async function runWorkflowWithCalls(calls, options = {}) {
   const workspace = await makeSettingsWorkspace();
   const policyDecisions = [...options.policyDecisions];
   const reviewerOutputs = [...(options.reviewerOutputs ?? [])];
+  const producerOutputs = [...(options.producerOutputs ?? [])];
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     remediator: {
       model: "high",
@@ -520,13 +634,20 @@ async function runWorkflowWithCalls(calls, options = {}) {
         return { exitStatus: 0, semanticResult: { task: "remediated task" }, ...options.providerReferences };
       }
       if (input.executionInput.producer) {
+        const reviewerOutput = reviewerOutputs.shift() ?? { verdict: "needs-fix" };
         return {
           exitStatus: 0,
-          semanticResult: reviewerOutputs.shift() ?? { verdict: "needs-fix" },
+          semanticResult: { verification: { ran: true }, ...reviewerOutput },
           ...options.providerReferences,
         };
       }
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" }, ...options.providerReferences };
+      const producerOutput = producerOutputs.shift()
+        ?? { artifact: "producer/result.json", verification: { ran: true } };
+      return {
+        exitStatus: 0,
+        semanticResult: producerOutput,
+        ...options.providerReferences,
+      };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

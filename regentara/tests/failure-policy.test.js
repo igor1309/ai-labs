@@ -38,7 +38,7 @@ test("runWorkflow should not fabricate an expected artifact when it is missing",
 
   await runWorkflowWithWorkspace(workspace, {
     artifactExists: async () => false,
-    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json" } }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json", verification: { ran: true } } }),
     onRunCreated: (run) => {
       runDirectory = run.runDirectory;
     },
@@ -55,7 +55,7 @@ test("runWorkflow should fail immediately when an expected artifact is missing",
 
   const result = await runWorkflowWithWorkspace(workspace, {
     artifactExists: async () => false,
-    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json" } }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json", verification: { ran: true } } }),
   });
 
   assert.deepEqual(
@@ -68,7 +68,7 @@ test("runWorkflow should fail immediately when default artifact lookup cannot fi
   const workspace = await makeWorkflowWorkspace();
 
   const result = await runWorkflowWithWorkspace(workspace, {
-    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json" } }),
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "producer/missing.json", verification: { ran: true } } }),
   });
 
   assert.deepEqual(
@@ -334,10 +334,10 @@ test("runWorkflow should mark the run failed when review policy returns an unsup
     },
     executeProviderCli: async (input) => {
       if (input.executionInput.producer) {
-        return { exitStatus: 0, semanticResult: { verdict: "needs-fix" } };
+        return { exitStatus: 0, semanticResult: { verdict: "needs-fix", verification: { ran: true } } };
       }
 
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json", verification: { ran: true } } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

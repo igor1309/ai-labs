@@ -29,9 +29,9 @@ test("createRegentaraComposition should use config-based policy settings when no
         const verdict = input.executionInput.task === "remediated task"
           ? "accepted"
           : "rejected";
-        return { exitStatus: 0, semanticResult: { verdict } };
+        return { exitStatus: 0, semanticResult: { verdict, verification: { ran: true } } };
       }
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json", verification: { ran: true } } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,
@@ -64,10 +64,10 @@ test("createRegentaraComposition should report selected policy settings path whe
     commandExists: async () => true,
     executeProviderCli: async (input) => {
       if (input.executionInput.producer) {
-        return { exitStatus: 0, semanticResult: { verdict: "accepted" } };
+        return { exitStatus: 0, semanticResult: { verdict: "accepted", verification: { ran: true } } };
       }
 
-      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json" } };
+      return { exitStatus: 0, semanticResult: { artifact: "producer/result.json", verification: { ran: true } } };
     },
     runStoreOptions: {
       homeDirectory: workspace.homeDirectory,

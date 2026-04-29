@@ -34,18 +34,13 @@ test("runWorkflow should not call the next workflow step after invalid agent out
   await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
     producer: {
       model: "medium",
-      output: {
-        schema: {
-          required: ["artifact"],
-          type: "object",
-        },
-      },
+      output: { schemaRef: "regentara://schemas/producer-output" },
       prompt: { ref: "regentara://prompts/producer" },
       provider: "anthropic",
     },
     reviewer: {
       model: "high",
-      output: { schema: { type: "object" } },
+      output: { schemaRef: "regentara://schemas/reviewer-output" },
       prompt: { ref: "regentara://prompts/reviewer" },
       provider: "openai",
     },

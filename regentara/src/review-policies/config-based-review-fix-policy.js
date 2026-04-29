@@ -9,10 +9,19 @@ export function createConfigBasedReviewFixPolicy(settings) {
         throw new RuntimeFailure("review verdict must define a non-empty string verdict");
       }
 
-      if (verdict.verdict === "accepted") {
+      if (verdict.verdict === "accepted" && verdict.verification?.ran === true) {
         return {
           decision: "complete-ok",
           maxRemediationAttempts,
+          session,
+        };
+      }
+
+      if (verdict.verification?.ran !== true) {
+        return {
+          decision: "complete-fail",
+          maxRemediationAttempts,
+          reason: "reviewer reported verification did not run",
           session,
         };
       }

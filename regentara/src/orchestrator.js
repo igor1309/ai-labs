@@ -122,6 +122,28 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         modelRouting,
         taskFile: input.taskFile,
       });
+
+      if (producerResult.verification?.ran !== true) {
+        const failureReason = "producer reported verification did not run";
+        await emitEvent({
+          failureReason,
+          finalStatus: "failed",
+          type: "completion",
+        });
+        debugReporter?.report("completion", {
+          ...completionDebugFields("failed", run, runMetrics),
+          reason: failureReason,
+        });
+        await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
+        return {
+          exitCode: 1,
+          failureReason,
+          runDirectory: run.runDirectory,
+          runId: run.runId,
+          status: "failed",
+        };
+      }
+
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
         agentSettings,
@@ -171,15 +193,20 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       }
 
       if (policyResult.decision === "complete-fail") {
+        const failureReason = policyResult.reason ?? "review policy completed with failure";
         await emitEvent({
+          failureReason,
           finalStatus: "failed",
           type: "completion",
         });
-        debugReporter?.report("completion", completionDebugFields("failed", run, runMetrics));
+        debugReporter?.report("completion", {
+          ...completionDebugFields("failed", run, runMetrics),
+          reason: failureReason,
+        });
         await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
         return {
           exitCode: 1,
-          failureReason: "review policy completed with failure",
+          failureReason,
           runDirectory: run.runDirectory,
           runId: run.runId,
           status: "failed",
