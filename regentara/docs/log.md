@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- Review follow-up: added explicit no-fabrication regression coverage for startup validation failures and provider runtime failures so terminal decision artifacts remain policy-terminal only.
 - Implemented terminal decision artifacts: `ReviewFixPolicy` can now return validated Markdown content for terminal decisions, Regentara stores it as `terminal-decision.md`, and workflow results plus completion events reference the artifact without interpreting policy semantics.
 - Added the terminal decision artifact spec from ADR-011, defining the policy output surface, `terminal-decision.md` persistence contract, terminal references, Orchestrator boundary rules, and required tests.
 - Captured the corrected Regentara vs. `codex-review` comparison and drafted ADR-011: Regentara should preserve verifiable-task and workspace abstractions rather than borrow Plan/Code phases or branch-scoped state, while adding a policy-owned terminal decision artifact is the relevant follow-up.
