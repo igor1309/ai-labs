@@ -56,6 +56,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | claude-insights | Service | Weekly Claude Code usage aggregator with Telegram bot and LLM trend analysis |
 | session-digest | CLI | Converts Claude Code JSONL sessions into persisted local ledgers and bounded-model Markdown digests |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
+| the-dragoman | Editorial channel | Brand brief, channel vision, and post backlog for "The Dragoman" Telegram channel (docs/images only — no code, no release unit) |
 
 ## Architecture
 

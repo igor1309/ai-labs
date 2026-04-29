@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- the-dragoman: registered the new docs/images-only top-level project — added to `scripts/loc-dashboard.sh` (header, project loop, drift `known` list) and added a row to the README `## Components` table. CI requires no surgery: `the-dragoman/**` is intentionally absent from every `dorny/paths-filter` filter in `ci.yml`, so per-project core jobs all stay skipped on doc/image-only changes while the required `report` check still runs (per the workflows path-filter policy).
 - LOC dashboard: classified `img`/`images` as known top-level dirs and added them to `EXCLUDES` in `scripts/loc-dashboard.sh` so README banner asset folders are explicitly skipped and no longer trip drift detection.
 - LOC dashboard workflow: added `curl --max-time 30` to the Telegram step so a hung Telegram connection fails fast instead of stalling the run (root cause of the 2026-04-29 exit-56 failure).
 
