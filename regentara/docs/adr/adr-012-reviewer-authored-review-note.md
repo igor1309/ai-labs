@@ -59,7 +59,7 @@ The Orchestrator does not author, interpret, normalize, parse, or branch on the 
 - Regentara MUST fail the run with a runtime failure when review note persistence fails.
 - The Reviewer MUST NOT decide the review note's persisted filename or directory.
 - The Orchestrator MUST persist review notes from per-round Reviewer output only, not from policy output.
-- Inline reviewer output schemas that drop the review note field MUST fail startup validation with a remediation pointer.
+- Inline reviewer output schemas that drop the review note field MUST fail startup validation.
 - The Orchestrator MUST NOT become aware of Plan/Code phases to support review notes.
 - The Orchestrator MUST NOT become aware of Git branches, worktrees, commits, or pull requests to support review notes.
 - The Orchestrator MUST NOT encode Accept-or-Argue or other review-disagreement protocols to support review notes.
