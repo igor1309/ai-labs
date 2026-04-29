@@ -2,7 +2,8 @@
 
 ## 2026-04-29
 
-- LOC dashboard: classified `img`/`images` as known top-level dirs in `scripts/loc-dashboard.sh` so README banner asset folders no longer trip drift detection.
+- LOC dashboard: classified `img`/`images` as known top-level dirs and added them to `EXCLUDES` in `scripts/loc-dashboard.sh` so README banner asset folders are explicitly skipped and no longer trip drift detection.
+- LOC dashboard workflow: added `curl --max-time 30` to the Telegram step so a hung Telegram connection fails fast instead of stalling the run (root cause of the 2026-04-29 exit-56 failure).
 
 ## 2026-04-28
 

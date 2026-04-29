@@ -57,7 +57,7 @@ divider() {
 # ---------- counting ----------
 
 # Shared exclusions for all find commands
-EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" )
+EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" ! -path "*/img/*" ! -path "*/images/*" )
 
 count_project() {
   local dir="$1"

@@ -67,4 +67,4 @@ jobs:
           MSG: ${{ steps.loc.outputs.msg }}
         run: |
           msg_html=$(printf '%s' "$MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-          curl -fsS -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=<pre>${msg_html}</pre>"
+          curl -fsS --max-time 30 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=<pre>${msg_html}</pre>"
