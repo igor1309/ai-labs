@@ -27,5 +27,5 @@ docker = false
 basename = "regentara"
 path = "regentara"
 metadata = "package.json"
-version = "0.0.1"
+version = "0.0.6"
 docker = false
