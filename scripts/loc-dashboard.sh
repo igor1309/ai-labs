@@ -57,7 +57,7 @@ divider() {
 # ---------- counting ----------
 
 # Shared exclusions for all find commands
-EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" )
+EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" ! -path "*/img/*" ! -path "*/images/*" )
 
 count_project() {
   local dir="$1"
@@ -143,7 +143,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini img images insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
   local unknown=""
   for d in */; do
     d="${d%/}"

@@ -1,5 +1,10 @@
 # Log
 
+## 2026-04-29
+
+- LOC dashboard: classified `img`/`images` as known top-level dirs and added them to `EXCLUDES` in `scripts/loc-dashboard.sh` so README banner asset folders are explicitly skipped and no longer trip drift detection.
+- LOC dashboard workflow: added `curl --max-time 30` to the Telegram step so a hung Telegram connection fails fast instead of stalling the run (root cause of the 2026-04-29 exit-56 failure).
+
 ## 2026-04-28
 
 - Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; regentara now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
