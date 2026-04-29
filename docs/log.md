@@ -2,7 +2,8 @@
 
 ## 2026-04-29
 
-- the-dragoman: registered as a docs-only top-level project — added to `scripts/loc-dashboard.sh` and the README `## Components` table. No CI changes needed: `the-dragoman/**` is absent from every `ci.yml` path filter, so per-project core jobs stay skipped on doc/image-only changes.
+- dragoman: renamed the docs-only top-level project directory from `the-dragoman/` to `dragoman/` so the project slug is distinct from the "The Dragoman" Telegram channel name.
+- dragoman: registered as a docs-only top-level project — added to `scripts/loc-dashboard.sh` and the README `## Components` table. No CI changes needed: the project is absent from every `ci.yml` path filter, so per-project core jobs stay skipped on doc/image-only changes.
 - LOC dashboard: classified `img`/`images` as known top-level dirs and added them to `EXCLUDES` in `scripts/loc-dashboard.sh` so README banner asset folders are explicitly skipped and no longer trip drift detection.
 - LOC dashboard workflow: added `curl --max-time 30` to the Telegram step so a hung Telegram connection fails fast instead of stalling the run (root cause of the 2026-04-29 exit-56 failure).
 
