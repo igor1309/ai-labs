@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-30
+
+- Research: added a structured extraction, derived curriculum, and selling-points brief for Timur Khakhalev's AI Coding course landing page under `research/courses/khakhalev/`.
+
 ## 2026-04-29
 
 - the-dragoman: registered as a docs-only top-level project — added to `scripts/loc-dashboard.sh` and the README `## Components` table. No CI changes needed: `the-dragoman/**` is absent from every `ci.yml` path filter, so per-project core jobs stay skipped on doc/image-only changes.
