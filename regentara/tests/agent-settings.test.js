@@ -337,3 +337,97 @@ test("resolveAgentSettings should resolve remediator output schema ref to requir
 
   assert.deepEqual(settings.agents.remediator.outputSchema.required, ["task"]);
 });
+
+for (const agentId of ["producer", "reviewer"]) {
+  test(`resolveAgentSettings should reject ${agentId} inline schema that does not require verification`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+      [agentId]: {
+        model: agentId === "producer" ? "medium" : "high",
+        output: {
+          schema: {
+            type: "object",
+            required: [agentId === "producer" ? "artifact" : "verdict"],
+            properties: {
+              [agentId === "producer" ? "artifact" : "verdict"]: { type: "string" },
+            },
+          },
+        },
+        prompt: { ref: `regentara://prompts/${agentId}` },
+        provider: "anthropic",
+      },
+    }));
+
+    await assert.rejects(
+      () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      (error) =>
+        error instanceof StartupValidationFailure
+        && error.message.includes(agentId)
+        && error.message.includes("verification"),
+    );
+  });
+
+  test(`resolveAgentSettings should reject ${agentId} inline schema that requires verification but not verification.ran`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    const semanticField = agentId === "producer" ? "artifact" : "verdict";
+    await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+      [agentId]: {
+        model: agentId === "producer" ? "medium" : "high",
+        output: {
+          schema: {
+            type: "object",
+            required: [semanticField, "verification"],
+            properties: {
+              [semanticField]: { type: "string" },
+              verification: { type: "object" },
+            },
+          },
+        },
+        prompt: { ref: `regentara://prompts/${agentId}` },
+        provider: "anthropic",
+      },
+    }));
+
+    await assert.rejects(
+      () => resolveAgentSettings(workspace.workingDirectory, { homeDirectory: workspace.homeDirectory }),
+      (error) =>
+        error instanceof StartupValidationFailure
+        && error.message.includes(agentId)
+        && error.message.includes("verification.ran"),
+    );
+  });
+
+  test(`resolveAgentSettings should accept ${agentId} inline schema that requires verification.ran`, async () => {
+    const workspace = await makeSettingsWorkspace();
+    const semanticField = agentId === "producer" ? "artifact" : "verdict";
+    await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml({
+      [agentId]: {
+        model: agentId === "producer" ? "medium" : "high",
+        output: {
+          schema: {
+            type: "object",
+            required: [semanticField, "verification"],
+            properties: {
+              [semanticField]: { type: "string" },
+              verification: {
+                type: "object",
+                required: ["ran"],
+                properties: {
+                  ran: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        prompt: { ref: `regentara://prompts/${agentId}` },
+        provider: "anthropic",
+      },
+    }));
+
+    const settings = await resolveAgentSettings(workspace.workingDirectory, {
+      homeDirectory: workspace.homeDirectory,
+    });
+
+    assert.deepEqual(settings.agents[agentId].outputSchema.required, [semanticField, "verification"]);
+  });
+}

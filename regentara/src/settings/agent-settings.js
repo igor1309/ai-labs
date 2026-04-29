@@ -87,6 +87,7 @@ export async function resolveAgentSettings(workingDirectory, options = {}) {
   const agents = {};
   for (const agentId of REQUIRED_AGENTS) {
     agents[agentId] = validateAgent(agentId, rawAgents[agentId]);
+    assertVerificationContract(agentId, agents[agentId].outputSchema);
   }
 
   return {
@@ -175,6 +176,32 @@ function validateOutput(output) {
   throw new StartupValidationFailure(
     `agents.yaml unsupported output schema reference: ${output.schemaRef ?? "(missing)"}`,
   );
+}
+
+const VERIFICATION_GATED_AGENTS = new Set(["producer", "reviewer"]);
+
+function assertVerificationContract(agentId, outputSchema) {
+  if (!VERIFICATION_GATED_AGENTS.has(agentId)) {
+    return;
+  }
+
+  const recommendation = `set output.schemaRef to regentara://schemas/${agentId}-output, or include verification.ran (boolean) as required in the inline schema`;
+  const required = Array.isArray(outputSchema?.required) ? outputSchema.required : [];
+
+  if (!required.includes("verification")) {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} output schema must require verification; ${recommendation}`,
+    );
+  }
+
+  const verificationSchema = outputSchema?.properties?.verification;
+  const verificationRequired = Array.isArray(verificationSchema?.required) ? verificationSchema.required : [];
+
+  if (!verificationRequired.includes("ran")) {
+    throw new StartupValidationFailure(
+      `agents.yaml agent ${agentId} output schema must require verification.ran; ${recommendation}`,
+    );
+  }
 }
 
 function isPlainObject(value) {
