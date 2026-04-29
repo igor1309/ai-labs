@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-29
+
+- LOC dashboard: classified `img`/`images` as known top-level dirs in `scripts/loc-dashboard.sh` so README banner asset folders no longer trip drift detection.
+
 ## 2026-04-28
 
 - Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; regentara now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
