@@ -17,6 +17,15 @@ export function createConfigBasedReviewFixPolicy(settings) {
         };
       }
 
+      if (verdict.verification?.ran !== true) {
+        return {
+          decision: "complete-fail",
+          maxRemediationAttempts,
+          reason: "reviewer reported verification did not run",
+          session,
+        };
+      }
+
       const remediationAttempts = session?.remediationAttempts ?? 0;
       if (remediationAttempts >= maxRemediationAttempts) {
         return {

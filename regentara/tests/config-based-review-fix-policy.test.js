@@ -40,16 +40,34 @@ test("ConfigBasedReviewFixPolicy.decide should refuse complete-ok when verdict i
   assert.notEqual(decision.decision, "complete-ok");
 });
 
-test("ConfigBasedReviewFixPolicy.decide should remediate an unverified accepted verdict when remediation budget remains", async () => {
+test("ConfigBasedReviewFixPolicy.decide should complete-fail an unverified accepted verdict even when remediation budget remains", async () => {
   const policy = createConfigBasedReviewFixPolicy({
-    reviewPolicy: { maxRemediationAttempts: 1 },
+    reviewPolicy: { maxRemediationAttempts: 5 },
   });
 
   const decision = await policy.decide({
     verdict: { verdict: "accepted", verification: { ran: false } },
   });
 
-  assert.equal(decision.decision, "remediate");
+  assert.deepEqual(
+    { decision: decision.decision, reason: decision.reason },
+    { decision: "complete-fail", reason: "reviewer reported verification did not run" },
+  );
+});
+
+test("ConfigBasedReviewFixPolicy.decide should complete-fail a rejected verdict without verification ran=true even when remediation budget remains", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 5 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "rejected", verification: { ran: false } },
+  });
+
+  assert.deepEqual(
+    { decision: decision.decision, reason: decision.reason },
+    { decision: "complete-fail", reason: "reviewer reported verification did not run" },
+  );
 });
 
 test("ConfigBasedReviewFixPolicy.decide should complete-fail an unverified accepted verdict when remediation budget is exhausted", async () => {
@@ -70,7 +88,7 @@ test("ConfigBasedReviewFixPolicy.decide should return remediate on a failed verd
   });
 
   const decision = await policy.decide({
-    verdict: { verdict: "rejected" },
+    verdict: { verdict: "rejected", verification: { ran: true } },
   });
 
   assert.equal(decision.decision, "remediate");
@@ -86,7 +104,7 @@ test("ConfigBasedReviewFixPolicy.decide should consume one remediation attempt o
 
   const failedDecision = await policy.decide({
     session: acceptedDecision.session,
-    verdict: { verdict: "rejected" },
+    verdict: { verdict: "rejected", verification: { ran: true } },
   });
 
   assert.equal(failedDecision.decision, "remediate");
@@ -97,12 +115,12 @@ test("ConfigBasedReviewFixPolicy.decide should return complete-fail on a failed 
     reviewPolicy: { maxRemediationAttempts: 1 },
   });
   const firstDecision = await policy.decide({
-    verdict: { verdict: "rejected" },
+    verdict: { verdict: "rejected", verification: { ran: true } },
   });
 
   const secondDecision = await policy.decide({
     session: firstDecision.session,
-    verdict: { verdict: "rejected" },
+    verdict: { verdict: "rejected", verification: { ran: true } },
   });
 
   assert.equal(secondDecision.decision, "complete-fail");
@@ -114,7 +132,7 @@ test("ConfigBasedReviewFixPolicy.decide should return complete-fail on the first
   });
 
   const decision = await policy.decide({
-    verdict: { verdict: "rejected" },
+    verdict: { verdict: "rejected", verification: { ran: true } },
   });
 
   assert.equal(decision.decision, "complete-fail");
@@ -130,7 +148,7 @@ test("ConfigBasedReviewFixPolicy.decide should allow exactly five remediate deci
   for (let index = 0; index < 6; index += 1) {
     const decision = await policy.decide({
       session,
-      verdict: { verdict: "rejected" },
+      verdict: { verdict: "rejected", verification: { ran: true } },
     });
     decisions.push(decision.decision);
     session = decision.session;

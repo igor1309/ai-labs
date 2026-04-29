@@ -468,6 +468,7 @@ test("runWorkflow should append failed completion progress event when policy com
   const events = await readEvents(result.runDirectory);
 
   assert.deepEqual(events.map(progressEventSummary).at(-1), {
+    failureReason: "review policy completed with failure",
     finalStatus: "failed",
     runId: result.runId,
     type: "completion",
@@ -493,6 +494,35 @@ test("runWorkflow should mark metadata failed when the review policy completes w
       exitCode: 1,
       hasEndTime: true,
       status: "failed",
+    },
+  );
+});
+
+test("runWorkflow should surface the policy reason on the completion event when policy completes with failure", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "complete-fail",
+      reason: "reviewer reported verification did not run",
+    }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+
+  assert.deepEqual(
+    {
+      completionEvent: events.map(progressEventSummary).at(-1),
+      failureReason: result.failureReason,
+    },
+    {
+      completionEvent: {
+        failureReason: "reviewer reported verification did not run",
+        finalStatus: "failed",
+        runId: result.runId,
+        type: "completion",
+      },
+      failureReason: "reviewer reported verification did not run",
     },
   );
 });

@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- One-strike short-circuit on reviewer environmental block: the config-based review-fix policy now returns `complete-fail` immediately whenever the reviewer reports `verification.ran !== true`, regardless of remediation budget or verdict, since obstructions like denied tool permissions do not self-resolve between cycles. Policy decisions and orchestrator failure events now carry a `reason` so the surfaced `failureReason` distinguishes reviewer-environmental failures from generic policy exhaustion.
 - Tightened reviewer task fidelity: reviewer prompt now explicitly judges whether the implementation and any tests genuinely satisfy the task as written, refusing `accepted` when verification passes against checks that do not exercise what the task asks for; added a regression test asserting the reviewer prompt receives both the task content and producer context.
 - Granted Claude Code producer permission to run regentara verification commands by adding `Bash(./scripts/run_silent.sh:*)` and `Bash(node --test regentara/tests:*)` to project-level `.claude/settings.json`, so the producer can satisfy the verification gate without per-machine local overrides.
 - Short-circuited the orchestrator on producer-self-declared verification failure: when the producer returns `verification.ran !== true`, the run finalizes as failed immediately without invoking reviewer, policy, or remediator, since the obstruction is environmental (e.g., denied tool permissions) and the loop is structurally guaranteed to fail.
