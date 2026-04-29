@@ -2,6 +2,7 @@
 
 ## 2026-04-29
 
+- Added the terminal decision artifact spec from ADR-011, defining the policy output surface, `terminal-decision.md` persistence contract, terminal references, Orchestrator boundary rules, and required tests.
 - Captured the corrected Regentara vs. `codex-review` comparison and drafted ADR-011: Regentara should preserve verifiable-task and workspace abstractions rather than borrow Plan/Code phases or branch-scoped state, while adding a policy-owned terminal decision artifact is the relevant follow-up.
 - Enforced verification contract at startup: agents.yaml resolution now refuses producer or reviewer output schemas that do not require `verification.ran`, pointing users toward `schemaRef: regentara://schemas/{producer,reviewer}-output` or an inline schema that includes the field. Prevents silent guaranteed-failure runs on stale configs that omit the verification contract the orchestrator depends on.
 - One-strike short-circuit on reviewer environmental block: the config-based review-fix policy now returns `complete-fail` immediately whenever the reviewer reports `verification.ran !== true`, regardless of remediation budget or verdict, since obstructions like denied tool permissions do not self-resolve between cycles. Policy decisions and orchestrator failure events now carry a `reason` so the surfaced `failureReason` distinguishes reviewer-environmental failures from generic policy exhaustion.
