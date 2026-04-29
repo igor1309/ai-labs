@@ -70,6 +70,24 @@ test("runWorkflow should fail before creating a run when provider execution has 
   );
 });
 
+test("runWorkflow should not fabricate a terminal artifact for startup validation failures", async () => {
+  const workspace = await makeSettingsWorkspace();
+  await writeLocalSettings(workspace, "agents.yaml", validAgentsYaml());
+  await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
+
+  const result = await runWorkflow({
+    homeDirectory: workspace.homeDirectory,
+    reviewFixPolicy: { decide: async () => ({ decision: "complete-ok" }) },
+    task: "initial task",
+    workingDirectory: workspace.workingDirectory,
+  }, {
+    commandExists: async () => true,
+    executeProviderCli: async () => ({ exitStatus: 0, semanticResult: { artifact: "" } }),
+  });
+
+  assert.equal(result.terminalArtifact, undefined);
+});
+
 test("runWorkflow should report selected agent and model settings before run creation", async () => {
   const workspace = await makeSettingsWorkspace();
   const rememberedSettings = [];

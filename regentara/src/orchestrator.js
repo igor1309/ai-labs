@@ -1,4 +1,7 @@
-import { artifactExists as artifactExistsInRun } from "./artifact-store.js";
+import {
+  artifactExists as artifactExistsInRun,
+  createAuthoredArtifact,
+} from "./artifact-store.js";
 import { failureResult, RuntimeFailure, StartupValidationFailure } from "./errors.js";
 import { validateProviderCliAvailability } from "./provider-cli-availability.js";
 import { buildAgentPrompt } from "./prompts.js";
@@ -163,6 +166,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         session: policySession,
         verdict: reviewerResult,
       });
+      validatePolicyTerminalArtifact(policyResult);
       await emitEvent({
         currentDecision: policyResult.decision,
         type: "policy-decision",
@@ -178,8 +182,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       policySession = policyResult.session;
 
       if (policyResult.decision === "complete-ok") {
+        const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
         await emitEvent({
           finalStatus: "succeeded",
+          ...terminalArtifact,
           type: "completion",
         });
         debugReporter?.report("completion", completionDebugFields("succeeded", run, runMetrics));
@@ -189,14 +195,17 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           runDirectory: run.runDirectory,
           runId: run.runId,
           status: "succeeded",
+          ...terminalArtifact,
         };
       }
 
       if (policyResult.decision === "complete-fail") {
         const failureReason = policyResult.reason ?? "review policy completed with failure";
+        const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
         await emitEvent({
           failureReason,
           finalStatus: "failed",
+          ...terminalArtifact,
           type: "completion",
         });
         debugReporter?.report("completion", {
@@ -210,6 +219,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           runDirectory: run.runDirectory,
           runId: run.runId,
           status: "failed",
+          ...terminalArtifact,
         };
       }
 
@@ -324,6 +334,36 @@ function runCostMetadata(runMetrics) {
     totalCost: formatCost(totalCostUsd),
     totalCostUsd,
   };
+}
+
+async function persistTerminalArtifact(runDirectory, policyResult) {
+  if (!policyResult.terminalArtifact) {
+    return {};
+  }
+
+  const relativePath = "terminal-decision.md";
+  await createAuthoredArtifact(runDirectory, relativePath, policyResult.terminalArtifact.content);
+
+  return {
+    terminalArtifact: relativePath,
+  };
+}
+
+function validatePolicyTerminalArtifact(policyResult) {
+  if (!policyResult.terminalArtifact) {
+    return;
+  }
+
+  if (!["complete-ok", "complete-fail"].includes(policyResult.decision)) {
+    throw new RuntimeFailure("terminalArtifact is only valid with terminal policy decisions");
+  }
+
+  if (
+    typeof policyResult.terminalArtifact.content !== "string"
+    || policyResult.terminalArtifact.content.length === 0
+  ) {
+    throw new RuntimeFailure("terminalArtifact.content must be a non-empty string");
+  }
 }
 
 function completionDebugFields(status, run, runMetrics) {

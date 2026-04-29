@@ -131,6 +131,31 @@ test("runWorkflow should append a runtime failure progress event when provider e
   ]);
 });
 
+test("runWorkflow should not fabricate a terminal artifact for provider runtime failures", async () => {
+  const workspace = await makeWorkflowWorkspace();
+  let runDirectory;
+
+  const result = await runWorkflowWithWorkspace(workspace, {
+    executeProviderCli: async () => {
+      throw new Error("provider failed");
+    },
+    onRunCreated: (run) => {
+      runDirectory = run.runDirectory;
+    },
+  });
+
+  assert.deepEqual(
+    {
+      persistedTerminalArtifact: await pathExists(join(runDirectory, "terminal-decision.md")),
+      resultArtifact: result.terminalArtifact,
+    },
+    {
+      persistedTerminalArtifact: false,
+      resultArtifact: undefined,
+    },
+  );
+});
+
 test("runWorkflow should append provider diagnostics when provider execution fails", async () => {
   const workspace = await makeWorkflowWorkspace();
   let runDirectory;
@@ -379,6 +404,19 @@ async function makeWorkflowWorkspace() {
   await writeLocalSettings(workspace, "models.yaml", validModelsYaml());
 
   return workspace;
+}
+
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
 }
 
 async function runWorkflowWithWorkspace(workspace, options = {}) {
