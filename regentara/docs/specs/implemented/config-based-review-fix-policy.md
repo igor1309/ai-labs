@@ -1,5 +1,5 @@
 ---
-date: 2026-04-28
+date: 2026-04-30
 model: gpt-5
 description: "Config-based ReviewFixPolicy contract derived from ADR-008"
 ---
@@ -51,6 +51,8 @@ decide(input: ReviewFixPolicyInput) -> ReviewFixPolicyOutput
 
 - `decision`: `complete-ok`, `complete-fail`, or `remediate`.
 - `session`: opaque policy session for the next policy decision.
+- `reason`: optional concise terminal failure reason.
+- `terminalArtifact`: optional policy-authored terminal decision artifact.
 
 The policy session is opaque to callers. Callers may pass the returned session into the next decision, but must not inspect its contents.
 
@@ -77,8 +79,9 @@ The policy session is opaque to callers. Callers may pass the returned session i
 
 ### Policy Decisions
 
-- The policy must treat reviewer output with `verdict: "accepted"` as success and return `complete-ok`.
-- The policy must treat any other non-empty string `verdict` as failure.
+- The policy must treat reviewer output with `verdict: "accepted"` and `verification.ran: true` as success and return `complete-ok`.
+- The policy must treat reviewer output with `verification.ran` not equal to `true` as terminal failure and return `complete-fail`.
+- The policy must treat any other non-empty string `verdict` as remediable failure.
 - If the verdict is failure and `remediationAttempts < maxRemediationAttempts`, the policy must return `remediate`.
 - If the verdict is failure and `remediationAttempts >= maxRemediationAttempts`, the policy must return `complete-fail`.
 - A `maxRemediationAttempts` value of `5` permits at most five `remediate` decisions and therefore at most five Remediator calls.
@@ -86,6 +89,8 @@ The policy session is opaque to callers. Callers may pass the returned session i
 - The policy must treat missing session state as zero prior remediation attempts.
 - The policy must count only prior `remediate` decisions toward the remediation budget.
 - The policy must return session state in every decision result so the next decision can enforce the budget.
+- Terminal `complete-ok` and `complete-fail` decisions must return `terminalArtifact.content` as non-empty Markdown for the Orchestrator to persist through the terminal decision artifact contract.
+- `remediate` decisions must not return a terminal artifact.
 - The policy must fail with `RuntimeFailure` when reviewer output does not contain a non-empty string `verdict`.
 
 ### Orchestrator Boundary
@@ -109,15 +114,23 @@ The policy session is opaque to callers. Callers may pass the returned session i
 10. `resolvePolicySettings` should reject negative `maxRemediationAttempts`.
 11. `resolvePolicySettings` should reject non-integer `maxRemediationAttempts`.
 12. `resolvePolicySettings` should accept `maxRemediationAttempts` equal to `0`.
-13. `ConfigBasedReviewFixPolicy.decide` should return `complete-ok` when verdict is `accepted`.
-14. `ConfigBasedReviewFixPolicy.decide` should return `remediate` on a failed verdict when remediation attempts remain.
-15. `ConfigBasedReviewFixPolicy.decide` should consume one remediation attempt only when returning `remediate`.
-16. `ConfigBasedReviewFixPolicy.decide` should return `complete-fail` on a failed verdict when remediation attempts are exhausted.
-17. `ConfigBasedReviewFixPolicy.decide` should return `complete-fail` on the first failed verdict when `maxRemediationAttempts` is `0`.
-18. `ConfigBasedReviewFixPolicy.decide` should allow exactly five `remediate` decisions when `maxRemediationAttempts` is `5`.
-19. `ConfigBasedReviewFixPolicy.decide` should fail with `RuntimeFailure` when reviewer output has no string `verdict`.
-20. `runWorkflow` should use the config-based policy as an injected `ReviewFixPolicy` without the Orchestrator reading `policy.yaml`.
-21. `runWorkflow` should forward the config-based policy session unchanged between policy calls.
+13. `ConfigBasedReviewFixPolicy.decide` should return `complete-ok` when verdict is `accepted` and verification ran.
+14. `ConfigBasedReviewFixPolicy.decide` should refuse `complete-ok` when verdict is `accepted` but verification did not run.
+15. `ConfigBasedReviewFixPolicy.decide` should refuse `complete-ok` when verdict is `accepted` but verification field is missing.
+16. `ConfigBasedReviewFixPolicy.decide` should return `complete-fail` when reviewer verification did not run.
+17. `ConfigBasedReviewFixPolicy.decide` should return `remediate` on a failed verdict when remediation attempts remain.
+18. `ConfigBasedReviewFixPolicy.decide` should consume one remediation attempt only when returning `remediate`.
+19. `ConfigBasedReviewFixPolicy.decide` should return `complete-fail` on a failed verdict when remediation attempts are exhausted.
+20. `ConfigBasedReviewFixPolicy.decide` should return `complete-fail` on the first failed verdict when `maxRemediationAttempts` is `0`.
+21. `ConfigBasedReviewFixPolicy.decide` should allow exactly five `remediate` decisions when `maxRemediationAttempts` is `5`.
+22. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when verdict is accepted and verification ran.
+23. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when reviewer verification did not run.
+24. `ConfigBasedReviewFixPolicy.decide` should not return a terminal artifact when remediation attempts remain.
+25. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when remediation attempts are exhausted.
+26. `ConfigBasedReviewFixPolicy.decide` should pluralize remediation attempts in exhausted terminal artifacts.
+27. `ConfigBasedReviewFixPolicy.decide` should fail with `RuntimeFailure` when reviewer output has no string `verdict`.
+28. `runWorkflow` should use the config-based policy as an injected `ReviewFixPolicy` without the Orchestrator reading `policy.yaml`.
+29. `runWorkflow` should forward the config-based policy session unchanged between policy calls.
 
 ## Done Criteria
 
@@ -125,6 +138,7 @@ The policy session is opaque to callers. Callers may pass the returned session i
 - First-run bootstrap writes `~/.regentara/policy.yaml.example` without overwriting existing examples and without creating active settings.
 - Policy settings validation enforces `reviewPolicy.maxRemediationAttempts` as a non-negative integer.
 - `ConfigBasedReviewFixPolicy` returns `complete-ok`, `remediate`, or `complete-fail` according to verdict and remediation budget.
+- `ConfigBasedReviewFixPolicy` returns terminal artifacts for terminal decisions through the existing terminal decision artifact contract.
 - `maxRemediationAttempts` counts only Remediator attempts, not the initial Producer/Reviewer round.
 - The Orchestrator remains isolated from policy config and budget logic.
 - Required policy settings and decision tests pass.

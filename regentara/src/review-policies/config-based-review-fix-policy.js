@@ -14,6 +14,9 @@ export function createConfigBasedReviewFixPolicy(settings) {
           decision: "complete-ok",
           maxRemediationAttempts,
           session,
+          terminalArtifact: {
+            content: "# Terminal Decision\n\nThe reviewer accepted the result after verification ran.\n",
+          },
         };
       }
 
@@ -23,6 +26,9 @@ export function createConfigBasedReviewFixPolicy(settings) {
           maxRemediationAttempts,
           reason: "reviewer reported verification did not run",
           session,
+          terminalArtifact: {
+            content: "# Terminal Decision\n\nThe run failed because the reviewer reported that verification did not run.\n",
+          },
         };
       }
 
@@ -32,6 +38,9 @@ export function createConfigBasedReviewFixPolicy(settings) {
           decision: "complete-fail",
           maxRemediationAttempts,
           session,
+          terminalArtifact: {
+            content: `# Terminal Decision\n\nThe run failed because the remediation budget was exhausted after ${formatRemediationAttempts(maxRemediationAttempts)}.\n`,
+          },
         };
       }
 
@@ -44,4 +53,8 @@ export function createConfigBasedReviewFixPolicy(settings) {
       };
     },
   };
+}
+
+function formatRemediationAttempts(count) {
+  return `${count} remediation ${count === 1 ? "attempt" : "attempts"}`;
 }
