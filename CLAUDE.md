@@ -115,6 +115,18 @@ When adding a new project with its own dependencies, create a dedicated `<projec
 
 Each project must have its own Nomos project and API key. Do not reuse Nomos keys across projects.
 
+## Linear
+
+This repo is linked to a Linear project. Agents should use this metadata directly instead of looking it up.
+
+- Workspace: `igor1309`
+- Team: `Igor1309` (key `IG`)
+- Project name: `ai-labs`
+- Project ID: `e94949cf-0479-4539-bced-7a737e5d874b`
+- Project URL: https://linear.app/igor1309/project/ai-labs-660d3af91f3e
+
+Linear access is via the `linear` MCP server (user scope). Tools appear as `mcp__linear__*` deferred tools and must be loaded through ToolSearch before use.
+
 ## Context-Efficient Commands
 
 Use `scripts/run_silent.sh` for Node/TypeScript tests and builds covered by the root suite. It suppresses output on success (one-line summary) and only dumps full output on failure. This keeps the context window clean.

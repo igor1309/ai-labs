@@ -2,6 +2,7 @@
 
 ## 2026-04-30
 
+- Linear: linked the repo to Linear project `ai-labs` (workspace `igor1309`, team `IG`, id `e94949cf-0479-4539-bced-7a737e5d874b`) by recording the metadata in `CLAUDE.md` so agents skip the lookup. Considered also adding a `.linear.toml` at the repo root for `schpet/linear-cli` compatibility — deferred until that CLI is actually adopted.
 - Research: added a structured extraction, derived curriculum, and selling-points brief for Timur Khakhalev's AI Coding course landing page under `research/courses/khakhalev/`.
 
 ## 2026-04-29
