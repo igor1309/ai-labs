@@ -110,11 +110,11 @@ Run: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
 Expected: both PASS.
 
-- [ ] **Step 8: Commit implementation**
+- [x] **Step 8: Commit implementation**
 
 Commit: `git commit -m "show evidence references in debug output"`
 
-- [ ] **Step 9: Mark implemented and archive plan**
+- [x] **Step 9: Mark implemented and archive plan**
 
 Move this plan to `regentara/docs/plans/implemented/evidence-references-debug-output.md` after implementation and review pass.
 
