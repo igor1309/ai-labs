@@ -12,51 +12,9 @@ First-draft inventory of the **angles** along which a course concept needs to be
 
 No commitments. Each angle lists candidate answers/options to evaluate, not a chosen direction.
 
-JTBD has been applied as a **lens**, not a process: a `Candidate jobs` axis has been added below alongside the original angles, and JTBD-discipline notes have been sprinkled onto the existing sections. The matrix is **not** narrowed to one job; multiple candidate jobs are listed in parallel.
-
-## Candidate jobs (JTBD lens)
-
-Multiple parallel job hypotheses a learner might hire a course like this to do. Each one is a `verb + object + context` in customer language, brand-free. They are **parallel and unranked** — listing them is the navigation move, not picking one.
-
-Different jobs imply genuinely different products. The "likely constrains" notes show the fanout — they are not commitments.
-
-### CJ1 — Stop producing AI-assisted codebases I can no longer maintain or defend
-- Hypothesized push: messy AI-generated output, accumulating debt, peer/review embarrassment.
-- Likely constrains: audience leans working-developer; level intermediate; format project-based with code review; differentiator framed as engineering discipline, not tooling tricks.
-
-### CJ2 — Move from using AI tools occasionally to shipping with them as the default working medium
-- Hypothesized push: adoption stuck at "I dabble"; cannot recall a project actually shipped with AI as the spine.
-- Likely constrains: audience broad (anyone past the trial phase); level beginner-to-intermediate; format hybrid (structure + practice).
-
-### CJ3 — Convert AI-coding fluency into a portfolio piece I can show employers or clients
-- Hypothesized push: skill exists but no shippable evidence; need career signal, not more knowledge.
-- Likely constrains: audience leans career-switchers and freelancers; outcome is a deliverable; pricing tolerates higher tier for visible artifact; certification or strong project framing matters.
-
-### CJ4 — Lead my team's adoption of AI coding without bluffing
-- Hypothesized push: managers/tech leads asked to evaluate or roll out AI tooling without ground truth.
-- Likely constrains: audience managers/TLs (B2B-leaning); format includes evaluation frameworks and team rollout patterns, not just hands-on; pricing supports B2B; channel includes corporate.
-
-### CJ5 — Close the velocity gap with peers who use AI tooling effectively
-- Hypothesized push: social/competitive; visible peer velocity I cannot match.
-- Likely constrains: audience working developers; marketing leans on social proof and visible velocity; format short and momentum-creating.
-
-### CJ6 — Build something end-to-end that I would not have been able to build alone
-- Hypothesized push: ambition gated by capability gap; founders, indie hackers.
-- Likely constrains: audience solo founders / indie hackers; outcome a deployed product; language may lean EN; format project-based with end-to-end shipping.
-
-### CJ7 — Replace my fragmented self-study (videos, threads, docs) with a structured path that compounds
-- Hypothesized push: cognitive overhead of curating one's own learning; loss of momentum.
-- Likely constrains: audience self-directed learners across roles; differentiator is curation and sequencing, not raw content; format structured with clear progression.
-
-### CJ8 — Develop the engineering judgment to evaluate AI-generated code reliably
-- Hypothesized push: over-trust or under-trust failure modes; senior devs frustrated with both extremes.
-- Likely constrains: audience senior developers; level advanced; format case studies / code review / failure post-mortems; pricing higher; channel community-driven.
-
-(More candidates likely exist — these are seeds, not exhaustive.)
+JTBD has been applied as a **lens** on this matrix; see the dedicated `JTBD lens` section after the matrix. The lens does not narrow the matrix or pick a job — it adds a candidate-jobs axis and discipline filters as a separate layer.
 
 ## Who
-
-> JTBD note: audiences are *downstream* of jobs, not the primitive. The same person can hold different jobs at different moments; an audience that fits one candidate job may be wrong for another.
 
 ### Audience segments
 Who could plausibly want this? Who would I want to teach?
@@ -100,9 +58,6 @@ What is the course actually about?
 - Specific stack familiarity
 
 ### Promised outcome
-
-> JTBD note: the promised outcome should match the *progress* the candidate job describes — a state the customer can recognize, not a feature list.
-
 What does the student walk out with?
 - A skill (can do X reliably after the course)
 - A working portfolio project shipped during the course
@@ -142,8 +97,6 @@ What does the student walk out with?
 - Capstone project
 
 ## Differentiation
-
-> JTBD note: the differentiator should be anchored in the chosen candidate job's situational push, dominant anxiety, or fired alternative — not in feature one-upmanship against other courses.
 
 ### Positioning vs surveyed competitors
 What is the angle relative to what already exists (e.g., Khakhalev, others)?
@@ -200,7 +153,53 @@ The one sentence that explains why this course and not another.
 - Bandwidth (other commitments)
 - Budget (production, marketing)
 
-## JTBD discipline filters
+## JTBD lens
+
+JTBD is applied as a **lens** on the matrix above, not as a process. The matrix carries the marks (axes and options); the lens shapes how each axis is read and adds candidate jobs as a parallel dimension. No commitment, no narrowing.
+
+### Candidate jobs (parallel, unranked)
+
+Multiple parallel job hypotheses a learner might hire a course like this to do. Each one is a `verb + object + context` in customer language, brand-free. **Parallel and unranked** — listing them is the navigation move, not picking one. Different jobs imply genuinely different products; the "likely constrains" notes show the fanout, not commitments.
+
+- **CJ1 — Stop producing AI-assisted codebases I can no longer maintain or defend**
+  - Hypothesized push: messy AI-generated output, accumulating debt, peer/review embarrassment.
+  - Likely constrains: audience leans working-developer; level intermediate; format project-based with code review; differentiator framed as engineering discipline, not tooling tricks.
+- **CJ2 — Move from using AI tools occasionally to shipping with them as the default working medium**
+  - Hypothesized push: adoption stuck at "I dabble"; cannot recall a project actually shipped with AI as the spine.
+  - Likely constrains: audience broad (anyone past the trial phase); level beginner-to-intermediate; format hybrid (structure + practice).
+- **CJ3 — Convert AI-coding fluency into a portfolio piece I can show employers or clients**
+  - Hypothesized push: skill exists but no shippable evidence; need career signal, not more knowledge.
+  - Likely constrains: audience leans career-switchers and freelancers; outcome is a deliverable; pricing tolerates higher tier for visible artifact; certification or strong project framing matters.
+- **CJ4 — Lead my team's adoption of AI coding without bluffing**
+  - Hypothesized push: managers/tech leads asked to evaluate or roll out AI tooling without ground truth.
+  - Likely constrains: audience managers/TLs (B2B-leaning); format includes evaluation frameworks and team rollout patterns, not just hands-on; pricing supports B2B; channel includes corporate.
+- **CJ5 — Close the velocity gap with peers who use AI tooling effectively**
+  - Hypothesized push: social/competitive; visible peer velocity I cannot match.
+  - Likely constrains: audience working developers; marketing leans on social proof and visible velocity; format short and momentum-creating.
+- **CJ6 — Build something end-to-end that I would not have been able to build alone**
+  - Hypothesized push: ambition gated by capability gap; founders, indie hackers.
+  - Likely constrains: audience solo founders / indie hackers; outcome a deployed product; language may lean EN; format project-based with end-to-end shipping.
+- **CJ7 — Replace my fragmented self-study (videos, threads, docs) with a structured path that compounds**
+  - Hypothesized push: cognitive overhead of curating one's own learning; loss of momentum.
+  - Likely constrains: audience self-directed learners across roles; differentiator is curation and sequencing, not raw content; format structured with clear progression.
+- **CJ8 — Develop the engineering judgment to evaluate AI-generated code reliably**
+  - Hypothesized push: over-trust or under-trust failure modes; senior devs frustrated with both extremes.
+  - Likely constrains: audience senior developers; level advanced; format case studies / code review / failure post-mortems; pricing higher; channel community-driven.
+
+(More candidates likely exist — these are seeds, not exhaustive.)
+
+### How the lens reads each matrix axis
+
+One reminder per top-level matrix section, applied consistently:
+
+- **Who** — audiences are *downstream* of jobs, not the primitive. The same person can hold different jobs at different moments; an audience that fits one candidate job may be wrong for another.
+- **What** — topic and depth are constrained by the chosen candidate job; the promised outcome must match the *progress* that job describes — a state the customer can recognize, not a feature list.
+- **How** — format / duration / production / assessment should fit the hire moment and the likely habit-of-the-week, not a generic pedagogical preference.
+- **Differentiation** — the differentiator is anchored in the chosen candidate job's situational push, dominant anxiety, or fired alternative — not in feature one-upmanship against other courses.
+- **Business** — pricing tolerance, channel fit, brand framing, and success metrics all derive from the chosen job and the audience it implies.
+- **Constraints / me** — production cost and maintenance cadence flow from the chosen job; a job tied to volatile tooling demands more upkeep than one tied to durable principles.
+
+### Discipline filters
 
 Quality checks to run on any future drafts (audience copy, course pages, positioning, etc.):
 
