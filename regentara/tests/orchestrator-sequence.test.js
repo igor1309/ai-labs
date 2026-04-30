@@ -343,6 +343,84 @@ test("runWorkflow should persist terminal artifact references on complete-ok", a
   );
 });
 
+test("runWorkflow should persist a one-round evidence index on complete-ok", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      {
+        decision: "complete-ok",
+        terminalArtifact: { content: "# Terminal Decision\n" },
+      },
+    ],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const content = await readFileIfExists(join(result.runDirectory, "evidence-index.json"));
+  const evidenceIndex = content ? JSON.parse(content) : undefined;
+
+  assert.deepEqual(evidenceIndex, {
+    rounds: [
+      {
+        policyDecision: "complete-ok",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-01.md",
+        reviewRoundIndex: 1,
+      },
+    ],
+    runId: result.runId,
+    taskFile: "tasks/initial.md",
+    terminal: {
+      status: "succeeded",
+      terminalArtifact: "terminal-decision.md",
+    },
+  });
+});
+
+test("runWorkflow should persist a multi-round evidence index on remediated complete-ok", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      {
+        decision: "complete-ok",
+        terminalArtifact: { content: "# Terminal Decision\n" },
+      },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const content = await readFile(join(result.runDirectory, "evidence-index.json"), "utf8");
+  const evidenceIndex = JSON.parse(content);
+
+  assert.deepEqual(evidenceIndex, {
+    rounds: [
+      {
+        policyDecision: "remediate",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-01.md",
+        reviewRoundIndex: 1,
+      },
+      {
+        policyDecision: "complete-ok",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-02.md",
+        reviewRoundIndex: 2,
+      },
+    ],
+    runId: result.runId,
+    taskFile: "tasks/initial.md",
+    terminal: {
+      status: "succeeded",
+      terminalArtifact: "terminal-decision.md",
+    },
+  });
+});
+
 test("runWorkflow should not persist terminal artifact when policy omits it", async () => {
   const calls = [];
 

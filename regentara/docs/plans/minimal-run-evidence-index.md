@@ -54,7 +54,7 @@ description: "Implementation plan for a minimal Regentara run evidence index."
 - Modify: `regentara/src/orchestrator.js`
 - Modify: `regentara/docs/log.md`
 
-- [ ] **Step 1: Run implementation preflight**
+- [x] **Step 1: Run implementation preflight**
 
 Run: `git worktree list --porcelain`
 
@@ -62,7 +62,7 @@ Run: `git branch --show-current`
 
 Expected: current path is the dedicated worktree and branch is `codex/regentara-evidence-options`.
 
-- [ ] **Step 2: Write failing one-round index test**
+- [x] **Step 2: Write failing one-round index test**
 
 Add a test that runs one successful review and asserts `evidence-index.json` exists with:
 
@@ -87,39 +87,39 @@ Add a test that runs one successful review and asserts `evidence-index.json` exi
 
 Use the actual fake-driven test helpers and assert only stable fields.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `./scripts/run_silent.sh "evidence-index-red" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: FAIL because `evidence-index.json` is missing. Compilation errors are not RED.
 
-- [ ] **Step 4: Implement minimal one-round index**
+- [x] **Step 4: Implement minimal one-round index**
 
 Accumulate the producer artifact, reviewer note reference, policy decision, terminal status, and terminal artifact reference in local Orchestrator state.
 
 Persist `evidence-index.json` with `createAuthoredArtifact` before emitting terminal completion or immediately adjacent to terminal artifact persistence.
 
-- [ ] **Step 5: Run targeted GREEN**
+- [x] **Step 5: Run targeted GREEN**
 
 Run: `./scripts/run_silent.sh "evidence-index-green" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 6: Add remediated-run test**
+- [x] **Step 6: Add remediated-run test**
 
 Add a second test for two rounds. Assert that `rounds.map((round) => round.reviewRoundIndex)` is `[1, 2]`, the first round has `policyDecision: "remediate"`, and the terminal object reflects the final decision.
 
-- [ ] **Step 7: Run targeted GREEN**
+- [x] **Step 7: Run targeted GREEN**
 
 Run: `./scripts/run_silent.sh "evidence-index-remediated-green" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 8: Update log**
+- [x] **Step 8: Update log**
 
 Add a 2026-04-30 entry to `regentara/docs/log.md` describing the new minimal evidence index.
 
-- [ ] **Step 9: Run full gates**
+- [x] **Step 9: Run full gates**
 
 Run: `./scripts/run_silent.sh "tests" npm test`
 

@@ -108,6 +108,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
 
     let currentTask = input.task;
     let policySession;
+    const evidenceRounds = [];
     const reviewHistory = [];
 
     while (true) {
@@ -170,6 +171,12 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         verdict: reviewerResult,
       });
       validatePolicyTerminalArtifact(policyResult);
+      evidenceRounds.push(definedObject({
+        policyDecision: policyResult.decision,
+        producerArtifact: producerResult.artifact,
+        reviewNoteReference: reviewNoteRelativePath(reviewRoundIndex),
+        reviewRoundIndex,
+      }));
       await emitEvent({
         currentDecision: policyResult.decision,
         reviewRoundIndex,
@@ -187,6 +194,13 @@ export async function runWorkflow(input = {}, dependencies = {}) {
 
       if (policyResult.decision === "complete-ok") {
         const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
+        await persistEvidenceIndex(run.runDirectory, {
+          rounds: evidenceRounds,
+          runId: run.runId,
+          status: "succeeded",
+          taskFile: input.taskFile,
+          ...terminalArtifact,
+        });
         await emitEvent({
           finalStatus: "succeeded",
           reviewRoundIndex,
@@ -210,6 +224,13 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       if (policyResult.decision === "complete-fail") {
         const failureReason = policyResult.reason ?? "review policy completed with failure";
         const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
+        await persistEvidenceIndex(run.runDirectory, {
+          rounds: evidenceRounds,
+          runId: run.runId,
+          status: "failed",
+          taskFile: input.taskFile,
+          ...terminalArtifact,
+        });
         await emitEvent({
           failureReason,
           finalStatus: "failed",
@@ -359,6 +380,18 @@ async function persistTerminalArtifact(runDirectory, policyResult) {
   };
 }
 
+async function persistEvidenceIndex(runDirectory, index) {
+  await createAuthoredArtifact(runDirectory, "evidence-index.json", `${JSON.stringify({
+    rounds: index.rounds,
+    runId: index.runId,
+    ...definedObject({ taskFile: index.taskFile }),
+    terminal: {
+      status: index.status,
+      ...definedObject({ terminalArtifact: index.terminalArtifact }),
+    },
+  }, null, 2)}\n`);
+}
+
 function validatePolicyTerminalArtifact(policyResult) {
   if (!policyResult.terminalArtifact) {
     return;
@@ -381,9 +414,13 @@ async function persistReviewNote({ agentId, output, reviewRoundIndex, runDirecto
     return undefined;
   }
 
-  const relativePath = `review-${String(reviewRoundIndex).padStart(2, "0")}.md`;
+  const relativePath = reviewNoteRelativePath(reviewRoundIndex);
   await createAuthoredArtifact(runDirectory, relativePath, output.summary);
   return relativePath;
+}
+
+function reviewNoteRelativePath(reviewRoundIndex) {
+  return `review-${String(reviewRoundIndex).padStart(2, "0")}.md`;
 }
 
 function stripReviewNoteContent(agentId, output) {
