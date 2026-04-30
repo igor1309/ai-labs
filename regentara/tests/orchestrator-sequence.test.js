@@ -778,6 +778,40 @@ test("runWorkflow should persist terminal artifact references on complete-fail",
   );
 });
 
+test("runWorkflow should persist a failed evidence index with terminal policy decision reference", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "complete-fail",
+      reason: "remediation budget exhausted",
+      terminalArtifact: { content: "# Terminal Decision\n\nBudget exhausted.\n" },
+    }],
+  });
+
+  const content = await readFile(join(result.runDirectory, "evidence-index.json"), "utf8");
+  const evidenceIndex = JSON.parse(content);
+
+  assert.deepEqual(evidenceIndex, {
+    rounds: [
+      {
+        policyDecision: "complete-fail",
+        policyDecisionReference: "policy-decision-01",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-01.md",
+        reviewRoundIndex: 1,
+      },
+    ],
+    runId: result.runId,
+    taskFile: "tasks/initial.md",
+    terminal: {
+      policyDecisionReference: "policy-decision-01",
+      status: "failed",
+      terminalArtifact: "terminal-decision.md",
+    },
+  });
+});
+
 test("runWorkflow should fail without calling reviewer when producer reports verification did not run", async () => {
   const calls = [];
   const policyDecisions = [];
