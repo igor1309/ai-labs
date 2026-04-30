@@ -108,6 +108,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
 
     let currentTask = input.task;
     let policySession;
+    const evidenceRounds = [];
     const reviewHistory = [];
 
     while (true) {
@@ -147,6 +148,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         };
       }
 
+      const reviewRoundIndex = reviewHistory.length + 1;
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
         agentSettings,
@@ -161,7 +163,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         },
         modelRouting,
         runDirectory: run.runDirectory,
-        reviewRoundIndex: reviewHistory.length + 1,
+        reviewRoundIndex,
       });
       reviewHistory.push(reviewerResult);
       const policyResult = await reviewFixPolicy.decide({
@@ -169,8 +171,18 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         verdict: reviewerResult,
       });
       validatePolicyTerminalArtifact(policyResult);
+      const policyDecisionReference = policyDecisionRelativeReference(reviewRoundIndex);
+      evidenceRounds.push(definedObject({
+        policyDecision: policyResult.decision,
+        policyDecisionReference,
+        producerArtifact: producerResult.artifact,
+        reviewNoteReference: reviewNoteRelativePath(reviewRoundIndex),
+        reviewRoundIndex,
+      }));
       await emitEvent({
         currentDecision: policyResult.decision,
+        policyDecisionReference,
+        reviewRoundIndex,
         type: "policy-decision",
       });
       debugReporter?.report("policy-decision", definedObject({
@@ -185,12 +197,24 @@ export async function runWorkflow(input = {}, dependencies = {}) {
 
       if (policyResult.decision === "complete-ok") {
         const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
+        await persistEvidenceIndex(run.runDirectory, {
+          rounds: evidenceRounds,
+          runId: run.runId,
+          policyDecisionReference,
+          status: "succeeded",
+          taskFile: input.taskFile,
+          ...terminalArtifact,
+        });
         await emitEvent({
           finalStatus: "succeeded",
+          reviewRoundIndex,
           ...terminalArtifact,
           type: "completion",
         });
-        debugReporter?.report("completion", completionDebugFields("succeeded", run, runMetrics));
+        debugReporter?.report("completion", {
+          ...completionDebugFields("succeeded", run, runMetrics),
+          ...terminalArtifact,
+        });
         await finalizeRun(updateRunMetadata, run, "succeeded", 0, runMetrics);
         return {
           exitCode: 0,
@@ -204,15 +228,25 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       if (policyResult.decision === "complete-fail") {
         const failureReason = policyResult.reason ?? "review policy completed with failure";
         const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
+        await persistEvidenceIndex(run.runDirectory, {
+          rounds: evidenceRounds,
+          runId: run.runId,
+          policyDecisionReference,
+          status: "failed",
+          taskFile: input.taskFile,
+          ...terminalArtifact,
+        });
         await emitEvent({
           failureReason,
           finalStatus: "failed",
+          reviewRoundIndex,
           ...terminalArtifact,
           type: "completion",
         });
         debugReporter?.report("completion", {
           ...completionDebugFields("failed", run, runMetrics),
           reason: failureReason,
+          ...terminalArtifact,
         });
         await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
         return {
@@ -351,6 +385,19 @@ async function persistTerminalArtifact(runDirectory, policyResult) {
   };
 }
 
+async function persistEvidenceIndex(runDirectory, index) {
+  await createAuthoredArtifact(runDirectory, "evidence-index.json", `${JSON.stringify({
+    rounds: index.rounds,
+    runId: index.runId,
+    ...definedObject({ taskFile: index.taskFile }),
+    terminal: {
+      policyDecisionReference: index.policyDecisionReference,
+      status: index.status,
+      ...definedObject({ terminalArtifact: index.terminalArtifact }),
+    },
+  }, null, 2)}\n`);
+}
+
 function validatePolicyTerminalArtifact(policyResult) {
   if (!policyResult.terminalArtifact) {
     return;
@@ -373,9 +420,17 @@ async function persistReviewNote({ agentId, output, reviewRoundIndex, runDirecto
     return undefined;
   }
 
-  const relativePath = `review-${String(reviewRoundIndex).padStart(2, "0")}.md`;
+  const relativePath = reviewNoteRelativePath(reviewRoundIndex);
   await createAuthoredArtifact(runDirectory, relativePath, output.summary);
   return relativePath;
+}
+
+function reviewNoteRelativePath(reviewRoundIndex) {
+  return `review-${String(reviewRoundIndex).padStart(2, "0")}.md`;
+}
+
+function policyDecisionRelativeReference(reviewRoundIndex) {
+  return `policy-decision-${String(reviewRoundIndex).padStart(2, "0")}`;
 }
 
 function stripReviewNoteContent(agentId, output) {
@@ -489,6 +544,7 @@ async function executeAgent({
     provider: route.provider,
     runner: route.runner,
     ...(agentId === "producer" ? { taskFile } : {}),
+    ...definedObject({ reviewRoundIndex }),
     type: "agent-start",
   });
   try {
@@ -535,6 +591,7 @@ async function executeAgent({
         durationMs: providerResult.durationMs,
         providerError: providerResult.providerError,
         providerStatus: providerResult.providerStatus,
+        reviewRoundIndex,
         reviewNoteReference,
       }),
       type: "agent-end",
@@ -546,6 +603,7 @@ async function executeAgent({
       duration: formatDurationMs(providerResult.durationMs),
       providerError: providerResult.providerError,
       providerStatus: providerResult.providerStatus,
+      reviewNoteReference,
       route: routeLabel,
       runnerReference: providerResult.runnerReference,
       sessionReference: providerResult.sessionReference,

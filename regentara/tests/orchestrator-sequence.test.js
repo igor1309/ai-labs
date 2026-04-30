@@ -343,6 +343,89 @@ test("runWorkflow should persist terminal artifact references on complete-ok", a
   );
 });
 
+test("runWorkflow should persist a one-round evidence index on complete-ok", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      {
+        decision: "complete-ok",
+        terminalArtifact: { content: "# Terminal Decision\n" },
+      },
+    ],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const content = await readFileIfExists(join(result.runDirectory, "evidence-index.json"));
+  const evidenceIndex = content ? JSON.parse(content) : undefined;
+
+  assert.deepEqual(evidenceIndex, {
+    rounds: [
+      {
+        policyDecision: "complete-ok",
+        policyDecisionReference: "policy-decision-01",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-01.md",
+        reviewRoundIndex: 1,
+      },
+    ],
+    runId: result.runId,
+    taskFile: "tasks/initial.md",
+    terminal: {
+      policyDecisionReference: "policy-decision-01",
+      status: "succeeded",
+      terminalArtifact: "terminal-decision.md",
+    },
+  });
+});
+
+test("runWorkflow should persist a multi-round evidence index on remediated complete-ok", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      {
+        decision: "complete-ok",
+        terminalArtifact: { content: "# Terminal Decision\n" },
+      },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const content = await readFile(join(result.runDirectory, "evidence-index.json"), "utf8");
+  const evidenceIndex = JSON.parse(content);
+
+  assert.deepEqual(evidenceIndex, {
+    rounds: [
+      {
+        policyDecision: "remediate",
+        policyDecisionReference: "policy-decision-01",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-01.md",
+        reviewRoundIndex: 1,
+      },
+      {
+        policyDecision: "complete-ok",
+        policyDecisionReference: "policy-decision-02",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-02.md",
+        reviewRoundIndex: 2,
+      },
+    ],
+    runId: result.runId,
+    taskFile: "tasks/initial.md",
+    terminal: {
+      policyDecisionReference: "policy-decision-02",
+      status: "succeeded",
+      terminalArtifact: "terminal-decision.md",
+    },
+  });
+});
+
 test("runWorkflow should not persist terminal artifact when policy omits it", async () => {
   const calls = [];
 
@@ -468,6 +551,7 @@ test("runWorkflow should report successful run lifecycle debug events", async ()
       event: "agent-end",
       fields: {
         agent: "reviewer",
+        reviewNoteReference: "review-01.md",
         route: "codex/openai/gpt-5.5/high",
         runnerReference: "pid:123",
         sessionReference: "claude-session-123",
@@ -482,6 +566,38 @@ test("runWorkflow should report successful run lifecycle debug events", async ()
       fields: { duration: "00:00", status: "succeeded" },
     },
   ]);
+});
+
+test("runWorkflow should report evidence artifact references in debug events", async () => {
+  const calls = [];
+  const debugEvents = [];
+
+  await runWorkflowWithCalls(calls, {
+    debugEvents,
+    policyDecisions: [
+      {
+        decision: "complete-ok",
+        terminalArtifact: { content: "# Terminal Decision\n" },
+      },
+    ],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const reviewerEnd = debugEvents.find((event) =>
+    event.event === "agent-end" && event.fields.agent === "reviewer",
+  );
+  const completion = debugEvents.find((event) => event.event === "completion");
+
+  assert.deepEqual(
+    {
+      reviewNoteReference: reviewerEnd.fields.reviewNoteReference,
+      terminalArtifact: completion.fields.terminalArtifact,
+    },
+    {
+      reviewNoteReference: "review-01.md",
+      terminalArtifact: "terminal-decision.md",
+    },
+  );
 });
 
 test("runWorkflow should accumulate provider cost in debug output and final metadata", async () => {
@@ -662,6 +778,40 @@ test("runWorkflow should persist terminal artifact references on complete-fail",
   );
 });
 
+test("runWorkflow should persist a failed evidence index with terminal policy decision reference", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{
+      decision: "complete-fail",
+      reason: "remediation budget exhausted",
+      terminalArtifact: { content: "# Terminal Decision\n\nBudget exhausted.\n" },
+    }],
+  });
+
+  const content = await readFile(join(result.runDirectory, "evidence-index.json"), "utf8");
+  const evidenceIndex = JSON.parse(content);
+
+  assert.deepEqual(evidenceIndex, {
+    rounds: [
+      {
+        policyDecision: "complete-fail",
+        policyDecisionReference: "policy-decision-01",
+        producerArtifact: "producer/result.json",
+        reviewNoteReference: "review-01.md",
+        reviewRoundIndex: 1,
+      },
+    ],
+    runId: result.runId,
+    taskFile: "tasks/initial.md",
+    terminal: {
+      policyDecisionReference: "policy-decision-01",
+      status: "failed",
+      terminalArtifact: "terminal-decision.md",
+    },
+  });
+});
+
 test("runWorkflow should fail without calling reviewer when producer reports verification did not run", async () => {
   const calls = [];
   const policyDecisions = [];
@@ -743,6 +893,35 @@ test("runWorkflow should include reviewNoteReference on the first reviewer agent
   assert.equal(reviewerEnd.reviewNoteReference, "review-01.md");
 });
 
+test("runWorkflow should include reviewRoundIndex on first-round reviewer and policy events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const relevantEvents = events
+    .filter((event) =>
+      (event.type === "agent-start" && event.agentId === "reviewer")
+      || (event.type === "agent-end" && event.agentId === "reviewer")
+      || event.type === "policy-decision"
+      || event.type === "completion",
+    )
+    .map((event) => ({
+      reviewRoundIndex: event.reviewRoundIndex,
+      type: event.type,
+    }));
+
+  assert.deepEqual(relevantEvents, [
+    { reviewRoundIndex: 1, type: "agent-start" },
+    { reviewRoundIndex: 1, type: "agent-end" },
+    { reviewRoundIndex: 1, type: "policy-decision" },
+    { reviewRoundIndex: 1, type: "completion" },
+  ]);
+});
+
 test("runWorkflow should persist review-01.md and review-02.md across two reviewer rounds", async () => {
   const calls = [];
 
@@ -783,6 +962,41 @@ test("runWorkflow should reference review-NN.md on each reviewer agent-end event
     reviewerEnds.map((event) => event.reviewNoteReference),
     ["review-01.md", "review-02.md"],
   );
+});
+
+test("runWorkflow should include reviewRoundIndex across remediated reviewer and policy events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      { decision: "complete-ok" },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const relevantEvents = events
+    .filter((event) =>
+      (event.type === "agent-end" && event.agentId === "reviewer")
+      || event.type === "policy-decision"
+      || event.type === "completion",
+    )
+    .map((event) => ({
+      reviewRoundIndex: event.reviewRoundIndex,
+      type: event.type,
+    }));
+
+  assert.deepEqual(relevantEvents, [
+    { reviewRoundIndex: 1, type: "agent-end" },
+    { reviewRoundIndex: 1, type: "policy-decision" },
+    { reviewRoundIndex: 2, type: "agent-end" },
+    { reviewRoundIndex: 2, type: "policy-decision" },
+    { reviewRoundIndex: 2, type: "completion" },
+  ]);
 });
 
 test("runWorkflow should not include reviewNoteReference on producer or remediator agent-end events", async () => {
