@@ -16,6 +16,21 @@ test("ConfigBasedReviewFixPolicy.decide should return complete-ok when verdict i
   assert.equal(decision.decision, "complete-ok");
 });
 
+test("ConfigBasedReviewFixPolicy.decide should return terminal artifact when verdict is accepted and verification ran", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 1 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "accepted", verification: { ran: true } },
+  });
+
+  assert.equal(
+    decision.terminalArtifact?.content,
+    "# Terminal Decision\n\nThe reviewer accepted the result after verification ran.\n",
+  );
+});
+
 test("ConfigBasedReviewFixPolicy.decide should refuse complete-ok when verdict is accepted but verification did not run", async () => {
   const policy = createConfigBasedReviewFixPolicy({
     reviewPolicy: { maxRemediationAttempts: 1 },
@@ -52,6 +67,21 @@ test("ConfigBasedReviewFixPolicy.decide should complete-fail an unverified accep
   assert.deepEqual(
     { decision: decision.decision, reason: decision.reason },
     { decision: "complete-fail", reason: "reviewer reported verification did not run" },
+  );
+});
+
+test("ConfigBasedReviewFixPolicy.decide should return terminal artifact when reviewer verification did not run", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 5 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "rejected", verification: { ran: false } },
+  });
+
+  assert.equal(
+    decision.terminalArtifact?.content,
+    "# Terminal Decision\n\nThe run failed because the reviewer reported that verification did not run.\n",
   );
 });
 
@@ -124,6 +154,40 @@ test("ConfigBasedReviewFixPolicy.decide should return complete-fail on a failed 
   });
 
   assert.equal(secondDecision.decision, "complete-fail");
+});
+
+test("ConfigBasedReviewFixPolicy.decide should return terminal artifact when remediation attempts are exhausted", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 1 },
+  });
+  const firstDecision = await policy.decide({
+    verdict: { verdict: "rejected", verification: { ran: true } },
+  });
+
+  const secondDecision = await policy.decide({
+    session: firstDecision.session,
+    verdict: { verdict: "rejected", verification: { ran: true } },
+  });
+
+  assert.equal(
+    secondDecision.terminalArtifact?.content,
+    "# Terminal Decision\n\nThe run failed because the remediation budget was exhausted after 1 remediation attempt.\n",
+  );
+});
+
+test("ConfigBasedReviewFixPolicy.decide should pluralize remediation attempts in exhausted terminal artifact", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 0 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "rejected", verification: { ran: true } },
+  });
+
+  assert.equal(
+    decision.terminalArtifact?.content,
+    "# Terminal Decision\n\nThe run failed because the remediation budget was exhausted after 0 remediation attempts.\n",
+  );
 });
 
 test("ConfigBasedReviewFixPolicy.decide should return complete-fail on the first failed verdict when maxRemediationAttempts is 0", async () => {

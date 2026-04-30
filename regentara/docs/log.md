@@ -1,5 +1,9 @@
 # Regentara Log
 
+## 2026-04-30
+
+- Made the built-in config-based review policy use the existing terminal decision artifact contract, so accepted reviews, reviewer verification failures, and exhausted remediation budgets now return policy-authored Markdown for the Orchestrator to persist as `terminal-decision.md`.
+
 ## 2026-04-29
 
 - Implemented ADR-012 reviewer-authored review notes: built-in reviewer schema now requires a non-empty string `summary`; the orchestrator persists each round's summary to `review-NN.md` (two-digit zero-padded) and references it from the reviewer `agent-end` event as `reviewNoteReference`; the orchestrator strips `summary` before passing the verdict to `ReviewFixPolicy.decide` or remediator input. Inline reviewer schemas missing `summary` fail startup. Reviewer prompt now directs the reviewer to author the narrative; local-demo fake reviewer output and run-demo example updated to satisfy the new contract (and the existing verification contract the demo had silently been violating).
