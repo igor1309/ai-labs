@@ -1,5 +1,9 @@
 # Log
 
+## 2026-04-30
+
+- Research: added a structured extraction, derived curriculum, and selling-points brief for Timur Khakhalev's AI Coding course landing page under `research/courses/khakhalev/`.
+
 ## 2026-04-29
 
 - dragoman: renamed the docs-only top-level project directory from `the-dragoman/` to `dragoman/` so the project slug is distinct from the "The Dragoman" Telegram channel name.
