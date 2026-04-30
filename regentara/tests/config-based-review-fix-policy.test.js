@@ -124,6 +124,21 @@ test("ConfigBasedReviewFixPolicy.decide should return remediate on a failed verd
   assert.equal(decision.decision, "remediate");
 });
 
+test("ConfigBasedReviewFixPolicy.decide should not return terminal artifact when remediation attempts remain", async () => {
+  const policy = createConfigBasedReviewFixPolicy({
+    reviewPolicy: { maxRemediationAttempts: 1 },
+  });
+
+  const decision = await policy.decide({
+    verdict: { verdict: "rejected", verification: { ran: true } },
+  });
+
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(decision, "terminalArtifact"),
+    false,
+  );
+});
+
 test("ConfigBasedReviewFixPolicy.decide should consume one remediation attempt only when returning remediate", async () => {
   const policy = createConfigBasedReviewFixPolicy({
     reviewPolicy: { maxRemediationAttempts: 1 },

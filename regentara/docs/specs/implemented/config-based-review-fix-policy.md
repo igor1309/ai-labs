@@ -125,11 +125,12 @@ The policy session is opaque to callers. Callers may pass the returned session i
 21. `ConfigBasedReviewFixPolicy.decide` should allow exactly five `remediate` decisions when `maxRemediationAttempts` is `5`.
 22. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when verdict is accepted and verification ran.
 23. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when reviewer verification did not run.
-24. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when remediation attempts are exhausted.
-25. `ConfigBasedReviewFixPolicy.decide` should pluralize remediation attempts in exhausted terminal artifacts.
-26. `ConfigBasedReviewFixPolicy.decide` should fail with `RuntimeFailure` when reviewer output has no string `verdict`.
-27. `runWorkflow` should use the config-based policy as an injected `ReviewFixPolicy` without the Orchestrator reading `policy.yaml`.
-28. `runWorkflow` should forward the config-based policy session unchanged between policy calls.
+24. `ConfigBasedReviewFixPolicy.decide` should not return a terminal artifact when remediation attempts remain.
+25. `ConfigBasedReviewFixPolicy.decide` should return a terminal artifact when remediation attempts are exhausted.
+26. `ConfigBasedReviewFixPolicy.decide` should pluralize remediation attempts in exhausted terminal artifacts.
+27. `ConfigBasedReviewFixPolicy.decide` should fail with `RuntimeFailure` when reviewer output has no string `verdict`.
+28. `runWorkflow` should use the config-based policy as an injected `ReviewFixPolicy` without the Orchestrator reading `policy.yaml`.
+29. `runWorkflow` should forward the config-based policy session unchanged between policy calls.
 
 ## Done Criteria
 
