@@ -118,13 +118,19 @@ Each project must have its own Nomos project and API key. Do not reuse Nomos key
 
 ## Linear
 
-This repo is linked to a Linear project. Agents should use this metadata directly instead of looking it up.
+This repo is linked to multiple Linear projects under one workspace and team. Agents should use this metadata directly instead of looking it up.
 
 - Workspace: `igor1309`
 - Team: `Igor1309` (key `IG`)
-- Project name: `ai-labs`
-- Project ID: `e94949cf-0479-4539-bced-7a737e5d874b`
-- Project URL: https://linear.app/igor1309/project/ai-labs-660d3af91f3e
+
+Projects:
+
+- `ai-labs` — primary repo project
+  - Project ID: `e94949cf-0479-4539-bced-7a737e5d874b`
+  - Project URL: https://linear.app/igor1309/project/ai-labs-660d3af91f3e
+- `course-exploration` — raw course-development idea; materials live under `research/courses/` in this repo (separate Linear project because Linear has no sub-projects)
+  - Project ID: `f4aa9d0e-3646-411c-8763-8239a2979937`
+  - Project URL: https://linear.app/igor1309/project/course-exploration-57b12e430d17
 
 Linear access is via the `linear` MCP server (user scope). Tools appear as `mcp__linear__*` deferred tools and must be loaded through ToolSearch before use.
 
