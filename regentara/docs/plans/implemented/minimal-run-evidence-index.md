@@ -127,11 +127,11 @@ Run: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
 Expected: both PASS.
 
-- [ ] **Step 10: Commit implementation**
+- [x] **Step 10: Commit implementation**
 
 Commit: `git commit -m "add minimal evidence index"`
 
-- [ ] **Step 11: Mark implemented and archive plan**
+- [x] **Step 11: Mark implemented and archive plan**
 
 Move this plan to `regentara/docs/plans/implemented/minimal-run-evidence-index.md` after implementation and review pass.
 
