@@ -743,6 +743,35 @@ test("runWorkflow should include reviewNoteReference on the first reviewer agent
   assert.equal(reviewerEnd.reviewNoteReference, "review-01.md");
 });
 
+test("runWorkflow should include reviewRoundIndex on first-round reviewer and policy events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [{ decision: "complete-ok" }],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const relevantEvents = events
+    .filter((event) =>
+      (event.type === "agent-start" && event.agentId === "reviewer")
+      || (event.type === "agent-end" && event.agentId === "reviewer")
+      || event.type === "policy-decision"
+      || event.type === "completion",
+    )
+    .map((event) => ({
+      reviewRoundIndex: event.reviewRoundIndex,
+      type: event.type,
+    }));
+
+  assert.deepEqual(relevantEvents, [
+    { reviewRoundIndex: 1, type: "agent-start" },
+    { reviewRoundIndex: 1, type: "agent-end" },
+    { reviewRoundIndex: 1, type: "policy-decision" },
+    { reviewRoundIndex: 1, type: "completion" },
+  ]);
+});
+
 test("runWorkflow should persist review-01.md and review-02.md across two reviewer rounds", async () => {
   const calls = [];
 
@@ -783,6 +812,41 @@ test("runWorkflow should reference review-NN.md on each reviewer agent-end event
     reviewerEnds.map((event) => event.reviewNoteReference),
     ["review-01.md", "review-02.md"],
   );
+});
+
+test("runWorkflow should include reviewRoundIndex across remediated reviewer and policy events", async () => {
+  const calls = [];
+
+  const result = await runWorkflowWithCalls(calls, {
+    policyDecisions: [
+      { decision: "remediate" },
+      { decision: "complete-ok" },
+    ],
+    reviewerOutputs: [
+      { verdict: "needs-fix", summary: "round one summary" },
+      { verdict: "accepted", summary: "round two summary" },
+    ],
+  });
+
+  const events = await readEvents(result.runDirectory);
+  const relevantEvents = events
+    .filter((event) =>
+      (event.type === "agent-end" && event.agentId === "reviewer")
+      || event.type === "policy-decision"
+      || event.type === "completion",
+    )
+    .map((event) => ({
+      reviewRoundIndex: event.reviewRoundIndex,
+      type: event.type,
+    }));
+
+  assert.deepEqual(relevantEvents, [
+    { reviewRoundIndex: 1, type: "agent-end" },
+    { reviewRoundIndex: 1, type: "policy-decision" },
+    { reviewRoundIndex: 2, type: "agent-end" },
+    { reviewRoundIndex: 2, type: "policy-decision" },
+    { reviewRoundIndex: 2, type: "completion" },
+  ]);
 });
 
 test("runWorkflow should not include reviewNoteReference on producer or remediator agent-end events", async () => {

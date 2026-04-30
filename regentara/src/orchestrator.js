@@ -147,6 +147,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         };
       }
 
+      const reviewRoundIndex = reviewHistory.length + 1;
       const reviewerResult = await executeAgent({
         agentId: "reviewer",
         agentSettings,
@@ -161,7 +162,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         },
         modelRouting,
         runDirectory: run.runDirectory,
-        reviewRoundIndex: reviewHistory.length + 1,
+        reviewRoundIndex,
       });
       reviewHistory.push(reviewerResult);
       const policyResult = await reviewFixPolicy.decide({
@@ -171,6 +172,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
       validatePolicyTerminalArtifact(policyResult);
       await emitEvent({
         currentDecision: policyResult.decision,
+        reviewRoundIndex,
         type: "policy-decision",
       });
       debugReporter?.report("policy-decision", definedObject({
@@ -187,6 +189,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         const terminalArtifact = await persistTerminalArtifact(run.runDirectory, policyResult);
         await emitEvent({
           finalStatus: "succeeded",
+          reviewRoundIndex,
           ...terminalArtifact,
           type: "completion",
         });
@@ -207,6 +210,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         await emitEvent({
           failureReason,
           finalStatus: "failed",
+          reviewRoundIndex,
           ...terminalArtifact,
           type: "completion",
         });
@@ -489,6 +493,7 @@ async function executeAgent({
     provider: route.provider,
     runner: route.runner,
     ...(agentId === "producer" ? { taskFile } : {}),
+    ...definedObject({ reviewRoundIndex }),
     type: "agent-start",
   });
   try {
@@ -535,6 +540,7 @@ async function executeAgent({
         durationMs: providerResult.durationMs,
         providerError: providerResult.providerError,
         providerStatus: providerResult.providerStatus,
+        reviewRoundIndex,
         reviewNoteReference,
       }),
       type: "agent-end",

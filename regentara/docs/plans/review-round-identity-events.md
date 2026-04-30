@@ -58,7 +58,7 @@ Run: `git branch --show-current`
 
 Expected: current path is the dedicated worktree and branch is `codex/regentara-evidence-options`.
 
-- [ ] **Step 2: Write failing tests**
+- [x] **Step 2: Write failing tests**
 
 Add tests asserting:
 
@@ -90,13 +90,13 @@ test("runWorkflow should include reviewRoundIndex on first-round reviewer and po
 
 Also add a second test for two reviewer rounds asserting reviewer and policy events carry `[1, 1, 2, 2]` and the terminal completion carries `2`.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `./scripts/run_silent.sh "review-round-identity-red" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: FAIL with an assertion showing missing `reviewRoundIndex` on at least one event. Compilation errors are not RED.
 
-- [ ] **Step 4: Implement minimal event fields**
+- [x] **Step 4: Implement minimal event fields**
 
 In `runWorkflow`, capture the next round index in a local variable before reviewer execution:
 
@@ -108,17 +108,17 @@ Pass that variable to `executeAgent`, include it on the following `policy-decisi
 
 In `executeAgent`, include `reviewRoundIndex` on `agent-start` and `agent-end` only when defined.
 
-- [ ] **Step 5: Run targeted GREEN**
+- [x] **Step 5: Run targeted GREEN**
 
 Run: `./scripts/run_silent.sh "review-round-identity-green" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 6: Update log**
+- [x] **Step 6: Update log**
 
 Add a 2026-04-30 entry to `regentara/docs/log.md` describing that review-round events now carry explicit round identity.
 
-- [ ] **Step 7: Run full gates**
+- [x] **Step 7: Run full gates**
 
 Run: `./scripts/run_silent.sh "tests" npm test`
 

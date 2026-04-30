@@ -2,6 +2,7 @@
 
 ## 2026-04-30
 
+- Added explicit review round identity to reviewer, policy-decision, and policy-terminal completion events, tying persisted review notes and terminal decisions back to the round that produced them.
 - Made the built-in config-based review policy use the existing terminal decision artifact contract, so accepted reviews, reviewer verification failures, and exhausted remediation budgets now return policy-authored Markdown for the Orchestrator to persist as `terminal-decision.md`.
 
 ## 2026-04-29
