@@ -107,35 +107,50 @@ A good post usually has this shape:
 4. **Move / heuristic**  
    One practical way to deal with the problem.
 
-5. **Punchline**  
-   Short final sentence. Compression over explanation.
+5. **Ending**  
+   Compression over explanation. The ending can be short, but it should feel earned by the developed thought, not like a slogan attached at the end.
 
 ## Rhythm
 
-Telegram posts should breathe.
+Telegram posts should breathe, but breathing does not mean chopping every thought into theatrical fragments.
 
-Use paragraph breaks aggressively.
+The default rhythm may contain long, slightly overloaded sentences when the thought naturally moves through a qualification, an aside, a correction, or a pressure build-up.
 
-One thought per paragraph.
+Short lines are allowed as accents. They should compress the thought, not replace the author’s natural sentence rhythm.
 
-Very short lines are allowed when rhythm needs them, but they are accents.
+Dialogue is allowed when it exposes the problem quickly, but should not turn the post into a staged sketch.
 
-The default rhythm can contain long, slightly overloaded sentences if that is how the thought naturally arrives.
-
-Example:
+Prefer a mixed rhythm:
 
 ```text
-— понял?
-— понял.
-
-Всё. Ловушка захлопнулась.
+Передача смысла от одного субъекта к другому — если оба, очевидно, мыслят, потому что иначе это уже разговор не о смысле, а о данных, битах, сигналах и прочей прекрасной неживой материи — сопровождается потерями, которые обычно называются непониманием.
 ```
+
+Then, if needed, a short pressure point:
+
+```text
+И вот тут начинается самая дорогая часть процесса.
+```
+
+Avoid this as default rhythm:
+
+```text
+Человек сказал.
+Другой кивнул.
+Агент написал.
+Коллега согласился.
+Все ошиблись.
+```
+
+This can work once, but if the whole post moves like this, it starts sounding written for effect rather than thought through.
 
 ## Preferred devices
 
 ### 1. Small dialogue
 
-Use short exchanges to expose the problem.
+Use short exchanges only when they expose the problem faster than explanation.
+
+Good:
 
 ```text
 — понял?
@@ -145,6 +160,10 @@ Use short exchanges to expose the problem.
 ```text
 “Я понял это так: …”
 ```
+
+Constraint:
+
+Dialogue should not replace the main line of thought. It is an instrument, not the skeleton of the post.
 
 ### 2. Mild irony
 
@@ -201,6 +220,10 @@ Cut repeated explanations.
 Once the idea is clear, move on.
 
 Do not say the same thing through five synonyms.
+
+Also cut decorative fragmentation.
+
+If a paragraph was broken into five short lines only to create drama, rebuild it as one sentence unless the break carries real pressure.
 
 Bad pattern:
 
@@ -307,6 +330,8 @@ Voice:
 - personal field notes from inside AI chaos
 - direct, slightly ironic, practical
 - short paragraphs, not necessarily short sentences
+- long, qualified sentences are allowed when the thought needs them
+- short lines and dialogue only as accents, not as the default skeleton
 - living Russian, not polished consultant prose
 - one central observation
 - proof comes from experience and discovery, not from age
@@ -333,6 +358,8 @@ Reject the draft if it:
 - turns practical observation into a doctrine;
 - uses abstract nouns instead of work scenes;
 - has a soft ending;
+- turns the ending into a detached slogan;
+- uses decorative fragmentation instead of the author’s sentence rhythm;
 - adds advice that was not earned by the post.
 
 Fix by cutting first, not by adding.
