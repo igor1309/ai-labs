@@ -13,7 +13,9 @@
   "permissions": {
     "allow": [
       "Bash(./scripts/run_silent.sh:*)",
-      "Bash(node --test regentara/tests:*)"
+      "Bash(./scripts/watch-pr.sh:*)",
+      "Bash(node --test regentara/tests:*)",
+      "Bash(gh pr checks:*)"
     ]
   }
 }
