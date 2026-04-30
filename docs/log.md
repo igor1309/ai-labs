@@ -2,6 +2,7 @@
 
 ## 2026-04-30
 
+- pr-ci-watch: added `scripts/watch-pr.sh` wrapper and the `Bash(./scripts/watch-pr.sh:*)` allow rule so PR CI watching no longer triggers a permission prompt for the `/tmp/<repo>-pr-<pr>.log` redirect. The wildcard `Bash(... > /tmp/*)` form does not match a redirect with a trailing `2>&1`, so encapsulating the redirect inside a script is the cleanest fix.
 - Linear: linked the repo to Linear project `ai-labs` (workspace `igor1309`, team `IG`, id `e94949cf-0479-4539-bced-7a737e5d874b`) by recording the metadata in `CLAUDE.md` so agents skip the lookup. Considered also adding a `.linear.toml` at the repo root for `schpet/linear-cli` compatibility — deferred until that CLI is actually adopted.
 - Research: added a structured extraction, derived curriculum, and selling-points brief for Timur Khakhalev's AI Coding course landing page under `research/courses/khakhalev/`.
 

@@ -33,6 +33,7 @@ Use the `pr-ci-watch` skill. See `dev-skills/public/pr-ci-watch/SKILL.md`.
 Repo-specific details:
 - PR merge strategy: merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
 - `gh pr create` does NOT support `--auto` or `--merge` flags. Auto-merge is a separate step: `gh pr merge <number> --merge --auto --delete-branch`.
+- Use `./scripts/watch-pr.sh <pr>` instead of invoking `gh pr checks <pr> --watch --fail-fast > /tmp/...` directly. The wrapper encapsulates the `/tmp` redirect so the call is auto-allowed by the `Bash(./scripts/watch-pr.sh:*)` permission rule. The wrapper exits with the same status as `gh pr checks` and prints the log path on stdout.
 
 ## Specs
 
