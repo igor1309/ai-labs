@@ -363,6 +363,7 @@ test("runWorkflow should persist a one-round evidence index on complete-ok", asy
     rounds: [
       {
         policyDecision: "complete-ok",
+        policyDecisionReference: "policy-decision-01",
         producerArtifact: "producer/result.json",
         reviewNoteReference: "review-01.md",
         reviewRoundIndex: 1,
@@ -371,6 +372,7 @@ test("runWorkflow should persist a one-round evidence index on complete-ok", asy
     runId: result.runId,
     taskFile: "tasks/initial.md",
     terminal: {
+      policyDecisionReference: "policy-decision-01",
       status: "succeeded",
       terminalArtifact: "terminal-decision.md",
     },
@@ -401,12 +403,14 @@ test("runWorkflow should persist a multi-round evidence index on remediated comp
     rounds: [
       {
         policyDecision: "remediate",
+        policyDecisionReference: "policy-decision-01",
         producerArtifact: "producer/result.json",
         reviewNoteReference: "review-01.md",
         reviewRoundIndex: 1,
       },
       {
         policyDecision: "complete-ok",
+        policyDecisionReference: "policy-decision-02",
         producerArtifact: "producer/result.json",
         reviewNoteReference: "review-02.md",
         reviewRoundIndex: 2,
@@ -415,6 +419,7 @@ test("runWorkflow should persist a multi-round evidence index on remediated comp
     runId: result.runId,
     taskFile: "tasks/initial.md",
     terminal: {
+      policyDecisionReference: "policy-decision-02",
       status: "succeeded",
       terminalArtifact: "terminal-decision.md",
     },

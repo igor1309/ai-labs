@@ -171,14 +171,17 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         verdict: reviewerResult,
       });
       validatePolicyTerminalArtifact(policyResult);
+      const policyDecisionReference = policyDecisionRelativeReference(reviewRoundIndex);
       evidenceRounds.push(definedObject({
         policyDecision: policyResult.decision,
+        policyDecisionReference,
         producerArtifact: producerResult.artifact,
         reviewNoteReference: reviewNoteRelativePath(reviewRoundIndex),
         reviewRoundIndex,
       }));
       await emitEvent({
         currentDecision: policyResult.decision,
+        policyDecisionReference,
         reviewRoundIndex,
         type: "policy-decision",
       });
@@ -197,6 +200,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         await persistEvidenceIndex(run.runDirectory, {
           rounds: evidenceRounds,
           runId: run.runId,
+          policyDecisionReference,
           status: "succeeded",
           taskFile: input.taskFile,
           ...terminalArtifact,
@@ -227,6 +231,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         await persistEvidenceIndex(run.runDirectory, {
           rounds: evidenceRounds,
           runId: run.runId,
+          policyDecisionReference,
           status: "failed",
           taskFile: input.taskFile,
           ...terminalArtifact,
@@ -386,6 +391,7 @@ async function persistEvidenceIndex(runDirectory, index) {
     runId: index.runId,
     ...definedObject({ taskFile: index.taskFile }),
     terminal: {
+      policyDecisionReference: index.policyDecisionReference,
       status: index.status,
       ...definedObject({ terminalArtifact: index.terminalArtifact }),
     },
@@ -421,6 +427,10 @@ async function persistReviewNote({ agentId, output, reviewRoundIndex, runDirecto
 
 function reviewNoteRelativePath(reviewRoundIndex) {
   return `review-${String(reviewRoundIndex).padStart(2, "0")}.md`;
+}
+
+function policyDecisionRelativeReference(reviewRoundIndex) {
+  return `policy-decision-${String(reviewRoundIndex).padStart(2, "0")}`;
 }
 
 function stripReviewNoteContent(agentId, output) {

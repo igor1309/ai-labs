@@ -2,6 +2,7 @@
 
 ## 2026-04-30
 
+- Linked evidence-index rounds and terminal entries to their matching `policy-decision` events with run-local policy decision references, strengthening stale-decision integrity without adding semantic Orchestrator logic.
 - Added a minimal `evidence-index.json` for policy-terminal runs, linking run ID, task file, review rounds, producer artifacts, review notes, policy decisions, and terminal artifacts without parsing evidence content.
 - Surfaced persisted review-note and terminal-decision artifact references in `--debug` output, making durable evidence easier to locate without changing event schemas.
 - Added explicit review round identity to reviewer, policy-decision, and policy-terminal completion events, tying persisted review notes and terminal decisions back to the round that produced them.

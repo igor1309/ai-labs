@@ -52,7 +52,7 @@ description: "Implementation plan for linking Regentara evidence index entries t
 - Modify: `regentara/src/orchestrator.js`
 - Modify: `regentara/docs/log.md`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Extend existing evidence-index tests to assert:
 
@@ -75,13 +75,13 @@ terminal: {
 
 For the remediated run, assert `policy-decision-01` and `policy-decision-02`, with terminal referencing `policy-decision-02`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `./scripts/run_silent.sh "stale-decision-index-red" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: FAIL with missing `policyDecisionReference` fields. Compilation errors are not RED.
 
-- [ ] **Step 3: Implement minimal structural references**
+- [x] **Step 3: Implement minimal structural references**
 
 In `runWorkflow`, derive:
 
@@ -95,17 +95,17 @@ Add it to:
 - the evidence round pushed for that review round
 - the terminal section of `evidence-index.json` for terminal policy decisions
 
-- [ ] **Step 4: Run targeted GREEN**
+- [x] **Step 4: Run targeted GREEN**
 
 Run: `./scripts/run_silent.sh "stale-decision-index-green" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 5: Update log**
+- [x] **Step 5: Update log**
 
 Add a 2026-04-30 entry to `regentara/docs/log.md` describing policy-decision references in the evidence index.
 
-- [ ] **Step 6: Run full gates**
+- [x] **Step 6: Run full gates**
 
 Run: `./scripts/run_silent.sh "tests" npm test`
 
