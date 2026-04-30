@@ -126,7 +126,7 @@ Run: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
 Expected: both PASS.
 
-- [ ] **Step 8: Commit implementation**
+- [x] **Step 8: Commit implementation**
 
 Gate status required before commit:
 
@@ -138,7 +138,7 @@ Gate status required before commit:
 
 Commit: `git commit -m "add review round event identity"`
 
-- [ ] **Step 9: Mark implemented and archive plan**
+- [x] **Step 9: Mark implemented and archive plan**
 
 Move this plan to `regentara/docs/plans/implemented/review-round-identity-events.md` after implementation and review pass.
 
