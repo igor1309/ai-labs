@@ -51,7 +51,7 @@ description: "Implementation plan for adding Regentara evidence artifact referen
 - Modify: `regentara/src/orchestrator.js`
 - Modify: `regentara/docs/log.md`
 
-- [ ] **Step 1: Run implementation preflight**
+- [x] **Step 1: Run implementation preflight**
 
 Run: `git worktree list --porcelain`
 
@@ -59,7 +59,7 @@ Run: `git branch --show-current`
 
 Expected: current path is the dedicated worktree and branch is `codex/regentara-evidence-options`.
 
-- [ ] **Step 2: Write failing tests**
+- [x] **Step 2: Write failing tests**
 
 Add assertions using the existing `debugEvents` test seam:
 
@@ -80,29 +80,29 @@ const completion = debugEvents.find((event) => event.event === "completion");
 assert.equal(completion.fields.terminalArtifact, "terminal-decision.md");
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `./scripts/run_silent.sh "debug-evidence-red" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: FAIL with missing debug fields. Compilation errors are not RED.
 
-- [ ] **Step 4: Implement minimal debug fields**
+- [x] **Step 4: Implement minimal debug fields**
 
 Thread the already-computed `reviewNoteReference` into the `debugReporter.report("agent-end", ...)` fields.
 
 Pass persisted terminal artifact references into `completionDebugFields` or merge them at the call site so completion debug output includes `terminalArtifact` only when one exists.
 
-- [ ] **Step 5: Run targeted GREEN**
+- [x] **Step 5: Run targeted GREEN**
 
 Run: `./scripts/run_silent.sh "debug-evidence-green" node --test regentara/tests/orchestrator-sequence.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 6: Update log**
+- [x] **Step 6: Update log**
 
 Add a 2026-04-30 entry to `regentara/docs/log.md` describing debug visibility for persisted evidence references.
 
-- [ ] **Step 7: Run full gates**
+- [x] **Step 7: Run full gates**
 
 Run: `./scripts/run_silent.sh "tests" npm test`
 

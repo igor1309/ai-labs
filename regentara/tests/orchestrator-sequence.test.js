@@ -468,6 +468,7 @@ test("runWorkflow should report successful run lifecycle debug events", async ()
       event: "agent-end",
       fields: {
         agent: "reviewer",
+        reviewNoteReference: "review-01.md",
         route: "codex/openai/gpt-5.5/high",
         runnerReference: "pid:123",
         sessionReference: "claude-session-123",
@@ -482,6 +483,38 @@ test("runWorkflow should report successful run lifecycle debug events", async ()
       fields: { duration: "00:00", status: "succeeded" },
     },
   ]);
+});
+
+test("runWorkflow should report evidence artifact references in debug events", async () => {
+  const calls = [];
+  const debugEvents = [];
+
+  await runWorkflowWithCalls(calls, {
+    debugEvents,
+    policyDecisions: [
+      {
+        decision: "complete-ok",
+        terminalArtifact: { content: "# Terminal Decision\n" },
+      },
+    ],
+    reviewerOutputs: [{ verdict: "accepted", summary: "round one summary" }],
+  });
+
+  const reviewerEnd = debugEvents.find((event) =>
+    event.event === "agent-end" && event.fields.agent === "reviewer",
+  );
+  const completion = debugEvents.find((event) => event.event === "completion");
+
+  assert.deepEqual(
+    {
+      reviewNoteReference: reviewerEnd.fields.reviewNoteReference,
+      terminalArtifact: completion.fields.terminalArtifact,
+    },
+    {
+      reviewNoteReference: "review-01.md",
+      terminalArtifact: "terminal-decision.md",
+    },
+  );
 });
 
 test("runWorkflow should accumulate provider cost in debug output and final metadata", async () => {

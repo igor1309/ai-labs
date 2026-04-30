@@ -193,7 +193,10 @@ export async function runWorkflow(input = {}, dependencies = {}) {
           ...terminalArtifact,
           type: "completion",
         });
-        debugReporter?.report("completion", completionDebugFields("succeeded", run, runMetrics));
+        debugReporter?.report("completion", {
+          ...completionDebugFields("succeeded", run, runMetrics),
+          ...terminalArtifact,
+        });
         await finalizeRun(updateRunMetadata, run, "succeeded", 0, runMetrics);
         return {
           exitCode: 0,
@@ -217,6 +220,7 @@ export async function runWorkflow(input = {}, dependencies = {}) {
         debugReporter?.report("completion", {
           ...completionDebugFields("failed", run, runMetrics),
           reason: failureReason,
+          ...terminalArtifact,
         });
         await finalizeRun(updateRunMetadata, run, "failed", 1, runMetrics);
         return {
@@ -552,6 +556,7 @@ async function executeAgent({
       duration: formatDurationMs(providerResult.durationMs),
       providerError: providerResult.providerError,
       providerStatus: providerResult.providerStatus,
+      reviewNoteReference,
       route: routeLabel,
       runnerReference: providerResult.runnerReference,
       sessionReference: providerResult.sessionReference,
