@@ -113,11 +113,11 @@ Run: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
 Expected: both PASS.
 
-- [ ] **Step 7: Commit implementation**
+- [x] **Step 7: Commit implementation**
 
 Commit: `git commit -m "link evidence index to policy decisions"`
 
-- [ ] **Step 8: Mark implemented and archive plan**
+- [x] **Step 8: Mark implemented and archive plan**
 
 Move this plan to `regentara/docs/plans/implemented/stale-decision-integrity-evidence-index.md`.
 
