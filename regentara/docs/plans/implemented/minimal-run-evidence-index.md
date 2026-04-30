@@ -25,7 +25,7 @@ description: "Implementation plan for a minimal Regentara run evidence index."
 - Expected branch: `codex/regentara-evidence-options`
 - Push policy: no push
 - Final archive behavior: move this plan to `regentara/docs/plans/implemented/` after implementation and final verification.
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Source Documents
 
