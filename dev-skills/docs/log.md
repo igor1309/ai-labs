@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-04-30
+
+- jtbd v1.0.0: new skill applying Jobs-to-be-Done as a product-development framing in three explicit modes — `discover` (Christensen/Moesta switch interviews and forces of progress), `decompose` (Ulwick/ODI job statements, job map, outcome statements, opportunity scores), and `frame` (Klement job stories). Hard-enforces grammars and refuses to silently mix the Christensen and Ulwick vocabularies — the most common JTBD incoherence in the wild. Marketplace v1.39.0.
+
 ## 2026-04-27
 
 - Publish procedure: replaced "push to trunk" with the PR-based flow (branch → push → `gh pr create` → `gh pr merge --merge --auto --delete-branch`) in `dev-skills/.claude/CLAUDE.md` and `dev-skills/README.md` to match the protected-trunk policy inherited from the parent repo. Also removed stale `public/README.md` references — that file was deleted on 2026-04-21 to keep the public skills repo installable by web agents without auth friction.
