@@ -11,7 +11,7 @@ artifact_type: adr
 
 ## Executive Summary
 
-Defines the CI and CD workflows for clipdeck. Pull-request CI runs per-project typecheck and tests via a path-filtered `clipdeck-core.yml` workflow. Production deploys are tag-driven through the repo's existing per-unit release pipeline, which calls `wrangler deploy` using a Cloudflare API token stored as a GitHub Actions secret. The ADR-002 runtime GitHub PAT is set and rotated manually against Cloudflare Workers Secrets and is never visible to CI.
+Defines the CI and CD workflows for clipdeck. Pull-request CI runs per-project typecheck and tests via a path-filtered `clipdeck-core.yml` workflow. Production deploys are tag-driven through the repo's existing `release-unit.yml`, which dispatches to a dedicated reusable workflow `clipdeck-deploy.yml` that runs `wrangler deploy` and then verifies the deployed Worker. Failure notifications route through the shared `notify-telegram-failure.yml`. The ADR-002 runtime GitHub PAT is set and rotated manually against Cloudflare Workers Secrets and is never visible to CI.
 
 ## Context
 
@@ -31,7 +31,7 @@ Rejected alternatives:
 clipdeck adopts the repo's existing two-track CI/CD model:
 
 - **PR gate.** A dedicated `.github/workflows/clipdeck-core.yml` runs typecheck and tests for clipdeck on changes to its own paths. It is dispatched from the central `ci.yml` via path filter, consistent with every other code-bearing project.
-- **Production deploy.** clipdeck is a release unit declared in `release-units.config.toml`. A `clipdeck_v<version>` tag on trunk triggers the existing `release-unit.yml` pipeline, which runs `wrangler deploy` against the production Worker using a Cloudflare API token stored as a GitHub Actions secret.
+- **Production deploy.** clipdeck is a release unit declared in `release-units.config.toml`. A `clipdeck_v<version>` tag on trunk triggers the existing `release-unit.yml` pipeline. `release-unit.yml` dispatches to a dedicated reusable workflow `.github/workflows/clipdeck-deploy.yml` (matching the `notio-frontend-deploy.yml` precedent), which runs `wrangler deploy` against the production Worker using a Cloudflare API token stored as a GitHub Actions secret. The deploy workflow MUST verify the deployed Worker before the release is marked successful.
 
 The runtime GitHub PAT defined by ADR-002 is set on the Worker out-of-band by the user (`wrangler secret put` or the Cloudflare dashboard). CI never reads, writes, or logs it.
 
@@ -41,15 +41,30 @@ The runtime GitHub PAT defined by ADR-002 is set on the Worker out-of-band by th
 
 - A workflow at `.github/workflows/clipdeck-core.yml` MUST run on a path filter that covers clipdeck source and test files. The path filter MUST include at minimum: `clipdeck/src/**`, `clipdeck/test/**` (or the equivalent test directory adopted by the implementation), `clipdeck/wrangler.*`, `clipdeck/package.json`, `clipdeck/package-lock.json`, and `clipdeck/tsconfig*.json`. Changes confined to `clipdeck/docs/**` MUST NOT trigger the workflow.
 - The workflow MUST run typecheck (`npx tsc --noEmit` or equivalent) and the clipdeck test suite. It MUST NOT install dependencies for, or run tests of, any other project.
-- The workflow MUST be wired into the central `ci.yml` dispatch so that doc-only changes to clipdeck do not run it.
+- The workflow MUST be wired into the `changes` job of `ci.yml` (via `dorny/paths-filter`) so that doc-only changes to clipdeck do not run it. `paths-ignore` MUST NOT be added to `ci.yml` (per the repo-wide rule that all path filtering is handled by the in-workflow `changes` job).
+
+### PR-time vs release-time test scope
+
+- At PR time, only `clipdeck-core.yml` runs for clipdeck code changes; it tests clipdeck only.
+- At release time, `release-unit.yml`'s shared `core` job runs the full repo `npm test` and `npx tsc --noEmit` as a belt-and-suspenders gate before the clipdeck deploy job runs. clipdeck inherits this shared gate by default; opting out (the way `notio-backend` and `notio-frontend` do via `if:` conditions on the shared `core` job) is a violation of this ADR.
 
 ### Production deploy
 
 - Production deploys MUST be triggered by a `clipdeck_v<version>` tag on trunk via the repo's existing `release-unit.yml` pipeline. Manual `wrangler deploy` from a developer machine MUST NOT be used to ship to the production Worker.
+- The deploy step MUST be implemented as a reusable workflow at `.github/workflows/clipdeck-deploy.yml`, called from `release-unit.yml` via a `uses:` reference (the same pattern `notio-frontend-deploy.yml` follows). Adding clipdeck MUST also extend `release-unit.yml`'s `github-release.needs`, `github-release.if`, `notify.needs`, and `notify.if` to include the clipdeck deploy job.
 - The deploy step MUST use a Cloudflare API token stored as a GitHub Actions secret. The token's permission set MUST be limited to `Workers Scripts: Edit` (the minimum required to publish a Worker). The token's account resources MUST be limited to the single Cloudflare account that hosts the production Worker; multi-account or all-account scoping is a violation. Broader Cloudflare credentials (account-wide admin, R2/KV admin, Zone admin, User-token equivalents, etc.) MUST NOT be granted to this token.
 - The Cloudflare API deploy token MUST be rotated at least every 12 months and MUST be revoked immediately on suspected exposure (logged value, leaked transcript, departed operator, etc.). Rotation MUST replace the GitHub Actions secret in the same change window so deploys remain functional.
 - The deploy step MUST NOT read, write, or log the runtime GitHub PAT defined by ADR-002.
 - Deploy logs MUST NOT print Cloudflare API token values or Workers Secrets values.
+
+### Post-deploy verification
+
+- After `wrangler deploy` succeeds, `clipdeck-deploy.yml` MUST issue an authenticated `GET /api/items` against the deployed Worker hostname using a CI-only verification secret distinct from the user-facing shared access secret, and MUST require an HTTP `200` before the workflow exits successfully. A non-`200` MUST fail the workflow.
+- The verification step MUST NOT read or expose the runtime GitHub PAT or any Workers Secret value.
+
+### Failure notification
+
+- All clipdeck workflow failure notifications MUST route through the shared `.github/workflows/notify-telegram-failure.yml` workflow. `clipdeck-deploy.yml` MUST NOT contain inline notification steps (curl-to-Telegram, Slack webhooks, etc.) — this matches the repo-wide rule in `.github/workflows/CLAUDE.md`.
 
 ### Runtime credential boundary
 
@@ -90,3 +105,5 @@ Future extension points:
 - no deploy to production from anywhere other than the tag-driven `release-unit.yml` pipeline
 - no Cloudflare account-wide admin credentials in CI
 - no environment-promotion model (no staging tier in v1)
+- no inline failure notification logic in `clipdeck-deploy.yml`
+- no opt-out from the shared release-time `core` test job in `release-unit.yml`
