@@ -1,0 +1,77 @@
+import { parse } from "./frontmatter";
+
+export interface SourceFile {
+  content: string;
+  path: string;
+}
+
+export interface SourceFolder {
+  files: SourceFile[];
+  path: string;
+}
+
+export interface Item {
+  body: string;
+  id: string;
+  kind: "prompt" | "skill";
+  skillShape?: "resource-backed" | "standalone";
+  subtitle: string;
+  title: string;
+}
+
+export function discoverPrompts(files: SourceFile[]): Item[] {
+  return files.flatMap((file) => {
+    if (!isDirectPromptMarkdown(file.path)) {
+      return [];
+    }
+
+    const parsed = parse(file.content);
+
+    return [
+      {
+        body: parsed.body,
+        id: file.path,
+        kind: "prompt",
+        subtitle: parsed.description ?? parsed.summary ?? "",
+        title: parsed.title ?? promptFallbackTitle(file.path)
+      }
+    ];
+  });
+}
+
+export function discoverSkills(folders: SourceFolder[]): Item[] {
+  return folders.flatMap((folder) => {
+    const skillFile = folder.files.find((file) => {
+      return file.path === `${folder.path}/SKILL.md`;
+    });
+
+    if (skillFile === undefined) {
+      return [];
+    }
+
+    const parsed = parse(skillFile.content);
+
+    return [
+      {
+        body: parsed.body,
+        id: skillFile.path,
+        kind: "skill",
+        skillShape: folder.files.length === 1 ? "standalone" : "resource-backed",
+        subtitle: parsed.description ?? parsed.summary ?? "",
+        title: parsed.title ?? skillFallbackTitle(folder.path)
+      }
+    ];
+  });
+}
+
+function isDirectPromptMarkdown(path: string): boolean {
+  return /^prompts\/[^/]+\.md$/.test(path);
+}
+
+function promptFallbackTitle(path: string): string {
+  return path.slice("prompts/".length, -".md".length);
+}
+
+function skillFallbackTitle(path: string): string {
+  return path.slice("dev-skills/public/".length);
+}

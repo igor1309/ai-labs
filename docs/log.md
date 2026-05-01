@@ -2,6 +2,7 @@
 
 ## 2026-05-01
 
+- clipdeck: implemented Phase 1 pure units for front matter stripping, prompt/skill discovery, and response section assembly, covering malformed front matter tolerance and deterministic item ordering.
 - clipdeck: scaffolded as a private TypeScript Cloudflare Worker workspace with Wrangler config, Workers-pool Vitest coverage, and root test-gate integration.
 - clipdeck: registered as a docs-only top-level project — added to `README.md` Components table, `scripts/loc-dashboard.sh` (loop, header comment, drift `known` list), and the `docs/loc-dashboard.html` landing (product card + data row). Initial artifacts are an accepted ADR and a draft spec for an iPhone-friendly private webpage that copies prompts/skills with server-side front matter stripping.
 - New Project Checklist: added `docs/loc-dashboard.html` (product card + data array) and `<project>/docs/log.md` (seed entry) as required surfaces in `CLAUDE.md`, closing the drift that left dragoman off the landing on 2026-04-29. Also backfilled the dragoman product card and data row to clear that gap.
