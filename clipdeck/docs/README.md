@@ -20,4 +20,4 @@ clipdeck is an iPhone-friendly private webpage that copies prompts and skills fr
 ## Conventions
 
 - ADRs settle architecture. The spec is the contract; its tests are the failure surface. The plan picks implementation libraries and layout.
-- [`reviews/`](reviews/) holds external doc reviews. [`log.md`](log.md) records outcomes only.
+- [`log.md`](log.md) records outcomes only.

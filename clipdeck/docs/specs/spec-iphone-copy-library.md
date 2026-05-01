@@ -117,11 +117,11 @@ Error responses:
 
 ### Front matter stripping
 
-- If a file begins with a YAML front matter block (an opening `---` line, lines of YAML, a closing `---` line), the returned `body` MUST start at the first byte after the newline that terminates the closing `---` line. Then, if that byte is itself a newline, that one byte MUST also be skipped (one optional separator newline). No further bytes are skipped.
+- If a file begins with a YAML front matter block (an opening `---` line, lines of YAML, a closing `---` line), the returned `body` MUST start at the first byte after the newline that terminates the closing `---` line. No further bytes are skipped — any blank line between the closing `---` and the body is preserved verbatim, consistent with ADR-001's byte-preservation invariant.
 - All bytes after that point MUST be preserved unchanged: Markdown syntax, blank lines, indentation, code fences, trailing newline.
 - If a file does not begin with `---`, the returned `body` MUST be the entire file content unchanged.
 - If a file begins with `---` but the front matter is malformed (no closing delimiter, invalid YAML, etc.), the file MUST be treated as if it had no front matter; its `body` MUST be the entire file content unchanged. The endpoint MUST NOT fail the response because of a single malformed item.
-- A well-formed front matter block with no YAML keys (the second `---` line immediately follows the first) is valid; the returned `body` follows the same rule as above (skip through the closing `---` line's terminating newline, then skip one optional separator newline), and the item MUST behave as having no front matter for `title` and `subtitle` derivation.
+- A well-formed front matter block with no YAML keys (the second `---` line immediately follows the first) is valid; the returned `body` follows the same rule as above (start at the first byte after the closing `---` line's terminating newline; preserve everything that follows verbatim), and the item MUST behave as having no front matter for `title` and `subtitle` derivation.
 
 ### Title and subtitle derivation
 
@@ -157,7 +157,7 @@ Each test corresponds to a behavior rule and defines the failure surface. An imp
 6. A folder `dev-skills/public/example/` containing only `SKILL.md` appears with `kind == "skill"`, `id == "dev-skills/public/example/SKILL.md"`, `skillShape == "standalone"`.
 7. A folder `dev-skills/public/example/` containing `SKILL.md` plus a sibling `helper.py` returns the same item with `skillShape == "resource-backed"`.
 8. A folder under `dev-skills/public/` without a `SKILL.md` does not appear in the response.
-9. A file beginning with a well-formed front matter block returns `body` starting at the first byte after the closing `---` line's terminating newline (skipping one optional separator newline if present); original Markdown body bytes are preserved exactly.
+9. A file beginning with a well-formed front matter block returns `body` starting at the first byte after the closing `---` line's terminating newline; all subsequent bytes are preserved exactly (no separator newline is consumed).
 10. A file with no front matter returns `body == file content`.
 11. A file beginning with `---` but no closing delimiter returns `body == file content` and does not fail the request.
 12. A file with front matter containing invalid YAML returns `body == file content` and does not fail the request.
@@ -177,7 +177,7 @@ Each test corresponds to a behavior rule and defines the failure surface. An imp
 26. A section with no discovered items appears in the response with `items: []`.
 27. Items inside each section are returned in lexicographic ascending order of `id`.
 28. A non-`.md` file in `prompts/` (for example `prompts/README.txt` or `prompts/.DS_Store`) does not appear in the response.
-29. A file beginning `---\n---\n\nbody\n` returns `body == "body\n"` and is treated as having no front matter for `title`/`subtitle` derivation.
+29. A file beginning `---\n---\n\nbody\n` returns `body == "\nbody\n"` (the blank line between the closing `---` and `body` is preserved verbatim) and is treated as having no front matter for `title`/`subtitle` derivation.
 30. A backend whose source-repo credential is missing, rejected by GitHub, or expired returns `502` and the response body contains no token bytes or credential state.
 
 ## Done criteria

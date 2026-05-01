@@ -140,17 +140,18 @@ Tasks:
 
 - Add `clipdeck` to `release-units.config.toml` (basename `clipdeck`, root `clipdeck/`, deploy target Cloudflare Worker).
 - Regenerate `release-units.toml`. Verify CI manifest-drift gate is green.
-- Add `.github/workflows/clipdeck-core.yml` (typecheck + tests) and wire its path filter into `ci.yml`. Path globs per ADR-004.
-- Add the deploy step in the existing `release-unit.yml` flow for `clipdeck` units (or extend it minimally — match how other release units do it).
+- Add `.github/workflows/clipdeck-core.yml` (typecheck + tests) and wire its path filter into `ci.yml`'s `changes` job. Path globs per ADR-004.
+- Add `.github/workflows/clipdeck-deploy.yml` (reusable workflow) that runs `wrangler deploy` and then runs the post-deploy verification per ADR-004: an unauthenticated `GET /api/items` against the deployed Worker hostname that MUST return `401`. Failure notifications route through `notify-telegram-failure.yml`; no inline notifications.
+- Edit `release-unit.yml` to dispatch to `clipdeck-deploy.yml` (matching the `notio-frontend-deploy.yml` precedent), and extend `github-release.needs`, `github-release.if`, `notify.needs`, and `notify.if` to include the clipdeck deploy job.
 - Write the operator runbook at `clipdeck/docs/operations/first-deploy.md`:
   1. create Cloudflare account if needed; choose a Worker subdomain (`clipdeck.<account>.workers.dev`) or bind a custom domain
   2. issue Cloudflare API token per ADR-004 scoping (single account, `Workers Scripts: Edit` only)
   3. set `CLOUDFLARE_API_TOKEN` GitHub Actions secret
   4. issue GitHub fine-grained PAT per ADR-002 scoping
-  5. cut tag `clipdeck_v0.1.0`; the release pipeline runs `wrangler deploy`
+  5. cut tag `clipdeck_v0.1.0`; the release pipeline runs `wrangler deploy` and the unauthenticated `401` verification (the runtime PAT is not yet set; verification still passes because it's auth-only)
   6. set `wrangler secret put GITHUB_TOKEN` and `wrangler secret put SHARED_SECRET` against the now-deployed Worker
   7. open the Worker URL on iPhone, enter the shared secret, bookmark to home screen
-- Tag `clipdeck_v0.1.0`. Verify the deploy reaches the Worker. Verify a real `GET /api/items` against the live URL with the configured secret.
+- Tag `clipdeck_v0.1.0`. Confirm the deploy completes and the unauthenticated `401` check passes; then complete the operator runbook steps and confirm an authenticated `GET /api/items` returns `200` from the iPhone.
 
 Phase exit gate: production Worker serves the iPhone page and returns sanitized items for `igor1309/ai-labs`.
 
