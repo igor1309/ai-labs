@@ -2,6 +2,8 @@
 
 ## 2026-05-01
 
+- clipdeck: registered as a docs-only top-level project — added to `README.md` Components table, `scripts/loc-dashboard.sh` (loop, header comment, drift `known` list), and the `docs/loc-dashboard.html` landing (product card + data row). Initial artifacts are an accepted ADR and a draft spec for an iPhone-friendly private webpage that copies prompts/skills with server-side front matter stripping.
+- New Project Checklist: added `docs/loc-dashboard.html` (product card + data array) and `<project>/docs/log.md` (seed entry) as required surfaces in `CLAUDE.md`, closing the drift that left dragoman off the landing on 2026-04-29. Also backfilled the dragoman product card and data row to clear that gap.
 - Supabase keep-alive: switched the scheduled workflow from a SELECT ping to a PATCH against a dedicated `public.keepalive` table (`claude-insights/migrations/002_keepalive_table.sql`). Read-only pings did not reliably reset the free-tier inactivity timer — Supabase still issued a pause warning despite three days of green keep-alive runs. A write is unambiguous DB activity. Migration must be applied before the workflow change merges.
 
 ## 2026-04-30
