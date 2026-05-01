@@ -2,6 +2,14 @@
 
 ## 2026-05-01
 
+- LOC dashboard landing: refreshed product cards in `docs/loc-dashboard.html` — promoted regentara from `Concept`/Design to a `CLI` MVP workflow runner with current tags, and renamed dragoman to "The Dragoman" with description and tags reflecting a posts-and-imagery channel rather than docs-only. `scripts/loc-dashboard.sh` was reviewed and needs no changes (it counts LOC and does not classify project type).
+- clipdeck: added release-unit and CI/CD wiring for tag-driven Cloudflare Worker deploys, plus the first-deploy operator runbook and README component update.
+- clipdeck: implemented the static iPhone frontend and Worker Static Assets routing, including unlock, reload, copy feedback, and resource-backed skill styling tests.
+- clipdeck: implemented the authenticated `GET /api/items` Worker endpoint with GitHub Contents API reads, sanitized section assembly, and spec-shaped upstream/source-missing errors.
+- clipdeck: implemented Phase 1 pure units for front matter stripping, prompt/skill discovery, and response section assembly, covering malformed front matter tolerance and deterministic item ordering.
+- clipdeck: scaffolded as a private TypeScript Cloudflare Worker workspace with Wrangler config, Workers-pool Vitest coverage, and root test-gate integration.
+- clipdeck: registered as a docs-only top-level project — added to `README.md` Components table, `scripts/loc-dashboard.sh` (loop, header comment, drift `known` list), and the `docs/loc-dashboard.html` landing (product card + data row). Initial artifacts are an accepted ADR and a draft spec for an iPhone-friendly private webpage that copies prompts/skills with server-side front matter stripping.
+- New Project Checklist: added `docs/loc-dashboard.html` (product card + data array) and `<project>/docs/log.md` (seed entry) as required surfaces in `CLAUDE.md`, closing the drift that left dragoman off the landing on 2026-04-29. Also backfilled the dragoman product card and data row to clear that gap.
 - Supabase keep-alive: switched the scheduled workflow from a SELECT ping to a PATCH against a dedicated `public.keepalive` table (`claude-insights/migrations/002_keepalive_table.sql`). Read-only pings did not reliably reset the free-tier inactivity timer — Supabase still issued a pause warning despite three days of green keep-alive runs. A write is unambiguous DB activity. Migration must be applied before the workflow change merges.
 
 ## 2026-04-30

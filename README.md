@@ -57,6 +57,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | session-digest | CLI | Converts Claude Code JSONL sessions into persisted local ledgers and bounded-model Markdown digests |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 | dragoman | Editorial channel | "The Dragoman" Telegram channel — brand brief, channel vision, and post backlog |
+| clipdeck | Product | iPhone-friendly private Cloudflare Worker that lists reusable prompts and skills with one-tap copy, front matter stripped server-side |
 
 ## Architecture
 

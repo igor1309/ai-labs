@@ -1,0 +1,60 @@
+name: Clipdeck Deploy
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clipdeck-deploy
+  cancel-in-progress: false
+
+jobs:
+  core:
+    uses: ./.github/workflows/clipdeck-core.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+
+  deploy:
+    needs: [core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLIPDECK_PRODUCTION_URL: ${{ vars.CLIPDECK_PRODUCTION_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Worker
+        run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler deploy --cwd clipdeck
+
+      - name: Verify unauthenticated API is locked
+        run: |
+          status="$(curl -sS --max-time 30 -o /tmp/clipdeck-api-body.txt -w "%{http_code}" "${CLIPDECK_PRODUCTION_URL}/api/items")"
+          echo "HTTP status: ${status}"
+          [ "${status}" = "401" ]

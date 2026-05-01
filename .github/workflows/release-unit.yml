@@ -345,8 +345,16 @@ jobs:
       ref: ${{ github.ref_name }}
     secrets: inherit
 
+  deploy-clipdeck:
+    if: ${{ needs.verify.outputs.basename == 'clipdeck' }}
+    needs: [core, verify]
+    uses: ./.github/workflows/clipdeck-deploy.yml
+    with:
+      ref: ${{ github.ref_name }}
+    secrets: inherit
+
   github-release:
-    needs: [core, verify, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend]
+    needs: [core, verify, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck]
     if: >-
       ${{ always() && !cancelled()
       && needs.verify.result == 'success'
@@ -356,6 +364,7 @@ jobs:
       && needs.deploy-nomos-prod.result != 'failure'
       && (needs.deploy-notio-backend.result == 'success' || needs.deploy-notio-backend.result == 'skipped')
       && (needs.deploy-notio-frontend.result == 'success' || needs.deploy-notio-frontend.result == 'skipped')
+      && (needs.deploy-clipdeck.result == 'success' || needs.deploy-clipdeck.result == 'skipped')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -386,9 +395,10 @@ jobs:
       || needs.deploy-nomos-prod.result == 'failure'
       || needs.deploy-notio-backend.result == 'failure'
       || needs.deploy-notio-frontend.result == 'failure'
+      || needs.deploy-clipdeck.result == 'failure'
       || needs.github-release.result == 'failure')
       }}
-    needs: [verify, core, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, github-release]
+    needs: [verify, core, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -402,6 +412,7 @@ jobs:
         deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
         deploy-notio-backend=${{ needs.deploy-notio-backend.result }}
         deploy-notio-frontend=${{ needs.deploy-notio-frontend.result }}
+        deploy-clipdeck=${{ needs.deploy-clipdeck.result }}
         github-release=${{ needs.github-release.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
