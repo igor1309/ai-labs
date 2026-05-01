@@ -7,140 +7,93 @@ artifact_type: adr
 
 # ADR: iPhone Copy Library for Private Prompts and Skills
 
+## Executive Summary
+
+Two-tier architecture for an iPhone-friendly private webpage that copies reusable prompts and skills with one tap: a backend that is the sole GitHub principal and strips YAML front matter, and a passive frontend that renders only normalized, sanitized items received from the backend. Scope is v1: private, read-only, no persistence, no search, no per-user auth, single shared access secret.
+
 ## Context
 
-The user has a private GitHub repository containing short lists of reusable prompts and development skills.
+The user maintains a private GitHub repository ("ai-labs") containing reusable prompts under `prompts/` and skills under `dev-skills/public/`. The user wants to copy individual items from an iPhone with one tap, without exposing repo credentials, raw GitHub API responses, or YAML front matter to the client. Lists are short enough that caching, pagination, indexing, and search are unnecessary in v1.
 
-Relevant repository paths:
+Rejected alternatives:
 
-- `prompts/`
-- `dev-skills/public/`
-
-The user wants a comfortable iPhone webpage that lists these items and lets each item be copied to the clipboard with one tap. Copied content must exclude YAML front matter while preserving the original Markdown/content body exactly.
-
-The lists are short enough that caching, pagination, indexing, and search are unnecessary for the first version.
+- direct browser-to-GitHub access — would leak the GitHub token to the client or require per-user GitHub auth
+- static prebuilt JSON dump checked into a deploy artifact — couples publish cadence to GitHub commits and adds a build step
+- persistent backend with database/cache — operational burden out of proportion to the problem size
 
 ## Decision
 
-Build a minimal iPhone-friendly webpage backed by a lightweight serverless/private endpoint.
+The system is split into two tiers:
 
-The endpoint owns all private GitHub access and returns only sanitized, normalized items to the frontend.
+- a backend that owns GitHub access (deployed as a serverless function or any equivalent server-side process). It reads only allowlisted source paths, parses and strips YAML front matter, and returns normalized items.
+- a passive frontend gated by a shared access secret. It renders sections, shows item title and subtitle, and copies sanitized item bodies to the clipboard on tap.
 
-The frontend renders two sections:
+The frontend MUST NOT speak to GitHub directly and MUST NOT receive the GitHub token, raw GitHub API responses, or YAML front matter under any condition.
 
-- `prompts`
-- `skills`
+## Rules / Invariants
 
-Each cell/card behaves as a copy-to-clipboard button and shows:
+### Repository access
 
-- title
-- subtitle
-- visual status/type indicator when relevant
-
-## Repository Access Boundary
-
-The backend/serverless layer is the only component allowed to access GitHub.
-
-It must:
-
-- hold the GitHub token or equivalent private repo credential
-- restrict reads to configured allowlisted paths only:
+- The backend MUST be the only component holding GitHub credentials.
+- The backend MUST restrict reads to configured allowlisted source paths only:
   - `prompts/`
   - `dev-skills/public/`
-- read files from GitHub
-- parse front matter for metadata
-- strip front matter from copyable content
-- normalize item metadata
-- detect resource-backed skills
-- avoid exposing raw GitHub API responses to the client
-- avoid exposing front matter to the client
+- The allowlist MUST be defined in source-controlled configuration. Adding or removing an allowlisted path is an architectural change and MUST be made by amending this ADR or by a new ADR that supersedes the relevant rule here.
 
-The frontend must never receive:
+### Sanitization
 
-- GitHub token
-- raw GitHub API response
-- YAML front matter
-- non-allowlisted repo structure
+- The backend MUST strip YAML front matter from copyable bodies before returning them.
+- The backend MUST preserve all body content after the front matter byte-for-byte (Markdown syntax, indentation, blank lines, code fences, trailing newline).
+- If a file's front matter is malformed, the backend MUST treat the file as having no front matter and return the entire file body as the copyable body. The response MUST NOT fail because of a single malformed item.
+- The backend MUST NOT expose to the client: the GitHub token, raw GitHub API responses, YAML front matter, or any path/file outside the allowlist.
 
-## Item Model Decision
+### Item model
 
-The endpoint returns normalized items grouped by section.
+- Each returned item MUST include: a stable id, a section identifier (`prompts` or `skills`), title, subtitle, copyable body, and a kind/status field for rendering.
+- Item id MUST be the item's relative path inside the source repo, for example `prompts/example.md` or `dev-skills/public/example-skill/SKILL.md`. Renaming a file changes its id.
+- Title MUST be drawn from front matter `title` if present; otherwise from the filename or the skill folder name.
+- Subtitle MUST be drawn from front matter `description` or `summary` if present; otherwise it MAY be empty.
 
-Each item includes:
+### Skill shape
 
-- stable id
-- section: `prompts` or `skills`
-- title
-- subtitle
-- copyable body without front matter
-- item kind/status metadata for rendering
+- A skill folder containing only `SKILL.md` MUST be classified `standalone`.
+- A skill folder containing `SKILL.md` plus any additional sibling files or folders MUST be classified `resource-backed`.
+- The frontend MUST visually distinguish `resource-backed` skills so the user is not misled into treating the copied `SKILL.md` as self-contained.
 
-Title and subtitle derivation:
+### Access
 
-- title: front matter title if present, otherwise filename/folder-derived fallback
-- subtitle: front matter description or summary if present, otherwise empty or fallback label
+- The webpage and its API MUST be gated by a single shared secret.
+- The shared secret MUST be validated server-side on every API request and MUST be transported over HTTPS. Whether the secret travels in a header, cookie, or request body is an implementation choice and is not constrained by this ADR.
+- The frontend MUST NOT receive the GitHub token under any condition.
+- v1 does not model multiple users or roles.
 
-Copyable body:
+### Storage and refresh
 
-- full file body minus YAML front matter
-- original Markdown/content formatting preserved exactly
-
-## Skill Shape Decision
-
-Skills are read from `dev-skills/public/`.
-
-A skill is centered on `SKILL.md`.
-
-Skills that have additional folders or files next to `SKILL.md` must be visually distinguished in the UI because they may reference scripts, resources, or other files and may not be directly usable by copying `SKILL.md` alone.
-
-Recommended skill categories:
-
-- `standalone` — folder contains `SKILL.md` only
-- `resource-backed` — folder contains `SKILL.md` plus any additional sibling files or folders
-
-The frontend should render `resource-backed` skills differently, for example with a badge such as `uses resources` or `not copy-only`.
-
-## Refresh Decision
-
-Support explicit refresh only:
-
-- visible Reload button
-- pull/swipe-to-refresh where the browser/platform supports it
-
-No auto-refresh is required.
-
-## Access Decision
-
-Use a single shared access secret/password for the webpage.
-
-This is sufficient for the first version because the tool is personal/private and does not require multiple users, roles, or permission levels.
-
-The shared secret protects access to the page/API, while the GitHub token remains server-side only.
-
-## Storage Decision
-
-Use no persistent storage in v1.
-
-The endpoint may build an in-memory response per request, but it should not introduce a database, cache, search index, or background sync process.
+- v1 MUST NOT introduce a database, search index, persistent cache, or background sync.
+- The backend MAY perform per-request, in-process work (parsing, grouping, normalization) and MAY use the deployment platform's request-scope memory, but MUST NOT retain item state across requests. Per-request, in-process memoization is not a "cache layer" for the purposes of this ADR.
+- Refresh MUST be explicit: a Reload button and platform pull-to-refresh where available. No automatic refresh.
 
 ## Consequences
 
 Benefits:
 
-- private repo token remains protected
-- simple iPhone UX
-- no database or cache operational burden
+- the GitHub token never reaches the client
+- minimal operational surface (no DB, no cache, no background jobs)
 - deterministic behavior on reload
-- sanitized client payload
-- resource-backed skills are not misleadingly presented as plain copy-only snippets
+- resource-backed skills are not misrepresented as plain copy-only snippets
 
-Tradeoffs:
+Tradeoffs accepted:
 
-- every load/reload hits GitHub or serverless runtime logic
+- every load/reload hits GitHub or serverless runtime logic; sustained reload bursts can hit GitHub API rate limits and the response will surface an error rather than degrade to a stale cached view
 - no offline access
 - no search or filtering
 - no version history in the UI
-- shared password is simpler but weaker than real user authentication
+- shared password is simpler than per-user auth and weaker; mitigated by the v1 single-user assumption
+
+Future extension points:
+
+- adding additional source paths requires amending the allowlist invariant in this ADR
+- introducing caching, search, or per-user auth is explicitly future work and would require a new ADR
 
 ## Non-Goals
 
@@ -150,12 +103,8 @@ Tradeoffs:
 - no search
 - no editing
 - no GitHub write access
-- no multiple users/roles
+- no multiple users or roles
 - no per-user authentication
 - no configurable extraction rules per folder/type
 - no automatic refresh
-- no exposure of GitHub token, raw GitHub response, or front matter to the client
-
-## Accepted Scope
-
-V1 is a private, read-only, copy-oriented webpage for short prompt and skill lists.
+- no client exposure of GitHub token, raw GitHub API responses, or front matter
