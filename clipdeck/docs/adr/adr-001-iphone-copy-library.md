@@ -1,6 +1,8 @@
 ---
 title: "ADR: iPhone Copy Library for Private Prompts and Skills"
 date: 2026-05-01
+model: claude-opus-4-7
+description: "Two-tier architecture for clipdeck — backend is the sole runtime GitHub principal, passive frontend gated by a shared secret"
 status: accepted
 artifact_type: adr
 ---

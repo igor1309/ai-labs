@@ -1,6 +1,8 @@
 ---
 title: "ADR-002: Credential Lifecycle"
 date: 2026-05-01
+model: claude-opus-4-7
+description: "Lifecycle for the GitHub PAT clipdeck's runtime backend uses to read the ai-labs source repo"
 status: accepted
 artifact_type: adr
 ---

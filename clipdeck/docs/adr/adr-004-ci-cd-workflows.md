@@ -1,6 +1,8 @@
 ---
 title: "ADR-004: CI/CD Workflows"
 date: 2026-05-01
+model: claude-opus-4-7
+description: "Per-project clipdeck-core.yml PR gate plus tag-driven production deploys via the existing release-unit.yml using a least-privilege Cloudflare API token"
 status: accepted
 artifact_type: adr
 ---

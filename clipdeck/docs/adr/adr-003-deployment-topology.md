@@ -1,6 +1,8 @@
 ---
 title: "ADR-003: Deployment Topology"
 date: 2026-05-01
+model: claude-opus-4-7
+description: "Bind clipdeck's deployment to a single Cloudflare Worker with Static Assets, single-origin frontend and API, Workers Secrets for the runtime PAT"
 status: accepted
 artifact_type: adr
 ---
