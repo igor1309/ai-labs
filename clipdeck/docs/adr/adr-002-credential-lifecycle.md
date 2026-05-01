@@ -31,9 +31,11 @@ Rejected alternatives:
 
 ## Decision
 
-The backend authenticates to GitHub using a single GitHub fine-grained personal access token. The token is owned by the human user, scoped to the ai-labs repository, and granted only the permissions required to list and read files under the allowlisted source paths defined by ADR-001.
+The backend authenticates to GitHub using a single GitHub fine-grained personal access token. The token is owned by the GitHub identity that owns the ai-labs repository, scoped to that repository, and granted only the permissions required to list and read files under the allowlisted source paths defined by ADR-001.
 
-The token is stored exclusively in the deployment platform's native secret manager and exposed to the running backend via environment-variable injection. It is never written to source control, build artifacts, deployment logs, or any other storage.
+The token is stored exclusively in the deployment platform's native secret manager. The mechanism by which the running backend reads the secret (environment variable, platform fetch API, or equivalent) is left to the deployment platform. The token is never written to source control, build artifacts, deployment logs, or any other storage.
+
+ADR-001's prohibition on platform-provided cache and storage primitives applies to runtime item state and does not constrain the credential-storage mechanism defined here. The secret manager exists for credential storage only and MUST NOT be repurposed to hold item state.
 
 ## Rules / Invariants
 
@@ -49,12 +51,12 @@ The token is stored exclusively in the deployment platform's native secret manag
 - The token MUST be stored only in the deployment platform's native secret manager (for example, Cloudflare Workers Secrets, Fly.io Secrets, AWS Secrets Manager, or equivalent).
 - The token MUST NOT be committed to any source-controlled file, even encrypted.
 - The token MUST NOT appear in any deployment artifact, build log, container image, or platform log.
-- The token MUST NOT be readable by any clipdeck component other than the request-handling backend at runtime.
+- The token MUST NOT be exposed to any clipdeck component other than the request-handling backend; the deployment configuration MUST grant secret access to that component only.
 
 ### Issuance and ownership
 
-- The token MUST be issued manually by the user from their GitHub account.
-- The owner of record is the human user; clipdeck does not use a service account.
+- The token MUST be issued manually from the GitHub account that owns the ai-labs repository ("the user").
+- The owner of record is that GitHub identity; clipdeck MUST NOT use a separate automation/service GitHub account that is not the ai-labs owner.
 - Each issuance MUST set an explicit expiry of at most 90 days.
 
 ### Rotation
