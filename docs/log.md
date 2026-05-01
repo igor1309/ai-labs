@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-01
+
+- Supabase keep-alive: switched the scheduled workflow from a SELECT ping to a PATCH against a dedicated `public.keepalive` table (`claude-insights/migrations/002_keepalive_table.sql`). Read-only pings did not reliably reset the free-tier inactivity timer — Supabase still issued a pause warning despite three days of green keep-alive runs. A write is unambiguous DB activity. Migration must be applied before the workflow change merges.
+
 ## 2026-04-30
 
 - Linear: added `course-exploration` project (id `f4aa9d0e-3646-411c-8763-8239a2979937`) as a sibling of `ai-labs` to hold a raw, unstructured course-development idea; updated `CLAUDE.md` Linear section to list both projects under the shared workspace/team. Materials remain under `research/courses/` in this repo.
