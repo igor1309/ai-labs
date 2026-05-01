@@ -101,17 +101,14 @@ describe("GET /api/items", () => {
         ]);
       }
 
-      if (url.includes("/contents/dev-skills/public?")) {
-        return Response.json([
-          { path: "dev-skills/public/example", type: "dir" }
-        ]);
-      }
-
-      if (url.includes("/contents/dev-skills/public/example?")) {
-        return Response.json([
-          { path: "dev-skills/public/example/SKILL.md", type: "file" },
-          { path: "dev-skills/public/example/helper.py", type: "file" }
-        ]);
+      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
+        return Response.json({
+          tree: [
+            { path: "example/SKILL.md", type: "blob" },
+            { path: "example/helper.py", type: "blob" }
+          ],
+          truncated: false
+        });
       }
 
       if (url.includes("/contents/prompts/foo.md?")) {
@@ -185,8 +182,11 @@ describe("GET /api/items", () => {
         ]);
       }
 
-      if (url.includes("/contents/dev-skills/public?")) {
-        return Response.json([]);
+      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
+        return Response.json({
+          tree: [],
+          truncated: false
+        });
       }
 
       if (url.includes("/contents/prompts/foo.md?")) {
@@ -227,17 +227,14 @@ describe("GET /api/items", () => {
         return Response.json([]);
       }
 
-      if (url.includes("/contents/dev-skills/public?")) {
-        return Response.json([
-          { path: "dev-skills/public/example", type: "dir" }
-        ]);
-      }
-
-      if (url.includes("/contents/dev-skills/public/example?")) {
-        return Response.json([
-          { path: "dev-skills/public/example/SKILL.md", type: "file" },
-          { path: "dev-skills/public/example/references", type: "dir" }
-        ]);
+      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
+        return Response.json({
+          tree: [
+            { path: "example/SKILL.md", type: "blob" },
+            { path: "example/references", type: "tree" }
+          ],
+          truncated: false
+        });
       }
 
       if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
@@ -268,6 +265,57 @@ describe("GET /api/items", () => {
     };
 
     expect(body.sections[1]?.items.map((item) => item.skillShape)).toEqual(["resource-backed"]);
+  });
+
+  test("should discover skills from recursive GitHub tree", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      const url = String(input);
+
+      if (url.includes("/contents/prompts?")) {
+        return Response.json([]);
+      }
+
+      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
+        return Response.json({
+          tree: [
+            { path: "example/SKILL.md", type: "blob" },
+            { path: "example/references", type: "tree" }
+          ],
+          truncated: false
+        });
+      }
+
+      if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
+        return Response.json({
+          content: encodeGithubContent("---\ndescription: Skill details\n---\nSkill body\n"),
+          encoding: "base64"
+        });
+      }
+
+      return Response.json({ message: "unexpected request" }, { status: 500 });
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          Authorization: "Bearer shared-secret"
+        }
+      }),
+      makeEnv()
+    );
+
+    const body = await response.json() as {
+      sections: Array<{
+        items: Array<{
+          id: string;
+          skillShape?: string;
+        }>;
+      }>;
+    };
+
+    expect(body.sections[1]?.items.map((item) => [item.id, item.skillShape])).toEqual([
+      ["dev-skills/public/example/SKILL.md", "resource-backed"]
+    ]);
   });
 
   test("should return source missing when an allowlisted source directory is absent", async () => {
