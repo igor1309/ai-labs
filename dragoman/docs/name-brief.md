@@ -1,6 +1,8 @@
 ---
 title: "The Dragoman — Name Brief"
-date: "2026-04-29"
+date: 2026-04-29
+model: gpt-5.5-thinking
+description: "Positioning of the channel name and tagline; what the name promises and excludes"
 type: "brand-note"
 status: "draft"
 channel: "The Dragoman"

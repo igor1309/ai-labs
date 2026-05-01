@@ -1,6 +1,8 @@
 ---
 title: "The Dragoman — Channel Vision"
-date: "2026-04-29"
+date: 2026-04-29
+model: gpt-5.5-thinking
+description: "Founding identity of The Dragoman — pillars, formats, voice notes, boundaries"
 type: "channel-vision"
 status: "draft"
 channel: "The Dragoman"
@@ -8,6 +10,8 @@ tagline: "Field notes from the AI Babylon"
 ---
 
 # The Dragoman — Channel Vision
+
+> Founding document (2026-04-29). Voice and structure have since been refined in [`post-pipeline/voice-guide.md`](post-pipeline/voice-guide.md); treat that as authoritative when they diverge.
 
 ## Core idea
 
