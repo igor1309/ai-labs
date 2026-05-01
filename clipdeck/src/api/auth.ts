@@ -1,4 +1,5 @@
 export interface Env {
+  ASSETS?: Fetcher;
   GITHUB_TOKEN: string;
   SHARED_SECRET: string;
 }

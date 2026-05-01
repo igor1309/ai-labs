@@ -9,6 +9,10 @@ export default {
       return handleItems(request, env);
     }
 
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
     return new Response("clipdeck");
   }
 } satisfies ExportedHandler<Env>;
