@@ -142,6 +142,101 @@ describe("GET /api/items", () => {
     });
   });
 
+  test("should preserve utf8 prompt body decoded from GitHub contents", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      const url = String(input);
+
+      if (url.includes("/contents/prompts?")) {
+        return Response.json([
+          { path: "prompts/foo.md", type: "file" }
+        ]);
+      }
+
+      if (url.includes("/contents/dev-skills/public?")) {
+        return Response.json([]);
+      }
+
+      if (url.includes("/contents/prompts/foo.md?")) {
+        return Response.json({
+          content: encodeGithubContent("---\ntitle: Foo Prompt\n---\ncafé\nпривет\n"),
+          encoding: "base64"
+        });
+      }
+
+      return new Response("not found", { status: 404 });
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          Authorization: "Bearer shared-secret"
+        }
+      }),
+      makeEnv()
+    );
+
+    const body = await response.json() as {
+      sections: Array<{
+        items: Array<{
+          body: string;
+        }>;
+      }>;
+    };
+
+    expect(body.sections[0]?.items.map((item) => item.body)).toEqual(["café\nпривет\n"]);
+  });
+
+  test("should mark skills with sibling directories as resource backed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      const url = String(input);
+
+      if (url.includes("/contents/prompts?")) {
+        return Response.json([]);
+      }
+
+      if (url.includes("/contents/dev-skills/public?")) {
+        return Response.json([
+          { path: "dev-skills/public/example", type: "dir" }
+        ]);
+      }
+
+      if (url.includes("/contents/dev-skills/public/example?")) {
+        return Response.json([
+          { path: "dev-skills/public/example/SKILL.md", type: "file" },
+          { path: "dev-skills/public/example/references", type: "dir" }
+        ]);
+      }
+
+      if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
+        return Response.json({
+          content: encodeGithubContent("---\ndescription: Skill details\n---\nSkill body\n"),
+          encoding: "base64"
+        });
+      }
+
+      return new Response("not found", { status: 404 });
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          Authorization: "Bearer shared-secret"
+        }
+      }),
+      makeEnv()
+    );
+
+    const body = await response.json() as {
+      sections: Array<{
+        items: Array<{
+          skillShape?: string;
+        }>;
+      }>;
+    };
+
+    expect(body.sections[1]?.items.map((item) => item.skillShape)).toEqual(["resource-backed"]);
+  });
+
   test("should return source missing when an allowlisted source directory is absent", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
       const url = String(input);
@@ -217,4 +312,8 @@ function makeEnv(): Env {
     GITHUB_TOKEN: "github-token",
     SHARED_SECRET: "shared-secret"
   };
+}
+
+function encodeGithubContent(content: string): string {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(content)));
 }

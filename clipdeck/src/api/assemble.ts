@@ -22,5 +22,15 @@ export function assembleSections(prompts: Item[], skills: Item[]): Section[] {
 }
 
 function sortItems(items: Item[]): Item[] {
-  return [...items].sort((left, right) => left.id.localeCompare(right.id));
+  return [...items].sort((left, right) => {
+    if (left.id < right.id) {
+      return -1;
+    }
+
+    if (left.id > right.id) {
+      return 1;
+    }
+
+    return 0;
+  });
 }

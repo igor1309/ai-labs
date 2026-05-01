@@ -22,6 +22,22 @@ describe("assembleSections", () => {
     ]);
   });
 
+  test("should sort items by byte order for punctuation and case", () => {
+    const sections = assembleSections([
+      makeItem("prompts/_a.md", "prompt"),
+      makeItem("prompts/B.md", "prompt"),
+      makeItem("prompts/.a.md", "prompt"),
+      makeItem("prompts/-a.md", "prompt")
+    ], []);
+
+    expect(sections[0]?.items.map((item) => item.id)).toEqual([
+      "prompts/-a.md",
+      "prompts/.a.md",
+      "prompts/B.md",
+      "prompts/_a.md"
+    ]);
+  });
+
   test("should emit empty items arrays for empty sections", () => {
     const sections = assembleSections([], []);
 

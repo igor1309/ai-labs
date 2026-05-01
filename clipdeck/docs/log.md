@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-02
+
+- Review fixes landed — GitHub content decoding now preserves UTF-8 Markdown, resource-backed skill detection counts sibling directories, and item sorting uses deterministic path order.
+
 ## 2026-05-01
 
 - Phase 4 release wiring prepared — clipdeck is now a release unit with per-project CI, reusable Cloudflare deploy workflow, release-unit fan-in, manifest registration, README component update, and first-deploy runbook.

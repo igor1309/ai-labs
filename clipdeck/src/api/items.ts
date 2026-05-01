@@ -33,10 +33,11 @@ export async function handleItems(request: Request, env: Env): Promise<Response>
           const files = await github.listDir(entry.path);
           const sourceFiles = await Promise.all(
             files
-              .filter((file) => file.type === "file")
               .map(async (file): Promise<SourceFile> => {
                 return {
-                  content: file.path.endsWith("/SKILL.md") ? await github.readFile(file.path) : "",
+                  content: file.type === "file" && file.path.endsWith("/SKILL.md")
+                    ? await github.readFile(file.path)
+                    : "",
                   path: file.path
                 };
               })

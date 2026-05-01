@@ -58,9 +58,16 @@ export function createGithubClient(token: string): GithubClient {
         return "";
       }
 
-      return atob(body.content.replaceAll("\n", ""));
+      return decodeBase64Utf8(body.content);
     }
   };
+}
+
+function decodeBase64Utf8(content: string): string {
+  const binary = atob(content.replaceAll("\n", ""));
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 function githubContentsUrl(path: string): string {
