@@ -2,6 +2,7 @@
 
 ## 2026-05-01
 
+- ADR-004 review pass closed a self-introduced cross-ADR warning: post-deploy verification is now an unauthenticated `GET /api/items` requiring `401`, not an authenticated request — preserves ADR-001's single-shared-secret rule and keeps the first deploy bootstrap-friendly (it succeeds before the operator sets the runtime PAT).
 - ADR-004 amended to fit existing pipelines: deploy is a reusable workflow at `.github/workflows/clipdeck-deploy.yml` called from `release-unit.yml` (notio-frontend pattern), wired into `github-release` and `notify` job graphs; post-deploy verification (authenticated `GET /api/items` against the live hostname) is required; failure notifications route through `notify-telegram-failure.yml`; PR-time isolation and release-time shared `core` gate are both required.
 - Addressed external docs review (`clipdeck/docs/reviews/clipdeck-docs-review.md`): added required `model` and `description` front-matter fields to all four ADRs and the spec, and clarified the front-matter stripping rule so the test-29 expectation (`body\n` for input `---\n---\n\nbody\n`) is no longer ambiguous.
 - Doc set ready for implementation: MVP plan at `clipdeck/docs/plans/clipdeck-mvp.md` (TypeScript on Workers, Vitest, gray-matter, raw fetch, vanilla TS frontend; four phases). Spec amended in the same change to name the source repo (`igor1309/ai-labs`, branch `trunk`) and pin the 502 response schema.

@@ -11,7 +11,7 @@ artifact_type: adr
 
 ## Executive Summary
 
-Defines the CI and CD workflows for clipdeck. Pull-request CI runs per-project typecheck and tests via a path-filtered `clipdeck-core.yml` workflow. Production deploys are tag-driven through the repo's existing `release-unit.yml`, which dispatches to a dedicated reusable workflow `clipdeck-deploy.yml` that runs `wrangler deploy` and then verifies the deployed Worker. Failure notifications route through the shared `notify-telegram-failure.yml`. The ADR-002 runtime GitHub PAT is set and rotated manually against Cloudflare Workers Secrets and is never visible to CI.
+Defines the CI and CD workflows for clipdeck. Pull-request CI runs per-project typecheck and tests via a path-filtered `clipdeck-core.yml` workflow. Production deploys are tag-driven through the repo's existing `release-unit.yml`, which dispatches to a dedicated reusable workflow `clipdeck-deploy.yml` that runs `wrangler deploy` and then verifies the deployed Worker via an unauthenticated `GET /api/items` returning `401`. Failure notifications route through the shared `notify-telegram-failure.yml`. The ADR-002 runtime GitHub PAT is set and rotated manually against Cloudflare Workers Secrets and is never visible to CI.
 
 ## Context
 
@@ -59,8 +59,9 @@ The runtime GitHub PAT defined by ADR-002 is set on the Worker out-of-band by th
 
 ### Post-deploy verification
 
-- After `wrangler deploy` succeeds, `clipdeck-deploy.yml` MUST issue an authenticated `GET /api/items` against the deployed Worker hostname using a CI-only verification secret distinct from the user-facing shared access secret, and MUST require an HTTP `200` before the workflow exits successfully. A non-`200` MUST fail the workflow.
-- The verification step MUST NOT read or expose the runtime GitHub PAT or any Workers Secret value.
+- After `wrangler deploy` succeeds, `clipdeck-deploy.yml` MUST issue an unauthenticated `GET /api/items` (no `Authorization` header) against the deployed Worker hostname and MUST require an HTTP `401` response before the workflow exits successfully. A `401` proves the Worker is deployed, routing, and serving the API contract's auth middleware (per spec test 1). Any other status, a 5xx, a network error, or no response MUST fail the workflow.
+- The verification MUST NOT use the user-facing shared access secret, the runtime GitHub PAT, or any Workers Secret value. It does not authenticate; the goal is proving the Worker is alive on the API path, not exercising the GitHub round trip.
+- This verification is bootstrap-friendly: it succeeds on the first deploy before the operator has run `wrangler secret put GITHUB_TOKEN` (per ADR-002), because the auth middleware short-circuits before any GitHub call. A stronger verification (e.g., comparing a deployed-version endpoint to the expected tag, in the manner of notio-backend's `/version`) is a future amendment that requires a spec change to add the endpoint and is out of scope here.
 
 ### Failure notification
 
