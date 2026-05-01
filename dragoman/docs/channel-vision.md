@@ -1,6 +1,8 @@
 ---
 title: "The Dragoman — Channel Vision"
-date: "2026-04-29"
+date: 2026-04-29
+model: gpt-5.5-thinking
+description: "Founding identity of The Dragoman — pillars, formats, voice notes, boundaries"
 type: "channel-vision"
 status: "draft"
 channel: "The Dragoman"

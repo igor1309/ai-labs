@@ -1,6 +1,6 @@
 ---
 date: 2026-04-30
-model: got-5.5-thinking
+model: gpt-5.5-thinking
 version: 0.0.1
 ---
 
@@ -21,7 +21,7 @@ Create a square 1:1 editorial cover image for **The Dragoman**.
 - Keep generous whitespace.
 - Keep the image **clean and readable for Telegram**.
 - Use **less prose on image**: short phrases only, not long paragraphs.
-- Do **not** use gates.
+- Do **not** use Babylon gate imagery (e.g. Ishtar Gate, ziggurats, ancient archways) — the channel uses "Babylon" as a metaphor, not a visual motif.
 - Do **not** add a frame.
 
 ## Content structure

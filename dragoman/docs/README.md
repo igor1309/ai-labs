@@ -61,4 +61,4 @@ Periodic quality reviews of these docs live in [`reviews/`](reviews/). Each revi
 
 - Posts live in `dragoman/posts/<NNNN-slug>/` (e.g. `0001-q-and-a-session/`).
 - Prompt placeholders use `{{NAME}}` syntax across all pipeline docs.
-- Posts are written in Russian; channel meta (description, tagline, masthead) is in English per the name brief.
+- Posts are written in Russian; channel meta (description, tagline, masthead) is in English.

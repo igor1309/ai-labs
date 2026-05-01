@@ -1,7 +1,8 @@
 ---
 title: "The Dragoman Voice Guide"
+date: 2026-04-30
+model: gpt-5.5-thinking
 description: "Voice description and writing guidelines for Telegram channel posts"
-date: "2026-04-30"
 format: "markdown"
 ---
 
