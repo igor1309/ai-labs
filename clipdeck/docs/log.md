@@ -2,6 +2,7 @@
 
 ## 2026-05-01
 
+- ADR-004 (CI/CD workflows): per-project `clipdeck-core.yml` for typecheck and tests on path-filtered PRs; production deploys are tag-driven via the existing `release-unit.yml`, calling `wrangler deploy` with a least-privilege Cloudflare API token. CI never sees the runtime GitHub PAT. Lives at `clipdeck/docs/adr/adr-004-ci-cd-workflows.md`.
 - ADR-003 (deployment topology) settled at v1: single Cloudflare Worker with Static Assets hosts the iPhone page and `/api/items` on one origin; GitHub PAT bound via Workers Secrets. Scope is the production binding (local dev and preview are out of scope). CI/CD deferred to a future ADR-004. Lives at `clipdeck/docs/adr/adr-003-deployment-topology.md`.
 - ADR-002 settled at v1: credential is a GitHub fine-grained PAT, read-only on ai-labs, in the deploy platform's secret manager, manually rotated within 90 days. Spec updated to reference it. Lives at `clipdeck/docs/adr/adr-002-credential-lifecycle.md`.
 - Spec settled at v1: single source of behavior with 29 enumerated tests covering the API contract and frontend rules. Aligned with the ADR; ready for implementation. Lives at `clipdeck/docs/specs/spec-iphone-copy-library.md`.

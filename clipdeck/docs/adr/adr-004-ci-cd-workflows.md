@@ -1,0 +1,89 @@
+---
+title: "ADR-004: CI/CD Workflows"
+date: 2026-05-01
+status: accepted
+artifact_type: adr
+---
+
+# ADR-004: CI/CD Workflows
+
+## Executive Summary
+
+Defines the CI and CD workflows for clipdeck. Pull-request CI runs per-project typecheck and tests via a path-filtered `clipdeck-core.yml` workflow. Production deploys are tag-driven through the repo's existing per-unit release pipeline, which calls `wrangler deploy` using a Cloudflare API token stored as a GitHub Actions secret. The ADR-002 runtime GitHub PAT is set and rotated manually against Cloudflare Workers Secrets and is never visible to CI.
+
+## Context
+
+ADR-001, ADR-002, and ADR-003 collectively name what clipdeck runs and where. Implementation also needs a pull-request gate that catches type errors and test failures before merge, a deploy mechanism that pushes merged code to the Cloudflare Worker chosen by ADR-003, and a clean separation between the Cloudflare deploy credential (used by CI) and the runtime GitHub PAT (used by the Worker at request time).
+
+The repo already operates a per-project CI dispatch model and a per-unit, tag-driven release pipeline (see `CLAUDE.md` "Per-Project CI Isolation" and "Release Process"). This ADR binds clipdeck to those existing models rather than inventing a new one.
+
+Rejected alternatives:
+
+- merging clipdeck tests into another project's CI workflow — violates the repo's per-project isolation rule
+- deploying on every push to trunk — couples deploy cadence to commit cadence and bypasses the existing tag-based release model used by every other release unit in the repo
+- having CI mutate Cloudflare Workers Secrets — violates ADR-002's rule that CI MUST NOT observe or write the runtime GitHub PAT
+- skipping a per-project CI workflow ("clipdeck is docs-only") — valid only while clipdeck has no code; once implementation begins, tests are required
+
+## Decision
+
+clipdeck adopts the repo's existing two-track CI/CD model:
+
+- **PR gate.** A dedicated `.github/workflows/clipdeck-core.yml` runs typecheck and tests for clipdeck on changes to its own paths. It is dispatched from the central `ci.yml` via path filter, consistent with every other code-bearing project.
+- **Production deploy.** clipdeck is a release unit declared in `release-units.config.toml`. A `clipdeck_v<version>` tag on trunk triggers the existing `release-unit.yml` pipeline, which runs `wrangler deploy` against the production Worker using a Cloudflare API token stored as a GitHub Actions secret.
+
+The runtime GitHub PAT defined by ADR-002 is set on the Worker out-of-band by the user (`wrangler secret put` or the Cloudflare dashboard). CI never reads, writes, or logs it.
+
+## Rules / Invariants
+
+### Pull-request CI
+
+- A workflow at `.github/workflows/clipdeck-core.yml` MUST run on a path filter that covers clipdeck source and test files.
+- The workflow MUST run typecheck (`npx tsc --noEmit` or equivalent) and the clipdeck test suite. It MUST NOT install dependencies for, or run tests of, any other project.
+- The workflow MUST be wired into the central `ci.yml` dispatch so that doc-only changes to clipdeck do not run it.
+
+### Production deploy
+
+- Production deploys MUST be triggered by a `clipdeck_v<version>` tag on trunk via the repo's existing `release-unit.yml` pipeline. Manual `wrangler deploy` from a developer machine MUST NOT be used to ship to the production Worker.
+- The deploy step MUST use a Cloudflare API token stored as a GitHub Actions secret. The token MUST be scoped to the minimum required to deploy a Worker (`Workers Scripts: Edit` and the resource-scoping equivalent for the target account or Worker). Broader Cloudflare credentials (account-wide admin, R2/KV admin, etc.) MUST NOT be granted to this token.
+- The deploy step MUST NOT read, write, or log the runtime GitHub PAT defined by ADR-002.
+- Deploy logs MUST NOT print Cloudflare API token values or Workers Secrets values.
+
+### Runtime credential boundary
+
+- The runtime GitHub PAT defined by ADR-002 MUST be set on the production Worker only via an operator-run command (`wrangler secret put` or the Cloudflare dashboard). CI workflows MUST NOT set, mutate, or read it.
+- Rotating the runtime GitHub PAT MUST NOT require a CI run.
+
+### Release manifest
+
+- clipdeck MUST be declared as a release unit in `release-units.config.toml` with a stable basename (`clipdeck`) once implementation work begins.
+- The committed `release-units.toml` manifest MUST stay consistent with `release-units.config.toml`; CI MUST gate on manifest drift, consistent with the rest of the repo.
+
+## Consequences
+
+Benefits:
+
+- clipdeck inherits the repo's proven PR-gate and tag-driven deploy model with no new infrastructure
+- the runtime GitHub PAT and the Cloudflare deploy token have separate lifecycles, blast radii, and access surfaces
+- per-project CI isolation keeps clipdeck failures from blocking unrelated projects and vice versa
+- doc-only changes skip the CI run via the path-filter dispatch
+
+Tradeoffs accepted:
+
+- the user must manually set and rotate the runtime GitHub PAT against Cloudflare; rotation is not automated by CI (a deliberate ADR-002 invariant, restated here)
+- the Cloudflare API token used by CI is a long-lived secret in GitHub Actions and is itself subject to rotation discipline outside this ADR
+- adding a new clipdeck dependency or test glob requires editing both `clipdeck-core.yml` and the central `ci.yml` path filter
+
+Future extension points:
+
+- adding a staging Worker and a pre-production deploy step would amend or supersede this ADR's deploy rules
+- migrating the Cloudflare API token from a long-lived GitHub Actions secret to OIDC federation would supersede the secret-based approach
+- adding E2E browser tests against a live preview deployment is an amendment to this ADR, not to ADR-001's behavior contract
+
+## Non-Goals
+
+- no automated rotation of the runtime GitHub PAT (ADR-002 keeps that manual)
+- no CI access to Cloudflare Workers Secrets values
+- no cross-project test runs in `clipdeck-core.yml`
+- no deploy to production from anywhere other than the tag-driven `release-unit.yml` pipeline
+- no Cloudflare account-wide admin credentials in CI
+- no environment-promotion model (no staging tier in v1)
