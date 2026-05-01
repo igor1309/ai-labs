@@ -3,6 +3,13 @@
 
 
 [[units]]
+basename = "clipdeck"
+path = "clipdeck"
+metadata = "package.json"
+version = "0.1.0"
+docker = false
+
+[[units]]
 basename = "nomos"
 path = "nomos"
 metadata = "package.json"

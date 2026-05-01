@@ -2,6 +2,7 @@
 
 ## 2026-05-01
 
+- Phase 4 release wiring prepared — clipdeck is now a release unit with per-project CI, reusable Cloudflare deploy workflow, release-unit fan-in, manifest registration, README component update, and first-deploy runbook.
 - Phase 3 frontend complete — static assets now serve through the Worker, with an iPhone-first unlock flow, bearer-token item fetch, rendered prompt/skill sections, copy feedback, reload replacement, and resource-backed skill styling covered in jsdom tests.
 - Phase 2 API endpoint complete — `GET /api/items` now enforces bearer-secret auth, reads allowlisted GitHub Contents API paths, returns sanitized prompt/skill sections, and normalizes source-missing/upstream failures to the spec JSON errors.
 - Phase 1 units complete — front matter parsing now preserves copyable Markdown bytes while tolerating malformed YAML, and pure discovery/assembly cover prompt and skill item shape, fallback titles/subtitles, section order, empty sections, and sorting.

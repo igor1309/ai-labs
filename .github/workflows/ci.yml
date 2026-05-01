@@ -30,6 +30,8 @@ jobs:
       notio-frontend-ci: ${{ steps.filter.outputs.notio-frontend-ci }}
       regentara: ${{ steps.filter.outputs.regentara }}
       regentara-ci: ${{ steps.filter.outputs.regentara-ci }}
+      clipdeck: ${{ steps.filter.outputs.clipdeck }}
+      clipdeck-ci: ${{ steps.filter.outputs.clipdeck-ci }}
       dev-skills: ${{ steps.filter.outputs.dev-skills }}
     steps:
       - name: Checkout
@@ -58,6 +60,7 @@ jobs:
               - "release-units.config.toml"
               - "release-units.toml"
               - "scripts/release/**"
+              - "clipdeck/**"
               - "loki/**"
               - "nomos/**"
               - "notio/**"
@@ -80,6 +83,17 @@ jobs:
               - "regentara/**"
             regentara-ci:
               - ".github/workflows/regentara-core.yml"
+            clipdeck:
+              - "clipdeck/src/**"
+              - "clipdeck/test/**"
+              - "clipdeck/package.json"
+              - "clipdeck/package-lock.json"
+              - "clipdeck/tsconfig*.json"
+              - "clipdeck/vitest*.config.ts"
+              - "clipdeck/wrangler.*"
+            clipdeck-ci:
+              - ".github/workflows/clipdeck-core.yml"
+              - ".github/workflows/clipdeck-deploy.yml"
             dev-skills:
               - "dev-skills/public/**"
 
@@ -117,6 +131,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.regentara == 'true' || needs.changes.outputs.regentara-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/regentara-core.yml
+
+  clipdeck-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.clipdeck == 'true' || needs.changes.outputs.clipdeck-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/clipdeck-core.yml
 
   release-validation:
     needs: [changes]
@@ -184,7 +203,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, clipdeck-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -195,8 +214,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.regentara-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.regentara-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, clipdeck-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -209,6 +228,7 @@ jobs:
         web-scout-core=${{ needs.web-scout-core.result }}
         corpus-scout-core=${{ needs.corpus-scout-core.result }}
         regentara-core=${{ needs.regentara-core.result }}
+        clipdeck-core=${{ needs.clipdeck-core.result }}
         notio-core=${{ needs.notio-core.result }}
         notio-frontend-core=${{ needs.notio-frontend-core.result }}
         release-validation=${{ needs.release-validation.result }}
