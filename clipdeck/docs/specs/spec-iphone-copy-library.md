@@ -60,7 +60,7 @@ Success response (`200`):
 Field semantics:
 
 - `sections[].id` — `"prompts"` or `"skills"`.
-- `sections[].title` — human-readable section label.
+- `sections[].title` — fixed human-readable label: `"Prompts"` for the `prompts` section, `"Skills"` for the `skills` section.
 - `items[].id` — relative path of the source file inside the ai-labs repo.
 - `items[].kind` — `"prompt"` or `"skill"`.
 - `items[].title`, `items[].subtitle` — derived per the rules below.
@@ -82,9 +82,14 @@ Error responses:
 
 - The endpoint MUST read only `prompts/` and `dev-skills/public/`. No path outside the allowlist may appear in the response.
 
+### Response shape
+
+- The response MUST contain both sections, in this order: `prompts` first, then `skills`. A section with no discovered items MUST still appear with `items: []`.
+- Items inside each section MUST be ordered by `id` ascending (lexicographic byte order).
+
 ### Prompt discovery
 
-- Prompts MUST be discovered as files matching `prompts/<name>.md`. Nested prompt folders MUST be ignored.
+- Prompts MUST be discovered as files matching `prompts/<name>.md` (extension `.md` only, case-sensitive). Files with any other extension and files inside nested folders MUST be ignored.
 - Each prompt file produces one item with `kind == "prompt"` and `id == "prompts/<name>.md"`.
 
 ### Skill discovery
@@ -100,6 +105,7 @@ Error responses:
 - All bytes after that point MUST be preserved unchanged: Markdown syntax, blank lines, indentation, code fences, trailing newline.
 - If a file does not begin with `---`, the returned `body` MUST be the entire file content unchanged.
 - If a file begins with `---` but the front matter is malformed (no closing delimiter, invalid YAML, etc.), the file MUST be treated as if it had no front matter; its `body` MUST be the entire file content unchanged. The endpoint MUST NOT fail the response because of a single malformed item.
+- A well-formed front matter block with no YAML keys (the second `---` immediately follows the first) is valid; the returned `body` starts at the byte after the closing delimiter and any single immediately following newline, and the item MUST behave as having no front matter for `title` and `subtitle` derivation.
 
 ### Title and subtitle derivation
 
@@ -115,7 +121,7 @@ Error responses:
 
 - The page MUST be gated behind the shared access secret; until the secret is accepted by the backend, no item data is rendered.
 - Each rendered item MUST show its title, subtitle, and (for skills) a visual distinction when `skillShape == "resource-backed"`.
-- Tapping an item MUST copy that item's `body` to the clipboard verbatim and surface a copy success or copy failure indication.
+- Tapping an item MUST copy that item's `body` to the clipboard verbatim and MUST surface a visible feedback indicator that reports either copy success or copy failure. The indicator MUST be observable in the rendered DOM (a visible element whose text or attribute reflects the outcome).
 - A Reload action MUST refetch `GET /api/items` and replace the rendered list. Pull/swipe-to-refresh MUST behave identically where the platform supports it.
 - The frontend MUST NOT request data from GitHub directly and MUST NOT receive the GitHub token under any condition.
 
@@ -140,13 +146,18 @@ Each test corresponds to a behavior rule and defines the failure surface. An imp
 15. `subtitle` is read from front matter `description` when present.
 16. `subtitle` falls back to `summary` when `description` is absent and `summary` is present.
 17. `subtitle` is the empty string when neither `description` nor `summary` is present.
-18. The response payload contains no GitHub token and no field whose value matches a raw GitHub API response shape; no item carries front matter content.
+18. The top-level response object has exactly one key `sections`. Each section object has exactly the keys `id`, `title`, `items`. Each item object has exactly the keys `id`, `kind`, `title`, `subtitle`, `body`, plus `skillShape` only when `kind == "skill"`. No additional keys are present. No string field's value contains the verbatim YAML front matter of any source file, and no item field equals the GitHub access token.
 19. A configured allowlist source path missing in the source repo returns `502` with a payload identifying which source is missing.
 20. A simulated upstream GitHub failure during item read returns `502`.
 21. The page does not render any item data until the backend accepts the shared secret.
-22. Tapping a rendered item writes that item's `body` to the clipboard verbatim.
+22. Tapping a rendered item writes that item's `body` to the clipboard verbatim AND a visible feedback indicator (DOM element) appears reporting the outcome.
 23. The Reload action refetches `GET /api/items` and replaces the rendered list.
 24. Resource-backed skills are visually distinct from standalone skills in the rendered list.
+25. The response always lists the `prompts` section before the `skills` section.
+26. A section with no discovered items appears in the response with `items: []`.
+27. Items inside each section are returned in lexicographic ascending order of `id`.
+28. A non-`.md` file in `prompts/` (for example `prompts/README.txt` or `prompts/.DS_Store`) does not appear in the response.
+29. A file beginning `---\n---\n\nbody\n` returns `body == "body\n"` and is treated as having no front matter for `title`/`subtitle` derivation.
 
 ## Done criteria
 
