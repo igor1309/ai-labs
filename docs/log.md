@@ -2,6 +2,7 @@
 
 ## 2026-05-01
 
+- LOC dashboard landing: refreshed product cards in `docs/loc-dashboard.html` — promoted regentara from `Concept`/Design to a `CLI` MVP workflow runner with current tags, and renamed dragoman to "The Dragoman" with description and tags reflecting a posts-and-imagery channel rather than docs-only. `scripts/loc-dashboard.sh` was reviewed and needs no changes (it counts LOC and does not classify project type).
 - clipdeck: added release-unit and CI/CD wiring for tag-driven Cloudflare Worker deploys, plus the first-deploy operator runbook and README component update.
 - clipdeck: implemented the static iPhone frontend and Worker Static Assets routing, including unlock, reload, copy feedback, and resource-backed skill styling tests.
 - clipdeck: implemented the authenticated `GET /api/items` Worker endpoint with GitHub Contents API reads, sanitized section assembly, and spec-shaped upstream/source-missing errors.
