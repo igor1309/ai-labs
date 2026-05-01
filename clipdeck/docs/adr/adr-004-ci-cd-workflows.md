@@ -37,14 +37,15 @@ The runtime GitHub PAT defined by ADR-002 is set on the Worker out-of-band by th
 
 ### Pull-request CI
 
-- A workflow at `.github/workflows/clipdeck-core.yml` MUST run on a path filter that covers clipdeck source and test files.
+- A workflow at `.github/workflows/clipdeck-core.yml` MUST run on a path filter that covers clipdeck source and test files. The path filter MUST include at minimum: `clipdeck/src/**`, `clipdeck/test/**` (or the equivalent test directory adopted by the implementation), `clipdeck/wrangler.*`, `clipdeck/package.json`, `clipdeck/package-lock.json`, and `clipdeck/tsconfig*.json`. Changes confined to `clipdeck/docs/**` MUST NOT trigger the workflow.
 - The workflow MUST run typecheck (`npx tsc --noEmit` or equivalent) and the clipdeck test suite. It MUST NOT install dependencies for, or run tests of, any other project.
 - The workflow MUST be wired into the central `ci.yml` dispatch so that doc-only changes to clipdeck do not run it.
 
 ### Production deploy
 
 - Production deploys MUST be triggered by a `clipdeck_v<version>` tag on trunk via the repo's existing `release-unit.yml` pipeline. Manual `wrangler deploy` from a developer machine MUST NOT be used to ship to the production Worker.
-- The deploy step MUST use a Cloudflare API token stored as a GitHub Actions secret. The token MUST be scoped to the minimum required to deploy a Worker (`Workers Scripts: Edit` and the resource-scoping equivalent for the target account or Worker). Broader Cloudflare credentials (account-wide admin, R2/KV admin, etc.) MUST NOT be granted to this token.
+- The deploy step MUST use a Cloudflare API token stored as a GitHub Actions secret. The token's permission set MUST be limited to `Workers Scripts: Edit` (the minimum required to publish a Worker). The token's account resources MUST be limited to the single Cloudflare account that hosts the production Worker; multi-account or all-account scoping is a violation. Broader Cloudflare credentials (account-wide admin, R2/KV admin, Zone admin, User-token equivalents, etc.) MUST NOT be granted to this token.
+- The Cloudflare API deploy token MUST be rotated at least every 12 months and MUST be revoked immediately on suspected exposure (logged value, leaked transcript, departed operator, etc.). Rotation MUST replace the GitHub Actions secret in the same change window so deploys remain functional.
 - The deploy step MUST NOT read, write, or log the runtime GitHub PAT defined by ADR-002.
 - Deploy logs MUST NOT print Cloudflare API token values or Workers Secrets values.
 
@@ -55,7 +56,7 @@ The runtime GitHub PAT defined by ADR-002 is set on the Worker out-of-band by th
 
 ### Release manifest
 
-- clipdeck MUST be declared as a release unit in `release-units.config.toml` with a stable basename (`clipdeck`) once implementation work begins.
+- clipdeck MUST be declared as a release unit in `release-units.config.toml` with a stable basename (`clipdeck`) no later than the first PR that adds clipdeck production code. Production deploys MUST NOT run until the manifest reflects clipdeck.
 - The committed `release-units.toml` manifest MUST stay consistent with `release-units.config.toml`; CI MUST gate on manifest drift, consistent with the rest of the repo.
 
 ## Consequences
@@ -70,7 +71,7 @@ Benefits:
 Tradeoffs accepted:
 
 - the user must manually set and rotate the runtime GitHub PAT against Cloudflare; rotation is not automated by CI (a deliberate ADR-002 invariant, restated here)
-- the Cloudflare API token used by CI is a long-lived secret in GitHub Actions and is itself subject to rotation discipline outside this ADR
+- the Cloudflare API deploy token is a long-lived secret in GitHub Actions; rotation is now governed by this ADR (12-month cadence, immediate revocation on suspected exposure)
 - adding a new clipdeck dependency or test glob requires editing both `clipdeck-core.yml` and the central `ci.yml` path filter
 
 Future extension points:
