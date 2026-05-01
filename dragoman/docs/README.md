@@ -12,8 +12,8 @@ This folder holds the editorial system behind the **The Dragoman** Telegram chan
 
 Read these once to understand what the channel is. They settle and stay.
 
-- [`the-dragoman-channel-vision.md`](the-dragoman-channel-vision.md) — founding identity, pillars, formats, boundaries.
-- [`the-dragoman-name-brief.md`](the-dragoman-name-brief.md) — positioning of the name and tagline.
+- [`channel-vision.md`](channel-vision.md) — founding identity, pillars, formats, boundaries.
+- [`name-brief.md`](name-brief.md) — positioning of the name and tagline.
 
 When the foundational docs and the post-pipeline docs disagree, the post-pipeline docs win — they are the refined, current source of truth.
 
@@ -22,7 +22,7 @@ When the foundational docs and the post-pipeline docs disagree, the post-pipelin
 Operational docs used per post. Each is consumed as a **plain prompt in a chat interface** (ChatGPT, Claude.ai, etc.), not as a Claude Code skill — chat surfaces don't support skills, so keeping these as explicit prompt files is intentional.
 
 - [`post-pipeline/editorial-architecture-qa-prompt.md`](post-pipeline/editorial-architecture-qa-prompt.md) — stage 1.
-- [`post-pipeline/the-dragoman-voice-guide.md`](post-pipeline/the-dragoman-voice-guide.md) — stage 2 reference.
+- [`post-pipeline/voice-guide.md`](post-pipeline/voice-guide.md) — stage 2 reference.
 - [`post-pipeline/post-image-prompt.md`](post-pipeline/post-image-prompt.md) — stage 3.
 
 ## Workflow
@@ -39,7 +39,7 @@ Output: an editorial architecture document.
 
 ### Stage 2 — Draft the post
 
-Inputs: the architecture from stage 1, any initial draft, and `post-pipeline/the-dragoman-voice-guide.md` for voice.
+Inputs: the architecture from stage 1, any initial draft, and `post-pipeline/voice-guide.md` for voice.
 
 In a new chat, the model drafts the post in The Dragoman voice, following the architecture as a hard constraint.
 

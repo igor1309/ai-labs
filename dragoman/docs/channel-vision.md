@@ -9,7 +9,7 @@ tagline: "Field notes from the AI Babylon"
 
 # The Dragoman — Channel Vision
 
-> Founding document (2026-04-29). Voice and structure have since been refined in [`post-pipeline/the-dragoman-voice-guide.md`](post-pipeline/the-dragoman-voice-guide.md); treat that as authoritative when they diverge.
+> Founding document (2026-04-29). Voice and structure have since been refined in [`post-pipeline/voice-guide.md`](post-pipeline/voice-guide.md); treat that as authoritative when they diverge.
 
 ## Core idea
 

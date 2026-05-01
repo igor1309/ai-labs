@@ -13,13 +13,13 @@ Five docs, ~700 lines total. The system is thoughtfully designed but has overlap
 ## Cross-cutting issues
 
 ### 1. ⚠️ Two voice specs, no clear precedence
-**Files:** `the-dragoman-channel-vision.md:123-143` and `the-dragoman-voice-guide.md:10-34`
+**Files:** `channel-vision.md:123-143` and `voice-guide.md:10-34`
 
 `channel-vision` describes voice as "personal; exploratory; precise; skeptical without being cynical; practical without being shallow…" — a soft, generic list.
 
 `voice-guide` describes voice as "direct, slightly ironic, practical, and observant" with rough rhythm, mild irony, controlled roughness, allergic to hype. **Irony and roughness are core in voice-guide, absent in channel-vision.**
 
-A reader following only `channel-vision` would write the wrong voice. Pick one as canonical (likely `voice-guide`) and have the other defer with a one-line cross-reference, e.g.: *"Voice — see [voice guide](the-dragoman-voice-guide.md). Summary: …"*.
+A reader following only `channel-vision` would write the wrong voice. Pick one as canonical (likely `voice-guide`) and have the other defer with a one-line cross-reference, e.g.: *"Voice — see [voice guide](voice-guide.md). Summary: …"*.
 
 ### 2. ⚠️ Three different "post structure" specs
 - `channel-vision` §Post formats — five formats (field report = task → setup → what happened → …)
@@ -42,7 +42,7 @@ Pick one. Mustache-style `{{…}}` is more conventional for prompt templates and
 
 ---
 
-## `the-dragoman-channel-vision.md`
+## `channel-vision.md`
 
 ### 6. ⚠️ Suggested pinned post and tagline are deliverables embedded in a vision doc
 Lines 205-221: pre-baked Telegram description and pinned post sit alongside principles. These are artifacts to ship, not principles to reason from. Move to `posts/0000-launch/` (where the launch image already lives) or a separate `channel-meta.md`, leaving the vision doc principle-only.
@@ -55,7 +55,7 @@ Lines 256-273: 8 unranked future branches with no criteria. As-is, this is a wis
 
 ---
 
-## `the-dragoman-name-brief.md`
+## `name-brief.md`
 
 ### 9. ⚠️ Naming stress test mixes scoring and mitigation
 Line 150: `| AI relevance | Requires subtitle/tagline |` — every other row is a strength rating ("Strong"/"Low risk"). This row is a mitigation note, not an assessment. Either rate it ("Weak — mitigated by tagline") or split into two columns (Score | Mitigation).
@@ -68,7 +68,7 @@ The two lists are similar but not identical. They serve different framings (posi
 
 ---
 
-## `the-dragoman-voice-guide.md`
+## `voice-guide.md`
 
 ### 12. ⚠️ §Rhythm and §Sentence style say the same thing twice
 - §Rhythm (lines 114-145): mixed rhythm, long sentences allowed, short lines as accents, avoid chopping for theatrics, with example.
@@ -147,7 +147,7 @@ The rest are tightening passes — none are blocking, but the duplications (#1, 
 ## Actions taken in response (2026-05-01)
 
 - **#3, #4** — addressed: added `dragoman/docs/README.md` with index + workflow + foundational/pipeline split.
-- **#1** — addressed via a cross-reference: `the-dragoman-channel-vision.md` now declares `voice-guide` authoritative when they diverge. The vision text itself is preserved as a founding document.
+- **#1** — addressed via a cross-reference: `channel-vision.md` now declares `voice-guide` authoritative when they diverge. The vision text itself is preserved as a founding document.
 - **#5** — addressed: placeholders unified to `{{PLACEHOLDER}}` in `post-image-prompt.md`.
 - **Folder restructure** — operational docs moved to `dragoman/docs/post-pipeline/`; foundational docs stay at the top level.
 
