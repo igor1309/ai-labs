@@ -3,6 +3,7 @@
 ## 2026-05-01
 
 - Editorial pre-drafting workflow: post creation now starts from an architecture document (purpose, thesis, tension, boundaries, non-goals) instead of jumping straight to prose, reducing scope drift and rework before drafting.
+- Docs reorganized into a foundational layer (channel vision, name brief) and an operational `post-pipeline/` layer (architecture Q&A, voice guide, image prompt) with a top-level `README.md` documenting the three-stage workflow. Channel vision now defers to the voice guide where they diverge, preserving the founding text without retroactive edits. Quality review of the docs saved under `reviews/2026-05-01-docs-review.md` for future tightening passes.
 
 ## 2026-04-30
 
