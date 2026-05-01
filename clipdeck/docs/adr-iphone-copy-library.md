@@ -9,7 +9,7 @@ artifact_type: adr
 
 ## Executive Summary
 
-Two-tier architecture for an iPhone-friendly private webpage that copies reusable prompts and skills with one tap: a backend that is the sole GitHub principal and strips YAML front matter, and a passive frontend that renders only normalized, sanitized items received from the backend. Scope is v1: private, read-only, no persistence, no search, no per-user auth, single shared access secret.
+Two-tier architecture for an iPhone-friendly private webpage that copies reusable prompts and skills with one tap: a backend that is the sole GitHub principal at request-handling time and strips YAML front matter, and a passive frontend that renders only normalized, sanitized items received from the backend. Scope is v1: private, read-only, no persistence, no search, no per-user auth, single shared access secret. This ADR governs only clipdeck's runtime data plane; CI workflows and developer tooling that also hold GitHub credentials are out of scope.
 
 ## Context
 
@@ -34,11 +34,11 @@ The frontend MUST NOT speak to GitHub directly and MUST NOT receive the GitHub t
 
 ### Repository access
 
-- The backend MUST be the only component holding GitHub credentials.
+- The backend MUST be the only clipdeck component that holds GitHub credentials at request-handling time. (This rule does not constrain CI workflows or developer tooling outside clipdeck's runtime.)
 - The backend MUST restrict reads to configured allowlisted source paths only:
   - `prompts/`
   - `dev-skills/public/`
-- The allowlist MUST be defined in source-controlled configuration. Adding or removing an allowlisted path is an architectural change and MUST be made by amending this ADR or by a new ADR that supersedes the relevant rule here.
+- This ADR is the source of truth for the allowlist. The allowlist MAY be carried in a source-controlled configuration file as a mechanical reflection of this ADR, but adding or removing a path is an architectural change and MUST be made by amending this ADR or by a new ADR that supersedes the relevant rule here. Editing the configuration file without amending this ADR is a violation of this rule.
 
 ### Sanitization
 
@@ -49,7 +49,7 @@ The frontend MUST NOT speak to GitHub directly and MUST NOT receive the GitHub t
 
 ### Item model
 
-- Each returned item MUST include: a stable id, a section identifier (`prompts` or `skills`), title, subtitle, copyable body, and a kind/status field for rendering.
+- Each returned item MUST include: a stable id, a section identifier (`prompts` or `skills`), an item kind (`prompt` or `skill`), a title, a subtitle, and a copyable body. Skill items MUST additionally include a `skillShape` field whose value is `standalone` or `resource-backed`.
 - Item id MUST be the item's relative path inside the source repo, for example `prompts/example.md` or `dev-skills/public/example-skill/SKILL.md`. Renaming a file changes its id.
 - Title MUST be drawn from front matter `title` if present; otherwise from the filename or the skill folder name.
 - Subtitle MUST be drawn from front matter `description` or `summary` if present; otherwise it MAY be empty.
@@ -70,7 +70,7 @@ The frontend MUST NOT speak to GitHub directly and MUST NOT receive the GitHub t
 ### Storage and refresh
 
 - v1 MUST NOT introduce a database, search index, persistent cache, or background sync.
-- The backend MAY perform per-request, in-process work (parsing, grouping, normalization) and MAY use the deployment platform's request-scope memory, but MUST NOT retain item state across requests. Per-request, in-process memoization is not a "cache layer" for the purposes of this ADR.
+- The backend MAY perform per-request, in-process work (parsing, grouping, normalization) using only the local memory of the running request handler. It MUST NOT use platform-provided cache or storage primitives (for example, Cloudflare Cache API, KV, R2, or equivalent), and MUST NOT retain item state across requests. Per-request, in-process memoization is not a "cache layer" for the purposes of this ADR.
 - Refresh MUST be explicit: a Reload button and platform pull-to-refresh where available. No automatic refresh.
 
 ## Consequences
