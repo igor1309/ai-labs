@@ -1,0 +1,7 @@
+name = "clipdeck"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+
+[assets]
+directory = "src/static"
+binding = "ASSETS"
