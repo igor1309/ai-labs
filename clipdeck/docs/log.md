@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- GitHub upstream access restored — Clipdeck now sends a required `User-Agent` on GitHub Contents API reads and releases the fix as v0.1.1.
 - Production URL bound — `clipdeck/wrangler.toml` declares `clipdeck.enoa.ai` as a custom-domain route, and `CLIPDECK_PRODUCTION_URL` is set so the deploy workflow can verify the locked endpoint.
 - Review fixes landed — GitHub content decoding now preserves UTF-8 Markdown, resource-backed skill detection counts sibling directories, and item sorting uses deterministic path order.
 
