@@ -20,11 +20,7 @@ export function createGithubClient(token: string): GithubClient {
   return {
     async listDir(path: string): Promise<GithubDirectoryEntry[]> {
       const response = await fetch(githubContentsUrl(path), {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28"
-        }
+        headers: githubHeaders(token)
       });
 
       if (response.status === 404) {
@@ -41,11 +37,7 @@ export function createGithubClient(token: string): GithubClient {
     },
     async readFile(path: string): Promise<string> {
       const response = await fetch(githubContentsUrl(path), {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28"
-        }
+        headers: githubHeaders(token)
       });
 
       if (!response.ok) {
@@ -60,6 +52,15 @@ export function createGithubClient(token: string): GithubClient {
 
       return decodeBase64Utf8(body.content);
     }
+  };
+}
+
+function githubHeaders(token: string): Record<string, string> {
+  return {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "User-Agent": "clipdeck",
+    "X-GitHub-Api-Version": "2022-11-28"
   };
 }
 

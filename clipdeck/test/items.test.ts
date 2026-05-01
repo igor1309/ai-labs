@@ -57,6 +57,35 @@ describe("GET /api/items", () => {
     });
   });
 
+  test("should identify clipdeck as user agent for GitHub requests", async () => {
+    const fetchSpy = vi.fn(async () => {
+      return Response.json([]);
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          Authorization: "Bearer shared-secret"
+        }
+      }),
+      makeEnv()
+    );
+
+    expect(fetchSpy.mock.calls.map((call) => call[1])).toEqual([
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "User-Agent": "clipdeck"
+        })
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "User-Agent": "clipdeck"
+        })
+      })
+    ]);
+  });
+
   test("should return discovered prompt and skill items from GitHub contents", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
       const url = String(input);
