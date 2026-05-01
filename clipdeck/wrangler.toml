@@ -2,6 +2,10 @@ name = "clipdeck"
 main = "src/index.ts"
 compatibility_date = "2026-05-01"
 
+routes = [
+  { pattern = "clipdeck.enoa.ai", custom_domain = true }
+]
+
 [assets]
 directory = "src/static"
 binding = "ASSETS"
