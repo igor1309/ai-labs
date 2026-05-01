@@ -3,7 +3,13 @@ export interface GithubDirectoryEntry {
   type: "dir" | "file";
 }
 
+export interface GithubTreeEntry {
+  path: string;
+  type: "blob" | "tree";
+}
+
 export interface GithubClient {
+  listRecursiveTree(path: string): Promise<GithubTreeEntry[]>;
   listDir(path: string): Promise<GithubDirectoryEntry[]>;
   readFile(path: string): Promise<string>;
 }
@@ -18,6 +24,23 @@ export class GithubUpstreamError extends Error {}
 
 export function createGithubClient(token: string): GithubClient {
   return {
+    async listRecursiveTree(path: string): Promise<GithubTreeEntry[]> {
+      const response = await fetch(githubTreeUrl(path), {
+        headers: githubHeaders(token)
+      });
+
+      if (response.status === 404) {
+        throw new GithubSourceMissingError(path);
+      }
+
+      if (!response.ok) {
+        throw new GithubUpstreamError();
+      }
+
+      const body = await response.json() as { tree?: GithubTreeEntry[] };
+
+      return Array.isArray(body.tree) ? body.tree : [];
+    },
     async listDir(path: string): Promise<GithubDirectoryEntry[]> {
       const response = await fetch(githubContentsUrl(path), {
         headers: githubHeaders(token)
@@ -73,4 +96,8 @@ function decodeBase64Utf8(content: string): string {
 
 function githubContentsUrl(path: string): string {
   return `https://api.github.com/repos/igor1309/ai-labs/contents/${path}?ref=trunk`;
+}
+
+function githubTreeUrl(path: string): string {
+  return `https://api.github.com/repos/igor1309/ai-labs/git/trees/trunk:${path}?recursive=1`;
 }

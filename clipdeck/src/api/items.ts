@@ -1,7 +1,7 @@
 import { assembleSections } from "./assemble";
 import { isAuthorized, type Env } from "./auth";
 import { discoverPrompts, discoverSkills, type SourceFile, type SourceFolder } from "./discovery";
-import { createGithubClient, GithubSourceMissingError } from "./github";
+import { createGithubClient, GithubSourceMissingError, type GithubTreeEntry } from "./github";
 import { json, unauthorized } from "./response";
 
 export async function handleItems(request: Request, env: Env): Promise<Response> {
@@ -25,30 +25,8 @@ export async function handleItems(request: Request, env: Env): Promise<Response>
     );
 
     activeSource = "skills";
-    const skillEntries = await github.listDir("dev-skills/public");
-    const skillFolders = await Promise.all(
-      skillEntries
-        .filter((entry) => entry.type === "dir")
-        .map(async (entry): Promise<SourceFolder> => {
-          const files = await github.listDir(entry.path);
-          const sourceFiles = await Promise.all(
-            files
-              .map(async (file): Promise<SourceFile> => {
-                return {
-                  content: file.type === "file" && file.path.endsWith("/SKILL.md")
-                    ? await github.readFile(file.path)
-                    : "",
-                  path: file.path
-                };
-              })
-          );
-
-          return {
-            files: sourceFiles,
-            path: entry.path
-          };
-        })
-    );
+    const skillTree = await github.listRecursiveTree("dev-skills/public");
+    const skillFolders = await buildSkillFolders(skillTree, github.readFile);
 
     return json({
       sections: assembleSections(
@@ -59,6 +37,45 @@ export async function handleItems(request: Request, env: Env): Promise<Response>
   } catch (error) {
     return githubErrorResponse(error, activeSource);
   }
+}
+
+async function buildSkillFolders(
+  tree: GithubTreeEntry[],
+  readFile: (path: string) => Promise<string>
+): Promise<SourceFolder[]> {
+  const filesByFolder = new Map<string, SourceFile[]>();
+
+  for (const entry of tree) {
+    const folderPath = skillFolderPath(entry.path);
+    if (folderPath === undefined) {
+      continue;
+    }
+
+    const files = filesByFolder.get(folderPath) ?? [];
+    files.push({
+      content: entry.path.endsWith("/SKILL.md")
+        ? await readFile(`dev-skills/public/${entry.path}`)
+        : "",
+      path: `dev-skills/public/${entry.path}`
+    });
+    filesByFolder.set(folderPath, files);
+  }
+
+  return Array.from(filesByFolder, ([path, files]) => {
+    return {
+      files,
+      path
+    };
+  });
+}
+
+function skillFolderPath(path: string): string | undefined {
+  const [folder] = path.split("/");
+  if (folder === undefined || folder === "") {
+    return undefined;
+  }
+
+  return `dev-skills/public/${folder}`;
 }
 
 function sourceName(path: string): "prompts" | "skills" {
