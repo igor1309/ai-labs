@@ -117,6 +117,10 @@ Error responses:
 
 - The response MUST NOT contain the GitHub token, the raw GitHub API response, YAML front matter content, or any path/file outside the allowlist.
 
+### Source repo credential
+
+- The lifecycle of the backend's source-repo credential is governed by ADR-002. A request that cannot be served because the credential is missing, rejected, or expired MUST surface as the upstream-GitHub-failure path (HTTP `502`) and MUST NOT leak credential state or token bytes in the response.
+
 ### Frontend behavior
 
 - The page MUST be gated behind the shared access secret; until the secret is accepted by the backend, no item data is rendered.
@@ -158,6 +162,7 @@ Each test corresponds to a behavior rule and defines the failure surface. An imp
 27. Items inside each section are returned in lexicographic ascending order of `id`.
 28. A non-`.md` file in `prompts/` (for example `prompts/README.txt` or `prompts/.DS_Store`) does not appear in the response.
 29. A file beginning `---\n---\n\nbody\n` returns `body == "body\n"` and is treated as having no front matter for `title`/`subtitle` derivation.
+30. A backend whose source-repo credential is missing, rejected by GitHub, or expired returns `502` and the response body contains no token bytes or credential state.
 
 ## Done criteria
 
