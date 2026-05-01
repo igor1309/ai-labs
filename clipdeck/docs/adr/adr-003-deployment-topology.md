@@ -41,6 +41,8 @@ The Worker is configured by a single Wrangler configuration file under the clipd
 
 ## Rules / Invariants
 
+The rules below govern the production deployment binding. Local development sessions (`wrangler dev`) and short-lived preview deployments are out of scope and MAY use additional configuration as needed for development purposes, provided they do not weaken any rule below for the production Worker.
+
 ### Platform binding
 
 - The deployment platform MUST be Cloudflare Workers with the Static Assets feature.
@@ -60,7 +62,7 @@ The Worker is configured by a single Wrangler configuration file under the clipd
 
 ### Hostname
 
-- The Worker MUST be reachable at a stable hostname — either the Cloudflare-managed `*.workers.dev` subdomain assigned at first deploy, or a custom domain bound via a Worker route. Changing the hostname between deploys is a violation.
+- The Worker MUST be reachable at a single canonical hostname at any given time — either the Cloudflare-managed `*.workers.dev` subdomain assigned at first deploy, or a custom domain bound via a Worker route. Routine code deploys MUST NOT change the canonical hostname. Adding, removing, or migrating to a custom domain is a one-time platform configuration event and is permitted; it MUST be reflected in any iPhone bookmark or shared-secret distribution channel out-of-band.
 
 ## Consequences
 

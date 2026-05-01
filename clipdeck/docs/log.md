@@ -2,7 +2,7 @@
 
 ## 2026-05-01
 
-- ADR-003 (deployment topology): single Cloudflare Worker with Static Assets, hosting the iPhone page and `/api/items` on one origin; GitHub PAT bound via Workers Secrets. CI/CD workflows deferred to a future ADR-004. Lives at `clipdeck/docs/adr/adr-003-deployment-topology.md`.
+- ADR-003 (deployment topology) settled at v1: single Cloudflare Worker with Static Assets hosts the iPhone page and `/api/items` on one origin; GitHub PAT bound via Workers Secrets. Scope is the production binding (local dev and preview are out of scope). CI/CD deferred to a future ADR-004. Lives at `clipdeck/docs/adr/adr-003-deployment-topology.md`.
 - ADR-002 settled at v1: credential is a GitHub fine-grained PAT, read-only on ai-labs, in the deploy platform's secret manager, manually rotated within 90 days. Spec updated to reference it. Lives at `clipdeck/docs/adr/adr-002-credential-lifecycle.md`.
 - Spec settled at v1: single source of behavior with 29 enumerated tests covering the API contract and frontend rules. Aligned with the ADR; ready for implementation. Lives at `clipdeck/docs/specs/spec-iphone-copy-library.md`.
 - ADR settled at v1: 6-section template with MUST/MUST NOT invariants. Backend is sole runtime GitHub principal; ADR is single source of truth for the path allowlist; platform cache primitives banned; per-request memoization permitted. Lives at `clipdeck/docs/adr/adr-001-iphone-copy-library.md`.
