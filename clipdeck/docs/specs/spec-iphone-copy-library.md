@@ -13,6 +13,11 @@ Serve sanitized, normalized prompt and skill items from the private ai-labs repo
 
 ## Public interface
 
+### Source repo
+
+- The source repo is `igor1309/ai-labs`.
+- The endpoint reads files from the tip of branch `trunk`.
+
 ### Authentication
 
 Every API request MUST carry the shared access secret. The validation channel (request header, cookie, or request body) is implementation-defined; the same channel MUST be used consistently.
@@ -69,8 +74,17 @@ Field semantics:
 
 Error responses:
 
-- `401` — missing or incorrect shared secret. Body MUST NOT contain item data.
-- `502` — upstream GitHub failure or a configured allowlist source path missing in the source repo. Body identifies which source failed.
+- `401` — missing or incorrect shared secret. Response body: `{ "error": "unauthorized" }`. Body MUST NOT contain item data.
+- `502` — upstream GitHub failure or a configured allowlist source path missing in the source repo. Response body:
+
+```json
+{
+  "error": "upstream_github_failure" | "source_missing",
+  "source": "prompts" | "skills"
+}
+```
+
+`error == "upstream_github_failure"` covers any GitHub-side failure (network, 5xx, rate limit, auth rejection). `error == "source_missing"` is returned when one of the allowlisted paths does not exist in the source repo. `source` MUST identify which allowlisted path was being read when the failure occurred.
 
 ## Behavior rules
 
@@ -151,8 +165,8 @@ Each test corresponds to a behavior rule and defines the failure surface. An imp
 16. `subtitle` falls back to `summary` when `description` is absent and `summary` is present.
 17. `subtitle` is the empty string when neither `description` nor `summary` is present.
 18. The top-level response object has exactly one key `sections`. Each section object has exactly the keys `id`, `title`, `items`. Each item object has exactly the keys `id`, `kind`, `title`, `subtitle`, `body`, plus `skillShape` only when `kind == "skill"`. No additional keys are present. No string field's value contains the verbatim YAML front matter of any source file, and no item field equals the GitHub access token.
-19. A configured allowlist source path missing in the source repo returns `502` with a payload identifying which source is missing.
-20. A simulated upstream GitHub failure during item read returns `502`.
+19. A configured allowlist source path missing in the source repo returns `502` with body `{ "error": "source_missing", "source": "prompts" | "skills" }` identifying which source is missing.
+20. A simulated upstream GitHub failure (network error, 5xx, rate limit, or auth rejection) during item read returns `502` with body `{ "error": "upstream_github_failure", "source": "prompts" | "skills" }`.
 21. The page does not render any item data until the backend accepts the shared secret.
 22. Tapping a rendered item writes that item's `body` to the clipboard verbatim AND a visible feedback indicator (DOM element) appears reporting the outcome.
 23. The Reload action refetches `GET /api/items` and replaces the rendered list.
