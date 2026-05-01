@@ -6,12 +6,12 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.39.0"
+    "version": "1.40.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, jobs-to-be-done, architecture sketch review, bug analysis, tactical action planning, debug print logging, iOS simulator install, REST contract review, test runner, and testing schedulers",
+      "description": "Development workflows: collaborative discussion, task intake, codebase exploration, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, jobs-to-be-done, architecture sketch review, bug analysis, tactical action planning, debug print logging, iOS simulator install, REST contract review, test runner, testing schedulers, and best free OpenRouter LLM selection",
       "source": "./",
       "strict": false,
       "skills": [
@@ -19,6 +19,7 @@
         "./arch-doc-review",
         "./arch-reviewer",
         "./arch-spec-review",
+        "./best-free-openrouter-llm",
         "./bug-analysis",
         "./check-domain",
         "./cold-start-checkpoint",

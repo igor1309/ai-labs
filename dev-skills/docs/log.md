@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-01
+
+- best-free-openrouter-llm v1.0.0: new skill that picks the current best free OpenRouter model from the public ranking endpoint at `shir-man.com/api/free-llm/top-models` and emits text, JSON, or shell-export output for agent/CLI configuration. Refuses to invent a model ID (only `openrouter/free` as hardcoded fallback) and gates on `--min-confidence` so low-confidence rankings fail closed. Marketplace v1.40.0.
+
 ## 2026-04-30
 
 - jtbd v1.0.0: new skill applying Jobs-to-be-Done as a product-development framing in three explicit modes — `discover` (Christensen/Moesta switch interviews and forces of progress), `decompose` (Ulwick/ODI job statements, job map, outcome statements, opportunity scores), and `frame` (Klement job stories). Hard-enforces grammars and refuses to silently mix the Christensen and Ulwick vocabularies — the most common JTBD incoherence in the wild. Marketplace v1.39.0.
