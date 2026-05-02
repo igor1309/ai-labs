@@ -55,6 +55,27 @@ jobs:
 
       - name: Verify unauthenticated API is locked
         run: |
-          status="$(curl -sS --max-time 30 -o /tmp/clipdeck-api-body.txt -w "%{http_code}" "${CLIPDECK_PRODUCTION_URL}/api/items")"
+          status="$(curl -sS --max-time 30 -D /tmp/clipdeck-api-headers.txt -o /tmp/clipdeck-api-body.txt -w "%{http_code}" "${CLIPDECK_PRODUCTION_URL}/api/items")"
           echo "HTTP status: ${status}"
-          [ "${status}" = "401" ]
+          if grep -q '"sections"' /tmp/clipdeck-api-body.txt; then
+            echo "Clipdeck item data was returned to an unauthenticated request"
+            exit 1
+          fi
+          normalized_body="$(tr -d '\n\r\t ' < /tmp/clipdeck-api-body.txt)"
+          if [ "${normalized_body}" = '{"error":"unauthorized"}' ]; then
+            echo "Old Worker unauthorized body returned instead of Cloudflare Access handling"
+            exit 1
+          fi
+          if [ "${status}" = "302" ] || [ "${status}" = "303" ]; then
+            location="$(awk 'BEGIN { IGNORECASE=1 } /^location:/ { print $0 }' /tmp/clipdeck-api-headers.txt)"
+            if echo "${location}" | grep -Eiq 'Cloudflare Access|cloudflareaccess|/cdn-cgi/access'; then
+              exit 0
+            fi
+            echo "Redirect did not point to Cloudflare Access"
+            exit 1
+          fi
+          if [ "${status}" = "401" ] || [ "${status}" = "403" ]; then
+            exit 0
+          fi
+          echo "Expected Cloudflare Access 302, 303, 401, or 403"
+          exit 1

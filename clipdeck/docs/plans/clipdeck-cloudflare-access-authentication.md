@@ -234,7 +234,7 @@ Stop immediately if:
 - The operator runbook describes Cloudflare Access setup, source-safe identity handling, and final `SHARED_SECRET` cleanup/rollback behavior.
 - Root test/build gates pass because workflow/config behavior changed.
 
-- [ ] **Step 1: Write failing workflow validation**
+- [x] **Step 1: Write failing workflow validation**
 
   Add `scripts/tests/clipdeck-deploy-workflow.test.js` to inspect `.github/workflows/clipdeck-deploy.yml` and assert:
 
@@ -246,7 +246,7 @@ Stop immediately if:
 
   Expected before implementation: test fails against the old `401` check.
 
-- [ ] **Step 2: Update deploy workflow**
+- [x] **Step 2: Update deploy workflow**
 
   Update `.github/workflows/clipdeck-deploy.yml` verification so it:
 
@@ -263,7 +263,7 @@ Stop immediately if:
 
   Expected after implementation: workflow validation passes.
 
-- [ ] **Step 3: Update operator runbook**
+- [x] **Step 3: Update operator runbook**
 
   Update `clipdeck/docs/operations/first-deploy.md`:
 
@@ -276,7 +276,7 @@ Stop immediately if:
 
   Run `git diff --check` after the docs update.
 
-- [ ] **Step 4: Run phase gate**
+- [x] **Step 4: Run phase gate**
 
   Run:
 
@@ -286,7 +286,7 @@ Stop immediately if:
 
   Expected: all pass.
 
-- [ ] **Step 5: Update log and commit Phase 2**
+- [x] **Step 5: Update log and commit Phase 2**
 
   Add a concise `clipdeck/docs/log.md` entry for deploy verification/runbook updates.
 

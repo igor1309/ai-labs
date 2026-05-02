@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- Access deploy verification prepared — Clipdeck deploys now check for Cloudflare Access handling instead of a Worker-generated shared-secret `401`, with first-deploy operations documented.
 - App-level auth removed — Clipdeck now relies on Cloudflare Access for user-facing authentication; the Worker and frontend no longer require or store a shared secret.
 - Cloudflare Access migration defined — Clipdeck will replace the user-facing shared secret with Access while preserving Worker-only GitHub credentials.
 - Frontend iteration no longer requires deploying — the populated library state is now reachable locally, so visual changes can be verified before they reach production.
