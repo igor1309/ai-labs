@@ -1,14 +1,10 @@
 import { assembleSections } from "./assemble";
-import { isAuthorized, type Env } from "./auth";
+import type { Env } from "./auth";
 import { discoverPrompts, discoverSkills, type SourceFile, type SourceFolder } from "./discovery";
 import { createGithubClient, GithubSourceMissingError, type GithubTreeEntry } from "./github";
-import { json, unauthorized } from "./response";
+import { json } from "./response";
 
-export async function handleItems(request: Request, env: Env): Promise<Response> {
-  if (!isAuthorized(request, env)) {
-    return unauthorized();
-  }
-
+export async function handleItems(_request: Request, env: Env): Promise<Response> {
   const github = createGithubClient(env.GITHUB_TOKEN);
   let activeSource: "prompts" | "skills" = "prompts";
   try {

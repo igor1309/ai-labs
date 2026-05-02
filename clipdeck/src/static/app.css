@@ -34,8 +34,7 @@ body {
   display: none !important;
 }
 
-button,
-input {
+button {
   font: inherit;
 }
 
@@ -44,118 +43,6 @@ input {
   min-height: 100vh;
   margin: 0 auto;
   padding: 24px 16px 80px;
-}
-
-.unlock-card {
-  display: grid;
-  gap: 16px;
-  max-width: 380px;
-  margin: 8vh auto 0;
-  padding: 2.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  animation: fadeUp 0.5s ease both;
-}
-
-.unlock-card:hover {
-  border-color: rgba(108, 99, 255, 0.3);
-  box-shadow: 0 16px 48px -16px var(--accent-glow);
-}
-
-.unlock-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--accent-glow), transparent 40%);
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-}
-
-.unlock-card:hover::before {
-  opacity: 1;
-}
-
-.unlock-card > * {
-  position: relative;
-}
-
-.unlock-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0;
-  text-align: center;
-}
-
-.unlock-title span {
-  color: #8b83ff;
-}
-
-.unlock-subtitle {
-  margin: 0 0 0.5rem;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  text-align: center;
-}
-
-.field {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.field-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
-.field-input {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.field-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.field-input::placeholder {
-  color: var(--text-subtle);
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.15s;
-}
-
-.submit-btn:hover {
-  background: var(--accent-hover);
-}
-
-.submit-btn:active {
-  transform: scale(0.98);
 }
 
 .library {

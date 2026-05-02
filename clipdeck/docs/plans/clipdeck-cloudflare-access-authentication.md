@@ -26,7 +26,7 @@ description: "Implementation plan for replacing Clipdeck's shared-secret auth wi
 - Push policy: push after task
 - Push boundary: keep Phase 1 through Phase 3 commits local; push only when Phase 4 reaches the PR/release task, then push the Phase 5 closeout branch after production cleanup is verified.
 - Final archive behavior: after implementation, move this plan to `clipdeck/docs/plans/implemented/` in the Phase 5 closeout branch.
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 Stop immediately if:
 
@@ -113,7 +113,7 @@ Stop immediately if:
 - Existing prompt/skill response, copy, reload, loading, toast, and resource-backed skill behavior remains covered.
 - `npm test --workspace clipdeck` and `npm run typecheck --workspace clipdeck` pass.
 
-- [ ] **Step 1: Write failing Worker auth tests**
+- [x] **Step 1: Write failing Worker auth tests**
 
   Update `clipdeck/test/items.test.ts`:
 
@@ -125,7 +125,7 @@ Stop immediately if:
 
   Expected before implementation: tests fail because the Worker still returns `401`.
 
-- [ ] **Step 2: Remove Worker shared-secret check**
+- [x] **Step 2: Remove Worker shared-secret check**
 
   Update `clipdeck/src/api/items.ts`:
 
@@ -145,7 +145,7 @@ Stop immediately if:
 
   Expected after implementation: Worker auth tests pass; typecheck passes.
 
-- [ ] **Step 3: Write failing frontend Access-authenticated load tests**
+- [x] **Step 3: Write failing frontend Access-authenticated load tests**
 
   Update `clipdeck/test/frontend.test.ts` to reflect the final UI contract:
 
@@ -159,7 +159,7 @@ Stop immediately if:
 
   Expected before implementation: tests fail because the current frontend waits for a secret/unlock flow.
 
-- [ ] **Step 4: Remove frontend unlock flow**
+- [x] **Step 4: Remove frontend unlock flow**
 
   Update `clipdeck/src/static/index.html`:
 
@@ -184,7 +184,7 @@ Stop immediately if:
 
   Expected after implementation: frontend tests pass.
 
-- [ ] **Step 5: Run phase gate**
+- [x] **Step 5: Run phase gate**
 
   Run:
 
@@ -194,7 +194,7 @@ Stop immediately if:
 
   Expected: all pass.
 
-- [ ] **Step 6: Update log and commit Phase 1**
+- [x] **Step 6: Update log and commit Phase 1**
 
   Add a concise 2026-05-02 entry to `clipdeck/docs/log.md` describing removal of app-level shared-secret auth in favor of Access.
 
