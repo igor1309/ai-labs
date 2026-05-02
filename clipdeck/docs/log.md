@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- App version footer added — Clipdeck now exposes `GET /api/version` and renders the deployed package version (`v0.1.7`) at the bottom of the library page, mirroring notio's footer pattern. The constant is sourced from `clipdeck/package.json` via a JSON import so the footer cannot drift from the shipped release. Also added a frontend regression test that asserts the rendered subtitle text matches `item.subtitle` (previously only the count of items was asserted), so a future regression in the description-fetch path would fail in CI.
 - Item metadata revalidation added — `/api/items` now sends a SHA-256 ETag for the normalized payload and returns `304 Not Modified` for matching validators, preserving fresh skill titles, versions, and subtitles without disabling browser caching.
 - Skill card titles now combine the SKILL.md H1 with the front matter `name` as `<H1> (<name>)`, fall back to `name` when no H1 is present, and surface an explicit `error: no skill name` when the front matter `name` is missing so broken skills are visible.
 - Access auth migration closed out — spec and plan moved to `implemented/`; production runs on Cloudflare Access with the v0.1.4 Worker. The inert `SHARED_SECRET` Worker secret is intentionally retained as a documented rollback window per the runbook and will be removed in a follow-up housekeeping change.

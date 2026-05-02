@@ -65,8 +65,18 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/version") {
+    handleVersion(response);
+    return;
+  }
+
   await handleStatic(url.pathname, response);
 });
+
+function handleVersion(response) {
+  response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+  response.end(JSON.stringify({ version: "preview" }));
+}
 
 async function handleItems(request, response) {
   const auth = request.headers.authorization ?? "";

@@ -20,21 +20,21 @@ describe("clipdeck frontend", () => {
   });
 
   test("should fetch items on load", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
+    vi.mocked(fetch).mockResolvedValue(Response.json({ sections: [] }));
 
     await import("../src/static/app.js");
     await flushAsync();
 
-    expect(vi.mocked(fetch).mock.calls.map((call) => call[0])).toEqual(["/api/items"]);
+    expect(itemsFetchUrls()).toEqual(["/api/items"]);
   });
 
   test("should fetch items without authorization header", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
+    vi.mocked(fetch).mockResolvedValue(Response.json({ sections: [] }));
 
     await import("../src/static/app.js");
     await flushAsync();
 
-    expect(vi.mocked(fetch).mock.calls.map((call) => call[1])).toEqual([undefined]);
+    expect(itemsFetchInits()).toEqual([undefined]);
   });
 
   test("should not render unlock form or secret input", async () => {
@@ -122,8 +122,8 @@ describe("clipdeck frontend", () => {
   });
 
   test("should replace rendered list on reload", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({
+    const itemsResponses = [
+      Response.json({
         sections: [
           {
             id: "prompts",
@@ -139,8 +139,8 @@ describe("clipdeck frontend", () => {
             title: "Prompts"
           }
         ]
-      }))
-      .mockResolvedValueOnce(Response.json({
+      }),
+      Response.json({
         sections: [
           {
             id: "prompts",
@@ -156,7 +156,14 @@ describe("clipdeck frontend", () => {
             title: "Prompts"
           }
         ]
-      }));
+      })
+    ];
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/items") {
+        return itemsResponses.shift() ?? new Response("no more items", { status: 500 });
+      }
+      return Response.json({ version: "test" });
+    });
     await import("../src/static/app.js");
     await flushAsync();
     document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
@@ -198,7 +205,7 @@ describe("clipdeck frontend", () => {
     document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
     await flushAsync();
 
-    expect(vi.mocked(fetch).mock.calls.map((call) => call[0])).toEqual([
+    expect(itemsFetchUrls()).toEqual([
       "/api/items",
       "/api/items"
     ]);
@@ -261,6 +268,59 @@ describe("clipdeck frontend", () => {
     expect(document.querySelector("[data-item-id] [data-version]")).toBeNull();
   });
 
+  test("should render skill subtitle text from item.subtitle", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      sections: [
+        {
+          id: "skills",
+          items: [
+            {
+              body: "Skill body",
+              id: "dev-skills/public/example/SKILL.md",
+              kind: "skill",
+              skillShape: "standalone",
+              subtitle: "Collaborative discussion mode",
+              title: "Example"
+            }
+          ],
+          title: "Skills"
+        }
+      ]
+    }));
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-item-id] .subtitle")?.textContent).toBe(
+      "Collaborative discussion mode"
+    );
+  });
+
+  test("should fetch and render app version in footer", async () => {
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/version") {
+        return Response.json({ version: "9.9.9" });
+      }
+      return Response.json({ sections: [] });
+    });
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-app-version]")?.textContent).toBe("v9.9.9");
+  });
+
+  test("should leave version footer empty when /api/version fails", async () => {
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/version") {
+        return new Response("nope", { status: 500 });
+      }
+      return Response.json({ sections: [] });
+    });
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-app-version]")?.textContent).toBe("");
+  });
+
   test("should visually distinguish resource backed skills", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [
@@ -289,4 +349,16 @@ describe("clipdeck frontend", () => {
 
 async function flushAsync(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function itemsFetchCalls(): unknown[][] {
+  return vi.mocked(fetch).mock.calls.filter((call) => String(call[0]) === "/api/items");
+}
+
+function itemsFetchUrls(): unknown[] {
+  return itemsFetchCalls().map((call) => call[0]);
+}
+
+function itemsFetchInits(): unknown[] {
+  return itemsFetchCalls().map((call) => call[1]);
 }

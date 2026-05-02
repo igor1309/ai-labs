@@ -246,3 +246,14 @@ button {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.app-version {
+  margin: 32px 0 0;
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.app-version:empty {
+  display: none;
+}

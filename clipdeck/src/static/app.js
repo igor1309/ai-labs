@@ -6,6 +6,7 @@ const state = {
 };
 
 const elements = {
+  appVersion: document.querySelector("[data-app-version]"),
   library: document.querySelector("[data-library]"),
   loading: document.querySelector("[data-loading]"),
   reload: document.querySelector("[data-reload]"),
@@ -14,6 +15,7 @@ const elements = {
 };
 
 void loadItems();
+void loadAppVersion();
 
 elements.reload?.addEventListener("click", () => {
   void loadItems();
@@ -143,4 +145,28 @@ function showToast(message, kind) {
 function showRetryableShell() {
   elements.library.hidden = false;
   elements.sections.replaceChildren();
+}
+
+async function loadAppVersion() {
+  if (elements.appVersion === null) {
+    return;
+  }
+
+  let version;
+  try {
+    const response = await fetch("/api/version");
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    version = typeof data?.version === "string" ? data.version : "";
+  } catch {
+    return;
+  }
+
+  if (version === "") {
+    return;
+  }
+
+  elements.appVersion.textContent = `v${version}`;
 }
