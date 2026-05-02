@@ -65,6 +65,11 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/version") {
+    handleVersion(response);
+    return;
+  }
+
   await handleStatic(url.pathname, response);
 });
 
@@ -81,6 +86,11 @@ async function handleItems(request, response) {
   await new Promise((resolveDelay) => setTimeout(resolveDelay, ITEMS_DELAY_MS));
   response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(itemsFixture));
+}
+
+function handleVersion(response) {
+  response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+  response.end(JSON.stringify({ version: "preview" }));
 }
 
 async function handleStatic(pathname, response) {

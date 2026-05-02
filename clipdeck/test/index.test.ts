@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import type { Env } from "../src/api/auth";
 import worker from "../src/index";
+import { CLIPDECK_VERSION } from "../src/version";
 
 describe("worker", () => {
   test("should serve static assets on non API request", async () => {
@@ -13,6 +14,18 @@ describe("worker", () => {
     });
 
     expect(await response.text()).toBe("static page");
+  });
+
+  test("should expose worker version on /api/version", async () => {
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/version"),
+      makeEnv()
+    );
+
+    expect([response.status, await response.json()]).toEqual([
+      200,
+      { version: CLIPDECK_VERSION }
+    ]);
   });
 });
 
