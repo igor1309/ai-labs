@@ -217,6 +217,7 @@ describe("GET /api/items", () => {
           items: [
             {
               body: "Prompt body\n",
+              description: "Prompt body",
               id: "prompts/foo.md",
               kind: "prompt",
               title: "Foo Prompt"

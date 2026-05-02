@@ -25,7 +25,7 @@ const DESCRIPTION_PREFIX_LIMIT = 200;
 
 export function discoverPrompts(files: SourceFile[]): Item[] {
   return files.flatMap((file) => {
-    if (!isDirectPromptMarkdown(file.path)) {
+    if (!isDirectPromptFile(file.path)) {
       return [];
     }
 
@@ -38,6 +38,14 @@ export function discoverPrompts(files: SourceFile[]): Item[] {
     };
 
     assignOptionalFields(item, parsed);
+
+    if (item.description === undefined) {
+      const bodyFallback = parsed.body.trim();
+      if (bodyFallback !== "") {
+        item.description = descriptionPrefix(bodyFallback);
+      }
+    }
+
     return [item];
   });
 }
@@ -109,10 +117,12 @@ function descriptionPrefix(value: string): string {
   return `${value.slice(0, DESCRIPTION_PREFIX_LIMIT).trimEnd()}…`;
 }
 
-function isDirectPromptMarkdown(path: string): boolean {
-  return /^prompts\/[^/]+\.md$/.test(path);
+function isDirectPromptFile(path: string): boolean {
+  return /^prompts\/[^/]+\.(md|txt)$/.test(path);
 }
 
 function promptFallbackTitle(path: string): string {
-  return path.slice("prompts/".length, -".md".length);
+  const base = path.slice("prompts/".length);
+  const dot = base.lastIndexOf(".");
+  return dot === -1 ? base : base.slice(0, dot);
 }
