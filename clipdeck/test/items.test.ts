@@ -111,6 +111,23 @@ describe("GET /api/items", () => {
     expect([response.status, await response.text()]).toEqual([304, ""]);
   });
 
+  test("should return not modified when weak or wildcard validators match", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json([]);
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          "If-None-Match": "W/\"f93aabe7e9b94554d2a8ed3be82b119077d124840fae01af277af2d29d94dbb0\", *"
+        }
+      }),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(304);
+  });
+
   test("should identify clipdeck as user agent for GitHub requests", async () => {
     const fetchCalls: RequestInit[] = [];
     vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {

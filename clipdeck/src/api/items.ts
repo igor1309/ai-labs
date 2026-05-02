@@ -115,7 +115,11 @@ function itemHeaders(etag: string): HeadersInit {
 }
 
 function matchesETag(ifNoneMatch: string | null, etag: string): boolean {
-  return ifNoneMatch?.split(",").map((value) => value.trim()).includes(etag) ?? false;
+  return ifNoneMatch?.split(",").some((value) => {
+    const validator = value.trim();
+
+    return validator === "*" || weakETagValue(validator) === weakETagValue(etag);
+  }) ?? false;
 }
 
 async function representationETag(body: string): Promise<string> {
@@ -125,4 +129,8 @@ async function representationETag(body: string): Promise<string> {
   }).join("");
 
   return `"${hex}"`;
+}
+
+function weakETagValue(etag: string): string {
+  return etag.startsWith("W/") ? etag.slice("W/".length) : etag;
 }
