@@ -14,19 +14,32 @@ describe("discoverPrompts", () => {
     expect(items.map((item) => item.id)).toEqual(["prompts/foo.md"]);
   });
 
-  test("should ignore nested prompts and non markdown prompt files", () => {
+  test("should ignore nested prompts and unsupported extensions", () => {
     const items = discoverPrompts([
       {
         content: "# Nested\n",
         path: "prompts/sub/bar.md"
       },
       {
-        content: "# Text\n",
-        path: "prompts/readme.txt"
+        content: "{}",
+        path: "prompts/data.json"
       }
     ]);
 
     expect(items.map((item) => item.id)).toEqual([]);
+  });
+
+  test("should accept .txt prompts with title from filename and description from body prefix", () => {
+    const items = discoverPrompts([
+      {
+        content: "Just some text.\n",
+        path: "prompts/note.txt"
+      }
+    ]);
+
+    expect(items.map((item) => [item.id, item.title, item.description])).toEqual([
+      ["prompts/note.txt", "note", "Just some text."]
+    ]);
   });
 
   test("should derive prompt title from front matter title or filename", () => {
@@ -59,7 +72,7 @@ describe("discoverPrompts", () => {
     expect(items.map((item) => item.subtitle)).toEqual(["Friendly Name", undefined]);
   });
 
-  test("should expose prompt description prefix from front matter description or summary", () => {
+  test("should expose prompt description prefix from front matter description, summary, or body fallback", () => {
     const items = discoverPrompts([
       {
         content: "---\ndescription: Detail line\n---\nBody\n",
@@ -70,7 +83,11 @@ describe("discoverPrompts", () => {
         path: "prompts/summarized.md"
       },
       {
-        content: "# Body\n",
+        content: "# Body\n\nMore content here\n",
+        path: "prompts/body-fallback.md"
+      },
+      {
+        content: "---\ntitle: Empty\n---\n",
         path: "prompts/empty.md"
       }
     ]);
@@ -78,6 +95,7 @@ describe("discoverPrompts", () => {
     expect(items.map((item) => item.description)).toEqual([
       "Detail line",
       "Summary line",
+      "# Body\n\nMore content here",
       undefined
     ]);
   });
