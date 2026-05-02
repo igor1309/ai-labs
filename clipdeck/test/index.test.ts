@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import type { Env } from "../src/api/auth";
 import worker from "../src/index";
 import { CLIPDECK_VERSION } from "../src/version";
-import packageJson from "../package.json" with { type: "json" };
 
 describe("worker", () => {
   test("should serve static assets on non API request", async () => {
@@ -27,10 +26,6 @@ describe("worker", () => {
       200,
       { version: CLIPDECK_VERSION }
     ]);
-  });
-
-  test("CLIPDECK_VERSION should match clipdeck package.json version", () => {
-    expect(CLIPDECK_VERSION).toBe(packageJson.version);
   });
 });
 

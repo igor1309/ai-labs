@@ -152,21 +152,16 @@ async function loadAppVersion() {
     return;
   }
 
-  let version;
   try {
     const response = await fetch("/api/version");
     if (!response.ok) {
       return;
     }
     const data = await response.json();
-    version = typeof data?.version === "string" ? data.version : "";
+    if (typeof data?.version === "string" && data.version !== "") {
+      elements.appVersion.textContent = `v${data.version}`;
+    }
   } catch {
-    return;
+    // best-effort: leave the footer empty on any failure
   }
-
-  if (version === "") {
-    return;
-  }
-
-  elements.appVersion.textContent = `v${version}`;
 }

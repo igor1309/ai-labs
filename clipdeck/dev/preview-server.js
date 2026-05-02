@@ -73,11 +73,6 @@ const server = createServer(async (request, response) => {
   await handleStatic(url.pathname, response);
 });
 
-function handleVersion(response) {
-  response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-  response.end(JSON.stringify({ version: "preview" }));
-}
-
 async function handleItems(request, response) {
   const auth = request.headers.authorization ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
@@ -91,6 +86,11 @@ async function handleItems(request, response) {
   await new Promise((resolveDelay) => setTimeout(resolveDelay, ITEMS_DELAY_MS));
   response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(itemsFixture));
+}
+
+function handleVersion(response) {
+  response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+  response.end(JSON.stringify({ version: "preview" }));
 }
 
 async function handleStatic(pathname, response) {

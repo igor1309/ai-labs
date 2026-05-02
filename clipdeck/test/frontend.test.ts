@@ -25,7 +25,7 @@ describe("clipdeck frontend", () => {
     await import("../src/static/app.js");
     await flushAsync();
 
-    expect(itemsFetchUrls()).toEqual(["/api/items"]);
+    expect(itemsFetchCalls().map((call) => call[0])).toEqual(["/api/items"]);
   });
 
   test("should fetch items without authorization header", async () => {
@@ -34,7 +34,7 @@ describe("clipdeck frontend", () => {
     await import("../src/static/app.js");
     await flushAsync();
 
-    expect(itemsFetchInits()).toEqual([undefined]);
+    expect(itemsFetchCalls().map((call) => call[1])).toEqual([undefined]);
   });
 
   test("should not render unlock form or secret input", async () => {
@@ -205,7 +205,7 @@ describe("clipdeck frontend", () => {
     document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
     await flushAsync();
 
-    expect(itemsFetchUrls()).toEqual([
+    expect(itemsFetchCalls().map((call) => call[0])).toEqual([
       "/api/items",
       "/api/items"
     ]);
@@ -353,12 +353,4 @@ async function flushAsync(): Promise<void> {
 
 function itemsFetchCalls(): unknown[][] {
   return vi.mocked(fetch).mock.calls.filter((call) => String(call[0]) === "/api/items");
-}
-
-function itemsFetchUrls(): unknown[] {
-  return itemsFetchCalls().map((call) => call[0]);
-}
-
-function itemsFetchInits(): unknown[] {
-  return itemsFetchCalls().map((call) => call[1]);
 }
