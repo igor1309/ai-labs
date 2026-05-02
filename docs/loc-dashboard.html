@@ -414,12 +414,14 @@
         <strong>iPhone copy library for private prompts and skills.</strong> A minimal
         webpage backed by a serverless endpoint that reads a private GitHub repo and
         returns sanitized, normalized items — <em>one tap copies the body without
-        YAML front matter</em>. Docs-only; ADR accepted, spec drafted.
+        YAML front matter</em>. Deployed at <code>clipdeck.enoa.ai</code> behind
+        Cloudflare Access; supports plain-text and Markdown prompts.
       </p>
       <div class="product-stack">
-        <span class="tag">Docs-only</span>
-        <span class="tag">Spec</span>
-        <span class="tag">ADR</span>
+        <span class="tag">TypeScript</span>
+        <span class="tag">Cloudflare Worker</span>
+        <span class="tag">Cloudflare Access</span>
+        <span class="tag">Vitest</span>
       </div>
     </div>
     <div class="product reveal">
@@ -774,22 +776,22 @@ document.querySelectorAll('.product').forEach(card => {
 const data = [
   { name: "notio",          code: 2815, tests: 4604, docs: 7179 },
   { name: "oracle",         code: 3428, tests: 5607, docs: 3816 },
-  { name: "nomos",          code:  859, tests: 4580, docs: 3659 },
-  { name: "dev-skills",     code:  741, tests:    0, docs: 8148 },
-  { name: "regentara",      code:  952, tests: 1712, docs: 4585 },
+  { name: "nomos",          code:  859, tests: 4567, docs: 3662 },
+  { name: "dev-skills",     code:  902, tests:    0, docs: 8855 },
+  { name: "regentara",      code: 2792, tests: 4906, docs: 7964 },
   { name: "web-scout",      code:  382, tests:  790, docs: 5527 },
-  { name: "session-digest", code: 1198, tests: 1479, docs: 2764 },
+  { name: "session-digest", code: 1486, tests: 1887, docs: 2896 },
   { name: "neris",          code:  764, tests: 1909, docs: 1431 },
-  { name: "agents",         code:    0, tests:    0, docs: 3908 },
+  { name: "agents",         code:    0, tests:    0, docs: 3924 },
   { name: "corpus-scout",   code:  748, tests:  829, docs: 1222 },
   { name: "sandbox",        code:  332, tests:    0, docs: 2178 },
   { name: "loki",           code:  984, tests:  548, docs:  908 },
   { name: "nexum",          code:    0, tests:    0, docs: 2424 },
   { name: "tools",          code:  765, tests:    0, docs: 1144 },
-  { name: "repo-scripts",   code: 1138, tests:  218, docs:    0 },
-  { name: "claude-insights",code:  617, tests:    0, docs:  164 },
+  { name: "repo-scripts",   code: 1158, tests:  249, docs:    0 },
+  { name: "claude-insights",code:  637, tests:    0, docs:  165 },
   { name: "niora",          code:    0, tests:    0, docs:   63 },
-  { name: "clipdeck",       code:    0, tests:    0, docs:  290 },
+  { name: "clipdeck",       code: 1114, tests: 1472, docs: 1782 },
   { name: "dragoman",       code:    0, tests:    0, docs: 1572 },
 ];
 
