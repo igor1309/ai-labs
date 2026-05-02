@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout ai-coder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout skills (public target)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: igor1309/skills
           token: ${{ secrets.PUBLIC_REPO_PAT }}

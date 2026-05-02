@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- GitHub Actions Node 20 deprecation cleared — bumped `actions/checkout@v4 → v5` (Node 24 runtime) and `dorny/paths-filter@v3 → v4` across all workflows ahead of the June 2026 forced upgrade and the September 2026 Node 20 removal. Stayed on `checkout@v5` rather than `v6` to avoid the credential-handling change in v6.
 - clipdeck v0.1.7: added a deployed-version footer (`/api/version` + bottom-of-page render) so we can confirm at a glance which Worker build a browser is actually loading. Backfilled a missing frontend test that asserts the rendered subtitle text matches `item.subtitle` to lock in the description-fetch behavior shipped in v0.1.5/v0.1.6.
 
 ## 2026-05-01

@@ -34,7 +34,7 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 ## Shared Infrastructure
 
-- **Path detection**: `dorny/paths-filter@v3` in the `changes` job
+- **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
 - **Timezone**: all cron schedules target Moscow morning (UTC+3), documented in each file
