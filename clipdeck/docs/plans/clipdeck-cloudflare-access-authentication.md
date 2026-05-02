@@ -405,7 +405,7 @@ Stop immediately if:
 - Release workflow deploys the Worker and passes the Access lock verification.
 - After this phase, production is Access-protected and the deployed Worker no longer contains the Clipdeck shared-secret gate.
 
-- [ ] **Step 1: Bump Clipdeck version**
+- [x] **Step 1: Bump Clipdeck version**
 
   Choose the next patch version from `clipdeck/package.json` because this is a backward-compatible auth-boundary/deploy behavior change for a private tool.
 
@@ -415,7 +415,7 @@ Stop immediately if:
   - `package-lock.json`
   - `release-units.toml` via `node scripts/release/generate-manifest.js`
 
-- [ ] **Step 2: Run release pre-push gates**
+- [x] **Step 2: Run release pre-push gates**
 
   Run:
 
@@ -425,7 +425,7 @@ Stop immediately if:
 
   Expected: all pass.
 
-- [ ] **Step 3: Commit Phase 4 code/release metadata**
+- [x] **Step 3: Commit Phase 4 code/release metadata**
 
   Add a concise `clipdeck/docs/log.md` entry for the versioned Access-auth release.
 
