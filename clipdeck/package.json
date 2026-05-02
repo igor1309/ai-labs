@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "preview": "node dev/preview-server.js",
     "test": "vitest run --exclude test/frontend.test.ts && npm run test:frontend",
     "test:frontend": "vitest run --config vitest.frontend.config.ts",
     "typecheck": "tsc --noEmit"

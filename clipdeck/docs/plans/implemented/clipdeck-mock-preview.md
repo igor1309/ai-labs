@@ -3,7 +3,7 @@ title: "Clipdeck local mock preview server"
 date: 2026-05-02
 model: claude-opus-4-7
 description: "Add a Node-based mock preview server so frontend changes can be visually verified locally before deploy"
-status: draft
+status: implemented
 ---
 
 # Clipdeck Local Mock Preview Server
