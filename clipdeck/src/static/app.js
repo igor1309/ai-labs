@@ -86,15 +86,27 @@ function renderItem(item) {
   button.dataset.itemId = item.id;
   button.type = "button";
 
+  const titleRow = document.createElement("span");
+  titleRow.className = "title-row";
+
   const title = document.createElement("span");
   title.className = "title";
   title.textContent = item.title;
+  titleRow.append(title);
+
+  if (item.version) {
+    const version = document.createElement("span");
+    version.className = "version";
+    version.dataset.version = "";
+    version.textContent = `v${item.version}`;
+    titleRow.append(version);
+  }
 
   const subtitle = document.createElement("span");
   subtitle.className = "subtitle";
   subtitle.textContent = item.subtitle;
 
-  button.append(title, subtitle);
+  button.append(titleRow, subtitle);
   button.addEventListener("click", () => copyItem(item.id));
   return button;
 }

@@ -3,8 +3,10 @@ import matter from "gray-matter";
 export interface ParsedFrontmatter {
   body: string;
   description?: string;
+  name?: string;
   summary?: string;
   title?: string;
+  version?: string;
 }
 
 export function parse(raw: string): ParsedFrontmatter {
@@ -26,8 +28,10 @@ export function parse(raw: string): ParsedFrontmatter {
   return {
     body: parsed.content,
     description: stringValue(parsed.data.description),
+    name: stringValue(parsed.data.name),
     summary: stringValue(parsed.data.summary),
-    title: stringValue(parsed.data.title)
+    title: stringValue(parsed.data.title),
+    version: scalarStringValue(parsed.data.version)
   };
 }
 
@@ -41,4 +45,16 @@ function hasClosingFrontmatterDelimiter(raw: string): boolean {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function scalarStringValue(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return undefined;
 }

@@ -2,12 +2,14 @@
 
 ## 2026-05-02
 
+- Skill card titles now combine the SKILL.md H1 with the front matter `name` as `<H1> (<name>)`, fall back to `name` when no H1 is present, and surface an explicit `error: no skill name` when the front matter `name` is missing so broken skills are visible.
 - Access auth migration closed out — spec and plan moved to `implemented/`; production runs on Cloudflare Access with the v0.1.4 Worker. The inert `SHARED_SECRET` Worker secret is intentionally retained as a documented rollback window per the runbook and will be removed in a follow-up housekeeping change.
 - v0.1.4 cut for Access auth — release manifest updated alongside the version bump so the tagged deploy ships the no-shared-secret Worker behind Cloudflare Access.
 - Cloudflare Access provisioned — `clipdeck.enoa.ai` is now fronted by a single-owner self-hosted Access application with deny-by-default policy; unauthenticated `/` and `/api/items` redirect to the Access login before reaching the Worker.
 - Access deploy verification prepared — Clipdeck deploys now check for Cloudflare Access handling instead of a Worker-generated shared-secret `401`, with first-deploy operations documented.
 - App-level auth removed — Clipdeck now relies on Cloudflare Access for user-facing authentication; the Worker and frontend no longer require or store a shared secret.
 - Cloudflare Access migration defined — Clipdeck will replace the user-facing shared secret with Access while preserving Worker-only GitHub credentials.
+- Skill cards expose YAML metadata — the items API surfaces a `version` field for skills and truncates long descriptions to a reasonably long prefix, with the frontend rendering a version badge alongside the title.
 - Frontend iteration no longer requires deploying — the populated library state is now reachable locally, so visual changes can be verified before they reach production.
 - Frontend redesign — Clipdeck adopts the dark notio-aligned palette with an animated unlock card, hover/focus-visible item states, a floating auto-clearing toast, an explicit loading state, non-auth error surfacing, and a pull-to-refresh-only mode that hides the reload button on touch devices.
 - Skills loading restored — Clipdeck now uses the GitHub recursive tree API for skill discovery, keeping production GitHub subrequests under the Worker runtime limit for v0.1.2.

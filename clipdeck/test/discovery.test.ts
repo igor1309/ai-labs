@@ -101,12 +101,104 @@ describe("discoverSkills", () => {
     expect(items.map((item) => item.id)).toEqual([]);
   });
 
-  test("should derive skill title and subtitle from front matter or folder name", () => {
+  test("should derive skill subtitle from front matter description or summary", () => {
     const items = discoverSkills([
       {
         files: [
           {
-            content: "---\ntitle: Skill Title\nsummary: Short\n---\n# Skill\n",
+            content: "---\nname: example\nsummary: Short\n---\n# Skill\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items.map((item) => item.subtitle)).toEqual(["Short"]);
+  });
+
+  test("should compose skill title as '<H1> (<name>)' when both are present", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nname: example\n---\n# Pretty Skill Heading\n\nbody\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items[0]?.title).toBe("Pretty Skill Heading (example)");
+  });
+
+  test("should fall back to front matter name when SKILL.md H1 is missing", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nname: example\n---\n## Subheading only\n\nbody without h1\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items[0]?.title).toBe("example");
+  });
+
+  test("should report missing skill name regardless of H1", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nversion: \"1.0.0\"\n---\n# Pretty Skill Heading\n",
+            path: "dev-skills/public/no-name-but-h1/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/no-name-but-h1"
+      },
+      {
+        files: [
+          {
+            content: "no front matter and no h1\n",
+            path: "dev-skills/public/totally-empty/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/totally-empty"
+      }
+    ]);
+
+    expect(items.map((item) => item.title)).toEqual([
+      "error: no skill name",
+      "error: no skill name"
+    ]);
+  });
+
+  test("should pick the first H1 when the body contains multiple headings", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nname: example\n---\n## Subheading\n\n# Real Heading\n\n# Second Heading\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items[0]?.title).toBe("Real Heading (example)");
+  });
+
+  test("should expose skill version from front matter", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nname: example\nversion: \"1.2.3\"\ndescription: Details\n---\n# Skill\n",
             path: "dev-skills/public/example/SKILL.md"
           }
         ],
@@ -115,17 +207,53 @@ describe("discoverSkills", () => {
       {
         files: [
           {
-            content: "# Skill\n",
-            path: "dev-skills/public/fallback/SKILL.md"
+            content: "---\nname: noversion\ndescription: Details\n---\n# Skill\n",
+            path: "dev-skills/public/noversion/SKILL.md"
           }
         ],
-        path: "dev-skills/public/fallback"
+        path: "dev-skills/public/noversion"
       }
     ]);
 
-    expect(items.map((item) => [item.title, item.subtitle])).toEqual([
-      ["Skill Title", "Short"],
-      ["fallback", ""]
+    expect(items.map((item) => item.version)).toEqual(["1.2.3", undefined]);
+  });
+
+  test("should truncate long descriptions to a reasonably long prefix with ellipsis", () => {
+    const longDescription = "a".repeat(250);
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: `---\ndescription: ${longDescription}\n---\n# Skill\n`,
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
     ]);
+
+    const subtitle = items[0]?.subtitle ?? "";
+
+    expect([subtitle.length, subtitle.endsWith("…"), subtitle.startsWith("aaaa")]).toEqual([
+      201,
+      true,
+      true
+    ]);
+  });
+
+  test("should leave short descriptions untouched", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\ndescription: Short detail\n---\n# Skill\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items[0]?.subtitle).toBe("Short detail");
   });
 });

@@ -210,6 +210,57 @@ describe("clipdeck frontend", () => {
     expect(css).toMatch(/\[hidden\][^{]*\{[^}]*display:\s*none/);
   });
 
+  test("should render skill version badge when version is provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      sections: [
+        {
+          id: "skills",
+          items: [
+            {
+              body: "Skill body",
+              id: "dev-skills/public/example/SKILL.md",
+              kind: "skill",
+              skillShape: "standalone",
+              subtitle: "Details",
+              title: "Example",
+              version: "1.2.3"
+            }
+          ],
+          title: "Skills"
+        }
+      ]
+    }));
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-item-id] [data-version]")?.textContent).toBe("v1.2.3");
+  });
+
+  test("should omit version badge when version is missing", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      sections: [
+        {
+          id: "skills",
+          items: [
+            {
+              body: "Skill body",
+              id: "dev-skills/public/example/SKILL.md",
+              kind: "skill",
+              skillShape: "standalone",
+              subtitle: "Details",
+              title: "Example"
+            }
+          ],
+          title: "Skills"
+        }
+      ]
+    }));
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-item-id] [data-version]")).toBeNull();
+  });
+
   test("should visually distinguish resource backed skills", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [

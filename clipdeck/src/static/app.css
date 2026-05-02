@@ -176,14 +176,33 @@ button {
   border-color: var(--resource);
 }
 
-.title,
+.title-row,
 .subtitle {
   display: block;
 }
 
+.title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .title {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-size: 0.95rem;
+}
+
+.version {
+  flex: none;
+  padding: 1px 6px;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .subtitle {
@@ -191,6 +210,7 @@ button {
   min-height: 1lh;
   color: var(--text-muted);
   font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .toast {
