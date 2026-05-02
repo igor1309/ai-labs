@@ -467,7 +467,6 @@ Stop immediately if:
 
 - Move: `clipdeck/docs/specs/cloudflare-access-authentication.md` to `clipdeck/docs/specs/implemented/cloudflare-access-authentication.md`
 - Move: `clipdeck/docs/plans/clipdeck-cloudflare-access-authentication.md` to `clipdeck/docs/plans/implemented/clipdeck-cloudflare-access-authentication.md`
-- Modify: `clipdeck/docs/README.md` if active spec/plan links need to move to implemented paths
 - Modify: `clipdeck/docs/log.md`
 
 **Acceptance criteria:**
@@ -510,8 +509,6 @@ Stop immediately if:
   - `clipdeck/docs/specs/cloudflare-access-authentication.md` to `clipdeck/docs/specs/implemented/cloudflare-access-authentication.md`
   - `clipdeck/docs/plans/clipdeck-cloudflare-access-authentication.md` to `clipdeck/docs/plans/implemented/clipdeck-cloudflare-access-authentication.md`
 
-  Update `clipdeck/docs/README.md` links if needed.
-
 - [ ] **Step 4: Final docs/log verification**
 
   Add final `clipdeck/docs/log.md` entry for Access auth completion and secret cleanup.
@@ -534,7 +531,7 @@ Stop immediately if:
   Commit:
 
   ```bash
-  git add clipdeck/docs/README.md clipdeck/docs/log.md clipdeck/docs/specs/implemented/cloudflare-access-authentication.md clipdeck/docs/plans/implemented/clipdeck-cloudflare-access-authentication.md
+  git add clipdeck/docs/log.md clipdeck/docs/specs/implemented/cloudflare-access-authentication.md clipdeck/docs/plans/implemented/clipdeck-cloudflare-access-authentication.md
   git commit -m "complete clipdeck access auth"
   ```
 
