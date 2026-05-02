@@ -2,11 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import { discoverSkills, type SourceFolder } from "../src/api/discovery";
 
-const skillFiles = import.meta.glob("../../dev-skills/public/*/SKILL.md", {
+type ViteImportMeta = ImportMeta & {
+  glob: (pattern: string, options: { eager: true; import: string; query: string }) => Record<string, string>;
+};
+
+const skillFiles = (import.meta as ViteImportMeta).glob("../../dev-skills/public/*/SKILL.md", {
   eager: true,
   import: "default",
   query: "?raw"
-}) as Record<string, string>;
+});
 
 const realFolders: SourceFolder[] = Object.entries(skillFiles).map(([globPath, content]) => {
   const folderName = globPath.replace(/^.*\/dev-skills\/public\//, "").replace(/\/SKILL\.md$/, "");
