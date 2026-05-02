@@ -4,7 +4,7 @@ import { discoverPrompts, discoverSkills, type SourceFile, type SourceFolder } f
 import { createGithubClient, GithubSourceMissingError, type GithubTreeEntry } from "./github";
 import { json } from "./response";
 
-export async function handleItems(_request: Request, env: Env): Promise<Response> {
+export async function handleItems(request: Request, env: Env): Promise<Response> {
   const github = createGithubClient(env.GITHUB_TOKEN);
   let activeSource: "prompts" | "skills" = "prompts";
   try {
@@ -24,11 +24,25 @@ export async function handleItems(_request: Request, env: Env): Promise<Response
     const skillTree = await github.listRecursiveTree("dev-skills/public");
     const skillFolders = await buildSkillFolders(skillTree, github.readFile);
 
-    return json({
+    const body = JSON.stringify({
       sections: assembleSections(
         discoverPrompts(promptFiles),
         discoverSkills(skillFolders)
       )
+    });
+    const etag = await representationETag(body);
+    const headers = itemHeaders(etag);
+
+    if (matchesETag(request.headers.get("If-None-Match"), etag)) {
+      return new Response(null, {
+        headers,
+        status: 304
+      });
+    }
+
+    return new Response(body, {
+      headers,
+      status: 200
     });
   } catch (error) {
     return githubErrorResponse(error, activeSource);
@@ -90,4 +104,25 @@ function githubErrorResponse(error: unknown, activeSource: "prompts" | "skills")
     error: "upstream_github_failure",
     source: activeSource
   }, 502);
+}
+
+function itemHeaders(etag: string): HeadersInit {
+  return {
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/json",
+    ETag: etag
+  };
+}
+
+function matchesETag(ifNoneMatch: string | null, etag: string): boolean {
+  return ifNoneMatch?.split(",").map((value) => value.trim()).includes(etag) ?? false;
+}
+
+async function representationETag(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body));
+  const hex = Array.from(new Uint8Array(digest), (byte) => {
+    return byte.toString(16).padStart(2, "0");
+  }).join("");
+
+  return `"${hex}"`;
 }

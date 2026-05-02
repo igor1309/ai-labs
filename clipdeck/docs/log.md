@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- Item metadata revalidation added — `/api/items` now sends a SHA-256 ETag for the normalized payload and returns `304 Not Modified` for matching validators, preserving fresh skill titles, versions, and subtitles without disabling browser caching.
 - Skill card titles now combine the SKILL.md H1 with the front matter `name` as `<H1> (<name>)`, fall back to `name` when no H1 is present, and surface an explicit `error: no skill name` when the front matter `name` is missing so broken skills are visible.
 - Access auth migration closed out — spec and plan moved to `implemented/`; production runs on Cloudflare Access with the v0.1.4 Worker. The inert `SHARED_SECRET` Worker secret is intentionally retained as a documented rollback window per the runbook and will be removed in a follow-up housekeeping change.
 - v0.1.4 cut for Access auth — release manifest updated alongside the version bump so the tagged deploy ships the no-shared-secret Worker behind Cloudflare Access.
