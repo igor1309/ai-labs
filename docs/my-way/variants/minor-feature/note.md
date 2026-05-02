@@ -1,6 +1,8 @@
 ---
 title: Minor Feature Addition
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Lightweight My Way path for localized minor feature additions."
 author: Igor Malyarov
 version: 0.0.1
 format: note
@@ -40,9 +42,10 @@ If the change materially alters responsibilities, contracts, or system boundarie
 
 A minor feature addition typically moves through two or three steps:
 
-1. **Targeted research (optional)** — only when a specific unknown blocks the delta; not a broad exploration.
-2. **Delta or mini-spec** — what is being added, what behavior changes, what stays the same, and which existing contracts are touched.
-3. **Short implementation plan** — ordered slices, validation strategy, and test impact, kept proportional to the change.
+1. **Story or Product Intent reference** — the compact user-facing promise being added, or a link to accepted Product Intent that already covers it.
+2. **Targeted research (optional)** — only when a specific unknown blocks the delta; not a broad exploration.
+3. **Delta or mini-spec** — what is being added, what behavior changes, what stays the same, and which existing contracts are touched.
+4. **Short implementation plan** — ordered slices, validation strategy, and test impact, kept proportional to the change.
 
 These steps can collapse into a single compact note when the change is small enough that separating them would be ceremony.
 
@@ -53,6 +56,7 @@ Typical inputs include:
 - existing ADRs
 - the current spec or relevant behavioral expectations
 - the feature request or product need
+- existing Product Intent, if the feature is part of a larger accepted user outcome
 - known constraints in the affected area
 - existing contracts and boundaries
 - notes from focused Q&A or clarification sub-sessions
@@ -66,6 +70,7 @@ A useful minor feature addition artifact should make clear:
 
 - what is being added
 - why it is being added
+- the story or accepted product intent it serves
 - what part of the system is affected
 - what behavior changes
 - what remains unchanged
@@ -107,6 +112,7 @@ When the change outgrows the lite path, escalation is made explicit rather than 
 - the change introduces a new protocol or contract owner
 - the change introduces a new dependency direction
 - the change contradicts an existing ADR
+- the change meaningfully alters accepted user capability, actor, outcome, acceptance signal, or boundary
 
 When any of these is true, the work is no longer a minor feature addition and belongs in the full pre-coding sequence.
 

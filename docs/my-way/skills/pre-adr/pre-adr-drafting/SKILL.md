@@ -26,6 +26,7 @@ Do not use this skill when the real decision is already fixed. That belongs in A
 
 Read the minimum context needed to explore the solution space:
 
+- accepted Product Intent stories when they shape the architectural question
 - research artifacts and the open questions they surfaced
 - notes from Q&A or brainstorming sessions
 - domain constraints
@@ -40,6 +41,7 @@ Read enough to shape the solution space. Do not present already-made decisions a
 ## Preserve This Judgment
 
 - Pre-ADR is exploratory architecture discussion, not final commitment.
+- Options should be evaluated against Product Intent when a direction materially supports, constrains, or risks an accepted story.
 - The artifact must move beyond repeating research and into solution shaping.
 - At least two plausible options should be surfaced unless the situation genuinely rules that out.
 - Tradeoffs, constraints, and tensions must be made visible rather than hidden.
@@ -53,6 +55,7 @@ Help produce or revise a pre-ADR that makes clear:
 - the architectural question or tension being explored
 - the main candidate directions
 - tradeoffs, risks, and constraints for each direction
+- product-intent fit for directions that affect accepted stories
 - the emerging direction and why it currently appears strongest
 - provisional boundaries, responsibilities, or coupling decisions
 - the remaining open questions that block final commitment
@@ -63,7 +66,7 @@ Write the pre-ADR so the eventual ADR is easier to write and more defensible.
 
 1. Start from research and identify the architectural tension that still needs exploration.
 2. Surface at least two plausible candidate directions.
-3. Compare the options against constraints, tradeoffs, and risks.
+3. Compare the options against constraints, tradeoffs, risks, and accepted Product Intent where relevant.
 4. Eliminate or deprioritize weak directions explicitly rather than letting them fade implicitly.
 5. Sharpen provisional boundaries and responsibilities as the discussion converges.
 6. Capture the emerging direction without presenting it as a final decision.

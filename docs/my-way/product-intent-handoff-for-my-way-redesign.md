@@ -1,6 +1,7 @@
 ---
 title: Product Intent Layer — Directional Handoff for My Way Redesign
 date: 2026-05-02
+description: "Directional handoff for adding a Product Intent layer to the My Way workflow."
 author: Igor Malyarov
 model: gpt-5.5-thinking
 version: 0.5.0

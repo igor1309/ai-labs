@@ -63,6 +63,7 @@ Preflight check: [x] done
 **Key work items**:
 - Record the transition intent in this plan and keep it updated as new skills are added.
 - Use the ADR pair as the baseline extraction pattern for the remaining artifacts:
+  - product intent
   - research
   - pre-ADR
   - spec
@@ -237,6 +238,36 @@ Preflight check: [x] done
 **Completion signal**:
 - Each targeted artifact has its own transitional skill or skill pair, added in small reviewable steps.
 
+## Task 8 — Establish Product Intent Layer And Skills
+
+**Objective**: Add Product Intent as the story-centered parent artifact above the existing pre-coding chain.
+
+**Key work items**:
+- Create `docs/my-way/00-product-intent/note.md`.
+- Create `docs/my-way/00-product-intent/structure.md`.
+- Create `docs/my-way/00-product-intent/example.md`.
+- Create `docs/my-way/skills/product-intent/product-intent-drafting/SKILL.md`.
+- Create `docs/my-way/skills/product-intent/product-intent-review/SKILL.md`.
+- Update downstream artifact structures and skills so research, pre-ADR, ADR, spec, and implementation plan can reference accepted Product Intent without absorbing its responsibility.
+- Update lightweight variant paths so minor features can use compact story references and bug fixes escalate to Product Intent only when accepted user intent is missing, ambiguous, or changing.
+
+**Dependencies**:
+- Product Intent directional handoff.
+- Existing My Way artifact structures and skills.
+
+**Risks**:
+- Product Intent drifts into broad product vision or PRD work.
+- User stories become metadata instead of the artifact's center.
+- Downstream artifacts start duplicating Product Intent instead of tracing to it.
+
+**Validation**:
+- Confirm Product Intent files use required Markdown front matter and exactly one `#` title.
+- Confirm Product Intent skills preserve story centrality and boundary discipline.
+- Confirm downstream structures mention Product Intent only where it governs or traces accepted user stories.
+
+**Completion signal**:
+- Product Intent exists as a first-class My Way artifact layer with drafting/review skills and downstream traceability guidance.
+
 ## Done criteria
 
 - The transition has an explicit plan artifact.
@@ -245,5 +276,6 @@ Preflight check: [x] done
 - Spec drafting and review skills exist as the next promoted first-class pair.
 - Implementation-plan drafting and review skills exist as the next promoted first-class pair.
 - Pre-ADR drafting and review skills exist as the next promoted first-class pair.
+- Product Intent note, structure, example, drafting skill, and review skill exist as the story-centered parent layer.
 - Notes remain the source of truth for artifacts that have not yet been promoted.
 - Remaining artifact skills can be added incrementally without losing responsibility clarity.

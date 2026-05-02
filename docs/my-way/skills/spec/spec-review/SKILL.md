@@ -26,7 +26,8 @@ Do not use this skill to decide architecture from scratch. If the behavior probl
 
 Read the spec under review first, then pull only the context needed to test it:
 
-- the accepted ADRs the spec claims to operationalize
+- accepted Product Intent stories the spec claims to satisfy
+- accepted ADRs the spec claims to operationalize, if any
 - relevant research or pre-ADR material only when it clarifies a disputed behavioral point
 - existing contracts, product requirements, or UX requirements where they shape expected behavior
 - the spec structure at [structure.md](../../../04-spec/structure.md)
@@ -45,8 +46,9 @@ Review the spec against the behavior it claims to define, not against execution 
 ## Review For
 
 - **Behavioral clarity**: are expectations concrete enough to prevent divergent implementations?
+- **Product-intent traceability**: do behavior rules preserve accepted stories without turning the spec into a PRD?
 - **Contract clarity**: are interfaces, obligations, and assumptions visible?
-- **Boundary discipline**: does the spec respect accepted ADRs rather than redefining them?
+- **Boundary discipline**: does the spec respect accepted Product Intent and ADRs rather than redefining them?
 - **Edge-case awareness**: are failure behavior, invalid input, absence, timing, and incomplete states handled where relevant?
 - **Reviewability**: can implementation be checked against this spec concretely?
 
