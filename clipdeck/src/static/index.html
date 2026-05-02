@@ -8,20 +8,22 @@
   </head>
   <body>
     <main class="app-shell">
-      <form data-unlock-form class="unlock-panel">
-        <h1>clipdeck</h1>
-        <label>
-          Access secret
-          <input data-secret-input type="password" autocomplete="current-password">
-        </label>
-        <button type="submit">Unlock</button>
+      <form data-unlock-form class="unlock-card">
+        <h1 class="unlock-title"><span>clipdeck</span></h1>
+        <p class="unlock-subtitle">Enter your access secret</p>
+        <div class="field">
+          <label class="field-label" for="secret">Access secret</label>
+          <input data-secret-input class="field-input" id="secret" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="submit-btn" type="submit">Unlock</button>
       </form>
+      <div data-loading class="loading-state" hidden>Loading…</div>
       <section data-library class="library" hidden>
         <header class="toolbar">
-          <h1>clipdeck</h1>
-          <button data-reload type="button">Reload</button>
+          <h1 class="library-title">clipdeck</h1>
+          <button data-reload class="reload-btn" type="button">Reload</button>
         </header>
-        <div data-sections></div>
+        <div data-sections class="sections"></div>
       </section>
       <p data-toast class="toast" role="status" aria-live="polite"></p>
     </main>
