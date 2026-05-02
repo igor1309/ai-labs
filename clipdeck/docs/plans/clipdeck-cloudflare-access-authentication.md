@@ -321,7 +321,7 @@ Stop immediately if:
 - The legacy Clipdeck unlock flow may still appear behind Access in this phase because the production Worker has not yet been released.
 - No production code deploy occurs in this phase.
 
-- [ ] **Step 1: Inspect current Cloudflare state**
+- [x] **Step 1: Inspect current Cloudflare state**
 
   Use available Cloudflare tooling or dashboard/API access to determine whether an Access application already exists for `clipdeck.enoa.ai`.
 
@@ -332,7 +332,7 @@ Stop immediately if:
 
   Stop if Cloudflare access is unavailable.
 
-- [ ] **Step 2: Configure Access application**
+- [x] **Step 2: Configure Access application**
 
   Configure a Cloudflare Access self-hosted application:
 
@@ -343,7 +343,7 @@ Stop immediately if:
 
   Do not commit the concrete identity.
 
-- [ ] **Step 3: Verify unauthenticated production lock**
+- [x] **Step 3: Verify unauthenticated production lock**
 
   Run unauthenticated checks from a clean client context:
 
@@ -367,7 +367,7 @@ Stop immediately if:
   - If the old production Worker is still deployed, treat the legacy Clipdeck unlock form or Worker-level shared-secret `401` as an expected temporary migration state.
   - Do not require the no-unlock UI contract until Phase 4 has deployed the new Worker and Phase 5 runs final smoke checks.
 
-- [ ] **Step 5: Update log and commit Phase 3**
+- [x] **Step 5: Update log and commit Phase 3**
 
   Add a concise `clipdeck/docs/log.md` entry that Cloudflare Access was provisioned and unauthenticated production lock checks passed. Do not include the concrete identity.
 
