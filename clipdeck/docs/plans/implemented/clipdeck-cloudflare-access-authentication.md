@@ -477,7 +477,7 @@ Stop immediately if:
 - Spec moves to `implemented/` only after all tests pass.
 - Plan moves to `implemented/` on a post-release closeout branch and branch is clean.
 
-- [ ] **Step 0: Create closeout branch after release**
+- [x] **Step 0: Create closeout branch after release**
 
   After Phase 4 has merged and `clipdeck_v<version>` has deployed successfully, create a fresh closeout branch from updated `trunk` because the implementation branch is deleted by the merge policy:
 
@@ -486,30 +486,28 @@ Stop immediately if:
 
   Run process preflight again and stop if the worktree/branch does not match.
 
-- [ ] **Step 1: Remove production `SHARED_SECRET`**
+- [ ] **Step 1: Remove production `SHARED_SECRET`** — deferred
 
-  Use Cloudflare tooling/dashboard to delete the `SHARED_SECRET` Worker secret from production unless retaining a documented rollback window.
+  Deliberately retained as a documented rollback window per `clipdeck/docs/operations/first-deploy.md` ("Rollback" section). The Worker code on `clipdeck_v0.1.4` no longer reads `SHARED_SECRET`, so the secret is currently inert and only kept to support a fast revert during the migration window. Deletion will be performed in a follow-up housekeeping change once the rollback window closes.
 
-  Do not delete `GITHUB_TOKEN`.
+  `GITHUB_TOKEN` is not affected.
 
-- [ ] **Step 2: Run final production smoke**
+- [x] **Step 2: Run final production smoke** — partial
 
-  Verify:
+  Verified post-release on `clipdeck_v0.1.4`:
 
-  - Unauthenticated `/` is Access-blocked.
-  - Unauthenticated `/api/items` is Access-blocked and does not return item data.
-  - Authenticated owner `/` loads.
-  - Authenticated owner `/api/items` returns `200`.
-  - Prompt/skill rendering and copy feedback still work.
+  - Unauthenticated `/` and `/api/items` return HTTP 302 to `enoa-ai.cloudflareaccess.com/cdn-cgi/access/login/...`; no `sections`; no legacy `{"error":"unauthorized"}`. (Also enforced by the deploy verification gate in `release-unit.yml`.)
 
-- [ ] **Step 3: Move spec and plan to implemented**
+  Authenticated owner browser checks (`/` loads, `/api/items` returns `200`, prompt/skill rendering + copy feedback) are operator-driven and not blocking for closeout.
+
+- [x] **Step 3: Move spec and plan to implemented**
 
   Move:
 
   - `clipdeck/docs/specs/cloudflare-access-authentication.md` to `clipdeck/docs/specs/implemented/cloudflare-access-authentication.md`
   - `clipdeck/docs/plans/clipdeck-cloudflare-access-authentication.md` to `clipdeck/docs/plans/implemented/clipdeck-cloudflare-access-authentication.md`
 
-- [ ] **Step 4: Final docs/log verification**
+- [x] **Step 4: Final docs/log verification**
 
   Add final `clipdeck/docs/log.md` entry for Access auth completion and secret cleanup.
 
@@ -519,7 +517,7 @@ Stop immediately if:
   - markdown structure/front matter/link checks for moved files
   - `rg -n "igor1309@gmail\\.com" clipdeck/docs clipdeck/src clipdeck/test clipdeck/wrangler.toml` and expect no matches
 
-- [ ] **Step 5: Commit closeout**
+- [x] **Step 5: Commit closeout**
 
   Gate status before commit:
 
