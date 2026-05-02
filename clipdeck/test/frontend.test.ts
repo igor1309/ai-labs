@@ -133,6 +133,60 @@ describe("clipdeck frontend", () => {
     ]);
   });
 
+  test("should hide unlock form after successful unlock", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
+    await import("../src/static/app.js");
+
+    await unlock();
+
+    expect(document.querySelector<HTMLElement>("[data-unlock-form]")?.hidden).toBe(true);
+  });
+
+  test("should show loading indicator while items are loading and hide it on completion", async () => {
+    let resolveFetch!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    }));
+    await import("../src/static/app.js");
+
+    document.querySelector<HTMLInputElement>("[data-secret-input]")!.value = "secret";
+    document.querySelector<HTMLFormElement>("[data-unlock-form]")!.dispatchEvent(new SubmitEvent("submit", {
+      bubbles: true,
+      cancelable: true
+    }));
+    await flushAsync();
+    const loadingDuringFetch = document.querySelector<HTMLElement>("[data-loading]")?.hidden;
+    resolveFetch(Response.json({ sections: [] }));
+    await flushAsync();
+    const loadingAfterFetch = document.querySelector<HTMLElement>("[data-loading]")?.hidden;
+
+    expect([loadingDuringFetch, loadingAfterFetch]).toEqual([false, true]);
+  });
+
+  test("should surface a failure toast when the backend returns a non-auth error", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("boom", { status: 500 }));
+    await import("../src/static/app.js");
+
+    await unlock();
+
+    expect(document.querySelector("[data-toast]")?.textContent).toMatch(/fail/i);
+  });
+
+  test("should not fetch on reload when no secret is stored", async () => {
+    await import("../src/static/app.js");
+
+    document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
+    await flushAsync();
+
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  test("css hides elements with the hidden attribute", () => {
+    const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
+
+    expect(css).toMatch(/\[hidden\][^{]*\{[^}]*display:\s*none/);
+  });
+
   test("should visually distinguish resource backed skills", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [

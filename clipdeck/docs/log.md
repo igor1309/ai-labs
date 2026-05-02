@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- Frontend redesign — Clipdeck adopts the dark notio-aligned palette with an animated unlock card, hover/focus-visible item states, a floating auto-clearing toast, an explicit loading state, non-auth error surfacing, and a pull-to-refresh-only mode that hides the reload button on touch devices.
 - Skills loading restored — Clipdeck now uses the GitHub recursive tree API for skill discovery, keeping production GitHub subrequests under the Worker runtime limit for v0.1.2.
 - GitHub upstream access restored — Clipdeck now sends a required `User-Agent` on GitHub Contents API reads and releases the fix as v0.1.1.
 - Production URL bound — `clipdeck/wrangler.toml` declares `clipdeck.enoa.ai` as a custom-domain route, and `CLIPDECK_PRODUCTION_URL` is set so the deploy workflow can verify the locked endpoint.
