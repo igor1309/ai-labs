@@ -1,20 +1,34 @@
 ---
-title: Product Intent Layer — Handoff for My Way Redesign
+title: Product Intent Layer — Directional Handoff for My Way Redesign
 date: 2026-05-02
 author: Igor Malyarov
 model: gpt-5.5-thinking
-version: 0.3.0
-format: handoff
-status: final-reviewed
+version: 0.5.0
+format: directional-handoff
+status: reviewed
 ---
 
-# Product Intent Layer — Handoff for My Way Redesign
+# Product Intent Layer — Directional Handoff for My Way Redesign
 
 ## Purpose
 
-This document locks the expanded frame for redesigning `my-way` so the workflow has an explicit product-intent layer above research, ADRs, specs, implementation plans, and code.
+This document captures the expanded frame for redesigning `my-way` so the workflow has an explicit product-intent layer above research, ADRs, specs, implementation plans, and code.
 
-It is written as a handoff to a senior analyst who will redesign the existing `my-way` docs and skills.
+It is a handoff to a senior analyst who will redesign the existing `my-way` docs and skills.
+
+This is not a specification for the Product Intent artifact, not a workflow algorithm, and not a template contract.
+
+## Boundary of this handoff
+
+This document should do three things:
+
+1. identify the structural gap in the current model
+2. explain why Product Intent is the likely missing layer
+3. name the design tensions the analyst must resolve
+
+It should not prescribe implementation details such as exact tables, lifecycle states, mandatory section layouts, escalation heuristics, edit-classification mechanics, or story-map rules.
+
+Those decisions belong to the redesign work.
 
 ## Core problem
 
@@ -31,7 +45,9 @@ Research
 → Code
 ```
 
-This is strong for reducing technical ambiguity, separating exploration from commitment, and making implementation constrained. However, it does not define the product-intent layer that governs the whole chain.
+This frame is strong for technical and architectural work. It helps separate exploration from commitment, preserve reasoning, constrain implementation, and keep downstream artifacts accountable to prior decisions.
+
+But it does not define the product-intent layer above that chain.
 
 As a result, the workflow can explain:
 
@@ -47,9 +63,9 @@ But it does not explicitly define:
 - what user capability is being created
 - what user outcome matters
 - which user-facing promise downstream artifacts must preserve
-- what must happen when that promise changes
+- what should happen when that promise changes
 
-This is why user stories are missing not only as text, but as a governing concept.
+That is why user stories are missing not only as text, but as a governing concept.
 
 ## Required conceptual correction
 
@@ -67,66 +83,32 @@ Product Intent
 → Code
 ```
 
-`Product Intent` is not a vision document and not a PRD replacement. It is the governing product artifact that defines accepted user stories, their surrounding product context, and the downstream accountability chain.
+Product Intent should become the parent frame for downstream engineering artifacts.
 
-Within `Product Intent`, user stories are the primary traceable product abstraction: they define the user-facing capabilities and outcomes that downstream artifacts must preserve. Goals, actors, activity flow, boundaries, and acceptance criteria frame those stories; they do not replace them.
+It should define the user-facing intent that research, ADRs, specs, implementation plans, and code must preserve.
 
 ## Why Product Intent, not only User Stories
 
-User stories are necessary and should become first-class. However, by themselves they are too thin to govern an architecture-heavy workflow unless they are surrounded by goal, actor, boundary, acceptance, and traceability context.
+User stories should become first-class. However, a standalone list of stories is probably too thin to govern an architecture-heavy workflow.
 
-The recommended artifact is `Product Intent`, containing user stories plus the surrounding product frame:
+The better direction is a broader Product Intent layer where user stories are central, but surrounded by enough product context to make them useful:
 
-- goal / desired product outcome
+- product goal / outcome
 - actors
-- user activities or narrative shape where needed
 - user stories
-- acceptance criteria
+- acceptance criteria or confirmation method
 - boundaries / non-goals
 - open product questions
 - downstream traceability
-- change-cascade rules
+- change-propagation expectations
 
-This avoids reducing product reasoning to story cards while still preserving industry-standard user-story practice.
+This preserves user-story centrality without reducing the artifact to a ticket list.
 
-## Internal hierarchy of Product Intent
+## User-story standard-practice constraint
 
-Product Intent must not read as a flat checklist of unrelated sections.
+The redesign should not invent an idiosyncratic user-story format without a concrete reason.
 
-Required hierarchy:
-
-```text
-Product goal / outcome
-→ actors
-→ user activities / narrative flow
-→ user stories
-→ acceptance criteria
-→ downstream traceability
-```
-
-Layer responsibilities:
-
-| Layer | Responsibility |
-|---|---|
-| Product goal / outcome | Defines why the product area or feature exists |
-| Actors | Defines who the product intent is for |
-| User activities / narrative flow | Describes the shape of what the user is trying to do across stories |
-| User stories | Defines user-facing capabilities and outcomes in standard story form |
-| Acceptance criteria | Confirms whether a specific story is satisfied |
-| Downstream traceability | Connects accepted stories to research, ADRs, specs, plans, and validation |
-
-Default scoping rule:
-
-- acceptance criteria should normally be scoped per user story
-- product-level acceptance signals may exist, but must not replace story-level acceptance criteria
-- goals frame stories; they are not substitutes for stories
-- traceability should attach primarily to accepted stories, and secondarily to product goals when the work is too broad for a single story
-
-## User stories: standard practice constraint
-
-Do not invent a non-standard user-story format unless there is a concrete reason.
-
-Use the common form as the default:
+The standard form should remain recognizable:
 
 ```text
 As a <type of user>,
@@ -134,312 +116,107 @@ I want <some goal / capability>,
 so that <some reason / outcome>.
 ```
 
-The workflow may add metadata around a story, but must not replace the standard story concept with an idiosyncratic local invention.
+The analyst may decide what metadata, surrounding context, or traceability mechanism is needed, but those additions should not replace the user-story concept itself.
 
-Allowed metadata:
+## Product Intent should be story-centered, not vision-centered
 
-| Field | Purpose |
-|---|---|
-| ID | Stable traceability key, e.g. `US-001` |
-| Status | `proposed`, `accepted`, `changed`, `deprecated` |
-| Acceptance criteria | Conditions that make the story satisfied |
-| Notes | Clarifications, constraints, or unresolved questions |
+The name `Product Intent` is useful, but it is semantically broad. It can drift toward a vision document, goal statement, or lightweight PRD.
 
-The story itself should remain recognizable as a normal user story.
+The redesign should prevent that drift.
 
-## Product Intent artifact shape
+Product Intent should be explicitly framed as the governing product artifact that contains accepted user stories and the surrounding context needed to make downstream engineering artifacts accountable to those stories.
 
-The exact file layout may change during the redesign, but the artifact must preserve the hierarchy and traceability rules defined above.
+If Product Intent becomes a soft vision document, the redesign fails.
 
-Recommended location:
+If user stories are buried as a minor subsection, the redesign also fails.
 
-```text
-00-product-intent/
-  structure.md
-  example.md
-  note.md
-```
+## Internal hierarchy to resolve
 
-Recommended skill location if skills are extracted:
+The previous draft over-prescribed the internal structure. The analyst should still resolve the hierarchy explicitly.
+
+The unresolved design question:
+
+> How should Product Intent relate goals, actors, user stories, acceptance criteria, boundaries, and downstream traceability without becoming a checklist of unrelated sections?
+
+The likely conceptual relationship is:
 
 ```text
-skills/product-intent/
-  SKILL.md
-skills/product-intent/product-intent-review/
-  SKILL.md
+Goals explain why.
+Actors define who.
+User stories define what capability and outcome matter.
+Acceptance criteria or confirmation methods define how satisfaction is recognized.
+Traceability connects accepted intent to downstream artifacts.
 ```
 
-Required baseline structure:
+The analyst should turn this into an appropriate document structure.
 
-```markdown
----
-date: YYYY-MM-DD
-model: <model used>
-description: "Product intent: <feature / product area>"
----
+## Narrative shape / story-map question
 
-# Product Intent: <Feature / Product Area>
+A flat list of user stories may be enough for a small feature.
 
-## Definition
+For a larger product area, a flat list can lose the narrative shape of what the product does as a whole. This is the point from story-mapping practice that the redesign should not ignore.
 
-This is the governing product artifact for <feature / product area>. It defines accepted user stories, their surrounding product context, and the downstream accountability chain.
+Open design question:
 
-## Product goal / outcome
+> Should Product Intent govern individual stories directly, or should it also support a structured set of stories arranged around user activities, workflow steps, or a lightweight narrative flow?
 
-## Actors
+This handoff does not prescribe story mapping or an escalation trigger. It only names the risk: traceability tables alone can preserve references while losing product readability.
 
-## User activities / narrative flow
+## Relationship to downstream artifacts
 
-## User stories
+The redesign should make downstream artifacts accountable to Product Intent.
 
-| ID | User story | Status | Notes |
-|---|---|---|---|
+### Research
 
-## Acceptance criteria
+Research should be able to reference product intent when the investigation exists to clarify, protect, or unblock a user outcome.
 
-Acceptance criteria are normally scoped per story. Product-level acceptance signals may be added only when they do not replace story-level confirmation.
+Research should remain exploratory. Product Intent should not turn research into commitment.
 
-| Story | Acceptance criteria |
-|---|---|
+### Pre-ADR
 
-## Boundaries / non-goals
+Pre-ADR should evaluate options against product intent where relevant, not only technical tradeoffs.
 
-## Open product questions
+Pre-ADR should remain provisional. Product Intent should constrain the problem being explored, not prematurely choose the solution.
 
-## Downstream traceability
+### ADR
 
-| Story / goal | Research | ADRs | Specs | Plans |
-|---|---|---|---|---|
+ADRs should trace to product intent when an architectural decision exists to enable, protect, or constrain a user-facing capability.
 
-## Change cascade
-```
+ADRs should remain architectural. Product Intent should explain why the decision matters, not turn the ADR into a product document.
 
-## Narrative shape and story mapping
+### Spec
 
-A flat list of user stories is sufficient for small features. It may fail for larger product areas because the product becomes unreadable from its own intent document.
+Specs should operationalize accepted product intent into behavior, rules, edge cases, and tests.
 
-The redesign should explicitly evaluate whether Product Intent needs a lightweight narrative-shape layer above individual stories.
+Specs should not become PRDs. They should translate intent into implementable behavior.
 
-Open design question for the analyst:
+### Implementation Plan
 
-> Is the unit of governance the individual user story, or a structured set of stories arranged around user activities, workflow steps, or a lightweight story map?
+Implementation plans should preserve product intent during execution.
 
-Do not prescribe full story mapping by default. The expected solution should remain lightweight, but it must preserve the product narrative when a flat story table becomes too weak.
+The plan may slice work by story, component, risk, or technical dependency. The redesign should decide how traceability is preserved without forcing an unnatural slicing model.
 
-Possible candidate:
+## Change propagation
 
-```markdown
-## User activities / narrative flow
+User stories are living artifacts. This matters because changing an accepted user story can invalidate assumptions, decisions, specs, implementation plans, or tests downstream.
 
-| Activity / step | Stories |
-|---|---|
-| Capture input | US-001, US-002 |
-| Review generated artifact | US-003 |
-| Apply correction | US-004 |
-```
+The redesign should define a bounded way to handle this.
 
-This layer should organize stories; it should not replace them.
+Open design question:
 
-## Relationship to existing artifacts
+> How should changes to accepted product intent trigger downstream review without turning every wording edit into ceremony?
 
-### Product Intent → Research
+The handoff should not prescribe exact lifecycle states, edit labels, or cascade mechanics. The important requirement is conceptual:
 
-Research should start from either a user story, a product goal, or a product tension blocking a story.
-
-Research must answer:
-
-> What do we need to understand to preserve or implement the intended user outcome?
-
-Recommended addition to research docs:
-
-```markdown
-## Product intent referenced
-
-- Product Intent: <link>
-- Stories: US-001, US-002
-```
-
-Research remains exploratory. It does not become commitment.
-
-### Product Intent → Pre-ADR
-
-Pre-ADR should compare solution options against product intent, not only technical tradeoffs.
-
-Recommended addition:
-
-```markdown
-## Product-intent drivers
-
-| Story / goal | Design pressure |
-|---|---|
-```
-
-Options considered should include product impact where relevant:
-
-```markdown
-### Option A — <name>
-
-- Technical tradeoffs:
-- Product impact:
-- Risks:
-```
-
-Pre-ADR remains provisional.
-
-### Product Intent → ADR
-
-ADRs should be traceable to product intent when the decision exists to enable, constrain, or protect a user-facing capability.
-
-Recommended addition:
-
-```markdown
-## Product-intent traceability
-
-| Story / goal | Relevance | Impact |
-|---|---|---|
-```
-
-This section prevents ADRs from becoming elegant architecture detached from product value.
-
-ADR rules and invariants should still remain architectural. Product intent explains why the decision matters; it should not turn the ADR into a product requirements document.
-
-### Product Intent → Spec
-
-Specs should operationalize product intent into behavior.
-
-Recommended addition near the top of the spec:
-
-```markdown
-## User stories covered
-
-| Story | Behavior rules | Tests |
-|---|---|---|
-```
-
-Behavior rules should remain concrete and testable. User stories explain why the behavior matters and provide traceability.
-
-### Product Intent → Implementation Plan
-
-Implementation plans should slice by user story where practical. If slicing by technical layer is more appropriate, the plan must still preserve story traceability.
-
-Recommended addition:
-
-```markdown
-## Story traceability matrix
-
-| Story | Phase / task | Validation |
-|---|---|---|
-```
-
-The implementation plan remains operational. It should not rediscover product intent during execution.
-
-## Change cascade
-
-User stories are living artifacts. A semantic change to an accepted story must trigger impact review downward. Editorial corrections must not trigger this path.
-
-Required cascade:
-
-```text
-Accepted user story semantically changed
-→ Product Intent updated
-→ affected research reviewed for stale assumptions
-→ affected Pre-ADRs reviewed for invalidated options or constraints
-→ affected ADRs reviewed for continued validity, supersession, or clarification
-→ affected specs patched if behavior changed
-→ affected implementation plans re-sliced or revalidated
-→ code/tests updated if required
-```
-
-Minimum workflow status metadata:
-
-```text
-proposed
-→ accepted
-→ changed
-→ deprecated
-```
-
-Status semantics:
-
-These statuses are workflow metadata around otherwise standard user stories. They must not change the story format itself.
-
-| Status | Meaning |
-|---|---|
-| proposed | Being explored; may inform research but should not govern committed artifacts yet |
-| accepted | Governing intent; downstream artifacts should trace to it where relevant |
-| changed | Previously accepted intent changed semantically and requires downstream impact review before it is treated as stable again |
-| deprecated | No longer governing; downstream references must be reviewed or removed |
-
-### Cascade cost boundary
-
-Not every edit to a user story should trigger a full downstream audit.
-
-Distinguish editorial edits from semantic changes:
-
-| Change type | Definition | Required action |
-|---|---|---|
-| Editorial edit | Clarifies wording without changing actor, capability, outcome, acceptance criteria, or boundaries | Update Product Intent only; no cascade required |
-| Semantic change | Changes actor, capability, outcome, acceptance criteria, boundary, or product promise | Trigger downstream impact review |
-| Deprecation / replacement | Removes or replaces an accepted story | Trigger explicit cascade review and remove or update downstream references |
-
-Cascade review should be impact-based, not ceremonial. The reviewer must identify affected artifacts, not blindly reopen every document in the chain. A story may return to `accepted` after required downstream impact has been reviewed and necessary patches are complete.
-
-## Ownership boundaries
-
-Product Intent owns:
-
-- user-facing goal
-- actors
-- user activities / narrative flow where needed
-- user stories
-- acceptance criteria
-- product boundaries / non-goals
-- product-level open questions
-- change-cascade trigger
-
-Research owns:
-
-- discovery
-- uncertainty reduction
-- terminology
-- constraints
-- patterns and precedents
-- risks and open questions
-
-Pre-ADR owns:
-
-- solution-space exploration
-- options
-- provisional boundaries
-- unresolved architectural questions
-
-ADR owns:
-
-- committed architectural decision
-- rules / invariants
-- consequences
-- architectural non-goals
-
-Spec owns:
-
-- behavior
-- interfaces
-- rules
-- edge cases
-- test expectations
-
-Implementation Plan owns:
-
-- execution order
-- work slicing
-- validation gates
-- closeout rules
+- meaningful changes to accepted user intent must not silently bypass downstream artifacts
+- minor editorial cleanup must not trigger unnecessary full-chain review
+- the review should be impact-based, not ceremonial
 
 ## Upstream of Product Intent
 
 This redesign starts at Product Intent.
 
-The sources of product intent are intentionally out of scope for this pass:
+The sources of product intent are out of scope for this pass:
 
 - user discovery
 - support signals
@@ -449,7 +226,7 @@ The sources of product intent are intentionally out of scope for this pass:
 - JTBD analysis
 - competitive research
 
-The analyst should preserve this as an explicit future design question:
+This is a future design question:
 
 > What feeds Product Intent, and how is the wider product context kept honest before stories enter the engineering workflow?
 
@@ -457,125 +234,74 @@ Do not block the current redesign on this question. The immediate correction is 
 
 ## Non-goals
 
-This redesign must not:
+This redesign should not:
 
 - replace ADRs with product documents
 - turn specs into PRDs
 - invent a non-standard user-story format without justification
-- force every bug fix through a full Product Intent artifact
-- require full-funnel ceremony for trivial work
-- trigger full cascade review for editorial wording changes
-- erase the existing distinction between exploratory and committed documents
-- collapse research, ADR, spec, and plan into one document
+- force every bug fix through full Product Intent ceremony
+- collapse research, ADR, spec, and implementation plan into one document
+- prescribe a closed workflow algorithm in this handoff
+- prescribe exact Product Intent tables or templates in this handoff
 - solve the upstream discovery / product-signal pipeline in this pass
 
-## Scope variants
+## Analyst design questions
 
-### Full path
+The analyst should resolve these questions during redesign:
 
-Use the full path for net-new product or architectural work:
+1. What is the minimal Product Intent artifact structure that makes user stories first-class without turning the artifact into a PRD?
+2. How should Product Intent preserve standard user-story practice?
+3. How should Product Intent represent the relationship between goals, actors, stories, acceptance criteria, boundaries, and traceability?
+4. When is a flat story list sufficient, and when does the artifact need narrative shape or story-map-like organization?
+5. How should downstream artifacts reference Product Intent without bloating every document?
+6. How should accepted user-story changes propagate downstream without excessive ceremony?
+7. Which lightweight paths should exist for minor features and bug fixes?
+8. Which parts belong in docs, and which parts belong in skills?
 
-```text
-Product Intent
-→ Research
-→ Pre-ADR
-→ ADR
-→ Spec
-→ Implementation Plan
-→ Code
-```
+## Expected redesign output
 
-### Minor feature
+The redesign should produce updated `my-way` docs that make Product Intent visible as the governing layer above the current pre-coding workflow.
 
-A minor feature may use a lighter path if it fits established architecture.
+At minimum, the analyst should consider updates to:
 
-Recommended shape:
+- pre-coding workflow docs
+- research docs
+- pre-ADR docs
+- ADR docs
+- spec docs
+- implementation-plan docs
+- minor-feature / bug-fix workflow variants
+- skill docs, if skills remain the operational interface
 
-```text
-Product Intent reference
-→ Delta / mini-spec
-→ Short implementation plan
-```
+This handoff does not require a specific file layout. The analyst should choose the layout that best fits the existing `my-way` structure.
 
-Escalate to the full path if the change requires new boundaries, new dependency direction, new protocols, or contradiction of an existing ADR.
+## Quality bar
 
-### Bug fix
+The redesign is successful if:
 
-A bug fix does not normally require a new Product Intent artifact.
-
-However, it should reference product intent when expected behavior is disputed or when the defect reveals that the product promise was never captured.
-
-Escalation rule:
-
-```text
-Undefined expected behavior
-→ patch Product Intent or Spec before implementation proceeds
-```
-
-## Required redesign work
-
-The senior analyst should update the docs in this order:
-
-1. Add `00-product-intent/structure.md`.
-2. Add `00-product-intent/note.md`.
-3. Add `00-product-intent/example.md` using a realistic example, not a fake generic one.
-4. Update `pre-coding-phase.md` to include Product Intent as the governing layer above Research.
-5. Update Research structure/note to reference product intent when available.
-6. Update Pre-ADR structure/note with product-intent drivers.
-7. Update ADR structure/note with product-intent traceability.
-8. Update Spec structure/note with user-stories-covered traceability.
-9. Update Implementation Plan structure/note with story traceability matrix.
-10. Update minor-feature and bug-fix variants with escalation/reference rules.
-11. Add cascade cost boundaries: editorial edit vs semantic change vs deprecation.
-12. Add narrative-shape guidance or an explicit story-map design fork for larger product areas.
-13. Add product-intent drafting and review skills if the skill extraction remains the operational direction.
-
-## Quality bar for redesigned docs
-
-The redesign is acceptable only if:
-
-- user stories become visible as a first-class concept
+- user stories become a first-class concept
 - Product Intent becomes the governing layer, not a buried spec subsection
-- Product Intent is clearly defined as a story-centered governing artifact, not a vision document
-- user stories remain the primary traceable product abstraction inside Product Intent
-- Product Intent has an explicit internal hierarchy: goal → actors → activities → stories → acceptance criteria → traceability
-- downstream artifacts explicitly trace to user stories or product goals where relevant
-- changed user stories have a bounded cascade-review path
-- editorial story edits do not trigger unnecessary cascade work
+- Product Intent remains story-centered, not vision-centered
 - standard user-story practice is preserved
-- the existing exploratory-versus-committed distinction remains intact
+- downstream artifacts can trace back to accepted product intent where relevant
+- meaningful changes to accepted user intent trigger bounded downstream review
 - lightweight paths remain lightweight
-- larger product areas have a way to preserve narrative shape beyond a flat story list
-- the upstream-of-intent question is explicitly parked as future work
-- the docs remain directly usable by agents and humans
+- the exploratory-versus-committed distinction remains intact
+- unresolved upstream discovery questions are explicitly parked, not accidentally solved
 
-## Analyst notes
+## Review notes for this version
 
-The important correction is not “add a User Stories section somewhere.”
+This version intentionally rolls back the over-prescriptive details from v0.4.
 
-The important correction is to make Product Intent the parent frame of the whole pre-coding workflow, with user stories as the primary traceable product abstraction inside that frame. The surrounding artifact must also capture actors, goals, narrative shape where needed, boundaries, acceptance criteria, and bounded change cascade.
+Removed or demoted from prescription to analyst-facing design tension:
 
-If this is implemented only as a spec subsection, the redesign fails structurally.
+- exact Product Intent table schemas
+- exact baseline template
+- exact lifecycle statuses
+- exact acceptance-criteria storage rule
+- exact change-type declaration mechanism
+- exact narrative-flow escalation heuristic
+- exact cascade algorithm
+- fixed file-layout prescription
 
-If Product Intent becomes a soft vision document, the redesign also fails. The artifact must remain story-centered and traceable.
-
-## Final adversarial review result
-
-Review outcome: no blocking failures after patch.
-
-Warnings addressed in this version:
-
-- `Mandatory structure candidate` was weak wording; replaced with `Required baseline structure`.
-- Acceptance-criteria scope was present but not explicit enough in the artifact template; added story-level scoping language.
-- Story status metadata could be mistaken for a custom story format; clarified that statuses are workflow metadata around standard user stories.
-- Cascade wording could imply review for every edit; reinforced editorial-vs-semantic distinction and impact-based review.
-
-## Review patch notes
-
-This version incorporates the review feedback by:
-
-- making the internal hierarchy of Product Intent explicit
-- adding a narrative-shape / story-map design fork for larger product areas
-- strengthening the definition of Product Intent so it cannot be mistaken for a vision document
-- bounding cascade cost through editorial-vs-semantic change distinction
-- parking upstream sources of product intent as future work
+The handoff now preserves the strategic frame and leaves implementation mechanics to the senior analyst redesigning `my-way`.
