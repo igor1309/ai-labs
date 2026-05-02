@@ -5,9 +5,17 @@ model: gpt-5
 description: "Personal note describing an end-to-end agentic development flow from intake through artifact preservation."
 author: Igor Malyarov
 format: note
+status: superseded
+superseded_on: 2026-05-02
+superseded_by:
+  - ../pre-coding-phase.md
+  - ../coding-phase.md
+  - ../product-intent-handoff-for-my-way-redesign.md
 ---
 
 # Agentic Dev Flow
+
+> **Prior art.** Moved to `prior-art/` on 2026-05-02. The pre-coding side of this flow is now covered by [`pre-coding-phase.md`](../pre-coding-phase.md); the coding-and-knowledge-preservation side is now covered by [`coding-phase.md`](../coding-phase.md); the governing product-intent layer above both is described in [`product-intent-handoff-for-my-way-redesign.md`](../product-intent-handoff-for-my-way-redesign.md). Preserved here for lineage; do not treat as authoritative for current method.
 
 This note describes an end-to-end agentic development flow. It is not a skill trigger. It is a process model: a cyclic path from intake through specification, planning, implementation, logging, and durable artifact creation.
 
