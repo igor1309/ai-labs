@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Am I done? — Career Outlook</title>
+    <style>
+      :root {
+        --base-background: #f2ede2;
+        --base-text: #1f1a16;
+        --card-background: #fff8eb;
+        --card-border: #d8ccb4;
+        --highlight: #2e5f57;
+        --highlight-shadow: #21433d;
+        --muted: #6f6254;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 14% 18%, #fef7e8 0%, transparent 44%),
+          radial-gradient(circle at 86% 22%, #dfecda 0%, transparent 38%),
+          linear-gradient(180deg, #f7f3ea 0%, var(--base-background) 100%);
+        color: var(--base-text);
+        min-height: 100vh;
+      }
+
+      .landing {
+        margin: 0 auto;
+        max-width: 860px;
+        padding: 60px 24px 80px;
+      }
+
+      .hero {
+        text-align: center;
+        margin-bottom: 56px;
+      }
+
+      .eyebrow {
+        color: var(--highlight);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+
+      .hero h1 {
+        font-size: clamp(40px, 6vw, 64px);
+        line-height: 1;
+        margin-bottom: 16px;
+      }
+
+      .hero .intro {
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.5;
+        max-width: 480px;
+        margin: 0 auto;
+      }
+
+      .cta-row {
+        display: flex;
+        justify-content: center;
+        margin-top: 32px;
+      }
+
+      .cta-button {
+        background: linear-gradient(180deg, var(--highlight) 0%, var(--highlight-shadow) 100%);
+        border: 1px solid color-mix(in srgb, var(--highlight-shadow) 70%, black);
+        border-radius: 10px;
+        color: #f7fff9;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 18px;
+        font-weight: 700;
+        padding: 14px 32px;
+        text-decoration: none;
+        transition: filter 0.15s;
+      }
+
+      .cta-button:hover {
+        filter: brightness(1.08);
+      }
+
+      .features {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 56px;
+      }
+
+      .feature-card {
+        background: color-mix(in srgb, var(--card-background) 86%, white 14%);
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        padding: 24px;
+      }
+
+      .feature-card h3 {
+        font-size: 16px;
+        letter-spacing: 0.02em;
+        margin-bottom: 8px;
+        color: var(--highlight-shadow);
+      }
+
+      .feature-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .how-it-works {
+        background: color-mix(in srgb, var(--card-background) 86%, white 14%);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        box-shadow: 0 18px 38px color-mix(in srgb, var(--highlight-shadow) 12%, transparent);
+        padding: 36px;
+        margin-bottom: 56px;
+      }
+
+      .how-it-works h2 {
+        font-size: 28px;
+        margin-bottom: 24px;
+        text-align: center;
+      }
+
+      .steps {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .step {
+        text-align: center;
+      }
+
+      .step-number {
+        background: var(--highlight);
+        border-radius: 50%;
+        color: #f7fff9;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+        height: 40px;
+        width: 40px;
+        margin-bottom: 12px;
+      }
+
+      .step h3 {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+
+      .step p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .bottom-cta {
+        text-align: center;
+      }
+
+      .bottom-cta p {
+        color: var(--muted);
+        font-size: 16px;
+        margin-bottom: 20px;
+      }
+
+      @media (max-width: 640px) {
+        .landing {
+          padding: 32px 16px 48px;
+        }
+
+        .how-it-works {
+          padding: 24px 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="landing">
+      <section class="hero">
+        <p class="eyebrow">Career Outlook</p>
+        <h1>Am I done?</h1>
+        <p class="intro">Enter a profession and get a structured outlook in one response.</p>
+        <div class="cta-row">
+          <a href="/" class="cta-button">Get outlook</a>
+        </div>
+      </section>
+
+      <section class="features">
+        <div class="feature-card">
+          <h3>Time horizon</h3>
+          <p>See how long your profession stays relevant and what timeline to plan for.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Confidence</h3>
+          <p>Get a clear confidence level — high, medium, or low — with a rationale behind it.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Risks</h3>
+          <p>Understand the key risks your profession faces so you can prepare early.</p>
+        </div>
+        <div class="feature-card">
+          <h3>What to do next</h3>
+          <p>Actionable steps you can take right now to stay ahead.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Assumptions</h3>
+          <p>See which assumptions the analysis is built on so you can judge for yourself.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Need clarification</h3>
+          <p>If your query is too broad, you get focused follow-up suggestions instead of a vague answer.</p>
+        </div>
+      </section>
+
+      <section class="how-it-works">
+        <h2>How it works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <h3>Profession</h3>
+            <p>Type your profession — e.g. software developer.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <h3>Analyzing your profession...</h3>
+            <p>AI analyzes career outlook across multiple dimensions.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <h3>Career Outlook</h3>
+            <p>Get a structured report with risks, confidence, timeline, and next steps.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bottom-cta">
+        <p>Enter a profession and get a structured outlook in one response.</p>
+        <a href="/" class="cta-button">Get outlook</a>
+      </section>
+    </main>
+  </body>
+</html>

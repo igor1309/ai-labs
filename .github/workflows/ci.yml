@@ -7,11 +7,6 @@ on:
     tags-ignore:
       - "*_v*"
       - "v*"
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "**/*.md"
-      - ".claude/**"
   pull_request:
   workflow_dispatch:
 
@@ -29,14 +24,23 @@ jobs:
       release: ${{ steps.filter.outputs.release }}
       web-scout: ${{ steps.filter.outputs.web-scout }}
       corpus-scout: ${{ steps.filter.outputs.corpus-scout }}
+      notio: ${{ steps.filter.outputs.notio }}
+      notio-ci: ${{ steps.filter.outputs.notio-ci }}
+      notio-frontend: ${{ steps.filter.outputs.notio-frontend }}
+      notio-frontend-ci: ${{ steps.filter.outputs.notio-frontend-ci }}
+      regentara: ${{ steps.filter.outputs.regentara }}
+      regentara-ci: ${{ steps.filter.outputs.regentara-ci }}
+      clipdeck: ${{ steps.filter.outputs.clipdeck }}
+      clipdeck-ci: ${{ steps.filter.outputs.clipdeck-ci }}
+      dev-skills: ${{ steps.filter.outputs.dev-skills }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Detect changed projects
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -56,13 +60,52 @@ jobs:
               - "release-units.config.toml"
               - "release-units.toml"
               - "scripts/release/**"
+              - "clipdeck/**"
               - "loki/**"
               - "nomos/**"
+              - "notio/**"
               - "oracle/**"
+              - "regentara/**"
             web-scout:
               - "web-scout/**"
             corpus-scout:
               - "corpus-scout/**"
+            notio:
+              - "notio/backend/**"
+            notio-ci:
+              - ".github/workflows/notio-core.yml"
+            notio-frontend:
+              - "notio/frontend/**"
+            notio-frontend-ci:
+              - ".github/workflows/notio-frontend-core.yml"
+              - ".github/workflows/notio-frontend-deploy.yml"
+            regentara:
+              - "regentara/**"
+            regentara-ci:
+              - ".github/workflows/regentara-core.yml"
+            clipdeck:
+              - "clipdeck/src/**"
+              - "clipdeck/test/**"
+              - "clipdeck/package.json"
+              - "clipdeck/package-lock.json"
+              - "clipdeck/tsconfig*.json"
+              - "clipdeck/vitest*.config.ts"
+              - "clipdeck/wrangler.*"
+            clipdeck-ci:
+              - ".github/workflows/clipdeck-core.yml"
+              - ".github/workflows/clipdeck-deploy.yml"
+            dev-skills:
+              - "dev-skills/public/**"
+
+  notio-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' || needs.changes.outputs.notio-ci == 'true' }}
+    uses: ./.github/workflows/notio-core.yml
+
+  notio-frontend-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio-frontend == 'true' || needs.changes.outputs.notio-frontend-ci == 'true' }}
+    uses: ./.github/workflows/notio-frontend-core.yml
 
   nomos-core:
     needs: [changes]
@@ -84,6 +127,16 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.corpus-scout == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/corpus-scout-core.yml
 
+  regentara-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.regentara == 'true' || needs.changes.outputs.regentara-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/regentara-core.yml
+
+  clipdeck-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.clipdeck == 'true' || needs.changes.outputs.clipdeck-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/clipdeck-core.yml
+
   release-validation:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.release == 'true' || needs.changes.outputs.shared == 'true' }}
@@ -91,7 +144,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -109,6 +162,36 @@ jobs:
       - name: Run release script tests
         run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js
 
+  dev-skills-validation:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.dev-skills == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate marketplace.json
+        run: |
+          FILE="dev-skills/public/.claude-plugin/marketplace.json"
+          # Valid JSON
+          jq empty "$FILE"
+          # Skills array is sorted alphabetically
+          jq -e '.plugins[0].skills | [., sort] | .[0] == .[1]' "$FILE" > /dev/null
+          echo "marketplace.json: valid JSON, skills sorted"
+
+      - name: Verify SKILL.md files exist
+        run: |
+          FILE="dev-skills/public/.claude-plugin/marketplace.json"
+          jq -r '.plugins[0].skills[]' "$FILE" | while read -r skill; do
+            SKILL_PATH="dev-skills/public/${skill#./}/SKILL.md"
+            if [ ! -f "$SKILL_PATH" ]; then
+              echo "ERROR: Missing $SKILL_PATH"
+              exit 1
+            fi
+          done
+          echo "All SKILL.md files present"
+
   real-provider-smoke:
     needs: [changes, oracle-core]
     if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}
@@ -120,7 +203,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, release-validation, real-provider-smoke]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, clipdeck-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -131,8 +214,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, release-validation, real-provider-smoke]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.regentara-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, regentara-core, clipdeck-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -144,8 +227,13 @@ jobs:
         oracle-core=${{ needs.oracle-core.result }}
         web-scout-core=${{ needs.web-scout-core.result }}
         corpus-scout-core=${{ needs.corpus-scout-core.result }}
+        regentara-core=${{ needs.regentara-core.result }}
+        clipdeck-core=${{ needs.clipdeck-core.result }}
+        notio-core=${{ needs.notio-core.result }}
+        notio-frontend-core=${{ needs.notio-frontend-core.result }}
         release-validation=${{ needs.release-validation.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
+        dev-skills-validation=${{ needs.dev-skills-validation.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
       CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

@@ -1,8 +1,10 @@
 ---
 title: Pre-Coding Phase
-date: 2026-04-12
+date: 2026-05-02
+model: gpt-5.5-thinking
+description: "Personal note describing the pre-coding phase as a judgment-driven, iterative part of software development."
 author: Igor Malyarov
-version: 0.0.2
+version: 0.0.4
 format: note
 ---
 
@@ -12,11 +14,14 @@ This note describes an opinionated approach to the pre-coding phase. It is expli
 
 The core premise is simple: coding should be the execution step, not the primary thinking step.
 
+This phase is the front half of a larger loop. The back half — execution, logging, and artifact preservation — lives in [coding-phase.md](coding-phase.md). The two phases share a single goal: keeping product intent, execution, and recorded knowledge aligned as the work evolves. Software work is treated as a loop rather than a straight line; revisiting an earlier layer when implementation reality pushes back is part of the method, not a failure of it.
+
 ## Core idea
 
 The pre-coding phase exists to reduce ambiguity before implementation starts. Its purpose is to:
 
 - clarify intent
+- define the user-facing outcome and accepted stories when the work needs a product parent
 - expose unknowns, contradictions, and weak assumptions
 - separate exploratory thinking from committed decisions
 - define boundaries, responsibilities, and contracts
@@ -24,9 +29,49 @@ The pre-coding phase exists to reduce ambiguity before implementation starts. It
 
 This is not documentation for its own sake. It is a way to improve decision quality and reduce avoidable churn.
 
+## Choosing the starting point
+
+The work does not begin by selecting a document template. It begins by understanding the situation: what kind of field this is, what is already known, what is already decided, what remains unstable, and what kind of uncertainty is actually blocking progress.
+
+The starting point is therefore a judgment call. In one case, a green-field effort may begin with exploration because the problem space itself is still unclear. In another case, a brownfield change may begin directly at spec-level thinking because the architectural decisions are already settled and the missing piece is behavioral clarity. In yet another case, a team may discover that implementation cannot proceed without revisiting architectural commitment, which means returning to ADR-level thinking before more detailed work continues.
+
+What matters is not choosing the "correct document" first. What matters is recognizing which layer of thinking is currently load-bearing, then producing or refining the corresponding artifact as a result of that work.
+
 ## Typical sequence
 
-### 1. Research
+What follows is a common full path, not a deterministic recipe. The actual entry point may differ, some layers may be omitted, and some may be revisited multiple times depending on the case.
+
+### 1. Product Intent
+
+Product Intent is the user-facing parent layer.
+
+Its purpose is to:
+
+- define who the work is for
+- state the user capability and outcome being created or protected
+- make accepted user stories first-class
+- define how story satisfaction will be recognized
+- set boundaries around what is not promised
+- connect accepted intent to downstream artifacts when traceability matters
+
+This stage is not about technical design. It is about the user promise that downstream research, decisions, specs, plans, code, and tests must preserve.
+
+Typical output may include:
+
+- product outcome
+- actors
+- accepted user stories
+- acceptance signals or confirmation methods
+- boundaries and non-goals
+- open product questions
+- downstream traceability
+- change-review notes for meaningful intent changes
+
+The practical value of this stage is that technical work starts from user-facing intent instead of inventing it implicitly.
+
+See [00-product-intent/note.md](00-product-intent/note.md).
+
+### 2. Research
 
 Research is the exploration layer.
 
@@ -52,7 +97,7 @@ Typical output may include:
 
 The practical value of this stage is that it avoids fake certainty.
 
-### 2. Pre-ADR
+### 3. Pre-ADR
 
 Pre-ADR is the thinking workspace before a formal architectural decision is recorded.
 
@@ -74,7 +119,7 @@ Typical characteristics:
 
 Its function is not authority. Its function is design digestion. A deliberate break is often taken before moving to ADR, allowing perspective to refresh.
 
-### 3. ADR
+### 4. ADR
 
 ADR is the commitment layer.
 
@@ -95,7 +140,7 @@ In this approach, ADRs are not ceremony. They are decision records. Their qualit
 
 An ADR should not read like brainstorming. It should read like resolved architecture.
 
-### 4. Spec
+### 5. Spec
 
 The spec is where architecture turns into implementable behavior.
 
@@ -119,7 +164,7 @@ Typical content may include:
 
 This is the document that makes implementation reviewable against intent.
 
-### 5. Implementation plan
+### 6. Implementation plan
 
 The implementation plan is the execution bridge.
 
@@ -147,6 +192,9 @@ By this stage, the main architectural thinking should already be done.
 
 ## How these artifacts differ
 
+### Product Intent
+Defines accepted user stories and the user-facing outcome downstream artifacts must preserve.
+
 ### Research
 Explores the problem space.
 
@@ -162,15 +210,25 @@ Defines expected behavior and contract shape.
 ### Implementation plan
 Defines execution order and delivery path.
 
+## Iteration
+
+Software development is iterative.
+
+Movement across these layers is not strictly linear and not one-way. Work may move forward, pause, return to an earlier layer, or revisit several layers multiple times as coding, debugging, validation, and release expose new information.
+
+Revisiting an earlier layer is not a sign that the process failed. It is part of keeping the work honest against reality. If implementation reveals that a design decision is still unstable, the work may return to ADR-level thinking. If the design still holds but expected behavior is unclear, the work may return to the spec. If the decision and behavior remain sound but execution detail is missing, the work may return to the implementation plan.
+
+The same judgment applies when choosing where to return. The first re-entry point may turn out not to be the right one, and that is acceptable. A revisit that confirms an earlier artifact still holds is still useful because it narrows the problem and protects lower-level work from compensating for the wrong cause.
+
 ## Scope variants
 
 The full sequence above is built for net-new architectural work. Two common cases do not justify the full funnel and follow lighter, alternative paths. They are escape hatches with explicit escalation rules back into the full sequence — that escalation is what keeps the lite paths honest.
 
 ### Minor feature / sub-feature
 
-A localized capability extension that fits within already-established architecture. No new boundaries, no decision to record. The honest shape is *(optional) targeted research → delta or mini-spec → short implementation plan*, often collapsed into a single change note.
+A localized capability extension that fits within already-established architecture. No new boundaries, no decision to record. The honest shape is *(optional) compact story statement or Product Intent reference → optional targeted research → delta or mini-spec → short implementation plan*, often collapsed into a single change note.
 
-Escalates to the full sequence if the change requires a new module boundary, a new protocol, a new dependency direction, or contradicts an existing ADR.
+Escalates to the full sequence if the change requires a new module boundary, a new protocol, a new dependency direction, contradicts an existing ADR, or changes the accepted user-facing promise enough that downstream artifacts need impact review.
 
 See [variants/minor-feature/note.md](variants/minor-feature/note.md).
 
@@ -186,11 +244,13 @@ See [variants/bug-fix/note.md](variants/bug-fix/note.md).
 
 AI assistants are used heavily throughout the pre-coding phase — not as a convenience layer, but as thinking partners. Different models (GPT, Claude, and others) are rotated deliberately across stages and review cycles to reduce blind spots inherent to any single model's reasoning style.
 
-Each artifact goes through review. Review is a specialized concern with its own knowledge and method, encapsulated in dedicated review skills appropriate to the artifact type. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial by design.
+Each artifact goes through review. Review is a specialized concern with its own knowledge and method, encapsulated in dedicated review skills appropriate to the artifact type. For Product Intent, review checks that user stories remain first-class and that the artifact does not drift into vision, backlog, PRD, architecture, spec, or execution planning. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial by design.
 
 ## Artifacts commit
 
-Pre-coding artifacts are committed to the repository as they are produced. Research notes, pre-ADRs, ADRs, specs, and implementation plans are version-controlled alongside the code they govern. This makes the decision history inspectable, reviewable, and traceable — not buried in chat logs or lost between sessions.
+Pre-coding artifacts are committed to the repository as they are produced. Product Intent notes, research notes, pre-ADRs, ADRs, specs, and implementation plans are version-controlled alongside the code they govern. This makes the intent and decision history inspectable, reviewable, and traceable — not buried in chat logs or lost between sessions.
+
+These artifacts are expected outputs of the work. They are not the starting point, and they are not one-shot paperwork. They are living aids for thinking, decision-making, focus, and progress. They can be revised, adapted, or deprecated as the work moves forward and reality tests earlier assumptions.
 
 ## Biases in this approach
 
@@ -206,7 +266,7 @@ Ownership matters. Layer responsibility matters. Coupling must be introduced del
 
 ### 3. Progressive commitment
 
-This approach does not favor premature formality, but it also does not tolerate indefinite vagueness. The sequence from research to pre-ADR to ADR exists to gradually increase commitment.
+This approach does not favor premature formality, but it also does not tolerate indefinite vagueness. The movement from research to pre-ADR to ADR expresses a gradual increase in commitment when the situation calls for it.
 
 ### 4. Separation of exploratory and committed documents
 
@@ -218,6 +278,6 @@ The later the stage, the less room there should be for invention. Coding should 
 
 ## Summary
 
-This pre-coding phase can be described as a funnel that converts uncertainty into explicit decisions, explicit contracts, and an execution path.
+This pre-coding phase can be described as a judgment-driven effort that converts uncertainty into explicit decisions, explicit contracts, and an execution path.
 
-It is an opinionated method, but not an arbitrary one. It comes from practical experience with the cost of ambiguity, hidden assumptions, and premature implementation. Its value lies in making difficult thinking happen before code is written, when change is still cheap and architectural mistakes are still reversible.
+It is an opinionated method, but not an arbitrary one. It comes from practical experience with the cost of ambiguity, hidden assumptions, and premature implementation. Its value lies in making difficult thinking happen before code is written, while still recognizing that software development remains iterative and that earlier decisions may need to be revisited as reality pushes back.

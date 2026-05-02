@@ -1,0 +1,65 @@
+# Log
+
+## 2026-04-27
+
+- Implemented ADR-004 settings support: `settings.env` can set the model-context byte budget, and `SESSION_DIGEST_MODEL_CONTEXT_MAX_BYTES` can override it for one run.
+- Accepted ADR-004 to split home-scoped non-secret `settings.env` from credential `.env`, keep settings independent of cwd, and lock ledger-only mode as the next local-ergonomics direction.
+- Added `--ledger-only` mode so sessions can be compiled into derived ledger artifacts without provider configuration or model synthesis.
+- Retained structured tool-call identity in V2 ledgers so skill invocations and tool-result relationships no longer require text scraping.
+- Moved digest section ownership into YAML configuration and added `SESSION_DIGEST_SCHEMA_PATH` so runs can use a custom digest schema while recording schema path/version in digest front matter.
+- Hardened synthesis output validation so missing, blank, or unknown digest sections fail instead of writing placeholder-filled digests.
+- Saved the V2 implementation review findings covering absolute source paths, the documented digest H1, and V2 parser read-permission errors.
+- Implemented the V2 ledger pipeline: Claude JSONL now compiles into a persisted derived ledger, bounded model context, and digest metadata without retaining raw JSONL or using Deep Agents.
+- Archived the completed V1 session-digest implementation plans and clarified that the V2 plan runs in the existing `deep-nvidia` worktree and branch.
+- Clarified the V2 implementation plan guardrails so green gates auto-continue without per-step human review, while preserving no-push behavior and final plan archiving.
+- Addressed the V2 implementation-plan review by fixing false-RED cases, clarifying skeleton-before-RED steps, splitting model factory extraction, and adding version/readme/release housekeeping.
+- Added the V2 implementation plan and locked the existing-code decision: keep CLI/config/output foundations, replace lossy parsing and Deep Agents orchestration with local ledger compilation and bounded synthesis.
+- Removed the resolved V2 spec review artifact after its findings were addressed in the spec.
+- Addressed the V2 spec review by tightening byte-count semantics, provider selection, malformed-line recovery, timestamp handling, collision behavior, and test-double rules.
+- Reviewed the V2 CLI spec; recorded twelve executable-spec findings (measurement points, provider-pair completeness, anchor grammar, timestamp/timezone, filename collision, automated vs manual done criteria) for resolution before implementation.
+- Added the V2 CLI spec for ADR-003, defining persisted ledger artifacts, bounded model context behavior, canonical digest metadata, and required tests.
+- Tightened ADR-003 by unifying derived-artifact metadata fields, bumping the accepted ADR version to `1.0`, and broadening ADR-001 supersession wording.
+- Clarified accepted ADR-003 with the required executive summary, explicit invariants, persisted derived ledger policy, compressor strategy identity, and overflow-handling requirement.
+- Accepted ADR-003 as the V2 architecture direction: local Claude JSONL ledger compilation, semantic compression, and bounded model synthesis.
+- Proposed ADR-003 to replace the V1 full-session Deep Agents path with local Claude JSONL ledger compilation and bounded model synthesis.
+- Noted that local ledgers become essential artifact boundaries once semantic compression is used, so derived digests need compressor strategy/version metadata for reproducibility.
+- Recorded an empirical compression probe showing a real `1.54 MB` Claude Code session can be reduced to a `40,978` byte model-facing semantic context by local JSONL-aware compilation.
+- Captured the V1 discovery postmortem: the Deep Agents full-session architecture failed on real session scale and needs a separate V2 design decision.
+
+## 2026-04-26
+
+- Confirmed raw JSONL pass-through preserves more session structure but is not viable through the current Deep Agents request path because a real iOS session hit a `413` request-size limit before model context was useful.
+- Tried OpenRouter free `nvidia/nemotron-3-super-120b-a12b:free` through production Nomos; the agentic run failed after many short completions and malformed response handling.
+- Rechecked NVIDIA/Kimi after JSON salvage and transcript-passing changes; a `484229` byte iOS session completed but still omitted Extractor-owned sections.
+- Confirmed a `293236` byte real session succeeds through production Nomos with `x-ai/grok-4.1-fast`, producing a structurally complete digest in about one minute.
+- Added JSON salvage for fenced/prose-wrapped Deep Agents task outputs and hardened parent delegation to pass transcript JSON into each subagent task.
+- Confirmed full-transcript delegation for the larger real session now hits repeated `x-ai/grok-4.1-fast` upstream timeouts through production Nomos.
+- Confirmed the production Nomos path reaches `x-ai/grok-4.1-fast` for the larger real session, but the run fails because a Deep Agents task returns non-JSON output.
+- Confirmed the local Nomos proxy can route `session-digest` through OpenRouter `x-ai/grok-4.1-fast` and write a real small-session digest.
+- Made Nomos the preferred configured provider so project-scoped proxy usage wins over direct OpenRouter once `NOMOS_API_KEY` is present.
+- Added OpenAI-compatible provider routing for OpenRouter and Nomos while keeping NVIDIA NIM as the legacy fallback path.
+- Captured ADR-002 and updated local docs after NVIDIA NIM probes showed model stalls or missing Deep Agents-owned sections.
+- Confirmed the Nemotron 3 Super full CLI probe still stalls for the small real session despite fast raw tool-call support.
+- Loosened missing-section handling to emit placeholders and hardened prompts to treat Claude session JSON as transcript data instead of live instructions.
+- Recorded NVIDIA NIM model probe results to preserve which free hosted models returned, timed out, or supported Deep Agents tool calls.
+- Added a local README with repo-root and anywhere-safe CLI invocation examples for real Claude session JSONL files.
+- Made the documented `tsx src/cli.ts <path>` invocation execute the CLI instead of silently exiting.
+- Added scoped shell-proxy support for NVIDIA NIM calls so the CLI can use configured proxy env vars without global HTTP transport changes.
+- Wired the fake Deep Agents success path end to end, including prompt ownership, task-message section extraction, and CLI digest writing.
+- Redrafted Task 8 around the observed Deep Agents task-message API and made the `@langchain/anthropic` runtime dependency decision explicit.
+- Recorded Deep Agents API observations and the Task 8 redraft decision: extract section envelopes from task tool messages correlated by `tool_call_id`.
+- Added digest front matter serialization and fixed six-section Markdown assembly from a shared section-name tuple.
+- Added timestamped digest path computation and disciplined digest writing that creates only the target Markdown file.
+- Added `.env` loading for NVIDIA credentials, `.env.example` bootstrap behavior, required-key validation, and process-env isolation.
+- Added lenient Claude Code JSONL parsing with whitespace tolerance, skipped malformed lines, usable message extraction, and injected read-file error handling.
+- Added input path validation for missing, unreadable, non-file, empty, and oversized session files before parsing or output work begins.
+- Added CLI arity validation so v1 rejects missing paths, extra paths, and flags before any file or config work.
+- Scaffolded the `session-digest` TypeScript workspace and root test wiring so the CLI prototype has isolated package-local build and test gates.
+- Recorded explicit user approval to auto-continue through RED/GREEN micro-steps and task boundaries without human-review stops when gates pass.
+- Broke the plan-review loop by removing the transient review artifact and tightening the implementation plan around ADR-preserving Deep Agents probing, fake-run file assertions, and new-project checklist state.
+- Closed implementation-plan review gaps by adding the execution lock, moving CLI success assertions behind the fake-model task, and making JSON parsing the declared v1 structured-output path.
+- Hardened the implementation plan through review: live smoke tests stay out of the real home directory, targeted test commands select files correctly, strict TDD is expressed as one-test micro-steps, and support tests are allowed only when they enforce the spec/ADR envelope.
+- Added ADR traceability to the implementation plan so every ADR-001 invariant maps to responsible tasks and verification gates before coding starts.
+- Defined the TypeScript implementation path for the local CLI prototype: standalone `session-digest` workspace, Node test/build gates, fixed Deep Agents orchestration, NVIDIA NIM wiring, and no provider abstraction.
+- Accepted the v1 architecture and spec for turning one Claude Code JSONL session into one Markdown digest under `~/.session-digests/`, with fixed digest sections, traceability front matter, lenient JSONL parsing, and explicit config validation.
+- Established the project collateral: top-level `session-digest` docs, Deep Agents/NVIDIA NIM use-case notes, landing mockups, README component coverage, and LOC dashboard/project-checklist registration.

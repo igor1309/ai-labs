@@ -1,6 +1,8 @@
 ---
 title: ADR — Mandatory Structure
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "ADR artifact mandatory structure."
 author: Igor Malyarov
 version: 0.0.1
 format: structure
@@ -30,7 +32,7 @@ Ten lines or fewer. What is decided, why at high level, scope boundary.
 
 ### `## Context`
 
-Problem being solved. Constraints that shaped the decision. Rejected alternatives (brief).
+Problem being solved. Constraints that shaped the decision. Reference Product Intent when the decision enables, protects, or constrains an accepted user story. Rejected alternatives (brief).
 
 ### `## Decision`
 

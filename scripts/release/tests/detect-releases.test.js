@@ -214,6 +214,30 @@ describe('detect-releases', () => {
     assert.equal(beta.release, false, 'beta should NOT release');
   });
 
+  it('uses configured basename tags for nested release units', () => {
+    initRepo(tmp);
+
+    mkdirSync(join(tmp, 'notio', 'backend'), { recursive: true });
+    writeFileSync(join(tmp, 'notio', 'backend', 'release.toml'), 'version = "1.0.0"\n');
+    writeFileSync(
+      join(tmp, 'release-units.toml'),
+      stringify({
+        units: [
+          { basename: 'notio-backend', path: 'notio/backend', metadata: 'release.toml', version: '1.0.0', docker: true },
+        ],
+      }),
+    );
+    commit(tmp, 'add notio backend');
+    tag(tmp, 'notio-backend_v1.0.0');
+
+    writeFileSync(join(tmp, 'notio', 'backend', 'release.toml'), 'version = "1.1.0"\n');
+    commit(tmp, 'bump notio backend');
+
+    const results = detect(tmp);
+
+    assert.equal(results[0].lastTag, 'notio-backend_v1.0.0');
+  });
+
   it('uses initial commit as base when no tag exists (first release)', () => {
     initRepo(tmp);
 

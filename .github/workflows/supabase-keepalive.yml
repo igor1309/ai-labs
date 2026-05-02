@@ -1,6 +1,7 @@
 name: Supabase Keep-Alive
 
-# Ping Supabase REST API every 3 days to prevent free-tier auto-pause (7-day inactivity limit).
+# Write a heartbeat to Supabase every 3 days to prevent free-tier auto-pause (7-day inactivity limit).
+# Updates public.keepalive (id=1) — a write resets the inactivity timer; SELECTs do not reliably.
 # Runs at 07:00 UTC (10:00 Moscow time).
 
 on:
@@ -20,18 +21,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Ping Supabase REST API
+      - name: Write Supabase keepalive heartbeat
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           set -e
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -X PATCH \
             -H "apikey: ${SUPABASE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_KEY}" \
-            "${SUPABASE_URL}/rest/v1/claude_insights?select=week&limit=1")
-          echo "Supabase ping: HTTP ${HTTP_CODE}"
-          [ "${HTTP_CODE}" = "200" ] || { echo "Keep-alive failed"; exit 1; }
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{\"last_ping_at\":\"${NOW}\"}" \
+            "${SUPABASE_URL}/rest/v1/keepalive?id=eq.1")
+          echo "Supabase keepalive PATCH: HTTP ${HTTP_CODE}"
+          [ "${HTTP_CODE}" = "204" ] || { echo "Keep-alive failed"; exit 1; }
 
   notify:
     if: ${{ always() && !cancelled() && needs.ping.result == 'failure' }}
