@@ -6,7 +6,3 @@ export function json(data: unknown, status = 200): Response {
     status
   });
 }
-
-export function unauthorized(): Response {
-  return json({ error: "unauthorized" }, 401);
-}

@@ -18,7 +18,6 @@ describe("worker", () => {
 
 function makeEnv(): Env {
   return {
-    GITHUB_TOKEN: "github-token",
-    SHARED_SECRET: "shared-secret"
+    GITHUB_TOKEN: "github-token"
   };
 }

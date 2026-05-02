@@ -8,29 +8,42 @@ describe("GET /api/items", () => {
     vi.unstubAllGlobals();
   });
 
-  test("should return unauthorized without shared secret", async () => {
-    const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items"),
-      makeEnv()
-    );
-
-    expect([response.status, await response.text()]).toEqual([
-      401,
-      "{\"error\":\"unauthorized\"}"
-    ]);
-  });
-
-  test("should return prompts and skills sections with correct shared secret", async () => {
+  test("should return empty sections without authorization", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => {
       return Response.json([]);
     }));
 
     const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    expect([response.status, await response.json()]).toEqual([
+      200,
+      {
+        sections: [
+          {
+            id: "prompts",
+            items: [],
+            title: "Prompts"
+          },
+          {
+            id: "skills",
+            items: [],
+            title: "Skills"
+          }
+        ]
+      }
+    ]);
+  });
+
+  test("should return prompts and skills sections without clipdeck auth header", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json([]);
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
@@ -390,8 +403,7 @@ describe("GET /api/items", () => {
 
 function makeEnv(): Env {
   return {
-    GITHUB_TOKEN: "github-token",
-    SHARED_SECRET: "shared-secret"
+    GITHUB_TOKEN: "github-token"
   };
 }
 

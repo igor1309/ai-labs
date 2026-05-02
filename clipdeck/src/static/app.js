@@ -10,64 +10,31 @@ const elements = {
   loading: document.querySelector("[data-loading]"),
   reload: document.querySelector("[data-reload]"),
   sections: document.querySelector("[data-sections]"),
-  secretInput: document.querySelector("[data-secret-input]"),
-  toast: document.querySelector("[data-toast]"),
-  unlockForm: document.querySelector("[data-unlock-form]")
+  toast: document.querySelector("[data-toast]")
 };
 
-const storedSecret = localStorage.getItem("clipdeck.secret");
-if (storedSecret) {
-  void loadItems(storedSecret);
-}
-
-elements.unlockForm?.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const secret = elements.secretInput?.value ?? "";
-  void loadItems(secret);
-});
+void loadItems();
 
 elements.reload?.addEventListener("click", () => {
-  const secret = localStorage.getItem("clipdeck.secret");
-  if (secret) {
-    void loadItems(secret);
-  } else {
-    showToast("No saved secret", "error");
-  }
+  void loadItems();
 });
 
-elements.unlockForm?.addEventListener("mousemove", (event) => {
-  const rect = elements.unlockForm.getBoundingClientRect();
-  elements.unlockForm.style.setProperty("--mouse-x", `${event.clientX - rect.left}px`);
-  elements.unlockForm.style.setProperty("--mouse-y", `${event.clientY - rect.top}px`);
-});
-
-async function loadItems(secret) {
+async function loadItems() {
   showLoading();
 
   let response;
   try {
-    response = await fetch("/api/items", {
-      headers: {
-        Authorization: `Bearer ${secret}`
-      }
-    });
+    response = await fetch("/api/items");
   } catch {
     hideLoading();
-    showLocked();
+    showRetryableShell();
     showToast("Network error", "error");
-    return;
-  }
-
-  if (response.status === 401) {
-    hideLoading();
-    localStorage.removeItem("clipdeck.secret");
-    showLocked();
     return;
   }
 
   if (!response.ok) {
     hideLoading();
-    showLocked();
+    showRetryableShell();
     showToast(`Failed to load (${response.status})`, "error");
     return;
   }
@@ -77,18 +44,16 @@ async function loadItems(secret) {
     data = await response.json();
   } catch {
     hideLoading();
-    showLocked();
+    showRetryableShell();
     showToast("Failed to parse response", "error");
     return;
   }
 
-  localStorage.setItem("clipdeck.secret", secret);
   hideLoading();
   renderSections(data.sections);
 }
 
 function showLoading() {
-  elements.unlockForm.hidden = true;
   elements.library.hidden = true;
   elements.loading.hidden = false;
 }
@@ -100,7 +65,6 @@ function hideLoading() {
 function renderSections(sections) {
   state.itemsById.clear();
   elements.sections.replaceChildren();
-  elements.unlockForm.hidden = true;
   elements.library.hidden = false;
 
   for (const section of sections) {
@@ -164,8 +128,7 @@ function showToast(message, kind) {
   }, TOAST_TIMEOUT_MS);
 }
 
-function showLocked() {
-  elements.library.hidden = true;
-  elements.unlockForm.hidden = false;
+function showRetryableShell() {
+  elements.library.hidden = false;
   elements.sections.replaceChildren();
 }

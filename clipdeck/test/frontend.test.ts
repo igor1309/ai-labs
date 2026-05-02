@@ -12,20 +12,57 @@ describe("clipdeck frontend", () => {
     vi.resetModules();
     vi.stubGlobal("fetch", vi.fn());
     vi.stubGlobal("localStorage", {
-      clear: () => storage.clear(),
-      getItem: (key: string) => storage.get(key) ?? null,
-      removeItem: (key: string) => storage.delete(key),
-      setItem: (key: string, value: string) => storage.set(key, value)
+      clear: vi.fn(() => storage.clear()),
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      removeItem: vi.fn((key: string) => storage.delete(key)),
+      setItem: vi.fn((key: string, value: string) => storage.set(key, value))
     });
   });
 
-  test("should not render item data before shared secret is accepted", async () => {
-    await import("../src/static/app.js");
+  test("should fetch items on load", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
 
-    expect(document.querySelectorAll("[data-item-id]").length).toBe(0);
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(vi.mocked(fetch).mock.calls.map((call) => call[0])).toEqual(["/api/items"]);
   });
 
-  test("should render items after backend accepts shared secret", async () => {
+  test("should fetch items without authorization header", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(vi.mocked(fetch).mock.calls.map((call) => call[1])).toEqual([undefined]);
+  });
+
+  test("should not render unlock form or secret input", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect([
+      document.querySelector("[data-unlock-form]"),
+      document.querySelector("[data-secret-input]")
+    ]).toEqual([null, null]);
+  });
+
+  test("should not access stored clipdeck secret", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect([
+      vi.mocked(localStorage.getItem).mock.calls,
+      vi.mocked(localStorage.setItem).mock.calls,
+      vi.mocked(localStorage.removeItem).mock.calls
+    ]).toEqual([[], [], []]);
+  });
+
+  test("should render items after direct load", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [
         {
@@ -44,8 +81,7 @@ describe("clipdeck frontend", () => {
       ]
     }));
     await import("../src/static/app.js");
-
-    await unlock();
+    await flushAsync();
 
     expect(document.querySelectorAll("[data-item-id]").length).toBe(1);
   });
@@ -75,8 +111,7 @@ describe("clipdeck frontend", () => {
       }
     });
     await import("../src/static/app.js");
-
-    await unlock();
+    await flushAsync();
     document.querySelector<HTMLButtonElement>("[data-item-id]")!.click();
     await flushAsync();
 
@@ -121,10 +156,9 @@ describe("clipdeck frontend", () => {
             title: "Prompts"
           }
         ]
-    }));
+      }));
     await import("../src/static/app.js");
-
-    await unlock();
+    await flushAsync();
     document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
     await flushAsync();
 
@@ -133,27 +167,12 @@ describe("clipdeck frontend", () => {
     ]);
   });
 
-  test("should hide unlock form after successful unlock", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ sections: [] }));
-    await import("../src/static/app.js");
-
-    await unlock();
-
-    expect(document.querySelector<HTMLElement>("[data-unlock-form]")?.hidden).toBe(true);
-  });
-
   test("should show loading indicator while items are loading and hide it on completion", async () => {
     let resolveFetch!: (response: Response) => void;
     vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((resolve) => {
       resolveFetch = resolve;
     }));
     await import("../src/static/app.js");
-
-    document.querySelector<HTMLInputElement>("[data-secret-input]")!.value = "secret";
-    document.querySelector<HTMLFormElement>("[data-unlock-form]")!.dispatchEvent(new SubmitEvent("submit", {
-      bubbles: true,
-      cancelable: true
-    }));
     await flushAsync();
     const loadingDuringFetch = document.querySelector<HTMLElement>("[data-loading]")?.hidden;
     resolveFetch(Response.json({ sections: [] }));
@@ -166,19 +185,23 @@ describe("clipdeck frontend", () => {
   test("should surface a failure toast when the backend returns a non-auth error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response("boom", { status: 500 }));
     await import("../src/static/app.js");
-
-    await unlock();
+    await flushAsync();
 
     expect(document.querySelector("[data-toast]")?.textContent).toMatch(/fail/i);
   });
 
-  test("should not fetch on reload when no secret is stored", async () => {
+  test("should fetch on reload without stored secret", async () => {
+    vi.mocked(fetch).mockResolvedValue(Response.json({ sections: [] }));
     await import("../src/static/app.js");
+    await flushAsync();
 
     document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
     await flushAsync();
 
-    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+    expect(vi.mocked(fetch).mock.calls.map((call) => call[0])).toEqual([
+      "/api/items",
+      "/api/items"
+    ]);
   });
 
   test("css hides elements with the hidden attribute", () => {
@@ -207,21 +230,11 @@ describe("clipdeck frontend", () => {
       ]
     }));
     await import("../src/static/app.js");
-
-    await unlock();
+    await flushAsync();
 
     expect(document.querySelector("[data-item-id]")?.classList.contains("resource-backed")).toBe(true);
   });
 });
-
-async function unlock(): Promise<void> {
-  document.querySelector<HTMLInputElement>("[data-secret-input]")!.value = "secret";
-  document.querySelector<HTMLFormElement>("[data-unlock-form]")!.dispatchEvent(new SubmitEvent("submit", {
-    bubbles: true,
-    cancelable: true
-  }));
-  await flushAsync();
-}
 
 async function flushAsync(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
