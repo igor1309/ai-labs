@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- Cloudflare Access spec added — ADR-005 now has a testable contract for removing the Clipdeck shared-secret unlock flow while preserving Worker-only GitHub access.
 - Authentication ADR added — Cloudflare Access is now the accepted user-facing auth boundary for Clipdeck, superseding the shared-secret access invariant while preserving Worker-only GitHub credentials.
 - Frontend iteration no longer requires deploying — the populated library state is now reachable locally, so visual changes can be verified before they reach production.
 - Frontend redesign — Clipdeck adopts the dark notio-aligned palette with an animated unlock card, hover/focus-visible item states, a floating auto-clearing toast, an explicit loading state, non-auth error surfacing, and a pull-to-refresh-only mode that hides the reload button on touch devices.
