@@ -6,7 +6,7 @@
 basename = "clipdeck"
 path = "clipdeck"
 metadata = "package.json"
-version = "0.1.4"
+version = "0.1.6"
 docker = false
 
 [[units]]
