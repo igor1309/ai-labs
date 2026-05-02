@@ -23,8 +23,9 @@ description: "Implementation plan for replacing Clipdeck's shared-secret auth wi
 - Worktree mode: reuse existing
 - Expected worktree: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/worktrees/clipdeck-access-adr`
 - Expected branch: `codex/clipdeck-access-adr`
-- Push policy: no push unless explicitly requested
-- Final archive behavior: after implementation, move this plan to `clipdeck/docs/plans/implemented/` in the final closeout commit.
+- Push policy: push after task
+- Push boundary: keep Phase 1 through Phase 3 commits local; push only when Phase 4 reaches the PR/release task, then push the Phase 5 closeout branch after production cleanup is verified.
+- Final archive behavior: after implementation, move this plan to `clipdeck/docs/plans/implemented/` in the Phase 5 closeout branch.
 - Preflight check: [ ] done
 
 Stop immediately if:
@@ -33,6 +34,7 @@ Stop immediately if:
 - Cloudflare Access tooling/API access is unavailable for the provisioning phase.
 - A phase verification gate fails after two focused fix attempts.
 - A required Cloudflare change would broaden access beyond the single owner identity.
+- Phase 4 reaches PR/release work before Phases 1 through 3 have passed and been committed locally.
 - The user changes scope or asks to pause.
 
 ## Governing Documents
@@ -69,6 +71,7 @@ Stop immediately if:
 - `clipdeck/test/index.test.ts` — update test environment shape after `SHARED_SECRET` removal.
 - `clipdeck/test/frontend.test.ts` — update frontend tests for direct Access-authenticated load, no unlock form, no `clipdeck.secret`, no Authorization header.
 - `.github/workflows/clipdeck-deploy.yml` — replace Worker `401` verification with Access-handled unauthenticated lock verification.
+- `scripts/tests/clipdeck-deploy-workflow.test.js` — workflow invariant tests for unauthenticated Access-lock verification.
 - `clipdeck/docs/operations/first-deploy.md` — supersede shared-secret setup instructions with Cloudflare Access setup and `SHARED_SECRET` cleanup/rollback guidance.
 - `clipdeck/docs/log.md` — add one outcome-focused entry per meaningful change set.
 - `clipdeck/docs/specs/cloudflare-access-authentication.md` — move to `implemented/` only in final closeout after all tests/spec criteria pass.
@@ -218,7 +221,7 @@ Stop immediately if:
 **Files:**
 
 - Modify: `.github/workflows/clipdeck-deploy.yml`
-- Test or create: `scripts/tests/` workflow/static validation if an existing workflow validation test location is appropriate
+- Create: `scripts/tests/clipdeck-deploy-workflow.test.js`
 - Modify: `clipdeck/docs/operations/first-deploy.md`
 - Modify: `clipdeck/docs/log.md`
 
@@ -233,7 +236,7 @@ Stop immediately if:
 
 - [ ] **Step 1: Write failing workflow validation**
 
-  Add or extend the repo's workflow tests under `scripts/tests/` to inspect `.github/workflows/clipdeck-deploy.yml` and assert:
+  Add `scripts/tests/clipdeck-deploy-workflow.test.js` to inspect `.github/workflows/clipdeck-deploy.yml` and assert:
 
   - It does not require status exactly `401` for Clipdeck production verification.
   - It does not reference `SHARED_SECRET`, `GITHUB_TOKEN`, Access cookies, one-time PINs, or owner credentials in the verification step.
@@ -271,7 +274,7 @@ Stop immediately if:
   - Document the temporary rollback-window rule if `SHARED_SECRET` is retained during migration.
   - Update smoke checks: unauthenticated requests are Access-blocked; authenticated owner browser loads the app and `/api/items`.
 
-  Run docs checks from Phase 2 Step 5.
+  Run `git diff --check` after the docs update.
 
 - [ ] **Step 4: Run phase gate**
 
@@ -297,7 +300,7 @@ Stop immediately if:
   Commit:
 
   ```bash
-  git add .github/workflows/clipdeck-deploy.yml scripts/tests clipdeck/docs/operations/first-deploy.md clipdeck/docs/log.md clipdeck/docs/plans/clipdeck-cloudflare-access-authentication.md
+  git add .github/workflows/clipdeck-deploy.yml scripts/tests/clipdeck-deploy-workflow.test.js clipdeck/docs/operations/first-deploy.md clipdeck/docs/log.md clipdeck/docs/plans/clipdeck-cloudflare-access-authentication.md
   git commit -m "verify clipdeck access lock"
   ```
 
@@ -314,6 +317,8 @@ Stop immediately if:
 - Policy is single-owner and deny-by-default.
 - The concrete identity is not committed to the repo.
 - Unauthenticated production requests to `/` and `/api/items` produce spec-defined Access-handled responses before item data or app content.
+- Phase completion depends on automated unauthenticated HTTP checks; authenticated browser validation is supplemental.
+- The legacy Clipdeck unlock flow may still appear behind Access in this phase because the production Worker has not yet been released.
 - No production code deploy occurs in this phase.
 
 - [ ] **Step 1: Inspect current Cloudflare state**
@@ -351,19 +356,20 @@ Stop immediately if:
   - `/` does not return the Clipdeck static page.
   - `/api/items` does not return a JSON object with `sections`.
   - `/api/items` does not return `{"error":"unauthorized"}`.
+  - The checks are repeatable from a non-owner session without cookies, PINs, service tokens, or owner credentials.
 
 - [ ] **Step 4: Verify authenticated owner path**
 
   Using an authenticated owner browser session:
 
   - Open `https://clipdeck.enoa.ai/`.
-  - Confirm the app loads without a Clipdeck unlock form.
-  - Confirm `/api/items` returns `200` without a Clipdeck `Authorization` header.
-  - Confirm at least one prompt or skill renders and copy feedback still works.
+  - Confirm Cloudflare Access admits the owner.
+  - If the old production Worker is still deployed, treat the legacy Clipdeck unlock form or Worker-level shared-secret `401` as an expected temporary migration state.
+  - Do not require the no-unlock UI contract until Phase 4 has deployed the new Worker and Phase 5 runs final smoke checks.
 
 - [ ] **Step 5: Update log and commit Phase 3**
 
-  Add a concise `clipdeck/docs/log.md` entry that Cloudflare Access was provisioned and production lock/authenticated owner smoke checks passed. Do not include the concrete identity.
+  Add a concise `clipdeck/docs/log.md` entry that Cloudflare Access was provisioned and unauthenticated production lock checks passed. Do not include the concrete identity.
 
   Run:
 
@@ -397,6 +403,7 @@ Stop immediately if:
 - Full repo test/build gates pass before tagging.
 - Release runs through `clipdeck_v<version>` tag on `trunk`.
 - Release workflow deploys the Worker and passes the Access lock verification.
+- After this phase, production is Access-protected and the deployed Worker no longer contains the Clipdeck shared-secret gate.
 
 - [ ] **Step 1: Bump Clipdeck version**
 
@@ -458,8 +465,9 @@ Stop immediately if:
 
 **Files:**
 
-- Modify: `clipdeck/docs/specs/cloudflare-access-authentication.md`
+- Move: `clipdeck/docs/specs/cloudflare-access-authentication.md` to `clipdeck/docs/specs/implemented/cloudflare-access-authentication.md`
 - Move: `clipdeck/docs/plans/clipdeck-cloudflare-access-authentication.md` to `clipdeck/docs/plans/implemented/clipdeck-cloudflare-access-authentication.md`
+- Modify: `clipdeck/docs/README.md` if active spec/plan links need to move to implemented paths
 - Modify: `clipdeck/docs/log.md`
 
 **Acceptance criteria:**
@@ -468,7 +476,16 @@ Stop immediately if:
 - Authenticated owner `/api/items` request still returns `200` after `SHARED_SECRET` removal.
 - Unauthenticated `/` and `/api/items` remain Access-blocked.
 - Spec moves to `implemented/` only after all tests pass.
-- Plan moves to `implemented/` and branch is clean.
+- Plan moves to `implemented/` on a post-release closeout branch and branch is clean.
+
+- [ ] **Step 0: Create closeout branch after release**
+
+  After Phase 4 has merged and `clipdeck_v<version>` has deployed successfully, create a fresh closeout branch from updated `trunk` because the implementation branch is deleted by the merge policy:
+
+  - Worktree: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/worktrees/clipdeck-access-auth-closeout`
+  - Branch: `codex/clipdeck-access-auth-closeout`
+
+  Run process preflight again and stop if the worktree/branch does not match.
 
 - [ ] **Step 1: Remove production `SHARED_SECRET`**
 
@@ -531,4 +548,3 @@ Before declaring the plan complete:
 - Production authenticated owner `/api/items` returns `200`.
 - `SHARED_SECRET` is absent from the production Worker secret set or a rollback window is explicitly documented.
 - `git status --short` is clean.
-
