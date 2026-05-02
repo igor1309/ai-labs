@@ -268,6 +268,66 @@ describe("clipdeck frontend", () => {
     expect(document.querySelector("[data-item-id] [data-version]")).toBeNull();
   });
 
+  test("should render skill description text from item.description", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      sections: [
+        {
+          id: "skills",
+          items: [
+            {
+              body: "Skill body",
+              description: "Composition root wiring rules — interface-only boundaries",
+              id: "dev-skills/public/example/SKILL.md",
+              kind: "skill",
+              skillShape: "standalone",
+              subtitle: "composition-root",
+              title: "Composition Root Wiring Guide"
+            }
+          ],
+          title: "Skills"
+        }
+      ]
+    }));
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-item-id] .description")?.textContent).toBe(
+      "Composition root wiring rules — interface-only boundaries"
+    );
+  });
+
+  test("should omit subtitle element when item.subtitle equals item.title", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      sections: [
+        {
+          id: "skills",
+          items: [
+            {
+              body: "Skill body",
+              id: "dev-skills/public/test-runner/SKILL.md",
+              kind: "skill",
+              skillShape: "standalone",
+              subtitle: "test-runner",
+              title: "test-runner"
+            }
+          ],
+          title: "Skills"
+        }
+      ]
+    }));
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelector("[data-item-id] .subtitle")).toBeNull();
+  });
+
+  test("should position toast at the top of the viewport", () => {
+    const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
+    const toastBlock = css.match(/\.toast\s*\{[^}]*\}/)?.[0] ?? "";
+
+    expect([toastBlock.includes("top:"), toastBlock.includes("bottom:")]).toEqual([true, false]);
+  });
+
   test("should render skill subtitle text from item.subtitle", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [

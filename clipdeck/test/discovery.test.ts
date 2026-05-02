@@ -29,10 +29,10 @@ describe("discoverPrompts", () => {
     expect(items.map((item) => item.id)).toEqual([]);
   });
 
-  test("should derive prompt title and subtitle from front matter or filename", () => {
+  test("should derive prompt title from front matter title or filename", () => {
     const items = discoverPrompts([
       {
-        content: "---\ntitle: Front Title\ndescription: Details\n---\n# Body\n",
+        content: "---\ntitle: Front Title\n---\n# Body\n",
         path: "prompts/front.md"
       },
       {
@@ -41,10 +41,60 @@ describe("discoverPrompts", () => {
       }
     ]);
 
-    expect(items.map((item) => [item.title, item.subtitle])).toEqual([
-      ["Front Title", "Details"],
-      ["fallback", ""]
+    expect(items.map((item) => item.title)).toEqual(["Front Title", "fallback"]);
+  });
+
+  test("should expose prompt subtitle from front matter name", () => {
+    const items = discoverPrompts([
+      {
+        content: "---\nname: Friendly Name\n---\nBody\n",
+        path: "prompts/named.md"
+      },
+      {
+        content: "# Body\n",
+        path: "prompts/anonymous.md"
+      }
     ]);
+
+    expect(items.map((item) => item.subtitle)).toEqual(["Friendly Name", undefined]);
+  });
+
+  test("should expose prompt description prefix from front matter description or summary", () => {
+    const items = discoverPrompts([
+      {
+        content: "---\ndescription: Detail line\n---\nBody\n",
+        path: "prompts/detailed.md"
+      },
+      {
+        content: "---\nsummary: Summary line\n---\nBody\n",
+        path: "prompts/summarized.md"
+      },
+      {
+        content: "# Body\n",
+        path: "prompts/empty.md"
+      }
+    ]);
+
+    expect(items.map((item) => item.description)).toEqual([
+      "Detail line",
+      "Summary line",
+      undefined
+    ]);
+  });
+
+  test("should expose prompt version from front matter when present", () => {
+    const items = discoverPrompts([
+      {
+        content: "---\nname: With Version\nversion: 0.0.2\n---\nBody\n",
+        path: "prompts/versioned.md"
+      },
+      {
+        content: "---\nname: No Version\n---\nBody\n",
+        path: "prompts/unversioned.md"
+      }
+    ]);
+
+    expect(items.map((item) => item.version)).toEqual(["0.0.2", undefined]);
   });
 });
 
@@ -101,7 +151,23 @@ describe("discoverSkills", () => {
     expect(items.map((item) => item.id)).toEqual([]);
   });
 
-  test("should derive skill subtitle from front matter description or summary", () => {
+  test("should expose skill subtitle from front matter name", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nname: example\n---\n# Skill\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items[0]?.subtitle).toBe("example");
+  });
+
+  test("should expose skill description from front matter description or summary", () => {
     const items = discoverSkills([
       {
         files: [
@@ -114,10 +180,10 @@ describe("discoverSkills", () => {
       }
     ]);
 
-    expect(items.map((item) => item.subtitle)).toEqual(["Short"]);
+    expect(items[0]?.description).toBe("Short");
   });
 
-  test("should compose skill title as '<H1> (<name>)' when both are present", () => {
+  test("should set skill title to the SKILL.md H1 when present", () => {
     const items = discoverSkills([
       {
         files: [
@@ -130,7 +196,7 @@ describe("discoverSkills", () => {
       }
     ]);
 
-    expect(items[0]?.title).toBe("Pretty Skill Heading (example)");
+    expect(items[0]?.title).toBe("Pretty Skill Heading");
   });
 
   test("should fall back to front matter name when SKILL.md H1 is missing", () => {
@@ -149,7 +215,7 @@ describe("discoverSkills", () => {
     expect(items[0]?.title).toBe("example");
   });
 
-  test("should report missing skill name regardless of H1", () => {
+  test("should report missing skill name only when both H1 and name are absent", () => {
     const items = discoverSkills([
       {
         files: [
@@ -172,7 +238,7 @@ describe("discoverSkills", () => {
     ]);
 
     expect(items.map((item) => item.title)).toEqual([
-      "error: no skill name",
+      "Pretty Skill Heading",
       "error: no skill name"
     ]);
   });
@@ -190,7 +256,7 @@ describe("discoverSkills", () => {
       }
     ]);
 
-    expect(items[0]?.title).toBe("Real Heading (example)");
+    expect(items[0]?.title).toBe("Real Heading");
   });
 
   test("should expose skill version from front matter", () => {
@@ -224,7 +290,7 @@ describe("discoverSkills", () => {
       {
         files: [
           {
-            content: `---\ndescription: ${longDescription}\n---\n# Skill\n`,
+            content: `---\nname: example\ndescription: ${longDescription}\n---\n# Skill\n`,
             path: "dev-skills/public/example/SKILL.md"
           }
         ],
@@ -232,9 +298,9 @@ describe("discoverSkills", () => {
       }
     ]);
 
-    const subtitle = items[0]?.subtitle ?? "";
+    const description = items[0]?.description ?? "";
 
-    expect([subtitle.length, subtitle.endsWith("…"), subtitle.startsWith("aaaa")]).toEqual([
+    expect([description.length, description.endsWith("…"), description.startsWith("aaaa")]).toEqual([
       201,
       true,
       true
@@ -246,7 +312,7 @@ describe("discoverSkills", () => {
       {
         files: [
           {
-            content: "---\ndescription: Short detail\n---\n# Skill\n",
+            content: "---\nname: example\ndescription: Short detail\n---\n# Skill\n",
             path: "dev-skills/public/example/SKILL.md"
           }
         ],
@@ -254,6 +320,6 @@ describe("discoverSkills", () => {
       }
     ]);
 
-    expect(items[0]?.subtitle).toBe("Short detail");
+    expect(items[0]?.description).toBe("Short detail");
   });
 });

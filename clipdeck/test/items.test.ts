@@ -219,7 +219,6 @@ describe("GET /api/items", () => {
               body: "Prompt body\n",
               id: "prompts/foo.md",
               kind: "prompt",
-              subtitle: "",
               title: "Foo Prompt"
             }
           ],
@@ -230,11 +229,12 @@ describe("GET /api/items", () => {
           items: [
             {
               body: "# Example Skill\n\nSkill body\n",
+              description: "Skill details",
               id: "dev-skills/public/example/SKILL.md",
               kind: "skill",
               skillShape: "resource-backed",
-              subtitle: "Skill details",
-              title: "Example Skill (example)"
+              subtitle: "example",
+              title: "Example Skill"
             }
           ],
           title: "Skills"
