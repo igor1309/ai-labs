@@ -12,15 +12,16 @@ export interface SourceFolder {
 
 export interface Item {
   body: string;
+  description?: string;
   id: string;
   kind: "prompt" | "skill";
   skillShape?: "resource-backed" | "standalone";
-  subtitle: string;
+  subtitle?: string;
   title: string;
   version?: string;
 }
 
-const SUBTITLE_PREFIX_LIMIT = 200;
+const DESCRIPTION_PREFIX_LIMIT = 200;
 
 export function discoverPrompts(files: SourceFile[]): Item[] {
   return files.flatMap((file) => {
@@ -29,16 +30,15 @@ export function discoverPrompts(files: SourceFile[]): Item[] {
     }
 
     const parsed = parse(file.content);
+    const item: Item = {
+      body: parsed.body,
+      id: file.path,
+      kind: "prompt",
+      title: parsed.title ?? promptFallbackTitle(file.path)
+    };
 
-    return [
-      {
-        body: parsed.body,
-        id: file.path,
-        kind: "prompt",
-        subtitle: subtitlePrefix(parsed.description ?? parsed.summary ?? ""),
-        title: parsed.title ?? promptFallbackTitle(file.path)
-      }
-    ];
+    assignOptionalFields(item, parsed);
+    return [item];
   });
 }
 
@@ -58,28 +58,42 @@ export function discoverSkills(folders: SourceFolder[]): Item[] {
       id: skillFile.path,
       kind: "skill",
       skillShape: folder.files.length === 1 ? "standalone" : "resource-backed",
-      subtitle: subtitlePrefix(parsed.description ?? parsed.summary ?? ""),
       title: skillTitle(parsed.name, extractH1(parsed.body))
     };
 
-    if (parsed.version !== undefined) {
-      item.version = parsed.version;
-    }
-
+    assignOptionalFields(item, parsed);
     return [item];
   });
 }
 
-function skillTitle(name: string | undefined, h1: string | undefined): string {
-  if (name === undefined || name === "") {
-    return "error: no skill name";
-  }
+interface ParsedFieldsForItem {
+  description?: string;
+  name?: string;
+  summary?: string;
+  version?: string;
+}
 
-  if (h1 === undefined) {
+function assignOptionalFields(item: Item, parsed: ParsedFieldsForItem): void {
+  if (parsed.name !== undefined && parsed.name !== "") {
+    item.subtitle = parsed.name;
+  }
+  const description = parsed.description ?? parsed.summary;
+  if (description !== undefined && description !== "") {
+    item.description = descriptionPrefix(description);
+  }
+  if (parsed.version !== undefined) {
+    item.version = parsed.version;
+  }
+}
+
+function skillTitle(name: string | undefined, h1: string | undefined): string {
+  if (h1 !== undefined) {
+    return h1;
+  }
+  if (name !== undefined && name !== "") {
     return name;
   }
-
-  return `${h1} (${name})`;
+  return "error: no skill name";
 }
 
 function extractH1(body: string): string | undefined {
@@ -87,12 +101,12 @@ function extractH1(body: string): string | undefined {
   return match?.[1];
 }
 
-function subtitlePrefix(value: string): string {
-  if (value.length <= SUBTITLE_PREFIX_LIMIT) {
+function descriptionPrefix(value: string): string {
+  if (value.length <= DESCRIPTION_PREFIX_LIMIT) {
     return value;
   }
 
-  return `${value.slice(0, SUBTITLE_PREFIX_LIMIT).trimEnd()}…`;
+  return `${value.slice(0, DESCRIPTION_PREFIX_LIMIT).trimEnd()}…`;
 }
 
 function isDirectPromptMarkdown(path: string): boolean {

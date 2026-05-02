@@ -104,11 +104,22 @@ function renderItem(item) {
     titleRow.append(version);
   }
 
-  const subtitle = document.createElement("span");
-  subtitle.className = "subtitle";
-  subtitle.textContent = item.subtitle;
+  button.append(titleRow);
 
-  button.append(titleRow, subtitle);
+  if (item.subtitle && item.subtitle !== item.title) {
+    const subtitle = document.createElement("span");
+    subtitle.className = "subtitle";
+    subtitle.textContent = item.subtitle;
+    button.append(subtitle);
+  }
+
+  if (item.description) {
+    const description = document.createElement("span");
+    description.className = "description";
+    description.textContent = item.description;
+    button.append(description);
+  }
+
   button.addEventListener("click", () => copyItem(item.id));
   return button;
 }

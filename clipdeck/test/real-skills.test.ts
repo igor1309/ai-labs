@@ -21,6 +21,14 @@ const realFolders: SourceFolder[] = Object.entries(skillFiles).map(([globPath, c
   };
 });
 
+const namesByFolder = new Map(
+  Object.entries(skillFiles).map(([globPath, content]) => {
+    const folderName = globPath.replace(/^.*\/dev-skills\/public\//, "").replace(/\/SKILL\.md$/, "");
+    const nameMatch = content.match(/^name:\s*(.+?)\s*$/m);
+    return [folderName, nameMatch?.[1]] as const;
+  })
+);
+
 describe("discoverSkills against real dev-skills/public/ SKILL.md files", () => {
   test("should discover at least one real skill folder", () => {
     expect(realFolders.length).toBeGreaterThan(0);
@@ -37,10 +45,27 @@ describe("discoverSkills against real dev-skills/public/ SKILL.md files", () => 
     expect(broken.map((item) => item.id)).toEqual([]);
   });
 
-  test("should populate non-empty subtitles for real skills", () => {
+  test("should set subtitle to the front matter name for every real skill", () => {
     const items = discoverSkills(realFolders);
-    const empty = items.filter((item) => item.subtitle.length === 0);
+    const mismatched = items.filter((item) => {
+      const folderName = item.id.replace("dev-skills/public/", "").replace("/SKILL.md", "");
+      return item.subtitle !== namesByFolder.get(folderName);
+    });
+    expect(mismatched.map((item) => item.id)).toEqual([]);
+  });
+
+  test("should populate non-empty descriptions for every real skill", () => {
+    const items = discoverSkills(realFolders);
+    const empty = items.filter((item) => item.description === undefined || item.description.length === 0);
     expect(empty.map((item) => item.id)).toEqual([]);
+  });
+
+  test("should never include the front matter name parenthetical in real skill titles", () => {
+    const items = discoverSkills(realFolders);
+    const titlesWithName = items.filter((item) => {
+      return item.subtitle !== undefined && item.title.endsWith(`(${item.subtitle})`);
+    });
+    expect(titlesWithName.map((item) => item.id)).toEqual([]);
   });
 
   test("should strip front matter from real skill bodies", () => {
