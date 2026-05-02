@@ -133,7 +133,7 @@ describe("GET /api/items", () => {
 
       if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
         return Response.json({
-          content: btoa("---\ndescription: Skill details\n---\nSkill body\n"),
+          content: btoa("---\nname: example\ndescription: Skill details\n---\n# Example Skill\n\nSkill body\n"),
           encoding: "base64"
         });
       }
@@ -171,12 +171,12 @@ describe("GET /api/items", () => {
           id: "skills",
           items: [
             {
-              body: "Skill body\n",
+              body: "# Example Skill\n\nSkill body\n",
               id: "dev-skills/public/example/SKILL.md",
               kind: "skill",
               skillShape: "resource-backed",
               subtitle: "Skill details",
-              title: "example"
+              title: "Example Skill (example)"
             }
           ],
           title: "Skills"

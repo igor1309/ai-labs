@@ -59,7 +59,7 @@ export function discoverSkills(folders: SourceFolder[]): Item[] {
       kind: "skill",
       skillShape: folder.files.length === 1 ? "standalone" : "resource-backed",
       subtitle: subtitlePrefix(parsed.description ?? parsed.summary ?? ""),
-      title: parsed.title ?? skillFallbackTitle(folder.path)
+      title: skillTitle(parsed.name, extractH1(parsed.body))
     };
 
     if (parsed.version !== undefined) {
@@ -68,6 +68,23 @@ export function discoverSkills(folders: SourceFolder[]): Item[] {
 
     return [item];
   });
+}
+
+function skillTitle(name: string | undefined, h1: string | undefined): string {
+  if (name === undefined || name === "") {
+    return "error: no skill name";
+  }
+
+  if (h1 === undefined) {
+    return name;
+  }
+
+  return `${h1} (${name})`;
+}
+
+function extractH1(body: string): string | undefined {
+  const match = body.match(/^#[ \t]+(.+?)[ \t]*$/m);
+  return match?.[1];
 }
 
 function subtitlePrefix(value: string): string {
@@ -84,8 +101,4 @@ function isDirectPromptMarkdown(path: string): boolean {
 
 function promptFallbackTitle(path: string): string {
   return path.slice("prompts/".length, -".md".length);
-}
-
-function skillFallbackTitle(path: string): string {
-  return path.slice("dev-skills/public/".length);
 }

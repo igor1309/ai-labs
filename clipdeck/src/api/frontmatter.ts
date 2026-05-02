@@ -3,6 +3,7 @@ import matter from "gray-matter";
 export interface ParsedFrontmatter {
   body: string;
   description?: string;
+  name?: string;
   summary?: string;
   title?: string;
   version?: string;
@@ -27,6 +28,7 @@ export function parse(raw: string): ParsedFrontmatter {
   return {
     body: parsed.content,
     description: stringValue(parsed.data.description),
+    name: stringValue(parsed.data.name),
     summary: stringValue(parsed.data.summary),
     title: stringValue(parsed.data.title),
     version: scalarStringValue(parsed.data.version)
