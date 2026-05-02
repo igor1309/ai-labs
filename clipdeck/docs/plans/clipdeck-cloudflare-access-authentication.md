@@ -358,7 +358,7 @@ Stop immediately if:
   - `/api/items` does not return `{"error":"unauthorized"}`.
   - The checks are repeatable from a non-owner session without cookies, PINs, service tokens, or owner credentials.
 
-- [ ] **Step 4: Verify authenticated owner path**
+- [x] **Step 4: Verify authenticated owner path**
 
   Using an authenticated owner browser session:
 
