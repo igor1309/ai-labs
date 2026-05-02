@@ -5,6 +5,7 @@ export interface ParsedFrontmatter {
   description?: string;
   summary?: string;
   title?: string;
+  version?: string;
 }
 
 export function parse(raw: string): ParsedFrontmatter {
@@ -27,7 +28,8 @@ export function parse(raw: string): ParsedFrontmatter {
     body: parsed.content,
     description: stringValue(parsed.data.description),
     summary: stringValue(parsed.data.summary),
-    title: stringValue(parsed.data.title)
+    title: stringValue(parsed.data.title),
+    version: scalarStringValue(parsed.data.version)
   };
 }
 
@@ -41,4 +43,16 @@ function hasClosingFrontmatterDelimiter(raw: string): boolean {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function scalarStringValue(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return undefined;
 }

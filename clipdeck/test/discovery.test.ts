@@ -128,4 +128,68 @@ describe("discoverSkills", () => {
       ["fallback", ""]
     ]);
   });
+
+  test("should expose skill version from front matter", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\nname: example\nversion: \"1.2.3\"\ndescription: Details\n---\n# Skill\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      },
+      {
+        files: [
+          {
+            content: "---\nname: noversion\ndescription: Details\n---\n# Skill\n",
+            path: "dev-skills/public/noversion/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/noversion"
+      }
+    ]);
+
+    expect(items.map((item) => item.version)).toEqual(["1.2.3", undefined]);
+  });
+
+  test("should truncate long descriptions to a reasonably long prefix with ellipsis", () => {
+    const longDescription = "a".repeat(250);
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: `---\ndescription: ${longDescription}\n---\n# Skill\n`,
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    const subtitle = items[0]?.subtitle ?? "";
+
+    expect([subtitle.length, subtitle.endsWith("…"), subtitle.startsWith("aaaa")]).toEqual([
+      201,
+      true,
+      true
+    ]);
+  });
+
+  test("should leave short descriptions untouched", () => {
+    const items = discoverSkills([
+      {
+        files: [
+          {
+            content: "---\ndescription: Short detail\n---\n# Skill\n",
+            path: "dev-skills/public/example/SKILL.md"
+          }
+        ],
+        path: "dev-skills/public/example"
+      }
+    ]);
+
+    expect(items[0]?.subtitle).toBe("Short detail");
+  });
 });

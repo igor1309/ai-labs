@@ -53,4 +53,22 @@ describe("parse", () => {
 
     expect([result.description, result.summary]).toEqual(["Details", "Short"]);
   });
+
+  test("should return quoted version string from front matter", () => {
+    const result = parse("---\nversion: \"1.2.3\"\n---\n# Body\n");
+
+    expect(result.version).toBe("1.2.3");
+  });
+
+  test("should coerce numeric version to string", () => {
+    const result = parse("---\nversion: 2\n---\n# Body\n");
+
+    expect(result.version).toBe("2");
+  });
+
+  test("should leave version undefined when missing", () => {
+    const result = parse("---\ntitle: Example\n---\n# Body\n");
+
+    expect(result.version).toBeUndefined();
+  });
 });
