@@ -2,7 +2,7 @@
 title: Implementation Plan — Example
 date: 2026-04-12
 author: Igor Malyarov
-version: 0.0.1
+version: 0.0.2
 format: example
 source: condensed from oracle/docs/plans/implemented/0001-inventory-implemented-modules-and-adapters.md
 ---
@@ -30,9 +30,16 @@ points, tests, and Cloudflare bindings. The inventory should be
 sufficient for another agent to assemble the Worker without reading the
 whole repo.
 
+## Execution mode
+
+Mode: auto-continue
+Human review between tasks: no
+Stop conditions: failed gates, unclear scope, missing credentials/tooling, destructive operations, explicit user interruption
+Push policy: no push
+
 ## Execution lock
 
-Worktree required: no
+Worktree mode: none
 Expected worktree: root
 Expected branch: codex/oracle-inventory
 Preflight check: [ ] done
@@ -106,4 +113,11 @@ without repo archaeology.
 - All known components are documented with interfaces and bindings.
 - Spec drift (if any) is explicitly listed.
 - Tests pass.
+
+## Final closeout
+
+- Run final validation commands.
+- Move this plan to `docs/plans/implemented/`.
+- Commit the archive move.
+- Do not push unless explicitly asked.
 ```

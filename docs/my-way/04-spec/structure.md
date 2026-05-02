@@ -1,6 +1,8 @@
 ---
 title: Spec — Mandatory Structure
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Spec artifact mandatory structure."
 author: Igor Malyarov
 version: 0.0.1
 format: structure
@@ -26,7 +28,7 @@ Name the component. Include version if iterating.
 
 ### `## Goal`
 
-One to three sentences. What the component does and who owns it. Reference the ADR that established the architectural decision if applicable.
+One to three sentences. What the component does and who owns it. Reference the ADR that established the architectural decision if applicable, and Product Intent when the spec operationalizes accepted user stories.
 
 ### `## Public interface`
 
@@ -44,6 +46,10 @@ Numbered or grouped rules covering:
 - failure propagation
 
 Each rule should be concrete and testable.
+
+### `## Product intent traceability`
+
+Map behavior rules or scenarios back to accepted Product Intent stories when those stories exist. Omit when the spec is purely technical and no user-facing intent is affected.
 
 ### `## Tests (required)`
 

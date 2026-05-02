@@ -38,6 +38,7 @@ const app = createApp({
   logger,
   db,
   version,
+  jsonBodyLimit: config.jsonBodyLimit,
   liveRunner,
   stubRunner,
   stubEnabled: config.stubEnabled,

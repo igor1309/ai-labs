@@ -5,8 +5,8 @@ set -e
 # Called by release-unit.yml (if: failure()) via SSH on the VPS.
 
 cd /opt/nomos
-if docker image inspect nomos:rollback >/dev/null 2>&1; then
-  docker tag nomos:rollback nomos:latest
+if docker image inspect nomos-nomos:rollback >/dev/null 2>&1; then
+  docker tag nomos-nomos:rollback nomos-nomos:latest
   docker compose down
   docker compose up -d
   sleep 5

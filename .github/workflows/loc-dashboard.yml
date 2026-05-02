@@ -21,7 +21,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Check project drift
+        run: |
+          drift=$(./scripts/loc-dashboard.sh --sort=total 2>&1 | grep "⚠" || true)
+          if [ -n "$drift" ]; then
+            echo "::warning::LOC dashboard drift detected: $drift"
+          fi
 
       - name: Run LOC dashboard
         id: loc
@@ -60,4 +67,4 @@ jobs:
           MSG: ${{ steps.loc.outputs.msg }}
         run: |
           msg_html=$(printf '%s' "$MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-          curl -fsS -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=<pre>${msg_html}</pre>"
+          curl -fsS --max-time 30 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=<pre>${msg_html}</pre>"

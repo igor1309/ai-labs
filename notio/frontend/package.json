@@ -1,0 +1,25 @@
+{
+  "name": "@ai-labs/notio-frontend",
+  "private": true,
+  "type": "module",
+  "version": "0.1.1",
+  "scripts": {
+    "build": "vite build",
+    "dev:local": "VITE_NOTIO_RUNTIME=local vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@testing-library/svelte": "^5.3.1",
+    "@types/node": "^24.9.1",
+    "jsdom": "^29.0.2",
+    "playwright": "^1.59.1",
+    "svelte": "^5.55.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.5"
+  }
+}

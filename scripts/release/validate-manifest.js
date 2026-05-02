@@ -20,7 +20,7 @@
 
 import { existsSync } from 'node:fs';
 import { resolve, join, basename as pathBasename } from 'node:path';
-import { loadManifest } from './lib/manifest.js';
+import { loadConfig, loadManifest } from './lib/manifest.js';
 
 const rootIdx = process.argv.indexOf('--root');
 const repoRoot = rootIdx !== -1
@@ -28,16 +28,26 @@ const repoRoot = rootIdx !== -1
   : resolve(import.meta.dirname, '..', '..');
 
 const manifest = loadManifest(repoRoot);
+const config = loadConfig(repoRoot);
 const errors = [];
+const configuredBasenames = new Map(
+  config.paths
+    .filter(entry => typeof entry !== 'string')
+    .map(entry => [entry.path, entry.basename]),
+);
 
 const seenBasenames = new Set();
 
 for (const unit of manifest.units) {
-  // 1. Basename == leaf directory name
+  // 1. Basename == leaf directory name or explicit configured basename
   const leafName = pathBasename(unit.path);
-  if (unit.basename !== leafName) {
+  const configuredBasename = configuredBasenames.get(unit.path);
+  if (unit.basename !== leafName && unit.basename !== configuredBasename) {
+    const allowedDescription = configuredBasename
+      ? `the leaf directory name "${leafName}" or configured basename "${configuredBasename}"`
+      : `the leaf directory name "${leafName}"`;
     errors.push(
-      `${unit.basename}: basename "${unit.basename}" does not equal leaf directory name "${leafName}" of path "${unit.path}"`,
+      `${unit.basename}: basename "${unit.basename}" is not ${allowedDescription} of path "${unit.path}"`,
     );
   }
 

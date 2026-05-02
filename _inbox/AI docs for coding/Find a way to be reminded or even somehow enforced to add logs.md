@@ -1,0 +1,1 @@
+Find a way to be reminded or even somehow enforced to add/update logs and update README it’s every meaningful step. Commute and get a great but not sufficient sometimes. Or you should take a greater care of commit messages, employ AI for that.
