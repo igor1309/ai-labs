@@ -70,6 +70,64 @@ describe("GET /api/items", () => {
     });
   });
 
+  test("should send validators for item metadata revalidation", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json([]);
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    expect([
+      response.headers.get("Cache-Control"),
+      response.headers.get("ETag")
+    ]).toEqual([
+      "no-cache",
+      "\"f93aabe7e9b94554d2a8ed3be82b119077d124840fae01af277af2d29d94dbb0\""
+    ]);
+  });
+
+  test("should return not modified when item metadata validator matches", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json([]);
+    }));
+
+    const firstResponse = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          "If-None-Match": String(firstResponse.headers.get("ETag"))
+        }
+      }),
+      makeEnv()
+    );
+
+    expect([response.status, await response.text()]).toEqual([304, ""]);
+  });
+
+  test("should return not modified when weak or wildcard validators match", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json([]);
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items", {
+        headers: {
+          "If-None-Match": "W/\"f93aabe7e9b94554d2a8ed3be82b119077d124840fae01af277af2d29d94dbb0\", *"
+        }
+      }),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(304);
+  });
+
   test("should identify clipdeck as user agent for GitHub requests", async () => {
     const fetchCalls: RequestInit[] = [];
     vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
