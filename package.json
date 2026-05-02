@@ -3,18 +3,24 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "clipdeck",
     "nomos",
     "web-scout",
-    "corpus-scout"
+    "corpus-scout",
+    "session-digest",
+    "regentara"
   ],
   "version": "0.2.0",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "wrangler": "4.67.0"
   },
   "scripts": {
-    "test": "node --test nomos/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js scripts/release/tests/*.test.js web-scout/tests/*.test.js corpus-scout/tests/*.test.js",
+    "test": "node --test nomos/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js scripts/release/tests/*.test.js scripts/tests/*.test.js web-scout/tests/*.test.js corpus-scout/tests/*.test.js regentara/tests/*.test.js && npm run test:session-digest && npm run test:clipdeck",
+    "test:clipdeck": "npm test --workspace clipdeck",
+    "test:session-digest": "node --import tsx --test session-digest/tests/*.test.ts",
     "web:deploy": "node oracle/apps/am-i-done-web/scripts/generate_web_strings.mjs && WRANGLER_LOG_PATH=.wrangler/logs wrangler pages deploy src --project-name am-i-done-web --cwd oracle/apps/am-i-done-web",
     "web:dev": "node oracle/apps/am-i-done-web/scripts/generate_web_strings.mjs && WRANGLER_LOG_PATH=.wrangler/logs wrangler pages dev src --cwd oracle/apps/am-i-done-web --binding API_BASE_URL=${API_BASE_URL:-http://localhost:8787}",
     "worker:dev": "WRANGLER_LOG_PATH=.wrangler/logs wrangler dev --cwd oracle/apps/am-i-done-api",

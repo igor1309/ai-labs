@@ -73,6 +73,7 @@ A macOS launchd agent runs the push every Sunday at 8:40 AM local time. Use `--r
 
 - **Supabase project**: `uvnxjuzofcdxhdkrsocq` (West EU)
 - **Table**: `public.claude_insights` (RLS enabled)
+- **Table**: `public.keepalive` (RLS enabled, single row id=1) — heartbeat target for the `Supabase Keep-Alive` workflow (`.github/workflows/supabase-keepalive.yml`), which PATCHes `last_ping_at` every 3 days so a real DB write resets the free-tier inactivity timer
 - **DB trigger**: `on_insights_change` → `notify_insights_webhook()` via `pg_net`
 - **Edge Functions**: `notify-insights`, `telegram-bot` (both no-verify-jwt)
 - **Secrets**: `BOT_TOKEN`, `INBOX_CHAT_ID`, `NOMOS_BASE_URL`, `NOMOS_API_KEY` (set via `supabase secrets`)

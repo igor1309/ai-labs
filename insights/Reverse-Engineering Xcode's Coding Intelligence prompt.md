@@ -1,0 +1,1 @@
+[Reverse-Engineering Xcode’s Coding Intelligence prompt](https://peterfriese.dev/blog/2025/reveng-xcode-coding-intelligence/)

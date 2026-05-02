@@ -28,7 +28,7 @@ jobs:
       unit_path: ${{ steps.parse.outputs.unit_path }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
@@ -60,12 +60,13 @@ jobs:
         run: node scripts/release/validate-manifest.js
 
   core:
+    if: ${{ needs.verify.outputs.basename != 'notio-backend' && needs.verify.outputs.basename != 'notio-frontend' }}
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
@@ -88,6 +89,23 @@ jobs:
       - name: Run tests
         run: ./scripts/run_silent.sh "tests" npm test
 
+  test-notio-backend:
+    if: ${{ needs.verify.outputs.basename == 'notio-backend' }}
+    needs: [verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: swift:6.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Run tests
+        working-directory: notio/backend
+        run: swift test
+
   deploy-nomos-staging:
     if: ${{ needs.verify.outputs.basename == 'nomos' }}
     needs: [core, verify]
@@ -95,16 +113,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
       - name: Copy source files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           source: "nomos/Dockerfile,nomos/package.json,nomos/package-lock.json,nomos/src,nomos/docker-compose.staging.yml,nomos/scripts,vendor/ci-shared/scripts/notify_telegram.sh"
           target: /tmp/nomos-deploy
           strip_components: 1
@@ -112,9 +130,9 @@ jobs:
       - name: Deploy staging on VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /tmp/nomos-deploy/scripts/deploy-staging.sh
 
       - name: Verify staging version
@@ -122,9 +140,9 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: EXPECTED_VERSION
           script: |
             set -e
@@ -139,9 +157,9 @@ jobs:
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: NOMOS_STAGING_SMOKE_TOKEN,OPENROUTER_CI_MODEL
           script: |
             set -e
@@ -166,9 +184,9 @@ jobs:
       - name: Deploy production on VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /tmp/nomos-deploy/scripts/deploy-prod.sh
 
       - name: Verify production version
@@ -176,9 +194,9 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: EXPECTED_VERSION
           script: |
             set -e
@@ -193,9 +211,9 @@ jobs:
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: NOMOS_SMOKE_TOKEN,OPENROUTER_CI_MODEL
           script: |
             set -e
@@ -220,9 +238,9 @@ jobs:
           OPENROUTER_CI_MODEL: ${{ vars.OPENROUTER_CI_MODEL }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           envs: CI_BOT_TOKEN,CI_CHAT_ID,EXPECTED_VERSION,OPENROUTER_CI_MODEL
           script: |
             set -e
@@ -237,14 +255,117 @@ jobs:
         if: failure()
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.NOMOS_VPS_HOST }}
+          username: ${{ secrets.NOMOS_VPS_USER }}
+          key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /opt/nomos/scripts/rollback-prod.sh
 
+  deploy-notio-backend:
+    if: ${{ needs.verify.outputs.basename == 'notio-backend' }}
+    needs: [test-notio-backend, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Copy backend source files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
+          source: "notio/backend/.dockerignore,notio/backend/Dockerfile,notio/backend/Package.swift,notio/backend/Package.resolved,notio/backend/Sources,notio/backend/Tests,notio/backend/docker-compose.yml,notio/backend/scripts"
+          target: /tmp/notio-deploy
+          strip_components: 2
+
+      - name: Copy shared notify script to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
+          source: "vendor/ci-shared/scripts/notify_telegram.sh"
+          target: /tmp/notio-deploy
+          strip_components: 1
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1
+        env:
+          NOTIO_GIT_SHA: ${{ github.sha }}
+          NOTIO_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
+          envs: NOTIO_VERSION,NOTIO_GIT_SHA
+          command_timeout: 15m
+          script: bash /tmp/notio-deploy/scripts/deploy.sh
+
+      - name: Verify deployed version
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            RESPONSE=$(curl -fsS http://127.0.0.1:8080/version)
+            echo "Version response: $RESPONSE"
+            echo "$RESPONSE" | grep -q "\"version\":\"${EXPECTED_VERSION}\""
+            echo "Version verified: ${EXPECTED_VERSION}"
+
+      - name: Notify deploy success
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.NOTIO_VPS_HOST }}
+          username: ${{ secrets.NOTIO_VPS_USER }}
+          key: ${{ secrets.NOTIO_VPS_SSH_KEY }}
+          envs: CI_BOT_TOKEN,CI_CHAT_ID,EXPECTED_VERSION
+          script: |
+            set -e
+            TEXT=$(printf "✅ notio-backend v%s deployed\nversion verified" "$EXPECTED_VERSION")
+            bash /tmp/notio-deploy/ci-shared/scripts/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$TEXT"
+            rm -rf /tmp/notio-deploy
+
+  deploy-notio-frontend:
+    if: ${{ needs.verify.outputs.basename == 'notio-frontend' }}
+    needs: [verify]
+    uses: ./.github/workflows/notio-frontend-deploy.yml
+    with:
+      ref: ${{ github.ref_name }}
+    secrets: inherit
+
+  deploy-clipdeck:
+    if: ${{ needs.verify.outputs.basename == 'clipdeck' }}
+    needs: [core, verify]
+    uses: ./.github/workflows/clipdeck-deploy.yml
+    with:
+      ref: ${{ github.ref_name }}
+    secrets: inherit
+
   github-release:
-    needs: [core, verify, deploy-nomos-staging, deploy-nomos-prod]
-    if: ${{ always() && !cancelled() && needs.core.result == 'success' && needs.deploy-nomos-staging.result != 'failure' && needs.deploy-nomos-prod.result != 'failure' }}
+    needs: [core, verify, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck]
+    if: >-
+      ${{ always() && !cancelled()
+      && needs.verify.result == 'success'
+      && (needs.core.result == 'success' || needs.core.result == 'skipped')
+      && (needs.test-notio-backend.result == 'success' || needs.test-notio-backend.result == 'skipped')
+      && needs.deploy-nomos-staging.result != 'failure'
+      && needs.deploy-nomos-prod.result != 'failure'
+      && (needs.deploy-notio-backend.result == 'success' || needs.deploy-notio-backend.result == 'skipped')
+      && (needs.deploy-notio-frontend.result == 'success' || needs.deploy-notio-frontend.result == 'skipped')
+      && (needs.deploy-clipdeck.result == 'success' || needs.deploy-clipdeck.result == 'skipped')
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -265,8 +386,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.verify.result == 'failure' || needs.core.result == 'failure' || needs.deploy-nomos-staging.result == 'failure' || needs.deploy-nomos-prod.result == 'failure' || needs.github-release.result == 'failure') }}
-    needs: [verify, core, deploy-nomos-staging, deploy-nomos-prod, github-release]
+    if: >-
+      ${{ always() && !cancelled()
+      && (needs.verify.result == 'failure'
+      || needs.core.result == 'failure'
+      || needs.test-notio-backend.result == 'failure'
+      || needs.deploy-nomos-staging.result == 'failure'
+      || needs.deploy-nomos-prod.result == 'failure'
+      || needs.deploy-notio-backend.result == 'failure'
+      || needs.deploy-notio-frontend.result == 'failure'
+      || needs.deploy-clipdeck.result == 'failure'
+      || needs.github-release.result == 'failure')
+      }}
+    needs: [verify, core, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -275,8 +407,12 @@ jobs:
       job_results: |
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
+        test-notio-backend=${{ needs.test-notio-backend.result }}
         deploy-nomos-staging=${{ needs.deploy-nomos-staging.result }}
         deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
+        deploy-notio-backend=${{ needs.deploy-notio-backend.result }}
+        deploy-notio-frontend=${{ needs.deploy-notio-frontend.result }}
+        deploy-clipdeck=${{ needs.deploy-clipdeck.result }}
         github-release=${{ needs.github-release.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}

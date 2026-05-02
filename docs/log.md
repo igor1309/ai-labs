@@ -1,5 +1,154 @@
 # Log
 
+## 2026-05-02
+
+- LOC dashboard: refreshed the static landing from `scripts/loc-dashboard.sh` after the Product Intent docs landed on `user-stories`; agents docs now report 4,941 lines and repo total is 104,263.
+- LOC dashboard refresh: synced `docs/loc-dashboard.html` data array with current `scripts/loc-dashboard.sh` output (clipdeck 0/0/290 → 1114/1472/1782; regentara 952/1712/4585 → 2792/4906/7964; smaller drift in nomos, dev-skills, session-digest, agents, repo-scripts, claude-insights). Updated the Clipdeck product card from docs-only to a deployed Cloudflare Worker (clipdeck.enoa.ai) with refreshed stack tags.
+- my-way: implemented the Product Intent layer above research/pre-ADR/ADR/spec/implementation planning, adding story-centered note/structure/example artifacts, drafting/review skills, downstream traceability guidance, and lightweight variant escalation rules.
+- GitHub Actions Node 20 deprecation cleared — bumped `actions/checkout@v4 → v5` (Node 24 runtime) and `dorny/paths-filter@v3 → v4` across all workflows ahead of the June 2026 forced upgrade and the September 2026 Node 20 removal. Stayed on `checkout@v5` rather than `v6` to avoid the credential-handling change in v6.
+- clipdeck v0.1.7: added a deployed-version footer (`/api/version` + bottom-of-page render) so we can confirm at a glance which Worker build a browser is actually loading. Backfilled a missing frontend test that asserts the rendered subtitle text matches `item.subtitle` to lock in the description-fetch behavior shipped in v0.1.5/v0.1.6.
+
+## 2026-05-01
+
+- LOC dashboard landing: refreshed product cards in `docs/loc-dashboard.html` — promoted regentara from `Concept`/Design to a `CLI` MVP workflow runner with current tags, and renamed dragoman to "The Dragoman" with description and tags reflecting a posts-and-imagery channel rather than docs-only. `scripts/loc-dashboard.sh` was reviewed and needs no changes (it counts LOC and does not classify project type).
+- clipdeck: added release-unit and CI/CD wiring for tag-driven Cloudflare Worker deploys, plus the first-deploy operator runbook and README component update.
+- clipdeck: implemented the static iPhone frontend and Worker Static Assets routing, including unlock, reload, copy feedback, and resource-backed skill styling tests.
+- clipdeck: implemented the authenticated `GET /api/items` Worker endpoint with GitHub Contents API reads, sanitized section assembly, and spec-shaped upstream/source-missing errors.
+- clipdeck: implemented Phase 1 pure units for front matter stripping, prompt/skill discovery, and response section assembly, covering malformed front matter tolerance and deterministic item ordering.
+- clipdeck: scaffolded as a private TypeScript Cloudflare Worker workspace with Wrangler config, Workers-pool Vitest coverage, and root test-gate integration.
+- clipdeck: registered as a docs-only top-level project — added to `README.md` Components table, `scripts/loc-dashboard.sh` (loop, header comment, drift `known` list), and the `docs/loc-dashboard.html` landing (product card + data row). Initial artifacts are an accepted ADR and a draft spec for an iPhone-friendly private webpage that copies prompts/skills with server-side front matter stripping.
+- New Project Checklist: added `docs/loc-dashboard.html` (product card + data array) and `<project>/docs/log.md` (seed entry) as required surfaces in `CLAUDE.md`, closing the drift that left dragoman off the landing on 2026-04-29. Also backfilled the dragoman product card and data row to clear that gap.
+- Supabase keep-alive: switched the scheduled workflow from a SELECT ping to a PATCH against a dedicated `public.keepalive` table (`claude-insights/migrations/002_keepalive_table.sql`). Read-only pings did not reliably reset the free-tier inactivity timer — Supabase still issued a pause warning despite three days of green keep-alive runs. A write is unambiguous DB activity. Migration must be applied before the workflow change merges.
+
+## 2026-04-30
+
+- Linear: added `course-exploration` project (id `f4aa9d0e-3646-411c-8763-8239a2979937`) as a sibling of `ai-labs` to hold a raw, unstructured course-development idea; updated `CLAUDE.md` Linear section to list both projects under the shared workspace/team. Materials remain under `research/courses/` in this repo.
+- pr-ci-watch: added `scripts/watch-pr.sh` wrapper and the `Bash(./scripts/watch-pr.sh:*)` allow rule so PR CI watching no longer triggers a permission prompt for the `/tmp/<repo>-pr-<pr>.log` redirect. The wildcard `Bash(... > /tmp/*)` form does not match a redirect with a trailing `2>&1`, so encapsulating the redirect inside a script is the cleanest fix.
+- Linear: linked the repo to Linear project `ai-labs` (workspace `igor1309`, team `IG`, id `e94949cf-0479-4539-bced-7a737e5d874b`) by recording the metadata in `CLAUDE.md` so agents skip the lookup. Considered also adding a `.linear.toml` at the repo root for `schpet/linear-cli` compatibility — deferred until that CLI is actually adopted.
+- Research: added a structured extraction, derived curriculum, and selling-points brief for Timur Khakhalev's AI Coding course landing page under `research/courses/khakhalev/`.
+
+## 2026-04-29
+
+- dragoman: renamed the docs-only top-level project directory from `the-dragoman/` to `dragoman/` so the project slug is distinct from the "The Dragoman" Telegram channel name.
+- dragoman: registered as a docs-only top-level project — added to `scripts/loc-dashboard.sh` and the README `## Components` table. No CI changes needed: the project is absent from every `ci.yml` path filter, so per-project core jobs stay skipped on doc/image-only changes.
+- LOC dashboard: classified `img`/`images` as known top-level dirs and added them to `EXCLUDES` in `scripts/loc-dashboard.sh` so README banner asset folders are explicitly skipped and no longer trip drift detection.
+- LOC dashboard workflow: added `curl --max-time 30` to the Telegram step so a hung Telegram connection fails fast instead of stalling the run (root cause of the 2026-04-29 exit-56 failure).
+
+## 2026-04-28
+
+- Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; regentara now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
+
+## 2026-04-27
+
+- ADR: added `docs/adr/cli-settings-convention.md` — repo-level rule covering discovery precedence, first-run bootstrap, structural-vs-catalog split, and settings-error class for CLI tools. Lists known violations in `regentara` and `session-digest` to close via per-tool plans.
+- Nomos: remove inert `nomos-shared` declaration from the repo prod compose (CI never copies it) and the orphan `docker build -t nomos:latest .` from staging deploy. Cleanup of dead promises after the rollback redesign. See `nomos/docs/log.md`.
+- Nomos: rewrite rollback path to operate on the actually-used `nomos-nomos:latest` image so a failed prod deploy can restore the previous version. See `nomos/docs/log.md`.
+- Nomos: force `--build` on prod compose so deploys rebuild the auto-named prod image instead of caching the previously built version. See `nomos/docs/log.md`.
+- Nomos: declare `nomos-shared` external network in the prod compose so Caddy retains staging connectivity across `docker compose down/up`. See `nomos/docs/log.md`.
+- regentara: scaffolded as a Node ESM workspace package and release unit; LOC dashboard tests now treat it as an implemented code component instead of docs-only.
+- regentara: created MVP workflow runner implementation plan from accepted spec and ADRs; addressed architecture-doc review (test ownership, skill references, release-unit posture, provider-CLI module split, worktree creation step, Node version pin, commit staging scope). See `regentara/docs/log.md`.
+- Reverted out-of-scope Nomos release/deploy changes from the session-digest branch and removed the mistaken Nomos release tags.
+- session-digest: replaced the Deep Agents prototype role with a V2 local-ledger and bounded-synthesis CLI, including dependency cleanup and component documentation updates.
+- Process docs: made implementation plans explicitly declare execution mode, review stops, worktree mode, push policy, and final archiving so future plan execution can auto-continue without ambiguity.
+
+## 2026-04-26
+
+- session-digest: exploration docs complete (ADR-001, CLI spec, Deep Agents/NVIDIA NIM use cases, and TypeScript implementation plan). See `session-digest/docs/log.md`.
+
+## 2026-04-25
+
+- regentara: MVP ADR set complete (agent settings, model routing, CLI execution boundary, failure policy, run artifact storage). All reviewed and accepted. See `regentara/docs/log.md`.
+
+## 2026-04-24
+
+- Notio frontend v0.1.0: dark theme UI, fixed Cloudflare Pages deploy project name.
+
+- AI Labs landing page: product cards for all 14 projects with 2-column grid and scroll/hover animations.
+
+- Release docs: aligned explicit configured basename invariants and README component entries with the Notio backend/frontend release split.
+
+- Release ADRs: clarified explicit configured basenames for nested release units so symmetric component folders can still use globally unambiguous tags.
+
+- LOC dashboard: consolidated oracle into single row, added missing code extensions (.svelte, .sql, .css, .html, .mjs), merged gen/scripts columns into code, renamed text to docs, added per-project .md counting, added nexum/niora/regentara as regular rows, added .wrangler to exclusions.
+
+- CI: narrowed `notio` path filter to Swift-only paths (Sources, Tests, Package.swift, Package.resolved), removing infra paths (supabase, Dockerfile, docker-compose, scripts, release.toml) that don't need the 15-min Swift test suite.
+
+## 2026-04-23
+
+- LOC dashboard: added regentara to known dirs and docs-only list, clearing drift warning.
+- regentara: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
+- CI: switched `notio` path filter from catch-all `notio/**` to inclusion-only (Sources, Tests, Package.swift, Dockerfile, etc.) so doc-only changes skip the expensive `notio-core` Swift build. Negation patterns don't work — `dorny/paths-filter` OR's all lines.
+
+## 2026-04-21
+
+- dev-skills: made igor1309/skills public for Web Agent plugin access. Added project-level `.claude/settings.json`. Marketplace v1.32.1.
+- Removed `paths-ignore` from `ci.yml` — the `report` required check was never created on doc-only PRs, blocking auto-merge. Path filtering now handled entirely by `dorny/paths-filter` inside the workflow.
+- agent-retro architecture note: reinstated Open questions section with five architecture-level gaps surfaced during review — digest-engine behavior on uncovered sessions, canonical-session mapping ownership, digest artifact lifecycle, report-writer invocation boundary, and digest window shape vs session-based model. All are structural/contract questions deferred to the follow-up ADR/spec.
+- agent-retro architecture note: added a Boundary summary bullet for deep inspection — "a bounded second-pass stage within the digest engine, applied only to promoted sessions and using retained evidence from the index/store" — consolidating the mechanism, scope, input-source, and cost-bound properties decided in prior patches.
+- agent-retro architecture note: added "Stable canonical-session identity" key constraint — canonical-session collection, refresh, and coverage all require stable session identity; the exact derivation is deferred to the follow-up ADR/spec.
+- agent-retro architecture note: clarified deep inspection as an internal second-pass stage of the digest engine that runs only on promoted sessions and reads from the index/store (never raw sources). Tightened retained-evidence wording to concrete categories (session trajectory, notable retries/failures, tool activity, supporting excerpts) with full raw retention not required. Added a bounded deep-inspection cost constraint (configurable limits on promoted sessions inspected per run and evidence per session). Removed the remaining open question, and with it the Open questions section.
+- agent-retro architecture note: shifted coverage from timeframe-shaped to session-shaped. Coverage metadata is now tracked per canonical session (source id, canonical session identity, collection outcome, collected at, collection mode, collector/schema version); requested timeframes retained only as run/request metadata. Planner wording now explicitly separates timeframe (selection input) from coverage (per-canonical-session truth). Resolved the open question on coverage representation.
+
+## 2026-04-20
+
+- Added `.github/workflows/` README.md and CLAUDE.md (with AGENTS.md symlink) documenting CI architecture, agent rules, and paths-ignore policy.
+- CI now skips `**/sandbox/**` and `**/research/**` at any nesting level (previously top-level `sandbox/` only, `research/` missing).
+- Repo-root `AGENTS.md` is now a symlink to `CLAUDE.md` (was the reverse). Convention documented in README.
+
+## 2026-04-19
+
+- notio: two-phase capture feedback (`notio_v0.3.0`) — receipt acknowledgement and final outcome messages via Telegram. 144 tests, Docker verified.
+
+- notio: deployed `notio_v0.2.0` — full capture pipeline (parse → enrich → persist to Supabase) live on VPS. Fixed deploy ssh timeout and added `paths-ignore` to CI `pull_request` trigger to skip builds on docs-only PRs.
+
+- LOC dashboard: clarified that the report is implementation-footprint-only, surfaced omitted docs-only/pre-implementation dirs (`nexum`, `niora`) in output, and fixed repo-level test counting to include `scripts/tests`.
+
+- absorb-ai-coder: absorbed the remaining reusable content from `ai-coder/README.md` into the root `README.md` and `dev-skills/README.md`, then removed the obsolete `ai-coder/README.md` file.
+
+- absorb-ai-coder: absorbed the old `ai-coder/AGENTS.md` structure and publishing facts into the root `README.md`, then removed `ai-coder/AGENTS.md` and its paired `ai-coder/CLAUDE.md` symlink now that those repo-orientation notes live at the monorepo root.
+
+- absorb-ai-coder: moved `ai-coder/docs/` into `dev-skills/docs/` by promoting the ai-coder log and archived dev-skills migration docs into the dev-skills documentation area. Updated the active absorption plan so it reflects the follow-up moves already completed on this branch.
+
+- absorb-ai-coder: promoted `ai-coder/gemini/` to root `gemini/` and fixed the CI drift this created by adding `gemini/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/gemini` or root `gemini/`.
+
+- absorb-ai-coder: promoted `ai-coder/tools/` to root `tools/` and fixed the CI drift this created by adding `tools/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/tools` or root `tools/`.
+
+- absorb-ai-coder: promoted `ai-coder/sandbox/` to root `sandbox/` and fixed the CI drift this created by adding `sandbox/**` to `ci.yml` `paths-ignore`. The repo-wide `sandbox-todo-issues.yml` remains intentionally active for root `sandbox/` entries.
+
+- absorb-ai-coder: promoted `ai-coder/dev-skills/` to root `dev-skills/` and fixed the workflow drift this created by switching `sync-skills-public.yml` from `ai-coder/dev-skills/public/**` to `dev-skills/public/**` and adding `dev-skills/**` back to `ci.yml` `paths-ignore`.
+
+- absorb-ai-coder: promoted `ai-coder/guides/` to `migrate-to-skills/guides/` and fixed the workflow drift that surfaced from the new root destination by adding `migrate-to-skills/**` to `ci.yml` `paths-ignore`. No active workflows reference `ai-coder/guides` or `migrate-to-skills/guides`.
+
+- absorb-ai-coder: promoted `ai-coder/prompts/` to root `prompts/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/prompts`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: promoted `ai-coder/debates/` to root `debates/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/debates`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: promoted `ai-coder/reading/` to root `reading/`. Workflow audit for this step found no path drift: no active workflows reference `ai-coder/reading`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: promoted `ai-coder/insights/` to root `insights/`. Workflow audit for this step found no path drift: no workflows reference `ai-coder/insights`, and the move does not change the existing CI behavior for these assets.
+
+- absorb-ai-coder: moved the imported `_inbox/` from `ai-coder/_inbox/` to repo root and fixed the workflow drift that surfaced on this branch by adding `_inbox/**` to `ci.yml` `paths-ignore`; `sync-skills-public.yml` still correctly targets `ai-coder/dev-skills/public/**`, and `sandbox-todo-issues.yml` remains intentionally repo-wide.
+
+- absorb-ai-coder: imported `~/dev/ai-coder` into ai-labs under `ai-coder/` with full tracked history preserved, keeping repo-level assets intact and separating any later restructuring into follow-up work.
+
+- LOC dashboard: added neris (Swift), notio (Swift), claude-insights (TS/Python); extended counting to .swift/.py; fixed agents text count (removed dead .codex ref, added per-project AGENTS.md, skills, my-way docs); added drift detection for new top-level dirs; wired drift warning into CI workflow.
+
+- my-way: clarify the pre-coding phase as judgment-driven and iterative; extract first-class skills for research, pre-ADR, ADR, spec, and implementation planning; add transition tracking, promotion checklist, and future-shape note so the approach can move toward skills without forcing a premature final information architecture.
+
+## 2026-04-18
+
+- Added `notio-core.yml` CI workflow and wired it into `ci.yml` path-filter dispatch — notio tests now run on PRs in a `swift:6.1` Linux container, catching platform-specific failures before merge.
+
+- Split shared `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` CI secrets into per-project `NOMOS_VPS_*` and `NOTIO_VPS_*` in `release-unit.yml` — nomos deploys to 95.164.53.144, notio deploys to 107.172.143.196.
+
+## 2026-04-06
+
+nexum: reviewed and fixed
+
+## 2026-04-05
+
+nexum: complete architecture doc set — pre-ADR spec, frontend ADR (v0.2.0), backend ADR (v0.3.0), OpenAPI contract (v1.4.0), frontend auth ADR, backend auth ADR, architecture review amendments, supersession note, component architecture approach, and naming brief.
+
 ## 2026-03-29
 
 claude-insights: add `claude-insights-deploy.yml` — trunk-only CI workflow that detects changed Supabase Edge Functions (`notify-insights`, `telegram-bot`) and deploys only those affected; `_shared/**` changes trigger both. Issue #110.
