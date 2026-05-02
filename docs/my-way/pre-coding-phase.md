@@ -1,10 +1,10 @@
 ---
 title: Pre-Coding Phase
-date: 2026-04-19
-model: gpt-5.4
+date: 2026-05-02
+model: gpt-5.5-thinking
 description: "Personal note describing the pre-coding phase as a judgment-driven, iterative part of software development."
 author: Igor Malyarov
-version: 0.0.3
+version: 0.0.4
 format: note
 ---
 
@@ -14,11 +14,14 @@ This note describes an opinionated approach to the pre-coding phase. It is expli
 
 The core premise is simple: coding should be the execution step, not the primary thinking step.
 
+This phase is the front half of a larger loop. The back half — execution, logging, and artifact preservation — lives in [coding-phase.md](coding-phase.md). The two phases share a single goal: keeping product intent, execution, and recorded knowledge aligned as the work evolves. Software work is treated as a loop rather than a straight line; revisiting an earlier layer when implementation reality pushes back is part of the method, not a failure of it.
+
 ## Core idea
 
 The pre-coding phase exists to reduce ambiguity before implementation starts. Its purpose is to:
 
 - clarify intent
+- define the user-facing outcome and accepted stories when the work needs a product parent
 - expose unknowns, contradictions, and weak assumptions
 - separate exploratory thinking from committed decisions
 - define boundaries, responsibilities, and contracts
@@ -38,7 +41,37 @@ What matters is not choosing the "correct document" first. What matters is recog
 
 What follows is a common full path, not a deterministic recipe. The actual entry point may differ, some layers may be omitted, and some may be revisited multiple times depending on the case.
 
-### 1. Research
+### 1. Product Intent
+
+Product Intent is the user-facing parent layer.
+
+Its purpose is to:
+
+- define who the work is for
+- state the user capability and outcome being created or protected
+- make accepted user stories first-class
+- define how story satisfaction will be recognized
+- set boundaries around what is not promised
+- connect accepted intent to downstream artifacts when traceability matters
+
+This stage is not about technical design. It is about the user promise that downstream research, decisions, specs, plans, code, and tests must preserve.
+
+Typical output may include:
+
+- product outcome
+- actors
+- accepted user stories
+- acceptance signals or confirmation methods
+- boundaries and non-goals
+- open product questions
+- downstream traceability
+- change-review notes for meaningful intent changes
+
+The practical value of this stage is that technical work starts from user-facing intent instead of inventing it implicitly.
+
+See [00-product-intent/note.md](00-product-intent/note.md).
+
+### 2. Research
 
 Research is the exploration layer.
 
@@ -64,7 +97,7 @@ Typical output may include:
 
 The practical value of this stage is that it avoids fake certainty.
 
-### 2. Pre-ADR
+### 3. Pre-ADR
 
 Pre-ADR is the thinking workspace before a formal architectural decision is recorded.
 
@@ -86,7 +119,7 @@ Typical characteristics:
 
 Its function is not authority. Its function is design digestion. A deliberate break is often taken before moving to ADR, allowing perspective to refresh.
 
-### 3. ADR
+### 4. ADR
 
 ADR is the commitment layer.
 
@@ -107,7 +140,7 @@ In this approach, ADRs are not ceremony. They are decision records. Their qualit
 
 An ADR should not read like brainstorming. It should read like resolved architecture.
 
-### 4. Spec
+### 5. Spec
 
 The spec is where architecture turns into implementable behavior.
 
@@ -131,7 +164,7 @@ Typical content may include:
 
 This is the document that makes implementation reviewable against intent.
 
-### 5. Implementation plan
+### 6. Implementation plan
 
 The implementation plan is the execution bridge.
 
@@ -158,6 +191,9 @@ A quality property of the plan is commit discipline: each step has mandatory tes
 By this stage, the main architectural thinking should already be done.
 
 ## How these artifacts differ
+
+### Product Intent
+Defines accepted user stories and the user-facing outcome downstream artifacts must preserve.
 
 ### Research
 Explores the problem space.
@@ -190,9 +226,9 @@ The full sequence above is built for net-new architectural work. Two common case
 
 ### Minor feature / sub-feature
 
-A localized capability extension that fits within already-established architecture. No new boundaries, no decision to record. The honest shape is *(optional) targeted research → delta or mini-spec → short implementation plan*, often collapsed into a single change note.
+A localized capability extension that fits within already-established architecture. No new boundaries, no decision to record. The honest shape is *(optional) compact story statement or Product Intent reference → optional targeted research → delta or mini-spec → short implementation plan*, often collapsed into a single change note.
 
-Escalates to the full sequence if the change requires a new module boundary, a new protocol, a new dependency direction, or contradicts an existing ADR.
+Escalates to the full sequence if the change requires a new module boundary, a new protocol, a new dependency direction, contradicts an existing ADR, or changes the accepted user-facing promise enough that downstream artifacts need impact review.
 
 See [variants/minor-feature/note.md](variants/minor-feature/note.md).
 
@@ -208,11 +244,11 @@ See [variants/bug-fix/note.md](variants/bug-fix/note.md).
 
 AI assistants are used heavily throughout the pre-coding phase — not as a convenience layer, but as thinking partners. Different models (GPT, Claude, and others) are rotated deliberately across stages and review cycles to reduce blind spots inherent to any single model's reasoning style.
 
-Each artifact goes through review. Review is a specialized concern with its own knowledge and method, encapsulated in dedicated review skills appropriate to the artifact type. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial by design.
+Each artifact goes through review. Review is a specialized concern with its own knowledge and method, encapsulated in dedicated review skills appropriate to the artifact type. For Product Intent, review checks that user stories remain first-class and that the artifact does not drift into vision, backlog, PRD, architecture, spec, or execution planning. For exploratory artifacts (research, pre-ADR), review surfaces gaps and marks them as explicit open questions. For committed artifacts (ADR, spec, implementation plan), review is adversarial by design.
 
 ## Artifacts commit
 
-Pre-coding artifacts are committed to the repository as they are produced. Research notes, pre-ADRs, ADRs, specs, and implementation plans are version-controlled alongside the code they govern. This makes the decision history inspectable, reviewable, and traceable — not buried in chat logs or lost between sessions.
+Pre-coding artifacts are committed to the repository as they are produced. Product Intent notes, research notes, pre-ADRs, ADRs, specs, and implementation plans are version-controlled alongside the code they govern. This makes the intent and decision history inspectable, reviewable, and traceable — not buried in chat logs or lost between sessions.
 
 These artifacts are expected outputs of the work. They are not the starting point, and they are not one-shot paperwork. They are living aids for thinking, decision-making, focus, and progress. They can be revised, adapted, or deprecated as the work moves forward and reality tests earlier assumptions.
 

@@ -1,6 +1,8 @@
 ---
 title: Research — Mandatory Structure
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Research artifact mandatory structure."
 author: Igor Malyarov
 version: 0.0.1
 format: structure
@@ -26,7 +28,7 @@ Short, descriptive title. Not "Research" — name the topic.
 
 ### `## Purpose`
 
-One to three sentences. What question or tension does this research address? Why now?
+One to three sentences. What question or tension does this research address? Why now? Reference Product Intent when the research exists to clarify, protect, or unblock an accepted user story.
 
 ### Topical sections
 

@@ -1,6 +1,8 @@
 ---
 title: Implementation Plan — Mandatory Structure
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Implementation plan artifact mandatory structure."
 author: Igor Malyarov
 version: 0.0.2
 format: structure
@@ -26,7 +28,7 @@ Name the work being planned. Reference the spec or ADRs being implemented.
 
 ### `## Goal`
 
-What the plan delivers and why. Brief — one to three sentences.
+What the plan delivers and why. Brief — one to three sentences. Reference accepted Product Intent when the plan must preserve specific stories during execution.
 
 ### `## Execution mode`
 
@@ -61,6 +63,12 @@ Explicit exclusions — what is out of scope for this plan. Reference ADR non-go
 _Optional — include when the plan implements ADR invariants._
 
 Table mapping each ADR invariant to the phase that establishes it.
+
+### `## Product intent traceability`
+
+_Optional — include when the plan implements or changes accepted user stories._
+
+Map each relevant story to the phase that preserves or delivers it. The plan may still slice by technical dependency, risk, or component; this table exists to prevent story intent from disappearing during execution.
 
 ### Phases / tasks
 

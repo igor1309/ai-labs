@@ -27,6 +27,7 @@ Do not use this skill to redesign architecture or rewrite behavior. If the plan 
 Read the implementation plan under review first, then pull only the context needed to test it:
 
 - the accepted spec the plan claims to implement
+- accepted Product Intent stories when the plan claims to deliver or preserve them
 - accepted ADRs when they constrain sequencing or boundaries
 - known delivery, migration, or operational constraints where they affect ordering
 - the implementation-plan structure at [structure.md](../../../05-implementation-plan/structure.md)
@@ -41,6 +42,7 @@ Review the plan against execution needs, not against preferences that belong in 
 - Review may conclude that the plan already holds. That is useful work, not failure.
 - If the plan is weak because design or behavior is unstable, escalate explicitly rather than patching over the problem with task structure.
 - Review must not demand architecture or behavioral detail that belongs in ADR or spec.
+- Review should check Product Intent traceability when accepted stories materially constrain the work, without requiring every delivery slice to be story-shaped.
 - Review must not demand concrete implementation primitives when equivalent observable behavior would satisfy the accepted ADR/spec.
 
 ## Review Layer
@@ -59,6 +61,7 @@ Treat implementation-plan review as its own layer.
 - **Incrementality**: is the work divided into slices that can be observed and checked?
 - **Risk isolation**: are fragile or unknown parts surfaced early enough?
 - **Boundary respect**: does the plan follow ADRs and spec rather than redesigning them?
+- **Product intent preservation**: does the plan keep accepted story intent visible where execution could otherwise drift?
 - **Validation awareness**: does every slice have a meaningful check or gate?
 - **Commit discipline**: does the plan require green validation before completion and commit?
 - **Layer discipline**: do the findings stay at plan level instead of enforcing implementation details that the accepted docs leave open?
@@ -78,7 +81,7 @@ Help produce one of these outputs:
 2. Test whether the sequence has clear reasons grounded in dependency, risk, and validation.
 3. Probe for hidden dependencies, deferred risks, or slices that are too large to validate well.
 4. Check whether each slice has a meaningful validation gate.
-5. Check whether the plan respects the accepted ADRs and spec.
+5. Check whether the plan respects accepted Product Intent, ADRs, and spec.
 6. Check whether your own concerns belong at the plan layer or should be deferred to implementation/code review.
 7. Decide whether the plan holds, needs revision, or should escalate to another layer.
 8. Return concrete findings or revision guidance.

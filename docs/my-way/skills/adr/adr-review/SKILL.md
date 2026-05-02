@@ -26,6 +26,7 @@ Do not use this skill to invent architecture from scratch. If the real problem i
 
 Read the ADR under review first, then pull only the context needed to test it:
 
+- accepted Product Intent stories the ADR claims to enable, protect, or constrain
 - adjacent accepted ADRs it may depend on or conflict with
 - the relevant pre-ADR or research artifacts when the decision history matters
 - spec or implementation-plan material only if needed to detect drift across layers
@@ -45,6 +46,7 @@ Review the ADR against what it claims to govern, not against implementation pref
 ## Review For
 
 - **Intent integrity**: does the ADR record the real decision?
+- **Product-intent accountability**: if the ADR claims user-facing relevance, is that connection concrete without turning the ADR into product prose?
 - **Boundary clarity**: is it clear what the ADR governs and what it does not?
 - **Cross-decision consistency**: does it conflict with accepted ADRs?
 - **Decision stability**: is this settled enough to deserve an ADR?

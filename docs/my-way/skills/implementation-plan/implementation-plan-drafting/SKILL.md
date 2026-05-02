@@ -27,6 +27,7 @@ Do not use this skill when architecture or expected behavior is still unclear. T
 Read the minimum context needed to plan execution:
 
 - the accepted spec
+- accepted Product Intent stories when they constrain delivery slicing or traceability
 - accepted ADRs when they constrain execution boundaries
 - known delivery, migration, rollout, testing, or operational constraints
 - existing system boundaries and dependency information
@@ -39,6 +40,7 @@ Read enough to sequence the work well. Do not reopen architecture or behavior in
 ## Preserve This Judgment
 
 - The implementation plan is an execution artifact, not a design artifact.
+- The plan must preserve accepted Product Intent during execution without forcing every slice to be story-shaped.
 - The plan must consume the spec rather than quietly rewriting it through task decomposition.
 - The sequence must reflect dependency structure, risk, and validation needs, not arbitrary ordering.
 - The plan must divide work into slices that can be observed and checked incrementally.
@@ -50,6 +52,7 @@ Read enough to sequence the work well. Do not reopen architecture or behavior in
 Help produce or revise an implementation plan that makes clear:
 
 - what should be built first
+- how accepted story intent remains visible during delivery when relevant
 - how the work is divided into slices or phases
 - what dependencies shape ordering
 - what risks should be isolated early
@@ -62,7 +65,7 @@ Write the plan so implementation can begin with an explicit route rather than ad
 
 ## Workflow
 
-1. Start from the accepted spec and identify the foundational slice.
+1. Start from the accepted spec and Product Intent traceability, then identify the foundational slice.
 2. Order dependent work by dependency structure, risk, and validation needs.
 3. For each slice, define objective, key work items, dependencies, risks, validation, and completion signal.
 4. Move high-risk or uncertain slices earlier when practical to avoid late-stage collapse.
