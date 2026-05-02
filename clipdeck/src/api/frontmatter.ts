@@ -19,7 +19,8 @@ export function parse(raw: string): ParsedFrontmatter {
   let parsed: matter.GrayMatterFile<string>;
   try {
     parsed = matter(raw);
-  } catch {
+  } catch (error) {
+    console.error("frontmatter parse failed", error);
     return {
       body: raw
     };
