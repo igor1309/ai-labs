@@ -2,6 +2,7 @@
 
 ## 2026-05-02
 
+- Authentication ADR added — Cloudflare Access is now the accepted user-facing auth boundary for Clipdeck, superseding the shared-secret access invariant while preserving Worker-only GitHub credentials.
 - Frontend iteration no longer requires deploying — the populated library state is now reachable locally, so visual changes can be verified before they reach production.
 - Frontend redesign — Clipdeck adopts the dark notio-aligned palette with an animated unlock card, hover/focus-visible item states, a floating auto-clearing toast, an explicit loading state, non-auth error surfacing, and a pull-to-refresh-only mode that hides the reload button on touch devices.
 - Skills loading restored — Clipdeck now uses the GitHub recursive tree API for skill discovery, keeping production GitHub subrequests under the Worker runtime limit for v0.1.2.
