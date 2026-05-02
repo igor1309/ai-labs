@@ -1,6 +1,8 @@
 ---
 title: Minor Feature Addition — Mandatory Structure
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Minor feature addition mandatory structure."
 author: Igor Malyarov
 version: 0.0.1
 format: structure
@@ -26,7 +28,11 @@ Name the capability being added, not the component it lives in.
 
 ### `## Goal`
 
-One to three sentences. What is being added and why now. Reference the existing ADR or spec the change fits within.
+One to three sentences. What is being added and why now. Reference Product Intent, the existing ADR, or the spec the change fits within.
+
+### `## Story / product intent`
+
+The compact story statement or Product Intent reference that explains the user-facing promise. Use the standard user-story form when adding a new localized capability. If existing Product Intent already covers the change, link to it instead of restating it.
 
 ### `## Behavior delta`
 
@@ -50,6 +56,8 @@ A short statement that the change does not require:
 - contradiction of any existing ADR
 
 If any of these is true, this is no longer a minor feature addition — escalate to the full pre-coding sequence.
+
+Also escalate when the change meaningfully alters accepted user capability, actor, outcome, acceptance signal, or boundary.
 
 ### `## Implementation slices`
 

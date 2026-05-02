@@ -1,0 +1,17 @@
+providers:
+  anthropic:
+    runner: claude-code
+    models:
+      medium:
+        model: claude-sonnet-4-5
+      high:
+        model: claude-opus-4-7
+  openai:
+    runner: codex
+    models:
+      medium:
+        model: gpt-5.5
+        reasoningEffort: medium
+      high:
+        model: gpt-5.5
+        reasoningEffort: high

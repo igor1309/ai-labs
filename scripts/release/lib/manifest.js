@@ -10,14 +10,24 @@ import { parse } from './toml.js';
  * Load and return the discovery configuration.
  *
  * @param {string} repoRoot
- * @returns {{ paths: string[] }}
+ * @returns {{ paths: Array<string | { path: string, basename: string }> }}
  */
 export function loadConfig(repoRoot) {
   const configPath = join(repoRoot, 'release-units.config.toml');
+  if (!existsSync(configPath)) {
+    return { paths: [] };
+  }
   const text = readFileSync(configPath, 'utf8');
   const config = parse(text);
   if (!Array.isArray(config.paths)) {
     throw new Error('release-units.config.toml: "paths" must be an array');
+  }
+  for (const entry of config.paths) {
+    if (typeof entry === 'string') continue;
+    if (isConfiguredPath(entry)) continue;
+    throw new Error(
+      'release-units.config.toml: "paths" entries must be strings or { path, basename } objects',
+    );
   }
   return { paths: config.paths };
 }
@@ -39,13 +49,14 @@ export function loadManifest(repoRoot) {
  * Discover release units from the repo by scanning configured paths.
  *
  * @param {string} repoRoot
- * @param {string[]} paths
+ * @param {Array<string | { path: string, basename: string }>} paths
  * @returns {import('./types.js').Unit[]}
  */
 export function discoverUnits(repoRoot, paths) {
   const units = [];
 
-  for (const unitPath of paths) {
+  for (const entry of paths) {
+    const { unitPath, unitBasename } = normalizeConfigPath(entry);
     const absPath = join(repoRoot, unitPath);
     if (!existsSync(absPath)) continue;
 
@@ -54,7 +65,6 @@ export function discoverUnits(repoRoot, paths) {
 
     if (!hasPackageJson && !hasReleaseToml) continue;
 
-    const leafName = basename(unitPath);
     let version;
     let metadata;
 
@@ -71,7 +81,7 @@ export function discoverUnits(repoRoot, paths) {
     const docker = existsSync(join(absPath, 'Dockerfile'));
 
     units.push({
-      basename: leafName,
+      basename: unitBasename,
       path: unitPath,
       metadata,
       version: String(version),
@@ -83,4 +93,28 @@ export function discoverUnits(repoRoot, paths) {
   units.sort((a, b) => a.basename.localeCompare(b.basename));
 
   return units;
+}
+
+/**
+ * @param {unknown} entry
+ * @returns {entry is { path: string, basename: string }}
+ */
+function isConfiguredPath(entry) {
+  return Boolean(
+    entry &&
+      typeof entry === 'object' &&
+      typeof entry.path === 'string' &&
+      typeof entry.basename === 'string',
+  );
+}
+
+/**
+ * @param {string | { path: string, basename: string }} entry
+ * @returns {{ unitPath: string, unitBasename: string }}
+ */
+function normalizeConfigPath(entry) {
+  if (typeof entry === 'string') {
+    return { unitPath: entry, unitBasename: basename(entry) };
+  }
+  return { unitPath: entry.path, unitBasename: entry.basename };
 }

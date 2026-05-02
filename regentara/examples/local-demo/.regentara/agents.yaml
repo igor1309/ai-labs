@@ -1,0 +1,22 @@
+agents:
+  producer:
+    provider: anthropic
+    model: medium
+    prompt:
+      ref: regentara://prompts/producer
+    output:
+      schemaRef: regentara://schemas/producer-output
+  reviewer:
+    provider: openai
+    model: high
+    prompt:
+      ref: regentara://prompts/reviewer
+    output:
+      schemaRef: regentara://schemas/reviewer-output
+  remediator:
+    provider: anthropic
+    model: high
+    prompt:
+      ref: regentara://prompts/remediator
+    output:
+      schemaRef: regentara://schemas/remediator-output

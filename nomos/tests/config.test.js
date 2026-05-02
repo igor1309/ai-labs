@@ -9,7 +9,7 @@ const CONFIG_KEYS = [
   "NOMOS_VENDOR_API_KEY", "NOMOS_FIXTURES_DIR", "NOMOS_SAFEGUARDS_ENABLED",
   "NOMOS_SAFEGUARDS_SANITIZE", "NOMOS_SAFEGUARDS_REINFORCE",
   "NOMOS_SAFEGUARDS_BLOCK", "NOMOS_SAFEGUARDS_REINFORCE_PREPEND",
-  "NOMOS_SAFEGUARDS_REINFORCE_APPEND",
+  "NOMOS_SAFEGUARDS_REINFORCE_APPEND", "NOMOS_JSON_BODY_LIMIT",
 ];
 
 function clearConfigEnv() {
@@ -47,6 +47,7 @@ test("loadConfig returns correct defaults when env is empty", () => {
     assert.equal(config.safeguardsBlockOnDetect, false);
     assert.equal(config.safeguardsReinforcePrepend, "");
     assert.equal(config.safeguardsReinforceAppend, "");
+    assert.equal(config.jsonBodyLimit, "1MB");
   } finally {
     restoreConfigEnv(saved);
   }
@@ -106,6 +107,7 @@ test("loadConfig reads string env vars", () => {
     process.env.NODE_ENV = "production";
     process.env.NOMOS_VENDOR_API_KEY = "sk-secret";
     process.env.NOMOS_FIXTURES_DIR = "/custom/fixtures";
+    process.env.NOMOS_JSON_BODY_LIMIT = "2mb";
     process.env.NOMOS_SAFEGUARDS_REINFORCE_PREPEND = "BE SAFE";
     process.env.NOMOS_SAFEGUARDS_REINFORCE_APPEND = "END SAFE";
 
@@ -115,8 +117,23 @@ test("loadConfig reads string env vars", () => {
     assert.equal(config.env, "production");
     assert.equal(config.vendorApiKey, "sk-secret");
     assert.equal(config.fixturesDir, "/custom/fixtures");
+    assert.equal(config.jsonBodyLimit, "2mb");
     assert.equal(config.safeguardsReinforcePrepend, "BE SAFE");
     assert.equal(config.safeguardsReinforceAppend, "END SAFE");
+  } finally {
+    restoreConfigEnv(saved);
+  }
+});
+
+test("loadConfig rejects invalid JSON body limit", () => {
+  const saved = clearConfigEnv();
+  try {
+    process.env.NOMOS_JSON_BODY_LIMIT = "large";
+
+    assert.throws(
+      () => loadConfig(),
+      /NOMOS_JSON_BODY_LIMIT must be a positive size such as 100kb, 2mb, or 1048576/
+    );
   } finally {
     restoreConfigEnv(saved);
   }
