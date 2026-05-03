@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Way — A judgment-driven method for software work</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-elev: #14181d;
+    --bg-elev-2: #1b2027;
+    --border: #262d36;
+    --text: #e6edf3;
+    --text-dim: #8b96a3;
+    --accent: #6ee7b7;
+    --accent-2: #93c5fd;
+    --warn: #fcd34d;
+    --danger: #fca5a5;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 96px 0 64px;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(ellipse at top, rgba(110, 231, 183, 0.08), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(147, 197, 253, 0.06), transparent 50%);
+  }
+  .hero h1 {
+    font-size: 64px;
+    margin: 0 0 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero .tagline {
+    font-size: 22px;
+    color: var(--text-dim);
+    max-width: 760px;
+    margin: 0 0 32px;
+  }
+  .hero .pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero code {
+    display: inline-block;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+  }
+
+  /* Section */
+  section { padding: 80px 0; border-bottom: 1px solid var(--border); }
+  section h2 {
+    font-size: 32px;
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  section .lead {
+    color: var(--text-dim);
+    font-size: 17px;
+    max-width: 820px;
+    margin: 0 0 40px;
+  }
+
+  /* Phase diagram — loop shape */
+  .diagram {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 24px 56px;
+    overflow-x: auto;
+  }
+  .diagram-inner { min-width: 920px; }
+
+  /* Product Intent governing banner */
+  .governs {
+    background: var(--bg-elev-2);
+    border: 1px solid rgba(252, 211, 77, 0.5);
+    border-radius: 10px;
+    padding: 14px 18px;
+    text-align: center;
+    max-width: 520px;
+    margin: 0 auto 0;
+  }
+  .governs .role {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--warn);
+    margin-bottom: 4px;
+  }
+  .governs .name {
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--warn);
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .governs .desc {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .governs-tail {
+    text-align: center;
+    color: var(--warn);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1;
+    margin: 6px 0 4px;
+  }
+
+  /* Loop track — the body of the loop */
+  .loop-track {
+    position: relative;
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px 56px 22px;
+    margin-top: 6px;
+  }
+  .lane-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .lane-label.pre  { color: var(--accent);   text-align: left; }
+  .lane-label.post { color: var(--accent-2); text-align: right; }
+
+  .lane {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .lane.pre  { justify-content: flex-start; }
+  .lane.post { flex-direction: row-reverse; justify-content: flex-start; }
+
+  .lane + .lane-label { margin-top: 18px; }
+
+  .node {
+    flex: 1;
+    min-width: 110px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 12px;
+    text-align: center;
+    position: relative;
+  }
+  .node .role {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .node .name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .node .desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .node.pre  { border-color: rgba(110, 231, 183, 0.4); }
+  .node.post { border-color: rgba(147, 197, 253, 0.4); }
+  .node.pre .name  { color: var(--accent); }
+  .node.post .name { color: var(--accent-2); }
+
+  .arrow {
+    align-self: center;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 16px;
+  }
+
+  /* Loop end-caps drawn as bordered corners */
+  .loop-cap {
+    position: absolute;
+    width: 38px;
+    border-style: solid;
+    border-color: var(--text-dim);
+    pointer-events: none;
+  }
+  .loop-cap.right {
+    right: 8px;
+    top: 50%;
+    height: 60%;
+    transform: translateY(-50%);
+    border-width: 2px 2px 2px 0;
+    border-radius: 0 16px 16px 0;
+  }
+  .loop-cap.left {
+    left: 8px;
+    top: 50%;
+    height: 60%;
+    transform: translateY(-50%);
+    border-width: 2px 0 2px 2px;
+    border-radius: 16px 0 0 16px;
+    border-color: var(--warn);
+  }
+  .cap-arrow {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 16px;
+  }
+  .cap-arrow.right {
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+  }
+  .cap-arrow.left {
+    left: 4px;
+    top: 8px;
+    color: var(--warn);
+  }
+  .cap-label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -34px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .cap-label span { color: var(--warn); }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .card h3 {
+    font-size: 18px;
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .card .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .card.post .label { color: var(--accent-2); }
+  .card p { margin: 0; color: var(--text-dim); font-size: 14px; }
+  .card a { display: inline-block; margin-top: 12px; font-family: var(--mono); font-size: 12px; }
+
+  /* Step list */
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: step;
+  }
+  .steps li {
+    counter-increment: step;
+    padding: 16px 16px 16px 56px;
+    margin-bottom: 8px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .steps strong { color: var(--text); }
+  .steps span { color: var(--text-dim); }
+
+  /* Boundary list */
+  .boundaries {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 720px) { .boundaries { grid-template-columns: 1fr; } }
+  .boundary-col h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 12px;
+  }
+  .boundary-col.does h3 { color: var(--accent); }
+  .boundary-col.doesnt h3 { color: var(--danger); }
+  .boundary-col ul { margin: 0; padding: 0; list-style: none; }
+  .boundary-col li {
+    padding: 8px 0 8px 24px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-dim);
+    position: relative;
+  }
+  .boundary-col li::before {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    font-family: var(--mono);
+  }
+  .boundary-col.does li::before { content: "+"; color: var(--accent); }
+  .boundary-col.doesnt li::before { content: "−"; color: var(--danger); }
+
+  /* Variants list */
+  .variants {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .variant {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .variant .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 110px;
+  }
+  .variant .shape {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .variant .escalate {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* Biases */
+  .biases { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .bias {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+  .bias h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .bias p { margin: 0; font-size: 13px; color: var(--text-dim); }
+
+  footer {
+    padding: 48px 0 64px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer code {
+    font-family: var(--mono);
+    background: var(--bg-elev);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="container">
+    <span class="pill">Method · Personal Working Approach</span>
+    <h1>My Way</h1>
+    <p class="tagline">
+      A judgment-driven method for software work. Coding is the execution step, not the primary
+      thinking step. Software is a loop, not a line — and revisiting earlier layers when reality
+      pushes back is part of the method, not a failure of it.
+    </p>
+    <code>docs/my-way/pre-coding-phase.md</code>
+    <code style="margin-left: 8px;">docs/my-way/coding-phase.md</code>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <h2>The core idea</h2>
+    <p class="lead">
+      Two phases share a single goal: keep <strong>product intent</strong>, <strong>execution</strong>,
+      and <strong>recorded knowledge</strong> aligned as the work evolves. The <em>pre-coding</em> phase
+      reduces ambiguity before implementation. The <em>coding</em> phase keeps execution honest against
+      intent and turns the work into durable knowledge as it progresses.
+    </p>
+
+    <div class="diagram">
+      <div class="diagram-inner">
+        <div class="governs">
+          <div class="role">Parent layer · governs the loop</div>
+          <div class="name">Product Intent</div>
+          <div class="desc">Who the work is for · accepted user stories · acceptance signals · non-goals</div>
+        </div>
+        <div class="governs-tail">↓</div>
+
+        <div class="loop-track">
+          <div class="lane-label pre">▶ pre-coding · reduce ambiguity</div>
+          <div class="lane pre">
+            <div class="node pre">
+              <div class="role">Layer</div>
+              <div class="name">Research</div>
+              <div class="desc">Frame the problem space</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node pre">
+              <div class="role">Layer</div>
+              <div class="name">Pre-ADR</div>
+              <div class="desc">Explore the solution space</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node pre">
+              <div class="role">Layer</div>
+              <div class="name">ADR</div>
+              <div class="desc">Commit the decision</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node pre">
+              <div class="role">Layer</div>
+              <div class="name">Spec</div>
+              <div class="desc">Define expected behavior</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node pre">
+              <div class="role">Layer</div>
+              <div class="name">Plan</div>
+              <div class="desc">Order the execution path</div>
+            </div>
+          </div>
+
+          <div class="lane-label post">coding · execute · preserve knowledge ◀</div>
+          <div class="lane post">
+            <div class="node post">
+              <div class="role">Layer</div>
+              <div class="name">Executable Spec</div>
+              <div class="desc">Intent turns into testable form</div>
+            </div>
+            <div class="arrow">←</div>
+            <div class="node post">
+              <div class="role">Layer</div>
+              <div class="name">TDD</div>
+              <div class="desc">RED → GREEN → REFACTOR</div>
+            </div>
+            <div class="arrow">←</div>
+            <div class="node post">
+              <div class="role">Layer</div>
+              <div class="name">Log</div>
+              <div class="desc">Compress impact</div>
+            </div>
+            <div class="arrow">←</div>
+            <div class="node post">
+              <div class="role">Layer</div>
+              <div class="name">Artifact</div>
+              <div class="desc">Preserve durable knowledge</div>
+            </div>
+          </div>
+
+          <div class="loop-cap right" aria-hidden="true"></div>
+          <div class="cap-arrow right" aria-hidden="true">↓</div>
+          <div class="loop-cap left" aria-hidden="true"></div>
+          <div class="cap-arrow left" aria-hidden="true">↑</div>
+          <div class="cap-label">↑ <span>feedback may reshape any earlier layer — including Product Intent</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Pre-coding phase</h2>
+    <p class="lead">
+      The front half of the loop. Reduces ambiguity before code is written by separating exploratory
+      thinking from committed decisions, defining boundaries and contracts, and making implementation
+      a constrained follow-through rather than discovery-by-coding.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Layer 1 · Parent</div>
+        <h3>Product Intent</h3>
+        <p>Defines who the work is for, the user-facing outcome, accepted user stories, acceptance signals, and non-goals. The user promise downstream artifacts must preserve.</p>
+        <a href="00-product-intent/note.md">00-product-intent/note.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Layer 2 · Exploratory</div>
+        <h3>Research</h3>
+        <p>Frames the problem. Surfaces patterns, tradeoffs, constraints, risks, and assumptions that need validation. Avoids fake certainty — directed Q&amp;A with AI assistants, not passive reading.</p>
+        <a href="01-research/note.md">01-research/note.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Layer 3 · Exploratory</div>
+        <h3>Pre-ADR</h3>
+        <p>Solution-space thinking workspace before commitment. Compares options, captures the rough shape. Allowed to age out — its function is design digestion, not authority.</p>
+        <a href="02-pre-adr/note.md">02-pre-adr/note.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Layer 4 · Committed</div>
+        <h3>ADR</h3>
+        <p>Records the decision actually taken and why this path over alternatives. Reads like resolved architecture, not brainstorming. Boundaries are explicit; consequences are stated.</p>
+        <a href="03-adr/note.md">03-adr/note.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Layer 5 · Committed</div>
+        <h3>Spec</h3>
+        <p>Architecture turned into implementable behavior. Component responsibilities, contracts, flows, states, edge cases. Makes implementation reviewable against intent.</p>
+        <a href="04-spec/note.md">04-spec/note.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Layer 6 · Operational</div>
+        <h3>Implementation Plan</h3>
+        <p>The execution bridge. Ordered work, dependencies, slices, validation strategy. Each step has mandatory test runs; commits happen only on green.</p>
+        <a href="05-implementation-plan/note.md">05-implementation-plan/note.md</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Coding phase</h2>
+    <p class="lead">
+      The back half of the same loop. Turns intent into executable form, executes through iterative
+      verification, compresses what changed and why it matters, and preserves durable knowledge that
+      outlives the immediate work.
+    </p>
+    <ol class="steps">
+      <li><strong>Executable spec</strong> <span>turns intent into something concrete enough to execute, simulate, or test — behavior contracts, expected I/O examples, acceptance criteria as tests. Pressure-tests the spec and product intent before code is written.</span></li>
+      <li><strong>TDD cycle</strong> <span>writes a failing test that expresses the missing behavior, makes it pass with the minimum change, then refactors and reconciles with the spec, plan, and product intent. Compilation errors are not RED — RED means the code compiles and the test fails on its assertion.</span></li>
+      <li><strong>Log</strong> <span>records outcome and impact, not implementation detail. Git tracks what was done; the log tracks what changed for the user or the system. Concise, outcome-focused, user-facing.</span></li>
+      <li><strong>Artifact</strong> <span>preserves durable knowledge that does not belong in code, ADRs, or specs — design decisions below ADR threshold, architectural outlines, postmortems, onboarding context. Produced when knowledge would otherwise be lost between sessions.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Scope variants</h2>
+    <p class="lead">
+      The full sequence is built for net-new architectural work. Two common cases follow lighter,
+      alternative paths — escape hatches with explicit escalation rules back into the full sequence.
+      That escalation is what keeps the lite paths honest.
+    </p>
+    <div class="variants">
+      <div class="variant">
+        <span class="tag">minor feature</span>
+        <span class="shape">story / Product Intent ref → optional research → mini-spec → short plan</span>
+        <span class="escalate">escalates on new boundary, protocol, or promise change</span>
+      </div>
+      <div class="variant">
+        <span class="tag">bug fix</span>
+        <span class="shape">symptom → reproduction → root cause → fix strategy → regression test</span>
+        <span class="escalate">escalates to spec / pre-ADR on undefined behavior or violated invariant</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Biases of the method</h2>
+    <p class="lead">This approach is opinionated. It strongly favors several principles.</p>
+    <div class="biases">
+      <div class="bias">
+        <h3>Decision before mechanics</h3>
+        <p>Architecture, responsibility, and boundaries are settled before implementation details dominate the conversation.</p>
+      </div>
+      <div class="bias">
+        <h3>Explicit boundaries</h3>
+        <p>Ownership matters. Layer responsibility matters. Coupling is introduced deliberately, not by accident.</p>
+      </div>
+      <div class="bias">
+        <h3>Progressive commitment</h3>
+        <p>No premature formality, no indefinite vagueness. Movement from research to pre-ADR to ADR expresses gradual commitment when the situation calls for it.</p>
+      </div>
+      <div class="bias">
+        <h3>Exploratory vs committed</h3>
+        <p>Early documents are allowed to be imperfect or later outdated, provided they served exploration honestly. Committed documents should be sharper and more stable.</p>
+      </div>
+      <div class="bias">
+        <h3>Execution, not architecture discovery</h3>
+        <p>The later the stage, the less room for invention. Coding should not be the first place where the system is truly understood.</p>
+      </div>
+      <div class="bias">
+        <h3>Iteration is not failure</h3>
+        <p>Returning upward when implementation reality contradicts an earlier commitment is part of the method, not a sign that the process broke.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Boundaries</h2>
+    <p class="lead">My Way is intentionally narrow. Knowing what it does <em>not</em> do is part of the design.</p>
+    <div class="boundaries">
+      <div class="boundary-col does">
+        <h3>My Way is</h3>
+        <ul>
+          <li>A judgment-driven personal working method</li>
+          <li>A loop that aligns intent, execution, and knowledge</li>
+          <li>An ordering of artifacts when the situation calls for them</li>
+          <li>Pressure on earlier layers when implementation reality pushes back</li>
+          <li>A separation of exploratory thinking from committed decisions</li>
+          <li>A commitment that artifacts are version-controlled alongside code</li>
+        </ul>
+      </div>
+      <div class="boundary-col doesnt">
+        <h3>My Way is NOT</h3>
+        <ul>
+          <li>A claim of universal process correctness</li>
+          <li>A deterministic recipe or fixed checklist</li>
+          <li>Documentation for its own sake</li>
+          <li>Ceremony — ADRs, specs, and plans must earn their existence</li>
+          <li>One-shot paperwork — artifacts are living aids</li>
+          <li>A replacement for tests, ADRs, or product specs themselves</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Review &amp; AI assistants</h2>
+    <p class="lead">
+      AI assistants are used heavily throughout — not as a convenience layer, but as thinking partners.
+      Different models are rotated deliberately across stages and review cycles to reduce blind spots
+      inherent to any single model&rsquo;s reasoning style.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Exploratory artifacts</div>
+        <h3>Surface gaps</h3>
+        <p>For research and pre-ADR, review surfaces gaps and marks them as explicit open questions. Imperfection is acceptable; honest exploration is required.</p>
+      </div>
+      <div class="card">
+        <div class="label">Committed artifacts</div>
+        <h3>Adversarial by design</h3>
+        <p>For ADR, spec, and implementation plan, review is adversarial. Encapsulated in dedicated review skills appropriate to the artifact type.</p>
+      </div>
+      <div class="card">
+        <div class="label">Product Intent</div>
+        <h3>Story-first</h3>
+        <p>Review checks that user stories remain first-class and that the artifact does not drift into vision, backlog, PRD, architecture, spec, or execution planning.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Current transition</h2>
+    <p class="lead">
+      <code>docs/my-way/</code> is in active transition. Skills are being extracted from these notes
+      because they are reusable knowledge building blocks. The final long-term role of this folder
+      &mdash; philosophical layer, archived inspiration, or absorbed elsewhere &mdash; is intentionally undecided.
+      The lack of a final vision is intentional, not accidental.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Decided</div>
+        <h3>Skills as building blocks</h3>
+        <p>Skills are being extracted as reusable units of procedural and declarative knowledge, intended for use across different contexts and workflows.</p>
+        <a href="plans/transition-to-skills.md">plans/transition-to-skills.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Undecided</div>
+        <h3>Final shape of the folder</h3>
+        <p>Whether this folder remains active long-term, becomes a rationale layer, is absorbed into another document, or is archived after skills mature is deferred.</p>
+        <a href="future-shape.md">future-shape.md</a>
+      </div>
+      <div class="card">
+        <div class="label">Working stance</div>
+        <h3>Live transition space</h3>
+        <p>For now, skills are the operational building blocks; <code>docs/my-way/</code> remains a live transition space; final cleanup, archival, or reclassification is deferred.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    My Way · A personal working method for software development · See
+    <code>docs/my-way/pre-coding-phase.md</code> and <code>docs/my-way/coding-phase.md</code> for the full notes.
+  </div>
+</footer>
+
+</body>
+</html>
