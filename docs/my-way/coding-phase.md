@@ -114,4 +114,4 @@ The practical point is to allow the loop to return upward when implementation re
 
 ## Summary
 
-The coding phase is where intent becomes executable, where execution becomes verifiable, and where the work becomes durable knowledge. It is the back half of the same loop the pre-coding phase begins: coding is not separate from thinking; it is thinking pressure-tested against reality.
+The coding phase is where intent becomes executable, where execution becomes verifiable, and where the work becomes durable knowledge. It is the back half of the same loop that the pre-coding phase begins: coding is not separate from thinking; it is thinking pressure-tested against reality.

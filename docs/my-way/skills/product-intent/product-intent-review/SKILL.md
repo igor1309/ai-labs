@@ -29,7 +29,7 @@ Read the Product Intent artifact first, then pull only the context needed to tes
 
 - the request or product problem it claims to address
 - existing Product Intent artifacts in the same area
-- downstream research, ADR, spec, or plan references the artifact names
+- downstream research, ADR, spec, or plan references named by the artifact
 - the Product Intent structure at `../../00-product-intent/structure.md`
 - the example at `../../00-product-intent/example.md` if a concrete standard would help
 

@@ -106,7 +106,7 @@ The work includes a clear view of how recurrence will be detected or prevented. 
 When the bug reveals deeper issues, escalation is made explicit rather than ignored. Concrete triggers:
 
 - expected behavior was never defined → escalate to a spec update
-- accepted user intent is missing, ambiguous, or meaningfully changing → escalate to Product Intent
+- accepted user intent is missing, ambiguous, or being meaningfully changed → escalate to Product Intent
 - the defect violates an invariant that no ADR covers → escalate to a pre-ADR
 - the fix would require a new boundary, protocol, or dependency direction → escalate to the full pre-coding sequence
 
