@@ -1,9 +1,13 @@
 ---
 date: 2026-05-04
-name: Reusable explain prompt
-version: 0.0.1
+name: Explain prompt
+version: 0.0.2
 ---
 
-Explain XXXXXXX
+Explain {{topic}}
 
-Do not explain what it is NOT, do not try to be helpful by connecting to my projects Do not give negative explanations Do not rephrase, do not repeat in other wording Grounded answer under 200 words
+- Do not explain what it is NOT.
+- Do not give negative explanations.
+- Do not rephrase or repeat in other wording.
+- Do not connect the explanation to my projects.
+- Grounded answer under 200 words.
