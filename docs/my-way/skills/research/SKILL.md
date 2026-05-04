@@ -7,7 +7,7 @@ description: Use when a concrete question, tension, or uncertainty needs problem
 
 ## Overview
 
-Use this skill to explore the problem space before architectural commitment. Research is the first technical reduction step after Product Intent when Product Intent exists: it improves understanding of the problem, constraints, unknowns, tradeoffs, and relevant precedents while changes are still cheap.
+Use this skill to explore the problem space before architectural commitment. Research is the first technical reduction step after Product Intent, when Product Intent exists: it improves understanding of the problem, constraints, unknowns, tradeoffs, and relevant precedents while changes are still cheap.
 
 Research is not performed for documentation volume. It exists to reduce false certainty and avoid premature design decisions.
 

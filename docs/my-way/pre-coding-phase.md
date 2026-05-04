@@ -193,7 +193,7 @@ By this stage, the main architectural thinking should already be done.
 ## How these artifacts differ
 
 ### Product Intent
-Defines accepted user stories and the user-facing outcome downstream artifacts must preserve.
+Defines accepted user stories and the user-facing outcome that downstream artifacts must preserve.
 
 ### Research
 Explores the problem space.
@@ -216,7 +216,7 @@ Software development is iterative.
 
 Movement across these layers is not strictly linear and not one-way. Work may move forward, pause, return to an earlier layer, or revisit several layers multiple times as coding, debugging, validation, and release expose new information.
 
-Revisiting an earlier layer is not a sign that the process failed. It is part of keeping the work honest against reality. If implementation reveals that a design decision is still unstable, the work may return to ADR-level thinking. If the design still holds but expected behavior is unclear, the work may return to the spec. If the decision and behavior remain sound but execution detail is missing, the work may return to the implementation plan.
+Revisiting an earlier layer is not a sign that the process has failed. It is part of keeping the work honest against reality. If implementation reveals that a design decision is still unstable, the work may return to ADR-level thinking. If the design still holds but expected behavior is unclear, the work may return to the spec. If the decision and behavior remain sound but execution detail is missing, the work may return to the implementation plan.
 
 The same judgment applies when choosing where to return. The first re-entry point may turn out not to be the right one, and that is acceptable. A revisit that confirms an earlier artifact still holds is still useful because it narrows the problem and protects lower-level work from compensating for the wrong cause.
 

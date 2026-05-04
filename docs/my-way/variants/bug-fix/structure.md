@@ -60,7 +60,7 @@ The automated check that fails on the unfixed system and passes after the fix. B
 Optional. Include only when the defect reveals deeper issues:
 
 - expected behavior was never defined → link to the spec update
-- accepted user intent was missing, ambiguous, or changed → link to the Product Intent update
+- accepted user intent was missing, ambiguous, or has changed → link to the Product Intent update
 - the defect violates an invariant no ADR covers → link to the pre-ADR
 - the fix would require new boundaries → link to the full pre-coding sequence
 

@@ -114,7 +114,7 @@ Minor features and bug fixes do not always need a full Product Intent artifact.
 
 A minor feature can reference existing Product Intent or include a compact story statement inside the change note when the capability is localized and fits current architecture.
 
-A bug fix usually starts from expected behavior. It should escalate to Product Intent only when the defect reveals that the accepted user intent is missing, ambiguous, or meaningfully changing.
+A bug fix usually starts from expected behavior. It should escalate to Product Intent only when the defect reveals that the accepted user intent is missing, ambiguous, or being meaningfully changed.
 
 ## Summary
 

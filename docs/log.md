@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-04
+
+- my-way: copy-edit pass across `landing.html`, `pre-coding-phase.md`, `coding-phase.md`, the Product Intent note, the bug-fix variant, and the research and product-intent-review skills. Mostly added missing relative `that` (notably `"the user promise that downstream artifacts must preserve"` on the landing) and fixed tense/aspect (`"the process broke"` → `"is broken"`, `"meaningfully changing"` → `"being meaningfully changed"`).
+
 ## 2026-05-02
 
 - LOC dashboard: refreshed the static landing from `scripts/loc-dashboard.sh` after the Product Intent docs landed on `user-stories`; agents docs now report 4,941 lines and repo total is 104,263.
