@@ -2,6 +2,7 @@
 
 ## 2026-05-04
 
+- my-way: added `docs/my-way/informal-brief.md`, a personal-voice companion to the formal pre-/coding-phase notes that names the intuitions the structured docs cannot carry — intent is the hard part, brainstorm with a harness when it is stuck, prune to ~7 stories with forced justification, downstream must bend to intent. Linked from the landing hero and footer.
 - my-way: copy-edit pass across `landing.html`, `pre-coding-phase.md`, `coding-phase.md`, the Product Intent note, the bug-fix variant, and the research and product-intent-review skills. Mostly added missing relative `that` (notably `"the user promise that downstream artifacts must preserve"` on the landing) and fixed tense/aspect (`"the process broke"` → `"is broken"`, `"meaningfully changing"` → `"being meaningfully changed"`).
 
 ## 2026-05-02
