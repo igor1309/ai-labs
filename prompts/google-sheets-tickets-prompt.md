@@ -1,8 +1,7 @@
 ---
-title: "Тикеты из Google Sheets"
-date: "2026-05-03"
-type: "prompt"
-status: "final"
+date: 2026-05-03
+name: Тикеты из Google Sheets
+version: 0.0.1
 ---
 
 # Тикеты из Google Sheets
