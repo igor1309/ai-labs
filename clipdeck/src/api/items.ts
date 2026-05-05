@@ -1,33 +1,18 @@
 import { assembleSections } from "./assemble";
 import type { Env } from "./auth";
-import { discoverPrompts, discoverSkills, type SourceFile, type SourceFolder } from "./discovery";
-import { createGithubClient, GithubSourceMissingError, type GithubTreeEntry } from "./github";
+import { discoverPrompts, discoverSkills } from "./discovery";
+import { createGithubClient, GithubSourceMissingError } from "./github";
 import { json } from "./response";
 
 export async function handleItems(request: Request, env: Env): Promise<Response> {
   const github = createGithubClient(env.GITHUB_TOKEN);
-  let activeSource: "prompts" | "skills" = "prompts";
   try {
-    const promptEntries = await github.listDir("prompts");
-    const promptFiles = await Promise.all(
-      promptEntries
-        .filter((entry) => entry.type === "file")
-        .map(async (entry): Promise<SourceFile> => {
-          return {
-            content: await github.readFile(entry.path),
-            path: entry.path
-          };
-        })
-    );
-
-    activeSource = "skills";
-    const skillTree = await github.listRecursiveTree("dev-skills/public");
-    const skillFolders = await buildSkillFolders(skillTree, github.readFile);
+    const sources = await github.fetchAll();
 
     const body = JSON.stringify({
       sections: assembleSections(
-        discoverPrompts(promptFiles),
-        discoverSkills(skillFolders)
+        discoverPrompts(sources.prompts),
+        discoverSkills(sources.skills)
       )
     });
     const etag = await representationETag(body);
@@ -45,54 +30,15 @@ export async function handleItems(request: Request, env: Env): Promise<Response>
       status: 200
     });
   } catch (error) {
-    return githubErrorResponse(error, activeSource);
+    return githubErrorResponse(error);
   }
-}
-
-async function buildSkillFolders(
-  tree: GithubTreeEntry[],
-  readFile: (path: string) => Promise<string>
-): Promise<SourceFolder[]> {
-  const filesByFolder = new Map<string, SourceFile[]>();
-
-  for (const entry of tree) {
-    const folderPath = skillFolderPath(entry.path);
-    if (folderPath === undefined) {
-      continue;
-    }
-
-    const files = filesByFolder.get(folderPath) ?? [];
-    files.push({
-      content: entry.path.endsWith("/SKILL.md")
-        ? await readFile(`dev-skills/public/${entry.path}`)
-        : "",
-      path: `dev-skills/public/${entry.path}`
-    });
-    filesByFolder.set(folderPath, files);
-  }
-
-  return Array.from(filesByFolder, ([path, files]) => {
-    return {
-      files,
-      path
-    };
-  });
-}
-
-function skillFolderPath(path: string): string | undefined {
-  const [folder] = path.split("/");
-  if (folder === undefined || folder === "") {
-    return undefined;
-  }
-
-  return `dev-skills/public/${folder}`;
 }
 
 function sourceName(path: string): "prompts" | "skills" {
   return path === "prompts" ? "prompts" : "skills";
 }
 
-function githubErrorResponse(error: unknown, activeSource: "prompts" | "skills"): Response {
+function githubErrorResponse(error: unknown): Response {
   if (error instanceof GithubSourceMissingError) {
     return json({
       error: "source_missing",
@@ -102,7 +48,7 @@ function githubErrorResponse(error: unknown, activeSource: "prompts" | "skills")
 
   return json({
     error: "upstream_github_failure",
-    source: activeSource
+    source: "skills"
   }, 502);
 }
 
