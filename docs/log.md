@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-05
+
+- clipdeck: app version moved from footer to header (next to the `clipdeck` wordmark), keeping the original subtle styling. Bumped to v0.1.12 to ship together with the v0.1.11 prompt title/subtitle flip whose tag was never created.
+
 ## 2026-05-04
 
 - my-way: added `docs/my-way/informal-brief.md`, a personal-voice companion to the formal pre-/coding-phase notes that names the intuitions the structured docs cannot carry — intent is the hard part, brainstorm with a harness when it is stuck, prune to ~7 stories with forced justification, downstream must bend to intent. Linked from the landing hero and footer.
