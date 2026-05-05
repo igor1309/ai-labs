@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Env } from "../src/api/auth";
+import { bodyCacheKey, FRESHNESS_TTL_SECONDS, POINTER_URL } from "../src/api/cache";
 import worker from "../src/index";
 
 interface BlobNode {
@@ -32,8 +33,13 @@ interface BulkPayload {
 }
 
 describe("GET /api/items", () => {
-  afterEach(() => {
+  beforeEach(async () => {
+    await clearItemCacheForShas([]);
+  });
+
+  afterEach(async () => {
     vi.unstubAllGlobals();
+    await clearItemCacheForShas([]);
   });
 
   test("should return empty sections when prompts and skills are empty", async () => {
@@ -424,12 +430,169 @@ describe("GET /api/items", () => {
       { error: "upstream_github_failure", source: "skills" }
     ]);
   });
+
+  test("should issue zero github calls on a cache hit within freshness window", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      calls += 1;
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-cache-hit", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const callsAfterFirst = calls;
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([callsAfterFirst, calls]).toEqual([1, 1]);
+
+    await clearItemCacheForShas(["sha-cache-hit"]);
+  });
+
+  test("should issue exactly one github call on expired pointer with unchanged sha", async () => {
+    const calls: Array<{ query: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
+      const query = typeof init?.body === "string" ? (JSON.parse(init.body) as { query: string }).query : "";
+      calls.push({ query });
+      const isShaQuery = !query.includes("trunk:prompts");
+      if (isShaQuery) {
+        return Response.json({ data: { repository: { ref: { target: { oid: "sha-same" } } } } });
+      }
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-same", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const callsAfterFirst = calls.length;
+
+    await expirePointer("sha-same");
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([callsAfterFirst, calls.length]).toEqual([1, 2]);
+
+    await clearItemCacheForShas(["sha-same"]);
+  });
+
+  test("should issue exactly two github calls on expired pointer with changed sha", async () => {
+    const calls: Array<{ query: string }> = [];
+    let currentSha = "sha-old";
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
+      const query = typeof init?.body === "string" ? (JSON.parse(init.body) as { query: string }).query : "";
+      calls.push({ query });
+      const isShaQuery = !query.includes("trunk:prompts");
+      if (isShaQuery) {
+        return Response.json({ data: { repository: { ref: { target: { oid: currentSha } } } } });
+      }
+      return Response.json({ data: graphqlData({ prompts: [], sha: currentSha, skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const callsAfterFirst = calls.length;
+
+    currentSha = "sha-new";
+    await expirePointer("sha-old");
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([callsAfterFirst, calls.length]).toEqual([1, 3]);
+
+    await clearItemCacheForShas(["sha-old", "sha-new"]);
+  });
+
+  test("should return upstream failure when freshness check fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-warm", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    await expirePointer("sha-warm");
+
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return new Response("server error", { status: 500 });
+    }));
+
+    const response = await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([response.status, await response.json()]).toEqual([
+      502,
+      { error: "upstream_github_failure", source: "skills" }
+    ]);
+
+    await clearItemCacheForShas(["sha-warm"]);
+  });
+
+  test("should write pointer with freshness timestamp at or before now", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-pointer", skills: [] }) });
+    }));
+
+    const before = Date.now();
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const after = Date.now();
+
+    const pointer = await caches.default.match(POINTER_URL);
+    const payload = pointer === undefined ? undefined : JSON.parse(await pointer.text()) as { freshAtMs?: number; sha?: string };
+
+    expect([
+      payload?.sha,
+      typeof payload?.freshAtMs === "number" && payload.freshAtMs >= before && payload.freshAtMs <= after
+    ]).toEqual(["sha-pointer", true]);
+    expect(FRESHNESS_TTL_SECONDS).toBeLessThanOrEqual(10);
+
+    await clearItemCacheForShas(["sha-pointer"]);
+  });
+
+  test("should store body cache entry under sha-bearing key", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-keyed", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    const cached = await caches.default.match(bodyCacheKey("sha-keyed"));
+
+    expect(cached).toBeDefined();
+
+    await clearItemCacheForShas(["sha-keyed"]);
+  });
 });
 
 function makeEnv(): Env {
   return {
     GITHUB_TOKEN: "github-token"
   };
+}
+
+const KNOWN_TEST_SHAS = [
+  "sha-empty",
+  "sha-x",
+  "sha-1",
+  "sha-utf8",
+  "sha-rb",
+  "sha-bin",
+  "sha-cache-hit",
+  "sha-same",
+  "sha-old",
+  "sha-new",
+  "sha-warm",
+  "sha-pointer",
+  "sha-keyed"
+];
+
+async function clearItemCacheForShas(extra: readonly string[]): Promise<void> {
+  await caches.default.delete(POINTER_URL);
+  const shas = new Set([...KNOWN_TEST_SHAS, ...extra]);
+  await Promise.all(Array.from(shas, (sha) => caches.default.delete(bodyCacheKey(sha))));
+}
+
+async function expirePointer(sha: string): Promise<void> {
+  const expired = JSON.stringify({ freshAtMs: 0, sha });
+  await caches.default.put(POINTER_URL, new Response(expired, {
+    headers: {
+      "Cache-Control": "public, max-age=31536000",
+      "Content-Type": "application/json"
+    }
+  }));
 }
 
 function stubGraphqlOnce(payload: BulkPayload): void {

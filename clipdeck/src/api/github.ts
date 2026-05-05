@@ -8,6 +8,7 @@ export interface BulkSources {
 
 export interface GithubClient {
   fetchAll(): Promise<BulkSources>;
+  fetchSha(): Promise<string>;
 }
 
 export class GithubSourceMissingError extends Error {
@@ -35,12 +36,21 @@ interface GraphqlTree {
 
 type GraphqlObject = GraphqlBlob | GraphqlTree | Record<string, never>;
 
-interface GraphqlResponse {
+interface GraphqlBulkResponse {
   data?: {
     repository?: {
       prompts: GraphqlObject | null;
       ref: { target: { oid: string } | null } | null;
       skills: GraphqlObject | null;
+    } | null;
+  };
+  errors?: unknown;
+}
+
+interface GraphqlShaResponse {
+  data?: {
+    repository?: {
+      ref: { target: { oid: string } | null } | null;
     } | null;
   };
   errors?: unknown;
@@ -59,7 +69,7 @@ export function createGithubClient(token: string): GithubClient {
         throw new GithubUpstreamError();
       }
 
-      const body = await response.json() as GraphqlResponse;
+      const body = await response.json() as GraphqlBulkResponse;
       if (body.errors !== undefined || body.data?.repository === undefined || body.data.repository === null) {
         throw new GithubUpstreamError();
       }
@@ -84,9 +94,42 @@ export function createGithubClient(token: string): GithubClient {
         sha,
         skills: collectSkillFolders(skills)
       };
+    },
+    async fetchSha(): Promise<string> {
+      const response = await fetch("https://api.github.com/graphql", {
+        body: JSON.stringify({ query: SHA_QUERY }),
+        headers: githubHeaders(token),
+        method: "POST"
+      });
+
+      if (!response.ok) {
+        throw new GithubUpstreamError();
+      }
+
+      const body = await response.json() as GraphqlShaResponse;
+      if (body.errors !== undefined) {
+        throw new GithubUpstreamError();
+      }
+
+      const sha = body.data?.repository?.ref?.target?.oid;
+      if (typeof sha !== "string" || sha === "") {
+        throw new GithubUpstreamError();
+      }
+
+      return sha;
     }
   };
 }
+
+const SHA_QUERY = `
+query {
+  repository(owner: "igor1309", name: "ai-labs") {
+    ref(qualifiedName: "refs/heads/trunk") {
+      target { ... on Commit { oid } }
+    }
+  }
+}
+`;
 
 const BULK_QUERY = `
 query {
