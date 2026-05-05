@@ -1,3 +1,9 @@
+declare global {
+  interface CacheStorage {
+    readonly default: Cache;
+  }
+}
+
 export const FRESHNESS_TTL_SECONDS = 10;
 
 export const POINTER_URL = "https://clipdeck.cache.internal/api/items/current";
