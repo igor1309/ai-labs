@@ -60,6 +60,12 @@ button {
   border-bottom: 1px solid var(--border);
 }
 
+.library-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .library-title {
   margin: 0;
   font-size: 1.25rem;
@@ -255,10 +261,8 @@ button {
 }
 
 .app-version {
-  margin: 32px 0 0;
   color: var(--text-subtle);
   font-size: 0.7rem;
-  text-align: center;
 }
 
 .app-version:empty {

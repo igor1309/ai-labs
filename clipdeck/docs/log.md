@@ -2,6 +2,7 @@
 
 ## 2026-05-05
 
+- App version moved from the page footer to the toolbar, rendered next to the `clipdeck` wordmark with the existing footer styling (subtle color, 0.7rem). Released as v0.1.12 — bundles the v0.1.11 prompt title/subtitle flip that never deployed because no `clipdeck_v0.1.11` tag was created.
 - Prompt cards now mirror the skill card layout — the prompt's display name (front matter `name`, falling back to `title`) is rendered as the title and the filename slug becomes the subtitle, instead of the previous flipped layout that surfaced the slug as the title and the display name as the subtitle. Prompts without a `name`/`title` still fall back to the filename slug as title with no subtitle. Existing description and version derivation are unchanged. Released as v0.1.11.
 
 ## 2026-05-02

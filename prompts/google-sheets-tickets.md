@@ -1,10 +1,8 @@
 ---
 date: 2026-05-03
-name: Тикеты из Google Sheets
+name: Тикеты из Google Sheets (iFora)
 version: 0.0.1
 ---
-
-# Тикеты из Google Sheets
 
 ## Вход
 

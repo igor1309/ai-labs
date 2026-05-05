@@ -11,13 +11,15 @@
       <div data-loading class="loading-state" hidden>Loading…</div>
       <section data-library class="library" hidden>
         <header class="toolbar">
-          <h1 class="library-title">clipdeck</h1>
+          <div class="library-brand">
+            <h1 class="library-title">clipdeck</h1>
+            <span data-app-version aria-label="Version" class="app-version"></span>
+          </div>
           <button data-reload class="reload-btn" type="button">Reload</button>
         </header>
         <div data-sections class="sections"></div>
       </section>
       <p data-toast class="toast" role="status" aria-live="polite"></p>
-      <p data-app-version aria-label="Version" class="app-version"></p>
     </main>
     <script type="module" src="/app.js"></script>
   </body>
