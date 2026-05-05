@@ -1,7 +1,8 @@
 export const FRESHNESS_TTL_SECONDS = 10;
 
 export const POINTER_URL = "https://clipdeck.cache.internal/api/items/current";
-export const BODY_PREFIX = "https://clipdeck.cache.internal/api/items/sha/";
+
+const BODY_PREFIX = "https://clipdeck.cache.internal/api/items/sha/";
 
 export function bodyCacheKey(sha: string): string {
   return `${BODY_PREFIX}${encodeURIComponent(sha)}`;

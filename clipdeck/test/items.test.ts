@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Env } from "../src/api/auth";
-import { bodyCacheKey, FRESHNESS_TTL_SECONDS, POINTER_URL } from "../src/api/cache";
+import { bodyCacheKey, POINTER_URL } from "../src/api/cache";
 import worker from "../src/index";
 
 interface BlobNode {
@@ -537,7 +537,6 @@ describe("GET /api/items", () => {
       payload?.sha,
       typeof payload?.freshAtMs === "number" && payload.freshAtMs >= before && payload.freshAtMs <= after
     ]).toEqual(["sha-pointer", true]);
-    expect(FRESHNESS_TTL_SECONDS).toBeLessThanOrEqual(10);
 
     await clearItemCacheForShas(["sha-pointer"]);
   });

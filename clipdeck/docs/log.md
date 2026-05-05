@@ -2,6 +2,7 @@
 
 ## 2026-05-05
 
+- `/api/items` rebuilt around a single GitHub GraphQL request plus a SHA-keyed Workers Cache API entry. Steady-state requests within a 10-second freshness window serve the cached body with zero GitHub calls; expired pointers do a tiny SHA-only freshness query and either refresh the pointer (same SHA) or rebuild via the bulk GraphQL fetch (changed SHA). Replaces the prior 43-call REST fan-out (1 listDir + N readFile + 1 listRecursiveTree + M serial readFile) with at most 2 GitHub subrequests per request. Governed by ADR-006.
 - App version moved from the page footer to the toolbar, rendered next to the `clipdeck` wordmark with the existing footer styling (subtle color, 0.7rem). Released as v0.1.12 — bundles the v0.1.11 prompt title/subtitle flip that never deployed because no `clipdeck_v0.1.11` tag was created.
 - Prompt cards now mirror the skill card layout — the prompt's display name (front matter `name`, falling back to `title`) is rendered as the title and the filename slug becomes the subtitle, instead of the previous flipped layout that surfaced the slug as the title and the display name as the subtitle. Prompts without a `name`/`title` still fall back to the filename slug as title with no subtitle. Existing description and version derivation are unchanged. Released as v0.1.11.
 

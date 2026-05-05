@@ -70,7 +70,7 @@ export function createGithubClient(token: string): GithubClient {
       }
 
       const body = await response.json() as GraphqlBulkResponse;
-      if (body.errors !== undefined || body.data?.repository === undefined || body.data.repository === null) {
+      if (hasErrors(body) || body.data?.repository === undefined || body.data.repository === null) {
         throw new GithubUpstreamError();
       }
 
@@ -107,7 +107,7 @@ export function createGithubClient(token: string): GithubClient {
       }
 
       const body = await response.json() as GraphqlShaResponse;
-      if (body.errors !== undefined) {
+      if (hasErrors(body)) {
         throw new GithubUpstreamError();
       }
 
@@ -166,6 +166,16 @@ query {
   }
 }
 `;
+
+function hasErrors(body: { errors?: unknown }): boolean {
+  if (body.errors === undefined || body.errors === null) {
+    return false;
+  }
+  if (Array.isArray(body.errors)) {
+    return body.errors.length > 0;
+  }
+  return true;
+}
 
 function githubHeaders(token: string): Record<string, string> {
   return {
