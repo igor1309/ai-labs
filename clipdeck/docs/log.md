@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-05
+
+- Prompt cards now mirror the skill card layout — the prompt's display name (front matter `name`, falling back to `title`) is rendered as the title and the filename slug becomes the subtitle, instead of the previous flipped layout that surfaced the slug as the title and the display name as the subtitle. Prompts without a `name`/`title` still fall back to the filename slug as title with no subtitle. Existing description and version derivation are unchanged. Released as v0.1.11.
+
 ## 2026-05-02
 
 - Plain-text prompts supported — `prompts/*.txt` are now valid items, and prompts without front matter `description`/`summary` derive their description from a body-content prefix; titles fall back to the filename stem regardless of extension. Released as v0.1.10.

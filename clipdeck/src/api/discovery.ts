@@ -30,20 +30,31 @@ export function discoverPrompts(files: SourceFile[]): Item[] {
     }
 
     const parsed = parse(file.content);
+    const slug = promptFallbackTitle(file.path);
+    const displayName = nonEmpty(parsed.name) ?? nonEmpty(parsed.title);
     const item: Item = {
       body: parsed.body,
       id: file.path,
       kind: "prompt",
-      title: parsed.title ?? promptFallbackTitle(file.path)
+      title: displayName ?? slug
     };
 
-    assignOptionalFields(item, parsed);
+    if (displayName !== undefined) {
+      item.subtitle = slug;
+    }
 
-    if (item.description === undefined) {
+    const description = nonEmpty(parsed.description) ?? nonEmpty(parsed.summary);
+    if (description !== undefined) {
+      item.description = descriptionPrefix(description);
+    } else {
       const bodyFallback = parsed.body.trim();
       if (bodyFallback !== "") {
         item.description = descriptionPrefix(bodyFallback);
       }
+    }
+
+    if (parsed.version !== undefined) {
+      item.version = parsed.version;
     }
 
     return [item];
@@ -107,6 +118,10 @@ function skillTitle(name: string | undefined, h1: string | undefined): string {
 function extractH1(body: string): string | undefined {
   const match = body.match(/^#[ \t]+(.+?)[ \t]*$/m);
   return match?.[1];
+}
+
+function nonEmpty(value: string | undefined): string | undefined {
+  return value !== undefined && value !== "" ? value : undefined;
 }
 
 function descriptionPrefix(value: string): string {
