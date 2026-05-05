@@ -93,11 +93,12 @@ interface ParsedFieldsForItem {
 }
 
 function assignOptionalFields(item: Item, parsed: ParsedFieldsForItem): void {
-  if (parsed.name !== undefined && parsed.name !== "") {
-    item.subtitle = parsed.name;
+  const name = nonEmpty(parsed.name);
+  if (name !== undefined) {
+    item.subtitle = name;
   }
-  const description = parsed.description ?? parsed.summary;
-  if (description !== undefined && description !== "") {
+  const description = nonEmpty(parsed.description) ?? nonEmpty(parsed.summary);
+  if (description !== undefined) {
     item.description = descriptionPrefix(description);
   }
   if (parsed.version !== undefined) {
@@ -106,13 +107,7 @@ function assignOptionalFields(item: Item, parsed: ParsedFieldsForItem): void {
 }
 
 function skillTitle(name: string | undefined, h1: string | undefined): string {
-  if (h1 !== undefined) {
-    return h1;
-  }
-  if (name !== undefined && name !== "") {
-    return name;
-  }
-  return "error: no skill name";
+  return h1 ?? nonEmpty(name) ?? "error: no skill name";
 }
 
 function extractH1(body: string): string | undefined {
