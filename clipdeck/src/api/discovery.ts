@@ -30,20 +30,31 @@ export function discoverPrompts(files: SourceFile[]): Item[] {
     }
 
     const parsed = parse(file.content);
+    const slug = promptFallbackTitle(file.path);
+    const displayName = nonEmpty(parsed.name) ?? nonEmpty(parsed.title);
     const item: Item = {
       body: parsed.body,
       id: file.path,
       kind: "prompt",
-      title: parsed.title ?? promptFallbackTitle(file.path)
+      title: displayName ?? slug
     };
 
-    assignOptionalFields(item, parsed);
+    if (displayName !== undefined) {
+      item.subtitle = slug;
+    }
 
-    if (item.description === undefined) {
+    const description = nonEmpty(parsed.description) ?? nonEmpty(parsed.summary);
+    if (description !== undefined) {
+      item.description = descriptionPrefix(description);
+    } else {
       const bodyFallback = parsed.body.trim();
       if (bodyFallback !== "") {
         item.description = descriptionPrefix(bodyFallback);
       }
+    }
+
+    if (parsed.version !== undefined) {
+      item.version = parsed.version;
     }
 
     return [item];
@@ -82,11 +93,12 @@ interface ParsedFieldsForItem {
 }
 
 function assignOptionalFields(item: Item, parsed: ParsedFieldsForItem): void {
-  if (parsed.name !== undefined && parsed.name !== "") {
-    item.subtitle = parsed.name;
+  const name = nonEmpty(parsed.name);
+  if (name !== undefined) {
+    item.subtitle = name;
   }
-  const description = parsed.description ?? parsed.summary;
-  if (description !== undefined && description !== "") {
+  const description = nonEmpty(parsed.description) ?? nonEmpty(parsed.summary);
+  if (description !== undefined) {
     item.description = descriptionPrefix(description);
   }
   if (parsed.version !== undefined) {
@@ -95,18 +107,16 @@ function assignOptionalFields(item: Item, parsed: ParsedFieldsForItem): void {
 }
 
 function skillTitle(name: string | undefined, h1: string | undefined): string {
-  if (h1 !== undefined) {
-    return h1;
-  }
-  if (name !== undefined && name !== "") {
-    return name;
-  }
-  return "error: no skill name";
+  return h1 ?? nonEmpty(name) ?? "error: no skill name";
 }
 
 function extractH1(body: string): string | undefined {
   const match = body.match(/^#[ \t]+(.+?)[ \t]*$/m);
   return match?.[1];
+}
+
+function nonEmpty(value: string | undefined): string | undefined {
+  return value !== undefined && value !== "" ? value : undefined;
 }
 
 function descriptionPrefix(value: string): string {

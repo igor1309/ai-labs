@@ -42,8 +42,12 @@ describe("discoverPrompts", () => {
     ]);
   });
 
-  test("should derive prompt title from front matter title or filename", () => {
+  test("should derive prompt title from front matter name when present, then title, then filename", () => {
     const items = discoverPrompts([
+      {
+        content: "---\nname: Display Name\n---\n# Body\n",
+        path: "prompts/named.md"
+      },
       {
         content: "---\ntitle: Front Title\n---\n# Body\n",
         path: "prompts/front.md"
@@ -54,14 +58,18 @@ describe("discoverPrompts", () => {
       }
     ]);
 
-    expect(items.map((item) => item.title)).toEqual(["Front Title", "fallback"]);
+    expect(items.map((item) => item.title)).toEqual(["Display Name", "Front Title", "fallback"]);
   });
 
-  test("should expose prompt subtitle from front matter name", () => {
+  test("should expose prompt subtitle as filename slug when a display name is present", () => {
     const items = discoverPrompts([
       {
         content: "---\nname: Friendly Name\n---\nBody\n",
         path: "prompts/named.md"
+      },
+      {
+        content: "---\ntitle: Titled\n---\nBody\n",
+        path: "prompts/titled.md"
       },
       {
         content: "# Body\n",
@@ -69,7 +77,7 @@ describe("discoverPrompts", () => {
       }
     ]);
 
-    expect(items.map((item) => item.subtitle)).toEqual(["Friendly Name", undefined]);
+    expect(items.map((item) => item.subtitle)).toEqual(["named", "titled", undefined]);
   });
 
   test("should expose prompt description prefix from front matter description, summary, or body fallback", () => {

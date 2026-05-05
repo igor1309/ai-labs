@@ -220,6 +220,7 @@ describe("GET /api/items", () => {
               description: "Prompt body",
               id: "prompts/foo.md",
               kind: "prompt",
+              subtitle: "foo",
               title: "Foo Prompt"
             }
           ],
