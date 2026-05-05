@@ -1,98 +1,78 @@
 import { assembleSections } from "./assemble";
 import type { Env } from "./auth";
-import { discoverPrompts, discoverSkills, type SourceFile, type SourceFolder } from "./discovery";
-import { createGithubClient, GithubSourceMissingError, type GithubTreeEntry } from "./github";
+import { createItemCache, isPointerFresh, type ItemCache } from "./cache";
+import { discoverPrompts, discoverSkills } from "./discovery";
+import { createGithubClient, type GithubClient, GithubSourceMissingError } from "./github";
 import { json } from "./response";
 
 export async function handleItems(request: Request, env: Env): Promise<Response> {
   const github = createGithubClient(env.GITHUB_TOKEN);
-  let activeSource: "prompts" | "skills" = "prompts";
+  const cache = createItemCache();
+
   try {
-    const promptEntries = await github.listDir("prompts");
-    const promptFiles = await Promise.all(
-      promptEntries
-        .filter((entry) => entry.type === "file")
-        .map(async (entry): Promise<SourceFile> => {
-          return {
-            content: await github.readFile(entry.path),
-            path: entry.path
-          };
-        })
-    );
-
-    activeSource = "skills";
-    const skillTree = await github.listRecursiveTree("dev-skills/public");
-    const skillFolders = await buildSkillFolders(skillTree, github.readFile);
-
-    const body = JSON.stringify({
-      sections: assembleSections(
-        discoverPrompts(promptFiles),
-        discoverSkills(skillFolders)
-      )
-    });
-    const etag = await representationETag(body);
-    const headers = itemHeaders(etag);
-
-    if (matchesETag(request.headers.get("If-None-Match"), etag)) {
-      return new Response(null, {
-        headers,
-        status: 304
-      });
-    }
-
-    return new Response(body, {
-      headers,
-      status: 200
-    });
+    const body = await loadBody(github, cache);
+    return await respondWith(body, request);
   } catch (error) {
-    return githubErrorResponse(error, activeSource);
+    return githubErrorResponse(error);
   }
 }
 
-async function buildSkillFolders(
-  tree: GithubTreeEntry[],
-  readFile: (path: string) => Promise<string>
-): Promise<SourceFolder[]> {
-  const filesByFolder = new Map<string, SourceFile[]>();
+async function loadBody(github: GithubClient, cache: ItemCache): Promise<string> {
+  const pointer = await cache.readPointer();
 
-  for (const entry of tree) {
-    const folderPath = skillFolderPath(entry.path);
-    if (folderPath === undefined) {
-      continue;
+  if (pointer !== undefined && isPointerFresh(pointer, Date.now())) {
+    const cached = await cache.readBody(pointer.sha);
+    if (cached !== undefined) {
+      return cached;
     }
-
-    const files = filesByFolder.get(folderPath) ?? [];
-    files.push({
-      content: entry.path.endsWith("/SKILL.md")
-        ? await readFile(`dev-skills/public/${entry.path}`)
-        : "",
-      path: `dev-skills/public/${entry.path}`
-    });
-    filesByFolder.set(folderPath, files);
   }
 
-  return Array.from(filesByFolder, ([path, files]) => {
-    return {
-      files,
-      path
-    };
+  if (pointer !== undefined) {
+    const currentSha = await github.fetchSha();
+    if (currentSha === pointer.sha) {
+      const cached = await cache.readBody(pointer.sha);
+      if (cached !== undefined) {
+        await cache.writePointer(pointer.sha);
+        return cached;
+      }
+    }
+  }
+
+  const sources = await github.fetchAll();
+  const body = JSON.stringify({
+    sections: assembleSections(
+      discoverPrompts(sources.prompts),
+      discoverSkills(sources.skills)
+    )
   });
+
+  await cache.writeBody(sources.sha, body);
+  await cache.writePointer(sources.sha);
+  return body;
 }
 
-function skillFolderPath(path: string): string | undefined {
-  const [folder] = path.split("/");
-  if (folder === undefined || folder === "") {
-    return undefined;
+async function respondWith(body: string, request: Request): Promise<Response> {
+  const etag = await representationETag(body);
+  const headers = itemHeaders(etag);
+
+  if (matchesETag(request.headers.get("If-None-Match"), etag)) {
+    return new Response(null, {
+      headers,
+      status: 304
+    });
   }
 
-  return `dev-skills/public/${folder}`;
+  return new Response(body, {
+    headers,
+    status: 200
+  });
 }
 
 function sourceName(path: string): "prompts" | "skills" {
   return path === "prompts" ? "prompts" : "skills";
 }
 
-function githubErrorResponse(error: unknown, activeSource: "prompts" | "skills"): Response {
+function githubErrorResponse(error: unknown): Response {
   if (error instanceof GithubSourceMissingError) {
     return json({
       error: "source_missing",
@@ -102,7 +82,7 @@ function githubErrorResponse(error: unknown, activeSource: "prompts" | "skills")
 
   return json({
     error: "upstream_github_failure",
-    source: activeSource
+    source: "skills"
   }, 502);
 }
 

@@ -1,17 +1,53 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Env } from "../src/api/auth";
+import { bodyCacheKey, POINTER_URL } from "../src/api/cache";
 import worker from "../src/index";
 
+interface BlobNode {
+  isBinary?: boolean;
+  text: string | null;
+}
+
+interface PromptEntry {
+  blob?: BlobNode;
+  name: string;
+  type: "blob" | "tree";
+}
+
+interface SkillFileEntry {
+  blob?: BlobNode;
+  name: string;
+  type: "blob" | "tree";
+}
+
+interface SkillFolderEntry {
+  files: SkillFileEntry[];
+  name: string;
+}
+
+interface BulkPayload {
+  prompts: PromptEntry[] | null;
+  sha: string;
+  skills: SkillFolderEntry[] | null;
+}
+
 describe("GET /api/items", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  beforeEach(async () => {
+    await clearItemCacheForShas([]);
   });
 
-  test("should return empty sections without authorization", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      return Response.json([]);
-    }));
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    await clearItemCacheForShas([]);
+  });
+
+  test("should return empty sections when prompts and skills are empty", async () => {
+    stubGraphqlOnce({
+      prompts: [],
+      sha: "sha-empty",
+      skills: []
+    });
 
     const response = await worker.fetch(
       new Request("https://clipdeck.example/api/items"),
@@ -22,58 +58,19 @@ describe("GET /api/items", () => {
       200,
       {
         sections: [
-          {
-            id: "prompts",
-            items: [],
-            title: "Prompts"
-          },
-          {
-            id: "skills",
-            items: [],
-            title: "Skills"
-          }
+          { id: "prompts", items: [], title: "Prompts" },
+          { id: "skills", items: [], title: "Skills" }
         ]
       }
     ]);
   });
 
-  test("should return prompts and skills sections without clipdeck auth header", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      return Response.json([]);
-    }));
-
-    const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items"),
-      makeEnv()
-    );
-
-    let body: unknown = await response.text();
-    try {
-      body = JSON.parse(String(body));
-    } catch {
-      body = { error: "not_json" };
-    }
-
-    expect(body).toEqual({
-      sections: [
-        {
-          id: "prompts",
-          items: [],
-          title: "Prompts"
-        },
-        {
-          id: "skills",
-          items: [],
-          title: "Skills"
-        }
-      ]
-    });
-  });
-
   test("should send validators for item metadata revalidation", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      return Response.json([]);
-    }));
+    stubGraphqlOnce({
+      prompts: [],
+      sha: "sha-empty",
+      skills: []
+    });
 
     const response = await worker.fetch(
       new Request("https://clipdeck.example/api/items"),
@@ -82,17 +79,15 @@ describe("GET /api/items", () => {
 
     expect([
       response.headers.get("Cache-Control"),
-      response.headers.get("ETag")
+      Boolean(response.headers.get("ETag"))
     ]).toEqual([
       "no-cache",
-      "\"f93aabe7e9b94554d2a8ed3be82b119077d124840fae01af277af2d29d94dbb0\""
+      true
     ]);
   });
 
   test("should return not modified when item metadata validator matches", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      return Response.json([]);
-    }));
+    stubGraphql(() => ({ prompts: [], sha: "sha-empty", skills: [] }));
 
     const firstResponse = await worker.fetch(
       new Request("https://clipdeck.example/api/items"),
@@ -112,14 +107,18 @@ describe("GET /api/items", () => {
   });
 
   test("should return not modified when weak or wildcard validators match", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      return Response.json([]);
-    }));
+    stubGraphql(() => ({ prompts: [], sha: "sha-empty", skills: [] }));
+
+    const firstResponse = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+    const etag = String(firstResponse.headers.get("ETag"));
 
     const response = await worker.fetch(
       new Request("https://clipdeck.example/api/items", {
         headers: {
-          "If-None-Match": "W/\"f93aabe7e9b94554d2a8ed3be82b119077d124840fae01af277af2d29d94dbb0\", *"
+          "If-None-Match": `W/${etag}, *`
         }
       }),
       makeEnv()
@@ -128,89 +127,122 @@ describe("GET /api/items", () => {
     expect(response.status).toBe(304);
   });
 
-  test("should identify clipdeck as user agent for GitHub requests", async () => {
-    const fetchCalls: RequestInit[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
-      if (init) {
-        fetchCalls.push(init);
-      }
-
-      return Response.json([]);
+  test("should identify clipdeck as user agent for GitHub graphql", async () => {
+    const fetchCalls: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo, init?: RequestInit) => {
+      fetchCalls.push({ init, url: String(input) });
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-x", skills: [] }) });
     }));
 
     await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
     expect(fetchCalls).toEqual([
       expect.objectContaining({
-        headers: expect.objectContaining({
-          "User-Agent": "clipdeck"
-        })
-      }),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "User-Agent": "clipdeck"
-        })
+        init: expect.objectContaining({
+          headers: expect.objectContaining({
+            "User-Agent": "clipdeck"
+          }),
+          method: "POST"
+        }),
+        url: "https://api.github.com/graphql"
       })
     ]);
   });
 
-  test("should return discovered prompt and skill items from GitHub contents", async () => {
+  test("should issue exactly one fetch to graphql for a cold rebuild", async () => {
+    const fetchCalls: string[] = [];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-
-      if (url.includes("/contents/prompts?")) {
-        return Response.json([
-          { path: "prompts/foo.md", type: "file" },
-          { path: "prompts/sub", type: "dir" }
-        ]);
-      }
-
-      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
-        return Response.json({
-          tree: [
-            { path: "example/SKILL.md", type: "blob" },
-            { path: "example/helper.py", type: "blob" }
-          ],
-          truncated: false
-        });
-      }
-
-      if (url.includes("/contents/prompts/foo.md?")) {
-        return Response.json({
-          content: btoa("---\ntitle: Foo Prompt\n---\nPrompt body\n"),
-          encoding: "base64"
-        });
-      }
-
-      if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
-        return Response.json({
-          content: btoa("---\nname: example\ndescription: Skill details\n---\n# Example Skill\n\nSkill body\n"),
-          encoding: "base64"
-        });
-      }
-
-      return new Response("not found", { status: 404 });
+      fetchCalls.push(String(input));
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-x", skills: [] }) });
     }));
 
-    const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+    await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
-    const body = await response.json();
+    expect(fetchCalls).toEqual(["https://api.github.com/graphql"]);
+  });
 
-    expect(body).toEqual({
+  test("should not call any github contents or trees endpoint", async () => {
+    const fetchCalls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      fetchCalls.push(String(input));
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-x", skills: [] }) });
+    }));
+
+    await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    expect(fetchCalls.some((url) => url.includes("/contents/") || url.includes("/git/trees/"))).toBe(false);
+  });
+
+  test("should restrict graphql query to allowlisted source paths", async () => {
+    const queries: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
+      const body = init?.body;
+      if (typeof body === "string") {
+        const parsed = JSON.parse(body) as { query?: string };
+        if (typeof parsed.query === "string") {
+          queries.push(parsed.query);
+        }
+      }
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-x", skills: [] }) });
+    }));
+
+    await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    const query = queries[0] ?? "";
+    expect([
+      query.includes("trunk:prompts"),
+      query.includes("trunk:dev-skills/public"),
+      query.includes("trunk:.github"),
+      query.includes("trunk:src")
+    ]).toEqual([true, true, false, false]);
+  });
+
+  test("should return discovered prompt and skill items from graphql", async () => {
+    stubGraphqlOnce({
+      prompts: [
+        {
+          blob: { text: "---\ntitle: Foo Prompt\n---\nPrompt body\n" },
+          name: "foo.md",
+          type: "blob"
+        },
+        { name: "sub", type: "tree" }
+      ],
+      sha: "sha-1",
+      skills: [
+        {
+          files: [
+            {
+              blob: {
+                text: "---\nname: example\ndescription: Skill details\n---\n# Example Skill\n\nSkill body\n"
+              },
+              name: "SKILL.md",
+              type: "blob"
+            },
+            { name: "helper.py", type: "blob" }
+          ],
+          name: "example"
+        }
+      ]
+    });
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    expect(await response.json()).toEqual({
       sections: [
         {
           id: "prompts",
@@ -245,219 +277,282 @@ describe("GET /api/items", () => {
     });
   });
 
-  test("should preserve utf8 prompt body decoded from GitHub contents", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-
-      if (url.includes("/contents/prompts?")) {
-        return Response.json([
-          { path: "prompts/foo.md", type: "file" }
-        ]);
-      }
-
-      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
-        return Response.json({
-          tree: [],
-          truncated: false
-        });
-      }
-
-      if (url.includes("/contents/prompts/foo.md?")) {
-        return Response.json({
-          content: encodeGithubContent("---\ntitle: Foo Prompt\n---\ncafé\nпривет\n"),
-          encoding: "base64"
-        });
-      }
-
-      return new Response("not found", { status: 404 });
-    }));
+  test("should preserve utf8 prompt body from graphql text", async () => {
+    stubGraphqlOnce({
+      prompts: [
+        {
+          blob: { text: "---\ntitle: Foo Prompt\n---\ncafé\nпривет\n" },
+          name: "foo.md",
+          type: "blob"
+        }
+      ],
+      sha: "sha-utf8",
+      skills: []
+    });
 
     const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
     const body = await response.json() as {
-      sections: Array<{
-        items: Array<{
-          body: string;
-        }>;
-      }>;
+      sections: Array<{ items: Array<{ body: string }> }>;
     };
 
     expect(body.sections[0]?.items.map((item) => item.body)).toEqual(["café\nпривет\n"]);
   });
 
   test("should mark skills with sibling directories as resource backed", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-
-      if (url.includes("/contents/prompts?")) {
-        return Response.json([]);
-      }
-
-      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
-        return Response.json({
-          tree: [
-            { path: "example/SKILL.md", type: "blob" },
-            { path: "example/references", type: "tree" }
+    stubGraphqlOnce({
+      prompts: [],
+      sha: "sha-rb",
+      skills: [
+        {
+          files: [
+            {
+              blob: { text: "---\ndescription: Skill details\n---\nSkill body\n" },
+              name: "SKILL.md",
+              type: "blob"
+            },
+            { name: "references", type: "tree" }
           ],
-          truncated: false
-        });
-      }
-
-      if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
-        return Response.json({
-          content: encodeGithubContent("---\ndescription: Skill details\n---\nSkill body\n"),
-          encoding: "base64"
-        });
-      }
-
-      return new Response("not found", { status: 404 });
-    }));
+          name: "example"
+        }
+      ]
+    });
 
     const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
     const body = await response.json() as {
-      sections: Array<{
-        items: Array<{
-          skillShape?: string;
-        }>;
-      }>;
+      sections: Array<{ items: Array<{ skillShape?: string }> }>;
     };
 
     expect(body.sections[1]?.items.map((item) => item.skillShape)).toEqual(["resource-backed"]);
   });
 
-  test("should discover skills from recursive GitHub tree", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-
-      if (url.includes("/contents/prompts?")) {
-        return Response.json([]);
-      }
-
-      if (url.includes("/git/trees/trunk:dev-skills/public?")) {
-        return Response.json({
-          tree: [
-            { path: "example/SKILL.md", type: "blob" },
-            { path: "example/references", type: "tree" }
-          ],
-          truncated: false
-        });
-      }
-
-      if (url.includes("/contents/dev-skills/public/example/SKILL.md?")) {
-        return Response.json({
-          content: encodeGithubContent("---\ndescription: Skill details\n---\nSkill body\n"),
-          encoding: "base64"
-        });
-      }
-
-      return Response.json({ message: "unexpected request" }, { status: 500 });
-    }));
+  test("should ignore binary blobs returned by graphql", async () => {
+    stubGraphqlOnce({
+      prompts: [
+        {
+          blob: { isBinary: true, text: null },
+          name: "logo.png",
+          type: "blob"
+        },
+        {
+          blob: { text: "---\ntitle: Foo Prompt\n---\nPrompt body\n" },
+          name: "foo.md",
+          type: "blob"
+        }
+      ],
+      sha: "sha-bin",
+      skills: []
+    });
 
     const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
     const body = await response.json() as {
-      sections: Array<{
-        items: Array<{
-          id: string;
-          skillShape?: string;
-        }>;
-      }>;
+      sections: Array<{ items: Array<{ id: string }> }>;
     };
 
-    expect(body.sections[1]?.items.map((item) => [item.id, item.skillShape])).toEqual([
-      ["dev-skills/public/example/SKILL.md", "resource-backed"]
-    ]);
+    expect(body.sections[0]?.items.map((item) => item.id)).toEqual(["prompts/foo.md"]);
   });
 
-  test("should return source missing when an allowlisted source directory is absent", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-
-      if (url.includes("/contents/prompts?")) {
-        return Response.json({ message: "Not Found" }, { status: 404 });
-      }
-
-      return Response.json([]);
-    }));
+  test("should return source missing when prompts source is absent", async () => {
+    stubGraphqlOnce({
+      prompts: null,
+      sha: "sha-x",
+      skills: []
+    });
 
     const response = await worker.fetch(
-      new Request("https://clipdeck.example/api/items", {
-        headers: {
-          Authorization: "Bearer shared-secret"
-        }
-      }),
+      new Request("https://clipdeck.example/api/items"),
       makeEnv()
     );
 
     expect([response.status, await response.json()]).toEqual([
       502,
-      {
-        error: "source_missing",
-        source: "prompts"
-      }
+      { error: "source_missing", source: "prompts" }
     ]);
   });
 
-  test("should return upstream failure when GitHub file read fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
+  test("should return source missing when skills source is absent", async () => {
+    stubGraphqlOnce({
+      prompts: [],
+      sha: "sha-x",
+      skills: null
+    });
 
-      if (url.includes("/contents/prompts?")) {
-        return Response.json([
-          { path: "prompts/foo.md", type: "file" }
-        ]);
-      }
-
-      if (url.includes("/contents/dev-skills/public?")) {
-        return Response.json([]);
-      }
-
-      return Response.json({ message: "server error" }, { status: 500 });
-    }));
-
-    let response: Response;
-    try {
-      response = await worker.fetch(
-        new Request("https://clipdeck.example/api/items", {
-          headers: {
-            Authorization: "Bearer shared-secret"
-          }
-        }),
-        makeEnv()
-      );
-    } catch {
-      response = Response.json({ error: "threw" }, { status: 599 });
-    }
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
 
     expect([response.status, await response.json()]).toEqual([
       502,
-      {
-        error: "upstream_github_failure",
-        source: "prompts"
-      }
+      { error: "source_missing", source: "skills" }
     ]);
+  });
+
+  test("should return upstream failure when graphql request fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return new Response("server error", { status: 500 });
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    expect([response.status, await response.json()]).toEqual([
+      502,
+      { error: "upstream_github_failure", source: "skills" }
+    ]);
+  });
+
+  test("should return upstream failure when graphql payload reports errors", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ errors: [{ message: "rate limited" }] });
+    }));
+
+    const response = await worker.fetch(
+      new Request("https://clipdeck.example/api/items"),
+      makeEnv()
+    );
+
+    expect([response.status, await response.json()]).toEqual([
+      502,
+      { error: "upstream_github_failure", source: "skills" }
+    ]);
+  });
+
+  test("should issue zero github calls on a cache hit within freshness window", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      calls += 1;
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-cache-hit", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const callsAfterFirst = calls;
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([callsAfterFirst, calls]).toEqual([1, 1]);
+
+    await clearItemCacheForShas(["sha-cache-hit"]);
+  });
+
+  test("should issue exactly one github call on expired pointer with unchanged sha", async () => {
+    const calls: Array<{ query: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
+      const query = typeof init?.body === "string" ? (JSON.parse(init.body) as { query: string }).query : "";
+      calls.push({ query });
+      const isShaQuery = !query.includes("trunk:prompts");
+      if (isShaQuery) {
+        return Response.json({ data: { repository: { ref: { target: { oid: "sha-same" } } } } });
+      }
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-same", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const callsAfterFirst = calls.length;
+
+    await expirePointer("sha-same");
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([callsAfterFirst, calls.length]).toEqual([1, 2]);
+
+    await clearItemCacheForShas(["sha-same"]);
+  });
+
+  test("should issue exactly two github calls on expired pointer with changed sha", async () => {
+    const calls: Array<{ query: string }> = [];
+    let currentSha = "sha-old";
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
+      const query = typeof init?.body === "string" ? (JSON.parse(init.body) as { query: string }).query : "";
+      calls.push({ query });
+      const isShaQuery = !query.includes("trunk:prompts");
+      if (isShaQuery) {
+        return Response.json({ data: { repository: { ref: { target: { oid: currentSha } } } } });
+      }
+      return Response.json({ data: graphqlData({ prompts: [], sha: currentSha, skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const callsAfterFirst = calls.length;
+
+    currentSha = "sha-new";
+    await expirePointer("sha-old");
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([callsAfterFirst, calls.length]).toEqual([1, 3]);
+
+    await clearItemCacheForShas(["sha-old", "sha-new"]);
+  });
+
+  test("should return upstream failure when freshness check fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-warm", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    await expirePointer("sha-warm");
+
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return new Response("server error", { status: 500 });
+    }));
+
+    const response = await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    expect([response.status, await response.json()]).toEqual([
+      502,
+      { error: "upstream_github_failure", source: "skills" }
+    ]);
+
+    await clearItemCacheForShas(["sha-warm"]);
+  });
+
+  test("should write pointer with freshness timestamp at or before now", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-pointer", skills: [] }) });
+    }));
+
+    const before = Date.now();
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+    const after = Date.now();
+
+    const pointer = await caches.default.match(POINTER_URL);
+    const payload = pointer === undefined ? undefined : JSON.parse(await pointer.text()) as { freshAtMs?: number; sha?: string };
+
+    expect([
+      payload?.sha,
+      typeof payload?.freshAtMs === "number" && payload.freshAtMs >= before && payload.freshAtMs <= after
+    ]).toEqual(["sha-pointer", true]);
+
+    await clearItemCacheForShas(["sha-pointer"]);
+  });
+
+  test("should store body cache entry under sha-bearing key", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      return Response.json({ data: graphqlData({ prompts: [], sha: "sha-keyed", skills: [] }) });
+    }));
+
+    await worker.fetch(new Request("https://clipdeck.example/api/items"), makeEnv());
+
+    const cached = await caches.default.match(bodyCacheKey("sha-keyed"));
+
+    expect(cached).toBeDefined();
+
+    await clearItemCacheForShas(["sha-keyed"]);
   });
 });
 
@@ -467,6 +562,82 @@ function makeEnv(): Env {
   };
 }
 
-function encodeGithubContent(content: string): string {
-  return btoa(String.fromCharCode(...new TextEncoder().encode(content)));
+const KNOWN_TEST_SHAS = [
+  "sha-empty",
+  "sha-x",
+  "sha-1",
+  "sha-utf8",
+  "sha-rb",
+  "sha-bin",
+  "sha-cache-hit",
+  "sha-same",
+  "sha-old",
+  "sha-new",
+  "sha-warm",
+  "sha-pointer",
+  "sha-keyed"
+];
+
+async function clearItemCacheForShas(extra: readonly string[]): Promise<void> {
+  await caches.default.delete(POINTER_URL);
+  const shas = new Set([...KNOWN_TEST_SHAS, ...extra]);
+  await Promise.all(Array.from(shas, (sha) => caches.default.delete(bodyCacheKey(sha))));
+}
+
+async function expirePointer(sha: string): Promise<void> {
+  const expired = JSON.stringify({ freshAtMs: 0, sha });
+  await caches.default.put(POINTER_URL, new Response(expired, {
+    headers: {
+      "Cache-Control": "public, max-age=31536000",
+      "Content-Type": "application/json"
+    }
+  }));
+}
+
+function stubGraphqlOnce(payload: BulkPayload): void {
+  stubGraphql(() => payload);
+}
+
+function stubGraphql(provider: () => BulkPayload): void {
+  vi.stubGlobal("fetch", vi.fn(async () => {
+    return Response.json({ data: graphqlData(provider()) });
+  }));
+}
+
+function graphqlData(payload: BulkPayload): unknown {
+  return {
+    repository: {
+      prompts: payload.prompts === null ? null : { entries: payload.prompts.map(promptEntry) },
+      ref: { target: { oid: payload.sha } },
+      skills: payload.skills === null ? null : { entries: payload.skills.map(skillFolderEntry) }
+    }
+  };
+}
+
+function promptEntry(entry: PromptEntry): unknown {
+  return {
+    name: entry.name,
+    object: entry.blob === undefined
+      ? entry.type === "tree" ? { entries: [] } : null
+      : { isBinary: entry.blob.isBinary ?? false, text: entry.blob.text },
+    type: entry.type
+  };
+}
+
+function skillFolderEntry(folder: SkillFolderEntry): unknown {
+  return {
+    name: folder.name,
+    object: { entries: folder.files.map(skillFileEntry) },
+    type: "tree"
+  };
+}
+
+function skillFileEntry(file: SkillFileEntry): unknown {
+  return {
+    name: file.name,
+    object: file.blob === undefined
+      ? file.type === "tree" ? { entries: [] } : null
+      : { isBinary: file.blob.isBinary ?? false, text: file.blob.text },
+    type: file.type
+  };
 }
