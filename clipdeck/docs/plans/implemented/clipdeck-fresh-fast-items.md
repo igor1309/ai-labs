@@ -91,13 +91,13 @@ Stop immediately if:
 
 Steps:
 
-- [ ] Add `fetchAll(token): Promise<{ prompts: SourceFile[]; skills: SourceFolder[]; sha: string }>` to `github.ts` issuing a single POST to `https://api.github.com/graphql` with a query covering `trunk:prompts` and `trunk:dev-skills/public` and the trunk ref's commit OID.
-- [ ] Map the GraphQL response into the existing `SourceFile` and `SourceFolder` shapes consumed by `discovery.ts`; ignore entries with `isBinary: true`.
-- [ ] Replace the prompts and skills fetch dance in `handleItems` with a single `fetchAll` call; keep the existing assemble/discovery/etag pipeline.
-- [ ] Map GraphQL transport failures and source-missing conditions to the existing `502` `upstream_github_failure` and `source_missing` error responses.
-- [ ] Update `clipdeck/test/items.test.ts` to mock the GraphQL endpoint and add coverage for: GraphQL query targets only allowlisted paths, binary blobs ignored, GraphQL failure surfaces the upstream-failure contract, source-missing path returns the same `502` body as today, item-shape and ETag assertions remain green.
-- [ ] Run `./scripts/run_silent.sh "tests" npm test` from the repo root; gate is green.
-- [ ] Run `./scripts/run_silent.sh "build" npx tsc --noEmit` from the repo root; gate is green.
+- [x] Add `fetchAll(token): Promise<{ prompts: SourceFile[]; skills: SourceFolder[]; sha: string }>` to `github.ts` issuing a single POST to `https://api.github.com/graphql` with a query covering `trunk:prompts` and `trunk:dev-skills/public` and the trunk ref's commit OID.
+- [x] Map the GraphQL response into the existing `SourceFile` and `SourceFolder` shapes consumed by `discovery.ts`; ignore entries with `isBinary: true`.
+- [x] Replace the prompts and skills fetch dance in `handleItems` with a single `fetchAll` call; keep the existing assemble/discovery/etag pipeline.
+- [x] Map GraphQL transport failures and source-missing conditions to the existing `502` `upstream_github_failure` and `source_missing` error responses.
+- [x] Update `clipdeck/test/items.test.ts` to mock the GraphQL endpoint and add coverage for: GraphQL query targets only allowlisted paths, binary blobs ignored, GraphQL failure surfaces the upstream-failure contract, source-missing path returns the same `502` body as today, item-shape and ETag assertions remain green.
+- [x] Run `./scripts/run_silent.sh "tests" npm test` from the repo root; gate is green.
+- [x] Run `./scripts/run_silent.sh "build" npx tsc --noEmit` from the repo root; gate is green.
 
 Acceptance criteria:
 
@@ -115,14 +115,14 @@ Phase 1 ends with a single commit covering the source change plus its tests.
 
 Steps:
 
-- [ ] Introduce a freshness-check method in `github.ts` issuing a minimal GraphQL query for `repository.ref.target.oid` only, returning the current trunk SHA.
-- [ ] In `handleItems`, look up the assembled body in `caches.default` keyed by trunk SHA; serve on hit without contacting GitHub.
-- [ ] On cache miss or expiry: issue the freshness check; if the returned SHA matches the SHA of any previously cached body, refresh the cache entry with that body and the same SHA key; if the SHA differs (or no cached body exists), rebuild via `fetchAll` and store the new body keyed by the new SHA.
-- [ ] Set the cached `Response`'s `Cache-Control: max-age=<= 10>`; tests assert the value is no greater than 10.
-- [ ] Map freshness-check transport failures to the existing `502` `upstream_github_failure` contract.
-- [ ] Add tests in `items.test.ts` covering: cache hit path issues zero `fetch` calls, expired-cache same-SHA path issues exactly one `fetch` call (the freshness check) and reuses the existing body, expired-cache different-SHA path issues two `fetch` calls (freshness check plus full GraphQL) and returns the new body, freshness-check failure surfaces `502 upstream_github_failure`, and the cached `Response` carries `Cache-Control: max-age <= 10`.
-- [ ] Run `./scripts/run_silent.sh "tests" npm test` from the repo root; gate is green.
-- [ ] Run `./scripts/run_silent.sh "build" npx tsc --noEmit` from the repo root; gate is green.
+- [x] Introduce a freshness-check method in `github.ts` issuing a minimal GraphQL query for `repository.ref.target.oid` only, returning the current trunk SHA.
+- [x] In `handleItems`, look up the assembled body in `caches.default` keyed by trunk SHA; serve on hit without contacting GitHub.
+- [x] On cache miss or expiry: issue the freshness check; if the returned SHA matches the SHA of any previously cached body, refresh the cache entry with that body and the same SHA key; if the SHA differs (or no cached body exists), rebuild via `fetchAll` and store the new body keyed by the new SHA.
+- [x] Set the cached `Response`'s `Cache-Control: max-age=<= 10>`; tests assert the value is no greater than 10.
+- [x] Map freshness-check transport failures to the existing `502` `upstream_github_failure` contract.
+- [x] Add tests in `items.test.ts` covering: cache hit path issues zero `fetch` calls, expired-cache same-SHA path issues exactly one `fetch` call (the freshness check) and reuses the existing body, expired-cache different-SHA path issues two `fetch` calls (freshness check plus full GraphQL) and returns the new body, freshness-check failure surfaces `502 upstream_github_failure`, and the cached `Response` carries `Cache-Control: max-age <= 10`.
+- [x] Run `./scripts/run_silent.sh "tests" npm test` from the repo root; gate is green.
+- [x] Run `./scripts/run_silent.sh "build" npx tsc --noEmit` from the repo root; gate is green.
 
 Acceptance criteria:
 
@@ -140,10 +140,10 @@ Phase 2 ends with a single commit covering the source change plus its tests.
 
 Steps:
 
-- [ ] Apply the existing review skill against the diff for Phases 1 and 2 (correctness, scope, edge cases, test quality, naming).
-- [ ] Fix any fails and warns surfaced by review.
-- [ ] Re-run both gates after fixes.
-- [ ] Add a `clipdeck/docs/log.md` entry summarizing the outcome.
+- [x] Apply the existing review skill against the diff for Phases 1 and 2 (correctness, scope, edge cases, test quality, naming).
+- [x] Fix any fails and warns surfaced by review.
+- [x] Re-run both gates after fixes.
+- [x] Add a `clipdeck/docs/log.md` entry summarizing the outcome.
 
 Acceptance criteria:
 
@@ -159,12 +159,12 @@ Phase 3 ends with a commit (or no commit if review surfaced nothing actionable).
 
 Steps:
 
-- [ ] Move this plan from `clipdeck/docs/plans/` to `clipdeck/docs/plans/implemented/`.
-- [ ] Bump `clipdeck/package.json` patch version; refresh `package-lock.json` lockfile entries; align root `package.json` and `package-lock.json` versions per repo policy.
-- [ ] Re-run `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
-- [ ] Push branch; open PR with title and body summarizing the ADR-006 implementation.
-- [ ] Enable auto-merge with `gh pr merge <number> --merge --auto --delete-branch`.
-- [ ] After merge, follow the release process: trigger the per-unit release tag for clipdeck per the existing `<basename>_v*` namespace.
+- [x] Move this plan from `clipdeck/docs/plans/` to `clipdeck/docs/plans/implemented/`.
+- [x] Bump `clipdeck/package.json` patch version; refresh `package-lock.json` lockfile entries; align root `package.json` and `package-lock.json` versions per repo policy.
+- [x] Re-run `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
+- [x] Push branch; open PR with title and body summarizing the ADR-006 implementation.
+- [x] Enable auto-merge with `gh pr merge <number> --merge --auto --delete-branch`.
+- [x] After merge, follow the release process: trigger the per-unit release tag for clipdeck per the existing `<basename>_v*` namespace.
 
 Acceptance criteria:
 
@@ -185,6 +185,12 @@ Phase 4 ends with the release tag created.
 - **Trunk SHA changes mid-rebuild:** the rebuild reflects whichever SHA the freshness check returned; the next request will observe the latest SHA on the next freshness-check window expiry.
 - **Cold colo:** no cached body; first request pays a freshness check plus a rebuild (two GitHub subrequests); subsequent requests within the freshness window are sub-millisecond.
 - **GitHub GraphQL transient 5xx:** surface as `502 upstream_github_failure`; the next request retries by virtue of the cache miss.
+
+## Implementation Notes
+
+- Freshness TTL is enforced by a `freshAtMs` timestamp inside the pointer cache entry rather than the entry's `Cache-Control: max-age` header. The pointer entry is stored with a long Cache-Control max-age and `isPointerFresh(pointer, Date.now())` (in `clipdeck/src/api/cache.ts`) gates the 10-second freshness window. Behavioral coverage matches the ADR invariant: cache-hit-within-window issues zero GitHub calls, expired pointer with same SHA issues one (the freshness query), expired pointer with changed SHA issues two (freshness query plus bulk fetch).
+- Cold start (no cached pointer at all) skips the freshness check and goes straight to the bulk GraphQL fetch, since the trunk SHA arrives with the bulk response in a single round-trip. This stays inside the ADR's "at most two GitHub subrequests" envelope.
+- Pointer payload shape: `{ "sha": "<commit-oid>", "freshAtMs": <epoch-ms> }`. Body cache key: `https://clipdeck.cache.internal/api/items/sha/<percent-encoded-sha>`.
 
 ## Completion Definition
 
