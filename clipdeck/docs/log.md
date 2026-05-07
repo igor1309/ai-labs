@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-07
+
+- Cloudflare Access application session duration raised to 1 week (set on the Clipdeck self-hosted app and on each attached policy in the Zero Trust dashboard) to reduce iPhone Email-OTP re-auth friction. No code change; ADR-005 still governs the access boundary. Longer-term auth alternatives are tracked separately for evaluation.
+
 ## 2026-05-05
 
 - `/api/items` rebuilt around a single GitHub GraphQL request plus a SHA-keyed Workers Cache API entry. Steady-state requests within a 10-second freshness window serve the cached body with zero GitHub calls; expired pointers do a tiny SHA-only freshness query and either refresh the pointer (same SHA) or rebuild via the bulk GraphQL fetch (changed SHA). Replaces the prior 43-call REST fan-out (1 listDir + N readFile + 1 listRecursiveTree + M serial readFile) with at most 2 GitHub subrequests per request. Governed by ADR-006.
