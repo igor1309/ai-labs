@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-07
+
+- Scheduled workflows hardened against GitHub-hosted runner contention: shifted both `scheduled-health.yml` (06:00 → 06:17 UTC) and `loc-dashboard.yml` (06:00 → 06:23 UTC) off the top-of-hour cron herd that caused both runs to fail on 2026-05-06 with "The job was not acquired by Runner of type hosted even after multiple attempts" (15-minute queue timeouts, no script ever ran). Also added a Telegram failure-notify job to `loc-dashboard.yml` (mirroring the existing pattern in `scheduled-health.yml`) so a future silent miss surfaces instead of just being a missing daily snapshot.
+
 ## 2026-05-05
 
 - clipdeck: app version moved from footer to header (next to the `clipdeck` wordmark), keeping the original subtle styling. Bumped to v0.1.12 to ship together with the v0.1.11 prompt title/subtitle flip whose tag was never created.

@@ -2,11 +2,13 @@ name: Scheduled Health
 
 # Daily check of external dependencies (VPS, LLM provider).
 # Catches degradation between commits that push-triggered CI would miss.
-# Runs at 06:00 UTC (09:00 Moscow time).
+# Runs at 06:17 UTC (09:17 Moscow time).
+# Off-hour minute avoids the top-of-hour GitHub-hosted runner contention
+# that caused 2026-05-06's "runner not acquired" failure.
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "17 6 * * *"
   workflow_dispatch:
 
 permissions:
