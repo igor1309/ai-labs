@@ -36,7 +36,7 @@ On every run, in order:
 4. **Compare each README's claims against its own backing code/config** for the internal-consistency category, scoped to the project that owns the README.
 5. **Report detected drift with evidence.** Emit a single drift report per run, structured per `report-format.md`. Every finding carries both the doc-side claim (path + line + verbatim quote) and the contradicting evidence (path + line + verbatim quote, or commit ref for removed/renamed artifacts).
 6. **Suggest a README change for each finding.** The change is the minimum edit that resolves the drift. No restructuring, no formatting passes, no style edits, no added sections.
-7. **Propose each fix as a pull request.** One PR per cohesive finding (or per cohesive group of findings on the same README). Use `fix-pr-template.md` for the title and body. Each PR is opened against `trunk` from a dedicated branch (branch-name convention is pinned during Phase B). The PR body restates the finding, attaches the evidence, declares the scope-of-change checklist, and includes a "do not auto-merge" reminder.
+7. **Propose each fix as a pull request.** One PR per cohesive finding (or per cohesive group of findings on the same README). Use `fix-pr-template.md` for the title and body. Each PR is opened against `trunk` from a dedicated branch following the convention `doc-drift/<slug>` where `<slug>` is a short kebab-case label derived from the finding (e.g. `doc-drift/components-table-missing-row`, `doc-drift/notio-release-tag-mismatch`). The PR body restates the finding, attaches the evidence, declares the scope-of-change checklist, and includes a "do not auto-merge" reminder.
 8. **Hand the report and the PR list back to the runtime** so OpenClaw can post the Telegram notification per `notification-spec.md`.
 
 ## Hard constraints
@@ -76,3 +76,9 @@ This definition implements every "The agent will:" bullet from `docs/doc-drift-a
 | support automated notifications when drift is found | "What you do" step 8 + `notification-spec.md` |
 | not run scheduled if a manual run was less than 12h earlier | "Triggers" → scheduled, gate enforced by runtime per `suppression-policy.md` |
 | never merge PRs automatically | "Hard constraints" → never merge |
+
+## Runtime layout (provisional)
+
+OpenClaw groups agent artifacts under `~/.openclaw/agents/<agent-name>/agent/` on the VPS (evidence: the existing `main` agent's `auth-profiles.json` lives at `~/.openclaw/agents/main/agent/auth-profiles.json` per the inventory repo's notes). This artifact is therefore expected to land under `~/.openclaw/agents/doc-drift-agent/agent/` once Phase B wires the sync mechanism.
+
+The **filename** inside that `agent/` directory is *not* pinned by available documentation. `agent.md` (matching the directory name) is the working choice. Phase B Task B2 must verify the actual filename OpenClaw loads — by SSH into the VPS, by `openclaw --help`/`openclaw doctor`, or by inspecting an existing agent on disk — and rename this file if OpenClaw expects a different convention (e.g. `system-prompt.md`, `instructions.md`, `prompt.md`). Until verified, treat the filename as provisional.

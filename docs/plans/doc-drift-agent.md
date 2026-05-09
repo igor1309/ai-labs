@@ -57,8 +57,9 @@ These must be resolved before any task in Phase B is started. Phase A does not d
 2. **Manual-trigger contract.** Exact Telegram command/syntax (e.g. `/doc-drift-review`), which chat OpenClaw listens in, and how OpenClaw authenticates the requester as the maintainer.
 3. **Last-manual-run timestamp store.** Where OpenClaw persists the timestamp consulted by the 12h suppression gate (OpenClaw-local file, repo file, external KV).
 4. **Scheduled cadence.** The ADR mandates scheduled drift checks but does not specify the period (daily? weekly?). Maintainer to set.
-5. **GitHub identity for fix PRs.** Which account opens PRs (a bot account vs. a personal token), and what the branch-name convention is (`doc-drift/<slug>` proposed but not pinned).
+5. **GitHub identity for fix PRs.** Which account opens PRs (a bot account vs. a personal token). Branch-name convention is pinned to `doc-drift/<slug>` in `doc-drift-agent/agent/agent.md` (resolved during A4).
 6. **Telegram notification chat.** Same chat as the manual-trigger listener, or a separate "alerts" chat.
+7. **Agent prompt filename inside `~/.openclaw/agents/doc-drift-agent/agent/`.** Provisional value `agent.md` matches the directory name but is not confirmed against the OpenClaw runtime. Phase B Task B2 must verify against an existing agent on the VPS (or `openclaw --help` / `openclaw doctor`) and rename the artifact if OpenClaw expects a different filename.
 
 ## Phase A — In-repo definitions (unblocked)
 
