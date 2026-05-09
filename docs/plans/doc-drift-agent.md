@@ -198,7 +198,7 @@ Trigger the agent manually via Telegram against current `trunk`. Confirm: at lea
 - [x] A4 Agent definition
 - [x] A5 Drift report + fix PR shape
 - [x] A6 Notification + suppression spec
-- [ ] A7 Phase A closeout
+- [x] A7 Phase A closeout
 
 ## Phase B Checklist
 
