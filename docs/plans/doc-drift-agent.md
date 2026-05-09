@@ -192,7 +192,7 @@ Trigger the agent manually via Telegram against current `trunk`. Confirm: at lea
 ## Phase A Checklist
 
 - [x] A1 Component landing
-- [ ] A2 README inventory
+- [x] A2 README inventory
 - [ ] A3 Drift methodology
 - [ ] A4 Agent definition
 - [ ] A5 Drift report + fix PR shape
