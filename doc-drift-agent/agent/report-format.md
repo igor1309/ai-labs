@@ -16,7 +16,7 @@ The agent emits exactly one report per run, in Markdown. The shape is fixed so t
 - Run mode: <manual | scheduled>
 - Run timestamp (UTC): <YYYY-MM-DD HH:MM>
 - Repo commit: <short SHA> (<branch>)
-- READMEs inspected: <count> (per `doc-drift-agent/docs/readme-inventory.md`)
+- READMEs inspected: <count> (per `doc-drift-agent/agent/readme-inventory.md`)
 - Findings: <count>
 - Fix PRs opened: <count>
 

@@ -29,7 +29,7 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 ### 1. README ↔ README
 
-**Definition.** A claim made in one README is contradicted by a claim in another README within the inventory (`doc-drift-agent/docs/readme-inventory.md`).
+**Definition.** A claim made in one README is contradicted by a claim in another README within the inventory (`doc-drift-agent/agent/readme-inventory.md`).
 
 **Detection signals.**
 
@@ -69,7 +69,7 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 **False positives to skip.**
 
-- Drift candidates already recorded in `doc-drift-agent/docs/readme-inventory.md` under "Components without a top-level project README" or "Project READMEs without a Components-table row" are *known absences*, not findings — unless the inventory itself is stale.
+- Drift candidates already recorded in `doc-drift-agent/agent/readme-inventory.md` under "Components without a top-level project README" or "Project READMEs without a Components-table row" are *known absences*, not findings — unless the inventory itself is stale.
 - Paths that exist below the inventory's scoped depth (e.g. `dragoman/docs/README.md`, `tools/wt/README.md`) are out of scope for the agent. A README referencing them is not drift.
 - Excluded directories (`node_modules/`, `vendor/`, `.build/`, `worktrees/`, `dist/`, `.wrangler/`) are not part of repo state for this purpose.
 

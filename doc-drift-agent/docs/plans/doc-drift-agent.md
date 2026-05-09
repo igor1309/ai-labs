@@ -83,7 +83,7 @@ Per CLAUDE.md "New Project Checklist". `release-units.config.toml` is intentiona
 ### Task A2: README inventory
 
 **Files:**
-- Create: `doc-drift-agent/docs/readme-inventory.md`.
+- Create: `doc-drift-agent/agent/readme-inventory.md`.
 
 Enumerate every README the agent must inspect. Generate from current repo state (root README + per-project READMEs found one level below `/`). For each entry record: path, owning component, role (root vs. project), and any explicit "Components"-style cross-reference into other READMEs.
 
@@ -92,7 +92,7 @@ Enumerate every README the agent must inspect. Generate from current repo state 
 ### Task A3: Drift methodology
 
 **Files:**
-- Create: `doc-drift-agent/docs/drift-methodology.md`.
+- Create: `doc-drift-agent/agent/drift-methodology.md`.
 
 Define what drift the agent looks for, faithful to the intent's three categories:
 
@@ -123,8 +123,8 @@ Constraints baked into the prompt:
 ### Task A5: Drift report + fix PR shape
 
 **Files:**
-- Create: `doc-drift-agent/docs/report-format.md`.
-- Create: `doc-drift-agent/docs/fix-pr-template.md`.
+- Create: `doc-drift-agent/agent/report-format.md`.
+- Create: `doc-drift-agent/agent/fix-pr-template.md`.
 
 Pin the report shape (drift category, evidence, suggested change, proposed PR link if any) and the PR template (title prefix e.g. `[doc-drift]`, body sections: finding, evidence, scope-of-change checklist, "do not auto-merge" reminder).
 
@@ -133,8 +133,8 @@ Pin the report shape (drift category, evidence, suggested change, proposed PR li
 ### Task A6: Notification + suppression spec
 
 **Files:**
-- Create: `doc-drift-agent/docs/notification-spec.md`.
-- Create: `doc-drift-agent/docs/suppression-policy.md`.
+- Create: `doc-drift-agent/agent/notification-spec.md`.
+- Create: `doc-drift-agent/agent/suppression-policy.md`.
 
 Notification spec: Telegram message format for "drift found" (summary line, count by category, list of opened PRs with links) and "no drift found" (silent or short ack — maintainer to choose).
 

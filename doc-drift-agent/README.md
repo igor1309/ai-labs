@@ -21,15 +21,20 @@ Phase A: in-repo definitions. Integration wiring (Phase B) is blocked on open qu
 
 ## Layout
 
+`agent/` holds everything OpenClaw loads at runtime — the system prompt plus the artifacts it references. `docs/` holds project meta-docs not loaded by the runtime.
+
 | Path | Purpose |
 |------|---------|
-| `agent/` | Agent prompt and instructions consumed by OpenClaw |
-| `docs/readme-inventory.md` | Every README the agent must inspect |
-| `docs/drift-methodology.md` | Drift categories, detection signals, evidence shape |
-| `docs/report-format.md` | Drift report shape returned by the agent |
-| `docs/fix-pr-template.md` | Fix PR title and body template |
-| `docs/notification-spec.md` | Telegram notification format |
-| `docs/suppression-policy.md` | 12-hour scheduled-run suppression rule |
+| `agent/agent.md` | Agent system prompt |
+| `agent/readme-inventory.md` | Every README the agent must inspect |
+| `agent/drift-methodology.md` | Drift categories, detection signals, evidence shape |
+| `agent/report-format.md` | Drift report shape returned by the agent |
+| `agent/fix-pr-template.md` | Fix PR title and body template |
+| `agent/notification-spec.md` | Telegram notification format |
+| `agent/suppression-policy.md` | 12-hour scheduled-run suppression rule |
+| `docs/automated-doc-drift-review-and-fix-suggestions-intent.md` | Source intent |
+| `docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` | Source ADR |
+| `docs/plans/doc-drift-agent.md` | Implementation plan |
 | `docs/log.md` | Project log |
 
 ## Boundaries
