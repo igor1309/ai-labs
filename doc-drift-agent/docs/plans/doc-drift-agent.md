@@ -236,7 +236,7 @@ Push branch and update PR #336.
 ## Phase B Checklist
 
 - [x] B1 Plan rewrite
-- [ ] B2 CI sync workflow
+- [x] B2 CI sync workflow
 - [ ] B3 VPS workspace + openclaw.json + restart
 - [ ] B4 Scheduled cron + suppression state
 - [ ] B5 End-to-end dry run
