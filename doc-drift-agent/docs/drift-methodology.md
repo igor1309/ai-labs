@@ -6,7 +6,7 @@ description: "Drift categories the doc-drift-agent looks for, with detection sig
 
 # Drift Methodology
 
-Defines what drift the agent looks for, what evidence it must attach to a finding, and what to ignore. Faithful to the source intent (`docs/doc-drift-agent/automated-doc-drift-review-and-fix-suggestions-intent.md`) and ADR (`docs/doc-drift-agent/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md`). The discipline mirrors the existing `doc-drift-audit` skill (`dev-skills/public/doc-drift-audit/SKILL.md`): factual mismatches only, no rewriting, no restructuring, no style passes.
+Defines what drift the agent looks for, what evidence it must attach to a finding, and what to ignore. Faithful to the source intent (`doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`) and ADR (`doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md`). The discipline mirrors the existing `doc-drift-audit` skill (`dev-skills/public/doc-drift-audit/SKILL.md`): factual mismatches only, no rewriting, no restructuring, no style passes.
 
 ## Scope
 

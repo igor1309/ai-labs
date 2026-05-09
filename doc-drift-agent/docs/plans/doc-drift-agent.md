@@ -2,8 +2,8 @@
 date: 2026-05-09
 model: claude-opus-4-7
 description: "Implementation plan: specialized OpenClaw agent for README drift review and PR-based fix suggestions"
-source_intent: docs/doc-drift-agent/automated-doc-drift-review-and-fix-suggestions-intent.md (v0.0.3)
-source_adr: docs/doc-drift-agent/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md (v0.0.5)
+source_intent: doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md (v0.0.3)
+source_adr: doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md (v0.0.5)
 ---
 
 # Implementation Plan: README Drift Review Agent
@@ -14,8 +14,8 @@ Stand up a specialized OpenClaw agent that detects README drift across `ai-labs`
 
 ## Source
 
-- Intent: `docs/doc-drift-agent/automated-doc-drift-review-and-fix-suggestions-intent.md` (v0.0.3)
-- ADR: `docs/doc-drift-agent/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` (v0.0.5, status: proposed)
+- Intent: `doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md` (v0.0.3)
+- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` (v0.0.5, status: proposed)
 
 The plan does not invent scope beyond these documents. Any decision not pinned in the source is captured under "Open Questions" and resolved before its dependent task starts.
 
@@ -180,7 +180,7 @@ Trigger the agent manually via Telegram against current `trunk`. Confirm: at lea
 **Files:**
 - Update: `docs/log.md`.
 - Update: `doc-drift-agent/docs/log.md`.
-- Move: `docs/plans/doc-drift-agent.md` → `docs/plans/implemented/doc-drift-agent.md`.
+- Move: `doc-drift-agent/docs/plans/doc-drift-agent.md` → `doc-drift-agent/docs/plans/implemented/doc-drift-agent.md`.
 
 ## Out of Scope
 

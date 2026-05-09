@@ -66,7 +66,7 @@ Rules:
 
 ## Telegram chat
 
-The chat OpenClaw posts into is the same chat used as the manual-trigger listener, unless the maintainer configures a separate alerts chat. This is open question #6 in `docs/plans/doc-drift-agent.md`; the runtime resolves it during Phase B Task B3. The notification format is identical regardless of which chat receives the message.
+The chat OpenClaw posts into is the same chat used as the manual-trigger listener, unless the maintainer configures a separate alerts chat. This is open question #6 in `doc-drift-agent/docs/plans/doc-drift-agent.md`; the runtime resolves it during Phase B Task B3. The notification format is identical regardless of which chat receives the message.
 
 ## Failure modes
 

@@ -6,7 +6,7 @@ description: "READMEs the doc-drift-agent must inspect: root and one-level-below
 
 # README Inventory
 
-Enumerates every README the agent inspects on each run. Scope is fixed by `docs/plans/doc-drift-agent.md` Task A2: the root `README.md` plus per-project READMEs found one level below the repo root. Deeper READMEs (e.g. `dragoman/docs/README.md`, `tools/wt/README.md`, `neris/packages/swift-neris/README.md`) are out of scope for the agent.
+Enumerates every README the agent inspects on each run. Scope is fixed by `doc-drift-agent/docs/plans/doc-drift-agent.md` Task A2: the root `README.md` plus per-project READMEs found one level below the repo root. Deeper READMEs (e.g. `dragoman/docs/README.md`, `tools/wt/README.md`, `neris/packages/swift-neris/README.md`) are out of scope for the agent.
 
 ## Inventory
 

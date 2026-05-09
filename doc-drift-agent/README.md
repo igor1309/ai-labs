@@ -12,12 +12,12 @@ This directory owns the source of truth for what the agent inspects, how it repo
 
 ## Status
 
-Phase A: in-repo definitions. Integration wiring (Phase B) is blocked on open questions captured in `docs/plans/doc-drift-agent.md`.
+Phase A: in-repo definitions. Integration wiring (Phase B) is blocked on open questions captured in `doc-drift-agent/docs/plans/doc-drift-agent.md`.
 
 ## Source
 
-- Intent: `docs/doc-drift-agent/automated-doc-drift-review-and-fix-suggestions-intent.md`
-- ADR: `docs/doc-drift-agent/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` (status: proposed)
+- Intent: `doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`
+- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` (status: proposed)
 
 ## Layout
 
