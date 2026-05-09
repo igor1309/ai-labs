@@ -92,8 +92,8 @@ Notes:
 - Telegram failure notifications are sent via `scripts/ci/notify_telegram_failure.sh`.
 
 ## Release workflow
-- Trigger: push a tag matching `v*` (for example `v0.1.0`).
-- Guard: tag must equal root `package.json` version.
+- Trigger: push a tag matching `oracle_v*` (for example `oracle_v0.1.0`).
+- Guard: tag must equal `oracle_v<version>` where `<version>` equals the root `package.json` version.
 - Pipeline: core → real-provider-smoke → web-e2e → deploy worker/pages → create GitHub Release.
 - Required GitHub Secrets:
   - `CLOUDFLARE_API_TOKEN` (Wrangler deploy auth)
