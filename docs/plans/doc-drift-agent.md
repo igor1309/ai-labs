@@ -193,7 +193,7 @@ Trigger the agent manually via Telegram against current `trunk`. Confirm: at lea
 
 - [x] A1 Component landing
 - [x] A2 README inventory
-- [ ] A3 Drift methodology
+- [x] A3 Drift methodology
 - [ ] A4 Agent definition
 - [ ] A5 Drift report + fix PR shape
 - [ ] A6 Notification + suppression spec
