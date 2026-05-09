@@ -77,8 +77,14 @@ This definition implements every "The agent will:" bullet from `doc-drift-agent/
 | not run scheduled if a manual run was less than 12h earlier | "Triggers" → scheduled, gate enforced by runtime per `suppression-policy.md` |
 | never merge PRs automatically | "Hard constraints" → never merge |
 
-## Runtime layout (provisional)
+## Runtime layout
 
-OpenClaw groups agent artifacts under `~/.openclaw/agents/<agent-name>/agent/` on the VPS (evidence: the existing `main` agent's `auth-profiles.json` lives at `~/.openclaw/agents/main/agent/auth-profiles.json` per the inventory repo's notes). This artifact is therefore expected to land under `~/.openclaw/agents/doc-drift-agent/agent/` once Phase B wires the sync mechanism.
+Confirmed via direct SSH read of the live VPS on 2026-05-09. OpenClaw routes agents by Telegram bot account, not by command. An agent is a `{ id, default, workspace }` triple in `~/.openclaw/openclaw.json` plus a `bindings[]` entry mapping a `(channel, accountId)` pair onto it.
 
-The **filename** inside that `agent/` directory is *not* pinned by available documentation. `agent.md` (matching the directory name) is the working choice. Phase B Task B2 must verify the actual filename OpenClaw loads — by SSH into the VPS, by `openclaw --help`/`openclaw doctor`, or by inspecting an existing agent on disk — and rename this file if OpenClaw expects a different convention (e.g. `system-prompt.md`, `instructions.md`, `prompt.md`). Until verified, treat the filename as provisional.
+For this agent:
+
+- **Workspace:** `/home/openclaw/.openclaw/workspace-doc-drift/` (initialized as a git repo, matching the `main` agent's shape).
+- **System prompt:** this file, deployed at `<workspace>/AGENTS.md`. The CI sync workflow renames `doc-drift-agent/agent/agent.md` → `AGENTS.md` on copy.
+- **Sibling runtime artifacts:** the other files in `doc-drift-agent/agent/` (`readme-inventory.md`, `drift-methodology.md`, `report-format.md`, `fix-pr-template.md`, `notification-spec.md`, `suppression-policy.md`) are synced alongside `AGENTS.md` and read by the agent at runtime.
+- **Per-agent state:** `~/.openclaw/agents/doc-drift-agent/state.json` holds `{ last_manual_run_utc: "<ISO 8601 UTC>" }` for the 12h suppression gate. The `~/.openclaw/agents/<name>/` directory is OpenClaw's runtime-state location (auth, models, this state file) — *not* a prompt-loading location.
+- **Telegram surface:** `@igor1309_ai_labs_bot`, account `docdrift` in `openclaw.json`, allowlisted to chat `54589373`.

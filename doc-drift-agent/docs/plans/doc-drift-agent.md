@@ -21,14 +21,18 @@ The plan does not invent scope beyond these documents. Any decision not pinned i
 
 ## Architecture
 
-The agent lives inside the existing OpenClaw instance (separate external host). `ai-labs` owns the source of truth for the agent's definition, methodology, fix-PR shape, and notification format; OpenClaw owns scheduling, the Telegram listener that receives manual triggers, and the runtime that invokes the agent.
+OpenClaw routes agents by Telegram bot account, not by command. An agent is a `{ id, default, workspace }` triple in `~/.openclaw/openclaw.json` plus a `bindings[]` entry that maps a `(channel, accountId)` pair onto it. The agent's "system prompt" lives in the workspace as `AGENTS.md` (Claude Code convention); the agent reads any other workspace files at runtime.
 
-Artifact split:
+Concrete layout for this agent:
 
-- `ai-labs` (this repo) — agent prompt/instructions, README inventory, drift methodology, fix-PR template, Telegram message format, suppression policy spec.
-- OpenClaw (external) — runtime, schedule, Telegram listener, GitHub credentials for opening PRs, last-manual-run timestamp store consulted by the 12h gate.
+- VPS workspace: `/home/openclaw/.openclaw/workspace-doc-drift/`. Initialized as a git repo to match the existing `main` workspace's shape. Synced from `ai-labs/doc-drift-agent/agent/`.
+- The workspace's `AGENTS.md` is a copy of `ai-labs/doc-drift-agent/agent/agent.md`. Sibling files (`readme-inventory.md`, `drift-methodology.md`, `report-format.md`, `fix-pr-template.md`, `notification-spec.md`, `suppression-policy.md`) sit next to it and are read by the agent at runtime.
+- New Telegram bot: `@igor1309_ai_labs_bot`. Token stored on the VPS in `/home/openclaw/.openclaw-keys`. Maintainer chat ID `54589373` is the only allowed sender.
+- New OpenClaw account `docdrift` with `dmPolicy: "allowlist"`, `allowFrom: ["54589373"]`. New `agents.list` entry `{ id: "doc-drift-agent", workspace: "/home/openclaw/.openclaw/workspace-doc-drift" }`. New binding `{ agentId: "doc-drift-agent", match: { channel: "telegram", accountId: "docdrift" } }`.
+- Per-agent state: `~/.openclaw/agents/doc-drift-agent/state.json` holds `{ last_manual_run_utc: "…" }` for the 12h suppression gate.
+- GitHub identity for fix PRs: maintainer's personal PAT, stored alongside the bot token in `/home/openclaw/.openclaw-keys`.
 
-Sync mechanism between the two is an open question (see below); the plan keeps repo artifacts decoupled from a specific sync method so Phase A can land without depending on it.
+`ai-labs` owns the source of truth for the agent's prompt, methodology, fix-PR shape, and notification format. CI is the bridge: a GitHub Actions workflow watches `doc-drift-agent/agent/**` on `trunk` and rsyncs to the VPS workspace on merge.
 
 ## Tech Stack
 
@@ -49,17 +53,17 @@ Sync mechanism between the two is an open question (see below); the plan keeps r
 
 Rationale for `human-review-gated`: the ADR is `status: proposed`, several integration decisions are open, and the agent's drift heuristics need maintainer calibration before being wired into a scheduled loop.
 
-## Open Questions (block Phase B)
+## Decisions (resolved 2026-05-09)
 
-These must be resolved before any task in Phase B is started. Phase A does not depend on them.
+The seven open questions that originally blocked Phase B were closed during Phase A's late hours after the inventory at `/Users/igormalyarov/Developer/my-apps/inventory` was scanned end-to-end and a live SSH read of `~/.openclaw/openclaw.json` confirmed the runtime shape. Recorded here as the source of truth for Phase B execution.
 
-1. **OpenClaw ↔ ai-labs integration shape.** How the agent definition is delivered to OpenClaw (git pull from `ai-labs`, push from CI, manual sync, embedded snapshot, etc.). The ADR does not pin this.
-2. **Manual-trigger contract.** Exact Telegram command/syntax (e.g. `/doc-drift-review`), which chat OpenClaw listens in, and how OpenClaw authenticates the requester as the maintainer.
-3. **Last-manual-run timestamp store.** Where OpenClaw persists the timestamp consulted by the 12h suppression gate (OpenClaw-local file, repo file, external KV).
-4. **Scheduled cadence.** The ADR mandates scheduled drift checks but does not specify the period (daily? weekly?). Maintainer to set.
-5. **GitHub identity for fix PRs.** Which account opens PRs (a bot account vs. a personal token). Branch-name convention is pinned to `doc-drift/<slug>` in `doc-drift-agent/agent/agent.md` (resolved during A4).
-6. **Telegram notification chat.** Same chat as the manual-trigger listener, or a separate "alerts" chat.
-7. **Agent prompt filename inside `~/.openclaw/agents/doc-drift-agent/agent/`.** Provisional value `agent.md` matches the directory name but is not confirmed against the OpenClaw runtime. Phase B Task B2 must verify against an existing agent on the VPS (or `openclaw --help` / `openclaw doctor`) and rename the artifact if OpenClaw expects a different filename.
+1. **Sync mechanism.** Decision: CI pushes on change. A GitHub Actions workflow on `trunk` rsyncs `doc-drift-agent/agent/**` to `openclaw@107.172.143.196:/home/openclaw/.openclaw/workspace-doc-drift/` whenever those files change. Requires a deploy SSH key in repo secrets.
+2. **Manual-trigger contract.** Decision: command `/doc-drift-review` issued via DM to `@igor1309_ai_labs_bot` from chat `54589373`. No extra auth check beyond the Telegram-account allowlist (`allowFrom: ["54589373"]` on the new account); private bot + private chat is the perimeter.
+3. **Last-manual-run timestamp store.** Decision: per-agent state file `~/.openclaw/agents/doc-drift-agent/state.json` containing `{ last_manual_run_utc: "<ISO 8601 UTC>" }`. The runtime writes on successful manual run completion and reads on every scheduled tick.
+4. **Scheduled cadence.** Decision: daily 01:00 UTC via VPS cron (matches OpenClaw operational patterns; no GitHub Actions runner herd to dodge since cron runs on the VPS).
+5. **GitHub identity for fix PRs.** Decision: maintainer's personal PAT (`repo` scope) stored on the VPS in `/home/openclaw/.openclaw-keys`. Branch convention `doc-drift/<slug>` was pinned in `doc-drift-agent/agent/agent.md` during A4.
+6. **Telegram notification chat.** Decision: same chat as the manual-trigger listener — `54589373` via `@igor1309_ai_labs_bot`. No separate alerts chat.
+7. **Agent prompt filename and runtime path.** Decision: not `~/.openclaw/agents/<name>/agent/agent.md` — that directory has no semantic role for prompts in OpenClaw. The prompt lives in the workspace as `AGENTS.md`; the runtime path is `/home/openclaw/.openclaw/workspace-doc-drift/AGENTS.md`. The CI sync renames `agent.md` → `AGENTS.md` on copy.
 
 ## Phase A — In-repo definitions (unblocked)
 
@@ -151,29 +155,56 @@ Suppression policy: scheduled run is skipped if the persisted last-manual-run ti
 
 **Verification:** Phase A checklist below all checked; `git status` clean; PR opened against `trunk` for human review per execution mode.
 
-## Phase B — Integration wiring (blocked on Open Questions 1–6)
+## Phase B — Integration wiring
 
-Do not start until every Open Question above has a recorded decision in the plan.
+All Decisions above are resolved. Phase B executes in order.
 
-### Task B1: Resolve open questions
+### Task B1: Plan rewrite (this task)
 
-Edit this plan: replace each Open Question with a "Decision:" line carrying the chosen value. Commit the resolution as a single change. No code yet.
+Replace Open Questions with Decisions; rewrite Architecture and Phase B tasks to match OpenClaw's actual workspace+binding model; correct `doc-drift-agent/agent/agent.md` "Runtime layout" section to drop the wrong `~/.openclaw/agents/<name>/agent/` claim and pin the workspace path. No external action.
 
-### Task B2: Sync mechanism
+### Task B2: CI sync workflow
 
-Implement whatever was decided in Open Question 1. If git-pull-by-OpenClaw: confirm OpenClaw can read this repo and document the path. If push-from-CI: add a workflow that ships the agent definition on changes under `doc-drift-agent/agent/`. If manual: document the operator runbook.
+**Files:**
+- Create: `.github/workflows/doc-drift-agent-sync.yml`.
 
-### Task B3: Manual-trigger handler
+The workflow watches `doc-drift-agent/agent/**` on `trunk`. On push, it rsyncs the directory to `openclaw@107.172.143.196:/home/openclaw/.openclaw/workspace-doc-drift/`, renaming `agent.md` → `AGENTS.md` in the destination. Uses an SSH deploy key stored in repo secret `OPENCLAW_DEPLOY_SSH_KEY` (the user adds this secret out-of-band before the workflow can succeed).
 
-Document (or wire, depending on B1) the Telegram-comment manual trigger. Confirm OpenClaw's listener authenticates the maintainer and writes the last-manual-run timestamp.
+### Task B3: VPS workspace, openclaw.json, restart
 
-### Task B4: Scheduled run + suppression gate
+Performed via SSH against `openclaw@107.172.143.196`. Steps in order:
 
-Configure the scheduled cadence chosen in Open Question 4. Verify the 12h suppression gate is consulted on every scheduled tick.
+1. `mkdir -p /home/openclaw/.openclaw/workspace-doc-drift && cd ... && git init`.
+2. Seed the workspace with the current `doc-drift-agent/agent/` contents (renaming `agent.md` → `AGENTS.md`). Subsequent updates flow via the CI sync workflow.
+3. Append `@igor1309_ai_labs_bot`'s token to `/home/openclaw/.openclaw-keys` (mode 600).
+4. Edit `~/.openclaw/openclaw.json`:
+   - `channels.telegram.accounts.docdrift`: `{ botToken: "<TOKEN>", dmPolicy: "allowlist", allowFrom: ["54589373"], groupPolicy: "disabled", streaming: "partial" }`.
+   - `agents.list`: append `{ id: "doc-drift-agent", workspace: "/home/openclaw/.openclaw/workspace-doc-drift" }`.
+   - `bindings`: append `{ agentId: "doc-drift-agent", match: { channel: "telegram", accountId: "docdrift" } }`.
+5. `sudo systemctl restart openclaw` (root-only) and verify `systemctl status openclaw` is active.
+
+**Verification:** `openclaw agent --agent doc-drift-agent --message "ping"` returns; `tail /home/openclaw/.openclaw/logs/gateway.log` shows the new bot polling without auth errors.
+
+### Task B4: Scheduled cron + suppression state
+
+Performed via SSH. Steps:
+
+1. `mkdir -p /home/openclaw/.openclaw/agents/doc-drift-agent && echo '{"last_manual_run_utc": null}' > /home/openclaw/.openclaw/agents/doc-drift-agent/state.json`.
+2. Add `/etc/cron.d/openclaw-doc-drift` (root-owned, mode 644) firing daily at 01:00 UTC. The cron command consults `state.json` per `agent/suppression-policy.md` and either skips or invokes the agent via `openclaw agent --agent doc-drift-agent --message "/doc-drift-review --scheduled"`.
+
+**Verification:** `crontab -l` (root) shows the entry; a manual test run of the cron script with the suppression rule confirms the skip/run decision against synthetic timestamps.
 
 ### Task B5: End-to-end dry run
 
-Trigger the agent manually via Telegram against current `trunk`. Confirm: at least one finding (or a clean "no drift" report), evidence attached, a real PR opened against `trunk` for any fix, Telegram notification posted. PR is reviewed but not merged.
+DM `/doc-drift-review` to `@igor1309_ai_labs_bot` from chat `54589373`. Confirm:
+
+- Bot acknowledges the command.
+- A drift report is rendered per `agent/report-format.md`.
+- Any opened PRs use the `doc-drift/<slug>` branch convention and the `[doc-drift]` title prefix per `agent/fix-pr-template.md`.
+- A Telegram notification (drift-found or manual-no-drift ack) is posted to chat `54589373` per `agent/notification-spec.md`.
+- `state.json` `last_manual_run_utc` is updated.
+
+PRs opened during the dry run are reviewed but not merged.
 
 ### Task B6: Phase B closeout
 
@@ -181,6 +212,8 @@ Trigger the agent manually via Telegram against current `trunk`. Confirm: at lea
 - Update: `docs/log.md`.
 - Update: `doc-drift-agent/docs/log.md`.
 - Move: `doc-drift-agent/docs/plans/doc-drift-agent.md` → `doc-drift-agent/docs/plans/implemented/doc-drift-agent.md`.
+
+Push branch and update PR #336.
 
 ## Out of Scope
 
@@ -202,9 +235,9 @@ Trigger the agent manually via Telegram against current `trunk`. Confirm: at lea
 
 ## Phase B Checklist
 
-- [ ] B1 Resolve open questions
-- [ ] B2 Sync mechanism
-- [ ] B3 Manual-trigger handler
-- [ ] B4 Scheduled run + suppression gate
+- [x] B1 Plan rewrite
+- [ ] B2 CI sync workflow
+- [ ] B3 VPS workspace + openclaw.json + restart
+- [ ] B4 Scheduled cron + suppression state
 - [ ] B5 End-to-end dry run
 - [ ] B6 Phase B closeout
