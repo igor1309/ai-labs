@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-09
+
+- doc-drift-agent: registered as a top-level project for the specialized OpenClaw agent that reviews README drift across `ai-labs`. Added project README and seed log, root `README.md` Components row, `scripts/loc-dashboard.sh` (header comment, per-project loop, drift `known` list), and `docs/loc-dashboard.html` product card + data array entry. `release-units.config.toml` intentionally not updated — the runtime lives in OpenClaw, not in this repo. Implementation plan in `docs/plans/doc-drift-agent.md`; integration wiring (Phase B) is blocked on six open questions.
+
 ## 2026-05-07
 
 - Scheduled workflows hardened against GitHub-hosted runner contention: shifted both `scheduled-health.yml` (06:00 → 06:17 UTC) and `loc-dashboard.yml` (06:00 → 06:23 UTC) off the top-of-hour cron herd that caused both runs to fail on 2026-05-06 with "The job was not acquired by Runner of type hosted even after multiple attempts" (15-minute queue timeouts, no script ever ran). Also added a Telegram failure-notify job to `loc-dashboard.yml` (mirroring the existing pattern in `scheduled-health.yml`) so a future silent miss surfaces instead of just being a missing daily snapshot.
