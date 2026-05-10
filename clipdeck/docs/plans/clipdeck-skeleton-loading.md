@@ -113,7 +113,7 @@ For every implementation step:
 
 ### Step 8 — Suppress legacy `[data-loading]` element
 
-- [ ] Step 8 complete
+- [x] Step 8 complete
 - **RED:** test asserts that across the lifecycle (before resolve, after success, after error, after reload) the `[data-loading]` element's `hidden` attribute is `true` and its `textContent` is empty.
 - **GREEN:** remove all writes to `elements.loading.hidden = false` and clear its text content. Leave the element in the DOM with `hidden` set, or remove it entirely from `index.html`.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
