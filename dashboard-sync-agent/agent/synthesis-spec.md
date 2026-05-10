@@ -73,7 +73,7 @@ For each registry entry whose `Component` row is in `## Components`, the agent e
 | `<div class="product-stack">` tags | Per-project README only | If `<key>/README.md` contains a `## Stack`, `## Tech Stack`, or `## Tags` section formatted as a Markdown bulleted list of bare tag names (one per bullet, no other markup), each bullet becomes one `<span class="tag">…</span>`. If no such section exists, the stack block is omitted entirely (no empty `<div>`). The agent does **not** synthesize tags from prose. |
 | Deployed URL inline in `<p class="product-desc">` | Per-project README | If the project's README contains a line of the form `Deployed at: <URL>` or a `## Deployment` section whose first sentence states a URL, the agent inlines `Deployed at <code><URL></code>` as the final sentence of the description body. Otherwise, no deployment line is rendered. |
 
-The `Type` column from `## Components` does NOT render as a per-card chip — type information is conveyed solely by which `<h3 class="group-title">` section the card sits under (see "Category placement" below). The card structure has no `<span class="product-type">` element.
+**Intent on type display.** Each card shows name, description, and (optional) stack tags — that is all that lives inside a card. The project's type is communicated by which `<h3 class="group-title">` section the card sits under, not by per-card metadata. Don't emit a `<span class="product-type">` (or any equivalent type-chip) inside the card. The current `docs/products.html` already follows this — PR #345 removed those chips intentionally — so the absence of type chips in the file is **expected**, not a structural mismatch.
 
 ### Category placement
 
