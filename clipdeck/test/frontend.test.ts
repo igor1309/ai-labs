@@ -174,6 +174,14 @@ describe("clipdeck frontend", () => {
     ]);
   });
 
+  test("should render skeleton before initial items fetch resolves", async () => {
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>(() => {}));
+
+    await import("../src/static/app.js");
+
+    expect(document.querySelectorAll("[data-skeleton]").length).toBe(1);
+  });
+
   test("should show loading indicator while items are loading and hide it on completion", async () => {
     let resolveFetch!: (response: Response) => void;
     vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((resolve) => {
