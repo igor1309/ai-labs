@@ -89,7 +89,7 @@ For every implementation step:
 
 ### Step 5 — Reduced-motion support
 
-- [ ] Step 5 complete
+- [x] Step 5 complete
 - **RED:** test reads `src/static/app.css` and asserts a `@media (prefers-reduced-motion: reduce)` rule disables `.skeleton-item` animation with `animation: none`, `animation-name: none`, or `animation-duration: 0s`.
 - **GREEN:** add `@media (prefers-reduced-motion: reduce) { .skeleton-item { animation: none; } }` to `app.css`.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
