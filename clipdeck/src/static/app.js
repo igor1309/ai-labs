@@ -201,7 +201,7 @@ function updateFilterControls() {
   if (input === null || clearButton === null) {
     return;
   }
-  clearButton.hidden = input.value.trim().length === 0;
+  clearButton.hidden = input.value.length === 0;
 }
 
 function normalizedFilter() {

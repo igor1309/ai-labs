@@ -222,6 +222,16 @@ describe("clipdeck frontend", () => {
     ]);
   });
 
+  test("should show filter clear button when input contains only whitespace", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json(makeLibrarySections()));
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    typeFilterValue("   ");
+
+    expect(filterClearButtonIsHidden()).toBe(false);
+  });
+
   test("should trim padded filter before matching", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json(makeLibrarySections()));
     await import("../src/static/app.js");
