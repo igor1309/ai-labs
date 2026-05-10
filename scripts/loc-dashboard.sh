@@ -4,9 +4,10 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   claude-insights, clipdeck, corpus-scout, dev-skills, doc-drift-agent,
-#   dragoman, loki, neris, nexum, niora, nomos, notio, oracle, regentara,
-#   sandbox, session-digest, tools, web-scout
+#   claude-insights, clipdeck, corpus-scout, dashboard-sync-agent, debates,
+#   dev-skills, doc-drift-agent, dragoman, gemini, insights, loki, neris,
+#   nexum, niora, nomos, notio, oracle, prompts, reading, regentara, sandbox,
+#   session-digest, tools, web-scout
 
 set -euo pipefail
 
@@ -144,7 +145,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known="agents claude-insights clipdeck corpus-scout debates dev-skills doc-drift-agent docker docs dragoman gemini img images insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  local known=".claude .codex .git .github .lazyweb .wrangler _inbox agents claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini images img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts session-digest tests tools vendor web-scout worktrees"
   local unknown=""
   for d in */; do
     d="${d%/}"
@@ -168,7 +169,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in claude-insights clipdeck corpus-scout dev-skills doc-drift-agent dragoman loki neris nexum niora nomos notio oracle regentara sandbox session-digest tools web-scout; do
+for proj in claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent dragoman gemini insights loki neris nexum niora nomos notio oracle prompts reading regentara sandbox session-digest tools web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"
