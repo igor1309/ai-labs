@@ -97,7 +97,7 @@ For every implementation step:
 
 ### Step 6 — Skeleton is removed on successful fetch
 
-- [ ] Step 6 complete
+- [x] Step 6 complete
 - **RED:** test mocks `fetch` to resolve with one section/one item, awaits `flushAsync`, asserts zero `[data-skeleton]` elements remain and `[data-sections]` is populated.
 - **GREEN:** in `renderSections`, remove `[data-skeleton]` (or set hidden) before appending real sections.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
