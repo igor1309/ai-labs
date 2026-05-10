@@ -259,6 +259,12 @@ describe("clipdeck frontend", () => {
     });
   });
 
+  test("css should disable skeleton animation under reduced motion", () => {
+    const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
+
+    expect(reducedMotionSkeletonAnimationProjection(css)).toBe(true);
+  });
+
   test("should render skill version badge when version is provided", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [
@@ -485,6 +491,10 @@ function cssDeclarationsProjection(skeletonItemBlock: string, itemBlock: string)
       ? cssDeclaration(skeletonItemBlock, "width")
       : ""
   };
+}
+
+function reducedMotionSkeletonAnimationProjection(css: string): boolean {
+  return /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)\s*\{[\s\S]*?\.skeleton-item\s*\{[\s\S]*?(animation:\s*none|animation-name:\s*none|animation-duration:\s*0s)/.test(css);
 }
 
 function skeletonAccessibilityProjection(): {
