@@ -254,6 +254,33 @@ describe("clipdeck frontend", () => {
     expect(document.querySelector("[data-toast]")?.textContent).toMatch(/fail/i);
   });
 
+  test("should remove skeleton on fetch rejection", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("network down"));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelectorAll("[data-skeleton]").length).toBe(0);
+  });
+
+  test("should remove skeleton on non-2xx response", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("boom", { status: 500 }));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelectorAll("[data-skeleton]").length).toBe(0);
+  });
+
+  test("should remove skeleton on JSON parse failure", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("not json"));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect(document.querySelectorAll("[data-skeleton]").length).toBe(0);
+  });
+
   test("should fetch on reload without stored secret", async () => {
     vi.mocked(fetch).mockResolvedValue(Response.json({ sections: [] }));
     await import("../src/static/app.js");
