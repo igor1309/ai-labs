@@ -245,6 +245,20 @@ describe("clipdeck frontend", () => {
     expect(css).toMatch(/\[hidden\][^{]*\{[^}]*display:\s*none/);
   });
 
+  test("css should shape skeleton items like cards with animation", () => {
+    const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
+    const itemBlock = cssBlock(css, ".item");
+    const skeletonItemBlock = cssBlock(css, ".skeleton-item");
+
+    expect(cssDeclarationsProjection(skeletonItemBlock, itemBlock)).toEqual({
+      animation: expect.stringMatching(/\S/),
+      borderRadius: "10px",
+      minHeight: expect.stringMatching(/[1-9]/),
+      padding: "14px 16px",
+      width: "100%"
+    });
+  });
+
   test("should render skill version badge when version is provided", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [
@@ -441,6 +455,36 @@ async function flushAsync(): Promise<void> {
 
 function itemsFetchCalls(): unknown[][] {
   return vi.mocked(fetch).mock.calls.filter((call) => String(call[0]) === "/api/items");
+}
+
+function cssBlock(css: string, selector: string): string {
+  return css.match(new RegExp(`${selector.replace(".", "\\.")}\\s*\\{[^}]*\\}`))?.[0] ?? "";
+}
+
+function cssDeclaration(block: string, property: string): string {
+  return block.match(new RegExp(`${property}:\\s*([^;]+);`))?.[1].trim() ?? "";
+}
+
+function cssDeclarationsProjection(skeletonItemBlock: string, itemBlock: string): {
+  animation: string;
+  borderRadius: string;
+  minHeight: string;
+  padding: string;
+  width: string;
+} {
+  return {
+    animation: cssDeclaration(skeletonItemBlock, "animation"),
+    borderRadius: cssDeclaration(skeletonItemBlock, "border-radius") === cssDeclaration(itemBlock, "border-radius")
+      ? cssDeclaration(skeletonItemBlock, "border-radius")
+      : "",
+    minHeight: cssDeclaration(skeletonItemBlock, "min-height"),
+    padding: cssDeclaration(skeletonItemBlock, "padding") === cssDeclaration(itemBlock, "padding")
+      ? cssDeclaration(skeletonItemBlock, "padding")
+      : "",
+    width: cssDeclaration(skeletonItemBlock, "width") === cssDeclaration(itemBlock, "width")
+      ? cssDeclaration(skeletonItemBlock, "width")
+      : ""
+  };
 }
 
 function skeletonAccessibilityProjection(): {
