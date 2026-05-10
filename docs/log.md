@@ -2,6 +2,7 @@
 
 ## 2026-05-10
 
+- dashboard-sync-agent: B1 — CI sync workflow at `.github/workflows/dashboard-sync-agent-sync.yml` watches `dashboard-sync-agent/agent/**` on `trunk` and rsyncs to the OpenClaw VPS workspace, renaming `agent.md` → `AGENTS.md` on copy. Reuses the existing `OPENCLAW_DEPLOY_SSH_KEY` repo secret. Mirrors `doc-drift-agent`'s sync workflow.
 - Products page: removed redundant type chips from grouped product cards in `docs/products.html`; the group headers now carry the category, and a regression test covers the static page markup.
 - dashboard-sync-agent: Phase A complete. In-repo agent definition under `dashboard-sync-agent/agent/` — project-registry rule, synthesis spec, agent.md system prompt, report-format + fix-PR-template, notification spec (silent on scheduled+no-drift), and suppression policy (6h gate). Single stable branch `dashboard-sync/daily`; PR title `[dashboard-sync] daily sync — YYYY-MM-DD`. Open Questions resolved during Phase A. Phase B (CI sync workflow, VPS workspace, cron, dry run) remains.
 - dashboard-sync-agent: registered as a top-level project for a sibling OpenClaw agent that keeps `scripts/loc-dashboard.sh`, `docs/products.html`, and the `docs/loc-dashboard.html` `data` array in sync with repo state on a daily 18:00 UTC cron. The root `README.md` `## Components` and `## Structure` tables are the authoritative project registries. Initial artifact set: intent + ADR v0.0.1 (proposed) + project README. README drift remains owned by `doc-drift-agent`; the two agents have disjoint editable-file allowlists.
