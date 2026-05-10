@@ -65,7 +65,7 @@ For every implementation step:
 
 ### Step 2 — Skeleton contains at least 3 `.skeleton-item` placeholders
 
-- [ ] Step 2 complete
+- [x] Step 2 complete
 - **RED:** test asserts `[data-skeleton]` has ≥3 children matching `.skeleton-item`.
 - **GREEN:** populate three `.skeleton-item` children, either in HTML or via a builder function in `app.js`.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
