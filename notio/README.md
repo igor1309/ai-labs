@@ -157,3 +157,16 @@ v1 capture pipeline with two-phase feedback (`notio_v0.3.0`): full parse → enr
 - query/read/edit clients
 - multiple storage implementations in parallel
 - reprocessing of previously captured items
+
+## Description
+
+Send a link or a note from Telegram and it lands in a persistent inbox. The core is *ingress- and storage-agnostic* — Telegram is just one input, Supabase just one backend. Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+
+## Stack
+
+- Swift 6.1
+- Hummingbird 2
+- Supabase
+- Docker
+- Cloudflare Tunnel
+- Telegram Bot

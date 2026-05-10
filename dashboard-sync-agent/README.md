@@ -44,3 +44,15 @@ The `agent/` and `runtime/` subtrees (mirroring `doc-drift-agent/`) will be adde
 - Manual edits to `docs/products.html` are not preserved across runs.
 - Top-level directories present in the repo but absent from both registries are surfaced in the PR description as "candidates for Components or Structure registration" rather than silently added or dropped.
 - Sub-projects (below top-level) and Components sub-components (e.g. `notio-backend`, `docker/langfuse`) are out of scope.
+
+## Description
+
+Sibling OpenClaw agent that keeps *scripts/loc-dashboard.sh*, *docs/products.html*, and the *docs/loc-dashboard.html* data array in sync with repo state on a daily 18:00 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
+
+## Stack
+
+- OpenClaw
+- Bash
+- HTML
+- GitHub PRs
+- Telegram

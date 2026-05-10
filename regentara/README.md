@@ -200,3 +200,14 @@ The fake demo exercises the same orchestration loop with a demo policy:
 - accepted review verdicts complete successfully
 - rejected review verdicts remediate up to a configured limit
 - exhausted remediation budget completes with failure
+
+## Description
+
+Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator — through a loop with pluggable review policy. Every input is a *verifiable task with done criteria*; settings live in `.regentara/` YAML files.
+
+## Stack
+
+- Node.js
+- TypeScript
+- CLI
+- Multi-Agent

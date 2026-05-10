@@ -27,3 +27,14 @@ npm run typecheck
 ## Docs
 
 See [`docs/`](docs/) for ADRs, specs, and implementation plans.
+
+## Description
+
+A minimal webpage backed by a serverless endpoint that reads a private GitHub repo and returns sanitized, normalized items — *one tap copies the body without YAML front matter*. Deployed at `clipdeck.enoa.ai` behind Cloudflare Access; supports plain-text and Markdown prompts.
+
+## Stack
+
+- TypeScript
+- Cloudflare Worker
+- Cloudflare Access
+- Vitest

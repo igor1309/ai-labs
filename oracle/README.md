@@ -103,3 +103,16 @@ Notes:
   - `OPENROUTER_API_KEY` (real-provider smoke gate)
 - Required GitHub Actions variables:
   - `OPENROUTER_CI_MODEL` (cheap model for the real-provider smoke gate)
+
+## Description
+
+Enter a profession and get a structured AI-generated assessment: risk timeline, key threats, recommended next steps, and a confidence rating. *No chat, no accounts* — just a single question and a clear answer.
+
+## Stack
+
+- Cloudflare Workers
+- Cloudflare Pages
+- Vanilla JS
+- OpenRouter
+- D1
+- KV Cache

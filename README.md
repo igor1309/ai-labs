@@ -43,23 +43,28 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| nexum | Product | Private single-user repo memory system (full Swift stack) |
-| notio | Product family | Personal capture + browse system split into `notio-backend` and `notio-frontend` release units |
+| nexum | Product | Private repo memory system |
+| notio | Product family | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
-| oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
-| regentara | CLI release unit | Provider-agent workflow orchestrator for governed coding loops |
-| nomos | Service | LLM access control proxy — auth, cost budgets, configurable request body limits, unified API |
-| corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
-| web-scout | MCP tool | Web search via SearXNG |
-| loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
-| claude-insights | Service | Weekly Claude Code usage aggregator with Telegram bot and LLM trend analysis |
-| session-digest | CLI | Converts Claude Code JSONL sessions into persisted local ledgers and bounded-model Markdown digests |
+| oracle | Product | One-shot career outlook tool |
+| regentara | CLI release unit | Workflow runner for governed coding-agent loops |
+| nomos | Service | AI sovereignty layer |
+| corpus-scout | MCP tool | Lexical search over a local text corpus |
+| web-scout | MCP tool | SearXNG search for Claude Code |
+| loki | Service (on hold) | Centralized logging stack |
+| claude-insights | Service | Weekly Claude Code usage reports |
+| session-digest | CLI | Claude Code session postmortems |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
-| dragoman | Editorial channel | "The Dragoman" Telegram channel — brand brief, channel vision, and post backlog |
-| clipdeck | Product | iPhone-friendly private Cloudflare Worker that lists reusable prompts and skills with one-tap copy, front matter stripped server-side |
-| doc-drift-agent | Agent definition | Specialized OpenClaw agent definition for README drift review and fix-PR suggestions; runtime hosted in OpenClaw |
-| dashboard-sync-agent | Agent definition | Specialized OpenClaw agent definition for keeping `scripts/loc-dashboard.sh`, `docs/products.html`, and the `docs/loc-dashboard.html` data array in sync with repo state; runtime hosted in OpenClaw |
+| dragoman | Editorial channel | "The Dragoman" Telegram channel |
+| clipdeck | Product | iPhone copy library for private prompts and skills |
+| doc-drift-agent | Agent definition | README drift reviewer |
+| dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
+| neris | Framework | Agentic execution layer in Swift |
+| niora | Concept | Contextual field of emergence |
+| tools | Tooling | Developer workflow helpers |
+| dev-skills | Tooling | Claude Code skills marketplace |
+| sandbox | Research | Experiments and prototypes |
 
 ## Architecture
 

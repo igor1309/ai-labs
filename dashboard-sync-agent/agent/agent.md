@@ -56,7 +56,7 @@ On every run, in order:
 
 4. **Short-circuit when all three surfaces are clean.** If surfaces (1), (2), (3) are all `clean`, do not write any file. Do not push. Do not open or update a PR. Return a "no drift" sync report. The runtime decides per `notification-spec.md` whether to post a Telegram acknowledgement or stay silent.
 
-5. **Apply changes to drifted surfaces only.** Write the rendered content to surfaces with `drift` status. Skip surfaces with `clean` or `error` status — the latter is surfaced in the sync report instead. Each fix is the minimum edit per the synthesis spec; no formatting, style, or restructure passes.
+5. **Apply changes to drifted surfaces only.** Write the rendered content to surfaces with `drift` status. Skip surfaces with `clean` or `error` status — the latter is surfaced in the sync report instead. Each fix is the minimum edit per the synthesis spec; no formatting, style, or restructure passes. **Drifted surfaces require a push** — finding drift and reporting it is incomplete; you must apply the changes (step 5) AND push to the stable branch (step 6) AND open or update the PR (step 7) in the same run. The only exception is when ALL three surfaces are `error` — in that case there is nothing to push, and the report is the deliverable.
 
 6. **Reuse the stable branch.** Sync PRs live on a single fixed branch: `dashboard-sync/daily`. Before pushing:
 
