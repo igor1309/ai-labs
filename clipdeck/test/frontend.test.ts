@@ -190,6 +190,18 @@ describe("clipdeck frontend", () => {
     expect(document.querySelectorAll("[data-skeleton] .skeleton-item").length).toBeGreaterThanOrEqual(3);
   });
 
+  test("should hide skeleton placeholders from accessibility APIs and focus order", async () => {
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>(() => {}));
+
+    await import("../src/static/app.js");
+
+    expect(skeletonAccessibilityProjection()).toEqual({
+      focusableDescendantCount: 0,
+      itemAriaHidden: ["true", "true", "true"],
+      skeletonAriaHidden: "true"
+    });
+  });
+
   test("should show loading indicator while items are loading and hide it on completion", async () => {
     let resolveFetch!: (response: Response) => void;
     vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((resolve) => {
@@ -429,4 +441,25 @@ async function flushAsync(): Promise<void> {
 
 function itemsFetchCalls(): unknown[][] {
   return vi.mocked(fetch).mock.calls.filter((call) => String(call[0]) === "/api/items");
+}
+
+function skeletonAccessibilityProjection(): {
+  focusableDescendantCount: number;
+  itemAriaHidden: (string | null)[];
+  skeletonAriaHidden: string | null;
+} {
+  const interactiveSelector = [
+    "a[href]",
+    "button",
+    "input",
+    "select",
+    "textarea",
+    "[tabindex]:not([tabindex='-1'])"
+  ].join(",");
+  const skeletonItems = Array.from(document.querySelectorAll(".skeleton-item"));
+  return {
+    focusableDescendantCount: skeletonItems.reduce((count, item) => count + item.querySelectorAll(interactiveSelector).length, 0),
+    itemAriaHidden: skeletonItems.map((item) => item.getAttribute("aria-hidden")),
+    skeletonAriaHidden: document.querySelector("[data-skeleton]")?.getAttribute("aria-hidden") ?? null
+  };
 }
