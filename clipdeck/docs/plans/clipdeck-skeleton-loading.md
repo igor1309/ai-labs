@@ -73,7 +73,7 @@ For every implementation step:
 
 ### Step 3 — Skeleton accessibility attributes
 
-- [ ] Step 3 complete
+- [x] Step 3 complete
 - **RED:** tests assert `[data-skeleton]` has `aria-hidden="true"`, every `.skeleton-item` has `aria-hidden="true"`, and no `.skeleton-item` contains a focusable descendant.
 - **GREEN:** add `aria-hidden="true"` to the container and each placeholder, ensure children are non-interactive (use `<div>` not `<button>`/`<a>`).
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
