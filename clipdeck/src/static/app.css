@@ -100,6 +100,66 @@ button {
   gap: 12px;
 }
 
+[data-filter-row] {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--bg);
+}
+
+.filter-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.filter-input::placeholder {
+  color: var(--text-subtle);
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.filter-clear,
+[data-filter-empty-clear] {
+  padding: 0.45rem 0.8rem;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.filter-clear:hover,
+[data-filter-empty-clear]:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.filter-empty {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 18px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
 .skeleton-item {
   display: block;
   width: 100%;
