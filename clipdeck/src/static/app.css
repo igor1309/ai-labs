@@ -95,19 +95,6 @@ button {
   }
 }
 
-.loading-state {
-  margin: 4rem auto;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
 .sections {
   display: grid;
   gap: 12px;

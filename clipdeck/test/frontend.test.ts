@@ -242,9 +242,11 @@ describe("clipdeck frontend", () => {
   test("should keep legacy loading indicator hidden and empty across item loading states", async () => {
     const initialItems = deferred<Response>();
     const reloadItems = deferred<Response>();
+    let itemRequestCount = 0;
     vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
       if (String(input) === "/api/items") {
-        return itemsFetchCalls().length === 0 ? initialItems.promise : reloadItems.promise;
+        itemRequestCount += 1;
+        return itemRequestCount === 1 ? initialItems.promise : reloadItems.promise;
       }
       return Response.json({ version: "test" });
     });

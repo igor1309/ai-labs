@@ -5,14 +5,14 @@ model: claude-opus-4-7
 description: "Step-by-step TDD plan to implement spec-skeleton-loading.md, replacing the centered Loading… text with shimmer card placeholders while /api/items is in flight"
 status: draft
 artifact_type: plan
-spec: clipdeck/docs/specs/spec-skeleton-loading.md
+spec: clipdeck/docs/specs/implemented/spec-skeleton-loading.md
 ---
 
 # Plan: Skeleton Loading State
 
 ## Source of truth
 
-[`clipdeck/docs/specs/spec-skeleton-loading.md`](../specs/spec-skeleton-loading.md). This plan does not redefine behavior; it sequences the work to satisfy that spec.
+[`clipdeck/docs/specs/implemented/spec-skeleton-loading.md`](../../specs/implemented/spec-skeleton-loading.md). This plan does not redefine behavior; it sequences the work to satisfy that spec.
 
 ## Execution Lock
 
