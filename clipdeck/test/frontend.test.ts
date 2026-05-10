@@ -443,8 +443,10 @@ describe("clipdeck frontend", () => {
 
     expect(filterStorageProjection()).toEqual({
       localGet: [],
+      localRemove: [],
       localSet: [],
       sessionGet: [],
+      sessionRemove: [],
       sessionSet: []
     });
   });
@@ -459,15 +461,22 @@ describe("clipdeck frontend", () => {
 
     vi.useFakeTimers();
     const initialInputValue = document.querySelector<HTMLInputElement>("[data-filter-input]")?.value;
+    const initialItemIds = renderedItemIds();
     typeFilterValue("review");
     await vi.advanceTimersByTimeAsync(150);
 
     expect({
       initialInputValue,
+      initialItemIds,
       pushCalls: pushState.mock.calls,
       replaceCalls: replaceState.mock.calls
     }).toEqual({
       initialInputValue: "",
+      initialItemIds: [
+        "prompts/review.md",
+        "prompts/standup.md",
+        "skills/parser.md"
+      ],
       pushCalls: [],
       replaceCalls: []
     });
@@ -1195,15 +1204,19 @@ function filterClearButtonIsHidden(): boolean | undefined {
 
 function filterStorageProjection(): {
   localGet: unknown[][];
+  localRemove: unknown[][];
   localSet: unknown[][];
   sessionGet: unknown[][];
+  sessionRemove: unknown[][];
   sessionSet: unknown[][];
 } {
   return {
-    localGet: vi.mocked(localStorage.getItem).mock.calls.filter((call) => String(call[0]).includes("filter")),
-    localSet: vi.mocked(localStorage.setItem).mock.calls.filter((call) => String(call[0]).includes("filter")),
-    sessionGet: vi.mocked(sessionStorage.getItem).mock.calls.filter((call) => String(call[0]).includes("filter")),
-    sessionSet: vi.mocked(sessionStorage.setItem).mock.calls.filter((call) => String(call[0]).includes("filter"))
+    localGet: vi.mocked(localStorage.getItem).mock.calls,
+    localRemove: vi.mocked(localStorage.removeItem).mock.calls,
+    localSet: vi.mocked(localStorage.setItem).mock.calls,
+    sessionGet: vi.mocked(sessionStorage.getItem).mock.calls,
+    sessionRemove: vi.mocked(sessionStorage.removeItem).mock.calls,
+    sessionSet: vi.mocked(sessionStorage.setItem).mock.calls
   };
 }
 
