@@ -45,3 +45,14 @@ Live on OpenClaw as of 2026-05-09. Account `docdrift`, agent `doc-drift-agent`, 
 - The agent edits READMEs only.
 - The agent never merges or approves PRs.
 - Style, format, and restructure passes are out of scope (mirrors the `doc-drift-audit` skill).
+
+## Description
+
+Specialized OpenClaw agent that compares the root and per-project READMEs against each other and against actual repo state, then proposes README fixes as PRs with evidence. *ai-labs owns the definition; OpenClaw owns the runtime*. Auto-merge is never used.
+
+## Stack
+
+- OpenClaw
+- Markdown
+- GitHub PRs
+- Telegram

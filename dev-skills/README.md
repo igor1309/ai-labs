@@ -50,3 +50,13 @@ Users install skills from: https://github.com/igor1309/skills
 ```
 
 See `public/.claude-plugin/marketplace.json` for the current published skill catalog. The public skills repo (`igor1309/skills`) is intentionally kept without a top-level `README.md` so web agents can install it without authentication friction.
+
+## Description
+
+A collection of reusable agent skills — strict TDD, process gates, release management, architecture review, and more. Developed here, *published to a public repo* via GitHub Actions sync.
+
+## Stack
+
+- Claude Code
+- Markdown
+- GitHub Actions

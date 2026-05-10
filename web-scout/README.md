@@ -94,3 +94,14 @@ docker logs -f searxng   # follow
 
 - [Smoke test](docs/smoke.md)
 - [Langfuse observability](docs/langfuse.md)
+
+## Description
+
+An MCP stdio server that exposes web search as a tool — runs locally, connects to a self-hosted SearXNG instance, and returns *structured JSON results* with per-call logging.
+
+## Stack
+
+- Node.js
+- MCP
+- SearXNG
+- Docker

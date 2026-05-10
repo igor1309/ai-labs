@@ -13,3 +13,14 @@ Architecture Decision Records and the API contract live in `docs/ADR/`. Product-
 ## Status
 
 Pre-implementation. ADRs and API contract are locked; implementation planning next.
+
+## Description
+
+Save GitHub repos with personal notes, search and sort the collection, keep metadata current. *Full Swift stack* — Hummingbird backend, Swift-to-Wasm web UI via JavaScriptKit.
+
+## Stack
+
+- Swift 6.1
+- Hummingbird 2
+- JavaScriptKit
+- Wasm

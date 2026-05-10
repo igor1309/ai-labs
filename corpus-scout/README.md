@@ -150,3 +150,13 @@ SMOKE_QUERY="театр" CORPUS_ROOT=... node corpus-scout/scripts/smoke.js
 ```
 
 Exit 0 = PASS, exit 1 = FAIL.
+
+## Description
+
+A read-only MCP server with two tools — pattern search and section reading over Markdown files. Powered by ripgrep, *deterministic and stateless*: no embeddings, no indexing, no mutation.
+
+## Stack
+
+- Node.js
+- MCP
+- ripgrep

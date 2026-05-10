@@ -87,3 +87,14 @@ npm --prefix /Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/dee
 ```
 
 On success, stdout contains only the generated digest path. In `--ledger-only` mode, stdout contains only the generated ledger path.
+
+## Description
+
+A CLI prototype that turns one Claude Code JSONL session into a Markdown digest under `~/.session-digests/` — powered by *LangChain Deep Agents over NVIDIA NIM*. Early-stage design.
+
+## Stack
+
+- TypeScript
+- LangChain
+- Deep Agents
+- NVIDIA NIM

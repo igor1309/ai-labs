@@ -91,3 +91,15 @@ supabase functions deploy telegram-bot --no-verify-jwt --project-ref uvnxjuzofcd
 ## Next steps
 
 - Configurable model selection for `/compare` analysis
+
+## Description
+
+Aggregates local session data into metrics — sessions, code churn, tool usage, goals, friction points — then pushes to Supabase and *notifies via Telegram*.
+
+## Stack
+
+- Python
+- Supabase
+- Edge Functions
+- Telegram Bot
+- Nomos
