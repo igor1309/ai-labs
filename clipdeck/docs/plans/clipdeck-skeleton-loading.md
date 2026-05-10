@@ -105,7 +105,7 @@ For every implementation step:
 
 ### Step 7 — Skeleton is removed on fetch error paths
 
-- [ ] Step 7 complete
+- [x] Step 7 complete
 - **RED:** three tests, one per failure mode (`fetch` rejection, non-2xx response, JSON parse failure). Each asserts that after the failure path runs, zero `[data-skeleton]` elements remain.
 - **GREEN:** in each catch branch of `loadItems()`, remove the skeleton before showing the retryable shell and error toast.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
