@@ -26,10 +26,11 @@ Use a new specialized OpenClaw agent — `dashboard-sync-agent` — sibling to `
 
 The agent will:
 
-- inspect the repo's top-level project directories (recognized by a root `README.md`)
-- inspect each project's READMEs (root and per-project)
+- inspect the repo's top-level project directories per a project-detection methodology authored alongside the agent definition (a simple "has a root `README.md`" rule is insufficient — many current projects do not)
+- inspect each project's READMEs (root `README.md` and per-project READMEs where present)
+- treat READMEs as the authoritative source of truth for `docs/products.html` card content; manual edits to `docs/products.html` are not preserved across runs
 - compare `scripts/loc-dashboard.sh` against the current set of top-level project directories
-- compare `docs/products.html` cards against the READMEs they describe
+- compare `docs/products.html` cards against the READMEs they describe, regenerating cards each run
 - compare the `docs/loc-dashboard.html` `data = [...]` array against `scripts/loc-dashboard.sh` output
 - short-circuit per-surface: skip surfaces with zero drift; if all three are clean, do nothing
 - propose changes as a single PR per run; reuse a stable branch so re-runs update an existing PR rather than piling up duplicates
@@ -44,13 +45,13 @@ The agent must never merge PRs automatically.
 
 ## Boundary
 
-The agent edits exactly three files: `scripts/loc-dashboard.sh`, `docs/products.html`, `docs/loc-dashboard.html`. Any other write is a violation of the agent's contract.
+The agent's editable-file allowlist is exactly: `scripts/loc-dashboard.sh`, `docs/products.html`, `docs/loc-dashboard.html`, plus its own per-agent runtime state file under `~/.openclaw/agents/dashboard-sync-agent/` (mirroring `doc-drift-agent`'s state-file pattern). Any other write is a violation of the agent's contract.
 
 The agent does not touch `README.md` (including the `## Components` table), per-project READMEs, log files, `release-units.config.toml`, or per-project CI workflows. README drift remains owned by `doc-drift-agent`; when this agent registers a new project in the three surfaces, `doc-drift-agent`'s next scheduled run flags the missing Components row through the normal README drift path.
 
 The maintainer reviews proposed sync changes through the normal repo flow.
 
-Sub-projects are out of scope; only top-level project directories with a root `README.md` are tracked.
+Sub-projects are out of scope; only top-level project directories (per the project-detection methodology referenced in the Decision section) are tracked.
 
 ## Consequences
 
@@ -60,7 +61,7 @@ Sync changes enter the same review path as normal repo changes.
 
 Two agents run with disjoint editable-file allowlists; neither can write to the other's surface, eliminating overlap or contention.
 
-The maintainer can register a new project by adding its directory and root `README.md`; the next scheduled run of `dashboard-sync-agent` updates the script and dashboards, and the next scheduled run of `doc-drift-agent` flags the Components row gap.
+The maintainer registers a new project by adding its directory; the next scheduled run of `dashboard-sync-agent` updates the script and dashboards (subject to the project-detection methodology), and the next scheduled run of `doc-drift-agent` flags the Components row gap.
 
 ## Non-goals
 

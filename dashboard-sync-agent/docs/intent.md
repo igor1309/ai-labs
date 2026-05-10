@@ -12,9 +12,16 @@ A specialized OpenClaw agent that runs daily at 18:00 UTC and keeps three repo s
 
 The agent edits exactly three files:
 
-1. `scripts/loc-dashboard.sh` — the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`. A top-level directory is recognized as a project iff it contains a root `README.md`. Sub-projects are out of scope.
-2. `docs/products.html` — product cards. Source of truth is each project's READMEs (root `README.md` and per-project READMEs). The agent reads README prose and synthesizes/updates card content: description, type tag, deployed URL, category placement.
+1. `scripts/loc-dashboard.sh` — the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`. The set of top-level directories that count as "projects" is determined by a project-detection methodology authored alongside the agent definition (see Methodology below). Sub-projects are out of scope.
+2. `docs/products.html` — product cards. **READMEs are the authoritative source of truth for card content**; the agent regenerates each card on every run from the project's READMEs (root `README.md` Components row + per-project READMEs where present). Manual edits to `docs/products.html` are not preserved across runs by design — maintainers express card content by editing READMEs, not the HTML. The synthesis rules (which README content produces which card fields, how categories are assigned) are defined in the methodology artifact.
 3. `docs/loc-dashboard.html` — the `data = [...]` array consumed by the chart. Refreshed mechanically from `scripts/loc-dashboard.sh` output.
+
+## Methodology
+
+Two judgments are not pinned in this Intent and live in a sibling artifact authored alongside the agent definition (mirroring `doc-drift-agent/agent/drift-methodology.md`):
+
+- **Project detection.** The rule for deciding whether a top-level directory counts as a project for surfaces (1) and (2). A simple "has a root `README.md`" rule is insufficient — many current projects do not. The rule is authored once the agent.md is staged, with the current `scripts/loc-dashboard.sh` loop list as the empirical baseline.
+- **Card synthesis.** Which README sections produce which `docs/products.html` card fields (name, type tag, description, deployed URL), and how each project is assigned to one of the existing category headers.
 
 ## Surfaces explicitly out of scope
 
@@ -36,7 +43,7 @@ The agent edits exactly three files:
 
 ## Hard constraints
 
-- **Allowlist.** The agent writes only to `scripts/loc-dashboard.sh`, `docs/products.html`, `docs/loc-dashboard.html`, and to its own per-agent runtime state required by OpenClaw. Any other write is a violation.
+- **Allowlist.** The agent writes only to `scripts/loc-dashboard.sh`, `docs/products.html`, `docs/loc-dashboard.html`, and to its own per-agent runtime state file under `~/.openclaw/agents/dashboard-sync-agent/` (mirroring `doc-drift-agent`'s state-file pattern). Any other write is a violation.
 - **Never merge a PR. Never approve a PR.**
 - **No formatting or restructure passes.** Discard candidate changes that reduce to formatting, word choice, or reorganization on any surface.
 - **Minimum edit.** Each change is the smallest edit that resolves the drift on that surface.
