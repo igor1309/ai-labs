@@ -137,7 +137,7 @@ For every implementation step:
 
 ### Step 11 — Skeleton text isolation regression
 
-- [ ] Step 11 complete
+- [x] Step 11 complete
 - **RED:** test mocks fetch with a single item whose title is a unique sentinel string; while a second fetch is pending (reload), asserts no `.skeleton-item` text content matches the sentinel.
 - **GREEN:** confirm the skeleton builder takes no parameters and renders no item-derived text. Add a comment explaining why if non-obvious.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
