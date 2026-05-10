@@ -2,6 +2,8 @@
 
 ## 2026-05-10
 
+- v0.1.15 releases the skeleton loading spacing fix: loading placeholders now span the sections grid and keep the same card gap as real ClipDeck items.
+- Skeleton loading spacing corrected — the placeholder wrapper now spans the sections grid and applies card spacing, preventing the three loading cards from rendering as a cramped vertical stack.
 - v0.1.14 releases the frontend refresh: skeleton card loading for initial/reload fetches, sticky in-memory library filtering across title/subtitle/description, restored local preview mock data, and implemented spec/plan archival for the shipped work.
 - Sticky library filtering landed in the frontend: a debounced sticky input now filters title, subtitle, and description without persisting state or mutating copyable item bodies.
 - Local preview mock now matches the Cloudflare Access frontend: `/api/items` returns canned data without a bearer token, so `npm run preview --workspace clipdeck` renders the populated library again.

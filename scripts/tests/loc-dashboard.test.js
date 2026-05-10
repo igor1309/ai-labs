@@ -67,6 +67,12 @@ it('sorts rows by total when requested', () => {
   );
 });
 
+it('omits redundant product-type chips from grouped product cards', () => {
+  const productsHtml = readFileSync('docs/products.html', 'utf8');
+
+  assert.equal(productsHtml.includes('class="product-type"'), false);
+});
+
 function countRepoLevelTests() {
   return countTestsInDirectory('tests') + countTestsInDirectory('scripts/tests');
 }
