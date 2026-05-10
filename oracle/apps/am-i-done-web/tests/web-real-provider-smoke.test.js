@@ -94,6 +94,30 @@ test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidMaxAttempts", as
   ])
 })
 
+test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidRetryDelay", async () => {
+  const errorMessages = await Promise.all(
+    [-1, Number.NaN, 1.5, Number.POSITIVE_INFINITY].map(async (retryDelayMs) => {
+      try {
+        await runSmokeRequestWithRetries(async () => "structured outlook", {
+          maxAttempts: 1,
+          retryDelayMs
+        })
+
+        return "resolved"
+      } catch (error) {
+        return error.message
+      }
+    })
+  )
+
+  assert.deepEqual(errorMessages, [
+    "retryDelayMs must be a non-negative integer.",
+    "retryDelayMs must be a non-negative integer.",
+    "retryDelayMs must be a non-negative integer.",
+    "retryDelayMs must be a non-negative integer."
+  ])
+})
+
 function makeD1DatabaseSpy() {
   return {
     prepare() {
@@ -158,6 +182,9 @@ function resolveLlmApiKey(bindingValue) {
 async function runSmokeRequestWithRetries(operation, { maxAttempts = 1, retryDelayMs = 0 } = {}) {
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
     throw new Error("maxAttempts must be a positive integer.")
+  }
+  if (!Number.isInteger(retryDelayMs) || retryDelayMs < 0) {
+    throw new Error("retryDelayMs must be a non-negative integer.")
   }
 
   const errors = []

@@ -1,7 +1,7 @@
 # Log
 
 ## 2026-05-10
-- Add retry coverage to the Oracle real-provider smoke harness, retry transient provider failures up to three attempts, and fail fast on invalid retry configuration before failing CI.
+- Add retry coverage to the Oracle real-provider smoke harness, retry transient provider failures up to three attempts, and fail fast on invalid retry count/delay configuration before failing CI.
 
 ## 2026-02-28
 - Deploy v0.2.0: replace `LLM_BASE_URL` + hardcoded path with single `LLM_ENDPOINT_URL` (full URL, no path concatenation) across adapters, assembler, tests, config, and Cloudflare Workers secret.
