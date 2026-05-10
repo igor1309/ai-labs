@@ -24,7 +24,7 @@ spec: clipdeck/docs/specs/spec-skeleton-loading.md
 - Push policy: push at closeout
 - Push boundary: push only after all steps are green and the archive step has landed on the feature branch; PR opened with `gh pr create`, then auto-merge enabled with `gh pr merge <num> --merge --auto --delete-branch`
 - Final archive behavior: the archive move is the last commit on the feature branch before pushing; both spec and plan move to their `implemented/` directories atomically with the code that satisfies them. No follow-up commit, no follow-up PR.
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 ## Pre-flight
 
