@@ -56,9 +56,10 @@ async function loadItems() {
 }
 
 function showLoading() {
-  elements.library.hidden = true;
   elements.loading.hidden = true;
   elements.loading.textContent = "";
+  elements.library.hidden = false;
+  elements.sections.replaceChildren(renderSkeleton());
 }
 
 function hideLoading() {
@@ -124,6 +125,21 @@ function renderItem(item) {
 
   button.addEventListener("click", () => copyItem(item.id));
   return button;
+}
+
+function renderSkeleton() {
+  const skeleton = document.createElement("div");
+  skeleton.dataset.skeleton = "";
+  skeleton.setAttribute("aria-hidden", "true");
+
+  for (let index = 0; index < 3; index += 1) {
+    const item = document.createElement("div");
+    item.className = "skeleton-item";
+    item.setAttribute("aria-hidden", "true");
+    skeleton.append(item);
+  }
+
+  return skeleton;
 }
 
 async function copyItem(id) {

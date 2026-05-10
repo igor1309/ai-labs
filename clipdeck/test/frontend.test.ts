@@ -314,6 +314,50 @@ describe("clipdeck frontend", () => {
     ]);
   });
 
+  test("should show skeleton and remove rendered items during reload refetch", async () => {
+    const reloadItems = deferred<Response>();
+    let itemRequestCount = 0;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/items") {
+        itemRequestCount += 1;
+      }
+      if (String(input) === "/api/items" && itemRequestCount === 1) {
+        return Response.json({
+          sections: [
+            {
+              id: "prompts",
+              items: [
+                {
+                  body: "First",
+                  id: "prompts/first.md",
+                  kind: "prompt",
+                  subtitle: "",
+                  title: "First"
+                }
+              ],
+              title: "Prompts"
+            }
+          ]
+        });
+      }
+      if (String(input) === "/api/items") {
+        return reloadItems.promise;
+      }
+      return Response.json({ version: "test" });
+    });
+
+    await import("../src/static/app.js");
+    await flushAsync();
+    const renderedItemCount = document.querySelectorAll("[data-item-id]").length;
+    document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
+
+    expect([
+      renderedItemCount,
+      document.querySelectorAll("[data-skeleton]").length,
+      document.querySelectorAll("[data-item-id]").length
+    ]).toEqual([1, 1, 0]);
+  });
+
   test("css hides elements with the hidden attribute", () => {
     const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
 
