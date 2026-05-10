@@ -1,5 +1,18 @@
 # Log
 
+## 2026-05-10
+
+- doc-drift-agent: added PR-idempotence to the agent prompt. The agent now lists open `[doc-drift]` PRs before opening new ones and marks already-covered findings as `existing` instead of duplicating. Report and Telegram notification surfaces extended to carry `new`/`existing` status. Without the check, daily scheduled runs against an unmerged backlog of fix PRs would have produced duplicates each cycle.
+- doc-drift-agent: rotated the docdrift bot token after GitGuardian flagged inline-token commits on the PR branch. Wrapper now reads the token from `openclaw.json` via `jq`; branch history rewritten and force-pushed (sanitized commit `c6621d90`). Token rotated via BotFather and updated on VPS. Inventory log records the incident.
+
+## 2026-05-09
+
+- doc-drift-agent: closed the manual-run timestamp gap. Probed the agent's tools live (write, exec, others — confirmed unrestricted). Added step 9 to the agent prompt: on manual runs, the agent writes `last_manual_run_utc` to `state.json` itself. Verified by isolating step 9 in a one-shot invocation. The 12h suppression gate is now operational.
+- doc-drift-agent: live on OpenClaw VPS. Phase B end-to-end: CI sync workflow ships `doc-drift-agent/agent/**` on trunk merge; new Telegram bot `@igor1309_ai_labs_bot` routes to a dedicated agent with allowlisted DMs from chat `54589373`; daily cron at 01:00 UTC fires the agent against a refreshed `/home/openclaw/ai-labs` clone, posting a Telegram ack on every run; fix PRs are opened against `igor1309/ai-labs` via the maintainer's `gh auth` PAT. Dry run produced PRs #337 and #338 with the `[doc-drift]` title prefix. The original Phase A architecture assumed the wrong OpenClaw layout (a per-agent prompt directory under `~/.openclaw/agents/<name>/agent/`); the live layout uses workspace + binding with `AGENTS.md` as the system prompt — corrected during Phase B Task B1 plan rewrite.
+
+- doc-drift-agent: Phase A complete. Committed the agent's full in-repo definition set — README inventory, drift methodology, agent prompt (`agent/agent.md`), drift report format, fix-PR template, Telegram notification spec, and 12-hour UTC suppression policy — under `doc-drift-agent/`. Branch convention pinned to `doc-drift/<slug>`; agent prompt filename inside `~/.openclaw/agents/doc-drift-agent/agent/` left provisional with verification owed to Phase B Task B2 (recorded as new open question #7). Plan stays at `doc-drift-agent/docs/plans/doc-drift-agent.md` until Phase B closes.
+- doc-drift-agent: registered as a top-level project for the specialized OpenClaw agent that reviews README drift across `ai-labs`. Added project README and seed log, root `README.md` Components row, `scripts/loc-dashboard.sh` (header comment, per-project loop, drift `known` list), and `docs/loc-dashboard.html` product card + data array entry. `release-units.config.toml` intentionally not updated — the runtime lives in OpenClaw, not in this repo. Implementation plan in `doc-drift-agent/docs/plans/doc-drift-agent.md`; integration wiring (Phase B) is blocked on six open questions.
+
 ## 2026-05-07
 
 - Scheduled workflows hardened against GitHub-hosted runner contention: shifted both `scheduled-health.yml` (06:00 → 06:17 UTC) and `loc-dashboard.yml` (06:00 → 06:23 UTC) off the top-of-hour cron herd that caused both runs to fail on 2026-05-06 with "The job was not acquired by Runner of type hosted even after multiple attempts" (15-minute queue timeouts, no script ever ran). Also added a Telegram failure-notify job to `loc-dashboard.yml` (mirroring the existing pattern in `scheduled-health.yml`) so a future silent miss surfaces instead of just being a missing daily snapshot.
