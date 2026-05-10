@@ -57,7 +57,7 @@ For every implementation step:
 
 ### Step 1 — Skeleton DOM is rendered before fetch resolves
 
-- [ ] Step 1 complete
+- [x] Step 1 complete
 - **RED:** add a test asserting that immediately after `await import("../src/static/app.js")` and before `flushAsync()`, the document contains exactly one `[data-skeleton]` element. Mock fetch with a never-resolving promise so the skeleton is the steady state.
 - **GREEN:** add `[data-skeleton]` markup to `index.html` (initially visible) or render it from `app.js` before the first `fetch`.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
