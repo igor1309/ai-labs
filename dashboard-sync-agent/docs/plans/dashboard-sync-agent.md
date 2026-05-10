@@ -219,12 +219,12 @@ Push branch and merge.
 ## Phase A Checklist
 
 - [x] A1 Component landing (kickoff PR)
-- [ ] A2 Project-registry rule
-- [ ] A3 Synthesis spec
-- [ ] A4 Agent definition
-- [ ] A5 Sync report + fix PR template
-- [ ] A6 Notification + suppression spec
-- [ ] A7 Phase A closeout
+- [x] A2 Project-registry rule
+- [x] A3 Synthesis spec
+- [x] A4 Agent definition
+- [x] A5 Sync report + fix PR template
+- [x] A6 Notification + suppression spec
+- [x] A7 Phase A closeout
 
 ## Phase B Checklist
 
