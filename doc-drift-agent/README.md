@@ -12,7 +12,7 @@ This directory owns the source of truth for what the agent inspects, how it repo
 
 ## Status
 
-Phase A: in-repo definitions. Integration wiring (Phase B) is blocked on open questions captured in `doc-drift-agent/docs/plans/doc-drift-agent.md`.
+Live on OpenClaw as of 2026-05-09. Account `docdrift`, agent `doc-drift-agent`, bound to `@igor1309_ai_labs_bot` (DM allowlisted to chat `54589373`). Daily cron at 01:00 UTC via `/etc/cron.d/openclaw-doc-drift`. Source tree mirrored at `/home/openclaw/ai-labs` and refreshed before every scheduled run. CI sync workflow at `.github/workflows/doc-drift-agent-sync.yml` ships `agent/**` to the VPS workspace on `trunk` merge.
 
 ## Source
 
@@ -34,8 +34,11 @@ Phase A: in-repo definitions. Integration wiring (Phase B) is blocked on open qu
 | `agent/suppression-policy.md` | 12-hour scheduled-run suppression rule |
 | `docs/automated-doc-drift-review-and-fix-suggestions-intent.md` | Source intent |
 | `docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` | Source ADR |
-| `docs/plans/doc-drift-agent.md` | Implementation plan |
+| `docs/plans/implemented/doc-drift-agent.md` | Implementation plan (closed) |
 | `docs/log.md` | Project log |
+| `runtime/cron/doc-drift-cron.sh` | VPS cron wrapper (suppression gate + Telegram ack) |
+| `runtime/cron/openclaw-doc-drift.cron` | `/etc/cron.d/openclaw-doc-drift` daily 01:00 UTC entry |
+| `runtime/README.md` | Deployment notes for the VPS-side runtime |
 
 ## Boundaries
 

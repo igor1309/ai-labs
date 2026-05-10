@@ -17,7 +17,7 @@ You consume four artifacts on every run, all owned by `ai-labs`:
 - `doc-drift-agent/agent/report-format.md` — the shape of the drift report you must emit.
 - `doc-drift-agent/agent/fix-pr-template.md` — the title and body template for every fix PR.
 
-You also have read access to the working tree of `ai-labs` at the commit you are reviewing.
+The `ai-labs` working tree is available read-only at `/home/openclaw/ai-labs` on this host. The cron wrapper runs `git fetch && git checkout trunk && git pull --ff-only` before invoking you, so the tree is on the latest `trunk` when you run. Inspect READMEs from that path. For manual runs, the same path is current as of the most recent invocation.
 
 ## Triggers
 
@@ -38,6 +38,13 @@ On every run, in order:
 6. **Suggest a README change for each finding.** The change is the minimum edit that resolves the drift. No restructuring, no formatting passes, no style edits, no added sections.
 7. **Propose each fix as a pull request.** One PR per cohesive finding (or per cohesive group of findings on the same README). Use `fix-pr-template.md` for the title and body. Each PR is opened against `trunk` from a dedicated branch following the convention `doc-drift/<slug>` where `<slug>` is a short kebab-case label derived from the finding (e.g. `doc-drift/components-table-missing-row`, `doc-drift/notio-release-tag-mismatch`). The PR body restates the finding, attaches the evidence, declares the scope-of-change checklist, and includes a "do not auto-merge" reminder.
 8. **Hand the report and the PR list back to the runtime** so OpenClaw can post the Telegram notification per `notification-spec.md`.
+9. **Persist the manual-run timestamp.** If, and only if, the trigger message is a manual run (the message body does NOT contain the literal token `--scheduled`), use the `write` tool to overwrite `/home/openclaw/.openclaw/agents/doc-drift-agent/state.json` with exactly:
+
+   ```json
+   {"last_manual_run_utc": "<UTC ISO 8601 timestamp now, e.g. 2026-05-09T20:08:00Z>"}
+   ```
+
+   Do this only after steps 1–8 have completed without a hard error (a "no drift found" report still counts as success). Do not write the file on a scheduled run — leave the existing value alone. The cron wrapper at `/home/openclaw/.openclaw/scripts/doc-drift-cron.sh` reads this file on every scheduled tick to enforce the 12h suppression gate per `suppression-policy.md`. The runtime does not write it on your behalf — this step is your responsibility on manual runs only.
 
 ## Hard constraints
 

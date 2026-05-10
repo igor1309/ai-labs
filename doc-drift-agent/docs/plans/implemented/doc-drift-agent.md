@@ -237,7 +237,7 @@ Push branch and update PR #336.
 
 - [x] B1 Plan rewrite
 - [x] B2 CI sync workflow
-- [ ] B3 VPS workspace + openclaw.json + restart
-- [ ] B4 Scheduled cron + suppression state
-- [ ] B5 End-to-end dry run
-- [ ] B6 Phase B closeout
+- [x] B3 VPS workspace + openclaw.json + restart
+- [x] B4 Scheduled cron + suppression state
+- [x] B5 End-to-end dry run
+- [x] B6 Phase B closeout
