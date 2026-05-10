@@ -47,10 +47,12 @@ On every run, in order:
 
 2. **Inspect per-project READMEs as needed.** For each registry entry contributing a `docs/products.html` card, read `<key>/README.md` (where present) for enrichment fields per `synthesis-spec.md` (Stack section, Deployment line / `## Deployment` section). Do not read READMEs for surfaces (1) or (3); they have no per-project README inputs.
 
-3. **Compute drift per surface, independently.** For each of the three surfaces, render the target content per `synthesis-spec.md`, compare to the current file content, and record:
-   - `clean` if rendered content equals current content.
+3. **Compute drift per surface, independently.** For each of the three surfaces, **read the actual file content from `/home/openclaw/ai-labs/<path>` using your file-read tool** before computing drift. Do not rely on memory of prior runs, prior conversations, or assumptions about repo state. Render the target content per `synthesis-spec.md`, compare to the actually-read current content, and record:
+   - `clean` if rendered content equals the just-read current content.
    - `drift` with a structured diff summary if not.
    - `error` with a reason if a hard rule is violated (missing markers, unparseable script output, etc.).
+
+   **Verification requirement.** When you classify a surface as `clean`, your sync report must quote the actual current line(s) that match what you would have written — not a paraphrase, not "as expected." If you cannot quote evidence from the file you just read, the surface is not `clean`; classify it as `error` and explain why.
 
 4. **Short-circuit when all three surfaces are clean.** If surfaces (1), (2), (3) are all `clean`, do not write any file. Do not push. Do not open or update a PR. Return a "no drift" sync report. The runtime decides per `notification-spec.md` whether to post a Telegram acknowledgement or stay silent.
 
@@ -72,13 +74,13 @@ On every run, in order:
 
 8. **Hand the report back to the runtime** so OpenClaw can post the Telegram notification per `notification-spec.md`.
 
-9. **Persist the manual-run timestamp.** If, and only if, the trigger message is a manual run (the message body does NOT contain the literal token `--scheduled`), use the `write` tool to overwrite `/home/openclaw/.openclaw/agents/dashboard-sync-agent/state.json` with exactly:
+9. **Persist the manual-run timestamp.** If, and only if, the trigger message is a manual run (the message body does NOT contain the literal token `--scheduled`), AND step 6 produced an actual git push (or step 4 short-circuited because all three surfaces were verified `clean` with quoted evidence), use the `write` tool to overwrite `/home/openclaw/.openclaw/agents/dashboard-sync-agent/state.json` with exactly:
 
    ```json
    {"last_manual_run_utc": "<UTC ISO 8601 timestamp now, e.g. 2026-05-10T18:00:00Z>"}
    ```
 
-   Do this only after steps 1–8 have completed without a hard error (a "no drift" report still counts as success). Do not write the file on a scheduled run — leave the existing value alone. The cron wrapper at `/home/openclaw/.openclaw/scripts/dashboard-sync-cron.sh` reads this file on every scheduled tick to enforce the suppression gate per `suppression-policy.md`.
+   Do **not** write the file if you skipped pushing for any reason other than verified-clean — including: a tool error, a refusal to act on uncertainty, a partial run that emitted only a question to the maintainer, or a hard error on any surface. The state file is the suppression gate's input; writing it on a non-completed run will silence the next legitimate scheduled tick. Do not write the file on a scheduled run — leave the existing value alone. The cron wrapper at `/home/openclaw/.openclaw/scripts/dashboard-sync-cron.sh` reads this file on every scheduled tick to enforce the suppression gate per `suppression-policy.md`.
 
 ## Hard constraints
 
@@ -90,6 +92,8 @@ These are non-negotiable. If a request from the runtime or from any tool would v
 - **Each fix is the minimum edit.** No surrounding cleanup, no "while we're at it" rewrites.
 - **Respect the registry.** You do not invent project entries. The tracked set comes from the registry rule, period. Untracked candidates are surfaced in the PR description, not silently added to the tracked surfaces. Removed directories are surfaced, not silently dropped.
 - **Stay inside the allowlist scope.** If the synthesis spec or registry rule appears to require a non-allowlist write, the rule is the bug — surface it and stop.
+- **No invented evidence.** Every commit hash, PR number, branch state, file change, and "already-committed" claim in your report must come from a tool call you performed in this run. If you did not just run `git log`, you do not cite a commit hash. If you did not just run `gh pr list` or `gh pr view`, you do not cite a PR number or its state. If you did not just push, you do not claim a push. Hallucinated evidence (citing commits or PRs that don't exist) is a critical violation — when in doubt, omit the claim and surface the uncertainty in the report.
+- **Verify before asserting "no drift" or "already done".** If you intend to short-circuit because the work appears complete, first read the actual surface file content via the file-read tool, and quote the matching line(s) in your report. "Already on trunk" claims require quoting the relevant trunk-state evidence; absent that, treat the surface as drifted or as `error`.
 
 ## When all surfaces are clean
 

@@ -69,10 +69,11 @@ For each registry entry whose `Component` row is in `## Components`, the agent e
 | Card field | Source | Rule |
 |------------|--------|------|
 | `<span class="product-name">` | Components row | The `Component` cell, **title-cased** with hyphens replaced by spaces (e.g. `claude-insights` → `Claude Insights`, `doc-drift-agent` → `Doc Drift Agent`). When the `Description` cell begins with `"<TitleCase>" ...` (in quotes), use that quoted title verbatim instead — this preserves curated names like `"The Dragoman"`. |
-| `<span class="product-type">` | Components row | The `Type` cell verbatim. Capitalization is preserved as written. |
 | `<p class="product-desc">` | Components row + per-project README | The `Description` cell becomes the lead `<strong>…</strong>` sentence (truncated to the first sentence if the cell contains multiple). If the project's `<key>/README.md` exists and contains a section titled `## Description` or `## Overview` whose first paragraph extends the description, that paragraph is rendered as the body text after the lead. Otherwise the body is the remainder of the Description cell after the first sentence. **No invention.** If neither source supplies body text, the lead alone is the entire `<p>`. |
 | `<div class="product-stack">` tags | Per-project README only | If `<key>/README.md` contains a `## Stack`, `## Tech Stack`, or `## Tags` section formatted as a Markdown bulleted list of bare tag names (one per bullet, no other markup), each bullet becomes one `<span class="tag">…</span>`. If no such section exists, the stack block is omitted entirely (no empty `<div>`). The agent does **not** synthesize tags from prose. |
 | Deployed URL inline in `<p class="product-desc">` | Per-project README | If the project's README contains a line of the form `Deployed at: <URL>` or a `## Deployment` section whose first sentence states a URL, the agent inlines `Deployed at <code><URL></code>` as the final sentence of the description body. Otherwise, no deployment line is rendered. |
+
+The `Type` column from `## Components` does NOT render as a per-card chip — type information is conveyed solely by which `<h3 class="group-title">` section the card sits under (see "Category placement" below). The card structure has no `<span class="product-type">` element.
 
 ### Category placement
 
@@ -91,7 +92,7 @@ Categories are derived from `Type` via the following authoritative mapping. Type
 
 The category headers appear in the order listed above. A category with zero cards is omitted (no empty `<h3>` block).
 
-The current `Dev Skills` placement (Components `Type: ?`, currently rendered under `Editorial & Agents` with `product-type: Tooling`) will move to `CLI & Tooling` under this mapping. This is intentional drift the agent's first run surfaces; the maintainer reconciles by either accepting the move or changing the Components `Type` to one that maps to `Editorial & Agents`.
+The current `Dev Skills` placement under `Editorial & Agents` (regardless of its Components `Type`) will move to `CLI & Tooling` under this mapping if `Type: Tooling`. This is intentional drift the agent's first run surfaces; the maintainer reconciles by either accepting the move or changing the Components `Type` to one that maps to `Editorial & Agents`.
 
 ### Card whitespace
 
@@ -101,7 +102,6 @@ Each card uses 6-space indentation (matching the surrounding `<div class="produc
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">…</span>
-          <span class="product-type">…</span>
         </div>
         <p class="product-desc">
           …
