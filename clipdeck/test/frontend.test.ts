@@ -366,6 +366,46 @@ describe("clipdeck frontend", () => {
     ]).toEqual([1, 1, 0]);
   });
 
+  test("should not copy rendered item text into reload skeleton", async () => {
+    const reloadItems = deferred<Response>();
+    const uniqueTitle = "Unique Prompt Title 4729";
+    let itemRequestCount = 0;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/items") {
+        itemRequestCount += 1;
+      }
+      if (String(input) === "/api/items" && itemRequestCount === 1) {
+        return Response.json({
+          sections: [
+            {
+              id: "prompts",
+              items: [
+                {
+                  body: "Prompt body",
+                  id: "prompts/unique.md",
+                  kind: "prompt",
+                  subtitle: "",
+                  title: uniqueTitle
+                }
+              ],
+              title: "Prompts"
+            }
+          ]
+        });
+      }
+      if (String(input) === "/api/items") {
+        return reloadItems.promise;
+      }
+      return Response.json({ version: "test" });
+    });
+
+    await import("../src/static/app.js");
+    await flushAsync();
+    document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
+
+    expect(Array.from(document.querySelectorAll(".skeleton-item")).map((item) => item.textContent)).not.toContain(uniqueTitle);
+  });
+
   test("css hides elements with the hidden attribute", () => {
     const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
 
