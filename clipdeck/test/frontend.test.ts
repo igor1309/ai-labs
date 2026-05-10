@@ -86,6 +86,35 @@ describe("clipdeck frontend", () => {
     expect(document.querySelectorAll("[data-item-id]").length).toBe(1);
   });
 
+  test("should remove skeleton and show populated sections after direct load", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      sections: [
+        {
+          id: "prompts",
+          items: [
+            {
+              body: "Prompt body",
+              id: "prompts/foo.md",
+              kind: "prompt",
+              subtitle: "Details",
+              title: "Foo"
+            }
+          ],
+          title: "Prompts"
+        }
+      ]
+    }));
+
+    await import("../src/static/app.js");
+    await flushAsync();
+
+    expect([
+      document.querySelectorAll("[data-skeleton]").length,
+      document.querySelector<HTMLElement>("[data-sections]")?.hidden,
+      document.querySelectorAll("[data-item-id]").length
+    ]).toEqual([0, false, 1]);
+  });
+
   test("should copy item body and show success feedback", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({
       sections: [
