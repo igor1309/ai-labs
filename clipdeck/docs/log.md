@@ -1,5 +1,12 @@
 # Log
 
+## 2026-05-10
+
+- Sticky library filtering landed in the frontend: a debounced sticky input now filters title, subtitle, and description without persisting state or mutating copyable item bodies.
+- Local preview mock now matches the Cloudflare Access frontend: `/api/items` returns canned data without a bearer token, so `npm run preview --workspace clipdeck` renders the populated library again.
+- MVP spec closeout corrected — the implemented iPhone copy-library spec moved under `clipdeck/docs/specs/implemented/`, matching the already-archived MVP plan and shipped Clipdeck behavior.
+- Skeleton loading state shipped for the library: shimmer card placeholders replace the legacy `Loading…` text on initial load and reload, stay hidden from assistive tech, respect reduced motion, and clear on success or error.
+
 ## 2026-05-07
 
 - Cloudflare Access application session duration raised to 1 week (set on the Clipdeck self-hosted app and on each attached policy in the Zero Trust dashboard) to reduce iPhone Email-OTP re-auth friction. No code change; ADR-005 still governs the access boundary. Longer-term auth alternatives are tracked separately for evaluation.

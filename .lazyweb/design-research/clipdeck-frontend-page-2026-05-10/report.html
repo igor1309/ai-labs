@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Research: clipdeck frontend page</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+         max-width: 900px; margin: 2.5rem auto; padding: 0 1.25rem; color: #1f2330;
+         line-height: 1.55; background: #fafbfc; }
+  h1 { font-size: 1.9rem; letter-spacing: -0.02em; margin-top: 0; }
+  h2 { font-size: 1.35rem; margin-top: 2.2rem; letter-spacing: -0.01em;
+       border-bottom: 1px solid #e3e6ee; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.6rem; }
+  p, li { font-size: 0.96rem; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.85rem; }
+  pre { background: #f3f5fa; border: 1px solid #e3e6ee; padding: 0.85rem 1rem;
+        border-radius: 8px; overflow-x: auto; line-height: 1.4; }
+  code { background: #f1f3f8; padding: 1px 5px; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  img { max-width: 100%; border-radius: 10px; box-shadow: 0 4px 16px -8px rgba(20, 28, 50, 0.25);
+        margin: 0.4rem 0 0.4rem; border: 1px solid #e3e6ee; }
+  em { color: #5a6072; font-style: normal; font-size: 0.88rem; display: block;
+       margin-bottom: 1.6rem; }
+  .tldr { background: #eaf2ff; border-left: 4px solid #4a7dff; padding: 0.9rem 1.1rem;
+          border-radius: 6px; margin: 1rem 0 1.5rem; }
+  .tldr p { margin: 0; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: 0.3rem 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid #e3e6ee; padding: 0.5rem 0.75rem; text-align: left; }
+  th { background: #f3f5fa; }
+  hr { border: none; border-top: 1px solid #e3e6ee; margin: 2rem 0; }
+  a { color: #2557d6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Design Research: clipdeck frontend page</h1>
+<p style="color:#5a6072; margin-top:-0.5rem;">2026-05-10</p>
+
+<h2>TL;DR</h2>
+<div class="tldr">
+<p>Clipdeck is essentially a tap-to-copy snippet library — closest precedent is <strong>WhisperFlow's "Snippets"</strong> screen (name → content rows you tap to paste). The current design is already in the right neighborhood (dark theme, card-per-item, version chip, toast feedback). The biggest gaps vs. best-in-class are: <strong>no search/filter for &gt;20 items</strong>, <strong>no copy affordance per row</strong> (the whole row is a button but nothing signals "this copies"), and <strong>no skeleton loading state</strong> (the empty "Loading…" string is dated).</p>
+</div>
+
+<h2>Current State</h2>
+<p>The clipdeck page (per <code>clipdeck/src/static/index.html</code> + <code>app.css</code>):</p>
+<ul>
+  <li>Single-column grid on mobile, 2-column at ≥720px</li>
+  <li>Toolbar with title + version + Reload button (hidden on touch)</li>
+  <li>Cards: bold title, optional version pill, subtitle, description; resource-backed rows show a green left bar</li>
+  <li>Tap card → copies body to clipboard → top-center toast "Copied"</li>
+  <li>Dark palette: <code>#0f1117</code> bg, <code>#6c63ff</code> accent purple, <code>#3ecf8e</code> success green</li>
+  <li>No screenshot was captured (no live URL provided). Description is taken from source files.</li>
+</ul>
+
+<h2>Recommendations / Next Steps</h2>
+
+<h3>1. Add a filter input (sticky, top of <code>.sections</code>)</h3>
+<p><strong>Why:</strong> Once the library has more than ~15 items, scanning by eye breaks. WhisperFlow, Notion, and Apple News all put a search field above grouped lists. The site is private/single-user so don't bother with fuzzy ranking — substring match across <code>title + subtitle + description</code> is enough.</p>
+<pre><code>┌─────────────────────────────────────────┐
+│  clipdeck  v1.4.0          [Reload]     │
+├─────────────────────────────────────────┤
+│  🔍  Filter prompts and skills…         │  ← new
+├─────────────────────────────────────────┤
+│  PROMPTS                                │
+│  ┌─────────────────────────────────────┐│
+│  │ Code review checklist        v2.1   ││
+│  │ Reviews PRs against CLAUDE.md       ││
+│  └─────────────────────────────────────┘│
+│  ┌─────────────────────────────────────┐│
+│  │ Bug triage              v1.0  ▎     ││ ← resource bar
+│  │ Routes incoming bug reports         ││
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+</code></pre>
+
+<h3>2. Make the "tap to copy" affordance explicit</h3>
+<p><strong>Why:</strong> A row that looks like a card has no signal it's a button. When the user gets it wrong once (taps thinking it'll open), the toast saying "Copied" is delightful but jarring. Two options, in increasing intrusiveness:</p>
+<ul>
+  <li><strong>Light:</strong> add a small <code>📋</code> (or SVG clipboard icon) at the right edge of <code>.title-row</code>, ghosted to <code>--text-subtle</code>. Costs ~16px of width and removes all ambiguity.</li>
+  <li><strong>Heavier:</strong> a tiny "Tap to copy" hint in the section header, shown only until first successful copy (persisted in localStorage).</li>
+</ul>
+<p>The current <code>cursor: pointer</code> plus <code>:active { transform: scale(0.995) }</code> is correct on desktop but invisible on iPhone (no hover, scale is too subtle for touch).</p>
+
+<h3>3. Replace the "Loading…" string with skeleton rows</h3>
+<p><strong>Why:</strong> A pulsing word centered on a black screen looks broken on a slow GitHub fetch. Amex, and most modern dark-theme apps, show shimmer rectangles in the actual list shape. You already have the layout — render 3-4 grey-on-grey card stubs. The fade-in on the real data masks any layout jump.</p>
+<pre><code>┌─────────────────────────────────┐
+│  ▓▓▓▓▓▓▓▓▓▓                     │   ← shimmer
+│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓              │
+├─────────────────────────────────┤
+│  ▓▓▓▓▓▓▓▓                       │
+│  ▓▓▓▓▓▓▓▓▓▓▓▓▓                  │
+└─────────────────────────────────┘
+</code></pre>
+
+<h3>4. Hold off on collapsible sections</h3>
+<p><strong>Why:</strong> AP News collapses sections, but their list is 12+ deep categories. Clipdeck likely has 2-3 sections (prompts, skills, maybe agents). Collapsing them adds a tap with no payoff. Revisit only if section count exceeds 5.</p>
+
+<h3>5. Move the version chip from "centered baseline" to the top-right of the title row</h3>
+<p><strong>Why:</strong> Current <code>align-items: baseline</code> works but a v-chip floating at the title baseline reads as part of the title. Notion and Linear treat metadata pills as right-aligned trailing accessories. Use <code>justify-content: space-between</code> or a small gap with explicit alignment.</p>
+
+<h3>6. Skip the bottom navigation bar (you already do — keep it that way)</h3>
+<p><strong>Why:</strong> Almost every productivity app on mobile has a 4-tab bottom nav. Clipdeck is single-screen by design. Adding one would be cargo-culting. The current full-bleed list is correct. Worth calling out so it doesn't get added later "for consistency."</p>
+
+<h2>Key Examples</h2>
+
+<img src="references/whisperflow-snippets-list.png" alt="WhisperFlow Snippets">
+<em>WhisperFlow — Snippets screen: name → content rows, primary "Add new snippet" CTA, list of saved name-to-content pairs. Closest 1:1 precedent for clipdeck. [Lazyweb]</em>
+
+<img src="references/superhuman-notes-list.png" alt="Superhuman Notes List">
+<em>Superhuman — Notes inbox with title + preview snippet + last-modified date per row. Demonstrates how clean a metadata-rich list can be without crowding. [Lazyweb]</em>
+
+<img src="references/notion-dark-sections.png" alt="Notion Dark Sections">
+<em>Notion — Dark "Jump back in" + Favorites sections with chevron affordance. Validates clipdeck's section-grouped layout, but Notion makes section boundaries quieter than clipdeck's all-caps headers. [Lazyweb]</em>
+
+<img src="references/persist-minimal-dark.png" alt="Persist Minimal Dark">
+<em>Persist — Minimal dark notes header with profile avatar. Reference for how restrained a single-screen toolbar can be. [Lazyweb]</em>
+
+<img src="references/ap-collapsible-sections.png" alt="AP Collapsible Sections">
+<em>AP News — Sections with searchable list and expand/collapse rows. <strong>Anti-pattern for clipdeck</strong>: only worth it once category count grows past ~5. [Lazyweb]</em>
+
+<img src="references/amex-skeleton-loading.png" alt="Amex Skeleton Loading">
+<em>Amex — Dark skeleton/shimmer loading state. Replaces clipdeck's centered "Loading…" text. [Lazyweb]</em>
+
+<img src="references/raycast-dark-list.png" alt="Raycast Dark List">
+<em>Raycast — Dark list editor; Raycast (especially on macOS) is the strongest design comparator for "command palette over a list of stored items". [Lazyweb]</em>
+
+<h2>Patterns</h2>
+<p>What the strong examples share:</p>
+<ul>
+  <li><strong>Grouped sections with quiet headers</strong> — small uppercase or sentence-case labels in <code>--text-muted</code>, never compete with row titles. Clipdeck already nails this.</li>
+  <li><strong>One primary metadata chip per row, max</strong> — version, date, or tag. More than one and the title gets crowded.</li>
+  <li><strong>Copy/share/action affordance is visible at row level</strong> — even when the whole row is tappable, an icon at the trailing edge tells the user what'll happen.</li>
+  <li><strong>Search/filter at top of list</strong> appears once item count &gt; ~10.</li>
+  <li><strong>Loading = skeleton in the list shape</strong>, not centered text. Universal in 2026 mobile UX.</li>
+  <li><strong>Toast confirms destructive or one-shot actions</strong> — clipdeck's top-center pill toast matches Notion, Spotify, Uber Eats patterns.</li>
+</ul>
+
+<h2>Anti-Patterns</h2>
+<ul>
+  <li><strong>Centered "Loading…" text on a dark canvas</strong> — looks broken until data arrives. Replace with skeleton.</li>
+  <li><strong>Collapsible sections by default</strong> — adds taps without payoff for small libraries.</li>
+  <li><strong>Pull-to-refresh as the only reload</strong> — fine as a bonus, but discoverability is poor. Clipdeck's explicit Reload button is correct; consider exposing it on touch too as a small icon button.</li>
+  <li><strong>Multiple metadata badges crowding the title row</strong>. Keep clipdeck's discipline of one version chip max.</li>
+  <li><strong>Bottom tab bar on a single-screen app</strong> — pure cargo cult; clipdeck wisely avoids it.</li>
+  <li><strong>Card thumbnails / icons for non-visual content</strong> — text-only items don't need a 40px circle on the left.</li>
+</ul>
+
+<h2>Unique Angles</h2>
+<ul>
+  <li><strong>WhisperFlow's onboarding card on first load</strong> — a one-time card above the list explaining "tap a snippet to copy, long-press to preview." Dismissable, never returns. Solves the affordance problem (rec #2) without permanent clutter.</li>
+  <li><strong>The resource-backed green left bar</strong> (3px) is a smart, low-cost signal. Most apps would have used a tag/chip; clipdeck uses spatial encoding. Keep this — it's the kind of detail that differentiates a well-designed tool from a generic list.</li>
+</ul>
+
+<h2>Findings</h2>
+<p>The research surface is wide but shallow — many "list of items, dark theme" screens exist, but clipdeck's specific problem ("private library where each tap copies content to clipboard") has very few direct precedents. WhisperFlow Snippets is the only direct 1:1; Raycast Snippets (macOS) is the spiritual ancestor; Apple Shortcuts and iOS Text Replacements are the closest system-level analogs.</p>
+<p>That scarcity is informative: clipdeck doesn't need to imitate anyone closely. The pattern language is established, and the current implementation is competent. The remaining work is <strong>affordance clarity</strong> and <strong>scale</strong> (filter, skeleton loading), not visual redesign.</p>
+
+<h2>Sources</h2>
+<ul>
+  <li><a href="https://gendesigns.ai/blog/ai-design-prompt-library-100-prompts">The Ultimate AI Design Prompt Library 2026 — GenDesigns</a></li>
+  <li><a href="https://www.saasframe.io/patterns/copy-to-clipboard">78 SaaS Copy-to-Clipboard UI Examples — SaaSframe</a></li>
+  <li><a href="https://developer.android.com/develop/ui/views/touch-and-input/copy-paste">Copy and Paste — Android Developers</a></li>
+  <li><a href="https://www.patternfly.org/components/clipboard-copy/">PatternFly — Clipboard Copy</a></li>
+  <li><a href="https://cloudscape.design/components/copy-to-clipboard/">Copy to Clipboard — Cloudscape Design System (AWS)</a></li>
+  <li><a href="https://web.dev/patterns/clipboard/copy-text">Copy text — web.dev Patterns</a></li>
+  <li><a href="https://flaming.codes/posts/ux-study-copy-to-clipboard-action-web-api/">UX Study: Copy to Clipboard — flaming.codes</a></li>
+</ul>
+
+</body>
+</html>

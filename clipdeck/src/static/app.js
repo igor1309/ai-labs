@@ -1,7 +1,11 @@
 const TOAST_TIMEOUT_MS = 1800;
+const FILTER_DEBOUNCE_MS = 150;
 
 const state = {
+  currentFilter: "",
+  filterTimer: null,
   itemsById: new Map(),
+  sections: [],
   toastTimer: null
 };
 
@@ -22,6 +26,7 @@ elements.reload?.addEventListener("click", () => {
 });
 
 async function loadItems() {
+  resetFilter({ focus: false });
   showLoading();
 
   let response;
@@ -56,30 +61,179 @@ async function loadItems() {
 }
 
 function showLoading() {
-  elements.library.hidden = true;
-  elements.loading.hidden = false;
+  elements.loading.hidden = true;
+  elements.loading.textContent = "";
+  elements.library.hidden = false;
+  removeFilterRow();
+  elements.sections.replaceChildren(renderSkeleton());
 }
 
 function hideLoading() {
   elements.loading.hidden = true;
+  elements.loading.textContent = "";
 }
 
 function renderSections(sections) {
+  state.sections = sections;
   state.itemsById.clear();
-  elements.sections.replaceChildren();
   elements.library.hidden = false;
 
   for (const section of sections) {
+    for (const item of section.items) {
+      state.itemsById.set(item.id, item);
+    }
+  }
+
+  if (state.itemsById.size === 0) {
+    removeFilterRow();
+    elements.sections.replaceChildren();
+    return;
+  }
+
+  ensureFilterRow();
+  renderFilteredSections();
+}
+
+function renderFilteredSections() {
+  const filter = normalizedFilter();
+  let matchedItemCount = 0;
+  elements.sections.replaceChildren();
+
+  for (const section of state.sections) {
+    const items = section.items.filter((item) => itemMatchesFilter(item, filter));
+    if (filter !== "" && items.length === 0) {
+      continue;
+    }
+
     const heading = document.createElement("h2");
     heading.className = "section-heading";
     heading.textContent = section.title;
     elements.sections.append(heading);
 
-    for (const item of section.items) {
-      state.itemsById.set(item.id, item);
+    for (const item of items) {
+      matchedItemCount += 1;
       elements.sections.append(renderItem(item));
     }
   }
+
+  if (filter !== "" && matchedItemCount === 0) {
+    elements.sections.replaceChildren(renderFilterEmpty());
+  }
+
+  updateFilterControls();
+}
+
+function ensureFilterRow() {
+  if (document.querySelector("[data-filter-row]") !== null) {
+    return;
+  }
+
+  const filterRow = document.createElement("div");
+  filterRow.className = "filter-row";
+  filterRow.dataset.filterRow = "";
+
+  const input = document.createElement("input");
+  input.className = "filter-input";
+  input.dataset.filterInput = "";
+  input.placeholder = "Filter prompts and skills";
+  input.type = "text";
+  input.value = state.currentFilter;
+  input.addEventListener("input", () => scheduleFilterUpdate(input.value));
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      resetFilter({ focus: true });
+      renderFilteredSections();
+    }
+  });
+
+  const clearButton = document.createElement("button");
+  clearButton.className = "filter-clear";
+  clearButton.dataset.filterClear = "";
+  clearButton.hidden = true;
+  clearButton.type = "button";
+  clearButton.textContent = "Clear";
+  clearButton.addEventListener("click", () => {
+    resetFilter({ focus: true });
+    renderFilteredSections();
+  });
+
+  filterRow.append(input, clearButton);
+  elements.library.insertBefore(filterRow, elements.sections);
+}
+
+function removeFilterRow() {
+  document.querySelector("[data-filter-row]")?.remove();
+}
+
+function scheduleFilterUpdate(value) {
+  updateFilterControls();
+  if (state.filterTimer !== null) {
+    clearTimeout(state.filterTimer);
+  }
+  state.filterTimer = setTimeout(() => {
+    state.currentFilter = value;
+    state.filterTimer = null;
+    renderFilteredSections();
+  }, FILTER_DEBOUNCE_MS);
+}
+
+function resetFilter(options) {
+  if (state.filterTimer !== null) {
+    clearTimeout(state.filterTimer);
+    state.filterTimer = null;
+  }
+  state.currentFilter = "";
+
+  const input = document.querySelector("[data-filter-input]");
+  if (input !== null) {
+    input.value = "";
+    if (options.focus) {
+      input.focus();
+    }
+  }
+
+  updateFilterControls();
+}
+
+function updateFilterControls() {
+  const input = document.querySelector("[data-filter-input]");
+  const clearButton = document.querySelector("[data-filter-clear]");
+  if (input === null || clearButton === null) {
+    return;
+  }
+  clearButton.hidden = input.value.length === 0;
+}
+
+function normalizedFilter() {
+  return state.currentFilter.trim().toLowerCase();
+}
+
+function itemMatchesFilter(item, filter) {
+  if (filter === "") {
+    return true;
+  }
+  return [item.title, item.subtitle, item.description].some((value) =>
+    typeof value === "string" && value.toLowerCase().includes(filter)
+  );
+}
+
+function renderFilterEmpty() {
+  const empty = document.createElement("div");
+  empty.className = "filter-empty";
+  empty.dataset.filterEmpty = "";
+  empty.textContent = "No matches";
+
+  const clearButton = document.createElement("button");
+  clearButton.dataset.filterEmptyClear = "";
+  clearButton.type = "button";
+  clearButton.textContent = "Clear filter";
+  clearButton.addEventListener("click", () => {
+    resetFilter({ focus: true });
+    renderFilteredSections();
+  });
+
+  empty.append(clearButton);
+  return empty;
 }
 
 function renderItem(item) {
@@ -122,6 +276,21 @@ function renderItem(item) {
 
   button.addEventListener("click", () => copyItem(item.id));
   return button;
+}
+
+function renderSkeleton() {
+  const skeleton = document.createElement("div");
+  skeleton.dataset.skeleton = "";
+  skeleton.setAttribute("aria-hidden", "true");
+
+  for (let index = 0; index < 3; index += 1) {
+    const item = document.createElement("div");
+    item.className = "skeleton-item";
+    item.setAttribute("aria-hidden", "true");
+    skeleton.append(item);
+  }
+
+  return skeleton;
 }
 
 async function copyItem(id) {
