@@ -57,11 +57,13 @@ async function loadItems() {
 
 function showLoading() {
   elements.library.hidden = true;
-  elements.loading.hidden = false;
+  elements.loading.hidden = true;
+  elements.loading.textContent = "";
 }
 
 function hideLoading() {
   elements.loading.hidden = true;
+  elements.loading.textContent = "";
 }
 
 function renderSections(sections) {

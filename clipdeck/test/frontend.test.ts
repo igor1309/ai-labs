@@ -231,19 +231,38 @@ describe("clipdeck frontend", () => {
     });
   });
 
-  test("should show loading indicator while items are loading and hide it on completion", async () => {
-    let resolveFetch!: (response: Response) => void;
-    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((resolve) => {
-      resolveFetch = resolve;
-    }));
-    await import("../src/static/app.js");
-    await flushAsync();
-    const loadingDuringFetch = document.querySelector<HTMLElement>("[data-loading]")?.hidden;
-    resolveFetch(Response.json({ sections: [] }));
-    await flushAsync();
-    const loadingAfterFetch = document.querySelector<HTMLElement>("[data-loading]")?.hidden;
+  test("should keep legacy loading indicator hidden and empty across item loading states", async () => {
+    const initialItems = deferred<Response>();
+    const reloadItems = deferred<Response>();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/items") {
+        return itemsFetchCalls().length === 0 ? initialItems.promise : reloadItems.promise;
+      }
+      return Response.json({ version: "test" });
+    });
 
-    expect([loadingDuringFetch, loadingAfterFetch]).toEqual([false, true]);
+    await import("../src/static/app.js");
+    const initialProjection = loadingProjection();
+    initialItems.resolve(Response.json({ sections: [] }));
+    await flushAsync();
+    const successProjection = loadingProjection();
+    document.querySelector<HTMLButtonElement>("[data-reload]")!.click();
+    const reloadProjection = loadingProjection();
+    reloadItems.resolve(new Response("boom", { status: 500 }));
+    await flushAsync();
+    const errorProjection = loadingProjection();
+
+    expect([
+      initialProjection,
+      successProjection,
+      reloadProjection,
+      errorProjection
+    ]).toEqual([
+      { hidden: true, textContent: "" },
+      { hidden: true, textContent: "" },
+      { hidden: true, textContent: "" },
+      { hidden: true, textContent: "" }
+    ]);
   });
 
   test("should surface a failure toast when the backend returns a non-auth error", async () => {
@@ -515,8 +534,32 @@ async function flushAsync(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolvePromise!: (value: T) => void;
+  return {
+    promise: new Promise((resolve) => {
+      resolvePromise = resolve;
+    }),
+    resolve: resolvePromise
+  };
+}
+
 function itemsFetchCalls(): unknown[][] {
   return vi.mocked(fetch).mock.calls.filter((call) => String(call[0]) === "/api/items");
+}
+
+function loadingProjection(): {
+  hidden: boolean | undefined;
+  textContent: string | undefined;
+} {
+  const loading = document.querySelector<HTMLElement>("[data-loading]");
+  return {
+    hidden: loading?.hidden,
+    textContent: loading?.textContent ?? undefined
+  };
 }
 
 function cssBlock(css: string, selector: string): string {
