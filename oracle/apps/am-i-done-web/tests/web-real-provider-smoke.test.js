@@ -4,6 +4,8 @@ import test from "node:test"
 import { makeWorkerFetch } from "../../am-i-done-api/src/worker-fetch-assembler.js"
 
 const runRealProviderSmoke = process.env.RUN_REAL_PROVIDER_SMOKE === "1"
+const realProviderSmokeMaxAttempts = 3
+const realProviderSmokeRetryDelayMs = 5000
 
 test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession", async (testContext) => {
   if (!runRealProviderSmoke) {
@@ -27,28 +29,15 @@ test("test_webRealProviderSmoke_shouldReturnStructuredOutlook_onValidProfession"
     PROMPT_VERSION: "2"
   })
 
-  const response = await workerFetch(new Request("https://worker.example/api/outlook", {
-    body: JSON.stringify({
-      locale: "en-US",
-      profession: "software developer",
-      schemaVersion: "2"
-    }),
-    headers: {
-      "content-type": "application/json"
-    },
-    method: "POST"
-  }))
-  const body = await response.json()
+  await runSmokeRequestWithRetries(async () => {
+    const response = await workerFetch(makeOutlookRequest())
+    const body = await response.json()
 
-  assert.equal(response.status, 200)
-  assert.equal(body?.needsClarification, false)
-  assert.equal(typeof body?.canonicalProfession, "string")
-  assert.ok(body.canonicalProfession.length > 0)
-  assert.equal(typeof body?.answer?.headline, "string")
-  assert.ok(body.answer.headline.length > 0)
-  assert.equal(body?.schemaVersion, "2")
-  assert.equal(typeof body?.requestId, "string")
-  assert.ok(body.requestId.length > 0)
+    assertStructuredSmokeResponse(response, body)
+  }, {
+    maxAttempts: realProviderSmokeMaxAttempts,
+    retryDelayMs: realProviderSmokeRetryDelayMs
+  })
 })
 
 test("test_resolveRequiredModel_shouldThrowError_onMissingBinding", () => {
@@ -61,6 +50,72 @@ test("test_resolveRequiredModel_shouldReturnTrimmedBinding_onValidBinding", () =
   const model = resolveRequiredModel("  z-ai/glm-4.5-air:free  ", "OUTLOOK_MODEL")
 
   assert.equal(model, "z-ai/glm-4.5-air:free")
+})
+
+test("test_runSmokeRequestWithRetries_shouldReturnLaterResult_onTransientFailure", async () => {
+  const attempts = []
+
+  const result = await runSmokeRequestWithRetries(async ({ attempt }) => {
+    attempts.push(attempt)
+
+    if (attempt === 1) {
+      throw new Error("temporary provider failure")
+    }
+
+    return "structured outlook"
+  }, { maxAttempts: 2, retryDelayMs: 0 })
+
+  assert.deepEqual({ attempts, result }, {
+    attempts: [1, 2],
+    result: "structured outlook"
+  })
+})
+
+test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidMaxAttempts", async () => {
+  const errorMessages = await Promise.all(
+    [0, Number.NaN, 1.5].map(async (maxAttempts) => {
+      try {
+        await runSmokeRequestWithRetries(async () => "structured outlook", {
+          maxAttempts,
+          retryDelayMs: 0
+        })
+
+        return "resolved"
+      } catch (error) {
+        return error.message
+      }
+    })
+  )
+
+  assert.deepEqual(errorMessages, [
+    "maxAttempts must be a positive integer.",
+    "maxAttempts must be a positive integer.",
+    "maxAttempts must be a positive integer."
+  ])
+})
+
+test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidRetryDelay", async () => {
+  const errorMessages = await Promise.all(
+    [-1, Number.NaN, 1.5, Number.POSITIVE_INFINITY].map(async (retryDelayMs) => {
+      try {
+        await runSmokeRequestWithRetries(async () => "structured outlook", {
+          maxAttempts: 1,
+          retryDelayMs
+        })
+
+        return "resolved"
+      } catch (error) {
+        return error.message
+      }
+    })
+  )
+
+  assert.deepEqual(errorMessages, [
+    "retryDelayMs must be a non-negative integer.",
+    "retryDelayMs must be a non-negative integer.",
+    "retryDelayMs must be a non-negative integer.",
+    "retryDelayMs must be a non-negative integer."
+  ])
 })
 
 function makeD1DatabaseSpy() {
@@ -90,6 +145,32 @@ function makeKvNamespaceSpy() {
   }
 }
 
+function makeOutlookRequest() {
+  return new Request("https://worker.example/api/outlook", {
+    body: JSON.stringify({
+      locale: "en-US",
+      profession: "software developer",
+      schemaVersion: "2"
+    }),
+    headers: {
+      "content-type": "application/json"
+    },
+    method: "POST"
+  })
+}
+
+function assertStructuredSmokeResponse(response, body) {
+  assert.equal(response.status, 200)
+  assert.equal(body?.needsClarification, false)
+  assert.equal(typeof body?.canonicalProfession, "string")
+  assert.ok(body.canonicalProfession.length > 0)
+  assert.equal(typeof body?.answer?.headline, "string")
+  assert.ok(body.answer.headline.length > 0)
+  assert.equal(body?.schemaVersion, "2")
+  assert.equal(typeof body?.requestId, "string")
+  assert.ok(body.requestId.length > 0)
+}
+
 function resolveLlmApiKey(bindingValue) {
   if (typeof bindingValue !== "string" || bindingValue.trim() === "") {
     throw new Error("Missing required LLM_API_KEY for real-provider smoke checks.")
@@ -98,10 +179,45 @@ function resolveLlmApiKey(bindingValue) {
   return bindingValue
 }
 
+async function runSmokeRequestWithRetries(operation, { maxAttempts = 1, retryDelayMs = 0 } = {}) {
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error("maxAttempts must be a positive integer.")
+  }
+  if (!Number.isInteger(retryDelayMs) || retryDelayMs < 0) {
+    throw new Error("retryDelayMs must be a non-negative integer.")
+  }
+
+  const errors = []
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation({ attempt })
+    } catch (error) {
+      errors.push(error)
+
+      if (attempt === maxAttempts) {
+        throw new AggregateError(errors, `Real-provider smoke failed after ${maxAttempts} attempts.`)
+      }
+
+      await wait(retryDelayMs)
+    }
+  }
+}
+
 function resolveRequiredModel(bindingValue, name) {
   if (typeof bindingValue !== "string" || bindingValue.trim() === "") {
     throw new Error(`Missing required ${name} for real-provider smoke checks.`)
   }
 
   return bindingValue.trim()
+}
+
+function wait(delayMs) {
+  if (delayMs <= 0) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs)
+  })
 }

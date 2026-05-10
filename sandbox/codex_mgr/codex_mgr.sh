@@ -77,6 +77,58 @@ get_profile_dirs() {
     find "$PROFILES_DIR" -maxdepth 1 -type d -not -path "$PROFILES_DIR" | sort
 }
 
+get_active_profile_dir() {
+    local current_account_id
+    current_account_id="$(get_current_account_id)"
+    local dirs=()
+    while IFS= read -r line; do dirs+=("$line"); done < <(get_profile_dirs)
+
+    for dir in "${dirs[@]}"; do
+        if [[ -f "$AUTH_FILE" && -f "$dir/auth.json" ]] && cmp -s "$AUTH_FILE" "$dir/auth.json"; then
+            echo "$dir"
+            return
+        fi
+    done
+
+    if [[ -f "$ACTIVE_FILE" ]]; then
+        local marker
+        marker="$(cat "$ACTIVE_FILE")"
+        if [[ -n "$marker" && -d "$PROFILES_DIR/$marker" ]]; then
+            echo "$PROFILES_DIR/$marker"
+            return
+        fi
+    fi
+
+    for dir in "${dirs[@]}"; do
+        local profile_account_id
+        profile_account_id="$(get_profile_account_id "$dir")"
+        if [[ -n "$current_account_id" && -n "$profile_account_id" && "$profile_account_id" == "$current_account_id" ]]; then
+            echo "$dir"
+            return
+        fi
+    done
+}
+
+# Codex CLI rotates refresh tokens in-place: each refresh invalidates the
+# previous one. Persist the live auth back to the active profile before
+# switching away so the snapshot tracks the latest rotated token; otherwise
+# loading the profile later restores a consumed token and forces re-login.
+sync_active_profile_from_live() {
+    [[ -f "$AUTH_FILE" && -s "$AUTH_FILE" ]] || return 0
+    local active_dir
+    active_dir="$(get_active_profile_dir)"
+    [[ -n "$active_dir" && -d "$active_dir" ]] || return 0
+
+    local live_account_id profile_account_id
+    live_account_id="$(get_current_account_id)"
+    profile_account_id="$(get_profile_account_id "$active_dir")"
+    if [[ -n "$live_account_id" && -n "$profile_account_id" && "$live_account_id" != "$profile_account_id" ]]; then
+        return 0
+    fi
+
+    cp -p "$AUTH_FILE" "$active_dir/auth.json"
+}
+
 # Main logic
 case "${1:-}" in
     "save")
@@ -127,10 +179,12 @@ case "${1:-}" in
             echo "Error: Profile auth at $PROFILE_PATH is empty. Re-save the profile." >&2
             exit 1
         fi
-        
+
+        sync_active_profile_from_live
+
         # Backup current
         [[ -f "$AUTH_FILE" ]] && cp "$AUTH_FILE" "$AUTH_FILE.backup.$(date +%s)"
-        
+
         # Switch
         cp "$PROFILE_PATH" "$AUTH_FILE"
         echo "$PROFILE_NAME" > "$ACTIVE_FILE"
@@ -232,7 +286,9 @@ case "${1:-}" in
         fi
         next_dir="${profiles[$next_index]}"
         next_profile="$(basename "$next_dir")"
-        
+
+        sync_active_profile_from_live
+
         [[ -f "$AUTH_FILE" ]] && cp "$AUTH_FILE" "$AUTH_FILE.backup.$(date +%s)"
         cp "$next_dir/auth.json" "$AUTH_FILE"
         echo "$next_profile" > "$ACTIVE_FILE"
