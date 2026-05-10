@@ -229,7 +229,7 @@ Push branch and merge.
 ## Phase B Checklist
 
 - [x] B1 CI sync workflow
-- [ ] B2 VPS workspace + openclaw.json + restart
-- [ ] B3 Scheduled cron + suppression state
-- [ ] B4 End-to-end dry run
-- [ ] B5 Phase B closeout
+- [x] B2 VPS workspace + openclaw.json + restart
+- [x] B3 Scheduled cron + suppression state
+- [x] B4 End-to-end dry run
+- [x] B5 Phase B closeout
