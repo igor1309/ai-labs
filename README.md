@@ -59,6 +59,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | dragoman | Editorial channel | "The Dragoman" Telegram channel — brand brief, channel vision, and post backlog |
 | clipdeck | Product | iPhone-friendly private Cloudflare Worker that lists reusable prompts and skills with one-tap copy, front matter stripped server-side |
 | doc-drift-agent | Agent definition | Specialized OpenClaw agent definition for README drift review and fix-PR suggestions; runtime hosted in OpenClaw |
+| dashboard-sync-agent | Agent definition | Specialized OpenClaw agent definition for keeping `scripts/loc-dashboard.sh`, `docs/products.html`, and the `docs/loc-dashboard.html` data array in sync with repo state; runtime hosted in OpenClaw |
 
 ## Architecture
 
