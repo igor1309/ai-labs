@@ -844,6 +844,17 @@ describe("clipdeck frontend", () => {
     });
   });
 
+  test("css should space skeleton items in the sections grid", () => {
+    const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
+
+    expect(skeletonLayoutProjection(css)).toEqual({
+      display: "grid",
+      gap: "12px",
+      gridColumn: "1 / -1",
+      width: "100%"
+    });
+  });
+
   test("css should disable skeleton animation under reduced motion", () => {
     const css = readFileSync(join(process.cwd(), "src/static/app.css"), "utf8");
 
@@ -1278,6 +1289,21 @@ function cssDeclarationsProjection(skeletonItemBlock: string, itemBlock: string)
 
 function reducedMotionSkeletonAnimationProjection(css: string): boolean {
   return /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)\s*\{[\s\S]*?\.skeleton-item\s*\{[\s\S]*?(animation:\s*none|animation-name:\s*none|animation-duration:\s*0s)/.test(css);
+}
+
+function skeletonLayoutProjection(css: string): {
+  display: string;
+  gap: string;
+  gridColumn: string;
+  width: string;
+} {
+  const skeletonBlock = cssBlock(css, "[data-skeleton]");
+  return {
+    display: cssDeclaration(skeletonBlock, "display"),
+    gap: cssDeclaration(skeletonBlock, "gap"),
+    gridColumn: cssDeclaration(skeletonBlock, "grid-column"),
+    width: cssDeclaration(skeletonBlock, "width")
+  };
 }
 
 function filterRowCssProjection(css: string): {
