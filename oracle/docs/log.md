@@ -1,5 +1,8 @@
 # Log
 
+## 2026-05-10
+- Add retry coverage to the Oracle real-provider smoke harness and retry transient provider failures up to three attempts before failing CI.
+
 ## 2026-02-28
 - Deploy v0.2.0: replace `LLM_BASE_URL` + hardcoded path with single `LLM_ENDPOINT_URL` (full URL, no path concatenation) across adapters, assembler, tests, config, and Cloudflare Workers secret.
 - Add naming discipline rule to composition root guide: name adapters by protocol/capability, not by what they connect to.
