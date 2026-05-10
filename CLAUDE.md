@@ -84,7 +84,7 @@ Repo-specific details:
 - Worktree convention: `worktrees/<slug>` with branch `codex/<slug>`.
 - Plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
 - Default preferred execution mode is `auto-continue` unless the plan explicitly says `human-review-gated`.
-- Completed plans move to the relevant `implemented/` directory as the final closeout step.
+- Completed plans move to the relevant `implemented/` directory as the final closeout step. The move (`git mv docs/plans/<name>.md docs/plans/implemented/<name>.md`) ships in the **same PR as the implementation**, not as a follow-up PR — the merge is the moment the plan becomes implemented, so trunk never sees a state where the implementation is in but the plan still sits in `docs/plans/` as "to do".
 
 ## Release Process
 
