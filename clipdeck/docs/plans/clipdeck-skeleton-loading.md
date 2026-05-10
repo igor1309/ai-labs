@@ -81,7 +81,7 @@ For every implementation step:
 
 ### Step 4 — Skeleton card shape and shimmer styling
 
-- [ ] Step 4 complete
+- [x] Step 4 complete
 - **RED:** test reads `src/static/app.css`, extracts the `.item` and `.skeleton-item` CSS blocks, and asserts `.skeleton-item` declares matching card chrome (`width`, `padding`, `border-radius`, non-zero `min-height`) plus a non-empty animation declaration. Do not rely on JSDOM computed style unless the stylesheet is explicitly injected into the test DOM.
 - **GREEN:** add CSS for `.skeleton-item` mirroring `.item` dimensions and a shimmer keyframe animation in `app.css`.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
