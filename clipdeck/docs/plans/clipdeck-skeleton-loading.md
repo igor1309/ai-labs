@@ -121,7 +121,7 @@ For every implementation step:
 
 ### Step 9 — Reload re-shows skeleton
 
-- [ ] Step 9 complete
+- [x] Step 9 complete
 - **RED:** test loads items, then mocks a second never-resolving fetch, clicks `[data-reload]`, and asserts a `[data-skeleton]` element is present and previously rendered items are removed.
 - **GREEN:** in the reload handler (or `loadItems()`), re-mount the skeleton and clear `[data-sections]` before issuing the new fetch.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
