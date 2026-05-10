@@ -71,6 +71,15 @@ test("test_runSmokeRequestWithRetries_shouldReturnLaterResult_onTransientFailure
   })
 })
 
+test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidMaxAttempts", async () => {
+  await assert.rejects(() => runSmokeRequestWithRetries(async () => "structured outlook", {
+    maxAttempts: 0,
+    retryDelayMs: 0
+  }), {
+    message: "realProviderSmokeMaxAttempts must be greater than 0."
+  })
+})
+
 function makeD1DatabaseSpy() {
   return {
     prepare() {
@@ -133,6 +142,10 @@ function resolveLlmApiKey(bindingValue) {
 }
 
 async function runSmokeRequestWithRetries(operation, { maxAttempts = 1, retryDelayMs = 0 } = {}) {
+  if (maxAttempts < 1) {
+    throw new Error("realProviderSmokeMaxAttempts must be greater than 0.")
+  }
+
   const errors = []
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
