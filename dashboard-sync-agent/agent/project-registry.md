@@ -24,10 +24,14 @@ For every data row in either table:
 1. **Extract the registry key.**
    - Components: take the `Component` cell verbatim.
    - Structure: take the `Path` cell, strip surrounding backticks if present, and strip the trailing `/` if present.
-2. **Filter to top-level directories.** A row contributes to the tracked set iff its registry key is the name of an existing top-level directory in the source tree (i.e. `<key>/` exists at the repo root). Sub-component entries fail this test and are skipped — examples currently in the table:
-   - `notio-backend`, `notio-frontend` (sub-paths under `notio/`).
-   - `docker/langfuse` (path contains a `/`; not a top-level directory).
-   - `migrate-to-skills/guides/` (path contains a `/`; the parent `migrate-to-skills/` is not itself a Components or Structure entry, so the parent is not added either — only top-level directory entries that appear in either table are tracked).
+2. **Classify the row.** Compute the row's classification using the rules below in order; the first match wins.
+
+   - **Sub-component (silently skipped):** the row is a sub-component of a tracked project, intentional in the table for documentation purposes but not itself a top-level project. A row is a sub-component iff any of:
+     - The registry key contains a `/` (e.g. `docker/langfuse`, `migrate-to-skills/guides`).
+     - The Components `Type` cell starts with `Release unit` or `CLI release unit` (e.g. `notio-backend`, `notio-frontend`).
+     - The registry key matches a parent directory name that is itself a tracked Components or Structure entry, prefixed by `<parent>-` (e.g. `notio-backend` for parent `notio`). This is a fallback for sub-component rows that don't carry an explicit `Release unit` Type.
+   - **Tracked (contributes to the tracked set):** the registry key is the name of an existing top-level directory in the source tree (i.e. `<key>/` exists at the repo root) and the row is not a sub-component.
+   - **Removed-directory drift (surfaced, see below):** the registry key would be tracked except that no top-level directory by that name exists in the source tree.
 3. **Deduplicate.** A directory may appear in both tables. It is counted once. The Components row is preferred when both exist (so surface (2) gets its `Type` and `Description`); for surface (1) the choice does not matter.
 4. **Sort.** The canonical tracked set is sorted ASCII-ascending by registry key. This is the order the agent emits in the `for proj in ...` loop and the `known` list of `scripts/loc-dashboard.sh`.
 
@@ -53,13 +57,13 @@ A directory matching one of these names is skipped silently. The list lives here
 
 ## Removed directories
 
-A registry key whose directory no longer exists in the source tree is **removed-from-repo drift**. The agent:
+A registry key classified as **removed-directory drift** by step 2 (i.e. not a sub-component, registry key would otherwise be tracked, but the directory does not exist) is surfaced explicitly. The agent:
 
-- Does not remove the key from the tracked set on its own — that would mask the removal.
+- Does not add the key to the tracked set — there is no directory to render content for.
 - Surfaces the key in the PR description's "Registry rows referring to missing directories" section.
-- Continues to treat the row as part of the tracked set for surfaces (1) and (2) until the maintainer (or `doc-drift-agent`) removes the row from the README, at which point the next agent run drops it from the surfaces.
+- Does not silently delete loop entries, cards, or data-array rows for the missing key — the agent leaves those untouched until the maintainer (or `doc-drift-agent`) removes the registry row.
 
-This keeps the README the source of truth and prevents the agent from quietly deleting cards or loop entries when a directory is moved or renamed.
+This keeps the README the source of truth and prevents the agent from quietly deleting content when a directory is moved or renamed. **Sub-component rows are never surfaced as removed-directory drift** — they are silently skipped at step 2.
 
 ## Edge cases
 
