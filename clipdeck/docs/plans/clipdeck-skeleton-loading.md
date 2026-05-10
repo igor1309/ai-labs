@@ -129,7 +129,7 @@ For every implementation step:
 
 ### Step 10 — Toolbar remains visible during skeleton
 
-- [ ] Step 10 complete
+- [x] Step 10 complete
 - **RED:** test mounts the skeleton state and asserts `<header class="toolbar">` is visible (no ancestor `hidden`).
 - **GREEN:** verify the skeleton replaces only `[data-sections]` content, not the library wrapper. Adjust if Step 1's implementation hid the wrong scope.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test -- frontend.test`
