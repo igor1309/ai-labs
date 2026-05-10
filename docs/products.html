@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Labs — Products</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e1e4ed;
+    --text-muted: #8b8fa3;
+    --accent: #6c63ff;
+    --accent-light: #8b83ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 1.25rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  h1 span { color: var(--accent-light); }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .cross-link-row {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .cross-link {
+    display: inline-block;
+    color: var(--accent-light);
+    text-decoration: none;
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .cross-link:hover {
+    color: var(--text);
+    border-color: rgba(108, 99, 255, 0.4);
+  }
+
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .group-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    opacity: 0.75;
+    margin: 1.75rem 0 0.75rem;
+  }
+
+  .group-title:first-of-type {
+    margin-top: 0;
+  }
+
+  .products { margin-bottom: 3rem; }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 800px) {
+    .product-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .product {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .product::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(108, 99, 255, 0.12), transparent 40%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .product:hover {
+    transform: translateY(-3px);
+    border-color: rgba(108, 99, 255, 0.3);
+    box-shadow: 0 16px 48px -16px rgba(108, 99, 255, 0.12);
+  }
+
+  .product:hover::before { opacity: 1; }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .product-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .product-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .product-type {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-light);
+    background: #6c63ff18;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .product-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+  }
+
+  .product-desc strong {
+    color: var(--accent-light);
+    font-weight: 500;
+  }
+
+  .product-desc em {
+    color: var(--text);
+    font-style: normal;
+    opacity: 0.85;
+  }
+
+  .product-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tag {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><span>AI Labs</span></h1>
+    <p class="subtitle">Exploring AI through small, focused products</p>
+  </header>
+
+  <div class="cross-link-row">
+    <a class="cross-link" href="./loc-dashboard.html">View codebase stats →</a>
+  </div>
+
+  <!-- ── Products ── -->
+  <section class="products">
+    <h2 class="section-title">Products</h2>
+
+    <h3 class="group-title">Web Apps</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Clipdeck</span>
+          <span class="product-type">Web App</span>
+        </div>
+        <p class="product-desc">
+          <strong>iPhone copy library for private prompts and skills.</strong> A minimal
+          webpage backed by a serverless endpoint that reads a private GitHub repo and
+          returns sanitized, normalized items — <em>one tap copies the body without
+          YAML front matter</em>. Deployed at <code>clipdeck.enoa.ai</code> behind
+          Cloudflare Access; supports plain-text and Markdown prompts.
+        </p>
+        <div class="product-stack">
+          <span class="tag">TypeScript</span>
+          <span class="tag">Cloudflare Worker</span>
+          <span class="tag">Cloudflare Access</span>
+          <span class="tag">Vitest</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Nexum</span>
+          <span class="product-type">Web App</span>
+        </div>
+        <p class="product-desc">
+          <strong>Private repo memory system.</strong> Save GitHub repos with personal notes,
+          search and sort the collection, keep metadata current.
+          <em>Full Swift stack</em> — Hummingbird backend, Swift-to-Wasm web UI via JavaScriptKit.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Swift 6.1</span>
+          <span class="tag">Hummingbird 2</span>
+          <span class="tag">JavaScriptKit</span>
+          <span class="tag">Wasm</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Oracle — Am I Done?</span>
+          <span class="product-type">Web App</span>
+        </div>
+        <p class="product-desc">
+          <strong>One-shot career outlook tool.</strong> Enter a profession and get a structured AI-generated assessment:
+          risk timeline, key threats, recommended next steps, and a confidence rating.
+          <em>No chat, no accounts</em> — just a single question and a clear answer.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Cloudflare Workers</span>
+          <span class="tag">Cloudflare Pages</span>
+          <span class="tag">Vanilla JS</span>
+          <span class="tag">OpenRouter</span>
+          <span class="tag">D1</span>
+          <span class="tag">KV Cache</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">CLI &amp; Tooling</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Regentara</span>
+          <span class="product-type">CLI</span>
+        </div>
+        <p class="product-desc">
+          <strong>Workflow runner for governed coding-agent loops.</strong> Coordinates
+          provider CLI agents — Producer, Reviewer, and optional Remediator — through a
+          loop with pluggable review policy. Every input is a <em>verifiable task with
+          done criteria</em>; settings live in <code>.regentara/</code> YAML files.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Node.js</span>
+          <span class="tag">TypeScript</span>
+          <span class="tag">CLI</span>
+          <span class="tag">Multi-Agent</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Session Digest</span>
+          <span class="product-type">CLI</span>
+        </div>
+        <p class="product-desc">
+          <strong>Claude Code session postmortems.</strong> A CLI prototype that turns one Claude Code
+          JSONL session into a Markdown digest under <code>~/.session-digests/</code> —
+          powered by <em>LangChain Deep Agents over NVIDIA NIM</em>. Early-stage design.
+        </p>
+        <div class="product-stack">
+          <span class="tag">TypeScript</span>
+          <span class="tag">LangChain</span>
+          <span class="tag">Deep Agents</span>
+          <span class="tag">NVIDIA NIM</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Tools</span>
+          <span class="product-type">CLI Utilities</span>
+        </div>
+        <p class="product-desc">
+          <strong>Developer workflow helpers.</strong> Git worktree manager, Claude account switcher
+          with usage-limit reporting, shared config symlinker for worktrees —
+          <em>small shell scripts</em> that smooth out daily friction.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Bash</span>
+          <span class="tag">Git</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">MCP Servers</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Corpus Scout</span>
+          <span class="product-type">MCP Server</span>
+        </div>
+        <p class="product-desc">
+          <strong>Lexical search over a local text corpus.</strong> A read-only MCP server with two tools —
+          pattern search and section reading over Markdown files. Powered by ripgrep,
+          <em>deterministic and stateless</em>: no embeddings, no indexing, no mutation.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Node.js</span>
+          <span class="tag">MCP</span>
+          <span class="tag">ripgrep</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Web Scout</span>
+          <span class="product-type">MCP Server</span>
+        </div>
+        <p class="product-desc">
+          <strong>SearXNG search for Claude Code.</strong> An MCP stdio server that exposes
+          web search as a tool — runs locally, connects to a self-hosted SearXNG instance,
+          and returns <em>structured JSON results</em> with per-call logging.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Node.js</span>
+          <span class="tag">MCP</span>
+          <span class="tag">SearXNG</span>
+          <span class="tag">Docker</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">Services</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Nomos</span>
+          <span class="product-type">Service</span>
+        </div>
+        <p class="product-desc">
+          <strong>AI sovereignty layer.</strong> A unified proxy between projects and LLM providers —
+          vendor abstraction, per-project budget limits, token usage logging, and basic prompt injection safeguards.
+          <em>No cloud vendor lock-in</em>, just a single Docker service with SQLite.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Node.js</span>
+          <span class="tag">Express</span>
+          <span class="tag">SQLite</span>
+          <span class="tag">Docker</span>
+          <span class="tag">Caddy</span>
+          <span class="tag">VPS</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Notio</span>
+          <span class="product-type">Service</span>
+        </div>
+        <p class="product-desc">
+          <strong>Personal capture service.</strong> Send a link or a note from Telegram and it lands in a persistent inbox.
+          The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend.
+          Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Swift 6.1</span>
+          <span class="tag">Hummingbird 2</span>
+          <span class="tag">Supabase</span>
+          <span class="tag">Docker</span>
+          <span class="tag">Cloudflare Tunnel</span>
+          <span class="tag">Telegram Bot</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">Frameworks &amp; Concepts</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Neris</span>
+          <span class="product-type">Framework</span>
+        </div>
+        <p class="product-desc">
+          <strong>Agentic execution layer in Swift.</strong> Decides who does what across tools,
+          skills, and sub-agents. Provider-agnostic core with pluggable LLM backends —
+          <em>lightweight and adaptive</em>, not infrastructural.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Swift 6.1</span>
+          <span class="tag">Swift Package</span>
+          <span class="tag">OpenAI API</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Niora</span>
+          <span class="product-type">Concept</span>
+        </div>
+        <p class="product-desc">
+          <strong>Contextual field of emergence.</strong> The ambient environment where agents operate,
+          adapt, and evolve. <em>Not what makes things happen — where things happen.</em>
+          Early-stage design.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Design</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">Observability &amp; Automation</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Loki</span>
+          <span class="product-type">Observability</span>
+        </div>
+        <p class="product-desc">
+          <strong>Centralized logging stack.</strong> Grafana + Loki + Alloy on a VPS —
+          collects Docker container logs and journald units, with
+          <em>label-bounded cardinality</em> enforced by allowlists and CI checks.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Grafana</span>
+          <span class="tag">Loki</span>
+          <span class="tag">Alloy</span>
+          <span class="tag">Docker Compose</span>
+          <span class="tag">Cloudflare Tunnel</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Claude Insights</span>
+          <span class="product-type">Automation</span>
+        </div>
+        <p class="product-desc">
+          <strong>Weekly Claude Code usage reports.</strong> Aggregates local session data into
+          metrics — sessions, code churn, tool usage, goals, friction points — then
+          pushes to Supabase and <em>notifies via Telegram</em>.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Python</span>
+          <span class="tag">Supabase</span>
+          <span class="tag">Edge Functions</span>
+          <span class="tag">Telegram Bot</span>
+          <span class="tag">Nomos</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">Editorial &amp; Agents</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Doc Drift Agent</span>
+          <span class="product-type">Agent Definition</span>
+        </div>
+        <p class="product-desc">
+          <strong>README drift reviewer.</strong> Specialized OpenClaw agent that compares
+          the root and per-project READMEs against each other and against actual repo
+          state, then proposes README fixes as PRs with evidence. <em>ai-labs owns the
+          definition; OpenClaw owns the runtime</em>. Auto-merge is never used.
+        </p>
+        <div class="product-stack">
+          <span class="tag">OpenClaw</span>
+          <span class="tag">Markdown</span>
+          <span class="tag">GitHub PRs</span>
+          <span class="tag">Telegram</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">The Dragoman</span>
+          <span class="product-type">Editorial Channel</span>
+        </div>
+        <p class="product-desc">
+          <strong>"The Dragoman" Telegram channel.</strong> Brand brief, channel vision,
+          and a three-stage post pipeline (architecture → voice → image) — each post
+          ships as a self-contained <em>posts/&lt;NNNN-slug&gt;/</em> bundle with
+          copy and imagery.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Editorial</span>
+          <span class="tag">Posts</span>
+          <span class="tag">Imagery</span>
+          <span class="tag">Telegram</span>
+        </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Dev Skills</span>
+          <span class="product-type">Tooling</span>
+        </div>
+        <p class="product-desc">
+          <strong>Claude Code skills marketplace.</strong> A collection of reusable agent skills —
+          strict TDD, process gates, release management, architecture review, and more.
+          Developed here, <em>published to a public repo</em> via GitHub Actions sync.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Claude Code</span>
+          <span class="tag">Markdown</span>
+          <span class="tag">GitHub Actions</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">Research</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Sandbox</span>
+          <span class="product-type">Research</span>
+        </div>
+        <p class="product-desc">
+          <strong>Experiments and prototypes.</strong> A scratch space for exploring ideas —
+          AI-assisted development patterns, multi-agent architectures, code review prompts,
+          and <em>early-stage tool prototypes</em> before they graduate into their own projects.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Mixed</span>
+          <span class="tag">Prototyping</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Last updated: 2026-05-10 &middot; ai-labs
+  </footer>
+</div>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach((el, i) => {
+  el.style.transitionDelay = (i * 0.06) + 's';
+  observer.observe(el);
+});
+
+document.querySelectorAll('.product').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty('--mouse-x', (e.clientX - rect.left) + 'px');
+    card.style.setProperty('--mouse-y', (e.clientY - rect.top) + 'px');
+  });
+});
+</script>
+</body>
+</html>

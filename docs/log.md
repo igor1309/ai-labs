@@ -2,6 +2,7 @@
 
 ## 2026-05-10
 
+- LOC dashboard: split `docs/loc-dashboard.html` into a LOC-only page plus a new `docs/products.html` portfolio page, each linking to the other. Refreshed the data array (clipdeck and doc-drift-agent had drifted post-merge), added a `Last updated:` footer line on the LOC page, and grouped the 18 product cards by category. Drove from validated design research; the rejected recommendations (grouped bars, hiding zero-rows, hero-ratio promotion) are recorded in the implementation plan as out of scope.
 - doc-drift-agent: added PR-idempotence to the agent prompt. The agent now lists open `[doc-drift]` PRs before opening new ones and marks already-covered findings as `existing` instead of duplicating. Report and Telegram notification surfaces extended to carry `new`/`existing` status. Without the check, daily scheduled runs against an unmerged backlog of fix PRs would have produced duplicates each cycle.
 - doc-drift-agent: rotated the docdrift bot token after GitGuardian flagged inline-token commits on the PR branch. Wrapper now reads the token from `openclaw.json` via `jq`; branch history rewritten and force-pushed (sanitized commit `c6621d90`). Token rotated via BotFather and updated on VPS. Inventory log records the incident.
 
