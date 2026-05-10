@@ -72,12 +72,26 @@ test("test_runSmokeRequestWithRetries_shouldReturnLaterResult_onTransientFailure
 })
 
 test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidMaxAttempts", async () => {
-  await assert.rejects(() => runSmokeRequestWithRetries(async () => "structured outlook", {
-    maxAttempts: 0,
-    retryDelayMs: 0
-  }), {
-    message: "maxAttempts must be greater than 0."
-  })
+  const errorMessages = await Promise.all(
+    [0, Number.NaN, 1.5].map(async (maxAttempts) => {
+      try {
+        await runSmokeRequestWithRetries(async () => "structured outlook", {
+          maxAttempts,
+          retryDelayMs: 0
+        })
+
+        return "resolved"
+      } catch (error) {
+        return error.message
+      }
+    })
+  )
+
+  assert.deepEqual(errorMessages, [
+    "maxAttempts must be a positive integer.",
+    "maxAttempts must be a positive integer.",
+    "maxAttempts must be a positive integer."
+  ])
 })
 
 function makeD1DatabaseSpy() {
@@ -142,8 +156,8 @@ function resolveLlmApiKey(bindingValue) {
 }
 
 async function runSmokeRequestWithRetries(operation, { maxAttempts = 1, retryDelayMs = 0 } = {}) {
-  if (maxAttempts < 1) {
-    throw new Error("maxAttempts must be greater than 0.")
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error("maxAttempts must be a positive integer.")
   }
 
   const errors = []
