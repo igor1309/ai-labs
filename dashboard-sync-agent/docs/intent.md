@@ -10,18 +10,11 @@ A specialized OpenClaw agent that runs daily at 18:00 UTC and keeps three repo s
 
 ## Surfaces in scope
 
-The agent edits exactly three files:
+The agent edits exactly three files. The source of truth for what counts as a project is `README.md`'s `## Components` and `## Structure` tables — registries the maintainer edits explicitly when adding or removing a project.
 
-1. `scripts/loc-dashboard.sh` — the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`. The set of top-level directories that count as "projects" is determined by a project-detection methodology authored alongside the agent definition (see Methodology below). Sub-projects are out of scope.
-2. `docs/products.html` — product cards. **READMEs are the authoritative source of truth for card content**; the agent regenerates each card on every run from the project's READMEs (root `README.md` Components row + per-project READMEs where present). Manual edits to `docs/products.html` are not preserved across runs by design — maintainers express card content by editing READMEs, not the HTML. The synthesis rules (which README content produces which card fields, how categories are assigned) are defined in the methodology artifact.
+1. `scripts/loc-dashboard.sh` — the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`. The tracked set is the union of entries in `## Components` and `## Structure` whose name maps to a top-level directory. Sub-components (e.g. `notio-backend`, `docker/langfuse`) are skipped. Top-level directories present in the repo but absent from both tables are not silently added to or dropped from the loop — the agent surfaces them in the PR description as "candidates for Components or Structure registration" and leaves the call to the maintainer.
+2. `docs/products.html` — product cards. The `## Components` table is authoritative for canonical card content: the `Name`, `Type`, and `Description` columns drive the card's name, type tag, and description. Per-project READMEs are read only for enrichment (e.g. a deployed URL where the README states one). Manual edits to `docs/products.html` card content are not preserved across runs by design — maintainers express card content by editing the Components row, not the HTML. Category-header placement (within the existing 8 headers) is derived from the `Type` column per a mapping pinned in the agent definition.
 3. `docs/loc-dashboard.html` — the `data = [...]` array consumed by the chart. Refreshed mechanically from `scripts/loc-dashboard.sh` output.
-
-## Methodology
-
-Two judgments are not pinned in this Intent and live in a sibling artifact authored alongside the agent definition (mirroring `doc-drift-agent/agent/drift-methodology.md`):
-
-- **Project detection.** The rule for deciding whether a top-level directory counts as a project for surfaces (1) and (2). A simple "has a root `README.md`" rule is insufficient — many current projects do not. The rule is authored once the agent.md is staged, with the current `scripts/loc-dashboard.sh` loop list as the empirical baseline.
-- **Card synthesis.** Which README sections produce which `docs/products.html` card fields (name, type tag, description, deployed URL), and how each project is assigned to one of the existing category headers.
 
 ## Surfaces explicitly out of scope
 

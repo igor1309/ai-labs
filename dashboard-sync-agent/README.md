@@ -40,5 +40,7 @@ The `agent/` and `runtime/` subtrees (mirroring `doc-drift-agent/`) will be adde
 - The agent's editable-file allowlist is exactly: `scripts/loc-dashboard.sh`, `docs/products.html`, `docs/loc-dashboard.html`, plus its own per-agent runtime state under `~/.openclaw/agents/dashboard-sync-agent/`.
 - The agent never edits `README.md` (including the `## Components` table), per-project READMEs, log files, `release-units.config.toml`, or per-project CI workflows.
 - The agent never merges or approves PRs.
-- READMEs are authoritative for `docs/products.html` card content; manual edits to `docs/products.html` are not preserved across runs.
-- Sub-projects are out of scope; only top-level project directories (per a project-detection methodology to be authored alongside the agent definition) are tracked.
+- The `## Components` and `## Structure` tables in the root `README.md` are the authoritative registries: their union (filtered to top-level-directory entries) is the tracked set. The `## Components` table specifically drives `docs/products.html` card content (`Name`, `Type`, `Description`).
+- Manual edits to `docs/products.html` are not preserved across runs.
+- Top-level directories present in the repo but absent from both registries are surfaced in the PR description as "candidates for Components or Structure registration" rather than silently added or dropped.
+- Sub-projects (below top-level) and Components sub-components (e.g. `notio-backend`, `docker/langfuse`) are out of scope.
