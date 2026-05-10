@@ -231,6 +231,14 @@ describe("clipdeck frontend", () => {
     });
   });
 
+  test("should keep toolbar visible while skeleton is on screen", async () => {
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>(() => {}));
+
+    await import("../src/static/app.js");
+
+    expect(hasHiddenAncestor(document.querySelector(".toolbar"))).toBe(false);
+  });
+
   test("should keep legacy loading indicator hidden and empty across item loading states", async () => {
     const initialItems = deferred<Response>();
     const reloadItems = deferred<Response>();
@@ -604,6 +612,17 @@ function loadingProjection(): {
     hidden: loading?.hidden,
     textContent: loading?.textContent ?? undefined
   };
+}
+
+function hasHiddenAncestor(element: Element | null): boolean {
+  let currentElement: Element | null = element;
+  while (currentElement !== null) {
+    if (currentElement.hasAttribute("hidden")) {
+      return true;
+    }
+    currentElement = currentElement.parentElement;
+  }
+  return false;
 }
 
 function cssBlock(css: string, selector: string): string {
