@@ -36,15 +36,30 @@ On every run, in order:
 4. **Compare each README's claims against its own backing code/config** for the internal-consistency category, scoped to the project that owns the README.
 5. **Report detected drift with evidence.** Emit a single drift report per run, structured per `report-format.md`. Every finding carries both the doc-side claim (path + line + verbatim quote) and the contradicting evidence (path + line + verbatim quote, or commit ref for removed/renamed artifacts).
 6. **Suggest a README change for each finding.** The change is the minimum edit that resolves the drift. No restructuring, no formatting passes, no style edits, no added sections.
-7. **Propose each fix as a pull request.** One PR per cohesive finding (or per cohesive group of findings on the same README). Use `fix-pr-template.md` for the title and body. Each PR is opened against `trunk` from a dedicated branch following the convention `doc-drift/<slug>` where `<slug>` is a short kebab-case label derived from the finding (e.g. `doc-drift/components-table-missing-row`, `doc-drift/notio-release-tag-mismatch`). The PR body restates the finding, attaches the evidence, declares the scope-of-change checklist, and includes a "do not auto-merge" reminder.
-8. **Hand the report and the PR list back to the runtime** so OpenClaw can post the Telegram notification per `notification-spec.md`.
-9. **Persist the manual-run timestamp.** If, and only if, the trigger message is a manual run (the message body does NOT contain the literal token `--scheduled`), use the `write` tool to overwrite `/home/openclaw/.openclaw/agents/doc-drift-agent/state.json` with exactly:
+7. **Check for existing fix PRs (idempotence).** Before opening any pull request, list every open `[doc-drift]` PR on `igor1309/ai-labs` so you do not file a duplicate:
 
-   ```json
-   {"last_manual_run_utc": "<UTC ISO 8601 timestamp now, e.g. 2026-05-09T20:08:00Z>"}
+   ```
+   gh pr list --repo igor1309/ai-labs --state open --search '[doc-drift] in:title' --json number,title,headRefName,body --limit 50
    ```
 
-   Do this only after steps 1–8 have completed without a hard error (a "no drift found" report still counts as success). Do not write the file on a scheduled run — leave the existing value alone. The cron wrapper at `/home/openclaw/.openclaw/scripts/doc-drift-cron.sh` reads this file on every scheduled tick to enforce the 12h suppression gate per `suppression-policy.md`. The runtime does not write it on your behalf — this step is your responsibility on manual runs only.
+   For each finding, decide whether an open PR already covers it. A finding is **already-covered** when both:
+
+   - the finding's primary README path appears in an existing PR's title (titles follow `[doc-drift] <path>: <summary>` per `fix-pr-template.md`), AND
+   - the finding's doc-side claim (the same `<path>:<line>` reference) is restated in that PR's body.
+
+   For each already-covered finding: do **not** open a new PR. In the drift report, record the existing PR number under "Proposed PR" as `Existing #<N>` (see `report-format.md`) and tag the row in the Fix PRs table with `existing` status. Do not comment on the existing PR; do not re-push to its branch.
+
+8. **Propose each uncovered fix as a new pull request.** One PR per cohesive uncovered finding (or per cohesive group of uncovered findings on the same README). Use `fix-pr-template.md` for the title and body. Each PR is opened against `trunk` from a dedicated branch following the convention `doc-drift/<slug>` where `<slug>` is a short kebab-case label derived from the finding (e.g. `doc-drift/components-table-missing-row`, `doc-drift/notio-release-tag-mismatch`). The PR body restates the finding, attaches the evidence, declares the scope-of-change checklist, and includes a "do not auto-merge" reminder. Tag the corresponding row in the Fix PRs table with `new` status.
+
+9. **Hand the report and the PR list back to the runtime** so OpenClaw can post the Telegram notification per `notification-spec.md`.
+
+10. **Persist the manual-run timestamp.** If, and only if, the trigger message is a manual run (the message body does NOT contain the literal token `--scheduled`), use the `write` tool to overwrite `/home/openclaw/.openclaw/agents/doc-drift-agent/state.json` with exactly:
+
+    ```json
+    {"last_manual_run_utc": "<UTC ISO 8601 timestamp now, e.g. 2026-05-09T20:08:00Z>"}
+    ```
+
+    Do this only after steps 1–9 have completed without a hard error (a "no drift found" report still counts as success). Do not write the file on a scheduled run — leave the existing value alone. The cron wrapper at `/home/openclaw/.openclaw/scripts/doc-drift-cron.sh` reads this file on every scheduled tick to enforce the 12h suppression gate per `suppression-policy.md`. The runtime does not write it on your behalf — this step is your responsibility on manual runs only.
 
 ## Hard constraints
 
@@ -77,10 +92,10 @@ This definition implements every "The agent will:" bullet from `doc-drift-agent/
 | compare README claims against the actual repo state | "What you do" step 3 + drift category 2 |
 | report detected drift with evidence | "What you do" step 5 + `report-format.md` |
 | suggest README changes | "What you do" step 6 + minimum-edit constraint |
-| propose README fixes as PRs | "What you do" step 7 + `fix-pr-template.md` |
+| propose README fixes as PRs | "What you do" steps 7 (idempotence check) + 8 (open new PRs) + `fix-pr-template.md` |
 | support manual initiation | "Triggers" → manual |
 | support scheduled drift checks | "Triggers" → scheduled |
-| support automated notifications when drift is found | "What you do" step 8 + `notification-spec.md` |
+| support automated notifications when drift is found | "What you do" step 9 + `notification-spec.md` |
 | not run scheduled if a manual run was less than 12h earlier | "Triggers" → scheduled, gate enforced by runtime per `suppression-policy.md` |
 | never merge PRs automatically | "Hard constraints" → never merge |
 

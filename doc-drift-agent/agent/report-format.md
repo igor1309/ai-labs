@@ -18,7 +18,8 @@ The agent emits exactly one report per run, in Markdown. The shape is fixed so t
 - Repo commit: <short SHA> (<branch>)
 - READMEs inspected: <count> (per `doc-drift-agent/agent/readme-inventory.md`)
 - Findings: <count>
-- Fix PRs opened: <count>
+- Fix PRs opened: <count of new PRs>
+- Already tracked: <count of findings already covered by an open [doc-drift] PR>
 
 ## Findings
 
@@ -66,7 +67,10 @@ Each finding is one `##` block:
 
 ### Proposed PR
 
-<PR URL once opened, or "Pending" if the report is emitted before PR creation>
+<one of:>
+- `<PR URL>` — newly opened during this run.
+- `Existing #<N> — already tracked` — an open `[doc-drift]` PR was found that already covers this finding (per `agent.md` step 7); no new PR was opened.
+- `Pending` — the report is being emitted before PR creation (e.g. dry run).
 ```
 
 Field rules:
@@ -95,12 +99,17 @@ No drift found.
 ```markdown
 ## Fix PRs
 
-| Finding | Branch | URL |
-|---------|--------|-----|
-| <N> | doc-drift/<slug> | <https://github.com/.../pull/N> |
+| Finding | Status | Branch | URL |
+|---------|--------|--------|-----|
+| <N> | new      | doc-drift/<slug> | <https://github.com/.../pull/<new-N>> |
+| <M> | existing | doc-drift/<slug> | <https://github.com/.../pull/<existing-N>> |
 ```
 
-Branch follows `doc-drift/<slug>` per `agent/agent.md`. One row per opened PR.
+- `Status` is `new` (PR opened during this run) or `existing` (an open `[doc-drift]` PR already covered this finding — no new PR was opened, per `agent.md` step 7).
+- Branch follows `doc-drift/<slug>` per `agent.md`. For `existing` rows, the branch shown is the existing PR's branch.
+- One row per finding that has a PR (new or existing). Findings with `Pending` status do not appear in this table.
+
+The report header counts must be consistent: `Fix PRs opened: <count of new rows>`. Existing rows are counted separately in prose (e.g. "and 2 already tracked") if non-zero.
 
 ## Reproducibility check
 

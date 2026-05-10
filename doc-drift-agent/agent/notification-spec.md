@@ -32,8 +32,9 @@ By category:
 - README ↔ repo state: <n>
 - Internal consistency: <n>
 
-Fix PRs:
-- #<num> <readme path>: <one-line summary> — <PR URL>
+PRs (new <M>, already tracked <K>):
+- new      #<num> <readme path>: <one-line summary> — <PR URL>
+- existing #<num> <readme path>: <one-line summary> — <PR URL>
 - ...
 
 Do not auto-merge. Review each PR manually.
@@ -44,7 +45,7 @@ Rules:
 - The `[doc-drift]` prefix matches the PR title prefix in `fix-pr-template.md`. Same string, byte-identical.
 - Counts come from the drift report (`docs/report-format.md`); the agent does not recompute them on the Telegram side.
 - The "By category" block lists all three categories even when one or two have a count of 0. Skipping zeros makes the message asymmetric across runs and harder to skim.
-- Each "Fix PRs" line is one cohesive PR. Order matches the order in the drift report's Fix PRs table (insertion order).
+- Each "PRs" line is one cohesive PR with its `new`/`existing` status (per `agent.md` step 7 idempotence rule). `new` PRs were opened during this run; `existing` PRs were already tracking the finding before this run started. Order matches the drift report's Fix PRs table (insertion order).
 - The closing "Do not auto-merge" line is mandatory. It mirrors the social safety net in `fix-pr-template.md`.
 - No Markdown rendering tricks (no inline images, no buttons, no tables) — Telegram clients vary too much. Plain text + URLs is the entire surface.
 

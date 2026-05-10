@@ -1,5 +1,10 @@
 # Log
 
+## 2026-05-10
+
+- doc-drift-agent: added PR-idempotence to the agent prompt. The agent now lists open `[doc-drift]` PRs before opening new ones and marks already-covered findings as `existing` instead of duplicating. Report and Telegram notification surfaces extended to carry `new`/`existing` status. Without the check, daily scheduled runs against an unmerged backlog of fix PRs would have produced duplicates each cycle.
+- doc-drift-agent: rotated the docdrift bot token after GitGuardian flagged inline-token commits on the PR branch. Wrapper now reads the token from `openclaw.json` via `jq`; branch history rewritten and force-pushed (sanitized commit `c6621d90`). Token rotated via BotFather and updated on VPS. Inventory log records the incident.
+
 ## 2026-05-09
 
 - doc-drift-agent: closed the manual-run timestamp gap. Probed the agent's tools live (write, exec, others — confirmed unrestricted). Added step 9 to the agent prompt: on manual runs, the agent writes `last_manual_run_utc` to `state.json` itself. Verified by isolating step 9 in a one-shot invocation. The 12h suppression gate is now operational.
