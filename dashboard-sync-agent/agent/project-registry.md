@@ -24,14 +24,11 @@ For every data row in either table:
 1. **Extract the registry key.**
    - Components: take the `Component` cell verbatim.
    - Structure: take the `Path` cell, strip surrounding backticks if present, and strip the trailing `/` if present.
-2. **Classify the row.** Compute the row's classification using the rules below in order; the first match wins.
+2. **Classify the row.** Each row is one of three things; pick the first that fits.
 
-   - **Sub-component (silently skipped):** the row is a sub-component of a tracked project, intentional in the table for documentation purposes but not itself a top-level project. A row is a sub-component iff any of:
-     - The registry key contains a `/` (e.g. `docker/langfuse`, `migrate-to-skills/guides`).
-     - The Components `Type` cell starts with `Release unit` or `CLI release unit` (e.g. `notio-backend`, `notio-frontend`).
-     - The registry key matches a parent directory name that is itself a tracked Components or Structure entry, prefixed by `<parent>-` (e.g. `notio-backend` for parent `notio`). This is a fallback for sub-component rows that don't carry an explicit `Release unit` Type.
-   - **Tracked (contributes to the tracked set):** the registry key is the name of an existing top-level directory in the source tree (i.e. `<key>/` exists at the repo root) and the row is not a sub-component.
-   - **Removed-directory drift (surfaced, see below):** the registry key would be tracked except that no top-level directory by that name exists in the source tree.
+   - **Sub-component — skip silently, do not surface as drift.** Some rows in `## Components` document parts of a tracked project rather than independent projects: release units, named sub-paths, or anything that lives inside another project's directory. They exist for documentation, not as targets for the agent. Recognize them by any of: a `/` in the name (e.g. `docker/langfuse`), a Type cell that names a sub-unit role (`Release unit`, `CLI release unit`, or any equivalent worded variant — judge intent), or a `<parent>-<suffix>` shape where `<parent>` is itself tracked. Current examples in this repo: `notio-backend`, `notio-frontend`, `docker/langfuse`. These should never appear in your "Removed-directory drift" list.
+   - **Tracked — contributes to the tracked set.** Top-level directory in the source tree (`<key>/` exists at the repo root) and the row is not a sub-component.
+   - **Removed-directory drift — surface in the report.** A registry row that intends to point at a top-level project, but the directory is gone. This is rare and should not include sub-components — if you find yourself flagging `notio-backend` as removed-directory drift, you've classified wrong; it's a sub-component.
 3. **Deduplicate.** A directory may appear in both tables. It is counted once. The Components row is preferred when both exist (so surface (2) gets its `Type` and `Description`); for surface (1) the choice does not matter.
 4. **Sort.** The canonical tracked set is sorted ASCII-ascending by registry key. This is the order the agent emits in the `for proj in ...` loop and the `known` list of `scripts/loc-dashboard.sh`.
 
