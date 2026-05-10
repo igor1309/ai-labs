@@ -74,15 +74,6 @@ const server = createServer(async (request, response) => {
 });
 
 async function handleItems(request, response) {
-  const auth = request.headers.authorization ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
-
-  if (token === "") {
-    response.writeHead(401, { "content-type": "application/json; charset=utf-8" });
-    response.end(JSON.stringify({ error: "unauthorized" }));
-    return;
-  }
-
   await new Promise((resolveDelay) => setTimeout(resolveDelay, ITEMS_DELAY_MS));
   response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(itemsFixture));

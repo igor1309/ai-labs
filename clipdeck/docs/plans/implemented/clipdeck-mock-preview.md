@@ -39,8 +39,7 @@ A full-fidelity option (`wrangler dev` against a `.dev.vars` containing `CLIPDEC
    - Node built-in `http` + `fs`, no new dependencies
    - Serves `clipdeck/src/static/*` with explicit MIME map for `.html`, `.css`, `.js`
    - Intercepts `GET /api/items`:
-     - 401 if `Authorization` header is missing or empty
-     - Otherwise returns canned JSON after a 400ms delay (so the loading state is visible)
+     - Returns canned JSON after a 400ms delay (so the loading state is visible)
    - Listens on `127.0.0.1:8000`
    - Canned fixture covers: one Prompts section (2 items, mixed subtitle states), one Skills section with one resource-backed item (so the teal accent renders)
 
@@ -55,9 +54,7 @@ A full-fidelity option (`wrangler dev` against a `.dev.vars` containing `CLIPDEC
 - `./scripts/run_silent.sh "tests" npm test` — passes (no production code touched)
 - `./scripts/run_silent.sh "build" npx tsc --noEmit` — passes
 - Manual: `cd clipdeck && npm run preview`, open `http://localhost:8000`:
-  - Unlock card renders with mouse-tracked gradient on hover
-  - Submit empty secret → unauthenticated path returns 401, error toast surfaces
-  - Submit any non-empty secret → loading state visible (~400ms), then library renders with sectioned items
+  - Skeleton loading state visible (~400ms), then library renders with sectioned items
   - Hovering items changes border + background
   - Resource-backed item shows teal left rail
   - Click item → "Copied" toast floats at bottom, auto-clears
