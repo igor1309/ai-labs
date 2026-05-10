@@ -145,7 +145,7 @@ For every implementation step:
 
 ### Step 12 — Archive spec and plan
 
-- [ ] Step 12 complete
+- [x] Step 12 complete
 - **Action only (no test):** `git mv clipdeck/docs/specs/spec-skeleton-loading.md clipdeck/docs/specs/implemented/` and `git mv clipdeck/docs/plans/clipdeck-skeleton-loading.md clipdeck/docs/plans/implemented/`. Update `clipdeck/docs/log.md` with a one-line entry for this change.
 - **Verify:** `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` both green.
 - **Commit:** `clipdeck: archive skeleton-loading spec and plan`
