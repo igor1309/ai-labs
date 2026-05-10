@@ -11,6 +11,7 @@ describe("clipdeck frontend", () => {
     document.body.innerHTML = readFileSync(join(process.cwd(), "src/static/index.html"), "utf8");
     vi.useRealTimers();
     vi.restoreAllMocks();
+    window.history.replaceState(null, "", "/");
     vi.resetModules();
     vi.stubGlobal("fetch", vi.fn());
     vi.stubGlobal("localStorage", {
@@ -257,7 +258,8 @@ describe("clipdeck frontend", () => {
     expect(filterEmptyProjection()).toEqual({
       clearLabel: "Clear filter",
       emptyText: expect.stringContaining("No matches"),
-      itemCount: 0
+      itemCount: 0,
+      sectionsChildCount: 1
     });
   });
 
@@ -291,13 +293,16 @@ describe("clipdeck frontend", () => {
     const hiddenBeforeInput = filterClearButtonIsHidden();
     vi.useFakeTimers();
     typeFilterValue("review");
+    const hiddenImmediatelyAfterInput = filterClearButtonIsHidden();
     await vi.advanceTimersByTimeAsync(150);
 
     expect({
       hiddenAfterInput: filterClearButtonIsHidden(),
+      hiddenImmediatelyAfterInput,
       hiddenBeforeInput
     }).toEqual({
       hiddenAfterInput: false,
+      hiddenImmediatelyAfterInput: false,
       hiddenBeforeInput: true
     });
   });
@@ -1150,11 +1155,13 @@ function filterEmptyProjection(): {
   clearLabel: string | null | undefined;
   emptyText: string | null | undefined;
   itemCount: number;
+  sectionsChildCount: number | undefined;
 } {
   return {
     clearLabel: document.querySelector("[data-filter-empty-clear]")?.textContent,
     emptyText: document.querySelector("[data-filter-empty]")?.textContent,
-    itemCount: document.querySelectorAll("[data-item-id]").length
+    itemCount: document.querySelectorAll("[data-item-id]").length,
+    sectionsChildCount: document.querySelector("[data-sections]")?.children.length
   };
 }
 
