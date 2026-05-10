@@ -2,7 +2,7 @@
 
 A private single-user repo memory system. Save GitHub repos with personal notes, search and sort the collection, and keep metadata current — all in a single-table interface.
 
-## Stack
+## Stack overview
 
 Full Swift: server-side Swift (Hummingbird 2) for backend, Swift package for frontend core, Swift CLI, and Swift-to-Wasm (JavaScriptKit) for web UI.
 

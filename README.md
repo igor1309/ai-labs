@@ -44,10 +44,10 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | Component | Type | Description |
 |-----------|------|-------------|
 | nexum | Product | Private repo memory system |
-| notio | Product family | Personal capture service |
+| notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
-| oracle | Product | One-shot career outlook tool |
+| oracle | Product | "Oracle — Am I Done?" One-shot career outlook tool |
 | regentara | CLI release unit | Workflow runner for governed coding-agent loops |
 | nomos | Service | AI sovereignty layer |
 | corpus-scout | MCP tool | Lexical search over a local text corpus |

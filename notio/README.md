@@ -77,7 +77,7 @@ Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/
 
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 
-## Stack
+## Stack overview
 
 Swift 6.1 + [Hummingbird 2](https://github.com/hummingbird-project/hummingbird). Single executable (`NotioServer`) built from the `NotioApp` library. Deployed as a Docker container behind Cloudflare Tunnel.
 
