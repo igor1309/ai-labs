@@ -76,7 +76,7 @@ test("test_runSmokeRequestWithRetries_shouldThrowError_onInvalidMaxAttempts", as
     maxAttempts: 0,
     retryDelayMs: 0
   }), {
-    message: "realProviderSmokeMaxAttempts must be greater than 0."
+    message: "maxAttempts must be greater than 0."
   })
 })
 
@@ -143,7 +143,7 @@ function resolveLlmApiKey(bindingValue) {
 
 async function runSmokeRequestWithRetries(operation, { maxAttempts = 1, retryDelayMs = 0 } = {}) {
   if (maxAttempts < 1) {
-    throw new Error("realProviderSmokeMaxAttempts must be greater than 0.")
+    throw new Error("maxAttempts must be greater than 0.")
   }
 
   const errors = []
