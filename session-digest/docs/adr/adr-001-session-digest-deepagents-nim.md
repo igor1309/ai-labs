@@ -199,7 +199,7 @@ The following are explicitly out of scope for v1 and MUST trigger a new ADR or a
 - Local index for normalized session evidence.
 - Larger-session support through chunking, selection, or compression.
 - Optional watched-folder workflow.
-- Callable tool integration inside Regentara.
+- Callable tool integration inside Reinix.
 - Provider abstraction after the NIM-first learning goal is complete.
 - CI integration after the exploration phase.
 - Optional evidence appendix or stricter claim-level citation model.
