@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-12
+
+- Reinix rename: completed the pre-public product rename from Regentara to Reinix across the workspace package, CLI/runtime identity, release unit config, CI workflow, dashboard registries, docs, examples, and tests. No compatibility aliases were retained for the old CLI/config/URI names.
+
 ## 2026-05-10
 
 - dashboard-sync-agent: Phase B complete and live. New OpenClaw account `dashboardsync` bound to bot `@dashboard_sync_agent_bot` (allowlisted DMs from chat 54589373); agent `dashboard-sync-agent` with workspace `/home/openclaw/.openclaw/workspace-dashboard-sync`; daily cron at 18:00 UTC (wrapper enforces 6h post-manual-run suppression). End-to-end dry run on `gpt-5.5` produced PR #355 covering all three surfaces (script header/loop/known list, products.html cards, loc-dashboard.html data array); merged. Cosmetic imperfection: Oracle's curated subtitle `"Oracle — Am I Done?"` lands inside the `<strong>` lead instead of replacing the card name — mirrors the existing Dragoman style. Spec iteration on `gpt-5.2` had revealed two model-interpretation issues (inverted "no product-type chip" rule, sub-component misclassification); both resolved by switching the OpenClaw default to `gpt-5.5`, not by spec changes. Plan archived to `dashboard-sync-agent/docs/plans/implemented/`.
@@ -36,14 +40,14 @@
 ## 2026-05-02
 
 - LOC dashboard: refreshed the static landing from `scripts/loc-dashboard.sh` after the Product Intent docs landed on `user-stories`; agents docs now report 4,941 lines and repo total is 104,263.
-- LOC dashboard refresh: synced `docs/loc-dashboard.html` data array with current `scripts/loc-dashboard.sh` output (clipdeck 0/0/290 → 1114/1472/1782; regentara 952/1712/4585 → 2792/4906/7964; smaller drift in nomos, dev-skills, session-digest, agents, repo-scripts, claude-insights). Updated the Clipdeck product card from docs-only to a deployed Cloudflare Worker (clipdeck.enoa.ai) with refreshed stack tags.
+- LOC dashboard refresh: synced `docs/loc-dashboard.html` data array with current `scripts/loc-dashboard.sh` output (clipdeck 0/0/290 → 1114/1472/1782; reinix 952/1712/4585 → 2792/4906/7964; smaller drift in nomos, dev-skills, session-digest, agents, repo-scripts, claude-insights). Updated the Clipdeck product card from docs-only to a deployed Cloudflare Worker (clipdeck.enoa.ai) with refreshed stack tags.
 - my-way: implemented the Product Intent layer above research/pre-ADR/ADR/spec/implementation planning, adding story-centered note/structure/example artifacts, drafting/review skills, downstream traceability guidance, and lightweight variant escalation rules.
 - GitHub Actions Node 20 deprecation cleared — bumped `actions/checkout@v4 → v5` (Node 24 runtime) and `dorny/paths-filter@v3 → v4` across all workflows ahead of the June 2026 forced upgrade and the September 2026 Node 20 removal. Stayed on `checkout@v5` rather than `v6` to avoid the credential-handling change in v6.
 - clipdeck v0.1.7: added a deployed-version footer (`/api/version` + bottom-of-page render) so we can confirm at a glance which Worker build a browser is actually loading. Backfilled a missing frontend test that asserts the rendered subtitle text matches `item.subtitle` to lock in the description-fetch behavior shipped in v0.1.5/v0.1.6.
 
 ## 2026-05-01
 
-- LOC dashboard landing: refreshed product cards in `docs/loc-dashboard.html` — promoted regentara from `Concept`/Design to a `CLI` MVP workflow runner with current tags, and renamed dragoman to "The Dragoman" with description and tags reflecting a posts-and-imagery channel rather than docs-only. `scripts/loc-dashboard.sh` was reviewed and needs no changes (it counts LOC and does not classify project type).
+- LOC dashboard landing: refreshed product cards in `docs/loc-dashboard.html` — promoted reinix from `Concept`/Design to a `CLI` MVP workflow runner with current tags, and renamed dragoman to "The Dragoman" with description and tags reflecting a posts-and-imagery channel rather than docs-only. `scripts/loc-dashboard.sh` was reviewed and needs no changes (it counts LOC and does not classify project type).
 - clipdeck: added release-unit and CI/CD wiring for tag-driven Cloudflare Worker deploys, plus the first-deploy operator runbook and README component update.
 - clipdeck: implemented the static iPhone frontend and Worker Static Assets routing, including unlock, reload, copy feedback, and resource-backed skill styling tests.
 - clipdeck: implemented the authenticated `GET /api/items` Worker endpoint with GitHub Contents API reads, sanitized section assembly, and spec-shaped upstream/source-missing errors.
@@ -69,17 +73,17 @@
 
 ## 2026-04-28
 
-- Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; regentara now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
+- Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; reinix now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
 
 ## 2026-04-27
 
-- ADR: added `docs/adr/cli-settings-convention.md` — repo-level rule covering discovery precedence, first-run bootstrap, structural-vs-catalog split, and settings-error class for CLI tools. Lists known violations in `regentara` and `session-digest` to close via per-tool plans.
+- ADR: added `docs/adr/cli-settings-convention.md` — repo-level rule covering discovery precedence, first-run bootstrap, structural-vs-catalog split, and settings-error class for CLI tools. Lists known violations in `reinix` and `session-digest` to close via per-tool plans.
 - Nomos: remove inert `nomos-shared` declaration from the repo prod compose (CI never copies it) and the orphan `docker build -t nomos:latest .` from staging deploy. Cleanup of dead promises after the rollback redesign. See `nomos/docs/log.md`.
 - Nomos: rewrite rollback path to operate on the actually-used `nomos-nomos:latest` image so a failed prod deploy can restore the previous version. See `nomos/docs/log.md`.
 - Nomos: force `--build` on prod compose so deploys rebuild the auto-named prod image instead of caching the previously built version. See `nomos/docs/log.md`.
 - Nomos: declare `nomos-shared` external network in the prod compose so Caddy retains staging connectivity across `docker compose down/up`. See `nomos/docs/log.md`.
-- regentara: scaffolded as a Node ESM workspace package and release unit; LOC dashboard tests now treat it as an implemented code component instead of docs-only.
-- regentara: created MVP workflow runner implementation plan from accepted spec and ADRs; addressed architecture-doc review (test ownership, skill references, release-unit posture, provider-CLI module split, worktree creation step, Node version pin, commit staging scope). See `regentara/docs/log.md`.
+- reinix: scaffolded as a Node ESM workspace package and release unit; LOC dashboard tests now treat it as an implemented code component instead of docs-only.
+- reinix: created MVP workflow runner implementation plan from accepted spec and ADRs; addressed architecture-doc review (test ownership, skill references, release-unit posture, provider-CLI module split, worktree creation step, Node version pin, commit staging scope). See `reinix/docs/log.md`.
 - Reverted out-of-scope Nomos release/deploy changes from the session-digest branch and removed the mistaken Nomos release tags.
 - session-digest: replaced the Deep Agents prototype role with a V2 local-ledger and bounded-synthesis CLI, including dependency cleanup and component documentation updates.
 - Process docs: made implementation plans explicitly declare execution mode, review stops, worktree mode, push policy, and final archiving so future plan execution can auto-continue without ambiguity.
@@ -90,7 +94,7 @@
 
 ## 2026-04-25
 
-- regentara: MVP ADR set complete (agent settings, model routing, CLI execution boundary, failure policy, run artifact storage). All reviewed and accepted. See `regentara/docs/log.md`.
+- reinix: MVP ADR set complete (agent settings, model routing, CLI execution boundary, failure policy, run artifact storage). All reviewed and accepted. See `reinix/docs/log.md`.
 
 ## 2026-04-24
 
@@ -102,14 +106,14 @@
 
 - Release ADRs: clarified explicit configured basenames for nested release units so symmetric component folders can still use globally unambiguous tags.
 
-- LOC dashboard: consolidated oracle into single row, added missing code extensions (.svelte, .sql, .css, .html, .mjs), merged gen/scripts columns into code, renamed text to docs, added per-project .md counting, added nexum/niora/regentara as regular rows, added .wrangler to exclusions.
+- LOC dashboard: consolidated oracle into single row, added missing code extensions (.svelte, .sql, .css, .html, .mjs), merged gen/scripts columns into code, renamed text to docs, added per-project .md counting, added nexum/niora/reinix as regular rows, added .wrangler to exclusions.
 
 - CI: narrowed `notio` path filter to Swift-only paths (Sources, Tests, Package.swift, Package.resolved), removing infra paths (supabase, Dockerfile, docker-compose, scripts, release.toml) that don't need the 15-min Swift test suite.
 
 ## 2026-04-23
 
-- LOC dashboard: added regentara to known dirs and docs-only list, clearing drift warning.
-- regentara: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
+- LOC dashboard: added reinix to known dirs and docs-only list, clearing drift warning.
+- reinix: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
 - CI: switched `notio` path filter from catch-all `notio/**` to inclusion-only (Sources, Tests, Package.swift, Dockerfile, etc.) so doc-only changes skip the expensive `notio-core` Swift build. Negation patterns don't work — `dorny/paths-filter` OR's all lines.
 
 ## 2026-04-21

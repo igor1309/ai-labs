@@ -48,7 +48,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Product | "Oracle — Am I Done?" One-shot career outlook tool |
-| regentara | CLI release unit | Workflow runner for governed coding-agent loops |
+| reinix | CLI release unit | Workflow runner for governed coding-agent loops |
 | nomos | Service | AI sovereignty layer |
 | corpus-scout | MCP tool | Lexical search over a local text corpus |
 | web-scout | MCP tool | SearXNG search for Claude Code |
