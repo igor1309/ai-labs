@@ -2,6 +2,7 @@
 
 ## 2026-05-12
 
+- research/courses: added `aiforwork/` competitor extraction (page-content, course-curriculum, selling-points) mirroring the `khakhalev/` three-file pattern, plus a top-level `positioning-notes.md` distilling both surveys into a market map and a list of unfilled positioning slots (engineering-manager audience, EN-language market, senior judgment / failure post-mortems, curated cross-role structured path, async durable-artifact format, B2B-led channel). Inputs to `decision-matrix.md`; no commitments. The two surveyed RU offers split by *object of practice* (shared codebase vs participant's own routine), not by level — informing how the decision matrix reads its `Who` axis.
 - Reinix rename: completed the pre-public product rename from Regentara to Reinix across the workspace package, CLI/runtime identity, release unit config, CI workflow, dashboard registries, docs, examples, and tests. No compatibility aliases were retained for the old CLI/config/URI names.
 
 ## 2026-05-10
