@@ -1,7 +1,7 @@
 ---
 name: discuss
 author: Igor Malyarov
-version: "1.1.1"
+version: "1.2.0"
 description: >
   Collaborative discussion mode for exploring ideas, designs, and implementation
   approaches before taking action. Activates when the user says "let's discuss",
@@ -75,6 +75,13 @@ opinion, state it: "I'd lean toward X because…", "The strongest option here
 looks like…", "This feels like a case where…". Back it up with reasoning and
 hold it loosely — the user may disagree, and that's the point of discussion.
 But never hide behind neutrality when you have a genuine perspective.
+
+**Name the strongest counter-argument.** After stating your lean, add one
+sentence on the best case *against* it — the constraint that would flip your
+recommendation, the user context that would make the other option win, or the
+weakest link in your reasoning. One sentence, mandatory; don't pad it into a
+balanced essay or a pros/cons table. This forces honesty about tradeoffs
+without diluting the lean.
 
 ### Step 3: Ask Questions With a Lean
 

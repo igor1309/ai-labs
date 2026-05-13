@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-28
+
+- discuss v1.2.0 and intake v1.5.0: require one mandatory counter-argument sentence after any stated lean. Targets the "balanced essay" failure mode without reverting to the menu-of-options anti-pattern both skills already prohibit — Claude must still pick a side, but now name what would flip the pick. In `intake`, scoped to Open Questions only so it doesn't conflict with the "no solution design" hard rule. Marketplace v1.49.0.
+
 ## 2026-05-27
 
 - process-gates v1.1.0 + adr-governance v1.0.1: pushed the repo's implementation-plan structure gate down into the public skills so plan discipline travels with the plugin, not just `CLAUDE.md`. process-gates gains a dedicated `Plan Structure Gate` (Goal / Execution mode / Execution lock / Scope guardrails / phases / Done criteria / Final closeout as blocking required headings), two new Pre-Push items (adversarial plan-structure review when a plan changed; PR title/body derived from plan goal/scope/gates), and four new Completion Verification checks (structure present, Done criteria explicit, Final closeout declares archive + push policy, plan moved to implemented/ in the same change set). adr-governance reference `implementation-plan-planner-requirements.md` mirrors the same heading list and now ties section 10's Completion Definition to an explicit `## Done criteria` heading and section 11's Operational Contract to `## Execution mode` + `## Execution lock` + `## Final closeout` headings. Marketplace v1.48.0.

@@ -1,7 +1,7 @@
 ---
 name: intake
 author: Igor Malyarov
-version: "1.4.1"
+version: "1.5.0"
 description: >
   Use when starting work on a task — assigned implementation, bug report,
   vague requirement, or open-ended exploration — even if the user doesn't
@@ -157,10 +157,12 @@ Each question must be:
 - Genuine — you actually don't know, not fishing for confirmation.
 - One at a time — present the most important question first. Wait for the
   answer before asking the next.
-- Leaned — state your take and why. You've done the homework; you should have
-  a position. "A or B?" is passive — "I'd go with A because [reason], unless
-  you see something I'm missing" is useful. If you genuinely lack enough
-  context for a lean, say so explicitly — don't just go neutral.
+- Leaned — state your take and why, and add one sentence on the strongest
+  counter to it (the constraint or context that would flip you). You've done
+  the homework; you should have a position. "A or B?" is passive — "I'd go
+  with A because [reason], unless you see something I'm missing" is useful.
+  If you genuinely lack enough context for a lean, say so explicitly — don't
+  just go neutral.
 
 ### Large-Scope Mode
 
