@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dev Skills</title>
+<style>
+  :root {
+    --bg: #101218;
+    --panel: #181b23;
+    --panel-strong: #20242e;
+    --border: #303646;
+    --text: #edf1f7;
+    --muted: #a9b0bf;
+    --blue: #58a6ff;
+    --green: #4ecf8f;
+    --amber: #f6b35b;
+    --rose: #f2788f;
+    --violet: #a08cff;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  .container {
+    width: min(1180px, calc(100% - 32px));
+    margin: 0 auto;
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+    gap: 48px;
+    align-items: center;
+    padding: 64px 0 40px;
+  }
+
+  .eyebrow {
+    color: var(--green);
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(2.6rem, 7vw, 5.5rem);
+    line-height: 0.92;
+    margin: 0 0 20px;
+    max-width: 9ch;
+  }
+
+  .lead {
+    color: var(--muted);
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+    line-height: 1.55;
+    max-width: 680px;
+    margin: 0;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .action {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    display: inline-flex;
+    font-size: 0.95rem;
+    font-weight: 700;
+    min-height: 44px;
+    padding: 0 16px;
+    text-decoration: none;
+  }
+
+  .action.primary {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+  }
+
+  .hero-panel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .hero-panel-head {
+    background: var(--panel-strong);
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    font-size: 0.8rem;
+    justify-content: space-between;
+    padding: 12px 14px;
+  }
+
+  .mini-graph {
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+      var(--panel);
+    background-size: 36px 36px;
+    padding: 16px;
+  }
+
+  .mini-graph svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .node {
+    fill: #20242e;
+    stroke: var(--border);
+    stroke-width: 2;
+  }
+
+  .node.core {
+    stroke: var(--green);
+  }
+
+  .node.design {
+    stroke: var(--blue);
+  }
+
+  .node.build {
+    stroke: var(--amber);
+  }
+
+  .node.ship {
+    stroke: var(--rose);
+  }
+
+  .edge {
+    fill: none;
+    stroke: #4a5164;
+    stroke-width: 2.5;
+  }
+
+  .graph-text {
+    fill: var(--text);
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .graph-subtext {
+    fill: var(--muted);
+    font-size: 12px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+
+  .stat strong {
+    display: block;
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat span {
+    color: var(--muted);
+    font-size: 0.86rem;
+  }
+
+  section {
+    padding: 36px 0;
+  }
+
+  .section-head {
+    align-items: end;
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  h2 {
+    font-size: clamp(1.6rem, 3vw, 2.3rem);
+    margin: 0;
+  }
+
+  .section-copy {
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 8px 0 0;
+    max-width: 680px;
+  }
+
+  .graph-board {
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+      var(--panel);
+    background-size: 40px 40px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 18px;
+  }
+
+  .workflow-map {
+    display: grid;
+    gap: 16px;
+  }
+
+  .phase-row {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .support-row {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .graph-card {
+    --card-accent: var(--violet);
+    background: rgba(24, 27, 35, 0.92);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    border-top: 3px solid var(--card-accent);
+    min-height: 100%;
+    padding: 16px;
+    position: relative;
+  }
+
+  .graph-card.core {
+    --card-accent: var(--green);
+  }
+
+  .graph-card.design {
+    --card-accent: var(--blue);
+  }
+
+  .graph-card.build {
+    --card-accent: var(--amber);
+  }
+
+  .graph-card.ship {
+    --card-accent: var(--rose);
+  }
+
+  .phase-card:not(:last-child)::after {
+    background: linear-gradient(90deg, var(--card-accent), rgba(74, 81, 100, 0.35));
+    content: "";
+    height: 2px;
+    position: absolute;
+    right: -15px;
+    top: 32px;
+    width: 16px;
+    z-index: 1;
+  }
+
+  .phase-card:not(:last-child)::before {
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid rgba(169, 176, 191, 0.75);
+    border-top: 5px solid transparent;
+    content: "";
+    position: absolute;
+    right: -20px;
+    top: 28px;
+    z-index: 2;
+  }
+
+  .card-kicker {
+    color: var(--card-accent);
+    font-size: 0.68rem;
+    font-weight: 800;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+  }
+
+  .graph-card h3 {
+    font-size: 1.05rem;
+    margin: 0 0 8px;
+  }
+
+  .graph-card p {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0 0 14px;
+  }
+
+  .graph-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .graph-chip {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(169, 176, 191, 0.18);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    padding: 5px 7px;
+  }
+
+  .handoff-note {
+    align-items: center;
+    border: 1px solid rgba(169, 176, 191, 0.16);
+    border-radius: 8px;
+    color: var(--muted);
+    display: flex;
+    font-size: 0.78rem;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .handoff-note strong {
+    color: var(--text);
+  }
+
+  .handoff-line {
+    background: linear-gradient(90deg, var(--green), var(--blue), var(--amber), var(--rose));
+    border-radius: 999px;
+    flex: 1;
+    height: 2px;
+    min-width: 120px;
+  }
+
+  .catalog {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .group {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+
+  .group h3 {
+    font-size: 1rem;
+    margin: 0 0 12px;
+  }
+
+  .skill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .skill {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 6px 8px;
+  }
+
+  .flow {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .flow-step {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+
+  .flow-step h3 {
+    margin: 0 0 8px;
+  }
+
+  .flow-step p {
+    color: var(--muted);
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  footer {
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-top: 36px;
+    padding: 24px 0 40px;
+  }
+
+  @media (max-width: 880px) {
+    header,
+    .catalog,
+    .flow,
+    .phase-row,
+    .support-row {
+      grid-template-columns: 1fr;
+    }
+
+    .phase-card:not(:last-child)::after,
+    .phase-card:not(:last-child)::before {
+      display: none;
+    }
+
+    .stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    header {
+      gap: 28px;
+      padding-top: 40px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .stats {
+      grid-template-columns: 1fr;
+    }
+
+    .section-head {
+      align-items: start;
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="container">
+  <header>
+    <div>
+      <p class="eyebrow">Agent workflow library</p>
+      <h1>Dev Skills</h1>
+      <p class="lead">
+        A versioned workspace for reusable agent skills: intake, specification, architecture review, TDD, process gates, release work, and focused utilities for everyday engineering.
+      </p>
+      <div class="actions">
+        <a class="action primary" href="./public/.claude-plugin/marketplace.json">Marketplace manifest</a>
+        <a class="action" href="https://github.com/igor1309/skills">Published repo</a>
+        <a class="action" href="../docs/products.html">AI Labs products</a>
+      </div>
+    </div>
+    <div class="hero-panel" aria-label="Dev Skills workflow preview">
+      <div class="hero-panel-head">
+        <span>workflow preview</span>
+        <span>v1.43.0</span>
+      </div>
+      <div class="mini-graph">
+        <svg viewBox="0 0 560 360" role="img" aria-label="A five-stage timeline for orient, shape, review, build, and ship workflow stages">
+          <path class="edge" d="M94 180 H466"></path>
+          <circle class="node core" cx="60" cy="180" r="42"></circle>
+          <circle class="node design" cx="170" cy="180" r="42"></circle>
+          <circle class="node design" cx="280" cy="180" r="42"></circle>
+          <circle class="node build" cx="390" cy="180" r="42"></circle>
+          <circle class="node ship" cx="500" cy="180" r="42"></circle>
+          <text class="graph-text" x="60" y="175" text-anchor="middle">Orient</text>
+          <text class="graph-subtext" x="60" y="196" text-anchor="middle">4 skills</text>
+          <text class="graph-text" x="170" y="175" text-anchor="middle">Shape</text>
+          <text class="graph-subtext" x="170" y="196" text-anchor="middle">5 skills</text>
+          <text class="graph-text" x="280" y="175" text-anchor="middle">Review</text>
+          <text class="graph-subtext" x="280" y="196" text-anchor="middle">7 skills</text>
+          <text class="graph-text" x="390" y="175" text-anchor="middle">Build</text>
+          <text class="graph-subtext" x="390" y="196" text-anchor="middle">5 skills</text>
+          <text class="graph-text" x="500" y="175" text-anchor="middle">Ship</text>
+          <text class="graph-subtext" x="500" y="196" text-anchor="middle">5 skills</text>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats" aria-label="Dev Skills summary">
+    <div class="stat"><strong>36</strong><span>published skill directories</span></div>
+    <div class="stat"><strong>5</strong><span>preview nodes</span></div>
+    <div class="stat"><strong>1.43.0</strong><span>marketplace version</span></div>
+    <div class="stat"><strong>5</strong><span>primary workflow stages</span></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Workflow Map</h2>
+        <p class="section-copy">
+          The map groups skills by the moment they usually enter an agent workflow. The top row is the primary path; the lower row collects supporting tools that can be pulled in as needed.
+        </p>
+      </div>
+    </div>
+    <div class="graph-board" aria-label="Detailed skill graph">
+      <div class="workflow-map" role="list" aria-label="Dev Skills workflow clusters">
+        <div class="phase-row">
+          <article class="graph-card core phase-card" role="listitem">
+            <p class="card-kicker">01 · Orient</p>
+            <h3>Start and align</h3>
+            <p>Clarify the work before the agent changes files.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">cold-start-checkpoint</span>
+              <span class="graph-chip">intake</span>
+              <span class="graph-chip">discuss</span>
+              <span class="graph-chip">bug-analysis</span>
+            </div>
+          </article>
+          <article class="graph-card design phase-card" role="listitem">
+            <p class="card-kicker">02 · Shape</p>
+            <h3>Specify and plan</h3>
+            <p>Turn intent into testable contracts and scoped action.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">spec-writing</span>
+              <span class="graph-chip">feature-spec-protocol</span>
+              <span class="graph-chip">executable-spec-scaffolding</span>
+              <span class="graph-chip">jtbd</span>
+              <span class="graph-chip">tactical-action-plan-guide</span>
+            </div>
+          </article>
+          <article class="graph-card design phase-card" role="listitem">
+            <p class="card-kicker">03 · Review</p>
+            <h3>Architecture boundaries</h3>
+            <p>Check decisions, ownership, boundaries, and design docs.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">adr-governance</span>
+              <span class="graph-chip">arch-doc-review</span>
+              <span class="graph-chip">arch-reviewer</span>
+              <span class="graph-chip">arch-spec-review</span>
+              <span class="graph-chip">component-arch-review</span>
+              <span class="graph-chip">composition-root</span>
+              <span class="graph-chip">protocol-owned-by-client</span>
+            </div>
+          </article>
+          <article class="graph-card build phase-card" role="listitem">
+            <p class="card-kicker">04 · Build</p>
+            <h3>TDD and execution</h3>
+            <p>Drive implementation with focused tests and runners.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">strict-tdd</span>
+              <span class="graph-chip">tdd-interactive</span>
+              <span class="graph-chip">tdd-scaffold-review</span>
+              <span class="graph-chip">test-runner</span>
+              <span class="graph-chip">testing-schedulers</span>
+            </div>
+          </article>
+          <article class="graph-card ship phase-card" role="listitem">
+            <p class="card-kicker">05 · Ship</p>
+            <h3>Govern and release</h3>
+            <p>Close the loop with CI, release, Docker, and docs checks.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">process-gates</span>
+              <span class="graph-chip">pr-ci-watch</span>
+              <span class="graph-chip">release-process</span>
+              <span class="graph-chip">docker-discipline</span>
+              <span class="graph-chip">doc-drift-audit</span>
+            </div>
+          </article>
+        </div>
+        <div class="handoff-note">
+          <strong>Primary path</strong>
+          <span class="handoff-line"></span>
+          <span>Orient → Shape → Review → Build → Ship</span>
+        </div>
+        <div class="support-row">
+          <article class="graph-card utility" role="listitem">
+            <p class="card-kicker">Support · Agent craft</p>
+            <h3>Inspect and explain</h3>
+            <p>Utilities for skill quality, summaries, debugging, and model choice.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">skill-review</span>
+              <span class="graph-chip">synopsis</span>
+              <span class="graph-chip">debug-print</span>
+              <span class="graph-chip">best-free-openrouter-llm</span>
+            </div>
+          </article>
+          <article class="graph-card utility" role="listitem">
+            <p class="card-kicker">Support · Product</p>
+            <h3>External checks</h3>
+            <p>Research, contracts, and availability checks outside the main coding loop.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">job-search-strategy</span>
+              <span class="graph-chip">rest-contract-review</span>
+              <span class="graph-chip">check-domain</span>
+            </div>
+          </article>
+          <article class="graph-card utility" role="listitem">
+            <p class="card-kicker">Support · Platform</p>
+            <h3>Swift and devices</h3>
+            <p>Helpers for package manifests and simulator workflows.</p>
+            <div class="graph-chips">
+              <span class="graph-chip">swift-package-manifest</span>
+              <span class="graph-chip">ios-simulator-install</span>
+              <span class="graph-chip">simulator-settings</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Operating Flow</h2>
+        <p class="section-copy">
+          Dev Skills treats agent work as a sequence of scoped decisions. The same library can support lightweight discussion, strict implementation gates, or release work.
+        </p>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step">
+        <h3>1. Orient</h3>
+        <p>Replay context, intake the assignment, and separate exploration from implementation.</p>
+      </div>
+      <div class="flow-step">
+        <h3>2. Shape</h3>
+        <p>Turn intent into specs, ADRs, action plans, and executable test scaffolds.</p>
+      </div>
+      <div class="flow-step">
+        <h3>3. Build</h3>
+        <p>Run TDD, architecture checks, interface ownership rules, and platform-specific helpers.</p>
+      </div>
+      <div class="flow-step">
+        <h3>4. Ship</h3>
+        <p>Apply process gates, CI watch, release discipline, Docker checks, and documentation drift audits.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Catalog</h2>
+        <p class="section-copy">
+          The landing mirrors `dev-skills/public/.claude-plugin/marketplace.json`, with skills grouped for scanning rather than publishing order.
+        </p>
+      </div>
+    </div>
+    <div class="catalog">
+      <div class="group">
+        <h3>Workflow</h3>
+        <div class="skill-list">
+          <span class="skill">cold-start-checkpoint</span>
+          <span class="skill">intake</span>
+          <span class="skill">discuss</span>
+          <span class="skill">process-gates</span>
+          <span class="skill">pr-ci-watch</span>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Specification</h3>
+        <div class="skill-list">
+          <span class="skill">spec-writing</span>
+          <span class="skill">feature-spec-protocol</span>
+          <span class="skill">executable-spec-scaffolding</span>
+          <span class="skill">jtbd</span>
+          <span class="skill">tactical-action-plan-guide</span>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Architecture</h3>
+        <div class="skill-list">
+          <span class="skill">adr-governance</span>
+          <span class="skill">arch-doc-review</span>
+          <span class="skill">arch-reviewer</span>
+          <span class="skill">arch-spec-review</span>
+          <span class="skill">component-arch-review</span>
+          <span class="skill">composition-root</span>
+          <span class="skill">protocol-owned-by-client</span>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Testing</h3>
+        <div class="skill-list">
+          <span class="skill">strict-tdd</span>
+          <span class="skill">tdd-interactive</span>
+          <span class="skill">tdd-scaffold-review</span>
+          <span class="skill">test-runner</span>
+          <span class="skill">testing-schedulers</span>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Release and Ops</h3>
+        <div class="skill-list">
+          <span class="skill">release-process</span>
+          <span class="skill">docker-discipline</span>
+          <span class="skill">doc-drift-audit</span>
+          <span class="skill">rest-contract-review</span>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Utilities</h3>
+        <div class="skill-list">
+          <span class="skill">best-free-openrouter-llm</span>
+          <span class="skill">bug-analysis</span>
+          <span class="skill">check-domain</span>
+          <span class="skill">debug-print</span>
+          <span class="skill">ios-simulator-install</span>
+          <span class="skill">job-search-strategy</span>
+          <span class="skill">simulator-settings</span>
+          <span class="skill">skill-review</span>
+          <span class="skill">swift-package-manifest</span>
+          <span class="skill">synopsis</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="container">dev-skills/index.html - source workspace for the igor1309/skills marketplace</div>
+</footer>
+</body>
+</html>
