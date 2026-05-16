@@ -1,7 +1,7 @@
 ---
 name: intake
 author: Igor Malyarov
-version: "1.3.0"
+version: "1.4.0"
 description: >
   Task intake for implementation and bug-fix assignments. Activates when the
   user says "/intake", "here's your task", "implement this", "fix this bug",
@@ -11,13 +11,14 @@ description: >
   structured playback before auto-transitioning to plan mode. For bug fixes,
   the playback includes a proposed failing test that proves the broken
   behavior. Prevents guessing, spec rewriting, and premature implementation.
-allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Task, EnterPlanMode, AskUserQuestion
+allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Task, AskUserQuestion, Write
 ---
 
 # Task Intake
 
 You have been assigned an implementation or bug-fix task. Your job is to
-prove you understand it before planning begins.
+capture the context — task understanding, codebase findings, risks, and open
+questions — as a reusable brief, then stop.
 
 The assignment is: $ARGUMENTS
 
@@ -26,8 +27,8 @@ task is apparent, ask the user what they'd like you to implement.
 
 ## Core Principle
 
-The spec is authoritative. Read before you ask. Understand before you plan.
-Never guess.
+The spec is authoritative. Read before you ask. Capture context before
+anything downstream begins. Never guess.
 
 ## Phase 1: Homework
 
@@ -66,8 +67,9 @@ documentation.
   flow outlines, code examples, gotchas).
 - Be selective. Don't read every skill. Read the ones whose domain overlaps
   with the task.
-- Surface what you learn in the playback — relevant constraints in "Key
-  Constraints", relevant modules and patterns in "What I'm Touching."
+- Surface what you learn in the brief — relevant constraints in "Key
+  Constraints", files and modules the task touches in "What I'm Touching",
+  broader patterns and conventions in "Findings."
 
 ### Explore the codebase
 
@@ -88,11 +90,12 @@ If a question forms in your mind, check whether the docs or the code already
 answer it. Most of the time they do. Only surface questions to the user when
 you have genuinely exhausted what you can learn on your own.
 
-## Phase 2: Understanding Playback
+## Phase 2: Output Format
 
-Present your understanding using these sections. Be concrete — reference
-specific files, types, and constraints. Do not parrot the spec back; show
-that you have processed it.
+Structure the brief with these sections. Restate in your own words — do not
+parrot the spec, do not copy-paste from referenced docs. The brief is your
+understanding made visible; copy-paste here produces wrong implementations
+downstream.
 
 ### What I'm Building
 
@@ -106,11 +109,29 @@ Specific files, modules, types, and patterns from the codebase that this task
 involves. Show that you've located the relevant code and understand where the
 changes land.
 
+### Findings
+
+Factual observations from the codebase.
+Start with two lead bullets:
+- `Scope:` what was searched, coverage boundaries, and exclusions. Include counts when relevant.
+- `Pattern evidence:` representative analogs or pattern families (or explicit `none found`).
+
+Then include:
+- Relevant files and modules (with paths)
+- Patterns and conventions used for similar functionality
+- Constraints or dependencies discovered
+
 ### Key Constraints
 
 Rules, invariants, boundaries, and conventions from the spec and the codebase
 that the implementation must honor. These are the things that, if violated,
 mean the implementation is wrong regardless of whether it "works."
+
+### Risks & Unknowns
+
+- Things that could go wrong or complicate the task
+- Gaps in understanding
+- Ambiguities in how existing code behaves
 
 ### Reproduction (bug-fix tasks)
 
@@ -122,10 +143,10 @@ If the behavior isn't unit-testable, describe the manual reproduction instead.
 
 Omit this section entirely for non-bug tasks.
 
-### Open Questions
+### Questions
 
-Questions you could not resolve from the docs or the code. Omit this section
-entirely if you have none.
+Clarifying questions about the task or approach, if any. Omit this section if
+there are none.
 
 Each question must be:
 
@@ -139,29 +160,39 @@ Each question must be:
   you see something I'm missing" is useful. If you genuinely lack enough
   context for a lean, say so explicitly — don't just go neutral.
 
+### Large-Scope Mode
+
+Use this mode when detailed listing would exceed 12-15 evidence bullets or starts repeating the same pattern.
+
+- Keep the same top-level sections. Do not add extra top-level sections.
+- In `Findings`, include a compact coverage summary: files scanned, files deeply read, directories covered, search pattern count, and exclusions.
+- Group matches into pattern families with counts and 2-3 representative file paths per family.
+- Prioritize conflicts, deviations, and outliers. Do not enumerate repetitive matches.
+- Add this line in `Findings`: `Examples are representative; full match list omitted for brevity.`
+- If conflicting patterns are present, include a `Conflicts` block inside `Findings`.
+
 ## Phase 3: Alignment
 
-If you had open questions, the user answers them. Listen carefully. Update
-your understanding. If new questions arise from the answers, ask them — still
-one at a time.
+If you had questions, the user answers them. Listen carefully. Update your
+understanding. If new questions arise from the answers, ask them — still one
+at a time.
 
-If the user corrects your understanding in the playback, acknowledge the
+If the user corrects your understanding in the brief, acknowledge the
 correction concretely. Do not just say "got it" — restate the corrected point
 so the user can verify you actually absorbed it.
 
-## Phase 4: Transition to Planning
+## Phase 4: Capture
 
 When there are no remaining questions — either you had none, or they've all
-been resolved — announce the transition briefly and enter plan mode:
+been resolved — capture the brief and stop:
 
-> No open questions — moving to planning.
+1. Ask the user where to save the brief (file path).
+2. Write the brief to that path using the schema in Phase 2.
+3. Confirm the saved path and stop. Do not propose next steps, do not
+   transition to planning, do not ask "what now."
 
-or
-
-> Questions resolved — entering plan mode.
-
-Then invoke EnterPlanMode. Do not ask permission. The user chose `/intake`
-knowing that planning follows.
+Whether the user moves to planning, refines the spec, raises a blocker, or
+does something else entirely is their decision — not yours.
 
 ## Hard Rules
 
@@ -179,6 +210,9 @@ knowing that planning follows.
 - **No solution design.** Do not propose how to implement the task. That
   belongs in the planning phase. Your job here is to understand *what*, not
   decide *how*.
+- **Stop cleanly.** After saving the brief, stop. Do not auto-transition to
+  planning, implementation, or further investigation. If the user asks for
+  solutions while in intake, decline and offer to wrap up the brief instead.
 
 ## Anti-Patterns
 
