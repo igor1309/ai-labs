@@ -1,5 +1,6 @@
 ---
 name: adr-governance
+author: Igor Malyarov
 version: "1.0.0"
 description: ADR structure, review standards, and implementation plan requirements
 trigger: when creating, reviewing, or implementing Architecture Decision Records

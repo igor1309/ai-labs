@@ -1,5 +1,6 @@
 ---
 name: jtbd
+author: Igor Malyarov
 version: "1.0.0"
 description: >
   Apply Jobs-to-be-Done as a product-development framing. Three explicit modes:

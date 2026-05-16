@@ -1,5 +1,6 @@
 ---
 name: intake
+author: Igor Malyarov
 version: "1.3.0"
 description: >
   Task intake for implementation and bug-fix assignments. Activates when the

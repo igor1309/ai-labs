@@ -1,5 +1,6 @@
 ---
 name: skill-review
+author: Igor Malyarov
 version: "1.1.2"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---

@@ -1,5 +1,6 @@
 ---
 name: testing-schedulers
+author: Igor Malyarov
 version: "1.0.0"
 description: Testing time-dependent behavior with RxSwift schedulers. Use when testing delays, debouncing, background operations, or any time-based behavior that requires advancing virtual time.
 allowed-tools: Read, Edit, Write, Bash(xcodebuild:*), Bash(swift:*)

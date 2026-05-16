@@ -1,5 +1,6 @@
 ---
 name: pr-ci-watch
+author: Igor Malyarov
 version: "1.2.3"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
