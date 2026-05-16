@@ -1,7 +1,7 @@
 ---
 name: skill-review
-version: "1.1.1"
-description: Review and improve existing Claude Code skills. Use when evaluating skill quality, auditing skill collections, asking "review my skill", "is this skill effective", "improve skill description", or maintaining a skill library.
+version: "1.1.2"
+description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
 **Announce:** "I'm using the skill-review skill to evaluate skill quality."
@@ -10,7 +10,7 @@ description: Review and improve existing Claude Code skills. Use when evaluating
 
 ## Philosophy
 
-Modern agents (Opus 4.6, Sonnet 4.5) are highly capable reasoners. Skills should provide context the agent DOESN'T already have — project-specific knowledge, non-obvious conventions, fragile sequences. They should NOT explain general concepts, babysit through obvious steps, or micromanage decisions the agent can make better in context.
+Modern agents are highly capable reasoners. Skills should provide context the agent DOESN'T already have — project-specific knowledge, non-obvious conventions, fragile sequences. They should NOT explain general concepts, babysit through obvious steps, or micromanage decisions the agent can make better in context.
 
 **The deletion test:** if you removed a sentence and the agent would still do the right thing, that sentence is noise.
 
