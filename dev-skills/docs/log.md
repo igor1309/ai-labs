@@ -4,6 +4,12 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-16
+
+- skill-review v1.1.3: ground the rubric in the canonical Agent Skills spec (agentskills.io) and Anthropic guidance. Adds a new front-matter integrity axis (`description`/`name`/`author` gates), the 1024-char description limit, the 500-line / 5,000-token body gate, an LLM-generic-padding noise category, and a reference-load-condition check. Drops the unsupported "third-person description" rule and softens "WHEN, not WHAT" to "WHAT + WHEN" — matching Anthropic's own canonical example. Research notes captured under `dev-skills/public/skill-review/research/`.
+- Publishing gate: `dev-skills/.claude/CLAUDE.md` now requires `author: Igor Malyarov` in SKILL.md front-matter before any skill can ship; backfilled the 26 skills that were missing it. Prevents recurrence of the silent author-stripping that motivated the gate.
+- dev-skills README: promoted `**Development:**` / `**Publishing:**` pseudo-headings to real `###` headings (AGENTS.md global rule), re-nested Publish Exclusions under Publishing where it logically belongs, and replaced the duplicated 5-step Publishing recap with a single pointer to `.claude/CLAUDE.md` (eliminating drift). Marketplace v1.41.0.
+
 ## 2026-05-01
 
 - best-free-openrouter-llm v1.0.0: new skill that picks the current best free OpenRouter model from the public ranking endpoint at `shir-man.com/api/free-llm/top-models` and emits text, JSON, or shell-export output for agent/CLI configuration. Refuses to invent a model ID (only `openrouter/free` as hardcoded fallback) and gates on `--min-confidence` so low-confidence rankings fail closed. Marketplace v1.40.0.
