@@ -1,29 +1,28 @@
 ---
 name: intake
 author: Igor Malyarov
-version: "1.4.0"
+version: "1.4.1"
 description: >
-  Task intake for implementation and bug-fix assignments. Activates when the
-  user says "/intake", "here's your task", "implement this", "fix this bug",
-  "there's a bug", or provides a task reference (step number, PR, doc path)
-  with instruction to understand before coding. The agent reads all referenced
-  documents and explores the codebase, then demonstrates understanding in a
-  structured playback before auto-transitioning to plan mode. For bug fixes,
-  the playback includes a proposed failing test that proves the broken
-  behavior. Prevents guessing, spec rewriting, and premature implementation.
+  Use when starting work on a task — assigned implementation, bug report,
+  vague requirement, or open-ended exploration — even if the user doesn't
+  say "intake" or "research." Trigger phrases: "/intake", "here's your
+  task", "implement this", "fix this bug", "there's a bug", "explore X",
+  "before we commit", or a bare task reference (step number, PR, doc path).
+  Planning or coding from shallow context produces wrong solutions; this
+  skill forces a deliberate context-capture step before any downstream work
+  begins. Stops cleanly — no auto-transition to planning or implementation.
 allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Task, AskUserQuestion, Write
 ---
 
 # Task Intake
 
-You have been assigned an implementation or bug-fix task. Your job is to
-capture the context — task understanding, codebase findings, risks, and open
-questions — as a reusable brief, then stop.
+Capture context — task understanding, codebase findings, risks, and open
+questions — as a reusable brief before any planning or coding. Then stop.
 
 The assignment is: $ARGUMENTS
 
 If `$ARGUMENTS` is empty, infer the task from the conversation context. If no
-task is apparent, ask the user what they'd like you to implement.
+task is apparent, ask the user what they'd like you to start from.
 
 ## Core Principle
 
@@ -92,10 +91,13 @@ you have genuinely exhausted what you can learn on your own.
 
 ## Phase 2: Output Format
 
-Structure the brief with these sections. Restate in your own words — do not
-parrot the spec, do not copy-paste from referenced docs. The brief is your
-understanding made visible; copy-paste here produces wrong implementations
-downstream.
+Assemble and present the brief with these sections inline in the
+conversation. You'll persist it to a file in Phase 4 after alignment; for
+now, this is a draft the user can react to.
+
+Restate in your own words — do not parrot the spec, do not copy-paste from
+referenced docs. The brief is your understanding made visible; copy-paste
+here produces wrong implementations downstream.
 
 ### What I'm Building
 
@@ -187,7 +189,8 @@ When there are no remaining questions — either you had none, or they've all
 been resolved — capture the brief and stop:
 
 1. Ask the user where to save the brief (file path).
-2. Write the brief to that path using the schema in Phase 2.
+2. Write the brief — the content you assembled in Phase 2, with any
+   corrections from Phase 3 — to that path.
 3. Confirm the saved path and stop. Do not propose next steps, do not
    transition to planning, do not ask "what now."
 
@@ -207,14 +210,17 @@ does something else entirely is their decision — not yours.
 - **No guessing.** If you are unsure, ask. A wrong guess that becomes an
   implementation is far more expensive than a question. But exhaust your own
   sources first (see "Read before you ask").
-- **No solution design.** Do not propose how to implement the task. That
-  belongs in the planning phase. Your job here is to understand *what*, not
-  decide *how*.
+- **No solution design.** Do not propose how to implement the task.
+  Solutions don't belong in intake regardless of what comes next. Your job
+  here is to understand *what*, not decide *how*.
 - **Stop cleanly.** After saving the brief, stop. Do not auto-transition to
   planning, implementation, or further investigation. If the user asks for
   solutions while in intake, decline and offer to wrap up the brief instead.
 
 ## Anti-Patterns
+
+Concrete ways the Hard Rules get violated in practice. If you catch yourself
+doing one of these, you've broken the corresponding rule above.
 
 - **The lazy reader**: Asking the user to explain something that's written in
   the referenced docs. You had the doc path. You should have read it.
@@ -224,7 +230,7 @@ does something else entirely is their decision — not yours.
   can copy, not that you understand.
 - **The question flood**: Dumping all questions at once. One at a time.
 - **The premature architect**: Proposing implementation approaches during
-  intake. Save it for planning.
+  intake. Decline; intake is for understanding, not solutioning.
 - **The shallow explorer**: Reading only the primary doc and ignoring the
   codebase. Half the understanding comes from seeing how the code is already
   structured.
