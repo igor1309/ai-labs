@@ -1,5 +1,6 @@
 ---
 name: best-free-openrouter-llm
+author: Igor Malyarov
 version: "1.0.0"
 description: Use when the user wants to discover, refresh, or configure the current best free OpenRouter LLM (e.g. "what's the best free OpenRouter model right now", "set up my agent with a free model", "rotate today's free model"). Reads ranking metadata from shir-man.com and optionally emits OpenAI-compatible configuration for agents, CLIs, or scripts.
 ---

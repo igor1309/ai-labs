@@ -1,7 +1,8 @@
 ---
 name: skill-review
-version: "1.1.1"
-description: Review and improve existing Claude Code skills. Use when evaluating skill quality, auditing skill collections, asking "review my skill", "is this skill effective", "improve skill description", or maintaining a skill library.
+author: Igor Malyarov
+version: "1.1.3"
+description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
 **Announce:** "I'm using the skill-review skill to evaluate skill quality."
@@ -10,7 +11,7 @@ description: Review and improve existing Claude Code skills. Use when evaluating
 
 ## Philosophy
 
-Modern agents (Opus 4.6, Sonnet 4.5) are highly capable reasoners. Skills should provide context the agent DOESN'T already have — project-specific knowledge, non-obvious conventions, fragile sequences. They should NOT explain general concepts, babysit through obvious steps, or micromanage decisions the agent can make better in context.
+Modern agents are highly capable reasoners. Skills should provide context the agent DOESN'T already have — project-specific knowledge, non-obvious conventions, fragile sequences. They should NOT explain general concepts, babysit through obvious steps, or micromanage decisions the agent can make better in context.
 
 **The deletion test:** if you removed a sentence and the agent would still do the right thing, that sentence is noise.
 
@@ -28,6 +29,7 @@ Does each section teach something the agent doesn't already know? Noise candidat
 - Explanations of general concepts (what TDD is, how HTTP works)
 - Procedural hand-holding where the agent can reason from goals
 - Redundancy with AGENTS.md / CLAUDE.md rules
+- LLM-generic padding ("handle errors appropriately", "follow best practices for", "ensure security") — generic advice masquerading as expertise
 
 Every token competes with conversation history for context window space.
 
@@ -35,31 +37,41 @@ Every token competes with conversation history for context window space.
 
 ### 2. Description quality (CSO)
 
-- Describes WHEN to trigger, not WHAT the skill does
-- Avoids summarizing workflow (causes agents to shortcut actual content)
-- Third-person, specific, keyword-rich
+- Pairs WHAT (capability) with WHEN (trigger phrasing); avoids summarizing the internal workflow
+- Specific, keyword-rich — uses words a user would naturally say in a query
+- ≤1024 chars (canonical spec hard limit; flag at ~900 to leave room for iteration)
 - Would the agent select this skill from 100+ candidates given a matching task?
 
-### 3. Degrees of freedom
+### 3. Front-matter integrity
+
+Objective gates that don't need domain context.
+
+- `description` present and non-empty (clients SKIP skills without it — not a warning)
+- `name` matches the parent directory name, ≤64 chars, lowercase + numbers + hyphens, no leading/trailing/consecutive hyphens
+- `author` present (this repo requires `author: Igor Malyarov`)
+
+### 4. Degrees of freedom
 
 - **High freedom** for judgment calls (architecture, review, design)
 - **Low freedom** ONLY for fragile operations (exact CLI commands, paths, sequences that break if reordered)
 - Over-constraining: step-by-step for tasks agents handle naturally
 - Under-constraining: vague guidance for operations needing precision
 
-### 4. Progressive disclosure
+### 5. Progressive disclosure
 
 - SKILL.md is a lean overview pointing to details
+- Body under 500 lines / 5,000 tokens (canonical thresholds)
 - Supporting files for heavy reference (100+ lines)
+- Each reference link is gated with an explicit "read this when X" condition, not a generic "see references/"
 - References one level deep (no chains)
 
-### 5. Practical effectiveness
+### 6. Practical effectiveness
 
 - Does the skill actually change behavior vs. what the agent would do without it?
 - Are guardrails based on observed failures or hypothetical ones?
 - Would a fresh agent instance find and use this successfully?
 
-### 6. Staleness
+### 7. Staleness
 
 - Do referenced file paths, module names, APIs still exist?
 - Are code examples accurate against current codebase?

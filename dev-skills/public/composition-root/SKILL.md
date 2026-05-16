@@ -1,5 +1,6 @@
 ---
 name: composition-root
+author: Igor Malyarov
 version: "1.0.0"
 description: Composition root wiring rules — interface-only boundaries, layered assembly, naming discipline, and wiring tests
 trigger: when creating or modifying composition root code, assemblers, wiring, or adapters

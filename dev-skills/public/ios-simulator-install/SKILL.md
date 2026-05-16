@@ -1,5 +1,6 @@
 ---
 name: ios-simulator-install
+author: Igor Malyarov
 version: "1.0.0"
 description: Install built iOS app on simulator for manual testing or deep link validation. Use when user requests to run or launch the app on simulator (not for xcodebuild test). Reads Bundle ID and Primary Simulator ID from .claude/AGENTS.md.
 allowed-tools: Bash(bash:*), Bash(xcrun simctl:*), Read

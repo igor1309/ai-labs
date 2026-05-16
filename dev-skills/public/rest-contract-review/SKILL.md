@@ -1,5 +1,6 @@
 ---
 name: rest-contract-review
+author: Igor Malyarov
 version: "1.0.0"
 description: Review REST API contracts (OpenAPI/Swagger specs, JSON schemas, endpoint definitions) for quality and cross-endpoint consistency. Use when reviewing API spec PRs, validating JSON schema changes before implementation, auditing existing contracts for breaking changes, or investigating contract-related decoding failures.
 ---

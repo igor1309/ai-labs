@@ -1,5 +1,6 @@
 ---
 name: process-gates
+author: Igor Malyarov
 version: "1.0.2"
 description: Pre-commit, step closeout, pre-push, preflight, hard gates, and plan creation locks for implementation work
 trigger: when implementing, committing, pushing code, or creating implementation plans

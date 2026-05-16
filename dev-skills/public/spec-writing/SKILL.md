@@ -1,5 +1,6 @@
 ---
 name: spec-writing
+author: Igor Malyarov
 version: "1.0.0"
 description: Spec structure, required sections, and constraints for defining component contracts before implementation
 trigger: when creating, reviewing, or working with specs
