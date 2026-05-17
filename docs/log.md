@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-17
+
+- my-way: added `docs/my-way/prd-vs-product-intent.md`, a short framing note contrasting Product Intent with a PRD — PRD as a god document optimizing for "one place to look", Product Intent as a deliberately narrow layer optimizing for "one thing per place" with the rest delegated down the artifact chain.
+
 ## 2026-05-16
 
 - dev-skills: added a local landing at `dev-skills/index.html` with a workflow graph and full 36-skill catalog. Linked the Dev Skills product card to the landing so the marketplace surface is discoverable from `docs/products.html`.
