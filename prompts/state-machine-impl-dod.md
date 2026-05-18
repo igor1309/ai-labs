@@ -3,7 +3,7 @@ date: 2026-05-18
 model: gpt-5.5-thinking
 title: State Machine Implementation DoD
 tag: DoD, StateMachine
-version: 0.0.1
+version: 0.1.0
 params:
   SEED_TEST_LIST: path to the executable-spec seed test list
 ---
