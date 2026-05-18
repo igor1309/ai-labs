@@ -1,12 +1,12 @@
 ---
 date: 2026-05-18
 model: gpt-5.5-thinking
-title: State Machine Executable Spec Seed Test List Definition of Done
+title: State Machine Executable Spec DoD
 tag: DoD, StateMachine, ExecutableSpec
 version: 0.0.1
 ---
 
-## State Machine Executable Spec Seed Test List Definition of Done
+# State Machine Executable Spec DoD
 
 The executable-spec seed test list is done when it is ready for implementation handoff.
 
@@ -19,6 +19,7 @@ Completion requires:
   - resulting state
   - emitted effect or explicit no-effect result
 - The list covers all required `state + event` transitions.
+- An explicit state × event coverage matrix is included, with each cell marked as covered, invalid, or unsupported, and every covered cell mapped to its paired tests.
 - Invalid or unsupported `state + event` combinations are covered where required by repo state-machine patterns.
 - Test names are specific enough to reveal expected behavior without opening the implementation.
 - No implementation details, model-shape decisions, or UI mechanics are encoded in the test names.
