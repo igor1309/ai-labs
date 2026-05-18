@@ -19,6 +19,7 @@ Completion requires:
 - Code and tests match existing state-machine style, naming, file organization, helpers, and formatting.
 - All executable-spec seed tests from `{{SEED_TEST_LIST}}` are implemented.
 - Test names follow the project convention: `test_<action>_should<Assert>_on<Setup>`.
+- Each test body delivers exactly what its name promises: the setup matches `<Setup>`, the action matches `<action>`, and the assertion matches `<Assert>` — no extra setup, action, or assertion, and nothing in the name unfulfilled by the body.
 - Each test asserts one behavior only.
 - Each transition is tested in pairs:
   - one test asserts the resulting state
