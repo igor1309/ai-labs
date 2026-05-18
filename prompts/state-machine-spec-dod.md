@@ -3,7 +3,7 @@ date: 2026-05-18
 model: gpt-5.5-thinking
 title: State Machine Executable Spec DoD
 tag: DoD, StateMachine, ExecutableSpec
-version: 0.0.1
+version: 0.1.0
 ---
 
 # State Machine Executable Spec DoD
