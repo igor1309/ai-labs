@@ -78,6 +78,41 @@ mh_seed_log '{"ts":"t","check":"disk","status":"critical","free_gb":20,"free_pct
 mh_assert_equal 0 "$(mh_notifier_call_count)" "notifier calls on critical->critical"
 mh_cleanup_sandbox
 
+# Coverage gap: direct ok->critical transition (free disk drops past both thresholds).
+mh_start_test "disk: notification fires on ok->critical direct"
+mh_setup_sandbox
+mh_mock_df 10000000 96
+mh_mock_terminal_notifier 0
+mh_seed_log '{"ts":"t","check":"disk","status":"ok","free_gb":300,"free_pct":50}'
+"$check"
+mh_assert_equal 1 "$(mh_notifier_call_count)" "notifier calls on ok->critical"
+call=$(mh_notifier_last_call)
+mh_assert_contains 'disk critical' "$call" "title says critical"
+mh_cleanup_sandbox
+
+# Spec rule 5 (disk): notification body includes free_gb and free_pct; titles differ for warn vs critical.
+mh_start_test "disk: warn notification has 'disk low' title and free_gb/free_pct body"
+mh_setup_sandbox
+mh_mock_df 50000000 86
+mh_mock_terminal_notifier 0
+"$check"
+call=$(mh_notifier_last_call)
+mh_assert_contains 'disk low' "$call" "warn title"
+mh_assert_contains 'free_gb=' "$call" "body includes free_gb"
+mh_assert_contains 'free_pct=14' "$call" "body includes free_pct"
+mh_cleanup_sandbox
+
+mh_start_test "disk: critical notification has 'disk critical' title and free_gb/free_pct body"
+mh_setup_sandbox
+mh_mock_df 10000000 96
+mh_mock_terminal_notifier 0
+"$check"
+call=$(mh_notifier_last_call)
+mh_assert_contains 'disk critical' "$call" "critical title"
+mh_assert_contains 'free_gb=' "$call" "body includes free_gb"
+mh_assert_contains 'free_pct=4' "$call" "body includes free_pct"
+mh_cleanup_sandbox
+
 # Test 13 (spec, scoped to disk): first-ever run with bad state still notifies.
 mh_start_test "disk: first-ever run with critical state notifies"
 mh_setup_sandbox

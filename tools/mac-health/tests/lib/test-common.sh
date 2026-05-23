@@ -172,6 +172,14 @@ mh_notifier_call_count() {
     fi
 }
 
+# Returns the raw args of the last notifier call (e.g., the line written by the mock).
+mh_notifier_last_call() {
+    log="$sandbox_calls/terminal-notifier.log"
+    if [ -f "$log" ]; then
+        tail -n 1 "$log"
+    fi
+}
+
 # Returns the script path for a check, relative to this file's repo location.
 mh_check_script() {
     name=$1

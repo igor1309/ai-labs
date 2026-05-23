@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-23
+
+- mac-health: new personal-tooling subdirectory under `tools/mac-health/` for scheduled launchd-driven macOS health checks (memory, disk, leftovers). Landed intent + ADR-001 + spec (v0.1), plus checks runtime (`lib/common.sh`, three check scripts) with a 25-case shell test suite covering spec rules 1–14. By design not an ai-labs project: no CI workflow, no release unit, no Components row, no `loc-dashboard` entry. Install scripts, launchd plists, `newsyslog` config, and README pending.
+
 ## 2026-05-17
 
 - my-way: added `docs/my-way/prd-vs-product-intent.md`, a short framing note contrasting Product Intent with a PRD — PRD as a god document optimizing for "one place to look", Product Intent as a deliberately narrow layer optimizing for "one thing per place" with the rest delegated down the artifact chain.

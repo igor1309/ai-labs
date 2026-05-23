@@ -108,4 +108,23 @@ mh_assert_contains '"status":"critical"' "$last_line" "current status is critica
 mh_assert_equal 0 "$(mh_notifier_call_count)" "notifier calls on critical->critical"
 mh_cleanup_sandbox
 
+# Spec rule 6 (memory): notification title and body content.
+mh_start_test "memory: notification title and body include pressure and swap"
+mh_setup_sandbox
+mh_mock_memory_pressure critical
+mh_mock_sysctl_swap 2000
+mh_mock_terminal_notifier 0
+mh_seed_log \
+    '{"ts":"t","check":"memory","status":"ok","pressure":"normal","swap_used_mb":100}' \
+    '{"ts":"t","check":"memory","status":"ok","pressure":"normal","swap_used_mb":200}' \
+    '{"ts":"t","check":"memory","status":"ok","pressure":"normal","swap_used_mb":300}' \
+    '{"ts":"t","check":"memory","status":"ok","pressure":"normal","swap_used_mb":400}' \
+    '{"ts":"t","check":"memory","status":"ok","pressure":"normal","swap_used_mb":500}'
+"$check"
+call=$(mh_notifier_last_call)
+mh_assert_contains 'memory pressure critical' "$call" "title"
+mh_assert_contains 'pressure=critical' "$call" "body has pressure"
+mh_assert_contains 'swap_used_mb=2000' "$call" "body has swap"
+mh_cleanup_sandbox
+
 mh_print_summary "test-memory.sh"
