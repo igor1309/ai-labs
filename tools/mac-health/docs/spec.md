@@ -64,6 +64,7 @@ Every line is a single JSON object with at minimum:
 1. A check decides whether to notify by reading the most recent prior log entry for its own `check` value.
 2. If the log file is empty or contains no prior entry for this check, the check treats the prior state as `ok` for the purpose of the crossing rule. (First-run after install does not surface stale state as a fresh alert unless the current state is bad.)
 3. Notifications are best-effort. A failure to invoke `terminal-notifier` MUST NOT prevent the JSONL line from being written.
+4. Each notification's click action opens the log file in the system default application. Without an explicit click action, the macOS notification "Show" button would default to activating the sender process (launchd), which has no UI.
 
 ### Dependency rules
 

@@ -100,6 +100,8 @@ call=$(mh_notifier_last_call)
 mh_assert_contains 'disk low' "$call" "warn title"
 mh_assert_contains 'free_gb=' "$call" "body includes free_gb"
 mh_assert_contains 'free_pct=14' "$call" "body includes free_pct"
+mh_assert_contains '-execute' "$call" "click action present (-execute)"
+mh_assert_contains "open ${sandbox_log}" "$call" "click action opens the log"
 mh_cleanup_sandbox
 
 mh_start_test "disk: critical notification has 'disk critical' title and free_gb/free_pct body"

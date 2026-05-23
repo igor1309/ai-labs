@@ -90,6 +90,9 @@ Notifications fire only on threshold crossings:
 - Memory: on `*→critical` only (never re-notifies while still critical).
 - Leftovers: never notifies.
 
+Clicking a notification's "Show" button opens the log file in your default
+app for `.log` files (typically Console.app or a text editor).
+
 To tune thresholds, edit the constants in `checks/check-disk.sh` and
 `checks/check-memory.sh`. Since scripts run directly from the repo, edits
 take effect at the next scheduled tick — no reinstall needed.

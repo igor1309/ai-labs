@@ -72,12 +72,20 @@ mh_last_n_field_nums() {
 }
 
 # Fire a notification via terminal-notifier. Best-effort: never propagates failure.
+# Clicking "Show" opens the JSONL log so the user can see context. Without the
+# `-execute` action, "Show" would default to activating the sender process —
+# which is launchd, and which has no UI.
 # Usage: mh_notify <title> <message>
 mh_notify() {
     title=$1
     message=$2
     if command -v terminal-notifier >/dev/null 2>&1; then
-        terminal-notifier -title "$title" -message "$message" >/dev/null 2>&1 || true
+        log_file=$(mh_log_file)
+        terminal-notifier \
+            -title "$title" \
+            -message "$message" \
+            -execute "open $log_file" \
+            >/dev/null 2>&1 || true
     fi
     return 0
 }
