@@ -2,66 +2,61 @@
 date: 2026-05-23
 model: claude-opus-4-7
 description: "Intent for mac-health: a scheduled, low-footprint macOS health monitor that surfaces SSD, memory pressure, and stale-leftover signals without running a resident app"
+inspiration:
+  - https://github.com/CodeAlive-AI/ai-driven-development/blob/main/skills/maintaining-macos-health/
+  - https://t.me/ai_driven/210
 ---
 
 # Product Intent: mac-health
 
 ## Product outcome
 
-The maintainer notices SSD pressure, memory pressure, and accumulating disk leftovers early — before they degrade work — without paying the memory, battery, or attention cost of a resident menu-bar app like Stats or iStat Menus.
+The user notices SSD pressure, memory pressure, and accumulating disk leftovers early — before they degrade work — without paying the memory, battery, or attention cost of a resident menu-bar app like Stats or iStat Menus.
 
 ## Actors
 
-- **Maintainer**: works on this Mac daily; wants signal, not a dashboard to babysit.
+- **User**: works on this Mac daily; wants signal, not a dashboard to babysit.
 
 ## User stories
 
 ### MH-001 — Catch memory pressure before it disrupts work
 
-As the maintainer,
-I want to be notified when memory pressure is sustained and swap is growing,
+As the user,
+I want to be alerted when memory pressure is sustained and swap is growing,
 so that I can close apps before the system starts thrashing.
 
-Status: accepted
-
-Acceptance signal: a macOS notification fires when the memory check detects critical pressure with a swap-growth trend across recent samples; no notification fires when swap is non-zero but stable.
+Acceptance signal: the user is alerted before the system starts swapping aggressively; the user is not alerted when the system is fine, even if some swap is already in use.
 
 ### MH-002 — Catch SSD pressure before writes start failing
 
-As the maintainer,
-I want to be notified when free SSD space crosses a low-water threshold,
+As the user,
+I want to be alerted when free SSD space crosses a low-water threshold,
 so that I can free space before tooling, Xcode, or simulators start failing.
 
-Status: accepted
-
-Acceptance signal: a macOS notification fires on threshold crossing (entering the danger zone), not on every check while already in the danger zone.
+Acceptance signal: the user is alerted once when free disk crosses into the danger zone, and again if it gets meaningfully worse; the user is not pinged repeatedly while the situation is unchanged.
 
 ### MH-003 — See stale leftovers without acting on them automatically
 
-As the maintainer,
+As the user,
 I want a periodic report of sizes for known leftover locations (DerivedData, Simulator caches, `~/Library/Caches`, old Homebrew downloads, `.Trash` items >30d),
 so that I can decide when and what to clean up myself.
 
-Status: accepted
-
-Acceptance signal: the leftover check appends a sizes report to the log; it never deletes anything; no notification fires for leftovers.
+Acceptance signal: the user can read a current report of leftover sizes on demand; nothing under those locations is modified; the user is never interrupted by an alert about leftovers.
 
 ### MH-004 — Inspect history without running anything live
 
-As the maintainer,
-I want every check to append a single structured line to a rolling log,
-so that I can `tail` or `jq` the file when curious and reconstruct what happened around any incident.
+As the user,
+I want a durable, structured record of every check,
+so that I can reconstruct what happened around any incident without having anything running live.
 
-Status: accepted
-
-Acceptance signal: one JSONL line per check is written to `~/Library/Logs/mac-health/health.log`; the file is rotated by `newsyslog` at a fixed size.
+Acceptance signal: the user can inspect a structured history of past checks at any time, including the period around past incidents, using ordinary terminal tools.
 
 ## Acceptance signals
 
 - The system runs no resident process owned by mac-health between scheduled ticks.
-- Notifications fire only on threshold crossings or sustained-bad trends, not on every tick where the value is already bad.
-- The log is grep-friendly and parseable by `jq`.
-- Disabling mac-health is one `launchctl` command per agent; no app to quit.
+- Alerts fire only on threshold crossings or sustained-bad trends, not on every tick where the value is already bad.
+- The history is grep-friendly and parseable with ordinary terminal tools.
+- Disabling mac-health is a single command; there is no app to quit.
 
 ## Boundaries and non-goals
 
@@ -73,7 +68,7 @@ Acceptance signal: one JSONL line per check is written to `~/Library/Logs/mac-he
 
 ## Open product questions
 
-- Should there be a separate "weekly summary" notification that surfaces leftover growth trends, or is on-demand log inspection enough?
+- Should there be a separate "weekly summary" alert that surfaces leftover growth trends, or is on-demand inspection enough?
 
 ## Downstream traceability
 
@@ -84,11 +79,3 @@ Acceptance signal: one JSONL line per check is written to `~/Library/Logs/mac-he
 | MH-003 | n/a | [adr.md](adr.md) | [spec.md](spec.md) | n/a | `checks/check-leftovers.sh` |
 | MH-004 | n/a | [adr.md](adr.md) | [spec.md](spec.md) | n/a | log path + `newsyslog/mac-health.conf` |
 
-## Change review
-
-| Change | Impact review |
-| --- | --- |
-| Editorial wording without changing actor, capability, outcome, acceptance signal | no downstream review |
-| Adding or removing a check (e.g., adding CPU monitoring) | revisit boundaries, ADR scope, spec |
-| Changing notification policy (e.g., notify on every tick) | revisit MH-001/MH-002 acceptance signals |
-| Adding any delete-by-default behavior | revisit MH-003 acceptance signal explicitly |
