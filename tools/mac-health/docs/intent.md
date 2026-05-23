@@ -66,10 +66,6 @@ Acceptance signal: the user can inspect a structured history of past checks at a
 - Not a multi-machine fleet tool. Single-machine, single-user.
 - Not a ai-labs project. Lives under `tools/`; no CI workflow, no release unit, no `## Components` row, no `loc-dashboard` entry.
 
-## Open product questions
-
-- Should there be a separate "weekly summary" alert that surfaces leftover growth trends, or is on-demand inspection enough?
-
 ## Downstream traceability
 
 | Story | Research | Pre-ADR / ADR | Spec | Implementation plan | Code / tests |

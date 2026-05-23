@@ -12,13 +12,13 @@ mac-health runs as a small set of per-user `launchd` agents on a fixed cadence. 
 
 ## Context
 
-The maintainer wants visibility into SSD pressure, memory pressure, and accumulating disk leftovers without paying the cost of a resident app (memory, battery, attention). Existing options (Stats, iStat Menus) solve the visibility problem by adding a permanently running process and menu-bar UI. mac-health takes the opposite tradeoff: no resident process, no UI, periodic background checks with alerts only when something is wrong.
+The user wants visibility into SSD pressure, memory pressure, and accumulating disk leftovers without paying the cost of a resident app (memory, battery, attention). Existing options (Stats, iStat Menus) solve the visibility problem by adding a permanently running process and menu-bar UI. mac-health takes the opposite tradeoff: no resident process, no UI, periodic background checks with alerts only when something is wrong.
 
 Constraints that shaped the decision:
 
 - macOS is the only target.
-- The maintainer's laptop sleeps unpredictably — schedules must survive sleep.
-- The maintainer is comfortable in the terminal; `jq`/`tail` are acceptable inspection tools.
+- The user's laptop sleeps unpredictably — schedules must survive sleep.
+- The user is comfortable in the terminal; ordinary terminal tools are acceptable inspection tools.
 - Auto-cleanup of "stale" files is a known foot-gun; "stale" is context-dependent (active Xcode build vs. abandoned project).
 - The tool is host-level personal infrastructure; it does not belong to any ai-labs project.
 
@@ -57,10 +57,10 @@ Alternatives considered:
 
 - Zero resident memory cost between ticks; the OS scheduler bears the orchestration.
 - Trend detection (e.g., growing swap) requires reading the last N JSONL lines on each tick — slightly more work per tick than a stateless check, but trivially cheap at this cadence.
-- The maintainer must have `terminal-notifier` installed via Homebrew. `install.sh` checks for it and tells the user to install if missing.
-- Notification rate-limiting is encoded by reading the last log line per check to detect crossings — no separate state file.
-- Because scripts run directly from the repo path, deleting or moving the ai-labs checkout breaks mac-health. Accepted: the maintainer controls the checkout location and is the only user.
-- Disabling mac-health requires `launchctl bootout` on each agent; the `uninstall.sh` script wraps this.
+- `terminal-notifier` is a required runtime dependency.
+- Notification rate-limiting state lives in the log itself; no separate state file is maintained.
+- Because scripts run directly from the repo path, deleting or moving the ai-labs checkout breaks mac-health. Accepted: the user controls the checkout location and is the only user.
+- Disabling mac-health is per-agent via launchd; there is no app to quit.
 
 ## Non-goals
 

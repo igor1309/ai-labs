@@ -68,7 +68,7 @@ Every line is a single JSON object with at minimum:
 ### Dependency rules
 
 1. `terminal-notifier` MUST be present on `PATH`. The install script checks this and refuses to install LaunchAgents if missing.
-2. `jq` is NOT required at runtime. Checks may parse the prior log line using shell tools alone, or may shell out to `jq` if present — that is an implementation choice, not a behavioral one.
+2. `jq` is NOT required at runtime.
 
 ## Product intent traceability
 
@@ -81,22 +81,22 @@ Every line is a single JSON object with at minimum:
 
 ## Tests (required)
 
-Tests are shell-level, invoking checks against a synthetic log fixture and asserting on emitted JSONL and notification calls (with `terminal-notifier` shimmed).
+Tests run each check against a synthetic log fixture and assert on the emitted JSONL line and on notification calls (notifier mocked).
 
 1. **Memory: emits one JSONL line per invocation** — given any environment, the memory check appends exactly one well-formed JSON object.
 2. **Memory: `status=ok` when `pressure=normal`** — regardless of swap.
 3. **Memory: `status=critical` only when pressure is critical AND swap is trending up by the strict rule** — covers the "swap non-zero but stable → no critical" boundary. Also asserts `pressure=critical` with stable swap maps to `warn`, not `critical`.
-4. **Memory: notification fires on `ok → critical` transition** — prior log entry `ok`, current `critical` → one `terminal-notifier` call.
-5. **Memory: notification does NOT fire on `critical → critical`** — prior log entry `critical`, current `critical` → zero `terminal-notifier` calls.
+4. **Memory: notification fires on `ok → critical` transition** — prior log entry `ok`, current `critical` → one notification call.
+5. **Memory: notification does NOT fire on `critical → critical`** — prior log entry `critical`, current `critical` → zero notification calls.
 6. **Disk: `status` thresholds at 15% and 5%** — boundary tests at 14%, 15%, 4%, 5%.
 7. **Disk: notification fires on `ok → warn` and on `warn → critical`** — two separate transition tests.
 8. **Disk: notification does NOT fire on `warn → warn` or `critical → critical`**.
-9. **Leftovers: never invokes `terminal-notifier`** — under any synthetic input.
+9. **Leftovers: never invokes the notifier** — under any synthetic input.
 10. **Leftovers: never modifies the inspected directories** — assert directory mtimes unchanged across a run.
 11. **Log writing: appends, does not truncate** — two consecutive runs leave two lines.
 12. **Log writing: creates log directory on first run when absent**.
 13. **Notification policy: first-ever run with bad state still notifies** — empty log + current `critical` → one notification (prior state treated as `ok`).
-14. **Notification policy: `terminal-notifier` failure does not prevent log line write** — shim returns non-zero; log line still appears.
+14. **Notification policy: notifier failure does not prevent log line write** — notifier mock returns non-zero; log line still appears.
 15. **Install script refuses if `terminal-notifier` is missing on `PATH`**.
 
 ## Done criteria
