@@ -1,5 +1,10 @@
 # Log
 
+## 2026-05-23
+
+- mac-health: bug fix after first live install — `check-disk.sh` was querying `df /` and reporting `status=ok / free_pct=48` on a Catalina+ machine that was actually at 1.2% free. Root cause: APFS shares space across a read-only system snapshot and a writable data volume; `/` reports capacity per-snapshot, not against the shared container. Fix: query `/System/Volumes/Data` on Catalina+ with fallback to `/`. Spec updated.
+- mac-health: new personal-tooling subdirectory under `tools/mac-health/` for scheduled launchd-driven macOS health checks (memory, disk, leftovers). Landed intent + ADR-001 + spec (v0.1), checks runtime (`lib/common.sh`, three check scripts + a disk-leftovers wrapper), two LaunchAgent plists, `newsyslog` rotation config (1 MB / 5 gzipped archives), `install.sh`/`uninstall.sh` (installer refuses if `terminal-notifier` is missing on `PATH`), and `README.md`. 27-case shell test suite covers all 15 spec behavior tests. By design not an ai-labs project: no CI workflow, no release unit, no Components row, no `loc-dashboard` entry.
+
 ## 2026-05-17
 
 - my-way: added `docs/my-way/prd-vs-product-intent.md`, a short framing note contrasting Product Intent with a PRD — PRD as a god document optimizing for "one place to look", Product Intent as a deliberately narrow layer optimizing for "one thing per place" with the rest delegated down the artifact chain.

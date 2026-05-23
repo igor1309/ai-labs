@@ -27,6 +27,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | `prompts/` | Focused one-shot task instructions |
 | `dev-skills/` | Development workspace for Claude Code skills; published to `igor1309/skills` |
 | `tools/` | Small shell utilities and local workflow helpers |
+| `tools/mac-health/` | Scheduled launchd-driven macOS health checks (memory, disk, leftovers) — JSONL log + threshold notifications, no resident process |
 | `sandbox/` | Experiments and WIP explorations |
 | `insights/` | Notes on AI tooling and usage patterns |
 | `reading/` | Reading notes and curated references |
