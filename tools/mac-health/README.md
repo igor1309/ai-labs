@@ -91,7 +91,8 @@ Notifications fire only on threshold crossings:
 - Leftovers: never notifies.
 
 To tune thresholds, edit the constants in `checks/check-disk.sh` and
-`checks/check-memory.sh` and re-run the installer.
+`checks/check-memory.sh`. Since scripts run directly from the repo, edits
+take effect at the next scheduled tick — no reinstall needed.
 
 ## Layout
 

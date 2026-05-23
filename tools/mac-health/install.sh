@@ -29,7 +29,23 @@ fi
 # 2. Ensure destination dirs exist.
 mkdir -p "$launchd_dest"
 
-# 3. Substitute placeholders and install plists.
+# 3. Drop newsyslog config FIRST (requires sudo unless skipped).
+# Doing this before activating LaunchAgents means a sudo failure leaves
+# nothing partially installed — the user can re-run cleanly.
+generated_conf=$(mktemp -t mac-health-newsyslog)
+sed -e "s|__HOME__|${HOME}|g" \
+    -e "s|__USER__|$(id -un)|g" \
+    "$newsyslog_src/mac-health.conf" >"$generated_conf"
+
+if [ -z "${MAC_HEALTH_SKIP_ACTIVATE:-}" ]; then
+    printf 'Installing newsyslog config to %s/mac-health.conf (requires sudo)...\n' "$newsyslog_dest"
+    sudo install -m 644 "$generated_conf" "$newsyslog_dest/mac-health.conf"
+else
+    install -m 644 "$generated_conf" "$newsyslog_dest/mac-health.conf"
+fi
+rm -f "$generated_conf"
+
+# 4. Substitute placeholders and install plists.
 installed_labels=""
 for plist in "$launchd_src"/*.plist; do
     name=$(basename "$plist")
@@ -42,7 +58,7 @@ for plist in "$launchd_src"/*.plist; do
         "$plist" >"$target"
 done
 
-# 4. (Re)load LaunchAgents unless skipped.
+# 5. (Re)load LaunchAgents unless skipped.
 if [ -z "${MAC_HEALTH_SKIP_ACTIVATE:-}" ]; then
     domain="gui/$(id -u)"
     for label in $installed_labels; do
@@ -51,19 +67,5 @@ if [ -z "${MAC_HEALTH_SKIP_ACTIVATE:-}" ]; then
         launchctl bootstrap "$domain" "$plist"
     done
 fi
-
-# 5. Drop newsyslog config (requires sudo unless skipped).
-generated_conf=$(mktemp -t mac-health-newsyslog.XXXXXX)
-sed -e "s|__HOME__|${HOME}|g" \
-    -e "s|__USER__|$(id -un)|g" \
-    "$newsyslog_src/mac-health.conf" >"$generated_conf"
-
-if [ -z "${MAC_HEALTH_SKIP_ACTIVATE:-}" ]; then
-    printf 'Installing newsyslog config to %s/mac-health.conf (requires sudo)...\n' "$newsyslog_dest"
-    sudo install -m 644 "$generated_conf" "$newsyslog_dest/mac-health.conf"
-else
-    install -m 644 "$generated_conf" "$newsyslog_dest/mac-health.conf"
-fi
-rm -f "$generated_conf"
 
 printf 'mac-health installed. Log: %s/Library/Logs/mac-health/health.log\n' "$HOME"
