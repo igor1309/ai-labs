@@ -2,7 +2,7 @@
 
 ## 2026-05-23
 
-- mac-health: new personal-tooling subdirectory under `tools/mac-health/` for scheduled launchd-driven macOS health checks (memory, disk, leftovers). Landed intent + ADR-001 + spec (v0.1), plus checks runtime (`lib/common.sh`, three check scripts) with a 25-case shell test suite covering spec rules 1–14. By design not an ai-labs project: no CI workflow, no release unit, no Components row, no `loc-dashboard` entry. Install scripts, launchd plists, `newsyslog` config, and README pending.
+- mac-health: new personal-tooling subdirectory under `tools/mac-health/` for scheduled launchd-driven macOS health checks (memory, disk, leftovers). Landed intent + ADR-001 + spec (v0.1), checks runtime (`lib/common.sh`, three check scripts + a disk-leftovers wrapper), two LaunchAgent plists, `newsyslog` rotation config (1 MB / 5 gzipped archives), `install.sh`/`uninstall.sh` (installer refuses if `terminal-notifier` is missing on `PATH`), and `README.md`. 27-case shell test suite covers all 15 spec behavior tests. By design not an ai-labs project: no CI workflow, no release unit, no Components row, no `loc-dashboard` entry.
 
 ## 2026-05-17
 
