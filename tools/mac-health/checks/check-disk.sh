@@ -5,8 +5,21 @@ script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 # shellcheck source=../lib/common.sh
 . "${script_dir}/../lib/common.sh"
 
+# Choose the volume to query. On Catalina+ (APFS split system / data layout),
+# `/` is the read-only system snapshot and reports a misleading capacity
+# relative to a per-volume baseline. The writable data volume at
+# `/System/Volumes/Data` gives the user-meaningful free %. Fall back to `/`
+# on older macOS where the data volume does not exist.
+disk_target() {
+    if [ -d /System/Volumes/Data ]; then
+        printf '/System/Volumes/Data'
+    else
+        printf '/'
+    fi
+}
+
 read_disk() {
-    df -k / 2>/dev/null | awk 'NR == 2 { gsub("%", "", $5); print $4, $5 }' | head -n 1
+    df -k "$(disk_target)" 2>/dev/null | awk 'NR == 2 { gsub("%", "", $5); print $4, $5 }' | head -n 1
 }
 
 derive_status() {

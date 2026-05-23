@@ -40,7 +40,7 @@ Every line is a single JSON object with at minimum:
 
 ### Disk check (MH-002)
 
-1. Reads `df` for the root volume (`/`).
+1. Reads `df` for the user's data volume. On Catalina+ this is `/System/Volumes/Data` (the writable APFS data volume); on older macOS where that path does not exist, falls back to `/`. Querying `/` directly on Catalina+ misreports capacity because of the read-only system-snapshot/data-volume split.
 2. Emits one JSONL line with fields: `ts`, `check=disk`, `status`, `free_gb` (integer), `free_pct` (integer).
 3. `status` is derived from `free_pct`: `ok` if `>= 15`; `warn` if `>= 5` and `< 15`; `critical` if `< 5`.
 4. A notification fires if and only if the current `status` is `warn` or `critical` AND the previous disk-check log entry's `status` was `ok`. (Threshold-crossing into the danger zone.) An additional notification fires on the `warn → critical` transition.
