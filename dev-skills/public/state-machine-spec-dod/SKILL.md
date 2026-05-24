@@ -1,16 +1,16 @@
 ---
-date: 2026-05-19
-model: gpt-5.5-thinking
-title: State Machine Executable Spec DoD
-tag: DoD, StateMachine, ExecutableSpec
-version: 0.2.0
+name: state-machine-spec-dod
+author: Igor Malyarov
+version: "0.2.0"
+description: Definition-of-done checklist for the state machine executable-spec seed test list before implementation handoff
+trigger: when verifying that a state machine executable-spec seed test list is ready for implementation
 ---
 
 # State Machine Executable Spec DoD
 
 The executable-spec seed test list is done when it is ready for implementation handoff.
 
-Completion requires:
+## Completion checklist
 
 - Test names follow `test_<action>_should<Assert>_on<Setup>`.
 - Events use domain terms, not UI idioms.
