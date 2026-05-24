@@ -1,7 +1,9 @@
 ---
 date: 2025-08-30
-description: "Your Proposed Features (and Why They Are Great)"
+description: "Discussion with Gemini about the CLI LLM wrapper architecture and its features."
 ---
+
+# Origin: Gemini Discussion
 
 <me>
 It’s my understanding that LLM from Google/OpenAI/Antropic have APIs with a lots of features, but using them from terminal is far from comfortable. I guess a possible way could be to write a script that
@@ -24,7 +26,7 @@ Your intuition is spot on. Using raw `curl` commands is tedious, error-prone, an
 
 Let's break down your ideas and discuss how they map to the real world.
 
-# Your Proposed Features (and Why They Are Great)
+## Your Proposed Features (and Why They Are Great)
 
 1.  **System Prompt from a Particular Place (Local/Global Fallback):**
 
@@ -55,7 +57,7 @@ Let's break down your ideas and discuss how they map to the real world.
       - **Formatting:** Using syntax highlighting for code blocks and rendering Markdown for better readability in the terminal.
       - **Conversation History:** Keeping track of the last few turns of conversation so you can ask follow-up questions without re-stating all the previous context.
 
-# Do Products Like This Exist?
+## Do Products Like This Exist?
 
 **Absolutely, yes.** There is a thriving ecosystem of tools built by solo developers and companies that do exactly what you've described. You've essentially reverse-engineered the feature set of some of the best ones.
 
@@ -66,7 +68,7 @@ Here are a few prominent examples that prove your concept is not just viable, bu
 - **Shell GPT / `sgpt`:** This tool is specifically tailored for generating shell commands. You can ask it things like `sgpt "find all files larger than 1GB and delete them"` and it will generate the command for you, then ask for confirmation before running. It uses the same underlying principles you described.
 - **Internal Corporate Tools:** Many, many tech companies build their own internal versions of this. They might pre-configure them with internal documentation (using RAG), specific coding standards in the system prompt, and integrations with their internal infrastructure.
 
-# Conclusion
+## Conclusion
 
 Your understanding is not just correct, it's insightful. You have identified the key ingredients needed to transform a raw, uncomfortable API into a powerful and productive developer assistant. The "script" you envisioned is exactly what many developers are building and using today to make working with LLMs a natural part of their command-line workflow.
 
@@ -85,7 +87,7 @@ This is a fantastic evolution of your initial idea. You're now moving beyond a s
 
 What you're describing is a highly sophisticated and powerful concept that, to my knowledge, isn't perfectly captured by any single mainstream tool yet, though many are moving in this direction. Let's break down the implications of this new, more abstracted design.
 
-# The Core Idea: A Domain-Agnostic "AI Context Runner"
+## The Core Idea: A Domain-Agnostic "AI Context Runner"
 
 You've essentially separated the _engine_ from the _instructions_.
 
@@ -104,7 +106,7 @@ This is a powerful paradigm, directly analogous to other successful development 
 - **Docker and `Dockerfile`:** Docker can run any application. The `Dockerfile` provides the specific, self-contained instructions for how to build and run one particular application's environment. Your `.ai` folder is the `Dockerfile` for the LLM's "mental environment."
 - **VS Code and `.vscode/settings.json`:** VS Code is a generic editor, but you can add a `.vscode` folder to a project to define project-specific settings, like linters and formatters, that standardize the environment for anyone working on that project.
 
-# Diving Deeper into Your New Features
+## Diving Deeper into Your New Features
 
 1.  **The Project-Specific Context Directory (`.ai`):**
 
@@ -122,7 +124,7 @@ This is a powerful paradigm, directly analogous to other successful development 
     - A command like `ai init` or `ai configure --domain=python-api` would be fantastic. It lowers the barrier to entry. Instead of having to be an expert prompt engineer, a user can start with a best-practice template for their domain.
     - This also opens the door for a community to contribute templates. You could have templates for `technical-writing`, `react-component-generator`, `dnd-dungeon-master`, `legal-document-reviewer`, etc. The tool becomes an extensible platform.
 
-# A Practical Example of the `.ai` Folder Structure
+## A Practical Example of the `.ai` Folder Structure
 
 Let's imagine the "scriptwriting" domain. The `.ai` folder could look like this:
 
@@ -140,7 +142,7 @@ Let's imagine the "scriptwriting" domain. The `.ai` folder could look like this:
 
 When you run your tool, it would read all these files, intelligently combine them into a single massive system prompt, and then append your user query before sending it to the API.
 
-# Conclusion
+## Conclusion
 
 Yes, this absolutely makes sense. It's not just a script; it's a system. By abstracting the tool's logic from the project's context, you've designed a flexible, powerful, and collaborative framework. This approach treats "prompting" not as a one-off activity, but as a core, version-controlled component of a project's intellectual property.
 
@@ -160,7 +162,7 @@ Let's break down this crucial insight into its three components, as you've laid 
 2.  The Knowledge (The "Expert" Content Base)
 3.  The Connection (The "Smart" Assembly Rules)
 
-# 1. The Tool: The Execution Layer
+## 1. The Tool: The Execution Layer
 
 This is the stable, reliable, and domain-agnostic part of your system. Its responsibilities are purely technical.
 
@@ -172,7 +174,7 @@ This is the stable, reliable, and domain-agnostic part of your system. Its respo
 
 The key feature of this layer is that it **should not change** whether you are writing a Python script, a legal contract, or a movie screenplay. It's pure plumbing. This is the part that could be open-sourced as a generic utility that many people would find useful on its own.
 
-# 2. The Knowledge: The Configuration Layer
+## 2. The Knowledge: The Configuration Layer
 
 This is the "intellectual property" of a project. It is volatile, highly domain-specific, and represents the curated expertise of the user. This is what lives in your `.ai` folder.
 
@@ -183,7 +185,7 @@ This is the "intellectual property" of a project. It is volatile, highly domain-
 
 As you rightly said, this is where the unique value comes from. A company could have a private Git repo just for their `.ai` templates, which represents their competitive advantage in using AI effectively.
 
-# 3. The Connection: The Assembly Logic (The "Contract")
+## 3. The Connection: The Assembly Logic (The "Contract")
 
 This is the bridge between the Tool and the Knowledge, and it's the most critical piece of the design. This "connection" is a **contract** or a **schema** that the Tool understands. The Tool promises, "If you structure your Knowledge in this specific way, I know how to assemble it into a perfect prompt."
 
@@ -197,7 +199,7 @@ This logic defines how to build the final prompt from the files in the `.ai` fol
 
 This assembly logic is what makes the system powerful. It's more than just concatenating files; it's an **orchestration engine**.
 
-# The Power of This Separation
+## The Power of This Separation
 
 - **Composability:** Users can mix and match knowledge components. They can pull in a standard `python-best-practices` rule set and combine it with their project-specific `api_definitions`.
 - **Shareability:** You can publish a "Starter Pack" for technical writing as a Git repository containing just an `.ai` folder template. Anyone with the core "Tool" can use it instantly.
@@ -213,11 +215,11 @@ Of course. This has been a great discussion, moving from a practical problem to 
 
 ---
 
-# **Structured Summary: Designing a Command-Line AI Framework**
+## **Structured Summary: Designing a Command-Line AI Framework**
 
 This document summarizes the design discussion for a command-line tool aimed at making interactions with Large Language Models (LLMs) more powerful, comfortable, and integrated into developer workflows.
 
-## **1. The Pain Point: The Problem with Raw API Usage**
+### **1. The Pain Point: The Problem with Raw API Usage**
 
 Directly using LLM APIs from the terminal via tools like `curl` is fundamentally uncomfortable and inefficient for serious work. The core challenges include:
 
@@ -227,7 +229,7 @@ Directly using LLM APIs from the terminal via tools like `curl` is fundamentally
 - **Insecure Credential Handling:** Passing API keys directly on the command line is a security risk.
 - **Unfriendly Output:** Raw JSON responses are not user-friendly; they lack formatting, streaming, and syntax highlighting.
 
-## **2. The Core Idea & Its Evolution**
+### **2. The Core Idea & Its Evolution**
 
 The solution evolved through two main phases:
 
@@ -235,7 +237,7 @@ The solution evolved through two main phases:
 
 - **Phase 2: An Abstracted AI Project Framework:** The idea matured into a more powerful, domain-agnostic system. This framework is built on the core principle of **separating the tool from the knowledge**, analogous to how Git (`.git`) and Docker (`Dockerfile`) separate their engine from the project-specific configuration. The tool becomes a generic "AI context runner," while the project itself contains all the domain-specific intelligence.
 
-## **3. Sketch of Core Features & System Architecture**
+### **3. Sketch of Core Features & System Architecture**
 
 The proposed system is composed of three distinct layers:
 
@@ -270,14 +272,14 @@ _This is the "contract" that defines how the Tool interprets the Knowledge._
   - Apply model-specific overrides before making the final API call.
   - Respect an `.aiignore` file to exclude certain files from the context.
 
-## **4. Key Advantages of This Approach**
+### **4. Key Advantages of This Approach**
 
 - **Version Control:** Prompts become "code." They can be committed to Git, reviewed in pull requests, and tracked over time.
 - **Portability & Collaboration:** A project's entire AI context is self-contained. A collaborator just needs to clone the repository and have the tool installed to get the exact same AI behavior.
 - **Composability:** Users can easily mix, match, and share "knowledge packs" (template `.ai` directories) for different domains.
 - **Maintainability:** The Tool's code can be updated to support new models or API features without forcing any changes to the user's curated Knowledge folders.
 
-## **5. Open Questions & Next Steps to Consider**
+### **5. Open Questions & Next Steps to Consider**
 
 - **Configuration Schema:** Should the assembly logic be hard-coded, or should there be a manifest file (e.g., `ai_config.yaml`) in the `.ai` folder to give users more control over prompt assembly?
 - **User Experience (UX):**
@@ -314,7 +316,7 @@ Place this new section between **"3. Sketch of Core Features & System Architectu
 
 ---
 
-## **4. Validation in the Ecosystem: Existing Tools**
+### **4. Validation in the Ecosystem: Existing Tools**
 
 The proposed framework, while unique in its specific architecture, aligns with a growing category of successful command-line tools built by the developer community. These tools validate the core pain points and demonstrate the value of a structured, context-aware approach to LLM interaction. They serve as valuable reference points for implementation and feature ideas.
 

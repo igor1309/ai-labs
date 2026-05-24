@@ -1,7 +1,9 @@
 ---
 date: 2025-08-30
-description: "What this wrapper is (and isn’t)"
+description: "Discussion with GPT about the CLI LLM wrapper architecture and its features."
 ---
+
+# Origin: GPT Discussion
 
 <me>
 It’s my understanding that LLM from Google/OpenAI/Antropic have APIs with a lots of features, but using them from terminal is far from comfortable. I guess a possible way could be to write a script that
@@ -74,11 +76,11 @@ I’m thinking of kinda abstracted tool. Let me try to explain - this tool could
 <ai>
 Totally makes sense—and you can keep it simple without painting yourself into a corner. Here’s a crisp way to think about it.
 
-# What this wrapper is (and isn’t)
+## What this wrapper is (and isn’t)
 - **Goal:** one tiny, domain-agnostic CLI that **assembles** context and **normalizes** requests to any provider.  
 - **Non-goals:** fancy agents, RAG, or project scanning magic by default. (Opt-in later.)
 
-# Minimum viable shape
+## Minimum viable shape
 **Four responsibilities, full stop:**
 1) **Load config with git-style precedence**  
    `./.ai` (project) → nearest parent with `.ai` → `~/.ai` (global) → built-ins.
@@ -89,7 +91,7 @@ Totally makes sense—and you can keep it simple without painting yourself into 
 4) **Present output**  
    Stream to TTY; `--json` and `--file out.md` as needed.
 
-# Folder & file conventions
+## Folder & file conventions
 You can support what you described **and** keep it deterministic.
 
 ```
@@ -118,7 +120,7 @@ You can support what you described **and** keep it deterministic.
 - Your earlier idea of `.gemini`, `.claude` folders can be **aliases** to `providers/gemini`, `providers/anthropic` for familiarity.
 - File types are just text (`.md`, `.txt`, `.yaml`). Add **front-matter** if you want (e.g., `priority`, `tags`), but you don’t need it day one.
 
-# Deterministic assembly (so it’s debuggable)
+## Deterministic assembly (so it’s debuggable)
 1) **Start** with `system.md`.  
 2) **Apply domain pack** (see “Domain packs” below).  
 3) **Apply provider overlay** (only the chosen provider).  
@@ -127,7 +129,7 @@ You can support what you described **and** keep it deterministic.
 
 Provide `ai explain` to print the assembled bundle with file origins + token counts. Trust through transparency.
 
-# Domain packs (your “repopulate .ai” idea)
+## Domain packs (your “repopulate .ai” idea)
 Treat domains as **template packs** you can copy in and then edit.
 
 - `ai init` → asks for domain (coding/scripting/research/blank) and creates `.ai/` from built-in pack.
@@ -138,13 +140,13 @@ Treat domains as **template packs** you can copy in and then edit.
   - **scripting/**: `rules/10-character.md`, `rules/20-beats.md`, `rules/30-outline.md`, overlays preferring markdown prose.
   - **research/**: `rules/10-citations.md`, `rules/20-fact-check.md`.
 
-# Provider normalization (keep it tiny)
+## Provider normalization (keep it tiny)
 - One internal request object: `{model, temperature, max_output, system, messages, tools?, format?}`.
 - Adapters translate to OpenAI/Anthropic/Gemini specifics (e.g., “system” field vs first message, JSON/structured-output knobs).
 - **Keys**: use env first (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`), with optional `~/.ai/keys.env` or OS keychain.
 - **Profiles** (optional, later): `ai --profile redteam` selects an alternate `~/.ai/profiles/redteam.yml` overlay.
 
-# Commands (small, memorable)
+## Commands (small, memorable)
 - `ai init` – create `.ai/` interactively (choose domain).  
 - `ai run "your prompt"` – run in the current folder, assemble, send, stream.  
   - Flags: `--provider openai`, `--model gpt-X`, `--json`, `--file out.md`.  
@@ -153,22 +155,22 @@ Treat domains as **template packs** you can copy in and then edit.
 - `ai doctor` – check keys, reachability, token estimates.  
 - `ai cache clear` – nuke compiled bundles / fingerprints.
 
-# Trust & safety (practical guardrails)
+## Trust & safety (practical guardrails)
 - **No automatic repo scan**. Only include `context/` and explicit globs from `config.yml`.  
 - `context/` is your **allowlist**; `.aiignore` guards accidental pulls.  
 - Redact secrets in logs; keep a `runs/` folder with request metadata (model, costs, sources) for reproducibility.  
 - Optional: “strict JSON” mode for coding/research domains; retry on invalid JSON.
 
-# Performance knobs (when you need them)
+## Performance knobs (when you need them)
 - **Bundle cache**: hash(assembled files) → reuse across runs.  
 - Provider-specific features like prompt caching can be toggled in `providers/<name>/overlay.md` or `config.yml`.  
 - `ai explain` shows the bundle hash so you can reason about cache hits.
 
-# Why this works (and who else does parts of it)
+## Why this works (and who else does parts of it)
 - The “git-style precedence + project domain templates” pattern is already familiar to devs and used in many tools; you’re generalizing it for LLM work.  
 - Lots of CLIs do slices of this (config layering, per-provider adapters, prompt files). Your twist is **one neutral `.ai/` contract** that’s domain-aware and provider-agnostic.
 
-# What to decide next (no code, just choices)
+## What to decide next (no code, just choices)
 1) **Domain pack list v1**: which three you want on day one (scripting, coding, research?).  
 2) **Minimal `config.yml` schema**: `domain`, `provider_default`, `context_allowlist` (globs), optional `output: json|markdown`.  
 3) **Merge strategy**: confirm order above; no “smart” auto-merge—deterministic append only.  
@@ -185,7 +187,7 @@ In between there is a connection how to create manageable rules for assembling s
 <ai>
 You’re thinking about it the right way: treat **tooling** and **knowledge** as separate products, with a thin **assembly layer** between them. The tool should be boring, predictable plumbing; the knowledge should be curated and expressive; the assembly rules should be small, testable, and deterministic.
 
-# 1) Clean separation of concerns
+## 1) Clean separation of concerns
 
 **Tool (plumbing)**
 - Finds keys, selects model, sets params, sends/streams requests.
@@ -202,7 +204,7 @@ You’re thinking about it the right way: treat **tooling** and **knowledge** as
 - Deterministic (same inputs → same bundle hash).
 - Auditable (“explain” prints exact pieces and their order).
 
-# 2) Manageable rules for assembling the system prompt
+## 2) Manageable rules for assembling the system prompt
 
 Keep rules **simple and observable**. You don’t need a DSL; you need a few predictable operators and conventions.
 
@@ -240,7 +242,7 @@ Keep rules **simple and observable**. You don’t need a DSL; you need a few pre
 - **Self-check (optional)** (quick internal checklist at the end: “validate beats are chronological,” “emit valid JSON,” etc.).  
 - **Context** (canon, glossary, local examples)—attached, not merged into instructions.
 
-# 3) Folder layout that enforces the separation
+## 3) Folder layout that enforces the separation
 
 ```
 .ai/
@@ -258,7 +260,7 @@ Keep rules **simple and observable**. You don’t need a DSL; you need a few pre
 - **Knowledge packs** are just versioned folders you can publish (or keep private).  
 - **Provider overlays** hold only provider-specific *hints* (e.g., “prefer JSON output”); they never redefine domain content.
 
-# 4) Governance & growth (so curation stays manageable)
+## 4) Governance & growth (so curation stays manageable)
 
 - **Version your packs (semver)** and keep a **CHANGELOG** with human notes (“tightened beat vocabulary; added character arc test prompts”).  
 - **Compatibility table**: which sections assume which provider features (e.g., strict JSON).  
@@ -266,7 +268,7 @@ Keep rules **simple and observable**. You don’t need a DSL; you need a few pre
 - **Snapshots**: keep “golden runs” (input → output) for a handful of tasks per domain; use them to detect regressions in tone/structure. (No code needed now—just the practice.)  
 - **Open-source hygiene**: a `CONTRIBUTING` doc that explains section types, naming, and how to propose changes; license text lives with the pack, not the tool.
 
-# 5) Tool behaviors (to protect the boundary)
+## 5) Tool behaviors (to protect the boundary)
 
 - **Explainability first:** `explain` prints the *exact* assembly plan: files, gates, sizes, final bundle hash.  
 - **Allowlist only:** include from `context/` and configured globs—no repo-wide slurping.  
@@ -274,7 +276,7 @@ Keep rules **simple and observable**. You don’t need a DSL; you need a few pre
 - **Profiles are overlays, not packs:** they tweak params (temperature, output mode) without touching knowledge.  
 - **Reproducibility:** every run writes a tiny `runs/manifest` (bundle hash, provider, model, cost) so you can trace any result back to the knowledge state.
 
-# 6) Why this scales (solo → team)
+## 6) Why this scales (solo → team)
 
 - You can open-source the **packs** (curated knowledge), keep your **project overrides** private, and swap **providers** without touching knowledge.  
 - Teams can standardize on a common pack, then let repos specialize with a few local rules—no forking the universe.
@@ -287,9 +289,9 @@ If you want, I can distill this into a one-page **Prompt Assembly Spec** (fields
 how would you create a structured summary for this discussion?I'd like to have a comprehensive one, including the pain, the idea, sketch of core features, questions to consider
 
 <ai>
-# Structured Summary — Domain-Agnostic LLM Wrapper (Tool ↔ Knowledge ↔ Assembly)
+## Structured Summary — Domain-Agnostic LLM Wrapper (Tool ↔ Knowledge ↔ Assembly)
 
-## 0) Executive summary
+### 0) Executive summary
 You want a **boring, predictable CLI** that separates:
 - **Tooling** (keys, models, params, requests) from  
 - **Knowledge** (domain packs you curate: scripting, coding, research) with  
@@ -299,7 +301,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 1) Pain & context
+### 1) Pain & context
 - **Terminal friction:** raw APIs are powerful but clunky; repetitive setup (keys, models, flags).
 - **Conflated concerns:** most tools tangle “how to call the model” with “what we tell the model.”
 - **Unclear provenance:** hard to see *which* rules/prompt fragments influenced an answer.
@@ -309,7 +311,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 2) Core idea
+### 2) Core idea
 - A **domain-agnostic CLI** that:
   1) **Loads config** with git-style precedence (project → parent → global).
   2) **Assembles a prompt bundle** from domain packs + project overrides + provider overlays.
@@ -320,7 +322,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 3) Design principles
+### 3) Design principles
 - **Separation of concerns:** Tool ≠ Knowledge ≠ Assembly.
 - **Determinism:** numeric ordering + explicit gates; no implicit scans.
 - **Explainability:** every run can print the exact bundle + sizes + file origins.
@@ -330,7 +332,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 4) Architecture at a glance
+### 4) Architecture at a glance
 **Layers**
 1) **Tool (plumbing):** keys, model, params, provider adapters, output modes.
 2) **Knowledge (content):** domain packs (scripting/coding/research), project rules, provider overlays.
@@ -341,7 +343,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 5) Artifacts & folder layout
+### 5) Artifacts & folder layout
 ```
 .ai/
   config.yml            # domain, provider_default, output mode, context allowlist (globs)
@@ -364,7 +366,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 6) Prompt assembly spec (minimal, testable)
+### 6) Prompt assembly spec (minimal, testable)
 **Operators**
 - **include** (file content), **order** (numeric prefix), **section** (`system` vs `context`),
 - **when** (gates: by `domain`, `provider`, optional `task` tag),
@@ -387,7 +389,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 7) MVP feature sketch
+### 7) MVP feature sketch
 - **Config precedence:** project `.ai` → nearest parent `.ai` → `~/.ai`.
 - **Domain packs:** `ai init` seeds `.ai/` with chosen pack (scripting/coding/research/blank).
 - **Assembly & explain:** `ai run "prompt"` and `ai explain` (shows bundle, sizes, hash).
@@ -401,7 +403,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 8) Governance & growth of the knowledge base
+### 8) Governance & growth of the knowledge base
 - **Semver your packs** + CHANGELOG (“tightened beat vocabulary”, “added character-arc checks”).
 - **Contribution guide** for open-sourcing packs (section types, naming, gates, PR rules).
 - **Split rules early** (keep files short; one intent per file).
@@ -409,35 +411,35 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 9) Security, trust, and privacy
+### 9) Security, trust, and privacy
 - **Allowlist only** for `context/` and configured globs; no automatic repo ingestion.
 - **Redacted logs**; opt-in storage of transcripts; retention policy in `config.yml`.
 - **Reproducibility:** every run can be traced back to exact knowledge state (bundle hash).
 
 ---
 
-## 10) Performance knobs (later)
+### 10) Performance knobs (later)
 - **Bundle cache:** hash(assembled files) → reuse.
 - **Provider prompt caching:** toggled in provider overlays.
 - **Budget awareness:** token estimates per section; warnings before send.
 
 ---
 
-## 11) Deliberate non-goals (for v1)
+### 11) Deliberate non-goals (for v1)
 - No autonomous agents, RAG, or code execution.
 - No heuristic repo scans; no “AI magic” merging.
 - No opinionated UI beyond clean terminal streaming and basic files.
 
 ---
 
-## 12) Adoption path (solo → team)
+### 12) Adoption path (solo → team)
 - Ship the **tool** with zero domain content.
 - Publish **packs** separately (you can OS them) and keep **project overrides** private.
 - Teams standardize on a common pack and let repos specialize via a few local rules.
 
 ---
 
-## 13) Questions to consider (decision log fodder)
+### 13) Questions to consider (decision log fodder)
 **Knowledge & domains**
 - Which **three domain packs** are day-one (scripting, coding, research)? Any sub-modes (e.g., beat-sheet vs outline)?
 - What’s your **style & output policy** per domain (strict JSON for coding; markdown for scripting)?
@@ -468,7 +470,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 14) Next steps (practical, no code yet)
+### 14) Next steps (practical, no code yet)
 1) **Name the day-one domain packs** and list the first 5–7 rules each will contain.  
 2) **Freeze the assembly spec v1** (operators, order, gating header keys).  
 3) **Define minimal `config.yml`** schema and defaults.  
@@ -477,7 +479,7 @@ The aim: reproducible runs, transparent provenance, and an ecosystem where your 
 
 ---
 
-## 15) Success criteria (how we’ll know it’s working)
+### 15) Success criteria (how we’ll know it’s working)
 - **Determinism:** same repo state → same bundle hash → same outputs (within model variance).
 - **Transparency:** `ai explain` makes provenance obvious (humans can audit quickly).
 - **Portability:** switching providers requires **zero** changes to knowledge files.

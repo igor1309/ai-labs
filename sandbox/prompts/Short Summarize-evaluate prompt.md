@@ -1,19 +1,21 @@
 ---
 date: 2025-08-17
-description: "ROLE"
+description: "Minimal critical-evaluation prompt: summary plus insightful ideas list."
 ---
 
-# ROLE ###
+# Short Summarize-Evaluate Prompt
+
+## ROLE ###
 Act as a critical evaluator and summarizer.
 
-# CONTEXT ###
+## CONTEXT ###
 Provide a summary and insightful critique.
 
-# TASK ###
+## TASK ###
 Evaluate ideas, identify truly insightful and useful ones.
 
-# INSTRUCTIONS ###
+## INSTRUCTIONS ###
 Be helpful, honest, and reasonably concise.
 
-# OUTPUT FORMAT ###
+## OUTPUT FORMAT ###
 List of insightful ideas with critiques.

@@ -1,7 +1,9 @@
 ---
 date: 2025-08-30
-description: "CLI LLM Script Architecture: A Developer Discussion"
+description: "Discussion with Perplexity about the CLI LLM wrapper architecture, ending in a structured summary."
 ---
+
+# Origin: Perplexity Discussion
 
 <me>
 It’s my understanding that LLM from Google/OpenAI/Antropic have APIs with a lots of features, but using them from terminal is far from comfortable. I guess a possible way could be to write a script that
@@ -16,11 +18,11 @@ I want to just discuss this.
 No code until I say so.
 
 <ai>
-# CLI LLM Script Architecture: A Developer Discussion
+## CLI LLM Script Architecture: A Developer Discussion
 
 Your proposed script architecture makes complete sense and aligns perfectly with current best practices in the CLI tool ecosystem. Many developers and companies have indeed implemented similar solutions, recognizing the same pain points you've identified with raw API usage.
 
-## The Architecture You're Describing
+### The Architecture You're Describing
 
 Your proposed system would essentially create a **context-aware, hierarchical configuration system** for LLM interactions, similar to how Git handles configuration. This approach addresses several real developer needs:
 
@@ -30,11 +32,11 @@ Your proposed system would essentially create a **context-aware, hierarchical co
 
 **Unified API Management**: Abstracting away the differences between OpenAI, Anthropic, and Google APIs behind a single interface removes significant friction.
 
-## Existing Tools Implementing Similar Patterns
+### Existing Tools Implementing Similar Patterns
 
 Several prominent tools have implemented variations of your proposed architecture:
 
-### Production Tools with Similar Approaches
+#### Production Tools with Similar Approaches
 
 **LLM by Simon Willison** is perhaps the closest to your vision. It features:[3][4]
 
@@ -59,7 +61,7 @@ Several prominent tools have implemented variations of your proposed architectur
 - Configuration files for persistent settings
 - Custom prompt templates
 
-### Enterprise and Professional Tools
+#### Enterprise and Professional Tools
 
 **Terminal AI** demonstrates enterprise-grade implementation:[9]
 
@@ -75,7 +77,7 @@ Several prominent tools have implemented variations of your proposed architectur
 - Large context windows for codebase analysis
 - MCP (Model Context Protocol) support
 
-## Why This Architecture Pattern Works
+### Why This Architecture Pattern Works
 
 The architecture you're proposing has gained traction because it solves several critical problems:
 
@@ -87,7 +89,7 @@ The architecture you're proposing has gained traction because it solves several 
 
 **Composability**: By scanning folders for rules and protocols, you create a system where prompt engineering becomes modular and reusable.
 
-## Advanced Implementation Patterns
+### Advanced Implementation Patterns
 
 Looking at the current ecosystem, successful tools often include:
 
@@ -99,7 +101,7 @@ Looking at the current ecosystem, successful tools often include:
 
 **Provider Abstraction**: Unified interfaces that handle the differences between OpenAI's chat completions, Anthropic's messages API, and Google's generate content endpoints.
 
-## Market Validation
+### Market Validation
 
 The proliferation of tools in this space indicates strong developer demand. Terminal-based AI tools are seeing significant adoption because they:
 
@@ -183,7 +185,7 @@ In between there is a connection how to create manageable rules for assembling s
 <ai>
 The distinction between **the tool** (handling API keys, model selection, request assembly) and **the knowledge base** (domain-specific expertise, curated rules, prompt templates) is indeed crucial and a smart approach.
 
-### Separation Benefits
+#### Separation Benefits
 
 - **Tool as Infrastructure:** The core CLI wrapper becomes a stable, reusable infrastructure component focused on API interaction, configuration management, and prompt assembly logic. This is consistent developer-focused work that can be well standardized and documented.
 
@@ -191,7 +193,7 @@ The distinction between **the tool** (handling API keys, model selection, reques
 
 - **Scalability and Community Growth:** Like gitignore or ESLint config packs, starting with simple template packs and incremental guides for expansion enables community contributions and customizations while maintaining a clear boundary between tooling and knowledge.
 
-### On Rules for System Prompt Assembly
+#### On Rules for System Prompt Assembly
 
 - Having **manageable, composable rules** for how templates and context fragments are combined into system prompts is key. This might involve layering:
 
@@ -202,7 +204,7 @@ The distinction between **the tool** (handling API keys, model selection, reques
 
 - Approaches like template inheritance, variable substitution, and modular prompt snippets can help maintain clarity and flexibility.
 
-### Open Source Potential
+#### Open Source Potential
 
 - Providing a **starter template pack** with documentation on how to grow and customize the knowledge base will ease adoption and empower others to extend the system for their domains.
 
@@ -218,9 +220,9 @@ Here is a comprehensive structured summary of the discussion:
 
 ---
 
-# Structured Summary: CLI LLM Tool Discussion
+## Structured Summary: CLI LLM Tool Discussion
 
-## Pain Points Identified
+### Pain Points Identified
 
 - Using LLM APIs (OpenAI, Google, Anthropic) directly from the terminal is cumbersome and uncomfortable.
 - Lack of flexible, configurable system prompt management in existing CLI tools.
@@ -228,7 +230,7 @@ Here is a comprehensive structured summary of the discussion:
 - Managing API keys, model selection, and assembling requests feels like repetitive developer overhead.
 - No unified way to compose complex system prompts based on multi-layered domain/context rules.
 
-## Core Idea Proposed
+### Core Idea Proposed
 
 - Develop a **generic, domain-agnostic CLI wrapper tool** for LLM APIs that:
   - Uses a hierarchical configuration system for system prompts (local `.ai` folder with fallback to global).
@@ -236,7 +238,7 @@ Here is a comprehensive structured summary of the discussion:
   - Supports dynamic prompt composition by scanning these folders and assembling context-aware system prompts.
   - Separates **the tool’s responsibility** (API interaction, key management, request assembly) from **knowledge base management** (curating domain-specific rules, templates).
 
-## Sketch of Core Features
+### Sketch of Core Features
 
 - **Hierarchical Config Management**: Local per-project `.ai` folders with prompt templates and rules, with fallback to user/global configs.
 - **Domain Command**: Command to initialize or re-populate `.ai` folder by asking user for project domain (e.g., scripting, coding, lore), seeding domain-specific prompt templates.
@@ -246,7 +248,7 @@ Here is a comprehensive structured summary of the discussion:
 - **Minimal Core Tool, Rich Knowledge Packs**: Tool focuses on stable API calls and config loading; domain knowledge lives in shareable, extendable prompt packs.
 - **Template Growth Guide**: Documentation and best practices on evolving and curating prompt templates as domain knowledge evolves.
 
-## Questions to Consider
+### Questions to Consider
 
 - How to best define a **template or rule format** for system prompts that balance flexibility with usability?
 - How to handle **merging and conflict resolution** when multiple domain folders or user settings influence prompt construction?
