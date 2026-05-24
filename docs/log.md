@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-24
+
+- dev-skills: added Codex plugin manifest at `dev-skills/public/.codex-plugin/plugin.json` so dev-skills publishes as a Codex plugin in addition to the Claude Code marketplace. CI now guards version parity between `marketplace.json` and `plugin.json` in the `dev-skills-validation` job to prevent silent drift.
+
 ## 2026-05-23
 
 - mac-health: bug fix after first live install — `check-disk.sh` was querying `df /` and reporting `status=ok / free_pct=48` on a Catalina+ machine that was actually at 1.2% free. Root cause: APFS shares space across a read-only system snapshot and a writable data volume; `/` reports capacity per-snapshot, not against the shared container. Fix: query `/System/Volumes/Data` on Catalina+ with fallback to `/`. Spec updated.

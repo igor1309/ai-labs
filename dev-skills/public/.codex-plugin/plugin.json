@@ -1,0 +1,39 @@
+{
+  "name": "dev-skills",
+  "version": "1.44.0",
+  "description": "Development workflows and career advancement tools for software engineers: TDD, architecture review, process gates, release work, PR CI monitoring, specification writing, and related engineering workflows.",
+  "author": {
+    "name": "Igor Malyarov",
+    "email": "igor1309@gmail.com",
+    "url": "https://github.com/igor1309"
+  },
+  "homepage": "https://github.com/igor1309/skills",
+  "repository": "https://github.com/igor1309/skills",
+  "license": "MIT",
+  "keywords": [
+    "architecture",
+    "coding",
+    "process",
+    "release",
+    "skills",
+    "tdd"
+  ],
+  "skills": "./",
+  "interface": {
+    "displayName": "Dev Skills",
+    "shortDescription": "Development workflows for coding agents",
+    "longDescription": "Use Dev Skills for TDD, architecture review, process gates, release work, PR CI monitoring, specification writing, and related engineering workflows.",
+    "developerName": "Igor Malyarov",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use dev-skills:strict-tdd for this change.",
+      "Use dev-skills:process-gates for this plan."
+    ],
+    "websiteURL": "https://github.com/igor1309/skills"
+  }
+}

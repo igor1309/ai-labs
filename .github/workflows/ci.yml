@@ -192,6 +192,19 @@ jobs:
           done
           echo "All SKILL.md files present"
 
+      - name: Verify codex plugin manifest version matches marketplace
+        run: |
+          MARKET="dev-skills/public/.claude-plugin/marketplace.json"
+          PLUGIN="dev-skills/public/.codex-plugin/plugin.json"
+          jq empty "$PLUGIN"
+          MARKET_VERSION=$(jq -r '.metadata.version' "$MARKET")
+          PLUGIN_VERSION=$(jq -r '.version' "$PLUGIN")
+          if [ "$MARKET_VERSION" != "$PLUGIN_VERSION" ]; then
+            echo "ERROR: version mismatch: marketplace.json=$MARKET_VERSION plugin.json=$PLUGIN_VERSION"
+            exit 1
+          fi
+          echo "plugin.json version matches marketplace.json ($MARKET_VERSION)"
+
   real-provider-smoke:
     needs: [changes, oracle-core]
     if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.oracle == 'true' || needs.changes.outputs.shared == 'true') && needs.oracle-core.result == 'success' }}

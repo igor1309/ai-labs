@@ -12,7 +12,8 @@ Open the local landing and graph at [`index.html`](index.html).
 dev-skills/
 ├── public/              # Public skills (synced to igor1309/skills)
 │   ├── tdd-interactive/
-│   └── .claude-plugin/
+│   ├── .claude-plugin/  # Claude Code marketplace manifest
+│   └── .codex-plugin/   # Codex plugin manifest
 ├── docs/               # Development documentation
 ├── TODO/               # Work-in-progress tracking
 └── .claude/            # Local Claude configurations
