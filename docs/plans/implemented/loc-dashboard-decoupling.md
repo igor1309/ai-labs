@@ -155,7 +155,7 @@ plan:
         target: "docs/products.html — Products section restructure"
         details:
           grouping:
-            - "CLI & Tooling: Regentara, Session Digest, Tools"
+            - "CLI & Tooling: Reinix, Session Digest, Tools"
             - "Web Apps: Clipdeck, Nexum, Oracle — Am I Done?"
             - "MCP Servers: Corpus Scout, Web Scout"
             - "Services: Nomos, Notio"

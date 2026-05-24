@@ -1,5 +1,6 @@
 ---
 name: swift-package-manifest
+author: Igor Malyarov
 description: Clean, maintainable Package.swift creation and editing using the static property pattern from Facebook iOS SDK. Use when creating new Package.swift files, refactoring existing ones, adding modules/targets to Swift packages, or organizing Swift Package Manager manifests for better maintainability.
 version: "1.0.1"
 ---

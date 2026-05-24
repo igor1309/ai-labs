@@ -73,7 +73,7 @@ This keeps the README the source of truth and prevents the agent from quietly de
 
 Inputs as of 2026-05-10:
 
-- `## Components` rows whose key maps to a top-level dir: `nexum`, `notio`, `oracle`, `regentara`, `nomos`, `corpus-scout`, `web-scout`, `loki`, `claude-insights`, `session-digest`, `dragoman`, `clipdeck`, `doc-drift-agent`, `dashboard-sync-agent`.
+- `## Components` rows whose key maps to a top-level dir: `nexum`, `notio`, `oracle`, `reinix`, `nomos`, `corpus-scout`, `web-scout`, `loki`, `claude-insights`, `session-digest`, `dragoman`, `clipdeck`, `doc-drift-agent`, `dashboard-sync-agent`.
 - `## Components` rows skipped (not a top-level dir): `notio-backend`, `notio-frontend`, `docker/langfuse`.
 - `## Structure` rows whose key maps to a top-level dir: `prompts`, `dev-skills`, `tools`, `sandbox`, `insights`, `reading`, `debates`, `gemini`.
 - `## Structure` rows skipped (not a top-level dir): `migrate-to-skills/guides`.
@@ -83,7 +83,7 @@ Tracked set (sorted, deduplicated):
 ```
 claude-insights, clipdeck, corpus-scout, dashboard-sync-agent, debates,
 dev-skills, doc-drift-agent, dragoman, gemini, insights, loki, nexum,
-notio, nomos, oracle, prompts, reading, regentara, sandbox,
+notio, nomos, oracle, prompts, reading, reinix, sandbox,
 session-digest, tools, web-scout
 ```
 

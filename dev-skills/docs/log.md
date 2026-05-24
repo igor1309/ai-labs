@@ -4,6 +4,19 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-24
+
+- using-dev-skills v1.0.1: new entry-map skill that groups the toolkit into eight ladders (TDD, Spec, Architecture review, Debugging, Planning, Release/CI, Swift/iOS, Skill maintenance) keyed by the input the agent has, so the right skill is invoked without enumerating the catalog. Deliberately not a methodology: ladders compose per task. Marketplace v1.45.0.
+- Codex plugin manifest: added `public/.codex-plugin/plugin.json` so dev-skills can be consumed as a Codex plugin alongside the existing Claude Code marketplace manifest. Lives next to `.claude-plugin/marketplace.json` so the existing `sync-skills-public.yml` workflow ships it without changes; `"skills": "./"` points at the package root after sync. Publishing checklist (`dev-skills/.claude/CLAUDE.md`) now requires bumping `plugin.json` `version` alongside `marketplace.json`. Marketplace v1.44.0.
+
+## 2026-05-16
+
+- intake v1.4.1 + remove rpi-research: merged rpi-research into intake. Phase 2 schema is now `What I'm Building / What I'm Touching / Findings (Scope + Pattern evidence lead bullets) / Key Constraints / Risks & Unknowns / Reproduction (bug only) / Questions / Large-Scope Mode` — absorbed rpi-research's output schema while preserving intake's battle-tested task-shaped sections. Phase 4 reframed from "Transition to Planning" (auto EnterPlanMode) to "Capture" (ask where to save, write the brief, stop). Description rewritten trigger-led per the canonical Agent Skills spec, covering both well-defined and open-ended scope. Stale "planning"-handoff references cleaned from Hard Rules and Anti-Patterns. Removed `EnterPlanMode` from `allowed-tools`, added `Write`. Rationale: once intake's planning auto-transition was removed, the two skills described the same activity with overlapping triggers and output schemas. No alias for `/rpi-research` — removed cleanly. Marketplace v1.43.0.
+- dev-skills landing: added `dev-skills/index.html`, a static catalog page with a workflow graph, skill-group summaries, marketplace/public-repo links, and a grouped catalog of all 36 published skill directories. Gives the project a local visual entry point without changing the published skill payload.
+- skill-review v1.1.3: ground the rubric in the canonical Agent Skills spec (agentskills.io) and Anthropic guidance. Adds a new front-matter integrity axis (`description`/`name`/`author` gates), the 1024-char description limit, the 500-line / 5,000-token body gate, an LLM-generic-padding noise category, and a reference-load-condition check. Drops the unsupported "third-person description" rule and softens "WHEN, not WHAT" to "WHAT + WHEN" — matching Anthropic's own canonical example. Research notes captured under `dev-skills/public/skill-review/research/`.
+- Publishing gate: `dev-skills/.claude/CLAUDE.md` now requires `author: Igor Malyarov` in SKILL.md front-matter before any skill can ship; backfilled the 26 skills that were missing it. Prevents recurrence of the silent author-stripping that motivated the gate.
+- dev-skills README: promoted `**Development:**` / `**Publishing:**` pseudo-headings to real `###` headings (AGENTS.md global rule), re-nested Publish Exclusions under Publishing where it logically belongs, and replaced the duplicated 5-step Publishing recap with a single pointer to `.claude/CLAUDE.md` (eliminating drift). Marketplace v1.41.0.
+
 ## 2026-05-01
 
 - best-free-openrouter-llm v1.0.0: new skill that picks the current best free OpenRouter model from the public ranking endpoint at `shir-man.com/api/free-llm/top-models` and emits text, JSON, or shell-export output for agent/CLI configuration. Refuses to invent a model ID (only `openrouter/free` as hardcoded fallback) and gates on `--min-confidence` so low-confidence rankings fail closed. Marketplace v1.40.0.

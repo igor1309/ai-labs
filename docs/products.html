@@ -158,6 +158,15 @@
     font-weight: 700;
   }
 
+  .product-name a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .product-name a:hover {
+    color: var(--accent-light);
+  }
+
   .product-desc {
     color: var(--text-muted);
     font-size: 0.875rem;
@@ -270,10 +279,10 @@
     <div class="product-grid">
       <div class="product reveal">
         <div class="product-header">
-          <span class="product-name">Dev Skills</span>
+          <span class="product-name"><a href="../dev-skills/index.html">Dev Skills</a></span>
         </div>
         <p class="product-desc">
-          <strong>Claude Code skills marketplace.</strong> A collection of reusable agent skills — strict TDD, process gates, release management, architecture review, and more. Developed here, <em>published to a public repo</em> via GitHub Actions sync.
+          <strong>Claude Code skills marketplace.</strong> A collection of reusable agent skills — strict TDD, process gates, release management, architecture review, and more. The new local landing maps the catalog as a workflow graph; publishing still syncs to a public repo via GitHub Actions.
         </p>
         <div class="product-stack">
           <span class="tag">Claude Code</span>
@@ -283,10 +292,10 @@
       </div>
       <div class="product reveal">
         <div class="product-header">
-          <span class="product-name">Regentara</span>
+          <span class="product-name">Reinix</span>
         </div>
         <p class="product-desc">
-          <strong>Workflow runner for governed coding-agent loops.</strong> Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator — through a loop with pluggable review policy. Every input is a <em>verifiable task with done criteria</em>; settings live in <code>.regentara/</code> YAML files.
+          <strong>Workflow runner for governed coding-agent loops.</strong> Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator — through a loop with pluggable review policy. Every input is a <em>verifiable task with done criteria</em>; settings live in <code>.reinix/</code> YAML files.
         </p>
         <div class="product-stack">
           <span class="tag">Node.js</span>

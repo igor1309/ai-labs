@@ -134,7 +134,7 @@ Structured JSON lines written to `stderr`. Set `LOG_LEVEL=silent` to suppress al
 
 ## Smoke test
 
-Requires Langfuse keys (`LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`) and a corpus directory. The eval corpus at `tools/evals/corpus/` is in Russian; the default query matches it.
+Requires Langfuse keys (`LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`) and a corpus directory. The eval corpus at `corpus-scout/tools/evals/corpus/` is in Russian; the default query matches it.
 
 Run from the repo root:
 
