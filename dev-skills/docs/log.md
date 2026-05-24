@@ -6,6 +6,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-05-24
 
+- using-dev-skills v1.0.1: new entry-map skill that groups the toolkit into eight ladders (TDD, Spec, Architecture review, Debugging, Planning, Release/CI, Swift/iOS, Skill maintenance) keyed by the input the agent has, so the right skill is invoked without enumerating the catalog. Deliberately not a methodology: ladders compose per task. Marketplace v1.45.0.
 - Codex plugin manifest: added `public/.codex-plugin/plugin.json` so dev-skills can be consumed as a Codex plugin alongside the existing Claude Code marketplace manifest. Lives next to `.claude-plugin/marketplace.json` so the existing `sync-skills-public.yml` workflow ships it without changes; `"skills": "./"` points at the package root after sync. Publishing checklist (`dev-skills/.claude/CLAUDE.md`) now requires bumping `plugin.json` `version` alongside `marketplace.json`. Marketplace v1.44.0.
 
 ## 2026-05-16
