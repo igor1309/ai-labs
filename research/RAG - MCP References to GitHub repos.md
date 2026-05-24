@@ -1,0 +1,17 @@
+# RAG: MCP References to GitHub repos
+
+- [agentset-ai/mcp-server: Agentset MCP Server - Build RAG with Agentic superpowers](https://github.com/agentset-ai/mcp-server)
+- [inkeep/mcp-server-python: Inkeep MCP Server](https://github.com/inkeep/mcp-server-python)
+- [moorcheh-ai/moorcheh-mcp](https://github.com/moorcheh-ai/moorcheh-mcp)
+- [needle-ai/needle-mcp: Needle MCP Server for easy RAG.Long-term memory for LLMs.](https://github.com/needle-ai/needle-mcp)
+- [patronus-ai/patronus-mcp-server](https://github.com/patronus-ai/patronus-mcp-server)
+- [ragieai/ragie-mcp-server: Ragie Model Context Protocol Server](https://github.com/ragieai/ragie-mcp-server/)
+- [cognee/cognee-mcp at main · topoteretes/cognee](https://github.com/topoteretes/cognee/tree/main/cognee-mcp)
+- [GreatScottyMac/context-portal: Context Portal (ConPort): A memory bank MCP server building a project-specific knowledge graph to supercharge AI assistants. Enables powerful Retrieval Augmented Generation (RAG) for context-aware development in your IDE.](https://github.com/GreatScottyMac/context-portal)
+- [nkapila6/mcp-local-rag: "primitive" RAG-like web search model context protocol (MCP) server that runs locally. ✨ no APIs ✨](https://github.com/nkapila6/mcp-local-rag)
+- [dmayboroda/minima: On-premises conversational RAG with configurable containers](https://github.com/dmayboroda/minima)
+- [sirmews/mcp-pinecone: Model Context Protocol server to allow for reading and writing from Pinecone. Rudimentary RAG](https://github.com/sirmews/mcp-pinecone)
+- [amornpan/py-mcp-qdrant-rag: py-mcp-qdrant-rag](https://github.com/amornpan/py-mcp-qdrant-rag)
+- [renl/mcp-rag-local](https://github.com/renl/mcp-rag-local)
+- [apify/mcp-server-rag-web-browser: A MCP Server for the RAG Web Browser Actor](https://github.com/apify/mcp-server-rag-web-browser)
+- [vectara/vectara-mcp: Open source MCP server for Vectara](https://github.com/vectara/vectara-mcp)
