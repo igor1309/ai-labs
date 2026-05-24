@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-24
+
+- Codex plugin manifest: added `public/.codex-plugin/plugin.json` so dev-skills can be consumed as a Codex plugin alongside the existing Claude Code marketplace manifest. Lives next to `.claude-plugin/marketplace.json` so the existing `sync-skills-public.yml` workflow ships it without changes; `"skills": "./"` points at the package root after sync. Publishing checklist (`dev-skills/.claude/CLAUDE.md`) now requires bumping `plugin.json` `version` alongside `marketplace.json`. Marketplace v1.44.0.
+
 ## 2026-05-16
 
 - intake v1.4.1 + remove rpi-research: merged rpi-research into intake. Phase 2 schema is now `What I'm Building / What I'm Touching / Findings (Scope + Pattern evidence lead bullets) / Key Constraints / Risks & Unknowns / Reproduction (bug only) / Questions / Large-Scope Mode` — absorbed rpi-research's output schema while preserving intake's battle-tested task-shaped sections. Phase 4 reframed from "Transition to Planning" (auto EnterPlanMode) to "Capture" (ask where to save, write the brief, stop). Description rewritten trigger-led per the canonical Agent Skills spec, covering both well-defined and open-ended scope. Stale "planning"-handoff references cleaned from Hard Rules and Anti-Patterns. Removed `EnterPlanMode` from `allowed-tools`, added `Write`. Rationale: once intake's planning auto-transition was removed, the two skills described the same activity with overlapping triggers and output schemas. No alias for `/rpi-research` — removed cleanly. Marketplace v1.43.0.
