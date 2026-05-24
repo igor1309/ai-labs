@@ -18,7 +18,7 @@ This directory owns the source of truth for what the agent inspects, how it synt
 
 ## Status
 
-**Proposed, not yet implemented.** Intent and ADR landed 2026-05-10 on branch `codex/dashboard-sync-agent`. Agent definition, runtime artifacts, and CI sync workflow have not yet been authored.
+**Definition authored.** Intent and ADR landed 2026-05-10 on branch `codex/dashboard-sync-agent`. Agent definition artifacts and CI sync workflow are present; VPS runtime deployment remains owned by OpenClaw.
 
 ## Source
 
@@ -33,7 +33,7 @@ This directory owns the source of truth for what the agent inspects, how it synt
 | `docs/adr-specialized-openclaw-agent-dashboard-sync-v0.0.1.md` | Source ADR |
 | `docs/log.md` | Project log |
 
-The `agent/` and `runtime/` subtrees (mirroring `doc-drift-agent/`) will be added when the agent definition is authored.
+The `agent/` subtree has been added. A `runtime/` subtree (mirroring `doc-drift-agent/`) will be added if source-owned runtime artifacts are needed.
 
 ## Boundaries
 
