@@ -18,7 +18,7 @@
     "skills",
     "tdd"
   ],
-  "skills": "./public/",
+  "skills": "./",
   "interface": {
     "displayName": "Dev Skills",
     "shortDescription": "Development workflows for coding agents",
