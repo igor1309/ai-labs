@@ -1,5 +1,6 @@
 ---
 name: cold-start-checkpoint
+author: Igor Malyarov
 version: "1.1.0"
 description: >
   Use on the first user message of every new session — before any tool use,

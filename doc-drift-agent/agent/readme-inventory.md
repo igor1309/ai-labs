@@ -12,7 +12,7 @@ Enumerates every README the agent inspects on each run. Scope is fixed by `doc-d
 
 | Path | Owning component | Role | Cross-references into other READMEs |
 |------|------------------|------|-------------------------------------|
-| `README.md` | repo (ai-labs) | root | Names every project listed in the `## Components` table — `nexum`, `notio`, `notio-backend`, `notio-frontend`, `oracle`, `regentara`, `nomos`, `corpus-scout`, `web-scout`, `loki`, `claude-insights`, `session-digest`, `docker/langfuse`, `dragoman`, `clipdeck`, `doc-drift-agent` |
+| `README.md` | repo (ai-labs) | root | Names every project listed in the `## Components` table — `nexum`, `notio`, `notio-backend`, `notio-frontend`, `oracle`, `reinix`, `nomos`, `corpus-scout`, `web-scout`, `loki`, `claude-insights`, `session-digest`, `docker/langfuse`, `dragoman`, `clipdeck`, `doc-drift-agent` |
 | `claude-insights/README.md` | claude-insights | project | None |
 | `clipdeck/README.md` | clipdeck | project | None |
 | `corpus-scout/README.md` | corpus-scout | project | None |
@@ -22,7 +22,7 @@ Enumerates every README the agent inspects on each run. Scope is fixed by `doc-d
 | `nexum/README.md` | nexum | project | None |
 | `notio/README.md` | notio (covers `notio-backend` and `notio-frontend` release units) | project | None |
 | `oracle/README.md` | oracle | project | None |
-| `regentara/README.md` | regentara | project | None |
+| `reinix/README.md` | reinix | project | None |
 | `session-digest/README.md` | session-digest | project | Mentions `nomos` (local proxy startup instructions) |
 | `web-scout/README.md` | web-scout | project | None |
 
@@ -32,7 +32,7 @@ Every row in the root `## Components` table must either (a) resolve to a project
 
 ### Resolved
 
-`claude-insights`, `clipdeck`, `corpus-scout`, `doc-drift-agent`, `nexum`, `notio`, `oracle`, `regentara`, `session-digest`, `web-scout`.
+`claude-insights`, `clipdeck`, `corpus-scout`, `doc-drift-agent`, `nexum`, `notio`, `oracle`, `reinix`, `session-digest`, `web-scout`.
 
 ### Sub-units covered by a parent README
 

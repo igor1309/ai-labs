@@ -1,5 +1,6 @@
 ---
 name: job-search-strategy
+author: Igor Malyarov
 description: Comprehensive job search strategy toolkit for analyzing job postings, discovering hidden insights, interviewing candidates to match skills, developing targeted skills, and executing creative outreach strategies. Use when helping candidates strategize their job search, prepare tailored applications, or develop competitive advantages in their job hunt.
 version: "1.0.1"
 ---

@@ -1,5 +1,6 @@
 ---
 name: arch-doc-review
+author: Igor Malyarov
 version: "1.0.0"
 description: Checklist for reviewing architecture and design docs in PRs
 trigger: when reviewing architecture docs, design docs, or ADRs in pull requests

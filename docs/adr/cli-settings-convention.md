@@ -15,7 +15,7 @@ is settings only.
 
 ## 2. Context
 
-The repo hosts multiple CLI tools (`regentara`, `session-digest`, with more
+The repo hosts multiple CLI tools (`reinix`, `session-digest`, with more
 expected). Each invented its own settings approach. Two recurring problems:
 
 - Discovery is inconsistent: some tools support per-project overrides,
@@ -82,12 +82,12 @@ File format, schema, and credential handling remain per-tool decisions.
 The following are pre-existing violations of this ADR. Each will be closed
 via a per-tool tactical action plan:
 
-- `regentara/src/settings/model-routing.js`: closed `REQUIRED_ROUTE_KEYS`
+- `reinix/src/settings/model-routing.js`: closed `REQUIRED_ROUTE_KEYS`
   and `SUPPORTED_COMBINATIONS` block adding routes or runners via config.
-- `regentara/src/settings/agent-settings.js`: closed `SUPPORTED_PROMPT_REFS`
+- `reinix/src/settings/agent-settings.js`: closed `SUPPORTED_PROMPT_REFS`
   blocks user-supplied prompts. (`SUPPORTED_SCHEMA_REFS` is structural —
   the orchestrator reads field names by identity — and stays in code.)
-- `regentara`: no first-run bootstrap; absent settings emit a hard error
+- `reinix`: no first-run bootstrap; absent settings emit a hard error
   without writing an example template.
 - `session-digest/src/config.ts`: hardcoded `openRouterBaseURL`,
   `nvidiaBaseURL`, and provider precedence.

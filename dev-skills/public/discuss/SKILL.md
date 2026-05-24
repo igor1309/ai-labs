@@ -1,5 +1,6 @@
 ---
 name: discuss
+author: Igor Malyarov
 version: "1.1.1"
 description: >
   Collaborative discussion mode for exploring ideas, designs, and implementation

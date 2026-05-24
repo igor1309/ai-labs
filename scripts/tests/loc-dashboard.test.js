@@ -21,20 +21,20 @@ it('reports docs-only components as regular LOC rows', () => {
   );
 });
 
-it('reports Regentara as a code component once implementation exists', () => {
+it('reports Reinix as a code component once implementation exists', () => {
   const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
     cwd: process.cwd(),
     encoding: 'utf8',
   });
-  const regentaraCounts = projectRows(output)
-    .find((line) => line.trimStart().startsWith('regentara'))
+  const reinixCounts = projectRows(output)
+    .find((line) => line.trimStart().startsWith('reinix'))
     .trim()
     .split(/\s+/)
     .slice(1, 3)
     .map(Number);
 
   assert.deepEqual(
-    regentaraCounts.map((count) => count > 0),
+    reinixCounts.map((count) => count > 0),
     [true, true]
   );
 });
