@@ -148,7 +148,7 @@ Notio is split into independently released backend and frontend units. Backend t
 
 ## Status
 
-v1 capture pipeline with two-phase feedback (`notio_v0.3.0`): full parse → enrich → persist flow with Telegram receipt and outcome feedback. Telegram messages are parsed (URL extraction with UTM stripping, entity/regex fallback), source-classified (`github_repo` | `web_page`), enriched (GitHub API metadata or HTML title/description extraction), and persisted to Supabase. Each capture request receives an immediate receipt acknowledgement and a final success/failure message. Service deployed on VPS, `@NotioInboxBot` webhook live at `inbox.enoa.ai`. History: [`docs/log.md`](docs/log.md).
+v1 capture pipeline with two-phase feedback (`notio-backend_v0.3.0`): full parse → enrich → persist flow with Telegram receipt and outcome feedback. Telegram messages are parsed (URL extraction with UTM stripping, entity/regex fallback), source-classified (`github_repo` | `web_page`), enriched (GitHub API metadata or HTML title/description extraction), and persisted to Supabase. Each capture request receives an immediate receipt acknowledgement and a final success/failure message. Service deployed on VPS, `@NotioInboxBot` webhook live at `inbox.enoa.ai`. History: [`docs/log.md`](docs/log.md).
 
 ## Future directions
 
