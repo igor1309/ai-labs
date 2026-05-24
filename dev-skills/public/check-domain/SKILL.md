@@ -1,5 +1,6 @@
 ---
 name: check-domain
+author: Igor Malyarov
 version: "0.3.0"
 description: >
   Check domain name availability and find alternatives.

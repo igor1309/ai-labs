@@ -1,5 +1,6 @@
 ---
 name: strict-tdd
+author: Igor Malyarov
 version: "1.0.1"
 description: Strict TDD mode — RED/GREEN/REFACTOR discipline with no-junk scope lock
 trigger: when the user explicitly asks for TDD, RED/GREEN, or equivalent

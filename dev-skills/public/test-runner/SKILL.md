@@ -1,5 +1,6 @@
 ---
 name: test-runner
+author: Igor Malyarov
 version: "1.0.0"
 description: Runs xcodebuild tests and returns structured results. Use as a worker agent for test execution. Main agent should never run xcodebuild test directly.
 tools: Read, Bash

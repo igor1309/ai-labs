@@ -1,5 +1,6 @@
 ---
 name: debug-print
+author: Igor Malyarov
 version: "1.0.0"
 description: Isolate bugs by adding debugPrint logging only — no behavior changes. Use when the user wants to add debug prints to trace a bug. Argument is the bug description.
 allowed-tools: Read, Edit, Write, Bash(xcodebuild:*), Bash(swift:*)

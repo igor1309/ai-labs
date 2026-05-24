@@ -1,5 +1,6 @@
 ---
 name: release-process
+author: Igor Malyarov
 version: "1.0.0"
 description: Per-unit release discipline — model, invariants, and verification gates
 trigger: when performing a release, tagging, bumping versions, or working with release-unit infrastructure

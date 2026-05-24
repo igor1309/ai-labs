@@ -1,5 +1,22 @@
 # Log
 
+## 2026-05-24
+
+- dev-skills: added Codex plugin manifest at `dev-skills/public/.codex-plugin/plugin.json` so dev-skills publishes as a Codex plugin in addition to the Claude Code marketplace. CI now guards version parity between `marketplace.json` and `plugin.json` in the `dev-skills-validation` job to prevent silent drift.
+
+## 2026-05-23
+
+- mac-health: bug fix after first live install — `check-disk.sh` was querying `df /` and reporting `status=ok / free_pct=48` on a Catalina+ machine that was actually at 1.2% free. Root cause: APFS shares space across a read-only system snapshot and a writable data volume; `/` reports capacity per-snapshot, not against the shared container. Fix: query `/System/Volumes/Data` on Catalina+ with fallback to `/`. Spec updated.
+- mac-health: new personal-tooling subdirectory under `tools/mac-health/` for scheduled launchd-driven macOS health checks (memory, disk, leftovers). Landed intent + ADR-001 + spec (v0.1), checks runtime (`lib/common.sh`, three check scripts + a disk-leftovers wrapper), two LaunchAgent plists, `newsyslog` rotation config (1 MB / 5 gzipped archives), `install.sh`/`uninstall.sh` (installer refuses if `terminal-notifier` is missing on `PATH`), and `README.md`. 27-case shell test suite covers all 15 spec behavior tests. By design not an ai-labs project: no CI workflow, no release unit, no Components row, no `loc-dashboard` entry.
+
+## 2026-05-17
+
+- my-way: added `docs/my-way/prd-vs-product-intent.md`, a short framing note contrasting Product Intent with a PRD — PRD as a god document optimizing for "one place to look", Product Intent as a deliberately narrow layer optimizing for "one thing per place" with the rest delegated down the artifact chain.
+
+## 2026-05-16
+
+- dev-skills: added a local landing at `dev-skills/index.html` with a workflow graph and full 36-skill catalog. Linked the Dev Skills product card to the landing so the marketplace surface is discoverable from `docs/products.html`.
+
 ## 2026-05-12
 
 - research/courses: added `aiforwork/` competitor extraction (page-content, course-curriculum, selling-points) mirroring the `khakhalev/` three-file pattern, plus a top-level `positioning-notes.md` distilling both surveys into a market map and a list of unfilled positioning slots (engineering-manager audience, EN-language market, senior judgment / failure post-mortems, curated cross-role structured path, async durable-artifact format, B2B-led channel). Inputs to `decision-matrix.md`; no commitments. The two surveyed RU offers split by *object of practice* (shared codebase vs participant's own routine), not by level — informing how the decision matrix reads its `Who` axis.

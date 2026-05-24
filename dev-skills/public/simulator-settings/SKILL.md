@@ -1,5 +1,6 @@
 ---
 name: simulator-settings
+author: Igor Malyarov
 description: Tweak iOS simulator settings via xcrun simctl. Use when granting app permissions, changing UI appearance, simulating location, or overriding status bar. Triggers on "simulator settings", "grant permission", "privacy", "dark mode", "light mode", "location", "status bar", "simctl".
 allowed-tools: Bash(xcrun simctl:*)
 ---

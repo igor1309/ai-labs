@@ -1,5 +1,6 @@
 ---
 name: synopsis
+author: Igor Malyarov
 version: "1.0.0"
 description: >
   Use when the user needs a concise description of a component, module,
