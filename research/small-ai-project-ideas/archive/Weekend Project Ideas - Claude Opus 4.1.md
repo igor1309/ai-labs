@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Weekend Project Ideas - Claude Opus 4.1"
+---
+
 # Weekend Project Ideas - Claude Opus 4.1
 
 ---

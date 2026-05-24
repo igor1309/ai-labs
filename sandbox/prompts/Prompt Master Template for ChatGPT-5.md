@@ -1,3 +1,8 @@
+---
+date: 2025-08-17
+description: "Prompt Master Template for ChatGPT-5"
+---
+
 # Prompt Master Template for ChatGPT-5
 
 ## Task

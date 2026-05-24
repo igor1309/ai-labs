@@ -1,3 +1,8 @@
+---
+date: 2025-08-31
+description: "spec 10 Deliberate Non-Goals (for V1)"
+---
+
 The AI Context Runner’s Minimum Viable Product (V1) is designed with a clear focus on its core responsibilities, deliberately **excluding certain advanced functionalities** to ensure stability, security, and a predictable user experience. This approach allows the tool to remain **minimalist and domain-agnostic** in its initial release.
 
 The deliberate non-goals for V1 include:

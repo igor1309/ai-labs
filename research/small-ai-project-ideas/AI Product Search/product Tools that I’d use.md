@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "product Tools that I’d use"
+---
+
 Tools that I’d use
 
 AI-Powered Reading List Manager

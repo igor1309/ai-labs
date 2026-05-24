@@ -1,3 +1,8 @@
+---
+date: 2025-08-31
+description: "user-stories"
+---
+
 Here are some user stories for an **LLM user who is advanced enough to use an API instead of a chatbot UI**, drawing from the provided sources and our conversation:
 
 *   **As an LLM API user**, I want to **automatically include relevant project files** (like code, documentation, or lore details) as context in my prompts so that the AI has all necessary background information without me manually copying and pasting file contents.

@@ -1,4 +1,9 @@
-### prompt-tail
+---
+date: 2025-08-17
+description: "prompt-tail"
+---
+
+# prompt-tail
 
 *Before solving the task, follow this protocol. Your answers must be as concise and to the point as possible.*
 

@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Everything is Ugly, So Go Build Something That Isn't: A Detailed Analysis and Top 10 AI Rebuilding Opportunities"
+---
+
 I find this talk, quite inspiring, please make a detailed structured  summary of it  https://youtu.be/yG5d5UaGz1M?si=wqSrSpTHaE8lzPr1
 And then proceed to investigation what are top 10 most easy for one developer things to re-imagine, rebuild in the context of this talk
 

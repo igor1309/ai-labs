@@ -1,3 +1,8 @@
+---
+date: 2025-08-31
+description: "spec 11 Performance Knobs"
+---
+
 The next section, **Performance Knobs**, outlines the strategies and features designed to optimize the AI Context Runner’s efficiency, particularly concerning cost, latency, and the handling of large prompt bundles. These features help manage the computational resources involved in interacting with Large Language Models (LLMs).
 
 Key performance considerations and solutions include:

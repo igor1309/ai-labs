@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Extra Weekend Project Ideas - Gemini 2.5 Pro"
+---
+
 # Extra Weekend Project Ideas - Gemini 2.5 Pro
 
 1.  **Knowledge Graph Weaver:** Ingests your notes and articles to build and visualize a graph database of interconnected concepts, technologies, and people, revealing hidden relationships. This requires a persistent graph database and an interactive visualization layer, which cannot be managed or rendered by a single, stateless prompt.

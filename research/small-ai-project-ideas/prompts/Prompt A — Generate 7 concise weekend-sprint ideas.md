@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Generate 7 concise weekend-sprint ideas"
+---
+
 # Generate 7 concise weekend-sprint ideas
 
 > **Instruction:** Produce **exactly 7** distinct weekend-sprint project ideas tailored to the supplied Q&A context (below).  

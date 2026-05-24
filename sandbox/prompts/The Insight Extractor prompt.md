@@ -1,3 +1,8 @@
+---
+date: 2025-08-17
+description: "The Insight Extractor"
+---
+
 # The Insight Extractor
 
 ### ROLE ###

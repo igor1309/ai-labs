@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "origin - I have a habit of AI-assisted development..."
+---
+
 Here’s a cleaned, polished version that keeps every point and constraint you wrote — just clearer and typo-fixed:
 
 I have a habit of building small, AI-assisted applications on weekends. These apps always involve AI in some way.

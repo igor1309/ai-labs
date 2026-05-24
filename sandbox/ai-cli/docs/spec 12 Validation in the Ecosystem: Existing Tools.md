@@ -1,3 +1,8 @@
+---
+date: 2025-08-31
+description: "spec 12 Validation in the Ecosystem: Existing Tools"
+---
+
 The proposed AI Context Runner framework, while unique in its specific architecture, is **validated by a growing category of successful command-line tools** built by the developer community. These existing tools address similar pain points encountered by advanced LLM API users and demonstrate the value of a structured, context-aware approach to LLM interaction. They serve as valuable reference points for implementation and feature ideas.
 
 The ecosystem of tools that tackle these challenges can be categorized as follows:

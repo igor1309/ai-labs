@@ -1,4 +1,9 @@
-#### Pain & Context
+---
+date: 2025-08-31
+description: "Pain & Context"
+---
+
+# Pain & Context
 
 Advanced LLM API users frequently encounter **significant friction and inefficiencies** when interacting directly with powerful AI models. While raw LLM APIs from providers like Google, OpenAI, and Anthropic are potent, their direct use from the terminal is often **uncomfortable and clunky** for serious work.
 

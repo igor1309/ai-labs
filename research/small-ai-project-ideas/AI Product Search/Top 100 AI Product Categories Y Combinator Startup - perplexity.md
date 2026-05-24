@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Top 100 AI Product Categories Y Combinator Startups Build"
+---
+
 <img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
 
 # Top 100 AI Product Categories Y Combinator Startups Build

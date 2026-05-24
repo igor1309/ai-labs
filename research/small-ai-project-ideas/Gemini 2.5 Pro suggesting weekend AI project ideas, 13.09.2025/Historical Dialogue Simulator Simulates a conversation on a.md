@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Historical Dialogue Simulator Simulates a conversation on a"
+---
+
 Не только история:
 Сурков против Шульман?
 Сталинград против Мао

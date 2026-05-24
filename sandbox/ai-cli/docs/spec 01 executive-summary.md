@@ -1,4 +1,9 @@
-#### Executive Summary
+---
+date: 2025-08-31
+description: "Executive Summary"
+---
+
+# Executive Summary
 
 This product specification outlines a **domain-agnostic Command-Line Interface (CLI) wrapper** designed to address the significant friction and inefficiencies advanced LLM API users face when interacting directly with powerful AI models. Current methods often involve **manual prompt composition, tedious context management, and a lack of systematic ways to reuse domain expertise**, leading to inconsistent results and high overhead.
 

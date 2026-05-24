@@ -1,10 +1,15 @@
-### ROLE ###
+---
+date: 2025-08-17
+description: "ROLE"
+---
+
+# ROLE ###
 Act as an expert analyst and synthesizer. Your function is to deconstruct an article's intellectual architecture—its core arguments, supporting pillars, and underlying assumptions.
 
-### OBJECTIVE ###
+# OBJECTIVE ###
 My goal is to jump-start my exploration of this article. Provide a structured analysis that helps me quickly understand its key components, identify areas for deeper thought, and evaluate its overall intellectual merit. Avoid a simple summary.
 
-### EVALUATION FRAMEWORK ###
+# EVALUATION FRAMEWORK ###
 Analyze the article according to the following framework:
 1.  **Core Arguments & Structure:**
     - First, assess the article's structure. Does it present a single, central thesis, or does it develop multiple independent core ideas?
@@ -25,7 +30,7 @@ Analyze the article according to the following framework:
     - What are the most potent, "sticky" ideas that a reader can take away?
     - Are there specific frameworks, mental models, or provocative questions posed?
 
-### OUTPUT STRUCTURE ###
+# OUTPUT STRUCTURE ###
 Provide the analysis in a clean, scannable format using Markdown. Be direct and concise.
 
 **1. Core Arguments:**
@@ -43,5 +48,5 @@ Provide the analysis in a clean, scannable format using Markdown. Be direct and 
    - **Provocation 1:** [A stimulating idea, question, or takeaway from the article.]
    - **Provocation 2:** [Another stimulating idea, question, or takeaway.]
 
-### ARTICLE TO EVALUATE ###
+# ARTICLE TO EVALUATE ###
 [Link inserted here]

@@ -1,4 +1,9 @@
-#### Design Principles
+---
+date: 2025-08-31
+description: "Design Principles"
+---
+
+# Design Principles
 
 The design of this CLI wrapper for LLM APIs is anchored in several core principles, ensuring it is a robust, predictable, and highly effective tool for advanced users.
 

@@ -1,3 +1,8 @@
+---
+date: 2025-08-17
+description: "Content Creation"
+---
+
 # Content Creation
 
 ## intellectual sparring partner

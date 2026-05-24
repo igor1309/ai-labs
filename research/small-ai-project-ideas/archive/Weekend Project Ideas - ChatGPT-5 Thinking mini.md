@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Weekend Project Ideas - ChatGPT-5 Thinking mini"
+---
+
 # Weekend Project Ideas - ChatGPT-5 Thinking mini
 
 ### Agents / Orchestration / Autonomous pipelines

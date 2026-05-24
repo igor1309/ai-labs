@@ -1,3 +1,8 @@
+---
+date: 2025-08-30
+description: "Domain-Agnostic LLM CLI Tool - Project Summary"
+---
+
 <me>
 It’s my understanding that LLM from Google/OpenAI/Antropic have APIs with a lots of features, but using them from terminal is far from comfortable. I guess a possible way could be to write a script that
 - uses system prompt from particular place (similar to gitignore it could try local folder first with fallback to global)

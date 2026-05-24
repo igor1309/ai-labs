@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "Prompt B — Expand selected ideas into full weekend-sprint plans"
+---
+
 # Prompt B — Expand selected ideas into full weekend-sprint plans
 
 > **Usage:** paste the prompt below into an LLM and set the `SELECTED` parameter to a comma-separated list of idea numbers or titles from Prompt A (e.g., `SELECTED=1,3,6`). The model must **only** elaborate the selected ideas in the exact structure below.  

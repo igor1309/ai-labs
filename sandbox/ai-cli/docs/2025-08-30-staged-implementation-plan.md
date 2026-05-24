@@ -1,8 +1,13 @@
+---
+date: 2025-08-31
+description: "Stage 1: The Bare-Bones CLI Wrapper (Core Tool Layer MVP)"
+---
+
 For a solo developer with a full-time job, a staged implementation plan is crucial to build the proposed system incrementally, focusing on core value in each phase and deferring complex features. This plan prioritizes getting a functional version out quickly, allowing for continuous iteration and learning.
 
 Here is a staged implementation plan:
 
-### Stage 1: The Bare-Bones CLI Wrapper (Core Tool Layer MVP)
+# Stage 1: The Bare-Bones CLI Wrapper (Core Tool Layer MVP)
 
 **Goal:** Replace clunky raw API calls with a simple, user-friendly command-line interface for basic LLM interaction.
 
@@ -21,7 +26,7 @@ Here is a staged implementation plan:
     *   Allow the script to take **user input as a command-line argument** (e.g., `ai run "Your question here"`).
     *   This fulfills the fundamental purpose of the tool.
 
-### Stage 2: Local Project Configuration (Foundation of Knowledge Layer)
+# Stage 2: Local Project Configuration (Foundation of Knowledge Layer)
 
 **Goal:** Introduce project-specific AI behavior and the `.ai` folder as a first-class citizen.
 
@@ -37,7 +42,7 @@ Here is a staged implementation plan:
 *   **Basic Prompt Composition:**
     *   The wrapper should compose the API request by combining the system prompt (from `.ai/system_prompt.md` or default) with the user's input.
 
-### Stage 3: Modular Knowledge & Deterministic Assembly (Expanding Knowledge & Assembly Layers)
+# Stage 3: Modular Knowledge & Deterministic Assembly (Expanding Knowledge & Assembly Layers)
 
 **Goal:** Enable modular prompt engineering, domain-specific templates, and transparency in prompt construction.
 
@@ -53,7 +58,7 @@ Here is a staged implementation plan:
 *   **`ai explain` Command:**
     *   Implement an `ai explain` command that **prints the exact assembled prompt bundle**, including file origins and token counts. This provides transparency and aids debugging.
 
-### Stage 4: Multi-Provider Support & Enhanced UX (Tool Layer Refinement)
+# Stage 4: Multi-Provider Support & Enhanced UX (Tool Layer Refinement)
 
 **Goal:** Abstract away LLM provider differences and improve terminal experience.
 
@@ -70,7 +75,7 @@ Here is a staged implementation plan:
 *   **Global Configuration:**
     *   Add support for a **global configuration file** (e.g., `~/.ai/`) for user's personal templates and preferences, which acts as a fallback if no project `.ai/` folder is present or specific rules aren't found locally.
 
-### Stage 5: Context and Performance (Advanced Assembly & Knowledge Management)
+# Stage 5: Context and Performance (Advanced Assembly & Knowledge Management)
 
 **Goal:** Integrate project context intelligently and optimize for token limits and costs.
 
@@ -89,7 +94,7 @@ Here is a staged implementation plan:
 
 This staged plan ensures that the solo developer can deliver tangible value at each step, building a robust and sophisticated tool piece by piece, while managing the project effectively alongside other commitments. Each stage addresses a core pain point and incrementally moves towards the ambitious vision of a domain-agnostic AI context runner.
 
-### Cross-Cutting Concerns
+# Cross-Cutting Concerns
 
 *   **Integrated Testing:** Implement unit and integration tests at each stage to ensure the reliability and correctness of new features and refactorings.
 *   **User-Facing Documentation:** Develop clear and concise user documentation alongside feature development, including examples and usage instructions for each new command and configuration option.

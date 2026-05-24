@@ -1,4 +1,9 @@
-#### Core Idea
+---
+date: 2025-08-31
+description: "Core Idea"
+---
+
+# Core Idea
 
 The core concept behind this product is to provide a **boring, predictable, git-like Command-Line Interface (CLI) tool** that fundamentally separates three distinct concerns when interacting with Large Language Model (LLM) APIs. This approach aims to transform raw LLM APIs into a powerful, integrated, and highly configurable developer assistant by abstracting the “engine” from the “instructions”.
 

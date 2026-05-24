@@ -1,3 +1,8 @@
+---
+date: 2025-11-01
+description: "AI-Powered Product Opportunities for a Solo Developer"
+---
+
 AI Product Search - ChatGPT o3
 
 # AI-Powered Product Opportunities for a Solo Developer

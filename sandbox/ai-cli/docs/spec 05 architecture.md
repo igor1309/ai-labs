@@ -1,4 +1,9 @@
-#### Architecture at a Glance
+---
+date: 2025-08-31
+description: "Architecture at a Glance"
+---
+
+# Architecture at a Glance
 
 The proposed CLI wrapper for LLM APIs is structured into distinct layers and adheres to a clear contract, ensuring a **predictable, transparent, and modular system**.
 

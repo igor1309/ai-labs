@@ -1,10 +1,15 @@
+---
+date: 2025-08-31
+description: "Artifacts & Folder Layout"
+---
+
 Building upon the “Architecture at a Glance,” the next section outlines the proposed **Artifacts & Folder Layout**. It is important to note that this initial proposal is **not set in stone** and will be iteratively defined and refined during the tool’s development to ensure maximum utility and adaptability. The goal is to create a structure that is both predictable and flexible, supporting the core design principles and architectural layers.
 
-#### Artifacts & Folder Layout
+# Artifacts & Folder Layout
 
 The folder layout is central to the tool’s ability to separate concerns and manage project-specific AI knowledge. The entire system revolves around a dedicated, version-controlled directory, typically named `.ai/`, within each project. This directory acts as the **”brain” or “soul” of the operation** for a specific project, defining the LLM’s persona, domain knowledge, rules, and output format for that context.
 
-##### The `.ai` Directory: The Core of Knowledge
+## The `.ai` Directory: The Core of Knowledge
 
 The `.ai/` directory is the primary container for all project-specific AI configuration and knowledge. It is designed to be:
 
@@ -12,7 +17,7 @@ The `.ai/` directory is the primary container for all project-specific AI config
 *   **Version-Controlled**: Intended to be committed to Git, allowing tracking of changes, collaboration, and reverting to previous versions of the knowledge base, akin to a project’s intellectual property. This enables “Prompt Engineering as Code”.
 *   **Portable**: Ensuring that a project’s entire AI context is self-contained. Collaborators can clone a repository and get the exact same AI behavior with the tool installed.
 
-##### Key Subdirectories and Files within `.ai/`
+## Key Subdirectories and Files within `.ai/`
 
 The `.ai/` folder will house several key components, each serving a specific purpose in prompt assembly:
 
@@ -45,13 +50,13 @@ The `.ai/` folder will house several key components, each serving a specific pur
 *   **`runs/`**:
     *   An optional directory for storing **run manifests**, which include metadata about each AI interaction (e.g., bundle hash, provider, model, cost, sources) to enable reproducibility and auditing. Redaction of secrets in logs would be a consideration.
 
-##### Characteristics of the Layout
+## Characteristics of the Layout
 
 This proposed layout facilitates:
 *   **Modularity and Composability**: Allowing users to mix and match knowledge components from various sources.
 *   **Scaffolding**: The `ai init` command can leverage this structure to **seed a new `.ai/` directory with domain-specific template packs** (e.g., “coding,” “scripting,” “research”), lowering the barrier to entry for new projects. These packs are essentially pre-configured folders in a catalog.
 
-##### Acknowledgment of Flexibility
+## Acknowledgment of Flexibility
 
 As you rightly pointed out, this folder layout is a foundational proposal. The exact file naming conventions, nesting depth, and the granularity of rules will undoubtedly **evolve as the tool is developed and real-world usage patterns emerge**. The emphasis is on maintaining determinism, explainability, and human-readability throughout this evolution.
 
