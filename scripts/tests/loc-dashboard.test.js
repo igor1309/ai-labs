@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { it } from 'node:test';
 
@@ -71,6 +72,37 @@ it('omits redundant product-type chips from grouped product cards', () => {
   const productsHtml = readFileSync('docs/products.html', 'utf8');
 
   assert.equal(productsHtml.includes('class="product-type"'), false);
+});
+
+it('emits no drift warnings on a clean trunk', () => {
+  const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+
+  assert.equal(/⚠/.test(output), false);
+});
+
+it('warns when a known dir is missing on disk', () => {
+  const original = readFileSync('scripts/loc-dashboard.sh', 'utf8');
+  const patched = original.replace(
+    'worktrees _inbox"',
+    'worktrees _inbox bogus-stale-project"'
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'loc-dashboard-'));
+  const scriptPath = join(dir, 'loc-dashboard.sh');
+
+  try {
+    writeFileSync(scriptPath, patched);
+    const output = execFileSync('bash', [scriptPath], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    });
+
+    assert.match(output, /known dirs missing on disk.*bogus-stale-project/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 function countRepoLevelTests() {

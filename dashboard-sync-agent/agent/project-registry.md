@@ -40,7 +40,7 @@ Top-level directories present in the source tree but absent from both `## Compon
 - Does not silently drop them from `scripts/loc-dashboard.sh` if they happen to already be in the `for proj` loop or `known` list — the agent leaves the script untouched for those names and surfaces them in the PR description.
 - Lists each one in the PR description's "Candidates for Components or Structure registration" section, with no recommendation about which table they belong in (that is a maintainer decision).
 
-The current empirical baseline at `trunk@HEAD` (2026-05-10): `neris` and `niora` are untracked candidates. Both are in the `loc-dashboard.sh` `for proj` loop today.
+As of `trunk@HEAD` (2026-05-25): no untracked candidates. `neris` and `niora` were promoted to `## Components`; the workspace dirs below were added to the excluded list.
 
 ## Excluded directories
 
@@ -48,6 +48,7 @@ The following top-level entries are excluded from the candidates check entirely.
 
 - `node_modules/`, `vendor/`, `.git/`, `.github/`, `.claude/`, `.codex/`, `.lazyweb/`, `.wrangler/`
 - `worktrees/`, `_inbox/`
+- `docker/`, `docs/`, `img/`, `migrate-to-skills/`, `research/`, `scripts/`, `tests/`
 - Single-file siblings (no subdirectory case applies)
 
 A directory matching one of these names is skipped silently. The list lives here, not in the agent prompt — extending it is a methodology change, not a prompt change.
@@ -71,22 +72,20 @@ This keeps the README the source of truth and prevents the agent from quietly de
 
 ## Worked example (current `trunk@HEAD`)
 
-Inputs as of 2026-05-10:
+Inputs as of 2026-05-25:
 
-- `## Components` rows whose key maps to a top-level dir: `nexum`, `notio`, `oracle`, `reinix`, `nomos`, `corpus-scout`, `web-scout`, `loki`, `claude-insights`, `session-digest`, `dragoman`, `clipdeck`, `doc-drift-agent`, `dashboard-sync-agent`.
+- `## Components` rows whose key maps to a top-level dir: `nexum`, `notio`, `oracle`, `reinix`, `nomos`, `corpus-scout`, `web-scout`, `loki`, `claude-insights`, `session-digest`, `dragoman`, `clipdeck`, `doc-drift-agent`, `dashboard-sync-agent`, `neris`, `niora`, `tools`, `dev-skills`, `sandbox`.
 - `## Components` rows skipped (not a top-level dir): `notio-backend`, `notio-frontend`, `docker/langfuse`.
 - `## Structure` rows whose key maps to a top-level dir: `prompts`, `dev-skills`, `tools`, `sandbox`, `insights`, `reading`, `debates`, `gemini`.
-- `## Structure` rows skipped (not a top-level dir): `migrate-to-skills/guides`.
+- `## Structure` rows skipped (not a top-level dir): `migrate-to-skills/guides`, `tools/mac-health`.
 
 Tracked set (sorted, deduplicated):
 
 ```
 claude-insights, clipdeck, corpus-scout, dashboard-sync-agent, debates,
-dev-skills, doc-drift-agent, dragoman, gemini, insights, loki, nexum,
-notio, nomos, oracle, prompts, reading, reinix, sandbox,
+dev-skills, doc-drift-agent, dragoman, gemini, insights, loki, neris,
+nexum, niora, nomos, notio, oracle, prompts, reading, reinix, sandbox,
 session-digest, tools, web-scout
 ```
 
-Untracked candidates (top-level dirs present in repo, absent from both tables, not in the excluded list): `docker`, `docs`, `img`, `migrate-to-skills`, `neris`, `niora`, `research`, `scripts`, `tests`. Of these, `neris` and `niora` are in the current `loc-dashboard.sh` `for proj` loop and would be the most prominent items in the agent's first PR description.
-
-The maintainer's job after the first PR is to either add the genuine projects (`neris`, `niora`) to `## Components` or extend the excluded-directories list above for the workspace dirs (`docker`, `docs`, `img`, `research`, `scripts`, `tests`, `migrate-to-skills`).
+Untracked candidates (top-level dirs present in repo, absent from both tables, not in the excluded list): none. The workspace dirs (`docker`, `docs`, `img`, `migrate-to-skills`, `research`, `scripts`, `tests`) are excluded; all genuine projects are now in `## Components`.

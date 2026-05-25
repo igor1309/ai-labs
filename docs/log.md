@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-25
+
+- loc-dashboard drift: extended `check_project_drift` in `scripts/loc-dashboard.sh` with reverse drift detection — flags entries in the `known` list that no longer have a directory on disk. Catches the same class of stale-entry bug a human reviewer found in PR #405. Dotfile entries and known-transient dirs (`node_modules`, `vendor`, `worktrees`, `_inbox`) are skipped. The synthetic `agents` aggregate row is now self-documenting via a one-line comment. Two new tests cover the clean-trunk and missing-dir cases.
+
 ## 2026-05-24
 
 - dev-skills: added Codex plugin manifest at `dev-skills/public/.codex-plugin/plugin.json` so dev-skills publishes as a Codex plugin in addition to the Claude Code marketplace. CI now guards version parity between `marketplace.json` and `plugin.json` in the `dev-skills-validation` job to prevent silent drift.
