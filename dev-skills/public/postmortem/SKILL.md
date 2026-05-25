@@ -1,7 +1,7 @@
 ---
 name: postmortem
 author: Igor Malyarov
-version: "0.1.0"
+version: "0.1.1"
 description: Reflect on the current session and propose polish/tweaks/fixes for a named skill, grounded in evidence from this conversation. Use when wrapping up a session that exercised a skill — to capture what worked, what should be fixed, and what adjacent skills were missing. Sibling to skill-review, but session-scoped instead of corpus-scoped.
 argument-hint: "<skill-name>"
 disable-model-invocation: true
@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 # Postmortem
 
-Based on this session, what is your take on $ARGUMENTS — does it need some polish/tweaks/fixes? What other skills might it be worth adding/tweaking?
+Based on this session, what is your take on `$ARGUMENTS` — does it need some polish/tweaks/fixes? What other skills might it be worth adding/tweaking?
 
 If `$ARGUMENTS` is empty, ask the user which skill(s) to review before proceeding.
 
