@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-25
+
+- postmortem v0.1.0: new skill migrating the user-level `/postmortem` slash command into the plugin so it's distributable and namespaced as `/dev-skills:postmortem`. Reflects on the current session and proposes polish/tweaks/fixes for a named skill, grounded in conversation evidence (rejects generic "best-practice" filler). Session-scoped sibling to `skill-review`, which audits skills as artifacts; `postmortem` reviews how a skill played out in one session. Ships with `disable-model-invocation: true` — intentionally manual. skill-review v1.1.4 cross-links to it. Marketplace v1.47.0.
+
 ## 2026-05-24
 
 - state-machine-impl-dod v0.1.1 + state-machine-spec-dod v0.2.0: two new skills lifted from `prompts/state-machine-{impl,spec}-dod.md`. Both are DoD checklists for state-machine work — `spec-dod` gates the executable-spec seed test list before implementation handoff; `impl-dod` gates the implementation against that seed test list. `impl-dod` adopts the intake-style `$ARGUMENTS` pattern for the seed test list path with an empty-fallback that infers from conversation context or asks the user. Marketplace v1.46.0.

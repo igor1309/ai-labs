@@ -1,6 +1,8 @@
 ---
+name: Brainstorming Blueprint – Reusable Prompt
 date: 2025-08-17
 description: "Reusable brainstorming prompt: generate 5–7 ideas, score against user-supplied criteria, iterate up to 5 rounds."
+version: 0.1.1
 ---
 
 # Brainstorming Blueprint – Reusable Prompt
