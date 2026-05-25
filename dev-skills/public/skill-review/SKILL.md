@@ -1,7 +1,7 @@
 ---
 name: skill-review
 author: Igor Malyarov
-version: "1.1.3"
+version: "1.1.4"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -106,3 +106,7 @@ Per skill:
 - Don't penalize short skills — 30 lines of signal beats 300 lines of padding
 - Don't require sections that don't apply (no empty "Common Mistakes" sections)
 - Don't flag missing tests — that's a separate concern from content quality
+
+## Related Skills
+
+- **postmortem** — lighter, session-scoped sibling. Use after a session that exercised a skill to capture polish/tweaks/fixes grounded in this conversation's evidence. `skill-review` audits a skill as an artifact; `postmortem` reviews how it actually played out in one session.
