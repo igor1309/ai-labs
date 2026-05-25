@@ -146,15 +146,31 @@ print_rows() {
 
 check_project_drift() {
   local known=".claude .codex .git .github .lazyweb .wrangler claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
+  # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
+  local optional="node_modules vendor worktrees _inbox"
   local unknown=""
+  local missing=""
   for d in */; do
     d="${d%/}"
     if ! echo " $known " | grep -q " $d "; then
       unknown="${unknown} ${d}"
     fi
   done
+  for k in $known; do
+    [[ "$k" == .* ]] && continue
+    if echo " $optional " | grep -q " $k "; then
+      continue
+    fi
+    if [[ ! -d "$k" ]]; then
+      missing="${missing} ${k}"
+    fi
+  done
   if [[ -n "$unknown" ]]; then
     echo "  ⚠ unknown top-level dirs (classify in loc-dashboard.sh):${unknown}"
+  fi
+  if [[ -n "$missing" ]]; then
+    echo "  ⚠ known dirs missing on disk (stale entries in loc-dashboard.sh):${missing}"
   fi
 }
 
@@ -182,6 +198,7 @@ REPO_TESTS=$((REPO_TESTS + $(loc_find "scripts/tests" \( -name "*.test.js" -o -n
 emit_row "repo-scripts" "$REPO_CODE" "$REPO_TESTS" "0"
 
 TEXT=$(count_text)
+# Synthetic aggregate row for repo-wide text/docs; not a real directory.
 emit_row "agents" "0" "0" "$TEXT"
 
 # print sorted rows, then grand total

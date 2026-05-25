@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-25
+
+- project-registry: extended the excluded-directories list with the seven workspace dirs (`docker`, `docs`, `img`, `migrate-to-skills`, `research`, `scripts`, `tests`) that appeared in every daily PR's "Untracked candidates" section as permanent noise. With `neris` and `niora` already in `## Components`, the agent now finds no untracked candidates against `trunk@HEAD`. Worked example updated to the 2026-05-25 baseline.
+
 ## 2026-05-10
 
 - Phase B complete. Live on OpenClaw VPS: account `dashboardsync` bound to bot `@dashboard_sync_agent_bot`, agent workspace `/home/openclaw/.openclaw/workspace-dashboard-sync` synced from `dashboard-sync-agent/agent/**` via `.github/workflows/dashboard-sync-agent-sync.yml`. Daily cron at `0 18 * * *` UTC via `/etc/cron.d/openclaw-dashboard-sync` with the 6h post-manual-run suppression gate; wrapper at `~/.openclaw/scripts/dashboard-sync-cron.sh`. End-to-end dry run on `gpt-5.5` produced PR #355 covering all three surfaces; #355 merged. Plan archived. Cosmetic imperfection: Oracle's curated subtitle `"Oracle — Am I Done?"` lands inside the `<strong>` lead instead of replacing the card name (mirrors the existing Dragoman style). Spec iteration on `gpt-5.2` revealed two model-interpretation issues (inverted "no product-type chip" rule, sub-component misclassification); both resolved by switching the OpenClaw default to `gpt-5.5`, not by spec changes.
