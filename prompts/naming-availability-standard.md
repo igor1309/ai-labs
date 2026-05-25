@@ -1,5 +1,5 @@
 ---
-title: Naming Availability Standard
+name: Naming Availability Standard
 description: Reusable availability-risk standard for product and project naming sessions.
 date: 2026-05-12
 model: gpt-5.5-thinking

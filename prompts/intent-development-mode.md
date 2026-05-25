@@ -1,7 +1,8 @@
 ---
 date: 2026-05-09
 author: Igor Malyarov
-version: 0.0.1
+name: Intent Development Mode
+version: 0.0.2
 type: prompt
 ---
 

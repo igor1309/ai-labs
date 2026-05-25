@@ -2,7 +2,8 @@
 date: 2026-05-11
 model: gpt-5.5-thinking
 source: https://habr.com/ru/articles/1033450/
-version: 0.0.1
+name: Редактирование иишных текстов
+version: 0.0.3
 type: prompt
 ---
 
