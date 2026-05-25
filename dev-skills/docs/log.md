@@ -6,6 +6,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-05-25
 
+- postmortem v0.1.1 + publishing checklist polish: wrap `$ARGUMENTS` in backticks in postmortem SKILL.md so the empty-argument case renders as a visible `` `` `` rather than a silent double-space hole (caught by invoking `/dev-skills:postmortem postmortem` on itself). Update `dev-skills/.claude/CLAUDE.md` publishing step 3 to require (a) adding the new skill to the plugin's long `description` enumeration in `marketplace.json` and (b) bumping any modified SKILL.md versions per the Skill Versioning section — both were tribal knowledge the checklist didn't enforce. Marketplace v1.47.1.
 - postmortem v0.1.0: new skill migrating the user-level `/postmortem` slash command into the plugin so it's distributable and namespaced as `/dev-skills:postmortem`. Reflects on the current session and proposes polish/tweaks/fixes for a named skill, grounded in conversation evidence (rejects generic "best-practice" filler). Session-scoped sibling to `skill-review`, which audits skills as artifacts; `postmortem` reviews how a skill played out in one session. Ships with `disable-model-invocation: true` — intentionally manual. skill-review v1.1.4 cross-links to it. Marketplace v1.47.0.
 
 ## 2026-05-24

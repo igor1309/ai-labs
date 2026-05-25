@@ -9,7 +9,12 @@
 When publishing skills:
 1. Verify the SKILL.md front matter contains `author: Igor Malyarov`. Missing or empty `author` blocks publishing — add it before continuing. (Background: the field was removed from all skills at some point; re-introducing this gate prevents recurrence.)
 2. Move to `public/<skill-name>/` when ready to publish
-3. Update `public/.claude-plugin/marketplace.json`: add/update the skill entry in the skills array, and bump `metadata.version`. Bump `public/.codex-plugin/plugin.json` `version` to match.
+3. Update `public/.claude-plugin/marketplace.json`:
+   - Add/update the skill entry in the skills array (alphabetical — see "Alphabetical Ordering" below).
+   - If the plugin's long `description` string enumerates skills, add this skill to it too. The description is the marketplace-facing copy; missing entries make the skill invisible to listings even when present in the array.
+   - Bump `metadata.version`.
+   - Bump `public/.codex-plugin/plugin.json` `version` to match.
+   - Bump any modified SKILL.md `version` per the "Skill Versioning" section below.
 4. Update `dev-skills/docs/log.md` for project-scoped changes. Update repo-root `docs/log.md` too only when the change is genuinely repo-wide.
 5. Stop to commit on a dedicated branch (never directly on `trunk` — it is protected at the repo level).
 6. Push the branch and open a PR into `trunk`, then enable auto-merge:
