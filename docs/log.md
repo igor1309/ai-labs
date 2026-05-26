@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-26
+
+- prompts: decoupled `naming-availability-standard.md` from domain-specific references (agent orchestration, AI coding agents, LLM tooling). Hard Blockers, Availability Risk, and Naming Target sections now reference user-supplied context parameters (target field, adjacent categories, intended technical surface) instead of hardcoded domains. Prompt is now reusable for any product naming context.
+
 ## 2026-05-25
 
 - loc-dashboard drift: extended `check_project_drift` in `scripts/loc-dashboard.sh` with reverse drift detection — flags entries in the `known` list that no longer have a directory on disk. Catches the same class of stale-entry bug a human reviewer found in PR #405. Dotfile entries and known-transient dirs (`node_modules`, `vendor`, `worktrees`, `_inbox`) are skipped. The synthetic `agents` aggregate row is now self-documenting via a one-line comment. Two new tests cover the clean-trunk and missing-dir cases.
