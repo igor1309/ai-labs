@@ -2,9 +2,7 @@
 
 ## 2026-05-27
 
-- Add `under-consideration/` tracking entry to `backlog.md` so parked docs and their gating decisions stay visible; resolution rule moves accepted docs to `agonara/docs/` and rejected ones to `archive/`.
-- Drop the `agonara_` / `agonara-` prefix from filenames across `agonara/docs/` (live docs, `brand/`, and `archive/`); update all inbound references in product intent, identity first slice, program membership pre-adr, the parked rationale + peer review, and ADR-001 through ADR-005.
-- Park the Program Membership Manager rationale in `under-consideration/` and add a peer review identifying the role-vs-narrative ambiguity as the blocking decision before the module map, Pre-ADR, story catalogs, and ADR-002 (or a new ADR) are revised.
+- Park the Program Membership Manager rationale in `under-consideration/` and add a peer review identifying the role-vs-narrative ambiguity as the blocking decision before the module map, Pre-ADR, story catalogs, and ADR-002 (or a new ADR) are revised. Track parked docs and their gating decisions in `backlog.md` so the folder does not go stale.
 - Accept ADR-005 for Program Membership state and first admission policy: Students can join self-join Programs, rejoining after leave reuses membership history, and Program Curator self-join stays closed for the first implementation.
 - Align admin and identity docs with ADR-004: product participation is now described as Program Membership-owned, while Identity & Role Management keeps identity, credentials, Admin authority, audit, and recovery primitives.
 - Accept ADR-004 for Program Membership ownership: participation lifecycle and policy now belong to a separate module, with effective Student and Program Curator authority backed by membership grants.
