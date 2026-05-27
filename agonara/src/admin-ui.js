@@ -6,16 +6,19 @@ export const adminBoardHtml = `<!doctype html>
   <title>Agonara Admin</title>
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f7f8fb;
-      --panel: #ffffff;
-      --border: #d8dde8;
-      --text: #172033;
-      --muted: #657085;
-      --accent: #2864d7;
-      --danger: #b42318;
-      --ok: #067647;
-      --warn: #9a6700;
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --bg-elev: #14181d;
+      --bg-elev-2: #1b2027;
+      --border: #262d36;
+      --text: #e6edf3;
+      --text-dim: #8b96a3;
+      --accent: #6ee7b7;
+      --accent-2: #93c5fd;
+      --warn: #fcd34d;
+      --danger: #fca5a5;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
     }
 
     * {
@@ -27,9 +30,10 @@ export const adminBoardHtml = `<!doctype html>
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--sans);
       font-size: 14px;
-      line-height: 1.4;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     button,
@@ -41,27 +45,30 @@ export const adminBoardHtml = `<!doctype html>
       min-height: 36px;
       border: 1px solid transparent;
       border-radius: 6px;
-      background: var(--accent);
-      color: #ffffff;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #0b0d10;
       cursor: pointer;
-      font-weight: 650;
-      padding: 7px 12px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      padding: 7px 14px;
       white-space: nowrap;
     }
 
     button.secondary {
+      background: var(--bg-elev-2);
       border-color: var(--border);
-      background: #ffffff;
       color: var(--text);
     }
 
     button.danger {
-      background: var(--danger);
+      background: transparent;
+      border-color: rgba(252, 165, 165, 0.5);
+      color: var(--danger);
     }
 
     button:disabled {
       cursor: not-allowed;
-      opacity: 0.55;
+      opacity: 0.5;
     }
 
     header,
@@ -75,8 +82,11 @@ export const adminBoardHtml = `<!doctype html>
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 22px 0 14px;
+      padding: 48px 0 28px;
       border-bottom: 1px solid var(--border);
+      background:
+        radial-gradient(ellipse at top left, rgba(110, 231, 183, 0.08), transparent 60%),
+        radial-gradient(ellipse at top right, rgba(147, 197, 253, 0.06), transparent 55%);
     }
 
     h1,
@@ -87,21 +97,42 @@ export const adminBoardHtml = `<!doctype html>
     }
 
     h1 {
-      font-size: 22px;
+      font-size: 36px;
       font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
     h2 {
-      font-size: 17px;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
       line-height: 1.25;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
     }
 
     label {
       display: grid;
-      gap: 5px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
+      gap: 6px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
@@ -110,13 +141,22 @@ export const adminBoardHtml = `<!doctype html>
       min-height: 38px;
       border: 1px solid var(--border);
       border-radius: 6px;
-      background: #ffffff;
+      background: var(--bg-elev-2);
       color: var(--text);
-      padding: 8px 10px;
+      font-family: var(--sans);
+      font-size: 14px;
+      letter-spacing: normal;
+      padding: 8px 12px;
+      text-transform: none;
+    }
+
+    input:focus {
+      border-color: var(--accent-2);
+      outline: none;
     }
 
     main {
-      padding: 18px 0 32px;
+      padding: 28px 0 64px;
     }
 
     .grid {
@@ -127,19 +167,20 @@ export const adminBoardHtml = `<!doctype html>
 
     .surface {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--panel);
-      padding: 16px;
+      border-radius: 10px;
+      background: var(--bg-elev);
+      padding: 20px;
     }
 
     .stack {
       display: grid;
-      gap: 12px;
+      gap: 14px;
     }
 
     .actions {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 8px;
     }
 
@@ -165,26 +206,42 @@ export const adminBoardHtml = `<!doctype html>
       padding: 10px 8px;
       text-align: left;
       vertical-align: top;
+      font-size: 13px;
     }
 
     th {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
+    td code {
+      background: var(--bg-elev-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 2px 6px;
+    }
+
     .muted {
-      color: var(--muted);
+      color: var(--text-dim);
     }
 
     .status {
-      min-height: 24px;
-      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      min-height: 20px;
+      color: var(--text-dim);
     }
 
     .status[data-tone="accepted"] {
-      color: var(--ok);
+      color: var(--accent);
     }
 
     .status[data-tone="rejected"] {
@@ -201,10 +258,13 @@ export const adminBoardHtml = `<!doctype html>
       min-height: 24px;
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 2px 8px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
+      padding: 2px 10px;
+      background: var(--bg-elev);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
     }
 
     .hidden {
@@ -221,6 +281,11 @@ export const adminBoardHtml = `<!doctype html>
 
       header {
         flex-direction: column;
+        align-items: flex-start;
+      }
+
+      h1 {
+        font-size: 28px;
       }
     }
   </style>
@@ -228,8 +293,9 @@ export const adminBoardHtml = `<!doctype html>
 <body>
   <header>
     <div>
+      <span class="pill">Console · Identity Operations</span>
       <h1>Agonara Admin</h1>
-      <p class="muted">Identity operations</p>
+      <p class="muted">Operator controls for bootstrap, identities, credentials, and audit events.</p>
     </div>
     <div class="actions hidden" id="session-actions">
       <span class="chip" id="session-chip">Signed out</span>
