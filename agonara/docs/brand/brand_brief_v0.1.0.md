@@ -9,7 +9,7 @@ status: draft
 
 # Agonara Brand Brief
 
-This is the English version of the v0.1.0 brand brief. The parallel Russian version is [agonara_brand_brief_ru_v0.1.0.md](agonara_brand_brief_ru_v0.1.0.md).
+This is the English version of the v0.1.0 brand brief. The parallel Russian version is [brand_brief_ru_v0.1.0.md](brand_brief_ru_v0.1.0.md).
 
 ## Name
 

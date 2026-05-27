@@ -227,7 +227,7 @@ Findings use three severity tiers:
 
 ---
 
-## 8. `brand/agonara_brand_brief_v0.1.0.md` and `brand/agonara_brand_brief_ru_v0.1.0.md`
+## 8. `brand/brand_brief_v0.1.0.md` and `brand/brand_brief_ru_v0.1.0.md`
 
 **My Way phase:** Not a standard My Way artifact. Brand briefs are supporting material.
 
