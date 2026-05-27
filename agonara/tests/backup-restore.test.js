@@ -268,6 +268,186 @@ test("exportBackup_shouldEmitFaultOperationalLog_onStorageFault", () => {
   );
 });
 
+test("exportBackup_shouldIncludeProgramShellsMembershipsAndEvents_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        programShellIds: backup.programShells.map($0 => $0.id),
+        programMembershipIds: backup.programMemberships.map($0 => $0.id),
+        programEventTypes: backup.programEvents.map($0 => $0.eventType),
+        programMembershipEventTypes: backup.programMembershipEvents.map($0 => $0.eventType),
+      },
+      {
+        programShellIds: ["program-1"],
+        programMembershipIds: ["membership-1"],
+        programEventTypes: ["program_created"],
+        programMembershipEventTypes: ["initial_curator_membership_created"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOrphanProgramShellWithoutActiveCuratorMembership", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+
+    const backup = source.commands.exportBackup().value.backup;
+    // Drop the curator membership while keeping the program shell to simulate orphan state.
+    backup.programMemberships = [];
+
+    const restoreResult = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(restoreResult, {
+      status: "rejected",
+      reason: "program_curator_missing",
+    });
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreProgramShellsMembershipsAndEvents_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+
+    const backup = source.commands.exportBackup().value.backup;
+    const restoreResult = target.commands.restoreBackup(backup);
+
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        shellIds: restoredBackup.programShells.map($0 => $0.id),
+        membershipIds: restoredBackup.programMemberships.map($0 => $0.id),
+        programEventIds: restoredBackup.programEvents.map($0 => $0.id),
+        membershipEventIds: restoredBackup.programMembershipEvents.map($0 => $0.id),
+      },
+      {
+        restoreStatus: "accepted",
+        shellIds: ["program-1"],
+        membershipIds: ["membership-1"],
+        programEventIds: ["program-event-1"],
+        membershipEventIds: ["membership-event-1"],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+function seedProgramRecords(database, {
+  identityId,
+  programId,
+  membershipId,
+  programEventId,
+  membershipEventId,
+  createdAt = "2026-05-27T10:01:00.000Z",
+}) {
+  database
+    .prepare(
+      `insert into program_shells (
+         id, title, description, admission_policy, created_by_identity_id, created_at
+       ) values (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(programId, "Sample Program", null, "self_join", identityId, createdAt);
+  database
+    .prepare(
+      `insert into program_memberships (
+         id, program_id, identity_id, participation_kind, status, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(membershipId, programId, identityId, "program_curator", "active", createdAt, createdAt);
+  database
+    .prepare(
+      `insert into program_events (
+         id, event_type, actor_identity_id, program_id, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(programEventId, "program_created", identityId, programId, createdAt, "accepted", null);
+  database
+    .prepare(
+      `insert into program_membership_events (
+         id, event_type, actor_identity_id, target_identity_id, program_id,
+         participation_kind, resulting_status, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      membershipEventId,
+      "initial_curator_membership_created",
+      identityId,
+      identityId,
+      programId,
+      "program_curator",
+      "active",
+      createdAt,
+      "accepted",
+      null,
+    );
+}
+
 function makeSUT({ ids = [], logEvents = [] } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
