@@ -45,6 +45,34 @@ test("identityBootstrap_shouldSetCookieAndHideSessionId_onAcceptedBootstrap", as
   }
 });
 
+test("adminBoard_shouldServeShell_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        contentType: response.headers.get("content-type"),
+        hasAppRoot: body.includes('id="admin-app"'),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        statusCode: 200,
+        contentType: "text/html; charset=utf-8",
+        hasAppRoot: true,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("identityBootstrapStatus_shouldReflectAvailability_beforeAndAfterBootstrap", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 
