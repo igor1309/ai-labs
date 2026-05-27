@@ -1,14 +1,19 @@
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
-RUN addgroup -S agonara && adduser -S agonara -G agonara
+RUN groupadd --system agonara && useradd --system --gid agonara --home-dir /app agonara
 
 WORKDIR /app
 
 COPY package.json ./
+RUN npm install --omit=dev
+
 COPY src/ src/
+
+RUN mkdir -p /data && chown agonara:agonara /data
 
 USER agonara
 
+ENV AGONARA_DB_PATH=/data/agonara.sqlite
 ENV HOST=0.0.0.0
 ENV PORT=8080
 

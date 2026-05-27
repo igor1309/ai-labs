@@ -37,6 +37,7 @@ export function createIdentityCommands({
     getOperationalAccessState: input =>
       getOperationalAccessState({ database, input, now }),
     grantAdmin: input => grantAdmin({ database, generateId, input, now }),
+    getBootstrapStatus: () => accepted({ available: countEffectiveAdmins(database) === 0 }),
     listAuditEvents: input => listAuditEvents({ database, input, now }),
     listIdentities: input => listIdentities({ database, input, now }),
     login: input => login({ database, generateId, input, now }),

@@ -105,6 +105,19 @@ The Admin command slice adds protected Identity and Admin authority operations o
 
 Admin inspection queries expose Identity summaries, effective Admin state, and audit events for the first internal command layer. HTTP-specific response redaction and pagination are deferred to the HTTP API step.
 
+## Step 6 HTTP API Verification
+
+The HTTP boundary adds the first Identity API routes on top of the command layer:
+
+- accepted bootstrap and login set `agonara_session` with `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` when the request is HTTPS or forwarded as HTTPS;
+- JSON session responses include Identity summary, expiry, and CSRF token, but not the opaque session identifier;
+- state-changing session-backed routes require `X-Agonara-CSRF`;
+- invalid bootstrap/login attempts are rate-limited after repeated failures;
+- Admin routes map command rejections to HTTP status codes and redact `targetSessionId` from audit-event responses;
+- `/operations/diagnostics` accepts active Admin sessions and keeps unauthenticated diagnostics rejected.
+
+The server factory supports injecting Identity commands for executable tests. The production entrypoint initializes the local SQLite store from `AGONARA_DB_PATH` and requires the operator to provide `AGONARA_BOOTSTRAP_SECRET` for first-Admin bootstrap. The Docker image writes runtime state under `/data`, and Compose maps that path to a named volume rather than a host bind mount.
+
 ## Open questions
 
 - How does credential rotation preserve the same internal Identity?

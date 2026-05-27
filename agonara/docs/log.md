@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add the first Identity HTTP API routes for bootstrap status, bootstrap, login, session resolution/logout, Admin identity creation, audit listing, CSRF, rate limiting, secure session cookies, and Admin diagnostics.
 - Add Admin-protected Identity commands for identity creation, local password binding, disablement, Admin grant/revoke, operational access inspection, identity listing, and audit listing.
 - Implement the Identity core commands for first-Admin bootstrap, local-password login, session resolution, and logout, including scrypt password hashes, seven-day server-side sessions, and bootstrap audit events.
 - Add the Identity storage boundary with SQLite-backed schema initialization, credential uniqueness checks, session revocation state, audit event append/list behavior, and last-effective-Admin protection.
