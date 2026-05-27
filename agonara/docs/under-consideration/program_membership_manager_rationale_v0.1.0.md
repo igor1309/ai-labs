@@ -10,7 +10,7 @@ date: 2026-05-27
 
 ## Status
 
-Under consideration. Pending decision on whether `Program Membership Manager` is a grantable role (with identity/role-system semantics) or a narrative actor used only in user stories. See peer review: [agonara_program_membership_manager_rationale_review_v0.1.0.md](agonara_program_membership_manager_rationale_review_v0.1.0.md).
+Under consideration. Pending decision on whether `Program Membership Manager` is a grantable role (with identity/role-system semantics) or a narrative actor used only in user stories. See peer review: [program_membership_manager_rationale_review_v0.1.0.md](program_membership_manager_rationale_review_v0.1.0.md).
 
 Downstream document revisions (module map, Pre-ADR, story catalogs, ADR-002 or a new ADR) are paused until this decision lands.
 
