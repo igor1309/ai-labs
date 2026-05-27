@@ -2,6 +2,8 @@
 
 ## 2026-05-27
 
+- agonara: added the Admin operations UI board implementation plan, keeping the next slice focused on private-instance identity operations over the existing API.
+- Process: pushed the implementation-plan structure gate down into the public skills. `dev-skills/public/process-gates` v1.1.0 adds a dedicated Plan Structure Gate (mandatory `Goal` / `Execution mode` / `Execution lock` / `Scope guardrails` / phases / `Done criteria` / `Final closeout` headings) plus pre-push adversarial plan review and PR-narrative quality checks; `dev-skills/public/adr-governance` reference now mirrors the same heading list and binds section 10/11 to explicit headings. Marketplace v1.48.0.
 - Process: made My Way implementation-plan structure a hard repo gate in `AGENTS.md`, including required Done criteria, Final closeout, adversarial plan review, and PR title/body quality checks.
 - agonara: added packaged-bin CLI acceptance coverage and a containerized first-Admin bootstrap smoke, fixing the CLI symlink entrypoint guard that prevented the installed bin from running.
 - agonara: updated the project README with concrete CLI, HTTP, and Docker demo commands for the implemented Identity and Operations slice.
