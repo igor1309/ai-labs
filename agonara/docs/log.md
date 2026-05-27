@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Start implementation with the Agonara backend workspace skeleton, per-project CI handoff, and Docker container-start smoke path.
 - Close docs handoff gaps by making Dockerized private self-hosting an explicit implementation gate and registering Agonara in the repo dashboard surfaces.
 - Harden the Identity and Operations implementation plan with explicit substrate assumptions, dependency API verification, direct ADR links, and executable diagnostics sequencing.
 - Add the Identity and Operations first-slice implementation plan, sequencing Agonara identity, API/CLI, operational, backup/restore, and executable acceptance work behind explicit process gates.

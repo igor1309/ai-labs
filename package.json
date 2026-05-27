@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "agonara",
     "clipdeck",
     "nomos",
     "web-scout",
@@ -18,7 +19,8 @@
     "wrangler": "4.67.0"
   },
   "scripts": {
-    "test": "node --test nomos/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js scripts/release/tests/*.test.js scripts/tests/*.test.js web-scout/tests/*.test.js corpus-scout/tests/*.test.js reinix/tests/*.test.js && npm run test:session-digest && npm run test:clipdeck",
+    "test": "node --test nomos/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js scripts/release/tests/*.test.js scripts/tests/*.test.js web-scout/tests/*.test.js corpus-scout/tests/*.test.js reinix/tests/*.test.js && npm run test:session-digest && npm run test:clipdeck && npm run test:agonara",
+    "test:agonara": "npm test --workspace agonara",
     "test:clipdeck": "npm test --workspace clipdeck",
     "test:session-digest": "node --import tsx --test session-digest/tests/*.test.ts",
     "web:deploy": "node oracle/apps/am-i-done-web/scripts/generate_web_strings.mjs && WRANGLER_LOG_PATH=.wrangler/logs wrangler pages deploy src --project-name am-i-done-web --cwd oracle/apps/am-i-done-web",

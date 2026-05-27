@@ -25,13 +25,13 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 - Expected worktree: `worktrees/agonara-identity-operations-first-slice`
 - Expected branch: `codex/agonara-identity-operations-first-slice`
 - Push policy: no push
-- Preflight check: [ ] done
+- Preflight check: [x] done
 - Final archive behavior: move this file to `agonara/docs/plans/implemented/identity-and-operations-first-slice.md` in the same PR as the implementation closeout.
 
 ## Plan Acceptance Checklist
 
-- [ ] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
-- [ ] Installed runtime and package configuration are verified before choosing or using implementation dependencies.
+- [x] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
+- [x] Installed runtime and package configuration are verified before choosing or using implementation dependencies.
 - [ ] Every step ends with targeted verification and a local commit.
 - [ ] Every step self-review fixes fail/warn findings before the next step starts.
 - [ ] Code/config/dependency/CI changes run `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` before commit.

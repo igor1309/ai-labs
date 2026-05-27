@@ -56,6 +56,20 @@ Application modules:
 
 - ask Program Membership for the effective participation decision before participation-sensitive Student or Program Curator behavior.
 
+## Step 1 Substrate Verification
+
+The first implementation slice uses the repo-standard Node workspace model:
+
+- runtime: Node `v22.21.1`, matching `.node-version`;
+- package manager: npm `10.9.4` under Node 22;
+- typecheck: TypeScript `5.9.3`;
+- server API used in Step 1: Node built-in `node:http` `createServer` and `listen`;
+- entrypoint detection API used in Step 1: Node built-in `node:url` `pathToFileURL`;
+- Docker tooling: Docker `29.5.2` and Docker Compose `v5.1.2`;
+- CI topology: `.github/workflows/ci.yml` remains the dispatcher; `.github/workflows/agonara-core.yml` is the per-project reusable workflow.
+
+Step 1 adds no third-party runtime dependencies. Storage, migration, password hashing, cookie, CSRF, and CLI libraries are not called by the Step 1 skeleton and must be verified before their first implementation use in later steps.
+
 ## Open questions
 
 - How does credential rotation preserve the same internal Identity?
