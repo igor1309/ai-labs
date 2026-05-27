@@ -3,7 +3,7 @@ title: Product Intent: Приложение для программы освое
 date: 2026-05-26
 description: Intent-документ для персонального приложения обучения с разделением программы, корпуса и состояния студента.
 model: gpt-5.5-thinking
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Product Intent: Приложение для программы освоения
@@ -35,6 +35,12 @@ Agonara должна сохранять разделение между общи
 Куратор может использовать внешние источники, собственные материалы и LLM-предложения, но отвечает за принятие содержания в программу.
 
 Один человек может совмещать роли студента и куратора.
+
+### Администратор экземпляра
+
+Администратор экземпляра управляет идентичностями, привязками учетных данных, ролями и операциями восстановления частного экземпляра Agonara.
+
+Администратор не является учебной ролью и не заменяет ответственность куратора за принятое содержание программы.
 
 ## User stories
 
@@ -98,6 +104,8 @@ The detailed curator and student story catalogs live in:
 
 - [agonara_curator_user_stories_v0.2.0.md](agonara_curator_user_stories_v0.2.0.md)
 - [agonara_student_user_stories_v0.2.0.md](agonara_student_user_stories_v0.2.0.md)
+
+Admin-facing identity and role-management stories live in [agonara_admin_user_stories_v0.1.0.md](agonara_admin_user_stories_v0.1.0.md).
 
 ## Acceptance signals
 
@@ -174,9 +182,10 @@ LLM-предложения являются вспомогательным ма�
 | INT-02 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
 | INT-03 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
 | INT-04 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
-| INT-05 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.0.md) | n/a | n/a | n/a |
+| INT-05 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.1.md) | n/a | n/a | n/a |
 | INT-06 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
 | INT-07 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
+| ADM-01..ADM-11 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.1.md) | n/a | n/a | n/a |
 
 ## Change review
 

@@ -2,7 +2,7 @@
 title: Agonara Identity & Role Management First Slice
 description: First implementable slice for Agonara Identity & Role Management.
 model: gpt-5.5-thinking
-version: 0.2.0
+version: 0.2.1
 date: 2026-05-27
 ---
 
@@ -93,6 +93,8 @@ The slice should prove that Agonara has an internal subject of ownership and act
 ## Product intent traceability
 
 This slice supports the Product Intent by making curator and student actions attributable to internal Identities. It primarily protects INT-01 through role-gated curator acceptance and INT-02 through INT-07 by keeping student actions tied to stable learner state.
+
+The admin-facing stories that drive this slice live in [agonara_admin_user_stories_v0.1.0.md](agonara_admin_user_stories_v0.1.0.md), especially ADM-01 through ADM-11.
 
 ## Candidate design decisions
 

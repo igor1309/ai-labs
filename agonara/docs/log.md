@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add admin user stories (v0.1.0) and link them from Product Intent (v0.3.0) and the identity first-slice Pre-ADR (v0.2.1), closing the admin traceability gap.
 - Align Agonara docs with My Way audit: Product Intent (v0.2.0), story catalogs (v0.2.0), deployment target (v0.2.0), Pre-ADR framing, research notes (v0.2.0), and supporting metadata now expose required structure and traceability.
 - Improve module responsibility map (v0.3.0): refine module boundaries, ownership rules, embedded behaviors, and cross-cutting responsibilities.
 - Develop identity & role management first slice (v0.2.0): authorization principles, identity lifecycle, capabilities table, consistency rules, deferred decisions.
