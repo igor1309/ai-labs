@@ -41,8 +41,13 @@ jobs:
 
       - name: Smoke container start
         run: |
-          cid=$(docker run --rm -d agonara:ci)
+          cid=$(docker run --rm -d -p 127.0.0.1:18080:8080 agonara:ci)
           trap 'docker rm -f "$cid"' EXIT
-          sleep 2
-          test "$(docker inspect -f '{{.State.Running}}' "$cid")" = "true"
-          docker logs "$cid"
+          for i in 1 2 3 4 5; do
+            if curl -fsS http://127.0.0.1:18080/operations/health > /tmp/agonara-health.json; then
+              break
+            fi
+            sleep 1
+          done
+          grep '"status":"ok"' /tmp/agonara-health.json
+          docker logs "$cid" | grep '"operation":"GET /operations/health"'

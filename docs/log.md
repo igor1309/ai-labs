@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: added the operational walking skeleton with request correlation, health, diagnostics rejection, structured logs, redacted faults, and container health verification.
 - agonara: started the identity and operations implementation with a dedicated backend workspace, per-project CI workflow dispatch, and Docker container-start smoke path.
 - agonara: registered the project in the repo dashboard surfaces and tightened the implementation handoff so Dockerized private self-hosting is an explicit build, health, and log-verification gate before implementation PRs.
 - agonara: moved accepted project ADRs from the repo-level ADR tree into `agonara/docs/adr/`, keeping project decisions co-located with Agonara docs while preserving repo-level ADRs for cross-project concerns.

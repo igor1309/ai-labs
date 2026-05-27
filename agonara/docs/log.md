@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add the operational walking skeleton: request ID propagation, unauthenticated health, unauthenticated diagnostics rejection, structured completion logs, and redacted fault responses.
 - Start implementation with the Agonara backend workspace skeleton, per-project CI handoff, and Docker container-start smoke path.
 - Close docs handoff gaps by making Dockerized private self-hosting an explicit implementation gate and registering Agonara in the repo dashboard surfaces.
 - Harden the Identity and Operations implementation plan with explicit substrate assumptions, dependency API verification, direct ADR links, and executable diagnostics sequencing.
