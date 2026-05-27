@@ -13,7 +13,7 @@ This plan implements the first Agonara backend slice defined by:
 - [Identity & Role Management First Slice](../specs/identity-role-management-first-slice.md);
 - [Identity & Role Management API and CLI](../specs/identity-role-management-api-cli.md);
 - [Operational Cross-Cutting First Slice](../specs/operational-cross-cutting-first-slice.md);
-- [ADR-001](../adr/adr-001-internal-identity-as-agonara-ownership-subject.md) through [ADR-008](../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
+- [ADR-001](../adr/adr-001-internal-identity-as-agonara-ownership-subject.md), [ADR-002](../adr/adr-002-role-authority-scope-model.md), [ADR-003](../adr/adr-003-admin-recovery-invariant.md), [ADR-004](../adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](../adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../adr/adr-006-program-membership-policy-actor.md), [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md), and [ADR-008](../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
 
 The target outcome is a thin vertical backend slice that proves bootstrap, local-password authentication, server-managed sessions, Admin authority, auditability, request correlation, redaction, health, diagnostics, and executable acceptance behavior before learning-domain modules are implemented.
 
@@ -63,19 +63,23 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 
 - The implementation should follow the existing repo's Node/TypeScript test and build gates unless preflight discovers an accepted Agonara-specific implementation decision that supersedes them.
 - New third-party runtime dependencies must be added only after verifying installed versions, package manager state, and the concrete APIs used by the implementation.
-- Persistence must support uniqueness and last-Admin invariants atomically; if the chosen storage layer cannot provide this, the step must stop and document the blocking finding before continuing.
+- The v0.0.1 default substrate is a Node/TypeScript Agonara backend package with a local transactional SQL store and checked-in migrations.
+- The default storage target is SQLite-compatible local persistence for the private self-hosted slice unless preflight finds an already accepted Agonara storage decision.
+- Persistence must support uniqueness and last-Admin invariants atomically; if SQLite-compatible persistence or the chosen storage layer cannot provide this, the step must stop and document the blocking finding before continuing.
+- Password hashing, cookie, CSRF, CLI, and storage dependencies must have their concrete APIs verified before implementation code calls them.
 - Operational logs and audit events are distinct records. Audit events are queryable security/domain-change records; operational logs are diagnostic records.
 
 ## Steps
 
 ### Step 1 — Preflight and Implementation Substrate
 
-Create the dedicated worktree and branch declared in the execution lock. Verify current repo state, installed Node/npm/TypeScript versions, package workspace configuration, and available test/build commands. Add the minimal Agonara package or backend skeleton only after the toolchain state is verified.
+Create the dedicated worktree and branch declared in the execution lock. Verify current repo state, installed Node/npm/TypeScript versions, package workspace configuration, available test/build commands, and candidate runtime dependency APIs. Add the minimal Agonara package or backend skeleton only after the toolchain and dependency API state is verified.
 
 Expected changes:
 
 - Agonara backend package or equivalent source/test directories.
 - Package/workspace configuration only if required by the chosen skeleton.
+- Checked-in note or plan tracker evidence naming the runtime, storage, migration, password-hashing, cookie, CSRF, and CLI APIs that were verified.
 - Agonara project log entry if source files are introduced.
 - Repo-level README/component or release-unit updates only if the implementation creates a new component or release unit under repo rules.
 
@@ -84,6 +88,7 @@ Verification:
 - `git worktree list --porcelain`
 - `git branch --show-current`
 - toolchain/version inspection commands for the chosen runtime
+- dependency API inspection commands for any runtime dependency used by the skeleton
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
@@ -93,18 +98,18 @@ Commit:
 
 ### Step 2 — Operational Walking Skeleton
 
-Implement request ID generation/propagation, structured operational log emission, generic fault responses, `/operations/health`, and Admin-gated `/operations/diagnostics` with redaction rules.
+Implement request ID generation/propagation, structured operational log emission, generic fault responses, unauthenticated `/operations/health`, and the unauthenticated rejection path for `/operations/diagnostics`. Full Admin-session diagnostics acceptance is completed after Identity session resolution exists.
 
 Expected changes:
 
 - Request correlation middleware or equivalent boundary code.
 - Operational log event shape and redaction helpers.
 - Health and diagnostics routes.
-- Tests for request IDs, redacted faults, unauthenticated health, Admin-only diagnostics, and coarse diagnostic reasons.
+- Tests for request IDs, redacted faults, unauthenticated health, and unauthenticated diagnostics rejection.
 
 Verification:
 
-- targeted operational tests
+- targeted operational tests for request IDs, redacted faults, health, and diagnostics rejection
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
@@ -186,10 +191,11 @@ Expected changes:
 - API status/reason mapping.
 - Login/bootstrap rate limiting that avoids credential or disabled-account disclosure.
 - Sensitive-value redaction in responses, faults, and logs.
+- Full `/operations/diagnostics` Admin-session acceptance using resolved Identity sessions.
 
 Verification:
 
-- targeted HTTP API tests for endpoint contracts, cookies, CSRF, status mappings, rate limits, audit listing, and redaction
+- targeted HTTP API tests for endpoint contracts, cookies, CSRF, status mappings, rate limits, audit listing, Admin diagnostics acceptance, and redaction
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 
