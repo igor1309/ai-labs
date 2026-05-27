@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: implemented the Program Shell and Membership first slice. The new program module exposes the spec's command/query surface (Program shell creation with atomic initial curator membership, self-join/leave/rejoin Student membership, read-only effective participation, and Admin-or-curator-scoped event queries) and extends backup/restore with the new state and an orphan-shell guard.
 - agonara: implemented the private Admin operations UI board over the existing Identity HTTP API, including bootstrap/login/logout, identity operations, operational access inspection, audit inspection, and container UI smoke coverage.
 - agonara: added the Admin operations UI board implementation plan, keeping the next slice focused on private-instance identity operations over the existing API.
 - Process: pushed the implementation-plan structure gate down into the public skills. `dev-skills/public/process-gates` v1.1.0 adds a dedicated Plan Structure Gate (mandatory `Goal` / `Execution mode` / `Execution lock` / `Scope guardrails` / phases / `Done criteria` / `Final closeout` headings) plus pre-push adversarial plan review and PR-narrative quality checks; `dev-skills/public/adr-governance` reference now mirrors the same heading list and binds section 10/11 to explicit headings. Marketplace v1.48.0.

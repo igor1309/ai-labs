@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Implement the Program Shell and Membership first slice: `createProgramShell` with atomic initial curator membership, `joinSelfJoinProgram` / `leaveStudentProgram` with active/left/removed transitions and idempotent active-join + rejoin reuse, read-only `getEffectiveParticipation`, Program and Program Membership event queries with Admin-or-curator authorization, and backup/restore coverage that refuses orphan Program shells without active curator participation.
 - Restyle the Admin operations UI board to match the `docs/my-way/landing.html` dark, mono-accented look (palette, typography, hero pill, surface cards) while preserving every structural marker the admin-board HTTP tests assert on.
 - Implement the private Admin operations UI board on `/admin`, covering first-Admin bootstrap, sign in/out, identity creation, local credential binding, disablement, Admin grant/revoke, operational access inspection, and audit event inspection through the existing Identity API.
 - Add the Program Shell and Membership first-slice spec, translating ADR-009 and membership ADRs into command/query contracts, behavior rules, and required tests.
