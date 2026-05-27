@@ -19,7 +19,7 @@ Run all commands from repo root.
 2. Create local worker env:
    - `cp oracle/apps/am-i-done-api/.dev.vars.example oracle/apps/am-i-done-api/.dev.vars`
 3. Set local values in `oracle/apps/am-i-done-api/.dev.vars`:
-   - `OPENROUTER_API_KEY=<your_key>`
+   - `LLM_API_KEY=<your_nomos_project_token>`
    - `NORMALIZER_MODEL=openai/gpt-5-nano`
    - `OUTLOOK_MODEL=openai/gpt-5-nano`
 4. Start worker:
@@ -48,7 +48,7 @@ Run all commands from repo root.
    - `OUTLOOK_MODEL="openai/gpt-5-nano"`
    - `PROMPT_VERSION="2"`
 4. Ensure Worker secret exists:
-   - `npx wrangler secret put OPENROUTER_API_KEY --cwd oracle/apps/am-i-done-api`
+   - `npx wrangler secret put LLM_API_KEY --cwd oracle/apps/am-i-done-api`
 5. Run tests:
    - `./scripts/run_silent.sh "tests" npm test`
 6. Deploy Worker:
@@ -100,7 +100,7 @@ Notes:
   - `CLOUDFLARE_ACCOUNT_ID` (Cloudflare account targeting, if required by your setup)
   - `CI_BOT_TOKEN` (Telegram failure notifications)
   - `CI_CHAT_ID` (Telegram failure notifications)
-  - `OPENROUTER_API_KEY` (real-provider smoke gate)
+  - `NOMOS_ORACLE_TOKEN` (real-provider smoke gate)
 - Required GitHub Actions variables:
   - `OPENROUTER_CI_MODEL` (cheap model for the real-provider smoke gate)
 
