@@ -13,6 +13,8 @@ type: spec
 
 Define the public HTTP API, operator CLI, and executable acceptance scenarios for Agonara Identity & Role Management v0.0.1, owned by Identity & Role Management.
 
+Request correlation, operational logging, health, diagnostics, and shared redaction behavior are specified in [Operational Cross-Cutting First Slice](operational-cross-cutting-first-slice.md).
+
 ## Public interface
 
 ### Shared result envelope
@@ -270,4 +272,5 @@ Executable acceptance:
 - The HTTP API implements the endpoints, result envelopes, session cookie behavior, CSRF behavior, and status mappings defined above.
 - The `agonara identity` CLI implements the bootstrap commands, JSON envelopes, stdin JSON secret handling, and exit codes defined above.
 - Executable acceptance scenarios cover bootstrap, login, session resolution, logout, Admin authorization, credential binding, audit-event listing, last-Admin protection, rate limiting, CSRF enforcement, and sensitive-value redaction.
+- Request correlation, operational logging, health, diagnostics, and shared redaction behavior match [Operational Cross-Cutting First Slice](operational-cross-cutting-first-slice.md).
 - All tests required by this spec and [Identity & Role Management First Slice](identity-role-management-first-slice.md) pass.

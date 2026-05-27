@@ -143,6 +143,8 @@ They cut across modules and must be designed without owning the product state of
 
 These responsibilities are also provisional. Each may require its own Pre-ADR or ADR once the first implementable slice makes the operational constraints concrete.
 
+The v0.0.1 minimum operational contract is specified in [Operational Cross-Cutting First Slice](specs/operational-cross-cutting-first-slice.md).
+
 | Concern | Responsibility | Covers | Does Not Own |
 |---|---|---|---|
 | Logging | Records operational and domain-relevant events for diagnosis and audit. | Identity changes, membership changes, curator decisions, assessment attempts, LLM operations, backup/restore events. | Product analytics, progress interpretation, user-facing learning state. |
@@ -155,5 +157,5 @@ These responsibilities are also provisional. Each may require its own Pre-ADR or
 - Is Corpus Storage distinct from Curator Workspace in the first slice, or should accepted and candidate corpus behavior start behind one module boundary?
 - Should Assessment remain embedded in Student Workspace, or does open-answer evaluation need an explicit assessment module later?
 - Which module owns versioning when accepted program corpus changes after students already have attempts and progress evidence?
-- Which cross-cutting concerns require their own ADR before implementation: logging, backup/restore, observability, or analytics?
+- Which cross-cutting concerns require their own ADR beyond the v0.0.1 operational contract: logging, backup/restore, observability, or analytics?
 - How should LLM-assisted learning be bounded so that feedback helps the student without becoming the owner of final progress state?

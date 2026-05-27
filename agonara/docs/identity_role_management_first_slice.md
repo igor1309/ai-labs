@@ -102,6 +102,8 @@ The remaining implementation handoff should treat accepted ADRs as source of tru
 
 The v0.0.1 implementation handoff is specified in [Identity & Role Management First Slice](specs/identity-role-management-first-slice.md) and [Identity & Role Management API and CLI](specs/identity-role-management-api-cli.md).
 
+The minimum cross-cutting operational contract is specified in [Operational Cross-Cutting First Slice](specs/operational-cross-cutting-first-slice.md).
+
 ## Candidate design decisions
 
 The following decisions are candidate invariants for a future ADR. They are written as the current working direction, not as accepted architecture.
@@ -243,9 +245,9 @@ This slice is the first place to exercise several cross-cutting concerns without
 |---|---|
 | Deployment | The Agonara instance can be initialized and accessed through the selected private-instance deployment shape. |
 | CI/CD | Identity and role-management rules are covered by automated checks in the delivery pipeline. |
-| Logging | Admin actions, credential binding changes, exceptional recovery changes, and identity disablement are logged with attribution. |
+| Logging | Admin actions, credential binding changes, exceptional recovery changes, and identity disablement are logged with attribution according to [Operational Cross-Cutting First Slice](specs/operational-cross-cutting-first-slice.md). |
 | Backup / Restore | Identity, credential bindings, Admin authority, and recovery-relevant access state are recoverable. |
-| Observability | Instance health and identity/role-management failures are visible enough for admin diagnosis. |
+| Observability | Instance health and identity/role-management failures are visible enough for admin diagnosis according to [Operational Cross-Cutting First Slice](specs/operational-cross-cutting-first-slice.md). |
 
 ## Candidate consistency rules
 
