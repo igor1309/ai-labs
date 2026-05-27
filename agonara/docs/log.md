@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add the Program Shell and Membership first-slice spec, translating ADR-009 and membership ADRs into command/query contracts, behavior rules, and required tests.
 - Accept ADR-009 for Program shell ownership and initial curator participation: active identities can create self-join Program shells, Corpus Storage owns the shell, and Program Membership establishes initial curator participation.
 - Update Agonara traceability links to point at the implemented Identity and Operations plan after closeout.
 - Add the Admin operations UI board implementation plan, scoping the next Agonara slice to a thin private-instance board over the existing Identity HTTP API.
