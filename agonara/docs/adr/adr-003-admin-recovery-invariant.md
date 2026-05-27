@@ -29,7 +29,7 @@ Agonara is intended to run as a private instance. If the instance loses all usab
 
 The [admin user stories](../admin_user_stories_v0.2.1.md) require first-admin setup, Admin assignment/revocation, prevention of last-admin removal, auditability of sensitive operations, and backup/restore coverage for identity and operational access state.
 
-The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.2.md) names recoverable admin control, last-active-admin protection, and audit attribution as first-slice candidates.
+The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.3.md) names recoverable admin control, last-active-admin protection, and audit attribution as first-slice candidates.
 
 The rejected alternative is to allow peer-managed or ad hoc recovery without a hard last-Admin invariant. That alternative is rejected because a private instance could enter a state where no accountable identity can operate or recover identity and role management.
 

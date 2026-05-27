@@ -29,7 +29,7 @@ The [Product Intent](../intent_learning_program_app_v0.3.0.md) separates student
 
 The [Module Responsibility Map](../module_responsibility_map_v0.4.3.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
-The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.2.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
+The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.3.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
 
 The [admin user stories](../admin_user_stories_v0.2.1.md) require program participation inspection, participation-change tracing, exceptional membership recovery, and Admin changes to preserve separation between learning-domain authority and operational control.
 

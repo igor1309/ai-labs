@@ -2,7 +2,7 @@
 title: Agonara Identity & Role Management First Slice
 description: First implementable slice for Agonara Identity & Role Management.
 model: gpt-5.5-thinking
-version: 0.2.2
+version: 0.2.3
 date: 2026-05-27
 ---
 
@@ -16,7 +16,9 @@ The goal of this slice is to make an Agonara private instance operationally cont
 
 This document stays at Pre-ADR module-design level. Its direction is provisional until accepted by a later ADR.
 
-It is not a data model, schema, authentication-provider choice, UI specification, deployment script, or permission-framework design.
+It is not a data model, schema, external authentication-provider choice, UI specification, deployment script, or permission-framework design.
+
+The internal Identity subject model is accepted by [ADR-001](adr/adr-001-internal-identity-as-agonara-ownership-subject.md), role scope is accepted by [ADR-002](adr/adr-002-role-authority-scope-model.md), admin recovery is accepted by [ADR-003](adr/adr-003-admin-recovery-invariant.md), Program Membership boundaries are accepted by [ADR-004](adr/adr-004-program-membership-owns-program-participation.md) through [ADR-007](adr/adr-007-effective-participation-authorization-contract.md), and the first-slice authentication/session/credential boundary is accepted by [ADR-008](adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
 
 ## Context
 
@@ -96,6 +98,8 @@ This slice supports the Product Intent by making curator and student actions att
 
 The admin-facing stories that drive this slice live in [admin_user_stories_v0.2.1.md](admin_user_stories_v0.2.1.md), especially ADM-01 through ADM-11.
 
+The remaining implementation handoff should treat accepted ADRs as source of truth over provisional candidate wording in this Pre-ADR.
+
 ## Candidate design decisions
 
 The following decisions are candidate invariants for a future ADR. They are written as the current working direction, not as accepted architecture.
@@ -107,6 +111,8 @@ Agonara uses an internal Identity as the subject of ownership and action.
 Credentials and external accounts may be bound to an internal Identity, but they do not define Agonara ownership.
 
 A credential binding may authenticate an Identity but must not grant product or operational roles by itself.
+
+The first implementation uses an Agonara-owned local password credential and a server-managed opaque session, as accepted by ADR-008.
 
 ### Product Roles
 
@@ -155,6 +161,8 @@ An Agonara instance must retain at least one active Admin.
 
 Identity creation, credential binding changes, Admin authority changes, exceptional recovery operations, and identity disablement must be attributable to an acting Admin identity.
 
+First-Admin bootstrap is available only while no effective Admin exists and requires an out-of-band bootstrap secret, as accepted by ADR-008.
+
 ## Candidate identity lifecycle
 
 The first slice supports two identity states:
@@ -193,6 +201,9 @@ This slice includes:
 
 - internal identities;
 - credential-to-identity binding;
+- local password credential support for the first private-instance slice;
+- server-managed opaque web sessions;
+- out-of-band first-Admin bootstrap;
 - instance-scoped admin role;
 - product role vocabulary and scope rules;
 - Program Membership participation inspection;
@@ -214,11 +225,11 @@ This slice does not include:
 - resource-level access control;
 - enterprise authorization;
 - organization or tenant hierarchy;
-- choice of authentication provider;
-- session mechanism;
-- concrete credential types;
-- password policy;
+- external authentication providers;
 - MFA policy;
+- passkeys;
+- OIDC or SSO;
+- self-service credential recovery;
 - database schema;
 - UI layout.
 
@@ -264,13 +275,7 @@ Identity & Role Management does not own program membership lifecycle, program co
 
 The following questions must be resolved or explicitly deferred before this becomes an accepted ADR:
 
-- Which authentication provider or framework will be used for the first private-instance deployment?
-- What session mechanism is acceptable for the selected deployment target?
-- Which concrete credential types are required for the first slice?
-- Is a password policy needed if local passwords are supported?
-- Is MFA in scope for the first operational slice or deferred?
-- Do privileged actions need confirmation beyond ordinary admin authorization?
-- What schema and storage layout preserve Identity ownership and credential binding history?
+- What schema and storage layout preserve Identity ownership, credential binding history, local password credentials, sessions, Admin authority, and bootstrap audit records?
 - What is the minimum admin UI shape needed to initialize and recover a private instance?
 - Are resource-level permissions needed before curator and student workflows exist?
 - Is an organization/team model intentionally out of scope for private-instance MVP?

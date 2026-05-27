@@ -3,7 +3,7 @@ title: Agonara Implementation Notes
 date: 2026-05-27
 description: "Research notes on mapping external authentication to Agonara internal identity and authority."
 model: gpt-5.5-thinking
-version: 0.2.2
+version: 0.2.3
 ---
 
 # Agonara Implementation Notes
@@ -28,12 +28,15 @@ Do not use framework roles as the source of Agonara ownership.
 
 Auth Provider / Framework:
 
-- verifies credential;
-- returns authenticated principal.
+- verifies the first local password credential;
+- returns an authenticated credential result.
 
 Identity & Role Management:
 
 - maps credential/principal to internal Identity;
+- manages the first local password credential binding;
+- manages server-side opaque sessions that resolve to an internal Identity;
+- manages one-time first-Admin bootstrap while no effective Admin exists;
 - manages Admin authority and operational access primitives;
 - manages admin operations.
 
@@ -55,7 +58,6 @@ Application modules:
 
 ## Open questions
 
-- Which auth frameworks fit the dockerized private-instance deployment target?
 - How does credential rotation preserve the same internal Identity?
 - What audit record is required when a credential binding is created, changed, or removed?
 - Should the first slice support multiple credential bindings per Identity?
