@@ -2,6 +2,8 @@
 
 ## 2026-05-27
 
+- Process: added a pre-PR reminder to refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh` after substantial implementation or docs movement, then refreshed the Agonara LOC/dashboard numbers for this branch.
+- agonara: completed the Identity and Operations first slice with executable acceptance coverage for CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
 - agonara: added minimum Identity backup/restore behavior for identity, credential, Admin authority, and audit state, with active sessions excluded and no-Admin restores rejected.
 - agonara: added the first operator CLI for identity bootstrap status and first-Admin bootstrap, using JSON stdin for secrets and JSON stdout envelopes with accepted/rejected exit-code behavior.
 - agonara: added the first Identity HTTP API routes with session cookies, CSRF checks, login/bootstrap rate limiting, audit response redaction, and Admin-session diagnostics.

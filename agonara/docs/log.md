@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Complete the Identity and Operations first-slice implementation with executable acceptance coverage across CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
 - Add the minimum Identity backup/restore path for identities, local password credentials, Admin authorities, and audit history, while excluding active sessions and rejecting no-Admin restores.
 - Add the first `agonara identity` operator CLI for bootstrap status and first-Admin bootstrap, with JSON stdin for secrets, JSON stdout envelopes, and defined exit codes.
 - Add the first Identity HTTP API routes for bootstrap status, bootstrap, login, session resolution/logout, Admin identity creation, audit listing, CSRF, rate limiting, secure session cookies, and Admin diagnostics.

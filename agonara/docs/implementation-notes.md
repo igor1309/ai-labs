@@ -3,7 +3,7 @@ title: Agonara Implementation Notes
 date: 2026-05-27
 description: "Research notes on mapping external authentication to Agonara internal identity and authority."
 model: gpt-5.5-thinking
-version: 0.2.4
+version: 0.2.5
 ---
 
 # Agonara Implementation Notes
@@ -138,6 +138,16 @@ The minimum Identity backup/restore path stays inside the command and storage bo
 - audit records may retain historical `targetSessionId` values without requiring those sessions to exist;
 - restore rejects backups that would activate with no effective Admin;
 - backup and restore emit operational log events for started, accepted, rejected, and faulted outcomes.
+
+## Step 9 Executable Acceptance Verification
+
+Executable acceptance now exercises the first slice across real process/runtime boundaries:
+
+- CLI first-Admin bootstrap persists to the configured SQLite database and HTTP login/session/logout works against the same instance state;
+- HTTP bootstrap prevents a later CLI bootstrap from creating a second first Admin;
+- Admin HTTP flows cover Identity creation, local password credential binding, non-Admin rejection, Admin grant/revoke, last-Admin protection, audit listing, and CSRF enforcement;
+- rate limiting and request correlation are covered through black-box HTTP requests;
+- acceptance responses are checked for bootstrap secret, plaintext password, password hash, and session identifier leakage.
 
 ## Open questions
 

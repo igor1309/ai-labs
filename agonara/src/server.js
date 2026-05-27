@@ -297,6 +297,7 @@ export function startServer({
   bootstrapSecret = process.env.AGONARA_BOOTSTRAP_SECRET,
   databasePath = process.env.AGONARA_DB_PATH ?? ":memory:",
   host = process.env.HOST ?? "0.0.0.0",
+  log = logToStdout,
   port = process.env.PORT ?? "8080",
 } = {}) {
   if (!bootstrapSecret) {
@@ -310,6 +311,7 @@ export function startServer({
       bootstrapSecret,
       database,
     }),
+    log,
   });
   server.on("close", () => {
     database.close();
