@@ -1,7 +1,7 @@
 ---
 name: Naming Availability Standard
 description: Reusable, domain-agnostic availability-risk standard for product and project naming sessions.
-date: 2026-05-12
+date: 2026-05-27
 model: gpt-5.5-thinking
 scope: naming, product naming
 ---
@@ -95,7 +95,7 @@ Use this scale:
 
 | Risk | Meaning |
 |---|---|
-| Low | No visible close-field collision; unrelated uses only |
+| Low | No visible target-field collision; unrelated uses only |
 | Medium | Some visible usage, but outside the target field |
 | High | Close adjacent product, adjacent-category overlap, or dominant search collision |
 | Blocked | Same or highly similar name in the target field |

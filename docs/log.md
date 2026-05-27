@@ -1,8 +1,8 @@
 # Log
 
-## 2026-05-26
+## 2026-05-27
 
-- prompts: decoupled `naming-availability-standard.md` from domain-specific references (agent orchestration, AI coding agents, LLM tooling). Hard Blockers, Availability Risk, and Naming Target sections now reference user-supplied context parameters (target field, adjacent categories, intended technical surface) instead of hardcoded domains. Prompt is now reusable for any product naming context.
+- prompts: decoupled `naming-availability-standard.md` from domain-specific references (agent orchestration, AI coding agents, LLM tooling). Hard Blockers, Availability Risk Reading, and Naming Target sections now reference user-supplied context parameters (target field, adjacent categories, intended technical surface) instead of hardcoded domains. Prompt is now reusable for any product naming context.
 
 ## 2026-05-25
 
