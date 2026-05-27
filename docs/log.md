@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: added the first operator CLI for identity bootstrap status and first-Admin bootstrap, using JSON stdin for secrets and JSON stdout envelopes with accepted/rejected exit-code behavior.
 - agonara: added the first Identity HTTP API routes with session cookies, CSRF checks, login/bootstrap rate limiting, audit response redaction, and Admin-session diagnostics.
 - agonara: added Admin-protected Identity operations and audit paths for identity creation, credential binding, disablement, Admin grant/revoke, operational access inspection, identity listing, and audit listing.
 - agonara: implemented first-Admin bootstrap, local-password login, session resolution, and logout over the new Identity storage boundary, with scrypt password hashes and bootstrap audit records.

@@ -118,6 +118,17 @@ The HTTP boundary adds the first Identity API routes on top of the command layer
 
 The server factory supports injecting Identity commands for executable tests. The production entrypoint initializes the local SQLite store from `AGONARA_DB_PATH` and requires the operator to provide `AGONARA_BOOTSTRAP_SECRET` for first-Admin bootstrap. The Docker image writes runtime state under `/data`, and Compose maps that path to a named volume rather than a host bind mount.
 
+## Step 7 Operator CLI Verification
+
+The first operator CLI is exposed as the `agonara` bin:
+
+- `agonara identity bootstrap-status --json` opens the configured local store and returns the shared accepted JSON envelope;
+- `agonara identity bootstrap-admin --display-name <name> --login <login> --stdin-json --json` reads `bootstrapSecret` and `password` from JSON stdin;
+- accepted CLI output redacts bootstrap secrets, plaintext passwords, password hashes, and opaque session identifiers;
+- accepted operations exit `0`, rejected domain operations exit `2`, and usage/runtime errors exit `1`.
+
+The CLI uses the same `AGONARA_DB_PATH` and `AGONARA_BOOTSTRAP_SECRET` runtime inputs as the server entrypoint.
+
 ## Open questions
 
 - How does credential rotation preserve the same internal Identity?
