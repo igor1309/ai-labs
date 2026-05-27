@@ -185,7 +185,7 @@ LLM-предложения являются вспомогательным ма�
 | INT-05 | [Implementation Notes](implementation-notes.md) | [Identity & Role Management First Slice](identity_role_management_first_slice.md) | n/a | n/a | n/a |
 | INT-06 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
 | INT-07 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
-| ADM-01..ADM-11 | [Implementation Notes](implementation-notes.md) | [Identity & Role Management First Slice](identity_role_management_first_slice.md), [ADR-008](adr/adr-008-first-slice-authentication-session-and-credential-boundary.md) | n/a | n/a | n/a |
+| ADM-01..ADM-11 | [Implementation Notes](implementation-notes.md) | [Identity & Role Management First Slice](identity_role_management_first_slice.md), [ADR-008](adr/adr-008-first-slice-authentication-session-and-credential-boundary.md) | [Identity & Role Management First Slice Spec](specs/identity-role-management-first-slice.md) | n/a | n/a |
 | STU-18..STU-23, CUR-14..CUR-18, ADM-12..ADM-15 | n/a | [Module Responsibility Map](module_responsibility_map.md), [Program Membership Pre-ADR](program_membership_pre_adr.md), [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](adr/adr-006-program-membership-policy-actor.md), [ADR-007](adr/adr-007-effective-participation-authorization-contract.md) | n/a | n/a | n/a |
 
 ## Change review

@@ -100,6 +100,8 @@ The admin-facing stories that drive this slice live in [admin_user_stories.md](a
 
 The remaining implementation handoff should treat accepted ADRs as source of truth over provisional candidate wording in this Pre-ADR.
 
+The v0.0.1 implementation handoff is specified in [Identity & Role Management First Slice](specs/identity-role-management-first-slice.md).
+
 ## Candidate design decisions
 
 The following decisions are candidate invariants for a future ADR. They are written as the current working direction, not as accepted architecture.
@@ -275,8 +277,4 @@ Identity & Role Management does not own program membership lifecycle, program co
 
 The following questions must be resolved or explicitly deferred before this becomes an accepted ADR:
 
-- What schema and storage layout preserve Identity ownership, credential binding history, local password credentials, sessions, Admin authority, and bootstrap audit records?
-- What is the minimum admin UI shape needed to initialize and recover a private instance?
-- Are resource-level permissions needed before curator and student workflows exist?
-- Is an organization/team model intentionally out of scope for private-instance MVP?
-- Is multi-tenant SaaS authorization deferred indefinitely or only outside the private-instance target?
+- What concrete database and migration tooling should implement the logical records from the v0.0.1 spec?
