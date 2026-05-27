@@ -32,7 +32,7 @@ The story catalogs now include membership stories:
 
 - [Student User Stories](agonara_student_user_stories_v0.3.0.md): STU-18 through STU-23.
 - [Curator User Stories](agonara_curator_user_stories_v0.3.0.md): CUR-14 through CUR-18.
-- [Admin User Stories](agonara_admin_user_stories_v0.2.0.md): ADM-12 through ADM-15.
+- [Admin User Stories](agonara_admin_user_stories_v0.2.1.md): ADM-12 through ADM-15.
 
 The missing architectural question is not whether Agonara has identities or Program-scoped roles. Those are already accepted. The missing question is which module owns the product lifecycle of participation in a Program.
 

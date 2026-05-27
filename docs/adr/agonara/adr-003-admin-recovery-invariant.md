@@ -15,7 +15,7 @@ After initialization, the instance must retain at least one effective `Admin` id
 
 Operations that would remove the last effective `Admin` must be rejected.
 
-Sensitive identity, credential-binding, role, and admin-authority changes must require `Admin` authority and must be attributable.
+Sensitive identity, credential-binding, admin-authority, and exceptional recovery changes must require `Admin` authority and must be attributable.
 
 This ADR decides operational-control invariants only. It does not decide authentication provider, session mechanism, MFA, reauthentication, recovery codes, backup/restore mechanics, storage schema, UI, or concrete permission-framework implementation.
 
@@ -27,9 +27,9 @@ This ADR decides operational-control invariants only. It does not decide authent
 
 Agonara is intended to run as a private instance. If the instance loses all usable `Admin` authority, identity and role management become unrecoverable through normal product operations.
 
-The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.0.md) require first-admin setup, Admin assignment/revocation, prevention of last-admin removal, auditability of sensitive operations, and backup/restore coverage for identity and role-management state.
+The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.1.md) require first-admin setup, Admin assignment/revocation, prevention of last-admin removal, auditability of sensitive operations, and backup/restore coverage for identity and operational access state.
 
-The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.1.md) names recoverable admin control, last-active-admin protection, and audit attribution as first-slice candidates.
+The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.2.md) names recoverable admin control, last-active-admin protection, and audit attribution as first-slice candidates.
 
 The rejected alternative is to allow peer-managed or ad hoc recovery without a hard last-Admin invariant. That alternative is rejected because a private instance could enter a state where no accountable identity can operate or recover identity and role management.
 
@@ -57,17 +57,17 @@ Sensitive identity-management operations MUST be attributable to an acting inter
 - Assigning or revoking `Admin` authority MUST require `Admin` authority after bootstrap.
 - Creating, disabling, or changing an internal `Identity` MUST require `Admin` authority after bootstrap.
 - Creating or changing credential-binding state MUST require `Admin` authority after bootstrap.
-- Assigning or revoking product roles MUST require `Admin` authority after bootstrap.
+- Exceptional membership recovery operations MUST require `Admin` authority after bootstrap and MUST preserve Program Membership ownership of ordinary participation lifecycle.
 - Sensitive identity-management operations MUST produce an audit record.
 - Audit records for sensitive identity-management operations MUST identify the acting internal `Identity` when one exists.
 - Bootstrap audit records MUST distinguish bootstrap action from ordinary Admin action.
-- Audit records MUST identify the affected internal `Identity`, credential-binding state, role assignment, or admin-authority change.
+- Audit records MUST identify the affected internal `Identity`, credential-binding state, admin-authority change, or exceptional recovery change.
 - Backup or restore flows MUST NOT make an instance operational in a state that violates the effective-Admin invariant.
 - Later ADRs MAY define authentication strength, reauthentication, privileged confirmation, backup/restore mechanics, schema, UI, and permission-framework implementation only if they preserve this recovery invariant or explicitly amend this ADR.
 
 ## Consequences
 
-Agonara needs invariant checks around identity lifecycle, role assignment, Admin assignment, and restore activation.
+Agonara needs invariant checks around identity lifecycle, Admin assignment, exceptional recovery, and restore activation.
 
 The bootstrap path is special because it creates operational control before an acting `Admin` exists. That exception must be explicit and auditable.
 

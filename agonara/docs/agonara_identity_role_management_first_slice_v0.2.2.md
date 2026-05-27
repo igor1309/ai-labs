@@ -2,7 +2,7 @@
 title: Agonara Identity & Role Management First Slice
 description: First implementable slice for Agonara Identity & Role Management.
 model: gpt-5.5-thinking
-version: 0.2.1
+version: 0.2.2
 date: 2026-05-27
 ---
 
@@ -20,13 +20,13 @@ It is not a data model, schema, authentication-provider choice, UI specification
 
 ## Context
 
-The Responsibility Map defines `Identity & Role Management` as the module that defines and manages identities, credentials, roles, and access boundaries.
+The Responsibility Map defines `Identity & Role Management` as the module that defines and manages identities, credentials, operational roles, and access primitives.
 
 The [Deployment Target](agonara-deployment-target_v0.2.0.md) points toward a dockerized private self-hosted Agonara instance with API-first access, network web UI, small private group tenancy, and admin operational responsibility.
 
 This slice uses Identity & Role Management as the first working module because it has limited domain uncertainty and exercises the operational foundation early.
 
-Identity and role management is the right first slice because every later curator or student workflow depends on an internal subject of action, explicit role assignment, and recoverable admin control. Starting here also tests deployment, logging, backup/restore, and operational diagnosis without requiring the learning-domain modules to be implemented first.
+Identity and role management is the right first slice because every later curator or student workflow depends on an internal subject of action, explicit authorization context, and recoverable admin control. Starting here also tests deployment, logging, backup/restore, and operational diagnosis without requiring the learning-domain modules to be implemented first.
 
 ## Options considered
 
@@ -50,8 +50,8 @@ Identity and role management is the right first slice because every later curato
 
 #### Option A — Program-scoped Student and Program Curator roles
 
-- **Description**: product roles are assigned per program, and one Identity may hold different roles in different programs.
-- **Tradeoffs**: matches the product model and keeps authority local to a program. Requires explicit scope checks on protected operations.
+- **Description**: product participation is granted per program, and one Identity may hold different roles in different programs.
+- **Tradeoffs**: matches the product model and keeps authority local to a program. Requires explicit participation and scope checks on protected operations.
 - **Product intent fit**: strong fit for separating curator acceptance from student learning state.
 - **Risks**: role checks are more complex than a flat global role list.
 
@@ -66,7 +66,7 @@ Identity and role management is the right first slice because every later curato
 
 #### Option A — Instance-scoped Admin role
 
-- **Description**: Admin controls identities, credential bindings, role assignments, settings, and recovery operations for the private instance.
+- **Description**: Admin controls identities, credential bindings, Admin authority, settings, and recovery operations for the private instance.
 - **Tradeoffs**: gives the private instance a clear recovery owner. Must avoid leaking Admin into learning-domain authority.
 - **Product intent fit**: supports operational control without replacing Program Curator ownership of accepted content.
 - **Risks**: Admin may be mistaken for a learning role unless boundaries are enforced.
@@ -82,19 +82,19 @@ Identity and role management is the right first slice because every later curato
 
 The emerging direction is internal Identity ownership, program-scoped Student and Program Curator roles, and an instance-scoped Admin role.
 
-This direction is provisional. It should become an ADR only after the first slice confirms that setup, credential binding, role assignment, last-admin protection, and audit attribution can be expressed without leaking domain ownership into Identity & Role Management.
+This direction is provisional. It should become an ADR only after the first slice confirms that setup, credential binding, Admin assignment, last-admin protection, and audit attribution can be expressed without leaking domain ownership into Identity & Role Management.
 
 ## Slice Goal
 
-An Agonara instance can be initialized, accessed by an admin, and used to manage identities and role assignments.
+An Agonara instance can be initialized, accessed by an admin, and used to manage identities, credential bindings, Admin authority, and operational access state.
 
 The slice should prove that Agonara has an internal subject of ownership and action, instead of treating a credential, session, or external account as the domain owner.
 
 ## Product intent traceability
 
-This slice supports the Product Intent by making curator and student actions attributable to internal Identities. It primarily protects INT-01 through role-gated curator acceptance and INT-02 through INT-07 by keeping student actions tied to stable learner state.
+This slice supports the Product Intent by making curator and student actions attributable to internal Identities. It primarily protects INT-01 through authorization-gated curator acceptance and INT-02 through INT-07 by keeping student actions tied to stable learner state.
 
-The admin-facing stories that drive this slice live in [agonara_admin_user_stories_v0.2.0.md](agonara_admin_user_stories_v0.2.0.md), especially ADM-01 through ADM-11.
+The admin-facing stories that drive this slice live in [agonara_admin_user_stories_v0.2.1.md](agonara_admin_user_stories_v0.2.1.md), especially ADM-01 through ADM-11.
 
 ## Candidate design decisions
 
@@ -131,7 +131,7 @@ Agonara supports one operational role:
 
 Admin is scoped to the Agonara instance.
 
-Admin manages identities, credential bindings, role assignments, settings, and recovery-level operations.
+Admin manages identities, credential bindings, Admin authority, settings, and recovery-level operations.
 
 Admin is not a learning role and does not replace Program Curator ownership of accepted program content.
 
@@ -143,9 +143,9 @@ Access is denied by default.
 
 Authorization is evaluated for each protected operation.
 
-An Identity may act only when the required product role or operational authority is explicitly assigned for the relevant scope.
+An Identity may act only when the required product participation or operational authority is explicitly established for the relevant scope.
 
-Product roles are granted explicitly within a program scope.
+Effective product roles require explicit Program Membership participation grants within a program scope.
 
 Admin authority is instance-scoped and does not imply Student or Program Curator authority.
 
@@ -153,7 +153,7 @@ Credential bindings authenticate an Identity but do not grant roles by themselve
 
 An Agonara instance must retain at least one active Admin.
 
-Identity creation, credential binding changes, role assignments, role revocations, admin changes, and identity disablement must be attributable to an acting Admin identity.
+Identity creation, credential binding changes, Admin authority changes, exceptional recovery operations, and identity disablement must be attributable to an acting Admin identity.
 
 ## Candidate identity lifecycle
 
@@ -173,15 +173,15 @@ Historical ownership and audit references must remain intact when an identity is
 | Initialize instance with first admin | Makes a private Agonara instance operationally controllable. |
 | Create identity | Establishes an internal subject of ownership and action. |
 | Bind credential to identity | Allows Agonara to recognize an identity without making the credential the owner or role source. |
-| Assign Student role for a specific program | Establishes program-scoped student participation. |
-| Assign Program Curator role for a specific program | Establishes program-scoped curator responsibility. |
-| Revoke product role from a specific program | Keeps role assignment reversible. |
+| Define product role vocabulary | Gives Program Membership stable Student and Program Curator participation meanings. |
+| Inspect program participation authority | Allows admin diagnosis through Program Membership results without changing ordinary participation. |
+| Trace program participation authority changes | Allows admin diagnosis of participation changes without recreating revoked access. |
 | Assign or revoke Admin role | Supports operational control of the private instance. |
 | Prevent removing the last active Admin | Protects the instance from losing operational control. |
 | Disable identity | Allows admin-level access control without deleting historical ownership. |
-| View identities and role assignments | Allows admin to inspect the operational access state. |
-| Log attributable identity, credential, role, and admin operations | Provides auditability for operationally sensitive actions. |
-| Include identity and role state in backup/restore scope | Ensures access and ownership context can survive recovery. |
+| View identities and operational access state | Allows admin to inspect the operational access state. |
+| Log attributable identity, credential, admin, and exceptional recovery operations | Provides auditability for operationally sensitive actions. |
+| Include identity and operational access state in backup/restore scope | Ensures access and ownership context can survive recovery. |
 
 ## Provisional boundaries
 
@@ -194,14 +194,14 @@ This slice includes:
 - internal identities;
 - credential-to-identity binding;
 - instance-scoped admin role;
-- program-scoped Student role;
-- program-scoped Program Curator role;
-- role assignment and revocation;
+- product role vocabulary and scope rules;
+- Program Membership participation inspection;
+- exceptional membership recovery hooks;
 - prevention of last-active-admin removal;
 - identity disablement;
-- admin inspection of identities and role assignments;
-- attributable logging of identity and role-management operations;
-- backup/restore coverage for identity and role-management state.
+- admin inspection of identities and operational access state;
+- attributable logging of identity and operational access operations;
+- backup/restore coverage for identity and operational access state.
 
 ### Excluded
 
@@ -230,8 +230,8 @@ This slice is the first place to exercise several cross-cutting concerns without
 |---|---|
 | Deployment | The Agonara instance can be initialized and accessed through the selected private-instance deployment shape. |
 | CI/CD | Identity and role-management rules are covered by automated checks in the delivery pipeline. |
-| Logging | Admin actions, credential binding changes, role changes, and identity disablement are logged with attribution. |
-| Backup / Restore | Identity, credential bindings, and role assignments are recoverable. |
+| Logging | Admin actions, credential binding changes, exceptional recovery changes, and identity disablement are logged with attribution. |
+| Backup / Restore | Identity, credential bindings, Admin authority, and recovery-relevant access state are recoverable. |
 | Observability | Instance health and identity/role-management failures are visible enough for admin diagnosis. |
 
 ## Candidate consistency rules
@@ -256,9 +256,9 @@ Admin is scoped to the instance.
 
 Authorization is denied unless explicitly granted.
 
-Student Workspace and Curator Workspace may rely on identity and role decisions, but they do not manage identity lifecycle.
+Student Workspace and Curator Workspace may rely on identity and membership-backed authorization decisions, but they do not manage identity lifecycle.
 
-Identity & Role Management does not own program content, curator decisions, learner state, assessment logic, or progress interpretation.
+Identity & Role Management does not own program membership lifecycle, program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
 ## Open questions
 

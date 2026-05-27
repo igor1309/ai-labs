@@ -3,7 +3,7 @@ title: Agonara Admin User Stories
 date: 2026-05-27
 description: Admin-facing user stories for Agonara private-instance identity, role, and membership recovery.
 model: gpt-5.5-thinking
-version: 0.2.0
+version: 0.2.1
 ---
 
 # Agonara Admin User Stories
@@ -12,10 +12,10 @@ version: 0.2.0
 
 | Term | Meaning |
 |---|---|
-| Agonara admin | Instance-scoped operational role responsible for identity, credential, role, settings, and recovery-level operations. |
+| Agonara admin | Instance-scoped operational role responsible for identity, credential, Admin authority, settings, and recovery-level operations. |
 | Internal Identity | Agonara-owned subject of ownership and action. |
 | Credential binding | Link between an external or framework-authenticated principal and an internal Identity. |
-| Product role | Program-scoped Student or Program Curator role. |
+| Product role | Program-scoped Student or Program Curator role whose effective participation is governed by Program Membership. |
 | Program membership | Participation relationship between an identity and a program, governed outside Identity & Role Management. |
 
 ## Instance Setup
@@ -72,27 +72,27 @@ Status: accepted
 
 Acceptance signal: the admin can inspect active and disabled identities with their credential-binding state.
 
-## Role Administration
+## Access Administration
 
-### ADM-06 — Assign program role
+### ADM-06 — Inspect program participation authority
 
 As an Agonara admin,
-I want to assign a Student or Program Curator role within a specific program,
-so that an Identity can act in that program with explicit authority.
+I want to inspect whether an Identity has effective Student or Program Curator authority within a specific program,
+so that I can diagnose access without becoming the normal membership operator.
 
 Status: accepted
 
-Acceptance signal: the role assignment is scoped to one program and does not grant authority in other programs.
+Acceptance signal: inspection shows the Program Membership participation grant and scope without creating or changing membership.
 
-### ADM-07 — Revoke program role
+### ADM-07 — Trace program participation authority changes
 
 As an Agonara admin,
-I want to revoke a Student or Program Curator role within a specific program,
-so that access remains reversible and explicit.
+I want to trace changes that affected Student or Program Curator authority within a specific program,
+so that access loss or restoration can be diagnosed.
 
 Status: accepted
 
-Acceptance signal: the Identity can no longer use the revoked role in that program after revocation.
+Acceptance signal: trace output points to membership or recovery records without recreating revoked access.
 
 ### ADM-08 — Assign or revoke admin role
 
@@ -116,25 +116,25 @@ Acceptance signal: disabling, revoking, or otherwise removing the last active Ad
 
 ## Audit and Recovery
 
-### ADM-10 — Audit identity and role operations
+### ADM-10 — Audit identity and access operations
 
 As an Agonara admin,
-I want identity, credential-binding, role, and admin operations to be attributable,
+I want identity, credential-binding, admin-authority, and exceptional recovery operations to be attributable,
 so that sensitive access changes can be audited.
 
 Status: accepted
 
-Acceptance signal: each sensitive operation records the acting Admin identity and the affected identity, credential, or role assignment.
+Acceptance signal: each sensitive operation records the acting Admin identity and the affected identity, credential, Admin authority, or exceptional recovery change.
 
 ### ADM-11 — Include identity state in backup and restore
 
 As an Agonara admin,
-I want identity and role-management state included in backup and restore scope,
+I want identity and operational access state included in backup and restore scope,
 so that recovered instances preserve access and ownership context.
 
 Status: accepted
 
-Acceptance signal: backup/restore coverage includes identities, credential bindings, role assignments, and admin authority.
+Acceptance signal: backup/restore coverage includes identities, credential bindings, Admin authority, and recovery-relevant access state.
 
 ## Membership Recovery and Audit
 

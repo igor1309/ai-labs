@@ -9,7 +9,7 @@ status: accepted
 
 ## Executive Summary
 
-Agonara attaches authority to internal `Identity` records through explicit role assignments.
+Agonara attaches authority to internal `Identity` records through explicit product participation grants and operational role assignments.
 
 `Student` and `Program Curator` are product roles scoped to a specific Program.
 
@@ -29,15 +29,15 @@ The [Product Intent](../../../agonara/docs/intent_learning_program_app_v0.3.0.md
 
 The [Module Responsibility Map](../../../agonara/docs/agonara_module_responsibility_map_v0.4.0.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
-The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.1.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
+The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.2.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
 
-The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.0.md) require program-role assignment, program-role revocation, and Admin changes to preserve separation between learning-domain authority and operational control.
+The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.1.md) require program participation inspection, participation-change tracing, exceptional membership recovery, and Admin changes to preserve separation between learning-domain authority and operational control.
 
 The rejected alternatives are flat global product roles and treating `Admin` as a learning-domain superuser. Flat global product roles are too broad for private instances where one person may curate one Program and study another. Treating `Admin` as a learning-domain superuser would blur operational control with curator and student ownership.
 
 ## Decision
 
-Agonara MUST grant product authority through explicit Program-scoped role assignments.
+Agonara MUST grant product authority through explicit Program-scoped participation grants.
 
 Agonara supports these product roles:
 
@@ -60,21 +60,21 @@ Credential bindings MUST NOT grant product or operational roles.
 
 - Authority is denied unless explicitly granted.
 - Product authority MUST be evaluated against both `Identity` and Program scope.
-- `Student` authority is valid only within the Program scope where it is assigned.
-- `Program Curator` authority is valid only within the Program scope where it is assigned.
+- `Student` authority is valid only within the Program scope where it is granted.
+- `Program Curator` authority is valid only within the Program scope where it is granted.
 - `Admin` authority is valid only at the Agonara instance scope.
 - `Admin` is not a product role.
 - `Student` and `Program Curator` are not operational roles.
-- A single `Identity` MAY have multiple role assignments across Programs.
+- A single `Identity` MAY have multiple product participation grants across Programs.
 - A single `Identity` MAY combine `Student` and `Program Curator` in the same Program.
-- Product role assignment MUST NOT mutate accepted Program content, curator workspace state, or student learning state by itself.
+- Product participation grants MUST NOT mutate accepted Program content, curator workspace state, or student learning state by themselves.
 - Later ADRs MAY define admin recovery invariants, privileged operation sets, resource-level permissions, schema, UI, and permission-framework implementation only if they preserve this role authority scope model or explicitly amend this ADR.
 
 ## Consequences
 
 Every protected product operation needs an authorization check that includes the acting `Identity`, the required product role, and the relevant Program scope.
 
-Identity & Role Management needs to store or resolve role assignments separately from credentials and separately from learning-domain state.
+Agonara needs to resolve product authority separately from credentials and separately from learning-domain state.
 
 Private instances can support mixed responsibility without broad global authority. The same person can study one Program, curate another Program, or do both in one Program through explicit assignments.
 
@@ -90,7 +90,7 @@ This ADR does not decide:
 - last-active-admin protection;
 - which exact operations require `Admin`;
 - admin recovery workflow;
-- role assignment approval workflow;
+- participation approval workflow;
 - resource-level permissions inside a Program;
 - organization, team, tenant, or enterprise authorization models;
 - credential lifecycle or credential-binding cardinality;

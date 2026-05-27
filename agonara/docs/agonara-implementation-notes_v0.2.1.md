@@ -1,16 +1,16 @@
 ---
 title: Agonara Implementation Notes
 date: 2026-05-26
-description: "Research notes on mapping external authentication to Agonara internal identity and roles."
+description: "Research notes on mapping external authentication to Agonara internal identity and authority."
 model: gpt-5.5-thinking
-version: 0.2.0
+version: 0.2.1
 ---
 
 # Agonara Implementation Notes
 
 ## Purpose
 
-Explore how external or framework authentication should map to Agonara internal Identity and role assignments. This research supports the Identity & Role Management first-slice Pre-ADR by clarifying the boundary between credential verification, internal ownership, and product roles.
+Explore how external or framework authentication should map to Agonara internal Identity and authority. This research supports the Identity & Role Management first-slice Pre-ADR by clarifying the boundary between credential verification, internal ownership, and membership-backed product roles.
 
 ## Identity & Roles
 
@@ -18,7 +18,7 @@ Use external/framework authentication for credential verification.
 
 Use Agonara internal Identity as the subject of ownership and action.
 
-Use custom Agonara role assignments for product and operational roles.
+Use Agonara-owned authority state: Program Membership grants for product participation and Identity & Role Management state for Admin authority and operational access primitives.
 
 Do not delegate Program-scoped Student / Program Curator roles to the authentication provider.
 
@@ -34,8 +34,13 @@ Auth Provider / Framework:
 Identity & Role Management:
 
 - maps credential/principal to internal Identity;
-- manages role assignments;
+- manages Admin authority and operational access primitives;
 - manages admin operations.
+
+Program Membership:
+
+- manages Student and Program Curator participation grants;
+- hides membership policy details.
 
 Identity & Roles:
 
@@ -45,7 +50,7 @@ Identity & Roles:
 
 Application modules:
 
-- ask whether this Identity can act as this role in this Program.
+- ask whether this Identity has effective authority for this role in this Program.
 
 ## Open questions
 
@@ -53,4 +58,4 @@ Application modules:
 - How does credential rotation preserve the same internal Identity?
 - What audit record is required when a credential binding is created, changed, or removed?
 - Should the first slice support multiple credential bindings per Identity?
-- Which role checks belong in application modules and which belong in Identity & Role Management?
+- Which authorization checks belong in application modules, Program Membership, and Identity & Role Management?
