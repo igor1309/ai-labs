@@ -21,9 +21,9 @@ This ADR decides the identity subject model only. It does not decide role scope,
 
 Agonara is designed as a private learning-program application with curator, student, and administrator responsibilities. Curator decisions, learner progress, role-management actions, and audit records need a stable subject that remains meaningful when a credential changes, an external account is replaced, or an authentication provider changes.
 
-The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.3.md) evaluates two identity-source options: internal Identity ownership versus credential or external account ownership. It favors internal Identity ownership because product history and operational recovery should not be coupled to external account shape.
+The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice.md) evaluates two identity-source options: internal Identity ownership versus credential or external account ownership. It favors internal Identity ownership because product history and operational recovery should not be coupled to external account shape.
 
-The [admin user stories](../admin_user_stories_v0.2.1.md) require admins to create internal identities, bind credentials, disable identities without deleting historical references, inspect credential bindings, and audit sensitive identity and access operations.
+The [admin user stories](../admin_user_stories.md) require admins to create internal identities, bind credentials, disable identities without deleting historical references, inspect credential bindings, and audit sensitive identity and access operations.
 
 The alternative is to treat a credential, external account, session principal, or authentication-provider user as the direct Agonara owner. That alternative is rejected because it makes ownership continuity fragile under credential rotation, provider migration, and recovery.
 

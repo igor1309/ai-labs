@@ -102,10 +102,10 @@ Status: accepted
 
 The detailed curator and student story catalogs live in:
 
-- [curator_user_stories_v0.3.0.md](curator_user_stories_v0.3.0.md)
-- [student_user_stories_v0.3.1.md](student_user_stories_v0.3.1.md)
+- [curator_user_stories.md](curator_user_stories.md)
+- [student_user_stories.md](student_user_stories.md)
 
-Admin-facing identity, role-management, and membership recovery stories live in [admin_user_stories_v0.2.1.md](admin_user_stories_v0.2.1.md).
+Admin-facing identity, role-management, and membership recovery stories live in [admin_user_stories.md](admin_user_stories.md).
 
 ## Acceptance signals
 
@@ -178,15 +178,15 @@ LLM-предложения являются вспомогательным ма�
 
 | Story | Research | Pre-ADR / ADR | Spec | Implementation plan | Code / tests |
 |---|---|---|---|---|---|
-| INT-01 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
-| INT-02 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
-| INT-03 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
-| INT-04 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
-| INT-05 | [Implementation Notes](implementation-notes_v0.2.3.md) | [Identity & Role Management First Slice](identity_role_management_first_slice_v0.2.3.md) | n/a | n/a | n/a |
-| INT-06 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
-| INT-07 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
-| ADM-01..ADM-11 | [Implementation Notes](implementation-notes_v0.2.3.md) | [Identity & Role Management First Slice](identity_role_management_first_slice_v0.2.3.md), [ADR-008](adr/adr-008-first-slice-authentication-session-and-credential-boundary.md) | n/a | n/a | n/a |
-| STU-18..STU-23, CUR-14..CUR-18, ADM-12..ADM-15 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md), [Program Membership Pre-ADR](program_membership_pre_adr_v0.1.2.md), [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](adr/adr-006-program-membership-policy-actor.md), [ADR-007](adr/adr-007-effective-participation-authorization-contract.md) | n/a | n/a | n/a |
+| INT-01 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
+| INT-02 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
+| INT-03 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
+| INT-04 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
+| INT-05 | [Implementation Notes](implementation-notes.md) | [Identity & Role Management First Slice](identity_role_management_first_slice.md) | n/a | n/a | n/a |
+| INT-06 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
+| INT-07 | n/a | [Module Responsibility Map](module_responsibility_map.md) | n/a | n/a | n/a |
+| ADM-01..ADM-11 | [Implementation Notes](implementation-notes.md) | [Identity & Role Management First Slice](identity_role_management_first_slice.md), [ADR-008](adr/adr-008-first-slice-authentication-session-and-credential-boundary.md) | n/a | n/a | n/a |
+| STU-18..STU-23, CUR-14..CUR-18, ADM-12..ADM-15 | n/a | [Module Responsibility Map](module_responsibility_map.md), [Program Membership Pre-ADR](program_membership_pre_adr.md), [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](adr/adr-006-program-membership-policy-actor.md), [ADR-007](adr/adr-007-effective-participation-authorization-contract.md) | n/a | n/a | n/a |
 
 ## Change review
 

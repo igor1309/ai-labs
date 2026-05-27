@@ -25,13 +25,13 @@ This ADR decides role authority scope only. It does not decide last-admin protec
 
 Agonara now needs to decide what kinds of authority can attach to that internal subject and at what scope.
 
-The [Product Intent](../intent_learning_program_app_v0.3.0.md) separates student learning from curator program construction and names administrator responsibility as private-instance operation, not learning-domain authority.
+The [Product Intent](../intent_learning_program_app.md) separates student learning from curator program construction and names administrator responsibility as private-instance operation, not learning-domain authority.
 
-The [Module Responsibility Map](../module_responsibility_map_v0.4.3.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
+The [Module Responsibility Map](../module_responsibility_map.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
-The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.3.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
+The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
 
-The [admin user stories](../admin_user_stories_v0.2.1.md) require program participation inspection, participation-change tracing, exceptional membership recovery, and Admin changes to preserve separation between learning-domain authority and operational control.
+The [admin user stories](../admin_user_stories.md) require program participation inspection, participation-change tracing, exceptional membership recovery, and Admin changes to preserve separation between learning-domain authority and operational control.
 
 [ADR-006](adr-006-program-membership-policy-actor.md) confirms that `Program Membership Manager` is not a grantable role and does not amend this role vocabulary.
 

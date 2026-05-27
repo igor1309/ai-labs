@@ -10,13 +10,13 @@ description: "My Way audit of agonara docs — fails and warns with suggested fi
 
 This audit reviewed the pre-resolution document set. The fixes landed in the following successor versions:
 
-- `intent_learning_program_app_v0.2.0.md`
-- `agonara_curator_user_stories_v0.2.0.md`
-- `agonara_student_user_stories_v0.2.0.md`
-- `agonara_module_responsibility_map_v0.3.0.md`
-- `agonara_identity_role_management_first_slice_v0.2.0.md`
-- `agonara-deployment-target_v0.2.0.md`
-- `agonara-implementation-notes_v0.2.0.md`
+- `intent_learning_program_app.md`
+- `agonara_curator_user_stories.md`
+- `agonara_student_user_stories.md`
+- `agonara_module_responsibility_map.md`
+- `agonara_identity_role_management_first_slice.md`
+- `agonara-deployment-target.md`
+- `agonara-implementation-notes.md`
 
 Review of all documents on the `agonara` branch against the My Way
 mandatory structures. The project is in early exploration — documents
@@ -35,7 +35,7 @@ Findings use three severity tiers:
 
 ---
 
-## 1. `intent_learning_program_app_v0.1.0.md` — Product Intent
+## 1. `intent_learning_program_app.md` — Product Intent
 
 **My Way phase:** 00 — Product Intent
 
@@ -67,7 +67,7 @@ Findings use three severity tiers:
 
 ---
 
-## 2. `agonara_curator_user_stories_v0.1.0.md` — Curator Stories
+## 2. `agonara_curator_user_stories.md` — Curator Stories
 
 **My Way phase:** Part of 00 — Product Intent (user stories belong inside or are referenced from the Product Intent doc)
 
@@ -93,7 +93,7 @@ Findings use three severity tiers:
 
 ---
 
-## 3. `agonara_student_user_stories_v0.1.0.md` — Student Stories
+## 3. `agonara_student_user_stories.md` — Student Stories
 
 **My Way phase:** Part of 00 — Product Intent
 
@@ -119,7 +119,7 @@ Findings use three severity tiers:
 
 ---
 
-## 4. `agonara_module_responsibility_map_v0.2.2.md` — Module Responsibility Map
+## 4. `agonara_module_responsibility_map.md` — Module Responsibility Map
 
 **My Way phase:** 02 — Pre-ADR. The document explores module boundaries and ownership but the four-module split is not yet a committed ADR. Treating it as Pre-ADR is the honest classification.
 
@@ -148,7 +148,7 @@ Findings use three severity tiers:
 
 ---
 
-## 5. `agonara_identity_role_management_first_slice_v0.1.1.md` — First Slice
+## 5. `agonara_identity_role_management_first_slice.md` — First Slice
 
 **My Way phase:** 02 — Pre-ADR. The document calls itself "module-design level" and defines the first implementable slice, but the project has no accepted ADRs yet. The design decisions it contains (identity source, product roles, authorization model) are Pre-ADR-level explorations that need to pass through ADR before they can ground a spec.
 
@@ -200,7 +200,7 @@ Findings use three severity tiers:
 
 ---
 
-## 7. `agonara-implementation-notes_v0.1.0.md` — Implementation Notes
+## 7. `agonara-implementation-notes.md` — Implementation Notes
 
 **My Way phase:** 01 — Research (at best). The content is an informal sketch of how identity/auth mapping would work — this is exploratory problem-space thinking, not a committed design.
 
@@ -227,7 +227,7 @@ Findings use three severity tiers:
 
 ---
 
-## 8. `brand/brand_brief_v0.1.0.md` and `brand/brand_brief_ru_v0.1.0.md`
+## 8. `brand/brand_brief.md` and `brand/brand_brief_ru.md`
 
 **My Way phase:** Not a standard My Way artifact. Brand briefs are supporting material.
 

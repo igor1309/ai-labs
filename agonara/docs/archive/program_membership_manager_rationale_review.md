@@ -10,7 +10,7 @@ date: 2026-05-27
 
 ## Status
 
-Resolved by [ADR-006](../adr/adr-006-program-membership-policy-actor.md). Peer document to [program_membership_manager_rationale_v0.1.1.md](program_membership_manager_rationale_v0.1.1.md).
+Resolved by [ADR-006](../adr/adr-006-program-membership-policy-actor.md). Peer document to [program_membership_manager_rationale.md](program_membership_manager_rationale.md).
 
 ## Scope
 
@@ -75,15 +75,15 @@ Once the role-vs-narrative decision lands, the following documents are candidate
 
 | Document | Why it would change |
 |---|---|
-| `program_membership_manager_rationale_v0.1.0.md` | Add an explicit role-vs-narrative declaration; refine `## Role Definition` accordingly; bump to 0.1.1. |
+| `program_membership_manager_rationale.md` | Add an explicit role-vs-narrative declaration; refine `## Role Definition` accordingly; bump to 0.1.1. |
 | ADR-002 (`role-authority-scope-model`) or a new ADR-006 | If (b): amend ADR-002 to add Manager with scope, grant source, and recovery. If (a): author a short ADR explicitly stating Manager is a documentation device and has no identity grant. |
-| `program_membership_pre_adr_v0.1.0.md` | Add a `Primary actor` subsection; reflect the role-vs-narrative decision; bump version. |
-| `module_responsibility_map_v0.4.1.md` | Add a primary actor entry for Program Membership; reconcile `## Product role and membership rules` with the decision; bump version. |
-| `curator_user_stories_v0.3.0.md` | Scope CUR-14 through CUR-18 to the membership policies that actually authorize curator participation; migrate visibility/management stories to Manager if (b); bump version. |
-| `admin_user_stories_v0.2.1.md` | Reaffirm ADM-12 through ADM-15 as exceptional; add the explicit Admin-vs-Manager boundary rule; bump version. |
-| `student_user_stories_v0.3.1.md` | Update Terms to reference Manager; reaffirm STU-22 / STU-23 as student actions on invitations whose sender is decided by policy; bump version. |
+| `program_membership_pre_adr.md` | Add a `Primary actor` subsection; reflect the role-vs-narrative decision; bump version. |
+| `module_responsibility_map.md` | Add a primary actor entry for Program Membership; reconcile `## Product role and membership rules` with the decision; bump version. |
+| `curator_user_stories.md` | Scope CUR-14 through CUR-18 to the membership policies that actually authorize curator participation; migrate visibility/management stories to Manager if (b); bump version. |
+| `admin_user_stories.md` | Reaffirm ADM-12 through ADM-15 as exceptional; add the explicit Admin-vs-Manager boundary rule; bump version. |
+| `student_user_stories.md` | Update Terms to reference Manager; reaffirm STU-22 / STU-23 as student actions on invitations whose sender is decided by policy; bump version. |
 | New: Manager-perspective story catalog | Only if (b). Lift the three example stories from the rationale and add policy-execution and status-management stories. |
-| `intent_learning_program_app_v0.3.0.md` | Surface Manager in the Product Intent only if (b). |
+| `intent_learning_program_app.md` | Surface Manager in the Product Intent only if (b). |
 | `agonara/docs/log.md` | Add an entry once the decision lands and the cascade begins. |
 | `agonara/docs/backlog.md` | Track the open decision and the cascading revisions. |
 

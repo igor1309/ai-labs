@@ -24,7 +24,7 @@ The internal Identity subject model is accepted by [ADR-001](adr/adr-001-interna
 
 The Responsibility Map defines `Identity & Role Management` as the module that defines and manages identities, credentials, operational roles, and access primitives.
 
-The [Deployment Target](deployment-target_v0.2.0.md) points toward a dockerized private self-hosted Agonara instance with API-first access, network web UI, small private group tenancy, and admin operational responsibility.
+The [Deployment Target](deployment-target.md) points toward a dockerized private self-hosted Agonara instance with API-first access, network web UI, small private group tenancy, and admin operational responsibility.
 
 This slice uses Identity & Role Management as the first working module because it has limited domain uncertainty and exercises the operational foundation early.
 
@@ -96,7 +96,7 @@ The slice should prove that Agonara has an internal subject of ownership and act
 
 This slice supports the Product Intent by making curator and student actions attributable to internal Identities. It primarily protects INT-01 through authorization-gated curator acceptance and INT-02 through INT-07 by keeping student actions tied to stable learner state.
 
-The admin-facing stories that drive this slice live in [admin_user_stories_v0.2.1.md](admin_user_stories_v0.2.1.md), especially ADM-01 through ADM-11.
+The admin-facing stories that drive this slice live in [admin_user_stories.md](admin_user_stories.md), especially ADM-01 through ADM-11.
 
 The remaining implementation handoff should treat accepted ADRs as source of truth over provisional candidate wording in this Pre-ADR.
 

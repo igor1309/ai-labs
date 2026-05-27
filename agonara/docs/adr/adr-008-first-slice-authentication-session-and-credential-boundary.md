@@ -27,9 +27,9 @@ This ADR decides the first-slice authentication, session, credential-binding, an
 
 [ADR-003](adr-003-admin-recovery-invariant.md) requires a bootstrap path for the first effective `Admin` and requires the instance to retain at least one effective `Admin`.
 
-The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice_v0.2.3.md) identified authentication provider, session mechanism, concrete credential types, password policy, MFA, and privileged-action confirmation as implementation handoff blockers.
+The [Identity & Role Management first-slice Pre-ADR](../identity_role_management_first_slice.md) identified authentication provider, session mechanism, concrete credential types, password policy, MFA, and privileged-action confirmation as implementation handoff blockers.
 
-The [Deployment Target](../deployment-target_v0.2.0.md) points toward a dockerized private self-hosted instance with a network web UI, API-first backend, and small private group tenancy.
+The [Deployment Target](../deployment-target.md) points toward a dockerized private self-hosted instance with a network web UI, API-first backend, and small private group tenancy.
 
 The first implementation needs a concrete authentication and session boundary without turning external provider roles, framework users, cookies, or sessions into Agonara authority.
 
