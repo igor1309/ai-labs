@@ -40,10 +40,20 @@ type RejectedResult = {
 ```ts
 type ApiOnlyRejectionReason =
   | "csrf_required"
-  | "csrf_invalid";
+  | "csrf_invalid"
+  | "rate_limited";
 ```
 
-HTTP `5xx` responses return a generic fault envelope that does not include secrets, password hashes, session identifiers, stack traces, SQL text, or infrastructure details.
+HTTP `5xx` responses return:
+
+```ts
+type FaultResult = {
+  status: "fault";
+  reason: "internal_error";
+};
+```
+
+Fault responses do not include secrets, password hashes, session identifiers, stack traces, SQL text, or infrastructure details.
 
 ### Shared API shapes
 
@@ -63,6 +73,22 @@ type SessionSummary = {
 
 type BootstrapStatus = {
   available: boolean;
+};
+
+type AuditEventSummary = {
+  auditEventId: string;
+  eventType: string;
+  actorIdentityId?: string;
+  targetIdentityId?: string;
+  targetCredentialId?: string;
+  occurredAt: string;
+  outcome: "accepted" | "rejected";
+  reason?: string;
+};
+
+type AuditEventList = {
+  auditEvents: AuditEventSummary[];
+  nextCursor?: string;
 };
 ```
 
@@ -87,8 +113,8 @@ State-changing HTTP requests that use an existing session require `X-Agonara-CSR
 | Method | Path | Auth | Accepted response | Rejected status mapping |
 |---|---|---|---|---|
 | `GET` | `/identity/bootstrap/status` | none | `AcceptedResult<BootstrapStatus>` | n/a |
-| `POST` | `/identity/bootstrap/admin` | bootstrap secret | `AcceptedResult<SessionSummary>` and session cookie | `400 validation_failed`, `401 invalid_bootstrap_secret`, `409 bootstrap_already_completed` |
-| `POST` | `/identity/sessions` | none | `AcceptedResult<SessionSummary>` and session cookie | `400 validation_failed`, `401 invalid_credentials`, `403 identity_disabled` |
+| `POST` | `/identity/bootstrap/admin` | bootstrap secret | `AcceptedResult<SessionSummary>` and session cookie | `400 validation_failed`, `401 invalid_bootstrap_secret`, `409 bootstrap_already_completed`, `429 rate_limited` |
+| `POST` | `/identity/sessions` | none | `AcceptedResult<SessionSummary>` and session cookie | `400 validation_failed`, `401 invalid_credentials`, `429 rate_limited` |
 | `GET` | `/identity/session` | session cookie | `AcceptedResult<SessionSummary>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled` |
 | `DELETE` | `/identity/session` | session cookie and CSRF header | `AcceptedResult<{ loggedOut: true }>` and cleared session cookie | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 csrf_required`, `403 csrf_invalid` |
 | `GET` | `/identity/identities` | Admin session | `AcceptedResult<{ identities: IdentitySummary[] }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required` |
@@ -98,7 +124,7 @@ State-changing HTTP requests that use an existing session require `X-Agonara-CSR
 | `POST` | `/identity/identities/{identityId}/admin` | Admin session and CSRF header | `AcceptedResult<IdentitySummary>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required`, `403 csrf_required`, `403 csrf_invalid`, `404 identity_not_found` |
 | `DELETE` | `/identity/identities/{identityId}/admin` | Admin session and CSRF header | `AcceptedResult<IdentitySummary>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required`, `403 csrf_required`, `403 csrf_invalid`, `404 identity_not_found`, `409 last_admin_removal` |
 | `GET` | `/identity/identities/{identityId}/operational-access` | Admin session | `AcceptedResult<{ identity: IdentitySummary; effectiveAdmin: boolean }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required`, `404 identity_not_found` |
-| `GET` | `/identity/audit-events` | Admin session | `AcceptedResult<{ auditEvents: unknown[] }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required` |
+| `GET` | `/identity/audit-events?limit={limit}&cursor={cursor}` | Admin session | `AcceptedResult<AuditEventList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required` |
 
 Request bodies:
 
@@ -123,6 +149,16 @@ type BindLocalPasswordRequest = {
   login: string;
   password: string;
 };
+
+type ListAuditEventsQuery = {
+  limit?: number;
+  cursor?: string;
+};
+
+type BootstrapAdminStdin = {
+  bootstrapSecret: string;
+  password: string;
+};
 ```
 
 ### Operator CLI
@@ -134,7 +170,7 @@ All commands support `--json`. JSON output uses the shared result envelope on st
 | Command | Input | Accepted output | Rejected output |
 |---|---|---|---|
 | `agonara identity bootstrap-status --json` | none | `AcceptedResult<BootstrapStatus>` | n/a |
-| `agonara identity bootstrap-admin --display-name <name> --login <login> --secret-stdin --password-stdin --json` | bootstrap secret from stdin before password, separated by a newline | `AcceptedResult<SessionSummary>` | `RejectedResult` |
+| `agonara identity bootstrap-admin --display-name <name> --login <login> --stdin-json --json` | `BootstrapAdminStdin` from stdin | `AcceptedResult<SessionSummary>` | `RejectedResult` |
 
 CLI exit codes:
 
@@ -152,18 +188,22 @@ The CLI never accepts bootstrap secrets or passwords as command-line argument va
 4. `POST /identity/bootstrap/admin` never returns or persists the bootstrap secret as an Identity, credential, session, role, or audit actor.
 5. `POST /identity/sessions` maps to `login`.
 6. `POST /identity/sessions` sets `agonara_session` only for accepted login.
-7. `GET /identity/session` maps to `resolveSession` and returns a fresh CSRF token for the active session.
-8. `DELETE /identity/session` maps to `logout`, revokes the current session, and clears `agonara_session` on accepted logout.
-9. Admin HTTP endpoints reject callers without an active session whose resolved Identity has effective Admin authority.
-10. State-changing Admin HTTP endpoints reject missing or invalid CSRF tokens before applying domain changes.
-11. HTTP validation rejects missing, empty, or malformed required input with `validation_failed`.
-12. HTTP paths containing `{identityId}` reject unknown Identity identifiers with `identity_not_found`.
-13. HTTP responses never include password hashes, plaintext passwords, bootstrap secrets, session identifiers, or disabled session state.
-14. The API does not expose Student, Program Curator, Program Membership, content, progress, or assessment authority.
-15. `agonara identity bootstrap-admin` maps to the same bootstrap contract as `POST /identity/bootstrap/admin`.
-16. `agonara identity bootstrap-admin` reads the bootstrap secret and password from stdin and never requires either value in process arguments.
-17. CLI rejected operations produce `RejectedResult` on stdout and exit with code `2`.
-18. CLI usage errors produce diagnostics on stderr and exit with code `1`.
+7. `POST /identity/sessions` returns `invalid_credentials` for invalid credentials and disabled Identities so login does not disclose account state.
+8. `POST /identity/bootstrap/admin` and `POST /identity/sessions` reject repeated failed attempts with `rate_limited`.
+9. `GET /identity/session` maps to `resolveSession` and returns a fresh CSRF token for the active session.
+10. `DELETE /identity/session` maps to `logout`, revokes the current session, and clears `agonara_session` on accepted logout.
+11. Admin HTTP endpoints reject callers without an active session whose resolved Identity has effective Admin authority.
+12. State-changing Admin HTTP endpoints reject missing or invalid CSRF tokens before applying domain changes.
+13. HTTP validation rejects missing, empty, or malformed required input with `validation_failed`.
+14. HTTP paths containing `{identityId}` reject unknown Identity identifiers with `identity_not_found`.
+15. `GET /identity/audit-events` returns `AuditEventSummary` records and paginates responses with `limit` and `cursor`.
+16. `GET /identity/audit-events` rejects invalid limits, negative limits, and limits greater than `100` with `validation_failed`.
+17. HTTP responses never include password hashes, plaintext passwords, bootstrap secrets, session identifiers, disabled session state, or audit `targetSessionId` values.
+18. The API does not expose Student, Program Curator, Program Membership, content, progress, or assessment authority.
+19. `agonara identity bootstrap-admin` maps to the same bootstrap contract as `POST /identity/bootstrap/admin`.
+20. `agonara identity bootstrap-admin` reads `BootstrapAdminStdin` from stdin and never requires bootstrap secret or password values in process arguments.
+21. CLI rejected operations produce `RejectedResult` on stdout and exit with code `2`.
+22. CLI usage errors produce diagnostics on stderr and exit with code `1`.
 
 ## Tests (required)
 
@@ -180,49 +220,54 @@ HTTP bootstrap and login:
 9. Accepted login sets `agonara_session` with required cookie attributes.
 10. Accepted login response does not include the password, password hash, or session identifier.
 11. `POST /identity/sessions` rejects invalid credentials with `401 invalid_credentials`.
+12. `POST /identity/sessions` rejects disabled-Identity credentials with `401 invalid_credentials`.
+13. Repeated failed bootstrap and login attempts reject with `429 rate_limited`.
 
 HTTP session and CSRF:
 
-12. `GET /identity/session` accepts a valid session cookie and returns `SessionSummary`.
-13. `GET /identity/session` rejects missing, unknown, expired, revoked, and disabled-Identity sessions with the mapped status and reason.
-14. `DELETE /identity/session` rejects a valid session cookie without CSRF header with `403 csrf_required`.
-15. `DELETE /identity/session` accepts a valid session cookie and matching CSRF header, then clears the session cookie.
-16. A logged-out session cannot resolve through `GET /identity/session`.
+14. `GET /identity/session` accepts a valid session cookie and returns `SessionSummary`.
+15. `GET /identity/session` rejects missing, unknown, expired, revoked, and disabled-Identity sessions with the mapped status and reason.
+16. `DELETE /identity/session` rejects a valid session cookie without CSRF header with `403 csrf_required`.
+17. `DELETE /identity/session` accepts a valid session cookie and matching CSRF header, then clears the session cookie.
+18. A logged-out session cannot resolve through `GET /identity/session`.
 
 HTTP Admin operations:
 
-17. Admin endpoints reject a valid non-Admin session with `403 admin_required`.
-18. `POST /identity/identities` accepts an Admin session with matching CSRF header.
-19. `POST /identity/identities` rejects missing CSRF with `403 csrf_required`.
-20. `POST /identity/identities/{identityId}/local-password` accepts an Admin session with matching CSRF header.
-21. Credential binding response does not include the plaintext password or password hash.
-22. Credential binding rejects duplicate login with `409 login_already_bound`.
-23. Credential binding rejects a second local password credential for the same Identity with `409 identity_already_has_credential`.
-24. `POST /identity/identities/{identityId}/disable` rejects last-Admin removal with `409 last_admin_removal`.
-25. `DELETE /identity/identities/{identityId}/admin` rejects last-Admin removal with `409 last_admin_removal`.
-26. `GET /identity/identities/{identityId}/operational-access` returns effective Admin state and no product role state.
-27. `GET /identity/audit-events` rejects non-Admin sessions with `403 admin_required`.
+19. Admin endpoints reject a valid non-Admin session with `403 admin_required`.
+20. `POST /identity/identities` accepts an Admin session with matching CSRF header.
+21. `POST /identity/identities` rejects missing CSRF with `403 csrf_required`.
+22. `POST /identity/identities/{identityId}/local-password` accepts an Admin session with matching CSRF header.
+23. Credential binding response does not include the plaintext password or password hash.
+24. Credential binding rejects duplicate login with `409 login_already_bound`.
+25. Credential binding rejects a second local password credential for the same Identity with `409 identity_already_has_credential`.
+26. `POST /identity/identities/{identityId}/disable` rejects last-Admin removal with `409 last_admin_removal`.
+27. `DELETE /identity/identities/{identityId}/admin` rejects last-Admin removal with `409 last_admin_removal`.
+28. `GET /identity/identities/{identityId}/operational-access` returns effective Admin state and no product role state.
+29. `GET /identity/audit-events` rejects non-Admin sessions with `403 admin_required`.
+30. `GET /identity/audit-events` returns paginated `AuditEventSummary` records.
+31. `GET /identity/audit-events` rejects invalid limits and limits greater than `100` with `400 validation_failed`.
+32. Audit event responses do not include session identifiers or `targetSessionId`.
 
 CLI:
 
-28. `agonara identity bootstrap-status --json` returns `AcceptedResult<BootstrapStatus>` and exits `0`.
-29. `agonara identity bootstrap-admin --display-name <name> --login <login> --secret-stdin --password-stdin --json` accepts valid stdin values, returns `SessionSummary`, and exits `0`.
-30. CLI bootstrap with a wrong secret returns `RejectedResult` with `invalid_bootstrap_secret` on stdout and exits `2`.
-31. CLI bootstrap without required stdin input writes usage diagnostics to stderr and exits `1`.
-32. CLI help and process arguments do not require bootstrap secrets or passwords as argument values.
+33. `agonara identity bootstrap-status --json` returns `AcceptedResult<BootstrapStatus>` and exits `0`.
+34. `agonara identity bootstrap-admin --display-name <name> --login <login> --stdin-json --json` accepts valid `BootstrapAdminStdin`, returns `SessionSummary`, and exits `0`.
+35. CLI bootstrap with a wrong secret returns `RejectedResult` with `invalid_bootstrap_secret` on stdout and exits `2`.
+36. CLI bootstrap without required stdin input writes usage diagnostics to stderr and exits `1`.
+37. CLI help and process arguments do not require bootstrap secrets or passwords as argument values.
 
 Executable acceptance:
 
-33. A clean instance can be bootstrapped through the CLI, logged into through HTTP, and inspected through `GET /identity/session`.
-34. A clean instance can be bootstrapped through HTTP, then rejects a second CLI bootstrap attempt.
-35. An Admin can create a second Identity, bind a local password credential, log in as that Identity, and observe Admin endpoints rejecting that non-Admin session.
-36. An Admin can grant and revoke Admin authority for a second Identity while last-Admin protection remains enforced.
-37. State-changing HTTP requests fail without a valid CSRF token and succeed with the current token from `SessionSummary`.
-38. No executable acceptance response exposes a bootstrap secret, plaintext password, password hash, or session identifier in JSON.
+38. A clean instance can be bootstrapped through the CLI, logged into through HTTP, and inspected through `GET /identity/session`.
+39. A clean instance can be bootstrapped through HTTP, then rejects a second CLI bootstrap attempt.
+40. An Admin can create a second Identity, bind a local password credential, log in as that Identity, and observe Admin endpoints rejecting that non-Admin session.
+41. An Admin can grant and revoke Admin authority for a second Identity while last-Admin protection remains enforced.
+42. State-changing HTTP requests fail without a valid CSRF token and succeed with the current token from `SessionSummary`.
+43. No executable acceptance response exposes a bootstrap secret, plaintext password, password hash, or session identifier in JSON.
 
 ## Done criteria
 
 - The HTTP API implements the endpoints, result envelopes, session cookie behavior, CSRF behavior, and status mappings defined above.
-- The `agonara identity` CLI implements the bootstrap commands, JSON envelopes, stdin secret handling, and exit codes defined above.
-- Executable acceptance scenarios cover bootstrap, login, session resolution, logout, Admin authorization, credential binding, last-Admin protection, CSRF enforcement, and sensitive-value redaction.
+- The `agonara identity` CLI implements the bootstrap commands, JSON envelopes, stdin JSON secret handling, and exit codes defined above.
+- Executable acceptance scenarios cover bootstrap, login, session resolution, logout, Admin authorization, credential binding, audit-event listing, last-Admin protection, rate limiting, CSRF enforcement, and sensitive-value redaction.
 - All tests required by this spec and [Identity & Role Management First Slice](identity-role-management-first-slice.md) pass.
