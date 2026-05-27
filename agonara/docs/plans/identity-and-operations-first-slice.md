@@ -119,17 +119,14 @@ Verification:
 - targeted operational tests for request IDs, redacted faults, health, and diagnostics rejection
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
+- local `docker build`
+- local container start
+- `/operations/health` smoke request through the container
+- structured operational log verification for that health request, with no bind mounts to temporary worktree-only paths
 
 Commit:
 
 - `implement agonara operational skeleton`
-
-Docker verification:
-
-- rerun local `docker build`;
-- start the container;
-- call `/operations/health`;
-- verify the request produces the expected structured operational log without bind mounts to temporary worktree-only paths.
 
 ### Step 3 — Persistence, Migrations, and Domain Invariants
 
@@ -276,6 +273,7 @@ Verification:
 - executable acceptance tests
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
+- final local `docker build`, container start, `/operations/health` smoke request, and structured-log verification
 - Markdown structure and local-link checks for changed docs
 - `git status --short` is clean after final commit
 
@@ -287,6 +285,7 @@ Commit:
 
 - [ ] All implementation steps have local commits.
 - [ ] All required tests and build checks pass in the implementation worktree.
+- [ ] Docker build, container start, `/operations/health`, and structured-log verification pass for the final implementation state.
 - [ ] Agonara project log and repo log are current.
 - [ ] Plan checkboxes reflect verified evidence.
 - [ ] This plan is moved to `agonara/docs/plans/implemented/`.
