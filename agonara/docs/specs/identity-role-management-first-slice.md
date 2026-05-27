@@ -34,7 +34,6 @@ type LocalPasswordCredential = {
   login: string;
   passwordHash: string;
   createdAt: Instant;
-  disabledAt?: Instant;
 };
 
 type Session = {
@@ -156,8 +155,8 @@ type RejectionReason =
   | "admin_required"
   | "last_admin_removal"
   | "login_already_bound"
+  | "identity_already_has_credential"
   | "identity_not_found"
-  | "credential_not_found"
   | "validation_failed";
 ```
 
@@ -182,7 +181,7 @@ The first UI may be thin, but it must expose these flows:
 4. The bootstrap secret is not stored as an Agonara credential, session, Identity, or role.
 5. `login` verifies only local password credentials and never grants authority by itself.
 6. `login` returns a server-managed opaque session when credentials are valid and the bound Identity is active.
-7. `login` rejects when credentials are invalid, the credential is disabled, or the bound Identity is disabled.
+7. `login` rejects when credentials are invalid or the bound Identity is disabled.
 8. Passwords are never stored or compared as plaintext.
 9. Password verification uses a vetted password-hashing implementation from the chosen implementation stack.
 10. v0.0.1 password validation requires a non-empty login and a password of at least 12 characters.
@@ -193,22 +192,25 @@ The first UI may be thin, but it must expose these flows:
 15. `logout` revokes the session and does not disable the Identity or credential.
 16. `createIdentity`, `bindLocalPasswordCredential`, `disableIdentity`, `grantAdmin`, `revokeAdmin`, `listIdentities`, `getOperationalAccessState`, and `listAuditEvents` require an active session whose resolved Identity has effective Admin authority.
 17. Credential binding changes do not grant Admin, Student, or Program Curator authority.
-18. v0.0.1 exposes at most one active local password credential per Identity.
-19. `bindLocalPasswordCredential` rejects a login that is already bound to any active credential.
-20. `disableIdentity` rejects when disabling the target would remove the last effective Admin.
-21. `disableIdentity` invalidates active sessions for the target Identity.
-22. Disabled Identities remain visible in Admin inspection and audit references.
-23. `grantAdmin` creates or reactivates instance-scoped Admin authority for an active Identity.
-24. `revokeAdmin` rejects when revoking the target would remove the last effective Admin.
-25. Admin authority does not grant Student or Program Curator authority.
-26. Resource-level permissions inside Programs are out of scope for v0.0.1.
-27. Organization, team, tenant, and multi-tenant SaaS authorization models are out of scope for v0.0.1.
-28. MFA, passkeys, OIDC, SSO, recovery codes, self-service credential recovery, reauthentication, and privileged-action confirmation are out of scope for v0.0.1.
-29. Every accepted or rejected bootstrap, identity creation, credential-binding change, identity disablement, Admin grant, and Admin revoke operation creates an audit event.
-30. Audit events for post-bootstrap operations include the acting internal Identity.
-31. Rejected last-Admin removal attempts create rejected audit events.
-32. Backup/restore scope includes Identities, local password credentials, sessions, Admin authority assignments, and audit events.
-33. A restored instance must not become operational if it has no effective Admin.
+18. v0.0.1 exposes at most one local password credential per Identity.
+19. `bindLocalPasswordCredential` rejects a login that is already bound to any credential.
+20. `bindLocalPasswordCredential` rejects when the target Identity already has a local password credential.
+21. `disableIdentity` rejects when disabling the target would remove the last effective Admin.
+22. `disableIdentity` invalidates active sessions for the target Identity.
+23. Disabled Identities remain visible in Admin inspection and audit references.
+24. `grantAdmin` creates or reactivates instance-scoped Admin authority for an active Identity.
+25. `revokeAdmin` rejects when revoking the target would remove the last effective Admin.
+26. Admin authority does not grant Student or Program Curator authority.
+27. Resource-level permissions inside Programs are out of scope for v0.0.1.
+28. Organization, team, tenant, and multi-tenant SaaS authorization models are out of scope for v0.0.1.
+29. MFA, passkeys, OIDC, SSO, recovery codes, self-service credential recovery, reauthentication, and privileged-action confirmation are out of scope for v0.0.1.
+30. Every accepted or rejected bootstrap, identity creation, credential-binding change, identity disablement, Admin grant, and Admin revoke operation creates an audit event.
+31. Audit events for post-bootstrap operations include the acting internal Identity.
+32. Rejected last-Admin removal attempts create rejected audit events.
+33. Backup/restore scope includes Identities, local password credentials, Admin authority assignments, and audit events.
+34. Backup export does not preserve active sessions as restorable login state.
+35. A restored instance starts with no active sessions; users must authenticate again.
+36. A restored instance must not become operational if it has no effective Admin.
 
 ## Tests (required)
 
@@ -224,23 +226,23 @@ Login and session:
 
 6. `login` accepts valid credentials for an active Identity and returns an opaque session.
 7. `login` rejects invalid credentials with `invalid_credentials`.
-8. `login` rejects a disabled credential.
-9. `login` rejects when the bound Identity is disabled.
-10. Password hashes are stored instead of plaintext passwords.
-11. Password shorter than 12 characters is rejected with `validation_failed`.
-12. `resolveSession` accepts a known unexpired session for an active Identity.
-13. `resolveSession` rejects unknown, expired, revoked, and disabled-Identity sessions.
-14. New sessions expire 7 days after creation.
-15. No refresh-token or silent session-extension path is exposed.
-16. `logout` revokes the session.
+8. `login` rejects when the bound Identity is disabled.
+9. Password hashes are stored instead of plaintext passwords.
+10. Password shorter than 12 characters is rejected with `validation_failed`.
+11. `resolveSession` accepts a known unexpired session for an active Identity.
+12. `resolveSession` rejects unknown, expired, revoked, and disabled-Identity sessions.
+13. New sessions expire 7 days after creation.
+14. No refresh-token or silent session-extension path is exposed.
+15. `logout` revokes the session.
 
 Admin authorization:
 
-17. Admin-only commands reject without a valid session.
-18. Admin-only commands reject for a valid session whose Identity lacks Admin authority.
-19. `createIdentity` accepts for an Admin session.
-20. `bindLocalPasswordCredential` accepts for an Admin session and active target Identity.
-21. `bindLocalPasswordCredential` rejects duplicate active login.
+16. Admin-only commands reject without a valid session.
+17. Admin-only commands reject for a valid session whose Identity lacks Admin authority.
+18. `createIdentity` accepts for an Admin session.
+19. `bindLocalPasswordCredential` accepts for an Admin session and active target Identity.
+20. `bindLocalPasswordCredential` rejects duplicate login.
+21. `bindLocalPasswordCredential` rejects when the target Identity already has a local password credential.
 22. `bindLocalPasswordCredential` does not grant Admin authority.
 23. `grantAdmin` accepts for an Admin session and active target Identity.
 24. `revokeAdmin` rejects when the target is the last effective Admin.
@@ -266,9 +268,11 @@ Deferrals:
 
 Backup and restore:
 
-38. Backup export includes Identity, local password credential, session, Admin authority, and audit state.
-39. Restore rejects or refuses activation when restored state has no effective Admin.
-40. Restore preserves historical audit references to disabled Identities.
+38. Backup export includes Identity, local password credential, Admin authority, and audit state.
+39. Backup export does not restore active sessions as login state.
+40. Restore starts with no active sessions.
+41. Restore rejects or refuses activation when restored state has no effective Admin.
+42. Restore preserves historical audit references to disabled Identities.
 
 ## Done criteria
 
@@ -278,4 +282,4 @@ Backup and restore:
 - Tests prove credentials, sessions, and credential bindings do not grant product or operational authority by themselves.
 - Tests prove the last-effective-Admin invariant for Admin revocation, Identity disablement, and restore activation.
 - The minimal admin UI surface can execute the bootstrap, login/logout, identity, credential-binding, Admin authority, and inspection flows.
-- Backup/restore includes the Identity & Role Management state required by this spec.
+- Backup/restore includes the Identity & Role Management state required by this spec and does not restore active sessions.
