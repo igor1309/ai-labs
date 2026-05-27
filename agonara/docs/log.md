@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add the Identity & Role Management API/CLI spec so first-slice implementation has explicit HTTP, operator CLI, and executable acceptance contracts.
 - Add the Identity & Role Management v0.0.1 implementation spec, translating accepted identity/Admin/auth ADRs into command, query, state, test, and done-criteria handoff.
 - Remove version suffixes from active and archived Agonara Markdown filenames while preserving front-matter versions, reducing reference churn from routine document updates.
 - Accept ADR-008 for first-slice authentication, session, credential binding, and first-Admin bootstrap boundaries so Identity & Role Management can move toward implementation planning.

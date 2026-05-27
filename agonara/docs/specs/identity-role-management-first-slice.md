@@ -13,6 +13,8 @@ type: spec
 
 Implement the Agonara Identity & Role Management v0.0.1 backend contract that bootstraps a private instance, authenticates a local password credential into an internal Identity, manages Admin authority, and enforces the first operational invariants.
 
+The HTTP API, operator CLI, and executable acceptance scenarios are specified in [Identity & Role Management API and CLI](identity-role-management-api-cli.md).
+
 ## Public interface
 
 ### Logical records
@@ -282,4 +284,5 @@ Backup and restore:
 - Tests prove credentials, sessions, and credential bindings do not grant product or operational authority by themselves.
 - Tests prove the last-effective-Admin invariant for Admin revocation, Identity disablement, and restore activation.
 - The minimal admin UI surface can execute the bootstrap, login/logout, identity, credential-binding, Admin authority, and inspection flows.
+- The external HTTP API, operator CLI, and executable acceptance scenarios match [Identity & Role Management API and CLI](identity-role-management-api-cli.md).
 - Backup/restore includes the Identity & Role Management state required by this spec and does not restore active sessions.

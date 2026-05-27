@@ -100,7 +100,7 @@ The admin-facing stories that drive this slice live in [admin_user_stories.md](a
 
 The remaining implementation handoff should treat accepted ADRs as source of truth over provisional candidate wording in this Pre-ADR.
 
-The v0.0.1 implementation handoff is specified in [Identity & Role Management First Slice](specs/identity-role-management-first-slice.md).
+The v0.0.1 implementation handoff is specified in [Identity & Role Management First Slice](specs/identity-role-management-first-slice.md) and [Identity & Role Management API and CLI](specs/identity-role-management-api-cli.md).
 
 ## Candidate design decisions
 
