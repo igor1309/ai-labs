@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: added the Identity persistence boundary with SQLite-backed records for identities, credentials, sessions, Admin authority, and audit events, including storage-level uniqueness and last-Admin invariants.
 - agonara: added the operational walking skeleton with request correlation, health, diagnostics rejection, structured logs, redacted faults, and container health verification.
 - agonara: started the identity and operations implementation with a dedicated backend workspace, per-project CI workflow dispatch, and Docker container-start smoke path.
 - agonara: registered the project in the repo dashboard surfaces and tightened the implementation handoff so Dockerized private self-hosting is an explicit build, health, and log-verification gate before implementation PRs.

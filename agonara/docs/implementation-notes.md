@@ -70,6 +70,18 @@ The first implementation slice uses the repo-standard Node workspace model:
 
 Step 1 adds no third-party runtime dependencies. Storage, migration, password hashing, cookie, CSRF, and CLI libraries are not called by the Step 1 skeleton and must be verified before their first implementation use in later steps.
 
+## Step 3 Storage Verification
+
+The Identity persistence slice uses the repo-existing SQLite binding:
+
+- runtime: Node `v22.21.1`;
+- dependency: `better-sqlite3` `11.10.0`, resolved from the root lockfile;
+- package contract added to Agonara: `better-sqlite3` `^11.8.1`, matching the existing `nomos` workspace range;
+- APIs verified before implementation use: `exec`, `prepare`, `transaction`, and `pragma`;
+- storage substrate: local SQLite-compatible database with foreign-key enforcement enabled per opened connection.
+
+The first storage boundary creates tables for Identity, local password credential, session, Admin authority, and audit event records. It enforces duplicate-login, one-credential-per-Identity, and last-effective-Admin protection at the repository layer backed by database uniqueness constraints and transaction-scoped checks.
+
 ## Open questions
 
 - How does credential rotation preserve the same internal Identity?

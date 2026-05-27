@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add the Identity storage boundary with SQLite-backed schema initialization, credential uniqueness checks, session revocation state, audit event append/list behavior, and last-effective-Admin protection.
 - Add the operational walking skeleton: request ID propagation, unauthenticated health, unauthenticated diagnostics rejection, structured completion logs, and redacted fault responses.
 - Start implementation with the Agonara backend workspace skeleton, per-project CI handoff, and Docker container-start smoke path.
 - Close docs handoff gaps by making Dockerized private self-hosting an explicit implementation gate and registering Agonara in the repo dashboard surfaces.
