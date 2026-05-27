@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Update the Agonara README so the implemented Identity and Operations slice is directly runnable through CLI, HTTP, and Docker demo paths instead of still reading as design-only.
 - Fix the Agonara CI Docker smoke so the runtime receives the required bootstrap secret while keeping local runtime fail-fast behavior intact.
 - Complete the Identity and Operations first-slice implementation with executable acceptance coverage across CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
 - Add the minimum Identity backup/restore path for identities, local password credentials, Admin authorities, and audit history, while excluding active sessions and rejecting no-Admin restores.
