@@ -44,6 +44,7 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 ### In Scope
 
 - Agonara backend skeleton and test harness for the first identity/operations slice.
+- Agonara per-project CI wiring for backend tests, build, and Docker smoke verification.
 - Dockerfile and local compose/runtime smoke path for the first private self-hosted backend container.
 - Persistent Identity, local password credential, session, Admin authority, and audit state.
 - Request ID propagation, structured operational logs, health, diagnostics, and redaction behavior.
@@ -81,10 +82,12 @@ Create the dedicated worktree and branch declared in the execution lock. Verify 
 Expected changes:
 
 - Agonara backend package or equivalent source/test directories.
+- `.github/workflows/agonara-core.yml` reusable workflow for Agonara backend tests, build, and Docker smoke verification.
+- `.github/workflows/ci.yml` dispatcher updates: Agonara path filters, `agonara-core` job, and `report`/`notify` dependencies.
 - Dockerfile and local compose or equivalent container smoke path for the Agonara backend.
 - Package/workspace configuration only if required by the chosen skeleton.
 - Checked-in note or plan tracker evidence naming the runtime, Docker, storage, migration, password-hashing, cookie, CSRF, and CLI APIs that were verified.
-- Agonara project log entry if source files are introduced.
+- Agonara project log entry for the backend skeleton and CI handoff.
 - Repo-level README/component or release-unit updates only if the implementation creates a new component or release unit under repo rules.
 
 Verification:
@@ -94,6 +97,7 @@ Verification:
 - toolchain/version inspection commands for the chosen runtime
 - Docker version/build capability inspection
 - dependency API inspection commands for any runtime dependency used by the skeleton
+- workflow structure check against `.github/workflows/AGENTS.md` and `.github/workflows/README.md`
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - local `docker build` for the Agonara backend container
@@ -285,6 +289,7 @@ Commit:
 
 - [ ] All implementation steps have local commits.
 - [ ] All required tests and build checks pass in the implementation worktree.
+- [ ] Agonara CI workflow wiring exists and is covered by the dispatcher once Agonara backend code exists.
 - [ ] Docker build, container start, `/operations/health`, and structured-log verification pass for the final implementation state.
 - [ ] Agonara project log and repo log are current.
 - [ ] Plan checkboxes reflect verified evidence.
