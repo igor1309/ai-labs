@@ -13,7 +13,7 @@ Agonara uses a minimal accepted `Program` shell as the stable Program scope befo
 
 Corpus Storage owns the accepted Program shell.
 
-An active internal `Identity` may create a Program shell in the first product slice, and Program creation must establish that Identity's initial `Program Curator` participation through Program Membership.
+Any active internal `Identity` may create a Program shell in the first product slice, and Program creation must establish that Identity's initial `Program Curator` participation through Program Membership.
 
 Program creation is not an Admin operation. Admin remains operational recovery authority and does not become the normal creator or owner of Programs.
 
@@ -39,9 +39,11 @@ The rejected alternatives are making `Admin` the normal Program creator, storing
 
 Agonara MUST model a minimal accepted `Program` shell before accepted topics, concepts, materials, checks, criteria, or learner state are required.
 
-Corpus Storage MUST own the accepted Program shell and its stable `Program` identity.
+A Program shell is the accepted Program record that provides a stable Program identifier and enough operator-visible metadata to distinguish the Program from other Programs. It is not a draft suggestion, curator workspace item, student learning state, or membership record.
 
-The first Program creation flow MAY be initiated by any active internal `Identity`.
+Corpus Storage MUST own the accepted Program shell and its stable Program identifier.
+
+The first Program creation flow MUST allow any active internal `Identity` to request Program creation when ordinary validation passes.
 
 Program creation MUST create an accepted Program shell and request Program Membership to establish active `Program Curator` participation for the acting `Identity` in that Program.
 
@@ -49,13 +51,15 @@ Initial `Program Curator` authority MUST be represented as Program Membership pa
 
 The first Program creation flow MUST initialize the Program's Student admission policy as self-join.
 
-Program creation MUST be attributable to the acting internal `Identity`.
+Program creation MUST be attributable to the acting internal `Identity` through a Program creation event and a corresponding initial membership state-change event.
 
 Admin authority MAY inspect or exceptionally recover Program and membership state in later flows, but Admin authority MUST NOT be required for ordinary Program creation and MUST NOT create ordinary Program Curator participation by itself.
 
 ## Rules / Invariants
 
 - `Program` is the stable scope key for accepted corpus, Program Membership, Curator Workspace, and Student Workspace behavior.
+- A Program shell MUST provide a stable Program identifier before Program-scoped membership or workspace behavior can be created.
+- A Program shell MUST NOT contain accepted topics, concepts, materials, checks, criteria, draft suggestions, or learner state by itself.
 - Corpus Storage owns the accepted Program shell.
 - Curator Workspace MUST NOT be the owner of the accepted Program shell.
 - Program Membership owns initial and later `Program Curator` participation.
@@ -71,7 +75,9 @@ Admin authority MAY inspect or exceptionally recover Program and membership stat
 - Creating a Program shell and establishing initial `Program Curator` participation MUST be atomic from the caller's perspective.
 - Failed Program creation MUST NOT leave a Program shell without initial `Program Curator` participation.
 - Initial curator authority MUST be evaluated through Program Membership's effective participation contract before curator-sensitive behavior runs.
-- Program creation MUST emit attributable records for the Program creation and the initial membership state change.
+- Program creation MUST emit a Program creation event attributed to the acting internal `Identity`.
+- Initial `Program Curator` participation MUST emit a Program Membership state-change event attributed to the acting internal `Identity`.
+- Program creation events and Program Membership events are not operational logs and MUST NOT be used as the source of authorization.
 - Later ADRs MAY define Program ownership transfer, Program archival, controlled Program creation, curator invitations, invitation expiry, policy changes, corpus versioning, schema, UI, API routes, and resource-level permissions only if they preserve Corpus Storage ownership of accepted Program shells and Program Membership ownership of participation.
 
 ## Consequences
