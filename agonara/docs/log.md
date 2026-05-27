@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Accept ADR-009 for Program shell ownership and initial curator participation: active identities can create self-join Program shells, Corpus Storage owns the shell, and Program Membership establishes initial curator participation.
 - Update Agonara traceability links to point at the implemented Identity and Operations plan after closeout.
 - Add the Admin operations UI board implementation plan, scoping the next Agonara slice to a thin private-instance board over the existing Identity HTTP API.
 - Add packaged-bin CLI acceptance coverage and extend the Docker CI smoke to bootstrap the first Admin through the containerized HTTP API, fixing the CLI symlink entrypoint guard uncovered by that test.
