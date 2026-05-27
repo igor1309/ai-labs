@@ -3,10 +3,13 @@ title: Бренд-бриф Agonara
 description: Бренд-бриф для приложения обучения вокруг курируемых программ, прогресса ученика и структурированного освоения.
 date: 2026-05-26
 model: gpt-5.5-thinking
+version: 0.1.0
 status: draft
 ---
 
 # Бренд-бриф Agonara
+
+Это русская версия бренд-брифа v0.1.0. Параллельная английская версия: [agonara_brand_brief_v0.1.0.md](agonara_brand_brief_v0.1.0.md).
 
 ## Название
 
@@ -90,6 +93,8 @@ Agonara может покрывать индивидуальное обучен�
 Это не юридическая trademark-проверка.
 
 ## Оценка по Naming Availability Standard
+
+Оценка использует стандарт репозитория: [prompts/naming-availability-standard.md](../../../prompts/naming-availability-standard.md).
 
 | Критерий | Вес | Оценка |
 |---|---:|---|

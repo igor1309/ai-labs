@@ -1,8 +1,9 @@
 ---
 title: Agonara Module Responsibility Map
+date: 2026-05-27
 description: Architecture-level responsibility map for Agonara module boundaries.
 model: gpt-5.5-thinking
-version: 0.2.2
+version: 0.3.0
 ---
 
 # Agonara Module Responsibility Map
@@ -11,11 +12,55 @@ version: 0.2.2
 
 This document defines responsibility boundaries between major Agonara modules.
 
-It is an architecture-level responsibility map.
+It is a Pre-ADR responsibility map. The boundaries below are exploratory and may change before a formal ADR accepts module ownership.
 
 It is not a workflow map, dependency map, data model, storage schema, deployment decision, or implementation plan.
 
-## Responsibility Map
+## Context
+
+The Product Intent separates accepted program content from a student's personal learning state. It also introduces two materially different workflows: curator-owned program construction and student-owned progression through the program.
+
+The key architectural tension is how to keep accepted corpus, curator drafts, student attempts, and identity/role state separate enough that each can evolve independently without turning every concern into a shared product-state module.
+
+Known constraints:
+
+- Accepted program corpus and personal student state must remain separate.
+- LLM output is draft material until a responsible module applies its acceptance rules.
+- Identity and role management must govern who may act without owning the domain state of curator or student workflows.
+- Storage design is deferred until module behavior and state ownership are clearer.
+
+## Options considered
+
+### Option A — Four modules: Corpus Storage, Curator Workspace, Student Workspace, Identity & Role Management
+
+- **Description**: separate accepted corpus, curator drafts/decisions, student state, and identity/role authority into four modules.
+- **Tradeoffs**: makes ownership boundaries explicit and keeps student state from mutating accepted corpus. Adds more module boundaries early, which may create coordination overhead before implementation proves the split.
+- **Product intent fit**: strong fit for INT-01 through INT-07 because curator work, student progress, and identity authority remain distinct.
+- **Risks**: Corpus Storage and Curator Workspace may overlap if acceptance workflows are too small to justify separate ownership.
+
+### Option B — Two modules: Program Workspace and Identity & Role Management
+
+- **Description**: combine corpus, curator drafts, and student state into one Program Workspace while keeping identity and roles separate.
+- **Tradeoffs**: simpler initial implementation and fewer interfaces. Higher risk that accepted corpus, draft suggestions, and student state become coupled in data model and workflow language.
+- **Product intent fit**: weaker fit for the corpus/student-state separation that Product Intent treats as central.
+- **Risks**: future extraction may be expensive after program and student state are already entangled.
+
+### Option C — Monolith-first with internal ownership conventions
+
+- **Description**: keep all learning-domain behavior in one application module and rely on naming, folders, and tests to preserve ownership until stronger boundaries are needed.
+- **Tradeoffs**: lowest startup overhead. Boundaries are easiest to violate because they are social conventions rather than module contracts.
+- **Product intent fit**: acceptable only if the first implementation is extremely small and tests enforce the accepted corpus/student-state boundary.
+- **Risks**: LLM suggestion state, curator decisions, and student progress can drift into one shared model without a clear owner.
+
+## Emerging direction
+
+Option A, the four-module split, is the current best candidate.
+
+It most directly preserves the Product Intent boundary between shared program corpus and personal student state while giving Identity & Role Management a clear place to enforce who may act. This is provisional: the Corpus Storage / Curator Workspace boundary and the assessment ownership boundary need further pressure before ADR acceptance.
+
+## Provisional boundaries
+
+The following responsibility map is provisional. It is intended to make ownership questions explicit before storage, schema, or implementation planning.
 
 | Module | Responsibility | Owns | Does Not Own | Key Boundary |
 |---|---|---|---|---|
@@ -24,7 +69,16 @@ It is not a workflow map, dependency map, data model, storage schema, deployment
 | Student Workspace | Supports student participation in programs and personal learning state. | Enrolled programs, current learning position, learning sessions, answers, attempts, assessment feedback, evidence, mastery state, weak areas, review needs, personal history. | Accepted program corpus, curator drafts, role assignments, material storage ownership. | Student activity uses accepted corpus content but must not mutate it. |
 | Identity & Role Management | Defines and manages identities, credentials, roles, and access boundaries. | Internal identities, credential bindings, product role assignments, admin role, role-management operations, access recovery. | Program content, curator acceptance decisions, learner state, assessment logic. | Defines who may act and under which role; does not own the workspaces’ domain state. |
 
-## Product Role Rules
+## Product intent traceability
+
+| Module | Product intent served |
+|---|---|
+| Corpus Storage | INT-01, INT-02, INT-03, INT-04, INT-05, INT-06 by preserving accepted program structure, materials, checks, and criteria. |
+| Curator Workspace | INT-01 by supporting source collection, draft review, gap discovery, and acceptance into corpus. |
+| Student Workspace | INT-02 through INT-07 by preserving learning sessions, attempts, feedback, weak areas, and progress evidence. |
+| Identity & Role Management | Supports all accepted stories by constraining who may curate, administer, or act as a student in a program. |
+
+## Candidate product role rules
 
 Agonara separates identity, product roles, operational roles, and credentials.
 
@@ -58,7 +112,7 @@ LLM output is never an independent owner of product state.
 
 LLM output does not become accepted corpus content or final student progress state without the owning module applying its rules.
 
-## Ownership Rules
+## Candidate ownership rules
 
 | Area | Owner |
 |---|---|
@@ -78,9 +132,19 @@ Cross-cutting responsibilities are not modules in this map.
 
 They cut across modules and must be designed without owning the product state of those modules.
 
+These responsibilities are also provisional. Each may require its own Pre-ADR or ADR once the first implementable slice makes the operational constraints concrete.
+
 | Concern | Responsibility | Covers | Does Not Own |
 |---|---|---|---|
 | Logging | Records operational and domain-relevant events for diagnosis and audit. | Identity changes, role assignments, curator decisions, assessment attempts, LLM operations, backup/restore events. | Product analytics, progress interpretation, user-facing learning state. |
 | Observability | Exposes health and execution state of the Agonara instance and long-running operations. | Service health, failed jobs, LLM calls, ingestion, assessment evaluation, storage access, backup status. | Domain ownership, user permissions, program content. |
 | Backup / Restore | Protects recoverability of Agonara data and configuration. | Corpus Storage, Curator Workspace, Student Workspace, Identity & Role Management, role assignments, material storage, operational configuration. | Content curation, assessment logic, product analytics interpretation. |
 | Product Analytics | Captures product-usage and learning-behavior signals for improving Agonara. | Program usage, learning drop-offs, assessment friction, material usage, curator workflow usage. | Audit logging, operational health, authorization, formal progress state. |
+
+## Open questions
+
+- Is Corpus Storage distinct from Curator Workspace in the first slice, or should accepted and candidate corpus behavior start behind one module boundary?
+- Should Assessment remain embedded in Student Workspace, or does open-answer evaluation need an explicit assessment module later?
+- Which module owns versioning when accepted program corpus changes after students already have attempts and progress evidence?
+- Which cross-cutting concerns require their own ADR before implementation: logging, backup/restore, observability, or analytics?
+- How should LLM-assisted learning be bounded so that feedback helps the student without becoming the owner of final progress state?

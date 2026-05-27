@@ -2,8 +2,9 @@
 
 ## 2026-05-27
 
-- Improve module responsibility map (v0.2.2): refine module boundaries, ownership rules, embedded behaviors, and cross-cutting responsibilities.
-- Develop identity & role management first slice (v0.1.1): authorization principles, identity lifecycle, capabilities table, consistency rules, deferred decisions.
+- Align Agonara docs with My Way audit: Product Intent (v0.2.0), story catalogs (v0.2.0), deployment target (v0.2.0), Pre-ADR framing, research notes (v0.2.0), and supporting metadata now expose required structure and traceability.
+- Improve module responsibility map (v0.3.0): refine module boundaries, ownership rules, embedded behaviors, and cross-cutting responsibilities.
+- Develop identity & role management first slice (v0.2.0): authorization principles, identity lifecycle, capabilities table, consistency rules, deferred decisions.
 
 ## 2026-05-26
 

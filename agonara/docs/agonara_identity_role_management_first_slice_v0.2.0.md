@@ -2,7 +2,7 @@
 title: Agonara Identity & Role Management First Slice
 description: First implementable slice for Agonara Identity & Role Management.
 model: gpt-5.5-thinking
-version: 0.1.1
+version: 0.2.0
 date: 2026-05-27
 ---
 
@@ -14,7 +14,7 @@ This document defines the first implementable slice for Agonara Identity & Role 
 
 The goal of this slice is to make an Agonara private instance operationally controllable before implementing the learning-specific modules.
 
-This document stays at module-design level.
+This document stays at Pre-ADR module-design level. Its direction is provisional until accepted by a later ADR.
 
 It is not a data model, schema, authentication-provider choice, UI specification, deployment script, or permission-framework design.
 
@@ -22,9 +22,67 @@ It is not a data model, schema, authentication-provider choice, UI specification
 
 The Responsibility Map defines `Identity & Role Management` as the module that defines and manages identities, credentials, roles, and access boundaries.
 
-The Deployment Decision points toward a dockerized private self-hosted Agonara instance with API-first access, network web UI, small private group tenancy, and admin operational responsibility.
+The [Deployment Target](agonara-deployment-target_v0.2.0.md) points toward a dockerized private self-hosted Agonara instance with API-first access, network web UI, small private group tenancy, and admin operational responsibility.
 
 This slice uses Identity & Role Management as the first working module because it has limited domain uncertainty and exercises the operational foundation early.
+
+Identity and role management is the right first slice because every later curator or student workflow depends on an internal subject of action, explicit role assignment, and recoverable admin control. Starting here also tests deployment, logging, backup/restore, and operational diagnosis without requiring the learning-domain modules to be implemented first.
+
+## Options considered
+
+### Identity source
+
+#### Option A — Internal Identity owns Agonara actions
+
+- **Description**: credentials authenticate into an internal Agonara Identity; ownership and authorization attach to that Identity.
+- **Tradeoffs**: stable ownership survives credential changes and provider changes. Requires an explicit identity mapping layer.
+- **Product intent fit**: supports curator and student continuity because program decisions, attempts, and progress attach to an internal subject.
+- **Risks**: incorrect credential binding could attach access to the wrong Identity.
+
+#### Option B — Credential or external account owns Agonara actions
+
+- **Description**: the authenticated provider account is the direct owner for roles and domain state.
+- **Tradeoffs**: simpler first implementation. Makes credential rotation, provider migration, and account recovery harder.
+- **Product intent fit**: weak fit because learning history and curator decisions become coupled to external account shape.
+- **Risks**: changing auth provider can break ownership continuity.
+
+### Product role model
+
+#### Option A — Program-scoped Student and Program Curator roles
+
+- **Description**: product roles are assigned per program, and one Identity may hold different roles in different programs.
+- **Tradeoffs**: matches the product model and keeps authority local to a program. Requires explicit scope checks on protected operations.
+- **Product intent fit**: strong fit for separating curator acceptance from student learning state.
+- **Risks**: role checks are more complex than a flat global role list.
+
+#### Option B — Flat global product roles
+
+- **Description**: Student and Program Curator are instance-wide roles.
+- **Tradeoffs**: simple to inspect and implement. Too broad for private instances with multiple programs or mixed responsibilities.
+- **Product intent fit**: weak fit when a person curates one program and studies another.
+- **Risks**: accidental cross-program authority.
+
+### Operational role model
+
+#### Option A — Instance-scoped Admin role
+
+- **Description**: Admin controls identities, credential bindings, role assignments, settings, and recovery operations for the private instance.
+- **Tradeoffs**: gives the private instance a clear recovery owner. Must avoid leaking Admin into learning-domain authority.
+- **Product intent fit**: supports operational control without replacing Program Curator ownership of accepted content.
+- **Risks**: Admin may be mistaken for a learning role unless boundaries are enforced.
+
+#### Option B — No Admin role; peer role management
+
+- **Description**: role holders manage peer access inside programs or through ad hoc recovery processes.
+- **Tradeoffs**: avoids a privileged operational role. Makes private-instance recovery and first setup unclear.
+- **Product intent fit**: weak fit for self-hosted private instances that need explicit operational responsibility.
+- **Risks**: instance can become unrecoverable or governance can become ambiguous.
+
+## Emerging direction
+
+The emerging direction is internal Identity ownership, program-scoped Student and Program Curator roles, and an instance-scoped Admin role.
+
+This direction is provisional. It should become an ADR only after the first slice confirms that setup, credential binding, role assignment, last-admin protection, and audit attribution can be expressed without leaking domain ownership into Identity & Role Management.
 
 ## Slice Goal
 
@@ -32,7 +90,13 @@ An Agonara instance can be initialized, accessed by an admin, and used to manage
 
 The slice should prove that Agonara has an internal subject of ownership and action, instead of treating a credential, session, or external account as the domain owner.
 
-## Design Decisions
+## Product intent traceability
+
+This slice supports the Product Intent by making curator and student actions attributable to internal Identities. It primarily protects INT-01 through role-gated curator acceptance and INT-02 through INT-07 by keeping student actions tied to stable learner state.
+
+## Candidate design decisions
+
+The following decisions are candidate invariants for a future ADR. They are written as the current working direction, not as accepted architecture.
 
 ### Identity Source
 
@@ -71,7 +135,7 @@ Admin is not a learning role and does not replace Program Curator ownership of a
 
 Admin does not automatically receive Student or Program Curator authority in any program.
 
-## Authorization Principles
+## Candidate authorization principles
 
 Access is denied by default.
 
@@ -89,7 +153,7 @@ An Agonara instance must retain at least one active Admin.
 
 Identity creation, credential binding changes, role assignments, role revocations, admin changes, and identity disablement must be attributable to an acting Admin identity.
 
-## Identity Lifecycle
+## Candidate identity lifecycle
 
 The first slice supports two identity states:
 
@@ -100,7 +164,7 @@ Disabled identities cannot initiate new actions.
 
 Historical ownership and audit references must remain intact when an identity is disabled.
 
-## First Slice Capabilities
+## Candidate first slice capabilities
 
 | Capability | Purpose |
 |---|---|
@@ -117,7 +181,9 @@ Historical ownership and audit references must remain intact when an identity is
 | Log attributable identity, credential, role, and admin operations | Provides auditability for operationally sensitive actions. |
 | Include identity and role state in backup/restore scope | Ensures access and ownership context can survive recovery. |
 
-## Slice Boundaries
+## Provisional boundaries
+
+These slice boundaries are provisional and should be revisited before ADR acceptance.
 
 ### Included
 
@@ -154,7 +220,7 @@ This slice does not include:
 - database schema;
 - UI layout.
 
-## Cross-cutting Checks
+## Candidate cross-cutting checks
 
 This slice is the first place to exercise several cross-cutting concerns without expanding into learning-domain behavior.
 
@@ -166,7 +232,9 @@ This slice is the first place to exercise several cross-cutting concerns without
 | Backup / Restore | Identity, credential bindings, and role assignments are recoverable. |
 | Observability | Instance health and identity/role-management failures are visible enough for admin diagnosis. |
 
-## Consistency Rules
+## Candidate consistency rules
+
+These are candidate invariants for a future ADR, not established rules.
 
 Identity is not a role.
 
@@ -190,18 +258,18 @@ Student Workspace and Curator Workspace may rely on identity and role decisions,
 
 Identity & Role Management does not own program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
-## Deferred Decisions
+## Open questions
 
-The following decisions are intentionally deferred:
+The following questions must be resolved or explicitly deferred before this becomes an accepted ADR:
 
-- authentication provider;
-- session mechanism;
-- concrete credential types;
-- password policy, if local passwords are ever supported;
-- MFA policy;
-- privileged action confirmation;
-- schema and storage layout;
-- admin UI shape;
-- resource-level permissions;
-- organization/team model;
-- multi-tenant SaaS authorization model.
+- Which authentication provider or framework will be used for the first private-instance deployment?
+- What session mechanism is acceptable for the selected deployment target?
+- Which concrete credential types are required for the first slice?
+- Is a password policy needed if local passwords are supported?
+- Is MFA in scope for the first operational slice or deferred?
+- Do privileged actions need confirmation beyond ordinary admin authorization?
+- What schema and storage layout preserve Identity ownership and credential binding history?
+- What is the minimum admin UI shape needed to initialize and recover a private instance?
+- Are resource-level permissions needed before curator and student workflows exist?
+- Is an organization/team model intentionally out of scope for private-instance MVP?
+- Is multi-tenant SaaS authorization deferred indefinitely or only outside the private-instance target?

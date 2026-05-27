@@ -1,8 +1,9 @@
 ---
 title: Agonara Curator User Stories
+date: 2026-05-26
 description: Program curator user stories for Agonara program освоения.
 model: gpt-5.5-thinking
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Agonara Curator User Stories
@@ -18,61 +19,113 @@ version: 0.1.0
 
 ## Program Curation
 
-### Create program from grounded sources
+### CUR-01 — Create program from grounded sources
 
 As a program curator, I want to create a program of освоение from public plans, exam requirements, standards, materials, and research findings so that the program has a grounded structure.
 
-### Add topics and concepts
+Status: accepted
+
+Acceptance signal: a curator can create a program and attach the source set used to justify its initial structure.
+
+### CUR-02 — Add topics and concepts
 
 As a program curator, I want to add topics and concepts to a program so that the learning scope is explicit.
 
-### Link materials to topics and concepts
+Status: accepted
+
+Acceptance signal: the program corpus shows accepted topics and concepts separately from unaccepted drafts.
+
+### CUR-03 — Link materials to topics and concepts
 
 As a program curator, I want to link materials to topics and concepts so that students know why each material is included.
 
-### Add checks and assessment items
+Status: accepted
+
+Acceptance signal: each accepted material can show the topic or concept it supports.
+
+### CUR-04 — Add checks and assessment items
 
 As a program curator, I want to add checks and assessment items to topics so that understanding can be verified.
 
-### Define assessment criteria
+Status: accepted
+
+Acceptance signal: a topic can include accepted checks that students can use to verify understanding.
+
+### CUR-05 — Define assessment criteria
 
 As a program curator, I want to define criteria for checks and open-answer assessment so that evaluation is tied to the program, not improvised per attempt.
 
-### Keep accepted content separate from drafts
+Status: accepted
+
+Acceptance signal: a check or open-answer prompt can reference accepted criteria owned by the program corpus.
+
+### CUR-06 — Keep accepted content separate from drafts
 
 As a program curator, I want to keep accepted program content separate from drafts and suggestions so that the corpus remains controlled.
 
+Status: accepted
+
+Acceptance signal: draft suggestions do not appear as accepted corpus content until the curator explicitly accepts them.
+
 ## Research and Program Expansion
 
-### Add external sources
+### CUR-07 — Add external sources
 
 As a program curator, I want to add external sources to a program so that the program can be grounded in public plans, requirements, materials, and research.
 
-### Extract candidate structure from sources
+Status: accepted
+
+Acceptance signal: an external source can be recorded with enough metadata to explain why it informed the program.
+
+### CUR-08 — Extract candidate structure from sources
 
 As a program curator, I want to derive candidate topics, concepts, and checks from external sources so that research can become usable program material.
 
-### Identify coverage gaps
+Status: accepted
+
+Acceptance signal: extracted candidates remain reviewable drafts until accepted into the program corpus.
+
+### CUR-09 — Identify coverage gaps
 
 As a program curator, I want to see gaps in topics, concepts, materials, or checks so that the program can be improved deliberately.
 
-### Update program after research
+Status: accepted
+
+Acceptance signal: the curator can see missing or weak coverage areas without treating them as accepted content.
+
+### CUR-10 — Update program after research
 
 As a program curator, I want to update the program after additional research so that the program can evolve without rewriting the student’s personal state.
 
+Status: accepted
+
+Acceptance signal: accepted corpus changes do not erase or overwrite existing student attempts, progress, or learning history.
+
 ## LLM Assistance
 
-### Use LLM assistance for program structuring
+### CUR-11 — Use LLM assistance for program structuring
 
 As a program curator, I want LLM assistance when researching and structuring a program so that I can discover candidate topics, concepts, materials, checks, and gaps faster.
 
-### Review LLM suggestions
+Status: accepted
+
+Acceptance signal: LLM output is captured as candidate material with clear draft status.
+
+### CUR-12 — Review LLM suggestions
 
 As a program curator, I want to review and accept or reject LLM suggestions so that generated content does not automatically become part of the program.
 
-### Trace suggestion origin
+Status: accepted
+
+Acceptance signal: accepting or rejecting an LLM suggestion is an explicit curator action.
+
+### CUR-13 — Trace suggestion origin
 
 As a program curator, I want to see why a suggestion was proposed so that I can judge whether it belongs in the program corpus.
+
+Status: accepted
+
+Acceptance signal: a suggestion exposes its source, prompt context, or supporting evidence before acceptance.
 
 ## Boundaries
 

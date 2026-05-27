@@ -1,7 +1,8 @@
 ---
 date: 2026-05-27
 model: gpt-5.5-thinking
-version: 0.0.1
+description: "Deferred design decisions for Agonara storage ownership."
+version: 0.0.2
 ---
 
 # Backlog

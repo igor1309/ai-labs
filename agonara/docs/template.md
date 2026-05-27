@@ -1,9 +1,12 @@
 ---
 date: 2026-05-27
-model: got-5.5-thinking
+model: gpt-5.5-thinking
 title: template
-version: 0.0.1
+description: "Template for documenting Agonara module responsibilities."
+version: 0.0.2
 ---
+
+# Agonara Module Template
 
 ## Module: Curator Workspace
 

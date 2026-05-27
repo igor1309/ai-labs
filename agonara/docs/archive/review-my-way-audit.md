@@ -1,9 +1,22 @@
 ---
 date: 2026-05-27
+model: gpt-5.5-thinking
 description: "My Way audit of agonara docs — fails and warns with suggested fixes."
 ---
 
 # Agonara Docs — My Way Audit
+
+## Resolution note
+
+This audit reviewed the pre-resolution document set. The fixes landed in the following successor versions:
+
+- `intent_learning_program_app_v0.2.0.md`
+- `agonara_curator_user_stories_v0.2.0.md`
+- `agonara_student_user_stories_v0.2.0.md`
+- `agonara_module_responsibility_map_v0.3.0.md`
+- `agonara_identity_role_management_first_slice_v0.2.0.md`
+- `agonara-deployment-target_v0.2.0.md`
+- `agonara-implementation-notes_v0.2.0.md`
 
 Review of all documents on the `agonara` branch against the My Way
 mandatory structures. The project is in early exploration — documents

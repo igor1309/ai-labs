@@ -3,10 +3,13 @@ title: Agonara Brand Brief
 description: Brand brief for a learning program application centered on curated programs, learner progression, and structured mastery.
 date: 2026-05-26
 model: gpt-5.5-thinking
+version: 0.1.0
 status: draft
 ---
 
 # Agonara Brand Brief
+
+This is the English version of the v0.1.0 brand brief. The parallel Russian version is [agonara_brand_brief_ru_v0.1.0.md](agonara_brand_brief_ru_v0.1.0.md).
 
 ## Name
 
@@ -90,6 +93,8 @@ These are not close-field blockers for an AI-adjacent learning program product, 
 This is not trademark clearance.
 
 ## Naming Standard Assessment
+
+This assessment uses the repository standard in [prompts/naming-availability-standard.md](../../../prompts/naming-availability-standard.md).
 
 | Criterion | Weight | Assessment |
 |---|---:|---|
