@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- my-way: documented the method as semi-authoritative rather than rigid doctrine, and clarified that Pre-ADRs may include provisional candidate capability notes when they sharpen architectural discussion.
 - prompts: decoupled `naming-availability-standard.md` from domain-specific references (agent orchestration, AI coding agents, LLM tooling). Hard Blockers, Availability Risk Reading, and Naming Target sections now reference user-supplied context parameters (target field, adjacent categories, intended technical surface) instead of hardcoded domains. Prompt is now reusable for any product naming context.
 
 ## 2026-05-25

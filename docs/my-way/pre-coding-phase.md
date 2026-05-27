@@ -1,10 +1,10 @@
 ---
 title: Pre-Coding Phase
-date: 2026-05-02
+date: 2026-05-27
 model: gpt-5.5-thinking
 description: "Personal note describing the pre-coding phase as a judgment-driven, iterative part of software development."
 author: Igor Malyarov
-version: 0.0.4
+version: 0.0.5
 format: note
 ---
 
@@ -15,6 +15,14 @@ This note describes an opinionated approach to the pre-coding phase. It is expli
 The core premise is simple: coding should be the execution step, not the primary thinking step.
 
 This phase is the front half of a larger loop. The back half — execution, logging, and artifact preservation — lives in [coding-phase.md](coding-phase.md). The two phases share a single goal: keeping product intent, execution, and recorded knowledge aligned as the work evolves. Software work is treated as a loop rather than a straight line; revisiting an earlier layer when implementation reality pushes back is part of the method, not a failure of it.
+
+## How to treat this method
+
+My Way is semi-authoritative: it is a disciplined source of defaults, questions, and gates, not sacred law.
+
+When it fits the work, follow it closely. When it is missing a concept, contradicts better engineering judgment, or pushes toward unreasonable ceremony, treat that friction as a review signal. The right response is not to ignore the method quietly, but to examine the gap and decide whether the artifact, the current work, or My Way itself should change.
+
+The method should behave more like an interpretive study tradition than a collection of final rulings: principles are preserved by questioning, comparing cases, and refining the text when practice exposes a better distinction.
 
 ## Core idea
 
