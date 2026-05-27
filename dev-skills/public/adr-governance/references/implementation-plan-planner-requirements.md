@@ -124,6 +124,10 @@ The plan MUST define observable completion criteria, including:
 -   No manual intervention required for standard operation (unless
     ADR-defined).
 
+Completion criteria MUST appear under an explicit `## Done criteria`
+heading. Scattered equivalent bullets under other sections do not
+satisfy this requirement.
+
 ------------------------------------------------------------------------
 
 ## 11. Operational Contract
@@ -140,12 +144,49 @@ The plan MUST define execution mechanics that affect agent behavior:
     interruption.
 -   Plan archival behavior after implementation completes.
 
+Operational mechanics MUST be split across two explicit headings:
+
+-   `## Execution mode` — execution mode, human-review behavior between
+    tasks/phases, stop conditions, push policy.
+-   `## Execution lock` — worktree mode, expected worktree path or
+    pattern, expected branch name or pattern, preflight check.
+
+Plan archival behavior MUST appear under an explicit `## Final closeout`
+heading. The closeout MUST declare that the completed plan is moved to
+the implemented-plans directory in the same change set as the
+implementation, not as a follow-up PR.
+
 Self-review MUST NOT be treated as human review. Self-review is an
 executor discipline; human review is an explicit coordination gate.
 
 ------------------------------------------------------------------------
 
-## 12. Executor Freedom Boundary
+## 12. Required Plan Sections
+
+The plan MUST contain the following top-level `##` headings, in order:
+
+-   `## Goal`
+-   `## Execution mode`
+-   `## Execution lock`
+-   `## Scope guardrails`
+-   One or more phase or task sections (`## Phase N — Name` or
+    `## Task N — Name`)
+-   `## Done criteria`
+-   `## Final closeout`
+
+Rules:
+
+-   Missing any required heading is a blocking failure, not a style
+    warning.
+-   Scattered equivalent bullets under unrelated sections do not
+    satisfy a required heading.
+-   When the repo declares a stricter mandatory plan structure (for
+    example `docs/my-way/05-implementation-plan/structure.md`), the
+    stricter list wins and every section it names becomes mandatory.
+
+------------------------------------------------------------------------
+
+## 13. Executor Freedom Boundary
 
 The planner MUST NOT prescribe:
 

@@ -45,6 +45,136 @@ test("identityBootstrap_shouldSetCookieAndHideSessionId_onAcceptedBootstrap", as
   }
 });
 
+test("adminBoard_shouldServeShell_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        contentType: response.headers.get("content-type"),
+        hasAppRoot: body.includes('id="admin-app"'),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        statusCode: 200,
+        contentType: "text/html; charset=utf-8",
+        hasAppRoot: true,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("adminBoard_shouldExposeSessionControls_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        hasBootstrapForm: body.includes('id="bootstrap-form"'),
+        hasLoginForm: body.includes('id="login-form"'),
+        hasSessionPanel: body.includes('id="session-panel"'),
+        hasLogoutButton: body.includes('id="logout-button"'),
+        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        hasBootstrapForm: true,
+        hasLoginForm: true,
+        hasSessionPanel: true,
+        hasLogoutButton: true,
+        hasPasswordValue: false,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("adminBoard_shouldExposeIdentityOperationControls_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        hasIdentityList: body.includes('id="identity-list"'),
+        hasCreateIdentityForm: body.includes('id="create-identity-form"'),
+        hasCredentialForm: body.includes('id="credential-form"'),
+        hasAccessPanel: body.includes('id="operational-access-panel"'),
+        hasDisableAction: body.includes('data-action="disable"'),
+        hasGrantAdminAction: body.includes('data-action="grant-admin"'),
+        hasRevokeAdminAction: body.includes('data-action="revoke-admin"'),
+        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        hasIdentityList: true,
+        hasCreateIdentityForm: true,
+        hasCredentialForm: true,
+        hasAccessPanel: true,
+        hasDisableAction: true,
+        hasGrantAdminAction: true,
+        hasRevokeAdminAction: true,
+        hasPasswordValue: false,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("adminBoard_shouldExposeAuditEventInspection_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        hasAuditPanel: body.includes('id="audit-events-panel"'),
+        hasAuditList: body.includes('id="audit-event-list"'),
+        hasRefreshAuditButton: body.includes('id="refresh-audit-events-button"'),
+        hasTargetSessionHeader: body.includes("targetSessionId"),
+        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        hasAuditPanel: true,
+        hasAuditList: true,
+        hasRefreshAuditButton: true,
+        hasTargetSessionHeader: false,
+        hasPasswordValue: false,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("identityBootstrapStatus_shouldReflectAvailability_beforeAndAfterBootstrap", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 

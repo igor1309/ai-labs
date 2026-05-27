@@ -104,7 +104,7 @@ The v0.0.1 implementation handoff is specified in [Identity & Role Management Fi
 
 The minimum cross-cutting operational contract is specified in [Operational Cross-Cutting First Slice](specs/operational-cross-cutting-first-slice.md).
 
-The implementation sequence is planned in [Identity and Operations First-Slice Implementation Plan](plans/identity-and-operations-first-slice.md).
+The implementation sequence is archived in [Identity and Operations First-Slice Implementation Plan](plans/implemented/identity-and-operations-first-slice.md).
 
 ## Candidate design decisions
 

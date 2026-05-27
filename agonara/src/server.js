@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
+import { adminBoardHtml } from "./admin-ui.js";
 import { createIdentityCommands } from "./identity.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 
@@ -20,6 +21,11 @@ export function createServer({
     response.setHeader("x-request-id", requestId);
 
     try {
+      if (request.method === "GET" && pathname === "/admin") {
+        sendHtml(response, 200, adminBoardHtml);
+        return;
+      }
+
       if (identityCommands) {
         const handled = await handleIdentityApi({
           csrfTokens,
@@ -343,6 +349,11 @@ function isValidRequestId(requestId) {
 function sendJson(response, statusCode, body, headers = {}) {
   response.writeHead(statusCode, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(body));
+}
+
+function sendHtml(response, statusCode, body) {
+  response.writeHead(statusCode, { "content-type": "text/html; charset=utf-8" });
+  response.end(body);
 }
 
 function logCompletion(log, now, event) {
