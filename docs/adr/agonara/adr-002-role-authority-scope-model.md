@@ -27,7 +27,7 @@ Agonara now needs to decide what kinds of authority can attach to that internal 
 
 The [Product Intent](../../../agonara/docs/intent_learning_program_app_v0.3.0.md) separates student learning from curator program construction and names administrator responsibility as private-instance operation, not learning-domain authority.
 
-The [Module Responsibility Map](../../../agonara/docs/agonara_module_responsibility_map_v0.3.1.md) treats Identity & Role Management as the module that defines who may act while not owning program content, curator decisions, learner state, assessment logic, or progress interpretation.
+The [Module Responsibility Map](../../../agonara/docs/agonara_module_responsibility_map_v0.4.0.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
 The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.1.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
 

@@ -178,14 +178,15 @@ LLM-предложения являются вспомогательным ма�
 
 | Story | Research | Pre-ADR / ADR | Spec | Implementation plan | Code / tests |
 |---|---|---|---|---|---|
-| INT-01 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
-| INT-02 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
-| INT-03 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
-| INT-04 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
+| INT-01 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
+| INT-02 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
+| INT-03 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
+| INT-04 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
 | INT-05 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.1.md) | n/a | n/a | n/a |
-| INT-06 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
-| INT-07 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
+| INT-06 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
+| INT-07 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
 | ADM-01..ADM-11 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.1.md) | n/a | n/a | n/a |
+| STU-18..STU-23, CUR-14..CUR-18, ADM-12..ADM-15 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) | n/a | n/a | n/a |
 
 ## Change review
 
