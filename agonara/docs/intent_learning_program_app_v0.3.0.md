@@ -102,10 +102,10 @@ Status: accepted
 
 The detailed curator and student story catalogs live in:
 
-- [agonara_curator_user_stories_v0.2.0.md](agonara_curator_user_stories_v0.2.0.md)
-- [agonara_student_user_stories_v0.2.0.md](agonara_student_user_stories_v0.2.0.md)
+- [agonara_curator_user_stories_v0.3.0.md](agonara_curator_user_stories_v0.3.0.md)
+- [agonara_student_user_stories_v0.3.0.md](agonara_student_user_stories_v0.3.0.md)
 
-Admin-facing identity and role-management stories live in [agonara_admin_user_stories_v0.1.0.md](agonara_admin_user_stories_v0.1.0.md).
+Admin-facing identity, role-management, and membership recovery stories live in [agonara_admin_user_stories_v0.2.0.md](agonara_admin_user_stories_v0.2.0.md).
 
 ## Acceptance signals
 

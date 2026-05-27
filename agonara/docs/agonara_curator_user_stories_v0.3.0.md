@@ -3,7 +3,7 @@ title: Agonara Curator User Stories
 date: 2026-05-26
 description: Program curator user stories for Agonara program освоения.
 model: gpt-5.5-thinking
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Agonara Curator User Stories
@@ -16,6 +16,7 @@ version: 0.2.0
 | Program corpus | Accepted topics, concepts, materials, checks, and criteria. |
 | Draft suggestion | Candidate content not yet accepted by the program curator. |
 | External source | Public plan, exam requirement, standard, material, link, or research finding used to inform the program. |
+| Program membership | Participation relationship between an identity and a program, governed outside Curator Workspace. |
 
 ## Program Curation
 
@@ -127,11 +128,55 @@ Status: accepted
 
 Acceptance signal: a suggestion exposes its source, prompt context, or supporting evidence before acceptance.
 
+## Program Membership
+
+### CUR-14 — Invite student to program
+
+As a program curator, I want to invite a student to a program I curate so that the student can participate in a controlled program.
+
+Status: accepted
+
+Acceptance signal: the invitation is recorded as program membership state and does not by itself create student learning state.
+
+### CUR-15 — See invited students
+
+As a program curator, I want to see pending and accepted invitations for a program so that I understand who can participate.
+
+Status: accepted
+
+Acceptance signal: invitation state is visible separately from accepted program corpus and student progress.
+
+### CUR-16 — See program participants
+
+As a program curator, I want to see current participants in a program I curate so that I understand who is using the program.
+
+Status: accepted
+
+Acceptance signal: participant visibility reflects membership state without exposing private student learning state.
+
+### CUR-17 — Remove student from curator-controlled program
+
+As a program curator, I want to remove a student from a program I curate so that I can manage participation in that program.
+
+Status: accepted
+
+Acceptance signal: removal changes membership state without deleting historical learning evidence.
+
+### CUR-18 — Stop curating a program
+
+As a program curator, I want to stop curating a program so that I am no longer responsible for its content decisions.
+
+Status: accepted
+
+Acceptance signal: stopping curator participation changes program membership state without mutating accepted corpus content.
+
 ## Boundaries
 
 Curator stories describe creation, refinement, and acceptance of program content.
 
 They do not describe the student’s attempts, results, progress, weak areas, or learning history.
+
+They do not define membership policy, invitation policy, or membership recovery.
 
 Program corpus and student state must remain separate.
 

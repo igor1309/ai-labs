@@ -27,7 +27,7 @@ This ADR decides operational-control invariants only. It does not decide authent
 
 Agonara is intended to run as a private instance. If the instance loses all usable `Admin` authority, identity and role management become unrecoverable through normal product operations.
 
-The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.1.0.md) require first-admin setup, Admin assignment/revocation, prevention of last-admin removal, auditability of sensitive operations, and backup/restore coverage for identity and role-management state.
+The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.0.md) require first-admin setup, Admin assignment/revocation, prevention of last-admin removal, auditability of sensitive operations, and backup/restore coverage for identity and role-management state.
 
 The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.1.md) names recoverable admin control, last-active-admin protection, and audit attribution as first-slice candidates.
 

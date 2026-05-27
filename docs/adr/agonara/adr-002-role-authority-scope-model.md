@@ -31,7 +31,7 @@ The [Module Responsibility Map](../../../agonara/docs/agonara_module_responsibil
 
 The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.1.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
 
-The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.1.0.md) require program-role assignment, program-role revocation, and Admin changes to preserve separation between learning-domain authority and operational control.
+The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.0.md) require program-role assignment, program-role revocation, and Admin changes to preserve separation between learning-domain authority and operational control.
 
 The rejected alternatives are flat global product roles and treating `Admin` as a learning-domain superuser. Flat global product roles are too broad for private instances where one person may curate one Program and study another. Treating `Admin` as a learning-domain superuser would blur operational control with curator and student ownership.
 

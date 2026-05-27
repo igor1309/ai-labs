@@ -3,7 +3,7 @@ title: Agonara Student User Stories
 date: 2026-05-26
 description: Student-facing user stories for Agonara program освоения.
 model: gpt-5.5-thinking
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Agonara Student User Stories
@@ -12,8 +12,8 @@ version: 0.2.0
 
 | Term | Meaning |
 |---|---|
-| Available program | A program visible for selection, not necessarily started by the student. |
-| Enrolled program | A program the student has selected or started. |
+| Available program | A program visible for selection, not necessarily joined by the student. |
+| Program membership | The student's participation relationship with a program, governed outside Student Workspace. |
 | Program corpus | Accepted topics, concepts, materials, checks, and criteria. |
 | Student state | Attempts, answers, results, weak areas, progress, and personal learning history. |
 
@@ -25,7 +25,7 @@ As a student, I want to see available programs of освоение so that I can
 
 Status: accepted
 
-Acceptance signal: a student can list visible programs before enrolling.
+Acceptance signal: a student can list visible programs before joining.
 
 ### STU-02 — See started programs
 
@@ -147,7 +147,7 @@ As a student, I want to see my check results so that I can understand my current
 
 Status: accepted
 
-Acceptance signal: a student can see results from prior checks in the enrolled program.
+Acceptance signal: a student can see results from prior checks in a joined program.
 
 ### STU-16 — See weak topics and concepts
 
@@ -165,10 +165,64 @@ Status: accepted
 
 Acceptance signal: progress labels expose the attempts, answers, checks, or feedback that support them.
 
+## Program Membership
+
+### STU-18 — Join available program
+
+As a student, I want to join an available program so that I can start learning it when the program membership policy permits participation.
+
+Status: accepted
+
+Acceptance signal: a successful join establishes student membership for the program without changing accepted program corpus.
+
+### STU-19 — Leave active program
+
+As a student, I want to leave a program so that it no longer appears as an active learning commitment.
+
+Status: accepted
+
+Acceptance signal: leaving changes membership state without deleting historical learning evidence.
+
+### STU-20 — Resume joined program
+
+As a student, I want to resume a program I have joined so that I can continue from my existing learning state.
+
+Status: accepted
+
+Acceptance signal: resuming uses existing membership and existing student state instead of creating duplicate participation.
+
+### STU-21 — View my program membership state
+
+As a student, I want to see whether I have joined, left, completed, or archived a program so that I understand my relationship to that program.
+
+Status: accepted
+
+Acceptance signal: the student can inspect membership state separately from progress or mastery state.
+
+### STU-22 — Accept program invitation
+
+As a student, I want to accept an invitation to a program so that I can join a curator-controlled program.
+
+Status: accepted
+
+Acceptance signal: accepting an invitation establishes membership only when the invitation and membership policy allow it.
+
+### STU-23 — Decline program invitation
+
+As a student, I want to decline an invitation to a program so that I am not added to a program I do not intend to follow.
+
+Status: accepted
+
+Acceptance signal: declining an invitation does not create student membership or student learning state.
+
 ## Boundaries
 
 Student stories describe personal learning, assessment, feedback, and progress.
 
 They do not define how the program corpus is created, curated, stored, or approved.
 
+They do not define membership policy, invitation policy, or membership recovery.
+
 Program corpus and student state must remain separate.
+
+Program membership and student learning state must remain separate.

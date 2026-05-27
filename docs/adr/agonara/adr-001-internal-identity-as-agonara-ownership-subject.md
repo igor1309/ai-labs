@@ -23,7 +23,7 @@ Agonara is designed as a private learning-program application with curator, stud
 
 The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/agonara_identity_role_management_first_slice_v0.2.1.md) evaluates two identity-source options: internal Identity ownership versus credential or external account ownership. It favors internal Identity ownership because product history and operational recovery should not be coupled to external account shape.
 
-The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.1.0.md) require admins to create internal identities, bind credentials, disable identities without deleting historical references, inspect credential bindings, and audit sensitive identity and role operations.
+The [admin user stories](../../../agonara/docs/agonara_admin_user_stories_v0.2.0.md) require admins to create internal identities, bind credentials, disable identities without deleting historical references, inspect credential bindings, and audit sensitive identity and role operations.
 
 The alternative is to treat a credential, external account, session principal, or authentication-provider user as the direct Agonara owner. That alternative is rejected because it makes ownership continuity fragile under credential rotation, provider migration, and recovery.
 

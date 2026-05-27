@@ -1,9 +1,9 @@
 ---
 title: Agonara Admin User Stories
 date: 2026-05-27
-description: Admin-facing user stories for Agonara private-instance identity and role management.
+description: Admin-facing user stories for Agonara private-instance identity, role, and membership recovery.
 model: gpt-5.5-thinking
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Agonara Admin User Stories
@@ -16,6 +16,7 @@ version: 0.1.0
 | Internal Identity | Agonara-owned subject of ownership and action. |
 | Credential binding | Link between an external or framework-authenticated principal and an internal Identity. |
 | Product role | Program-scoped Student or Program Curator role. |
+| Program membership | Participation relationship between an identity and a program, governed outside Identity & Role Management. |
 
 ## Instance Setup
 
@@ -135,6 +136,48 @@ Status: accepted
 
 Acceptance signal: backup/restore coverage includes identities, credential bindings, role assignments, and admin authority.
 
+## Membership Recovery and Audit
+
+### ADM-12 — View program membership state
+
+As an Agonara admin,
+I want to inspect program membership state,
+so that I can diagnose access and participation issues.
+
+Status: accepted
+
+Acceptance signal: the admin can inspect membership state without becoming the normal operator of learning participation.
+
+### ADM-13 — Recover broken membership access
+
+As an Agonara admin,
+I want to recover broken membership access,
+so that a valid student or curator can regain access when operational recovery is needed.
+
+Status: accepted
+
+Acceptance signal: exceptional recovery can restore valid membership access while preserving attribution.
+
+### ADM-14 — Revoke operationally invalid membership
+
+As an Agonara admin,
+I want to revoke membership in exceptional operational cases,
+so that the instance can recover from incorrect or unsafe access state.
+
+Status: accepted
+
+Acceptance signal: exceptional revocation changes membership state without making Admin the normal manager of program participation.
+
+### ADM-15 — Audit membership changes
+
+As an Agonara admin,
+I want membership changes to be logged with attribution,
+so that participation changes can be diagnosed and audited.
+
+Status: accepted
+
+Acceptance signal: membership changes record the acting identity, affected identity, program, participation kind, and resulting membership state.
+
 ## Boundaries
 
 Admin stories describe operational control of a private Agonara instance.
@@ -142,3 +185,5 @@ Admin stories describe operational control of a private Agonara instance.
 They do not describe student learning flow, curator content acceptance, corpus editing, assessment semantics, progress interpretation, or learning-domain authority.
 
 Admin authority does not replace Program Curator ownership of accepted program content and does not automatically grant Student or Program Curator authority.
+
+Admin membership operations are exceptional recovery and audit operations, not the normal product flow for joining, inviting, leaving, or curating programs.
