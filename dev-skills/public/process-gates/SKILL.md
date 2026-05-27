@@ -1,7 +1,7 @@
 ---
 name: process-gates
 author: Igor Malyarov
-version: "1.0.2"
+version: "1.1.0"
 description: Pre-commit, step closeout, pre-push, preflight, hard gates, and plan creation locks for implementation work
 trigger: when implementing, committing, pushing code, or creating implementation plans
 ---
@@ -38,6 +38,8 @@ Before pushing a branch or creating a PR, verify ALL of the following. Do not pu
 3. **No leftover changes**: `git status` is clean — no uncommitted docs, config, or code changes that belong in this branch.
 4. **Docker verified**: for Docker-producing units, `docker build` must pass.
 5. **Verification passes**: required verification for the changed scope is green.
+6. **Plan adversarial review (if a plan changed)**: when the branch adds or modifies an implementation plan, run an adversarial review against the plan's mandatory structure and any repo-declared plan-review skill. Fix every fail/warn finding and commit before pushing. Scattered equivalent bullets do not substitute for required headings.
+7. **PR narrative quality (plan or implementation PRs)**: derive PR title and body from the plan's goal, scope, source artifacts, verification gates, and changed docs/code. A vague commit-summary title or body is not acceptable when the plan provides better context.
 
 If any item fails, fix it and commit before pushing. Do not push code and leave docs for a follow-up commit.
 
@@ -99,6 +101,27 @@ When creating implementation plans (especially from review findings), the plan m
 12. Move completed plan to the implemented plans directory and commit the move.
 13. Create a PR only when the plan or user asks for one.
 
+## Plan Structure Gate (Blocking)
+
+Implementation plans MUST follow the repo's declared mandatory plan structure when one exists. When the repo does not declare one, the following minimum sections apply:
+
+- `Goal`
+- `Execution mode`
+- `Execution lock`
+- `Scope guardrails`
+- One or more phases/tasks (`## Phase N — Name` or `## Task N — Name`)
+- `Done criteria`
+- `Final closeout`
+
+Rules:
+
+1. Missing any required section is a blocking failure, not a style warning.
+2. Scattered equivalent bullets do not satisfy a required heading. A `Goal:` line under another section is not a `## Goal` section.
+3. `Done criteria` must be explicit and observable, not implied by the phase list.
+4. `Final closeout` must declare archive behavior (move completed plan to the implemented directory) and push/PR behavior.
+5. Plan-creation, plan-modification, and pre-PR adversarial review (see Pre-Push gate) all enforce this gate.
+6. If the repo declares a stricter structure (e.g. `docs/my-way/05-implementation-plan/structure.md` or an equivalent), the stricter list wins and every section it names becomes mandatory.
+
 ## Completion Verification
 
 After an implementation step or plan completion, verify:
@@ -109,3 +132,7 @@ After an implementation step or plan completion, verify:
 - [ ] `git status` is clean before push.
 - [ ] Preflight passed before any edits (if required by plan).
 - [ ] No gate was skipped without explicit user override.
+- [ ] Active plan has every required section (see Plan Structure Gate).
+- [ ] `Done criteria` are explicit and observable.
+- [ ] `Final closeout` declares archive behavior and push/PR behavior.
+- [ ] At plan completion: completed plan is moved to the implemented directory in the same change set as the implementation.

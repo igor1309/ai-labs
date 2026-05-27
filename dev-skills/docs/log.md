@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-27
+
+- process-gates v1.1.0 + adr-governance v1.0.1: pushed the repo's implementation-plan structure gate down into the public skills so plan discipline travels with the plugin, not just `CLAUDE.md`. process-gates gains a dedicated `Plan Structure Gate` (Goal / Execution mode / Execution lock / Scope guardrails / phases / Done criteria / Final closeout as blocking required headings), two new Pre-Push items (adversarial plan-structure review when a plan changed; PR title/body derived from plan goal/scope/gates), and four new Completion Verification checks (structure present, Done criteria explicit, Final closeout declares archive + push policy, plan moved to implemented/ in the same change set). adr-governance reference `implementation-plan-planner-requirements.md` mirrors the same heading list and now ties section 10's Completion Definition to an explicit `## Done criteria` heading and section 11's Operational Contract to `## Execution mode` + `## Execution lock` + `## Final closeout` headings. Marketplace v1.48.0.
+
 ## 2026-05-25
 
 - postmortem v0.1.1 + publishing checklist polish: wrap `$ARGUMENTS` in backticks in postmortem SKILL.md so the empty-argument case renders as a visible `` `` `` rather than a silent double-space hole (caught by invoking `/dev-skills:postmortem postmortem` on itself). Update `dev-skills/.claude/CLAUDE.md` publishing step 3 to require (a) adding the new skill to the plugin's long `description` enumeration in `marketplace.json` and (b) bumping any modified SKILL.md versions per the Skill Versioning section — both were tribal knowledge the checklist didn't enforce. Marketplace v1.47.1.
