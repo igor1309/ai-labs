@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Accept ADR-003 for Agonara admin recovery: private instances must retain effective Admin control and audit sensitive identity-management operations.
 - Accept ADR-002 for Agonara role scope: product roles are Program-scoped, Admin is instance-scoped operational authority, and credentials grant no roles.
 - Accept ADR-001 for Agonara identity ownership: internal Identity is now the stable subject for ownership, action, attribution, and authorization context.
 - Tighten admin story traceability: Product Intent now points at module map v0.3.1, and the module map names ADM-01 through ADM-11 as Identity & Role Management drivers.
