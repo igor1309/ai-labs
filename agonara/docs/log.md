@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Add Program Membership Pre-ADR to pressure-test the separate module, opaque membership policy boundary, and unresolved role/membership authority contract.
 - Add Program Membership to the module responsibility map as a peer module owning participation lifecycle, policy, invitations, visibility, and exceptional recovery hooks.
 - Add Program Membership stories across student, curator, and admin catalogs so participation lifecycle, invitation, recovery, and audit gaps are explicit.
 - Accept ADR-003 for Agonara admin recovery: private instances must retain effective Admin control and audit sensitive identity-management operations.
