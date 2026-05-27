@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: registered the project in the repo dashboard surfaces and tightened the implementation handoff so Dockerized private self-hosting is an explicit build, health, and log-verification gate before implementation PRs.
 - agonara: moved accepted project ADRs from the repo-level ADR tree into `agonara/docs/adr/`, keeping project decisions co-located with Agonara docs while preserving repo-level ADRs for cross-project concerns.
 - my-way: documented the method as semi-authoritative rather than rigid doctrine, and clarified that Pre-ADRs may include provisional candidate capability notes when they sharpen architectural discussion.
 - prompts: decoupled `naming-availability-standard.md` from domain-specific references (agent orchestration, AI coding agents, LLM tooling). Hard Blockers, Availability Risk Reading, and Naming Target sections now reference user-supplied context parameters (target field, adjacent categories, intended technical surface) instead of hardcoded domains. Prompt is now reusable for any product naming context.

@@ -44,6 +44,7 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 ### In Scope
 
 - Agonara backend skeleton and test harness for the first identity/operations slice.
+- Dockerfile and local compose/runtime smoke path for the first private self-hosted backend container.
 - Persistent Identity, local password credential, session, Admin authority, and audit state.
 - Request ID propagation, structured operational logs, health, diagnostics, and redaction behavior.
 - HTTP API endpoints required by the Identity API/CLI spec.
@@ -65,6 +66,8 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 - New third-party runtime dependencies must be added only after verifying installed versions, package manager state, and the concrete APIs used by the implementation.
 - The v0.0.1 default substrate is a Node/TypeScript Agonara backend package with a local transactional SQL store and checked-in migrations.
 - The default storage target is SQLite-compatible local persistence for the private self-hosted slice unless preflight finds an already accepted Agonara storage decision.
+- The v0.0.1 deployment substrate is Dockerized private self-hosting, matching [Agonara Deployment Target](../deployment-target.md).
+- Docker-producing implementation changes must follow the Docker Discipline gate: local `docker build`, container start, health check, and request/log verification before push.
 - Persistence must support uniqueness and last-Admin invariants atomically; if SQLite-compatible persistence or the chosen storage layer cannot provide this, the step must stop and document the blocking finding before continuing.
 - Password hashing, cookie, CSRF, CLI, and storage dependencies must have their concrete APIs verified before implementation code calls them.
 - Operational logs and audit events are distinct records. Audit events are queryable security/domain-change records; operational logs are diagnostic records.
@@ -73,13 +76,14 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 
 ### Step 1 — Preflight and Implementation Substrate
 
-Create the dedicated worktree and branch declared in the execution lock. Verify current repo state, installed Node/npm/TypeScript versions, package workspace configuration, available test/build commands, and candidate runtime dependency APIs. Add the minimal Agonara package or backend skeleton only after the toolchain and dependency API state is verified.
+Create the dedicated worktree and branch declared in the execution lock. Verify current repo state, installed Node/npm/TypeScript versions, package workspace configuration, available test/build commands, Docker availability, and candidate runtime dependency APIs. Add the minimal Agonara package or backend skeleton only after the toolchain, Docker, and dependency API state is verified.
 
 Expected changes:
 
 - Agonara backend package or equivalent source/test directories.
+- Dockerfile and local compose or equivalent container smoke path for the Agonara backend.
 - Package/workspace configuration only if required by the chosen skeleton.
-- Checked-in note or plan tracker evidence naming the runtime, storage, migration, password-hashing, cookie, CSRF, and CLI APIs that were verified.
+- Checked-in note or plan tracker evidence naming the runtime, Docker, storage, migration, password-hashing, cookie, CSRF, and CLI APIs that were verified.
 - Agonara project log entry if source files are introduced.
 - Repo-level README/component or release-unit updates only if the implementation creates a new component or release unit under repo rules.
 
@@ -88,9 +92,12 @@ Verification:
 - `git worktree list --porcelain`
 - `git branch --show-current`
 - toolchain/version inspection commands for the chosen runtime
+- Docker version/build capability inspection
 - dependency API inspection commands for any runtime dependency used by the skeleton
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
+- local `docker build` for the Agonara backend container
+- local container start and `/operations/health` smoke request once the health route exists; until then, container process start is the Step 1 smoke check
 
 Commit:
 
@@ -116,6 +123,13 @@ Verification:
 Commit:
 
 - `implement agonara operational skeleton`
+
+Docker verification:
+
+- rerun local `docker build`;
+- start the container;
+- call `/operations/health`;
+- verify the request produces the expected structured operational log without bind mounts to temporary worktree-only paths.
 
 ### Step 3 — Persistence, Migrations, and Domain Invariants
 

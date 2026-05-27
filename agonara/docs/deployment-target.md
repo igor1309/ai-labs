@@ -85,3 +85,15 @@ External managed storage can reduce operational burden without changing the priv
 - What is the minimum viable backup/restore requirement for an admin-run instance?
 - What operational health checks must exist before the deployment direction can become an ADR?
 - Does the first private instance require HTTPS and domain setup, or can that be deferred to deployment guidance?
+
+## Implementation handoff
+
+The first implementation plan must treat Docker as part of the private-instance substrate, not as a later packaging afterthought.
+
+Before implementation work is pushed, Docker-producing changes require local Docker verification:
+
+- `docker build` for the Agonara backend image;
+- container start;
+- health check against `/operations/health` once the operational skeleton exists;
+- request/log verification for structured operational logging;
+- no bind mounts that depend on temporary worktree-only paths.

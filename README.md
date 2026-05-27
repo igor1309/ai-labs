@@ -44,6 +44,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Component | Type | Description |
 |-----------|------|-------------|
+| agonara | Product | Structured learning program environment with curated programs, learner progression, and evidence of mastery |
 | nexum | Product | Private repo memory system |
 | notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
