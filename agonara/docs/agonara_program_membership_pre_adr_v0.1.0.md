@@ -16,7 +16,7 @@ It uses the membership stories in the student, curator, and admin catalogs to cl
 
 This document is not a data model, schema, API design, UI specification, permission-framework design, or implementation plan.
 
-It is not an accepted ADR. Its candidate direction should become an ADR only after the Program Membership / Identity & Role Management contract is made explicit.
+It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit.
 
 ## Context
 
@@ -80,7 +80,7 @@ Policy details such as self-join, curator invitation, approval, payment, closed 
 
 ## Candidate design decisions
 
-The following decisions are candidate invariants for a future ADR. They are written as the current working direction, not accepted architecture.
+The following decisions were candidate invariants before ADR-004 accepted the Program Membership ownership direction.
 
 Program Membership owns membership lifecycle for an internal Identity in a Program.
 
@@ -105,13 +105,13 @@ Membership state must not own accepted Program corpus, curator decisions, studen
 
 ADR-002 says product authority is Program-scoped and explicitly granted.
 
-The future ADR must decide the exact contract between Program Membership and product authority. Plausible interpretations are:
+ADR-004 accepts the first interpretation below. The alternatives remain here as the pressure test that led to the accepted decision.
 
 - Program Membership owns the Program-scoped participation grant used for Student and Program Curator authorization.
 - Program Membership owns membership state, while Identity & Role Management owns separate Program-scoped role assignments that membership policy may require or update.
 - Program Membership owns participation status, while a separate authorization layer derives effective product authority from membership plus role primitives.
 
-The first option is the cleanest conceptual fit, but it must be checked against ADR-002 and implementation needs before acceptance.
+The first option is the accepted architectural direction.
 
 ## Provisional boundaries
 
@@ -150,8 +150,6 @@ Program Membership excludes:
 
 ## Open questions
 
-- Does Program Membership own the Program-scoped participation grant used for Student and Program Curator authorization?
-- If Identity & Role Management retains separate Program-scoped role assignments, what exact contract prevents duplicated state and policy drift?
 - What minimum membership statuses are needed for the first slice?
 - Which membership policy should the first implementation use for Student participation?
 - Which membership policy should the first implementation use for Program Curator participation?
