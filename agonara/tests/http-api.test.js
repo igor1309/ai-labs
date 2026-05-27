@@ -105,6 +105,44 @@ test("adminBoard_shouldExposeSessionControls_withoutSensitiveRuntimeValues", asy
   }
 });
 
+test("adminBoard_shouldExposeIdentityOperationControls_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        hasIdentityList: body.includes('id="identity-list"'),
+        hasCreateIdentityForm: body.includes('id="create-identity-form"'),
+        hasCredentialForm: body.includes('id="credential-form"'),
+        hasAccessPanel: body.includes('id="operational-access-panel"'),
+        hasDisableAction: body.includes('data-action="disable"'),
+        hasGrantAdminAction: body.includes('data-action="grant-admin"'),
+        hasRevokeAdminAction: body.includes('data-action="revoke-admin"'),
+        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        hasIdentityList: true,
+        hasCreateIdentityForm: true,
+        hasCredentialForm: true,
+        hasAccessPanel: true,
+        hasDisableAction: true,
+        hasGrantAdminAction: true,
+        hasRevokeAdminAction: true,
+        hasPasswordValue: false,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("identityBootstrapStatus_shouldReflectAvailability_beforeAndAfterBootstrap", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 

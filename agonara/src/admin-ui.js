@@ -143,6 +143,37 @@ export const adminBoardHtml = `<!doctype html>
       gap: 8px;
     }
 
+    .operation-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
     .muted {
       color: var(--muted);
     }
@@ -182,7 +213,8 @@ export const adminBoardHtml = `<!doctype html>
 
     @media (max-width: 780px) {
       header,
-      .grid {
+      .grid,
+      .operation-grid {
         align-items: stretch;
         grid-template-columns: 1fr;
       }
@@ -253,23 +285,88 @@ export const adminBoardHtml = `<!doctype html>
       <h2>Session</h2>
       <p class="muted" id="session-summary">No active session.</p>
       <p class="status" id="session-status"></p>
+      <div class="operation-grid">
+        <form class="surface stack" id="create-identity-form" autocomplete="off">
+          <h2>Create Identity</h2>
+          <label>
+            Display name
+            <input name="displayName" type="text" required autocomplete="off">
+          </label>
+          <button type="submit">Create</button>
+          <p class="status" id="create-identity-status"></p>
+        </form>
+
+        <form class="surface stack" id="credential-form" autocomplete="off">
+          <h2>Bind Credential</h2>
+          <label>
+            Identity ID
+            <input name="identityId" type="text" required autocomplete="off">
+          </label>
+          <label>
+            Login
+            <input name="login" type="email" required autocomplete="off">
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" required autocomplete="new-password">
+          </label>
+          <button type="submit">Bind</button>
+          <p class="status" id="credential-status"></p>
+        </form>
+      </div>
+
+      <section class="surface stack" id="identity-board">
+        <div class="actions">
+          <h2>Identities</h2>
+          <button class="secondary" type="button" id="refresh-identities-button">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Display name</th>
+                <th>Identity ID</th>
+                <th>State</th>
+                <th>Admin</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="identity-list"></tbody>
+          </table>
+        </div>
+        <p class="status" id="identity-status"></p>
+      </section>
+
+      <section class="surface stack" id="operational-access-panel">
+        <h2>Operational Access</h2>
+        <p class="muted" id="operational-access-summary">Select Inspect for an identity.</p>
+      </section>
     </section>
   </main>
   <script>
     (() => {
       const state = {
         csrfToken: null,
-        identity: null
+        identity: null,
+        identities: []
       };
       const elements = {
         app: document.querySelector("#admin-app"),
         bootstrapForm: document.querySelector("#bootstrap-form"),
         bootstrapStatus: document.querySelector("#bootstrap-status"),
+        createIdentityForm: document.querySelector("#create-identity-form"),
+        createIdentityStatus: document.querySelector("#create-identity-status"),
+        credentialForm: document.querySelector("#credential-form"),
+        credentialStatus: document.querySelector("#credential-status"),
         entryPanel: document.querySelector("#entry-panel"),
+        identityList: document.querySelector("#identity-list"),
+        identityStatus: document.querySelector("#identity-status"),
         loadingPanel: document.querySelector("#loading-panel"),
         loginForm: document.querySelector("#login-form"),
         loginStatus: document.querySelector("#login-status"),
         logoutButton: document.querySelector("#logout-button"),
+        operationalAccessSummary: document.querySelector("#operational-access-summary"),
+        refreshIdentitiesButton: document.querySelector("#refresh-identities-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
         sessionActions: document.querySelector("#session-actions"),
         sessionChip: document.querySelector("#session-chip"),
@@ -294,6 +391,53 @@ export const adminBoardHtml = `<!doctype html>
         await submitSessionForm(elements.loginForm, "/identity/sessions", elements.loginStatus);
       });
 
+      elements.createIdentityForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const result = await requestJson("/identity/identities", {
+          body: Object.fromEntries(new FormData(elements.createIdentityForm)),
+          csrf: true,
+          method: "POST"
+        });
+        elements.createIdentityForm.reset();
+        renderStatus(elements.createIdentityStatus, result);
+        await refreshIdentities();
+      });
+
+      elements.credentialForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const formData = Object.fromEntries(new FormData(elements.credentialForm));
+        const result = await requestJson("/identity/identities/" + encodeURIComponent(formData.identityId) + "/local-password", {
+          body: { login: formData.login, password: formData.password },
+          csrf: true,
+          method: "POST"
+        });
+        elements.credentialForm.reset();
+        renderStatus(elements.credentialStatus, result);
+      });
+
+      elements.identityList.addEventListener("click", async event => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) {
+          return;
+        }
+        const identityId = button.dataset.identityId;
+        const action = button.dataset.action;
+        if (action === "inspect-access") {
+          await inspectAccess(identityId);
+          return;
+        }
+        if (action === "disable" && !confirm("Disable this identity?")) {
+          return;
+        }
+        const request = requestForIdentityAction(action, identityId);
+        if (!request) {
+          return;
+        }
+        const result = await requestJson(request.path, { csrf: true, method: request.method });
+        await refreshIdentities();
+        renderStatus(elements.identityStatus, result);
+      });
+
       elements.logoutButton.addEventListener("click", async () => {
         elements.sessionStatus.textContent = "Logging out.";
         const result = await requestJson("/identity/session", { method: "DELETE", csrf: true });
@@ -307,6 +451,7 @@ export const adminBoardHtml = `<!doctype html>
         renderStatus(elements.sessionStatus, result);
       });
 
+      elements.refreshIdentitiesButton.addEventListener("click", refreshIdentities);
       elements.refreshSessionButton.addEventListener("click", refreshSession);
 
       refreshSession();
@@ -373,9 +518,12 @@ export const adminBoardHtml = `<!doctype html>
       function setSignedOut() {
         state.csrfToken = null;
         state.identity = null;
+        state.identities = [];
         elements.sessionActions.classList.add("hidden");
         elements.sessionChip.textContent = "Signed out";
         elements.sessionSummary.textContent = "No active session.";
+        elements.identityList.textContent = "";
+        elements.operationalAccessSummary.textContent = "Select Inspect for an identity.";
         setState("signed-out");
         showOnly(elements.entryPanel);
       }
@@ -400,6 +548,61 @@ export const adminBoardHtml = `<!doctype html>
         elements.sessionStatus.dataset.tone = "accepted";
         setState("signed-in");
         showOnly(elements.sessionPanel);
+        refreshIdentities();
+      }
+
+      async function refreshIdentities() {
+        const result = await requestJson("/identity/identities");
+        if (result.status !== "accepted") {
+          renderStatus(elements.identityStatus, result);
+          return;
+        }
+        state.identities = result.value.identities;
+        renderIdentities();
+        elements.identityStatus.textContent = state.identities.length === 0 ? "No identities." : "Identities refreshed.";
+        elements.identityStatus.dataset.tone = "accepted";
+      }
+
+      function renderIdentities() {
+        elements.identityList.innerHTML = state.identities.map(identity => {
+          const adminAction = identity.isAdmin
+            ? '<button class="secondary" type="button" data-action="revoke-admin" data-identity-id="' + escapeAttribute(identity.id) + '">Revoke Admin</button>'
+            : '<button class="secondary" type="button" data-action="grant-admin" data-identity-id="' + escapeAttribute(identity.id) + '">Grant Admin</button>';
+          return '<tr>' +
+            '<td>' + escapeHtml(identity.displayName) + '</td>' +
+            '<td><code>' + escapeHtml(identity.id) + '</code></td>' +
+            '<td>' + escapeHtml(identity.state) + '</td>' +
+            '<td>' + (identity.isAdmin ? "yes" : "no") + '</td>' +
+            '<td><div class="actions">' +
+              '<button class="secondary" type="button" data-action="inspect-access" data-identity-id="' + escapeAttribute(identity.id) + '">Inspect</button>' +
+              adminAction +
+              '<button class="danger" type="button" data-action="disable" data-identity-id="' + escapeAttribute(identity.id) + '">Disable</button>' +
+            '</div></td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      async function inspectAccess(identityId) {
+        const result = await requestJson("/identity/identities/" + encodeURIComponent(identityId) + "/operational-access");
+        if (result.status !== "accepted") {
+          elements.operationalAccessSummary.textContent = messageFor(result);
+          return;
+        }
+        const value = result.value;
+        elements.operationalAccessSummary.textContent = value.identity.displayName + " · effective Admin: " + (value.effectiveAdmin ? "yes" : "no");
+      }
+
+      function requestForIdentityAction(action, identityId) {
+        if (action === "disable") {
+          return { method: "POST", path: "/identity/identities/" + encodeURIComponent(identityId) + "/disable" };
+        }
+        if (action === "grant-admin") {
+          return { method: "POST", path: "/identity/identities/" + encodeURIComponent(identityId) + "/admin" };
+        }
+        if (action === "revoke-admin") {
+          return { method: "DELETE", path: "/identity/identities/" + encodeURIComponent(identityId) + "/admin" };
+        }
+        return null;
       }
 
       function showOnly(element) {
@@ -421,12 +624,32 @@ export const adminBoardHtml = `<!doctype html>
           csrf_required: "Session token required. Refresh and try again.",
           invalid_bootstrap_secret: "Bootstrap secret was rejected.",
           invalid_credentials: "Credentials were rejected.",
+          admin_required: "Admin authority is required.",
+          duplicate_login: "Login is already bound.",
+          identity_disabled: "Identity is disabled.",
+          identity_not_found: "Identity was not found.",
+          last_admin_removal: "At least one Admin must remain active.",
+          last_admin_removal_rejected: "At least one Admin must remain active.",
           network_error: "Network request failed.",
           rate_limited: "Too many attempts. Wait before retrying.",
           session_not_found: "No active session.",
           session_revoked: "Session ended."
         };
         return messages[result.reason] ?? messages[result.status] ?? "Request failed.";
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        })[character]);
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value);
       }
 
       function setState(nextState) {
