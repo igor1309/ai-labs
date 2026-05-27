@@ -73,7 +73,7 @@ esac
 mkdir -p "${SHARED}"
 
 # Items to skip (direct children names only). Keep this list short and obvious.
-SKIP_NAMES=(.DS_Store Thumbs.db .git .github .gitignore .gitattributes .gitmodules README.md)
+SKIP_NAMES=(.DS_Store Thumbs.db .git .github .gitignore .gitattributes .gitmodules README.md TODO.md docs)
 
 should_skip_name() {
   local name="$1"

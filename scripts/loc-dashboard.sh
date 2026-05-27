@@ -4,7 +4,7 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   claude-insights, clipdeck, corpus-scout, dashboard-sync-agent, debates,
+#   agonara, claude-insights, clipdeck, corpus-scout, dashboard-sync-agent, debates,
 #   dev-skills, doc-drift-agent, dragoman, gemini, insights, loki, neris,
 #   nexum, niora, nomos, notio, oracle, prompts, reading, reinix, sandbox,
 #   session-digest, tools, web-scout
@@ -145,7 +145,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known=".claude .codex .git .github .lazyweb .wrangler claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  local known=".claude .codex .git .github .lazyweb .wrangler agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
   # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
   # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
   local optional="node_modules vendor worktrees _inbox"
@@ -185,7 +185,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent dragoman gemini insights loki neris nexum niora nomos notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
+for proj in agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent dragoman gemini insights loki neris nexum niora nomos notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"

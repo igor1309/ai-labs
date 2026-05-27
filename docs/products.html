@@ -115,6 +115,8 @@
     transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .product::before {
@@ -189,6 +191,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
+    margin-top: auto;
   }
 
   .tag {
@@ -229,6 +232,20 @@
 
     <h3 class="group-title">Web Apps</h3>
     <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Agonara</span>
+        </div>
+        <p class="product-desc">
+          <strong>Structured learning program environment.</strong> Private self-hosted app for curated programs, learner progression, and evidence of mastery. Current work is closing the identity, Admin control, API/CLI, operational logging, backup/restore, and Dockerized deployment handoff before implementation.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Product Design</span>
+          <span class="tag">Identity &amp; Roles</span>
+          <span class="tag">Docker</span>
+          <span class="tag">SQLite</span>
+        </div>
+      </div>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Clipdeck</span>
@@ -515,7 +532,7 @@
   </section>
 
   <footer>
-    Last updated: 2026-05-10 &middot; ai-labs
+    Last updated: 2026-05-27 &middot; ai-labs
   </footer>
 </div>
 
