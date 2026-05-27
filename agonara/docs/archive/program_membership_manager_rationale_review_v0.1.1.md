@@ -10,7 +10,7 @@ date: 2026-05-27
 
 ## Status
 
-Resolved by [ADR-006](../../../docs/adr/agonara/adr-006-program-membership-policy-actor.md). Peer document to [program_membership_manager_rationale_v0.1.1.md](program_membership_manager_rationale_v0.1.1.md).
+Resolved by [ADR-006](../adr/adr-006-program-membership-policy-actor.md). Peer document to [program_membership_manager_rationale_v0.1.1.md](program_membership_manager_rationale_v0.1.1.md).
 
 ## Scope
 

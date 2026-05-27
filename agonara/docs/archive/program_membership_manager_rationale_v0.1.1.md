@@ -10,7 +10,7 @@ date: 2026-05-27
 
 ## Status
 
-Resolved by [ADR-006](../../../docs/adr/agonara/adr-006-program-membership-policy-actor.md): `Program Membership Manager` is a narrative and policy actor, not a grantable role. See peer review: [program_membership_manager_rationale_review_v0.1.1.md](program_membership_manager_rationale_review_v0.1.1.md).
+Resolved by [ADR-006](../adr/adr-006-program-membership-policy-actor.md): `Program Membership Manager` is a narrative and policy actor, not a grantable role. See peer review: [program_membership_manager_rationale_review_v0.1.1.md](program_membership_manager_rationale_review_v0.1.1.md).
 
 This document is archived as decision input.
 

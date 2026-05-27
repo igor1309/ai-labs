@@ -186,7 +186,7 @@ LLM-предложения являются вспомогательным ма�
 | INT-06 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
 | INT-07 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md) | n/a | n/a | n/a |
 | ADM-01..ADM-11 | [Implementation Notes](implementation-notes_v0.2.2.md) | [Identity & Role Management First Slice](identity_role_management_first_slice_v0.2.2.md) | n/a | n/a | n/a |
-| STU-18..STU-23, CUR-14..CUR-18, ADM-12..ADM-15 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md), [Program Membership Pre-ADR](program_membership_pre_adr_v0.1.2.md), [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../../docs/adr/agonara/adr-006-program-membership-policy-actor.md), [ADR-007](../../docs/adr/agonara/adr-007-effective-participation-authorization-contract.md) | n/a | n/a | n/a |
+| STU-18..STU-23, CUR-14..CUR-18, ADM-12..ADM-15 | n/a | [Module Responsibility Map](module_responsibility_map_v0.4.3.md), [Program Membership Pre-ADR](program_membership_pre_adr_v0.1.2.md), [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](adr/adr-006-program-membership-policy-actor.md), [ADR-007](adr/adr-007-effective-participation-authorization-contract.md) | n/a | n/a | n/a |
 
 ## Change review
 

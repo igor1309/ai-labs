@@ -27,7 +27,7 @@ This ADR decides the Program Membership policy actor and v0.0.1 Student self-joi
 
 [ADR-005](adr-005-program-membership-state-and-first-admission-policy.md) accepts the first membership statuses, invitation statuses, and admission boundary.
 
-The archived [Program Membership Manager rationale](../../../agonara/docs/archive/program_membership_manager_rationale_v0.1.1.md) and [peer review](../../../agonara/docs/archive/program_membership_manager_rationale_review_v0.1.1.md) identified one blocking ambiguity: whether `Program Membership Manager` is a real role or a narrative actor for the Program Membership module.
+The archived [Program Membership Manager rationale](../archive/program_membership_manager_rationale_v0.1.1.md) and [peer review](../archive/program_membership_manager_rationale_review_v0.1.1.md) identified one blocking ambiguity: whether `Program Membership Manager` is a real role or a narrative actor for the Program Membership module.
 
 The rejected alternatives are adding `Program Membership Manager` as a grantable role before a real human workflow exists, making `Admin` the normal membership operator, or hiding Program Membership policy execution inside Student Workspace or Curator Workspace.
 

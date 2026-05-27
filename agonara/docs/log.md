@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Move accepted Agonara ADRs into `agonara/docs/adr/` so project architecture decisions live with the rest of the Agonara documentation tree.
 - Accept ADR-007 for the effective participation authorization contract: Student, Curator, Admin, and future application services must ask Program Membership for allowed/denied participation instead of reading membership policy internals.
 - Contain the ADR-006 follow-up: Program Membership Manager remains in the membership decision trail, while student, curator, and admin story catalogs stay at their existing versioned ownership boundaries.
 - Accept ADR-006 for Program Membership policy actor: Program Membership Manager is narrative only, v0.0.1 Student self-join is allowed for active identities, and no new grantable role is added.
