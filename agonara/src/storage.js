@@ -216,7 +216,7 @@ export function listAuditEvents(database) {
     .all();
 }
 
-function getIdentity(database, id) {
+export function getIdentity(database, id) {
   const row = database
     .prepare(
       `select id, display_name as displayName, state, created_at as createdAt, disabled_at as disabledAt
@@ -228,7 +228,7 @@ function getIdentity(database, id) {
   return row ?? null;
 }
 
-function getLocalPasswordCredentialByLogin(database, login) {
+export function getLocalPasswordCredentialByLogin(database, login) {
   return database
     .prepare(
       `select id, identity_id as identityId, login, password_hash as passwordHash, created_at as createdAt
@@ -295,7 +295,7 @@ function isEffectiveAdmin(database, identityId) {
   return row !== undefined;
 }
 
-function countEffectiveAdmins(database) {
+export function countEffectiveAdmins(database) {
   return database
     .prepare(
       `select count(*) as count

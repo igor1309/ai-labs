@@ -82,6 +82,17 @@ The Identity persistence slice uses the repo-existing SQLite binding:
 
 The first storage boundary creates tables for Identity, local password credential, session, Admin authority, and audit event records. It enforces duplicate-login, one-credential-per-Identity, and last-effective-Admin protection at the repository layer backed by database uniqueness constraints and transaction-scoped checks.
 
+## Step 4 Identity Core Verification
+
+The Identity command slice uses Node's built-in crypto APIs for local-password handling:
+
+- runtime: Node `v22.21.1`;
+- APIs verified before implementation use: `node:crypto` `scrypt`, `randomBytes`, `timingSafeEqual`, `createHash`, and `randomUUID`;
+- password hash format: `scrypt$N=16384,r=8,p=1$<salt>$<derived-key>`;
+- session duration: seven days from the session creation instant, persisted server-side as an opaque session record.
+
+The command boundary implements first-Admin bootstrap, login, session resolution, and logout. Bootstrap creates the Identity, local password credential, Admin authority, accepted audit event, and initial session in one database transaction after password hashing. Rejected bootstrap attempts append rejected audit events. Login rejects disabled Identities as `invalid_credentials` so it does not disclose account state.
+
 ## Open questions
 
 - How does credential rotation preserve the same internal Identity?

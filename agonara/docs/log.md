@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Implement the Identity core commands for first-Admin bootstrap, local-password login, session resolution, and logout, including scrypt password hashes, seven-day server-side sessions, and bootstrap audit events.
 - Add the Identity storage boundary with SQLite-backed schema initialization, credential uniqueness checks, session revocation state, audit event append/list behavior, and last-effective-Admin protection.
 - Add the operational walking skeleton: request ID propagation, unauthenticated health, unauthenticated diagnostics rejection, structured completion logs, and redacted fault responses.
 - Start implementation with the Agonara backend workspace skeleton, per-project CI handoff, and Docker container-start smoke path.

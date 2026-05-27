@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: implemented first-Admin bootstrap, local-password login, session resolution, and logout over the new Identity storage boundary, with scrypt password hashes and bootstrap audit records.
 - agonara: added the Identity persistence boundary with SQLite-backed records for identities, credentials, sessions, Admin authority, and audit events, including storage-level uniqueness and last-Admin invariants.
 - agonara: added the operational walking skeleton with request correlation, health, diagnostics rejection, structured logs, redacted faults, and container health verification.
 - agonara: started the identity and operations implementation with a dedicated backend workspace, per-project CI workflow dispatch, and Docker container-start smoke path.
