@@ -73,6 +73,38 @@ test("adminBoard_shouldServeShell_withoutSensitiveRuntimeValues", async () => {
   }
 });
 
+test("adminBoard_shouldExposeSessionControls_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        hasBootstrapForm: body.includes('id="bootstrap-form"'),
+        hasLoginForm: body.includes('id="login-form"'),
+        hasSessionPanel: body.includes('id="session-panel"'),
+        hasLogoutButton: body.includes('id="logout-button"'),
+        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        hasBootstrapForm: true,
+        hasLoginForm: true,
+        hasSessionPanel: true,
+        hasLogoutButton: true,
+        hasPasswordValue: false,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("identityBootstrapStatus_shouldReflectAvailability_beforeAndAfterBootstrap", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 
