@@ -309,6 +309,9 @@ function runCommand(command, args, { dbPath, input }) {
     },
     input,
   });
+  if (result.error) {
+    throw result.error;
+  }
 
   return {
     body: result.stdout ? JSON.parse(result.stdout) : null,
