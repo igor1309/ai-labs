@@ -4,6 +4,9 @@
 
 - Restyle the Admin operations UI board to match the `docs/my-way/landing.html` dark, mono-accented look (palette, typography, hero pill, surface cards) while preserving every structural marker the admin-board HTTP tests assert on.
 - Implement the private Admin operations UI board on `/admin`, covering first-Admin bootstrap, sign in/out, identity creation, local credential binding, disablement, Admin grant/revoke, operational access inspection, and audit event inspection through the existing Identity API.
+- Add the Program Shell and Membership first-slice spec, translating ADR-009 and membership ADRs into command/query contracts, behavior rules, and required tests.
+- Accept ADR-009 for Program shell ownership and initial curator participation: active identities can create self-join Program shells, Corpus Storage owns the shell, and Program Membership establishes initial curator participation.
+- Update Agonara traceability links to point at the implemented Identity and Operations plan after closeout.
 - Add the Admin operations UI board implementation plan, scoping the next Agonara slice to a thin private-instance board over the existing Identity HTTP API.
 - Add packaged-bin CLI acceptance coverage and extend the Docker CI smoke to bootstrap the first Admin through the containerized HTTP API, fixing the CLI symlink entrypoint guard uncovered by that test.
 - Update the Agonara README so the implemented Identity and Operations slice is directly runnable through CLI, HTTP, and Docker demo paths instead of still reading as design-only.
