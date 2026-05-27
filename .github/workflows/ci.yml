@@ -33,6 +33,8 @@ jobs:
       clipdeck: ${{ steps.filter.outputs.clipdeck }}
       clipdeck-ci: ${{ steps.filter.outputs.clipdeck-ci }}
       dev-skills: ${{ steps.filter.outputs.dev-skills }}
+      agonara: ${{ steps.filter.outputs.agonara }}
+      agonara-ci: ${{ steps.filter.outputs.agonara-ci }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -96,6 +98,10 @@ jobs:
               - ".github/workflows/clipdeck-deploy.yml"
             dev-skills:
               - "dev-skills/public/**"
+            agonara:
+              - "agonara/**"
+            agonara-ci:
+              - ".github/workflows/agonara-core.yml"
 
   notio-core:
     needs: [changes]
@@ -136,6 +142,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.clipdeck == 'true' || needs.changes.outputs.clipdeck-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/clipdeck-core.yml
+
+  agonara-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.agonara == 'true' || needs.changes.outputs.agonara-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/agonara-core.yml
 
   release-validation:
     needs: [changes]
@@ -216,7 +227,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, agonara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -227,8 +238,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, agonara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -242,6 +253,7 @@ jobs:
         corpus-scout-core=${{ needs.corpus-scout-core.result }}
         reinix-core=${{ needs.reinix-core.result }}
         clipdeck-core=${{ needs.clipdeck-core.result }}
+        agonara-core=${{ needs.agonara-core.result }}
         notio-core=${{ needs.notio-core.result }}
         notio-frontend-core=${{ needs.notio-frontend-core.result }}
         release-validation=${{ needs.release-validation.result }}

@@ -85,6 +85,7 @@ Repo-specific details:
 - Plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
 - Default preferred execution mode is `auto-continue` unless the plan explicitly says `human-review-gated`.
 - Completed plans move to the relevant `implemented/` directory as the final closeout step. The move (`git mv docs/plans/<name>.md docs/plans/implemented/<name>.md`) ships in the **same PR as the implementation**, not as a follow-up PR — the merge is the moment the plan becomes implemented, so trunk never sees a state where the implementation is in but the plan still sits in `docs/plans/` as "to do".
+- Before opening a PR after substantial implementation or documentation movement, refresh `docs/loc-dashboard.html` from `./scripts/loc-dashboard.sh --sort=name` and verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
 
 ## Release Process
 

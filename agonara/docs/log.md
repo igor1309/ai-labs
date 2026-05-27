@@ -2,6 +2,16 @@
 
 ## 2026-05-27
 
+- Fix the Agonara CI Docker smoke so the runtime receives the required bootstrap secret while keeping local runtime fail-fast behavior intact.
+- Complete the Identity and Operations first-slice implementation with executable acceptance coverage across CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
+- Add the minimum Identity backup/restore path for identities, local password credentials, Admin authorities, and audit history, while excluding active sessions and rejecting no-Admin restores.
+- Add the first `agonara identity` operator CLI for bootstrap status and first-Admin bootstrap, with JSON stdin for secrets, JSON stdout envelopes, and defined exit codes.
+- Add the first Identity HTTP API routes for bootstrap status, bootstrap, login, session resolution/logout, Admin identity creation, audit listing, CSRF, rate limiting, secure session cookies, and Admin diagnostics.
+- Add Admin-protected Identity commands for identity creation, local password binding, disablement, Admin grant/revoke, operational access inspection, identity listing, and audit listing.
+- Implement the Identity core commands for first-Admin bootstrap, local-password login, session resolution, and logout, including scrypt password hashes, seven-day server-side sessions, and bootstrap audit events.
+- Add the Identity storage boundary with SQLite-backed schema initialization, credential uniqueness checks, session revocation state, audit event append/list behavior, and last-effective-Admin protection.
+- Add the operational walking skeleton: request ID propagation, unauthenticated health, unauthenticated diagnostics rejection, structured completion logs, and redacted fault responses.
+- Start implementation with the Agonara backend workspace skeleton, per-project CI handoff, and Docker container-start smoke path.
 - Close docs handoff gaps by making Dockerized private self-hosting an explicit implementation gate and registering Agonara in the repo dashboard surfaces.
 - Harden the Identity and Operations implementation plan with explicit substrate assumptions, dependency API verification, direct ADR links, and executable diagnostics sequencing.
 - Add the Identity and Operations first-slice implementation plan, sequencing Agonara identity, API/CLI, operational, backup/restore, and executable acceptance work behind explicit process gates.

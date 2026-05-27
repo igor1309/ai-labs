@@ -1,0 +1,53 @@
+name: Agonara Core
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: ./scripts/run_silent.sh "build" npx tsc --noEmit
+
+      - name: Run tests
+        run: ./scripts/run_silent.sh "agonara-tests" npm test --workspace agonara
+
+      - name: Build Docker image
+        run: docker build -t agonara:ci agonara
+
+      - name: Smoke container start
+        run: |
+          cid=$(docker run --rm -d -e AGONARA_BOOTSTRAP_SECRET=ci-bootstrap-secret -p 127.0.0.1:18080:8080 agonara:ci)
+          trap 'docker rm -f "$cid"' EXIT
+          for i in 1 2 3 4 5; do
+            if curl -fsS http://127.0.0.1:18080/operations/health > /tmp/agonara-health.json; then
+              break
+            fi
+            sleep 1
+          done
+          grep '"status":"ok"' /tmp/agonara-health.json
+          docker logs "$cid" | grep '"operation":"GET /operations/health"'

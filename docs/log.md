@@ -2,6 +2,17 @@
 
 ## 2026-05-27
 
+- agonara: fixed the Agonara CI Docker smoke to provide the required bootstrap secret while preserving runtime fail-fast behavior for missing operator configuration.
+- Process: added a pre-PR reminder to refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh` after substantial implementation or docs movement, then refreshed the Agonara LOC/dashboard numbers for this branch.
+- agonara: completed the Identity and Operations first slice with executable acceptance coverage for CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
+- agonara: added minimum Identity backup/restore behavior for identity, credential, Admin authority, and audit state, with active sessions excluded and no-Admin restores rejected.
+- agonara: added the first operator CLI for identity bootstrap status and first-Admin bootstrap, using JSON stdin for secrets and JSON stdout envelopes with accepted/rejected exit-code behavior.
+- agonara: added the first Identity HTTP API routes with session cookies, CSRF checks, login/bootstrap rate limiting, audit response redaction, and Admin-session diagnostics.
+- agonara: added Admin-protected Identity operations and audit paths for identity creation, credential binding, disablement, Admin grant/revoke, operational access inspection, identity listing, and audit listing.
+- agonara: implemented first-Admin bootstrap, local-password login, session resolution, and logout over the new Identity storage boundary, with scrypt password hashes and bootstrap audit records.
+- agonara: added the Identity persistence boundary with SQLite-backed records for identities, credentials, sessions, Admin authority, and audit events, including storage-level uniqueness and last-Admin invariants.
+- agonara: added the operational walking skeleton with request correlation, health, diagnostics rejection, structured logs, redacted faults, and container health verification.
+- agonara: started the identity and operations implementation with a dedicated backend workspace, per-project CI workflow dispatch, and Docker container-start smoke path.
 - agonara: registered the project in the repo dashboard surfaces and tightened the implementation handoff so Dockerized private self-hosting is an explicit build, health, and log-verification gate before implementation PRs.
 - agonara: moved accepted project ADRs from the repo-level ADR tree into `agonara/docs/adr/`, keeping project decisions co-located with Agonara docs while preserving repo-level ADRs for cross-project concerns.
 - my-way: documented the method as semi-authoritative rather than rigid doctrine, and clarified that Pre-ADRs may include provisional candidate capability notes when they sharpen architectural discussion.

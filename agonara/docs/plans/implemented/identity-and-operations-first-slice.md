@@ -10,10 +10,10 @@ description: "Implementation plan for Agonara Identity & Role Management and ope
 
 This plan implements the first Agonara backend slice defined by:
 
-- [Identity & Role Management First Slice](../specs/identity-role-management-first-slice.md);
-- [Identity & Role Management API and CLI](../specs/identity-role-management-api-cli.md);
-- [Operational Cross-Cutting First Slice](../specs/operational-cross-cutting-first-slice.md);
-- [ADR-001](../adr/adr-001-internal-identity-as-agonara-ownership-subject.md), [ADR-002](../adr/adr-002-role-authority-scope-model.md), [ADR-003](../adr/adr-003-admin-recovery-invariant.md), [ADR-004](../adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](../adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../adr/adr-006-program-membership-policy-actor.md), [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md), and [ADR-008](../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
+- [Identity & Role Management First Slice](../../specs/identity-role-management-first-slice.md);
+- [Identity & Role Management API and CLI](../../specs/identity-role-management-api-cli.md);
+- [Operational Cross-Cutting First Slice](../../specs/operational-cross-cutting-first-slice.md);
+- [ADR-001](../../adr/adr-001-internal-identity-as-agonara-ownership-subject.md), [ADR-002](../../adr/adr-002-role-authority-scope-model.md), [ADR-003](../../adr/adr-003-admin-recovery-invariant.md), [ADR-004](../../adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](../../adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../../adr/adr-006-program-membership-policy-actor.md), [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md), and [ADR-008](../../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
 
 The target outcome is a thin vertical backend slice that proves bootstrap, local-password authentication, server-managed sessions, Admin authority, auditability, request correlation, redaction, health, diagnostics, and executable acceptance behavior before learning-domain modules are implemented.
 
@@ -25,19 +25,19 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 - Expected worktree: `worktrees/agonara-identity-operations-first-slice`
 - Expected branch: `codex/agonara-identity-operations-first-slice`
 - Push policy: no push
-- Preflight check: [ ] done
+- Preflight check: [x] done
 - Final archive behavior: move this file to `agonara/docs/plans/implemented/identity-and-operations-first-slice.md` in the same PR as the implementation closeout.
 
 ## Plan Acceptance Checklist
 
-- [ ] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
-- [ ] Installed runtime and package configuration are verified before choosing or using implementation dependencies.
-- [ ] Every step ends with targeted verification and a local commit.
-- [ ] Every step self-review fixes fail/warn findings before the next step starts.
-- [ ] Code/config/dependency/CI changes run `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` before commit.
-- [ ] Docs-only updates run Markdown structure, local-link, and diff-scope checks before commit.
-- [ ] Plan tracker checkboxes are updated only after verified evidence.
-- [ ] The plan is moved to `implemented/` only after all required implementation and final gates pass.
+- [x] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
+- [x] Installed runtime and package configuration are verified before choosing or using implementation dependencies.
+- [x] Every step ends with targeted verification and a local commit.
+- [x] Every step self-review fixes fail/warn findings before the next step starts.
+- [x] Code/config/dependency/CI changes run `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` before commit.
+- [x] Docs-only updates run Markdown structure, local-link, and diff-scope checks before commit.
+- [x] Plan tracker checkboxes are updated only after verified evidence.
+- [x] The plan is moved to `implemented/` only after all required implementation and final gates pass.
 
 ## Scope
 
@@ -67,7 +67,7 @@ The target outcome is a thin vertical backend slice that proves bootstrap, local
 - New third-party runtime dependencies must be added only after verifying installed versions, package manager state, and the concrete APIs used by the implementation.
 - The v0.0.1 default substrate is a Node/TypeScript Agonara backend package with a local transactional SQL store and checked-in migrations.
 - The default storage target is SQLite-compatible local persistence for the private self-hosted slice unless preflight finds an already accepted Agonara storage decision.
-- The v0.0.1 deployment substrate is Dockerized private self-hosting, matching [Agonara Deployment Target](../deployment-target.md).
+- The v0.0.1 deployment substrate is Dockerized private self-hosting, matching [Agonara Deployment Target](../../deployment-target.md).
 - Docker-producing implementation changes must follow the Docker Discipline gate: local `docker build`, container start, health check, and request/log verification before push.
 - Persistence must support uniqueness and last-Admin invariants atomically; if SQLite-compatible persistence or the chosen storage layer cannot provide this, the step must stop and document the blocking finding before continuing.
 - Password hashing, cookie, CSRF, CLI, and storage dependencies must have their concrete APIs verified before implementation code calls them.
@@ -287,11 +287,11 @@ Commit:
 
 ## Final Gate
 
-- [ ] All implementation steps have local commits.
-- [ ] All required tests and build checks pass in the implementation worktree.
-- [ ] Agonara CI workflow wiring exists and is covered by the dispatcher once Agonara backend code exists.
-- [ ] Docker build, container start, `/operations/health`, and structured-log verification pass for the final implementation state.
-- [ ] Agonara project log and repo log are current.
-- [ ] Plan checkboxes reflect verified evidence.
-- [ ] This plan is moved to `agonara/docs/plans/implemented/`.
-- [ ] No uncommitted changes remain.
+- [x] All implementation steps have local commits.
+- [x] All required tests and build checks pass in the implementation worktree.
+- [x] Agonara CI workflow wiring exists and is covered by the dispatcher once Agonara backend code exists.
+- [x] Docker build, container start, `/operations/health`, and structured-log verification pass for the final implementation state.
+- [x] Agonara project log and repo log are current.
+- [x] Plan checkboxes reflect verified evidence.
+- [x] This plan is moved to `agonara/docs/plans/implemented/`.
+- [x] No uncommitted changes remain.
