@@ -3,7 +3,7 @@ title: Agonara Program Membership Pre-ADR
 date: 2026-05-27
 description: Pre-ADR for Program Membership module ownership, participation lifecycle, and policy boundaries.
 model: gpt-5.5-thinking
-version: 0.1.0
+version: 0.1.1
 ---
 
 # Agonara Program Membership Pre-ADR
@@ -16,7 +16,7 @@ It uses the membership stories in the student, curator, and admin catalogs to cl
 
 This document is not a data model, schema, API design, UI specification, permission-framework design, or implementation plan.
 
-It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit.
+It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit. First membership state and policy are accepted by [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md). The Program Membership Manager narrative actor is accepted by [ADR-006](../../docs/adr/agonara/adr-006-program-membership-policy-actor.md).
 
 ## Context
 
@@ -26,7 +26,7 @@ It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../.
 
 [ADR-003](../../docs/adr/agonara/adr-003-admin-recovery-invariant.md) establishes recoverable Admin control and attributable sensitive identity-management operations.
 
-The [Module Responsibility Map](module_responsibility_map_v0.4.1.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional membership recovery hooks.
+The [Module Responsibility Map](module_responsibility_map_v0.4.2.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional membership recovery hooks.
 
 The story catalogs now include membership stories:
 
@@ -77,6 +77,14 @@ Student Workspace and Curator Workspace should depend on Program Membership inst
 Identity & Role Management should provide internal Identity, credential, Admin, and access primitives without owning Program participation lifecycle.
 
 Policy details such as self-join, curator invitation, approval, payment, closed cohort, or future per-Program policy variants should be encapsulated inside Program Membership. Other modules should not branch on those policy details.
+
+## Primary actor
+
+`Program Membership Manager` is the narrative and policy actor for this module.
+
+It represents Program Membership executing accepted policy and does not represent a grantable internal role.
+
+Membership events should record the real acting internal Identity when one exists, plus the policy path that allowed or rejected the transition.
 
 ## Candidate design decisions
 

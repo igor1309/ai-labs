@@ -2,7 +2,7 @@
 title: Agonara Program Membership Manager Rationale — Peer Review
 description: Peer review of the Program Membership Manager rationale; identifies the load-bearing role-vs-narrative ambiguity and lists downstream documents that should be revised once the decision lands.
 model: claude-opus-4-7
-version: 0.1.0
+version: 0.1.1
 date: 2026-05-27
 ---
 
@@ -10,7 +10,7 @@ date: 2026-05-27
 
 ## Status
 
-Under consideration. Peer document to [program_membership_manager_rationale_v0.1.0.md](program_membership_manager_rationale_v0.1.0.md). Both documents are parked here until the role-vs-narrative decision is taken.
+Resolved by [ADR-006](../../../docs/adr/agonara/adr-006-program-membership-policy-actor.md). Peer document to [program_membership_manager_rationale_v0.1.1.md](program_membership_manager_rationale_v0.1.1.md).
 
 ## Scope
 

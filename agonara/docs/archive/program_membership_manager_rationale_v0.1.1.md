@@ -2,7 +2,7 @@
 title: Agonara Program Membership Manager Rationale
 description: Rationale for introducing Program Membership Manager as the actor for the Program Membership module.
 model: gpt-5.5-thinking
-version: 0.1.0
+version: 0.1.1
 date: 2026-05-27
 ---
 
@@ -10,9 +10,9 @@ date: 2026-05-27
 
 ## Status
 
-Under consideration. Pending decision on whether `Program Membership Manager` is a grantable role (with identity/role-system semantics) or a narrative actor used only in user stories. See peer review: [program_membership_manager_rationale_review_v0.1.0.md](program_membership_manager_rationale_review_v0.1.0.md).
+Resolved by [ADR-006](../../../docs/adr/agonara/adr-006-program-membership-policy-actor.md): `Program Membership Manager` is a narrative and policy actor, not a grantable role. See peer review: [program_membership_manager_rationale_review_v0.1.1.md](program_membership_manager_rationale_review_v0.1.1.md).
 
-Downstream document revisions (module map, Pre-ADR, story catalogs, ADR-002 or a new ADR) are paused until this decision lands.
+This document is archived as decision input.
 
 ## Purpose
 
@@ -74,11 +74,11 @@ Contextual shorthand:
 Manager
 ```
 
-## Role Definition
+## Actor Scope
 
 `Program Membership Manager` manages participation lifecycle within a program.
 
-The role may manage:
+The actor may represent Program Membership policy execution for:
 
 - invitations;
 - membership status;

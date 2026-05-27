@@ -3,7 +3,7 @@ title: Agonara Module Responsibility Map
 date: 2026-05-27
 description: Architecture-level responsibility map for Agonara module boundaries.
 model: gpt-5.5-thinking
-version: 0.4.1
+version: 0.4.2
 ---
 
 # Agonara Module Responsibility Map
@@ -57,7 +57,7 @@ Known constraints:
 
 Option A, the five-module split, is the current best candidate.
 
-It most directly preserves the Product Intent boundary between shared program corpus and personal student state, while giving Program Membership a clear place to own participation lifecycle and giving Identity & Role Management a clear place to own identity and operational authority primitives. Program Membership ownership is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), and first membership state/admission policy is accepted by [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md). The remaining map is provisional: the Corpus Storage / Curator Workspace boundary and assessment ownership boundary need further pressure before ADR acceptance.
+It most directly preserves the Product Intent boundary between shared program corpus and personal student state, while giving Program Membership a clear place to own participation lifecycle and giving Identity & Role Management a clear place to own identity and operational authority primitives. Program Membership ownership is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), first membership state/admission policy is accepted by [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md), and Program Membership Manager is accepted as a narrative policy actor by [ADR-006](../../docs/adr/agonara/adr-006-program-membership-policy-actor.md). The remaining map is provisional: the Corpus Storage / Curator Workspace boundary and assessment ownership boundary need further pressure before ADR acceptance.
 
 ## Provisional boundaries
 
@@ -93,6 +93,8 @@ Product roles are program-scoped. ADR-004 accepts Program Membership as the owne
 - `Program Curator` — curates a program and owns curator decisions within that program.
 
 `Admin` is an operational role.
+
+`Program Membership Manager` is a narrative policy actor for the Program Membership module. It is not a product role, operational role, grantable role, or authorization subject.
 
 Admin is instance-scoped and manages identities, credential bindings, settings, and recovery-level operations.
 

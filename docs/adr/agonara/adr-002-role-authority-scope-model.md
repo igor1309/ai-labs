@@ -27,11 +27,13 @@ Agonara now needs to decide what kinds of authority can attach to that internal 
 
 The [Product Intent](../../../agonara/docs/intent_learning_program_app_v0.3.0.md) separates student learning from curator program construction and names administrator responsibility as private-instance operation, not learning-domain authority.
 
-The [Module Responsibility Map](../../../agonara/docs/module_responsibility_map_v0.4.1.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
+The [Module Responsibility Map](../../../agonara/docs/module_responsibility_map_v0.4.2.md) treats Identity & Role Management as the module that defines identity and access primitives while not owning program membership, program content, curator decisions, learner state, assessment logic, or progress interpretation.
 
 The [Identity & Role Management first-slice Pre-ADR](../../../agonara/docs/identity_role_management_first_slice_v0.2.2.md) compares program-scoped product roles with flat global product roles, and instance-scoped Admin with peer role management.
 
 The [admin user stories](../../../agonara/docs/admin_user_stories_v0.2.1.md) require program participation inspection, participation-change tracing, exceptional membership recovery, and Admin changes to preserve separation between learning-domain authority and operational control.
+
+[ADR-006](adr-006-program-membership-policy-actor.md) confirms that `Program Membership Manager` is not a grantable role and does not amend this role vocabulary.
 
 The rejected alternatives are flat global product roles and treating `Admin` as a learning-domain superuser. Flat global product roles are too broad for private instances where one person may curate one Program and study another. Treating `Admin` as a learning-domain superuser would blur operational control with curator and student ownership.
 
