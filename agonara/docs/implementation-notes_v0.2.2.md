@@ -1,9 +1,9 @@
 ---
 title: Agonara Implementation Notes
-date: 2026-05-26
+date: 2026-05-27
 description: "Research notes on mapping external authentication to Agonara internal identity and authority."
 model: gpt-5.5-thinking
-version: 0.2.1
+version: 0.2.2
 ---
 
 # Agonara Implementation Notes
@@ -40,6 +40,7 @@ Identity & Role Management:
 Program Membership:
 
 - manages Student and Program Curator participation grants;
+- answers effective participation decisions for an internal Identity, Program, and participation kind;
 - hides membership policy details.
 
 Identity & Roles:
@@ -50,7 +51,7 @@ Identity & Roles:
 
 Application modules:
 
-- ask whether this Identity has effective authority for this role in this Program.
+- ask Program Membership for the effective participation decision before participation-sensitive Student or Program Curator behavior.
 
 ## Open questions
 
@@ -58,4 +59,3 @@ Application modules:
 - How does credential rotation preserve the same internal Identity?
 - What audit record is required when a credential binding is created, changed, or removed?
 - Should the first slice support multiple credential bindings per Identity?
-- Which authorization checks belong in application modules, Program Membership, and Identity & Role Management?

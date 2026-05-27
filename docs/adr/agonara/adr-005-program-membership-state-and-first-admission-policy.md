@@ -25,9 +25,9 @@ This ADR decides first membership states, first invitation states, and first adm
 
 [ADR-004](adr-004-program-membership-owns-program-participation.md) accepts Program Membership as the owner of Program participation lifecycle and policy.
 
-The [Module Responsibility Map](../../../agonara/docs/module_responsibility_map_v0.4.2.md) identifies Program Membership ownership and records this ADR as the first membership state and admission policy decision.
+The [Module Responsibility Map](../../../agonara/docs/module_responsibility_map_v0.4.3.md) identifies Program Membership ownership and records this ADR as the first membership state and admission policy decision.
 
-The [Program Membership Pre-ADR](../../../agonara/docs/program_membership_pre_adr_v0.1.1.md) identified membership status, Student participation policy, Program Curator participation policy, invitation behavior, audit events, and exceptional Admin recovery as open questions before this ADR.
+The [Program Membership Pre-ADR](../../../agonara/docs/program_membership_pre_adr_v0.1.2.md) identified membership status, Student participation policy, Program Curator participation policy, invitation behavior, audit events, and exceptional Admin recovery as open questions before this ADR.
 
 The [Student stories](../../../agonara/docs/student_user_stories_v0.3.1.md) require joining, leaving, rejoining after leave, inspecting membership state, and handling invitations.
 

@@ -3,7 +3,7 @@ title: Agonara Program Membership Pre-ADR
 date: 2026-05-27
 description: Pre-ADR for Program Membership module ownership, participation lifecycle, and policy boundaries.
 model: gpt-5.5-thinking
-version: 0.1.1
+version: 0.1.2
 ---
 
 # Agonara Program Membership Pre-ADR
@@ -16,7 +16,7 @@ It uses the membership stories in the student, curator, and admin catalogs to cl
 
 This document is not a data model, schema, API design, UI specification, permission-framework design, or implementation plan.
 
-It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit. First membership state and policy are accepted by [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md). The Program Membership Manager narrative actor is accepted by [ADR-006](../../docs/adr/agonara/adr-006-program-membership-policy-actor.md).
+It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit. First membership state and policy are accepted by [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md). The Program Membership Manager narrative actor is accepted by [ADR-006](../../docs/adr/agonara/adr-006-program-membership-policy-actor.md). The effective participation authorization contract is accepted by [ADR-007](../../docs/adr/agonara/adr-007-effective-participation-authorization-contract.md).
 
 ## Context
 
@@ -26,7 +26,7 @@ It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../.
 
 [ADR-003](../../docs/adr/agonara/adr-003-admin-recovery-invariant.md) establishes recoverable Admin control and attributable sensitive identity-management operations.
 
-The [Module Responsibility Map](module_responsibility_map_v0.4.2.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional membership recovery hooks.
+The [Module Responsibility Map](module_responsibility_map_v0.4.3.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, effective participation decisions, and exceptional membership recovery hooks.
 
 The story catalogs now include membership stories:
 
@@ -76,7 +76,7 @@ Student Workspace and Curator Workspace should depend on Program Membership inst
 
 Identity & Role Management should provide internal Identity, credential, Admin, and access primitives without owning Program participation lifecycle.
 
-Policy details such as self-join, curator invitation, approval, payment, closed cohort, or future per-Program policy variants should be encapsulated inside Program Membership. Other modules should not branch on those policy details.
+Policy details such as self-join, curator invitation, approval, payment, closed cohort, or future per-Program policy variants should be encapsulated inside Program Membership. Other modules should depend on Program Membership's effective participation decision and should not branch on those policy details.
 
 ## Primary actor
 
@@ -99,6 +99,8 @@ Program Membership supports participation as:
 
 Program Membership decides whether participation can be created, changed, suspended, left, resumed, invited, accepted, declined, recovered, or revoked under the Program's membership policy.
 
+Program Membership decides whether an Identity has effective Student or Program Curator participation in a Program.
+
 Membership policy is opaque outside Program Membership.
 
 Student Workspace may create or resume student learning state only after Program Membership permits Student participation.
@@ -119,7 +121,7 @@ ADR-004 accepts the first interpretation below. The alternatives remain here as 
 - Program Membership owns membership state, while Identity & Role Management owns separate Program-scoped role assignments that membership policy may require or update.
 - Program Membership owns participation status, while a separate authorization layer derives effective product authority from membership plus role primitives.
 
-The first option is the accepted architectural direction.
+The first option is the accepted architectural direction. ADR-007 defines the effective participation contract that other modules use instead of reading raw membership status, invitation state, or policy internals.
 
 ## Provisional boundaries
 
@@ -134,6 +136,7 @@ Program Membership includes:
 - invitation lifecycle;
 - membership status;
 - membership policy;
+- effective participation decisions;
 - participant visibility;
 - exceptional admin recovery hooks;
 - membership-change audit events.
