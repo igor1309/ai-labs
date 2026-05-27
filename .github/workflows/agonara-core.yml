@@ -41,7 +41,7 @@ jobs:
 
       - name: Smoke container start
         run: |
-          cid=$(docker run --rm -d -p 127.0.0.1:18080:8080 agonara:ci)
+          cid=$(docker run --rm -d -e AGONARA_BOOTSTRAP_SECRET=ci-bootstrap-secret -p 127.0.0.1:18080:8080 agonara:ci)
           trap 'docker rm -f "$cid"' EXIT
           for i in 1 2 3 4 5; do
             if curl -fsS http://127.0.0.1:18080/operations/health > /tmp/agonara-health.json; then

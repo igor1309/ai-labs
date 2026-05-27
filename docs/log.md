@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: fixed the Agonara CI Docker smoke to provide the required bootstrap secret while preserving runtime fail-fast behavior for missing operator configuration.
 - Process: added a pre-PR reminder to refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh` after substantial implementation or docs movement, then refreshed the Agonara LOC/dashboard numbers for this branch.
 - agonara: completed the Identity and Operations first slice with executable acceptance coverage for CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
 - agonara: added minimum Identity backup/restore behavior for identity, credential, Admin authority, and audit state, with active sessions excluded and no-Admin restores rejected.
