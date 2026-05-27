@@ -30,12 +30,12 @@ Source artifacts:
 - Worktree mode: create new
 - Expected worktree: `worktrees/agonara-admin-operations-ui-board`
 - Expected branch: `codex/agonara-admin-operations-ui-board`
-- Preflight check: [ ] done
+- Preflight check: [x] done
 
 Gate checklist:
 
-- [ ] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
-- [ ] Existing Agonara runtime, package scripts, API routes, Docker behavior, and UI dependency state are verified before choosing the UI substrate.
+- [x] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
+- [x] Existing Agonara runtime, package scripts, API routes, Docker behavior, and UI dependency state are verified before choosing the UI substrate.
 - [ ] Every phase ends with targeted verification and a local commit.
 - [ ] Every phase self-review fixes fail/warn findings before the next phase starts.
 - [ ] Code, config, CI, generated-artifact, or executable-example changes run `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "tests" npm test` and `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit` before commit.
@@ -106,6 +106,10 @@ UX guardrails:
 | ADM-09 — Prevent last-admin removal | Phase 4 rejected-state display backed by API invariant |
 | ADM-10 — Audit identity and access operations | Phase 5 audit event inspection |
 | ADM-11 — Include identity state in backup and restore | Preserved by keeping backup/restore out of UI mutation scope |
+
+## Preflight decision
+
+The Admin board will be a server-served static HTML/CSS/JavaScript surface mounted in the existing Agonara Node runtime. Preflight verified Node 22, npm scripts, Docker, Playwright availability, the packaged CLI symlink after `npm ci`, and the existing Identity HTTP routes. No frontend framework dependency is introduced for this slice.
 
 ## Phase 1 — Preflight and UI substrate decision
 
