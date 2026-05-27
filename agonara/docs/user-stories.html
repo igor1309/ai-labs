@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agonara — User Stories</title>
+<style>
+  :root {
+    --ink: #1a1714;
+    --ink-2: #4a443e;
+    --ink-3: #7a7269;
+    --paper: #f6f1e8;
+    --paper-2: #efe7d8;
+    --card: #ffffff;
+    --rule: #d9cfbe;
+    --accent: #b9762a;
+    --accent-2: #8a5316;
+    --student: #2f6b54;
+    --curator: #7a4a99;
+    --admin: #b9762a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Iowan Old Style", "Palatino", "Georgia", serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); }
+
+  /* Hero */
+  header.hero {
+    padding: 96px 24px 64px;
+    text-align: center;
+    background:
+      radial-gradient(1200px 400px at 50% -100px, #f3e7cf 0%, transparent 70%),
+      var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark {
+    display: inline-block;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-bottom: 24px;
+  }
+  h1.title {
+    font-size: clamp(48px, 7vw, 96px);
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+    font-weight: 500;
+  }
+  .anchor {
+    max-width: 700px;
+    margin: 0 auto;
+    font-size: clamp(18px, 2.2vw, 22px);
+    color: var(--ink-2);
+    font-style: italic;
+  }
+  .agon {
+    margin-top: 40px;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 15px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  /* Nav */
+  nav.roles {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  nav.roles a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    text-decoration: none;
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-size: 14px;
+    background: var(--card);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  nav.roles a:hover { border-color: var(--ink); }
+  nav.roles a .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3);
+  }
+  nav.roles a.student .dot { background: var(--student); }
+  nav.roles a.curator .dot { background: var(--curator); }
+  nav.roles a.admin   .dot { background: var(--admin); }
+
+  /* Sections */
+  main { max-width: 1080px; margin: 0 auto; padding: 64px 24px 96px; }
+  section.role { margin-bottom: 96px; scroll-margin-top: 96px; }
+  .role-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  .role-head h2 {
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 0;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .role-head .count {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .role-lede {
+    max-width: 760px;
+    color: var(--ink-2);
+    font-size: 17px;
+    margin-bottom: 32px;
+  }
+
+  .group { margin-bottom: 40px; }
+  .group h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    margin: 0 0 16px;
+    font-weight: 600;
+  }
+
+  .stories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .story {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .story .id {
+    font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+  section.student .story { border-left: 3px solid var(--student); }
+  section.curator .story { border-left: 3px solid var(--curator); }
+  section.admin   .story { border-left: 3px solid var(--admin); }
+
+  .story h4 {
+    font-size: 17px;
+    margin: 0;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+  .story p.want {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 15px;
+  }
+  .story .signal {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px dashed var(--rule);
+    color: var(--ink-3);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* Boundaries */
+  .boundaries {
+    margin-top: 40px;
+    padding: 24px 28px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  .boundaries h3 {
+    margin-top: 0;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .boundaries ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--ink-2);
+    font-size: 15px;
+  }
+  .boundaries li + li { margin-top: 6px; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 32px 24px 64px;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+  footer .sep { margin: 0 8px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="mark">Agon · Contest · Discipline · Mastery</div>
+  <h1 class="title">Agonara</h1>
+  <p class="anchor">
+    A structured learning program environment built around curated programs,
+    progression, and evidence of mastery.
+  </p>
+  <p class="agon">
+    From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
+    Three roles share one program: the <strong>student</strong> who learns by
+    evidence, the <strong>program curator</strong> who shapes the corpus, and the
+    <strong>admin</strong> who keeps the instance operable.
+  </p>
+</header>
+
+<nav class="roles">
+  <a class="student" href="#student"><span class="dot"></span>Student · 23</a>
+  <a class="curator" href="#curator"><span class="dot"></span>Program Curator · 18</a>
+  <a class="admin"   href="#admin"><span class="dot"></span>Admin · 15</a>
+</nav>
+
+<main>
+
+<!-- STUDENT -->
+<section id="student" class="role student">
+  <div class="role-head">
+    <h2>Student</h2>
+    <span class="count">23 stories · v0.3.1</span>
+  </div>
+  <p class="role-lede">
+    Personal learning, assessment, feedback, and progress.
+    Program corpus stays separate from student state; membership stays separate
+    from learning evidence.
+  </p>
+
+  <div class="group">
+    <h3>Program Discovery</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-01</div><h4>See available programs</h4><p class="want">Choose a topic to start or explore.</p><div class="signal">A student can list visible programs before joining.</div></article>
+      <article class="story"><div class="id">STU-02</div><h4>See started programs</h4><p class="want">Continue learning without searching again.</p><div class="signal">Started programs are distinguishable from not-yet-started.</div></article>
+      <article class="story"><div class="id">STU-03</div><h4>Preview program coverage</h4><p class="want">Decide whether a program matches the learning goal.</p><div class="signal">A preview shows topics, concepts, materials, checks — no student state created.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Learning Continuity</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-04</div><h4>Continue last session</h4><p class="want">Return to the current topic, material, or check without reconstructing context.</p><div class="signal">A student resumes from the last recorded learning position.</div></article>
+      <article class="story"><div class="id">STU-05</div><h4>See next learning step</h4><p class="want">Know what to study, repeat, or verify next.</p><div class="signal">The next step is derived from accepted structure and the student's own state.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Conceptual Mastery</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-06</div><h4>See key concepts</h4><p class="want">Understand what must be learned for a topic.</p><div class="signal">A topic view exposes accepted concepts, terms, principles, and definitions.</div></article>
+      <article class="story"><div class="id">STU-07</div><h4>Distinguish similar concepts</h4><p class="want">Avoid shallow or false understanding.</p><div class="signal">Confusing or related concepts can be shown together with the distinction to preserve.</div></article>
+      <article class="story"><div class="id">STU-08</div><h4>Identify concepts requiring deeper work</h4><p class="want">Separate memorization from understanding.</p><div class="signal">Weak or unresolved concepts appear in personal state without changing the accepted corpus.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Materials</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-09</div><h4>See linked materials</h4><p class="want">Study from relevant sources, not a flat link list.</p><div class="signal">Materials are reachable from the topic or concept they support.</div></article>
+      <article class="story"><div class="id">STU-10</div><h4>Return from material to concepts</h4><p class="want">Keep reading connected to program structure.</p><div class="signal">Material navigation preserves the link back to related topics and concepts.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Checks and Assessment</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-11</div><h4>Answer quick checks</h4><p class="want">Verify basic understanding before moving on.</p><div class="signal">Quick-check results become part of the student's personal evidence.</div></article>
+      <article class="story"><div class="id">STU-12</div><h4>Submit open answer</h4><p class="want">Be evaluated beyond multiple-choice recall.</p><div class="signal">An open answer attempt is recorded against the student and the relevant accepted check.</div></article>
+      <article class="story"><div class="id">STU-13</div><h4>Receive open-answer feedback</h4><p class="want">See what is correct, missing, weak, or confused.</p><div class="signal">Feedback identifies strengths, gaps, and confusion relative to accepted criteria.</div></article>
+      <article class="story"><div class="id">STU-14</div><h4>Pass topic-level check</h4><p class="want">Decide whether ready to continue.</p><div class="signal">Topic-level results indicate whether current evidence supports moving forward.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Results and Progress</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-15</div><h4>See check results</h4><p class="want">Understand current level of освоение.</p><div class="signal">A student can see results from prior checks in a joined program.</div></article>
+      <article class="story"><div class="id">STU-16</div><h4>See weak topics and concepts</h4><p class="want">Know what to repeat.</p><div class="signal">Weak topics and concepts are visible as personal state and link back to the program.</div></article>
+      <article class="story"><div class="id">STU-17</div><h4>See evidence behind progress state</h4><p class="want">"Mastered" or "weak" must not be just a label.</p><div class="signal">Progress labels expose attempts, answers, checks, or feedback that support them.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Program Membership</h3>
+    <div class="stories">
+      <article class="story"><div class="id">STU-18</div><h4>Join available program</h4><p class="want">Start learning when membership policy permits.</p><div class="signal">A successful join establishes membership without changing accepted corpus.</div></article>
+      <article class="story"><div class="id">STU-19</div><h4>Leave active program</h4><p class="want">Remove the program as an active commitment.</p><div class="signal">Leaving changes membership state without deleting historical evidence.</div></article>
+      <article class="story"><div class="id">STU-20</div><h4>Resume joined program</h4><p class="want">Continue from existing learning state.</p><div class="signal">Resuming uses existing membership and state — no duplicate participation.</div></article>
+      <article class="story"><div class="id">STU-21</div><h4>View my membership state</h4><p class="want">Understand relationship to a program: joined, left, completed, archived.</p><div class="signal">Membership state is visible separately from progress or mastery state.</div></article>
+      <article class="story"><div class="id">STU-22</div><h4>Accept program invitation</h4><p class="want">Join a curator-controlled program.</p><div class="signal">Accepting establishes membership only when invitation and policy allow.</div></article>
+      <article class="story"><div class="id">STU-23</div><h4>Decline program invitation</h4><p class="want">Avoid being added to a program not intended.</p><div class="signal">Declining creates no membership and no learning state.</div></article>
+    </div>
+  </div>
+
+  <div class="boundaries">
+    <h3>Boundaries</h3>
+    <ul>
+      <li>Student stories describe personal learning, assessment, feedback, and progress.</li>
+      <li>They do not define how the corpus is created, curated, or approved.</li>
+      <li>They do not define membership policy, invitation policy, or recovery.</li>
+      <li>Program corpus and student state remain separate. Membership and learning state remain separate.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- CURATOR -->
+<section id="curator" class="role curator">
+  <div class="role-head">
+    <h2>Program Curator</h2>
+    <span class="count">18 stories · v0.3.0</span>
+  </div>
+  <p class="role-lede">
+    Creation, refinement, and acceptance of program content. Curators own
+    the corpus; LLM output is draft until explicitly accepted.
+  </p>
+
+  <div class="group">
+    <h3>Program Curation</h3>
+    <div class="stories">
+      <article class="story"><div class="id">CUR-01</div><h4>Create program from grounded sources</h4><p class="want">Public plans, exam requirements, standards, materials, research.</p><div class="signal">A curator can attach the source set used to justify initial structure.</div></article>
+      <article class="story"><div class="id">CUR-02</div><h4>Add topics and concepts</h4><p class="want">Make learning scope explicit.</p><div class="signal">Accepted topics and concepts appear separately from unaccepted drafts.</div></article>
+      <article class="story"><div class="id">CUR-03</div><h4>Link materials to topics and concepts</h4><p class="want">Students see why each material is included.</p><div class="signal">Each accepted material shows the topic or concept it supports.</div></article>
+      <article class="story"><div class="id">CUR-04</div><h4>Add checks and assessment items</h4><p class="want">Understanding can be verified.</p><div class="signal">A topic can include accepted checks students can use to verify understanding.</div></article>
+      <article class="story"><div class="id">CUR-05</div><h4>Define assessment criteria</h4><p class="want">Evaluation tied to the program, not improvised per attempt.</p><div class="signal">A check or prompt references accepted criteria owned by the corpus.</div></article>
+      <article class="story"><div class="id">CUR-06</div><h4>Keep accepted content separate from drafts</h4><p class="want">Corpus remains controlled.</p><div class="signal">Draft suggestions never appear as accepted corpus until explicit acceptance.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Research and Program Expansion</h3>
+    <div class="stories">
+      <article class="story"><div class="id">CUR-07</div><h4>Add external sources</h4><p class="want">Ground a program in public plans, requirements, materials, and research.</p><div class="signal">A source can be recorded with metadata explaining why it informed the program.</div></article>
+      <article class="story"><div class="id">CUR-08</div><h4>Extract candidate structure from sources</h4><p class="want">Turn research into usable program material.</p><div class="signal">Extracted candidates remain reviewable drafts until accepted.</div></article>
+      <article class="story"><div class="id">CUR-09</div><h4>Identify coverage gaps</h4><p class="want">Improve the program deliberately.</p><div class="signal">Missing or weak coverage is visible without being treated as accepted content.</div></article>
+      <article class="story"><div class="id">CUR-10</div><h4>Update program after research</h4><p class="want">Evolve the program without rewriting the student's personal state.</p><div class="signal">Corpus changes do not erase or overwrite existing attempts, progress, or history.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>LLM Assistance</h3>
+    <div class="stories">
+      <article class="story"><div class="id">CUR-11</div><h4>Use LLM assistance for structuring</h4><p class="want">Discover candidate topics, concepts, materials, checks, and gaps faster.</p><div class="signal">LLM output is captured as candidate material with clear draft status.</div></article>
+      <article class="story"><div class="id">CUR-12</div><h4>Review LLM suggestions</h4><p class="want">Generated content does not automatically become program content.</p><div class="signal">Acceptance or rejection is an explicit curator action.</div></article>
+      <article class="story"><div class="id">CUR-13</div><h4>Trace suggestion origin</h4><p class="want">Judge whether a suggestion belongs in the corpus.</p><div class="signal">A suggestion exposes its source, prompt context, or supporting evidence.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Program Membership</h3>
+    <div class="stories">
+      <article class="story"><div class="id">CUR-14</div><h4>Invite student to program</h4><p class="want">Allow controlled participation.</p><div class="signal">Invitation is recorded as membership state; no learning state is created.</div></article>
+      <article class="story"><div class="id">CUR-15</div><h4>See invited students</h4><p class="want">Understand who can participate.</p><div class="signal">Invitation state is visible separately from corpus and progress.</div></article>
+      <article class="story"><div class="id">CUR-16</div><h4>See program participants</h4><p class="want">Understand who is using the program.</p><div class="signal">Participant visibility reflects membership without exposing private learning state.</div></article>
+      <article class="story"><div class="id">CUR-17</div><h4>Remove student from program</h4><p class="want">Manage participation in a curated program.</p><div class="signal">Removal changes membership state without deleting historical evidence.</div></article>
+      <article class="story"><div class="id">CUR-18</div><h4>Stop curating a program</h4><p class="want">No longer responsible for its content decisions.</p><div class="signal">Stopping changes membership without mutating accepted corpus.</div></article>
+    </div>
+  </div>
+
+  <div class="boundaries">
+    <h3>Boundaries</h3>
+    <ul>
+      <li>Curator stories describe creation, refinement, and acceptance of program content.</li>
+      <li>They do not describe student attempts, results, progress, weak areas, or learning history.</li>
+      <li>They do not define membership policy, invitation policy, or membership recovery.</li>
+      <li>LLM suggestions remain draft material until accepted.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ADMIN -->
+<section id="admin" class="role admin">
+  <div class="role-head">
+    <h2>Admin</h2>
+    <span class="count">15 stories · v0.2.1</span>
+  </div>
+  <p class="role-lede">
+    Operational control of a private Agonara instance — identity, credentials,
+    Admin authority, audit, and exceptional recovery. Admin authority does not
+    replace Program Curator ownership of content.
+  </p>
+
+  <div class="group">
+    <h3>Instance Setup</h3>
+    <div class="stories">
+      <article class="story"><div class="id">ADM-01</div><h4>Initialize private instance</h4><p class="want">Start the instance with a first admin identity.</p><div class="signal">A new instance cannot become operational without at least one active Admin.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Identity Administration</h3>
+    <div class="stories">
+      <article class="story"><div class="id">ADM-02</div><h4>Create internal identity</h4><p class="want">A stable subject for ownership and action.</p><div class="signal">The Identity exists independently of any credential or product role.</div></article>
+      <article class="story"><div class="id">ADM-03</div><h4>Bind credential to identity</h4><p class="want">Authenticate without making the credential the source of ownership.</p><div class="signal">Authentication resolves to the intended Identity while role grants stay separate.</div></article>
+      <article class="story"><div class="id">ADM-04</div><h4>Disable identity</h4><p class="want">Stop access without deleting historical ownership and audit references.</p><div class="signal">A disabled Identity cannot initiate new actions; historical references remain readable.</div></article>
+      <article class="story"><div class="id">ADM-05</div><h4>Inspect identities and credential bindings</h4><p class="want">Diagnose access and recovery state.</p><div class="signal">Admin can inspect active and disabled identities with credential-binding state.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Access Administration</h3>
+    <div class="stories">
+      <article class="story"><div class="id">ADM-06</div><h4>Inspect program participation authority</h4><p class="want">Diagnose access without becoming the normal membership operator.</p><div class="signal">Inspection shows the membership grant and scope without creating or changing it.</div></article>
+      <article class="story"><div class="id">ADM-07</div><h4>Trace participation authority changes</h4><p class="want">Diagnose access loss or restoration.</p><div class="signal">Trace output points to membership or recovery records without recreating revoked access.</div></article>
+      <article class="story"><div class="id">ADM-08</div><h4>Assign or revoke admin role</h4><p class="want">Transfer operational control without changing learning-domain ownership.</p><div class="signal">Admin changes affect only instance-level operations.</div></article>
+      <article class="story"><div class="id">ADM-09</div><h4>Prevent last-admin removal</h4><p class="want">The instance cannot lose operational control.</p><div class="signal">Removing the last active Admin is rejected.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Audit and Recovery</h3>
+    <div class="stories">
+      <article class="story"><div class="id">ADM-10</div><h4>Audit identity and access operations</h4><p class="want">Sensitive access changes must be attributable.</p><div class="signal">Each sensitive operation records the acting and affected identities and the change.</div></article>
+      <article class="story"><div class="id">ADM-11</div><h4>Include identity state in backup and restore</h4><p class="want">Recovered instances preserve access and ownership context.</p><div class="signal">Backup/restore covers identities, credential bindings, Admin authority, and recovery state.</div></article>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Membership Recovery and Audit</h3>
+    <div class="stories">
+      <article class="story"><div class="id">ADM-12</div><h4>View program membership state</h4><p class="want">Diagnose access and participation issues.</p><div class="signal">Admin can inspect membership state without becoming the normal operator.</div></article>
+      <article class="story"><div class="id">ADM-13</div><h4>Recover broken membership access</h4><p class="want">A valid student or curator can regain access during operational recovery.</p><div class="signal">Exceptional recovery restores valid access while preserving attribution.</div></article>
+      <article class="story"><div class="id">ADM-14</div><h4>Revoke operationally invalid membership</h4><p class="want">Recover the instance from incorrect or unsafe access state.</p><div class="signal">Exceptional revocation changes membership without making Admin the normal manager.</div></article>
+      <article class="story"><div class="id">ADM-15</div><h4>Audit membership changes</h4><p class="want">Participation changes can be diagnosed and audited.</p><div class="signal">Records include acting identity, affected identity, program, participation kind, and result.</div></article>
+    </div>
+  </div>
+
+  <div class="boundaries">
+    <h3>Boundaries</h3>
+    <ul>
+      <li>Admin stories describe operational control of a private Agonara instance.</li>
+      <li>They do not describe student learning flow, curator content acceptance, corpus editing, or learning-domain authority.</li>
+      <li>Admin authority does not replace Program Curator ownership of accepted content.</li>
+      <li>Admin membership operations are exceptional recovery and audit, not the normal product flow.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Agonara · User Stories</span>
+  <span class="sep">·</span>
+  <span>Student v0.3.1 · Curator v0.3.0 · Admin v0.2.1</span>
+  <span class="sep">·</span>
+  <span>2026-05-27</span>
+</footer>
+
+</body>
+</html>
