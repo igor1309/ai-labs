@@ -52,7 +52,7 @@ export function initializeIdentityStorage(database) {
       actor_identity_id text references identities(id),
       target_identity_id text references identities(id),
       target_credential_id text references local_password_credentials(id),
-      target_session_id text references sessions(id),
+      target_session_id text,
       occurred_at text not null,
       outcome text not null check (outcome in ('accepted', 'rejected')),
       reason text
@@ -231,6 +231,98 @@ export function createAuditEvent(
   return getAuditEvent(database, id);
 }
 
+export function exportIdentityBackup(database) {
+  return {
+    version: 1,
+    identities: listIdentities(database),
+    localPasswordCredentials: listLocalPasswordCredentials(database),
+    adminAuthorities: listAdminAuthorities(database),
+    auditEvents: listAuditEvents(database),
+  };
+}
+
+export function restoreIdentityBackup(database, backup) {
+  if (!isValidBackupShape(backup)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+
+  if (!hasEffectiveAdminInBackup(backup)) {
+    throw new StorageInvariantError("last_admin_removal");
+  }
+
+  database.transaction(() => {
+    database.prepare("delete from sessions").run();
+    database.prepare("delete from audit_events").run();
+    database.prepare("delete from admin_authorities").run();
+    database.prepare("delete from local_password_credentials").run();
+    database.prepare("delete from identities").run();
+
+    const insertIdentity = database.prepare(
+      `insert into identities (id, display_name, state, created_at, disabled_at)
+       values (?, ?, ?, ?, ?)`,
+    );
+    const insertCredential = database.prepare(
+      `insert into local_password_credentials (id, identity_id, login, password_hash, created_at)
+       values (?, ?, ?, ?, ?)`,
+    );
+    const insertAdminAuthority = database.prepare(
+      `insert into admin_authorities (identity_id, granted_at, revoked_at)
+       values (?, ?, ?)`,
+    );
+    const insertAuditEvent = database.prepare(
+      `insert into audit_events (
+        id,
+        event_type,
+        actor_identity_id,
+        target_identity_id,
+        target_credential_id,
+        target_session_id,
+        occurred_at,
+        outcome,
+        reason
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+
+    for (const identity of backup.identities) {
+      insertIdentity.run(
+        identity.id,
+        identity.displayName,
+        identity.state,
+        identity.createdAt,
+        identity.disabledAt ?? null,
+      );
+    }
+
+    for (const credential of backup.localPasswordCredentials) {
+      insertCredential.run(
+        credential.id,
+        credential.identityId,
+        credential.login,
+        credential.passwordHash,
+        credential.createdAt,
+      );
+    }
+
+    for (const authority of backup.adminAuthorities) {
+      insertAdminAuthority.run(authority.identityId, authority.grantedAt, authority.revokedAt ?? null);
+    }
+
+    for (const auditEvent of backup.auditEvents) {
+      insertAuditEvent.run(
+        auditEvent.id,
+        auditEvent.eventType,
+        auditEvent.actorIdentityId ?? null,
+        auditEvent.targetIdentityId ?? null,
+        auditEvent.targetCredentialId ?? null,
+        auditEvent.targetSessionId ?? null,
+        auditEvent.occurredAt,
+        auditEvent.outcome,
+        auditEvent.reason ?? null,
+      );
+    }
+  })();
+}
+
 export function listAuditEvents(database) {
   return database
     .prepare(
@@ -239,6 +331,26 @@ export function listAuditEvents(database) {
               target_session_id as targetSessionId, occurred_at as occurredAt, outcome, reason
        from audit_events
        order by occurred_at, id`,
+    )
+    .all();
+}
+
+export function listLocalPasswordCredentials(database) {
+  return database
+    .prepare(
+      `select id, identity_id as identityId, login, password_hash as passwordHash, created_at as createdAt
+       from local_password_credentials
+       order by created_at, id`,
+    )
+    .all();
+}
+
+export function listAdminAuthorities(database) {
+  return database
+    .prepare(
+      `select identity_id as identityId, granted_at as grantedAt, revoked_at as revokedAt
+       from admin_authorities
+       order by granted_at, identity_id`,
     )
     .all();
 }
@@ -354,4 +466,22 @@ function mapCredentialConstraintError(error) {
   }
 
   return error;
+}
+
+function isValidBackupShape(backup) {
+  return Boolean(
+    backup &&
+      backup.version === 1 &&
+      Array.isArray(backup.identities) &&
+      Array.isArray(backup.localPasswordCredentials) &&
+      Array.isArray(backup.adminAuthorities) &&
+      Array.isArray(backup.auditEvents),
+  );
+}
+
+function hasEffectiveAdminInBackup(backup) {
+  const activeIdentityIds = new Set(
+    backup.identities.filter($0 => $0.state === "active").map($0 => $0.id),
+  );
+  return backup.adminAuthorities.some($0 => $0.revokedAt === null && activeIdentityIds.has($0.identityId));
 }

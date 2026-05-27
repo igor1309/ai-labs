@@ -7,6 +7,7 @@ import {
   createLocalPasswordCredential,
   createSession,
   disableIdentity as disableStoredIdentity,
+  exportIdentityBackup,
   getIdentity,
   getLocalPasswordCredentialByLogin,
   getSession,
@@ -14,6 +15,7 @@ import {
   isEffectiveAdmin,
   listAuditEvents as readAuditEvents,
   listIdentities as readIdentities,
+  restoreIdentityBackup,
   revokeAdminAuthority,
   revokeSession,
 } from "./storage.js";
@@ -26,6 +28,7 @@ export function createIdentityCommands({
   database,
   generateId = randomUUID,
   now = () => new Date(),
+  operationLog = () => {},
 } = {}) {
   return {
     bootstrapFirstAdmin: input =>
@@ -37,11 +40,13 @@ export function createIdentityCommands({
     getOperationalAccessState: input =>
       getOperationalAccessState({ database, input, now }),
     grantAdmin: input => grantAdmin({ database, generateId, input, now }),
+    exportBackup: () => exportBackup({ database, now, operationLog }),
     getBootstrapStatus: () => accepted({ available: countEffectiveAdmins(database) === 0 }),
     listAuditEvents: input => listAuditEvents({ database, input, now }),
     listIdentities: input => listIdentities({ database, input, now }),
     login: input => login({ database, generateId, input, now }),
     logout: input => logout({ database, input, now }),
+    restoreBackup: input => restoreBackup({ database, input, now, operationLog }),
     revokeAdmin: input => revokeAdmin({ database, generateId, input, now }),
     resolveSession: input => resolveSession({ database, input, now }),
   };
@@ -400,6 +405,61 @@ function listAuditEvents({ database, input, now }) {
   return accepted({ auditEvents: readAuditEvents(database) });
 }
 
+function exportBackup({ database, now, operationLog }) {
+  logBackupOperation(operationLog, now, {
+    operation: "identity.backup.export",
+    outcome: "started",
+  });
+
+  try {
+    const backup = exportIdentityBackup(database);
+    logBackupOperation(operationLog, now, {
+      operation: "identity.backup.export",
+      outcome: "accepted",
+    });
+    return accepted({ backup });
+  } catch {
+    logBackupOperation(operationLog, now, {
+      operation: "identity.backup.export",
+      outcome: "fault",
+      errorKind: "unexpected",
+    });
+    throw new Error("backup_export_failed");
+  }
+}
+
+function restoreBackup({ database, input, now, operationLog }) {
+  logBackupOperation(operationLog, now, {
+    operation: "identity.backup.restore",
+    outcome: "started",
+  });
+
+  try {
+    restoreIdentityBackup(database, input);
+    logBackupOperation(operationLog, now, {
+      operation: "identity.backup.restore",
+      outcome: "accepted",
+    });
+    return accepted({ restored: true });
+  } catch (error) {
+    if (error?.reason) {
+      logBackupOperation(operationLog, now, {
+        operation: "identity.backup.restore",
+        outcome: "rejected",
+        reason: error.reason,
+      });
+      return rejected(error.reason);
+    }
+
+    logBackupOperation(operationLog, now, {
+      operation: "identity.backup.restore",
+      outcome: "fault",
+      errorKind: "unexpected",
+    });
+    throw new Error("backup_restore_failed");
+  }
+}
+
 async function login({ database, generateId, input, now }) {
   if (!input?.login || !input?.password) {
     return rejected("invalid_credentials");
@@ -533,6 +593,27 @@ function storageReason(error) {
   }
 
   throw error;
+}
+
+function logBackupOperation(operationLog, now, event) {
+  operationLog({
+    occurredAt: now().toISOString(),
+    component: "identity",
+    severity: severityForBackupOutcome(event.outcome),
+    ...event,
+  });
+}
+
+function severityForBackupOutcome(outcome) {
+  if (outcome === "fault") {
+    return "error";
+  }
+
+  if (outcome === "rejected") {
+    return "warning";
+  }
+
+  return "info";
 }
 
 function isValidBootstrapInput(input) {

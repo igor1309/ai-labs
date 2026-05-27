@@ -3,7 +3,7 @@ title: Agonara Implementation Notes
 date: 2026-05-27
 description: "Research notes on mapping external authentication to Agonara internal identity and authority."
 model: gpt-5.5-thinking
-version: 0.2.3
+version: 0.2.4
 ---
 
 # Agonara Implementation Notes
@@ -128,6 +128,16 @@ The first operator CLI is exposed as the `agonara` bin:
 - accepted operations exit `0`, rejected domain operations exit `2`, and usage/runtime errors exit `1`.
 
 The CLI uses the same `AGONARA_DB_PATH` and `AGONARA_BOOTSTRAP_SECRET` runtime inputs as the server entrypoint.
+
+## Step 8 Backup and Restore Verification
+
+The minimum Identity backup/restore path stays inside the command and storage boundaries:
+
+- exported backups include Identity, local password credential, Admin authority, and audit records;
+- active sessions are intentionally excluded from backups and are cleared on restore;
+- audit records may retain historical `targetSessionId` values without requiring those sessions to exist;
+- restore rejects backups that would activate with no effective Admin;
+- backup and restore emit operational log events for started, accepted, rejected, and faulted outcomes.
 
 ## Open questions
 

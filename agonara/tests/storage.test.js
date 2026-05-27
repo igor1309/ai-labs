@@ -159,6 +159,29 @@ test("createAuditEvent_shouldAppendQueryableEvents_onAcceptedAndRejectedOutcomes
   }
 });
 
+test("createAuditEvent_shouldAppendHistoricalSessionReference_onMissingActiveSession", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createAuditEvent(database, {
+      id: "audit-a",
+      eventType: "session_logout",
+      actorIdentityId: "identity-a",
+      targetSessionId: "historical-session",
+      occurredAt: "2026-05-27T10:00:00.000Z",
+      outcome: "accepted",
+    });
+
+    assert.deepEqual(
+      listAuditEvents(database).map($0 => $0.targetSessionId),
+      ["historical-session"],
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("revokeAdminAuthority_shouldRejectLastAdminRemoval_onOnlyEffectiveAdmin", () => {
   const database = makeInitializedDatabase();
 
