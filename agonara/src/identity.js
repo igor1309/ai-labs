@@ -3,13 +3,18 @@ import { promisify } from "node:util";
 import {
   countEffectiveAdmins,
   createAuditEvent,
-  createIdentity,
+  createIdentity as insertIdentity,
   createLocalPasswordCredential,
   createSession,
+  disableIdentity as disableStoredIdentity,
   getIdentity,
   getLocalPasswordCredentialByLogin,
   getSession,
   grantAdminAuthority,
+  isEffectiveAdmin,
+  listAuditEvents as readAuditEvents,
+  listIdentities as readIdentities,
+  revokeAdminAuthority,
   revokeSession,
 } from "./storage.js";
 
@@ -25,8 +30,18 @@ export function createIdentityCommands({
   return {
     bootstrapFirstAdmin: input =>
       bootstrapFirstAdmin({ bootstrapSecret, database, generateId, input, now }),
+    bindLocalPasswordCredential: input =>
+      bindLocalPasswordCredential({ database, generateId, input, now }),
+    createIdentity: input => createIdentity({ database, generateId, input, now }),
+    disableIdentity: input => disableIdentity({ database, generateId, input, now }),
+    getOperationalAccessState: input =>
+      getOperationalAccessState({ database, input, now }),
+    grantAdmin: input => grantAdmin({ database, generateId, input, now }),
+    listAuditEvents: input => listAuditEvents({ database, input, now }),
+    listIdentities: input => listIdentities({ database, input, now }),
     login: input => login({ database, generateId, input, now }),
     logout: input => logout({ database, input, now }),
+    revokeAdmin: input => revokeAdmin({ database, generateId, input, now }),
     resolveSession: input => resolveSession({ database, input, now }),
   };
 }
@@ -56,7 +71,7 @@ async function bootstrapFirstAdmin({ bootstrapSecret, database, generateId, inpu
   const passwordHash = await hashPassword(input.password);
 
   const result = database.transaction(() => {
-    const identity = createIdentity(database, {
+    const identity = insertIdentity(database, {
       id: identityId,
       displayName: input.displayName,
       createdAt,
@@ -87,6 +102,301 @@ async function bootstrapFirstAdmin({ bootstrapSecret, database, generateId, inpu
   })();
 
   return accepted(result);
+}
+
+function createIdentity({ database, generateId, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    auditDomainEvent({
+      database,
+      eventType: "identity_created",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: actor.reason,
+      actorIdentityId: actor.actorIdentityId,
+    });
+    return rejected(actor.reason);
+  }
+
+  if (!input?.displayName?.trim()) {
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "identity_created",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: "validation_failed",
+    });
+    return rejected("validation_failed");
+  }
+
+  const createdAt = now().toISOString();
+  const identityId = generateId();
+  const auditEventId = generateId();
+  const identity = insertIdentity(database, {
+    id: identityId,
+    displayName: input.displayName,
+    createdAt,
+  });
+  createAuditEvent(database, {
+    id: auditEventId,
+    eventType: "identity_created",
+    actorIdentityId: actor.value.identity.id,
+    targetIdentityId: identityId,
+    occurredAt: createdAt,
+    outcome: "accepted",
+  });
+
+  return accepted(identity);
+}
+
+async function bindLocalPasswordCredential({ database, generateId, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    auditDomainEvent({
+      database,
+      eventType: "local_password_credential_bound",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: actor.reason,
+      actorIdentityId: actor.actorIdentityId,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(actor.reason);
+  }
+
+  if (!input?.identityId || !input.login?.trim() || !input.password || input.password.length < 12) {
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "local_password_credential_bound",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: "validation_failed",
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected("validation_failed");
+  }
+
+  const createdAt = now().toISOString();
+  const credentialId = generateId();
+  const passwordHash = await hashPassword(input.password);
+
+  try {
+    const credential = createLocalPasswordCredential(database, {
+      id: credentialId,
+      identityId: input.identityId,
+      login: input.login,
+      passwordHash,
+      createdAt,
+    });
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "local_password_credential_bound",
+      generateId,
+      now,
+      outcome: "accepted",
+      targetCredentialId: credential.id,
+      targetIdentityId: input.identityId,
+    });
+    return accepted({ credentialBound: true });
+  } catch (error) {
+    const reason = storageReason(error);
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "local_password_credential_bound",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason,
+      targetIdentityId: input.identityId,
+    });
+    return rejected(reason);
+  }
+}
+
+function disableIdentity({ database, generateId, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    auditDomainEvent({
+      database,
+      eventType: "identity_disabled",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: actor.reason,
+      actorIdentityId: actor.actorIdentityId,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(actor.reason);
+  }
+
+  try {
+    const identity = disableStoredIdentity(database, {
+      identityId: input?.identityId,
+      disabledAt: now().toISOString(),
+    });
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "identity_disabled",
+      generateId,
+      now,
+      outcome: "accepted",
+      targetIdentityId: input.identityId,
+    });
+    return accepted(identity);
+  } catch (error) {
+    const reason = storageReason(error);
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "identity_disabled",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(reason);
+  }
+}
+
+function grantAdmin({ database, generateId, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    auditDomainEvent({
+      database,
+      eventType: "admin_granted",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: actor.reason,
+      actorIdentityId: actor.actorIdentityId,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(actor.reason);
+  }
+
+  try {
+    grantAdminAuthority(database, {
+      identityId: input?.identityId,
+      grantedAt: now().toISOString(),
+    });
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "admin_granted",
+      generateId,
+      now,
+      outcome: "accepted",
+      targetIdentityId: input.identityId,
+    });
+    return accepted(getIdentity(database, input.identityId));
+  } catch (error) {
+    const reason = storageReason(error);
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "admin_granted",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(reason);
+  }
+}
+
+function revokeAdmin({ database, generateId, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    auditDomainEvent({
+      database,
+      eventType: "admin_revoked",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason: actor.reason,
+      actorIdentityId: actor.actorIdentityId,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(actor.reason);
+  }
+
+  try {
+    revokeAdminAuthority(database, {
+      identityId: input?.identityId,
+      revokedAt: now().toISOString(),
+    });
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "admin_revoked",
+      generateId,
+      now,
+      outcome: "accepted",
+      targetIdentityId: input.identityId,
+    });
+    return accepted(getIdentity(database, input.identityId));
+  } catch (error) {
+    const reason = storageReason(error);
+    auditDomainEvent({
+      actorIdentityId: actor.value.identity.id,
+      database,
+      eventType: "admin_revoked",
+      generateId,
+      now,
+      outcome: "rejected",
+      reason,
+      targetIdentityId: input?.identityId ?? null,
+    });
+    return rejected(reason);
+  }
+}
+
+function listIdentities({ database, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    return rejected(actor.reason);
+  }
+
+  return accepted({
+    identities: readIdentities(database).map($0 => summarizeIdentity(database, $0)),
+  });
+}
+
+function getOperationalAccessState({ database, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    return rejected(actor.reason);
+  }
+
+  const identity = getIdentity(database, input?.identityId);
+  if (!identity) {
+    return rejected("identity_not_found");
+  }
+
+  return accepted({
+    effectiveAdmin: isEffectiveAdmin(database, identity.id),
+    identity: summarizeIdentity(database, identity),
+  });
+}
+
+function listAuditEvents({ database, input, now }) {
+  const actor = resolveAdminActor({ database, sessionId: input?.actingSessionId, now });
+  if (actor.status === "rejected") {
+    return rejected(actor.reason);
+  }
+
+  return accepted({ auditEvents: readAuditEvents(database) });
 }
 
 async function login({ database, generateId, input, now }) {
@@ -157,6 +467,23 @@ function logout({ database, input, now }) {
   return accepted({ loggedOut: true });
 }
 
+function resolveAdminActor({ database, sessionId, now }) {
+  const resolved = resolveSession({ database, input: { sessionId }, now });
+  if (resolved.status === "rejected") {
+    return resolved;
+  }
+
+  if (!isEffectiveAdmin(database, resolved.value.identity.id)) {
+    return {
+      status: "rejected",
+      reason: "admin_required",
+      actorIdentityId: resolved.value.identity.id,
+    };
+  }
+
+  return resolved;
+}
+
 async function auditBootstrapRejection({ database, generateId, now, reason }) {
   createAuditEvent(database, {
     id: generateId(),
@@ -165,6 +492,46 @@ async function auditBootstrapRejection({ database, generateId, now, reason }) {
     outcome: "rejected",
     reason,
   });
+}
+
+function auditDomainEvent({
+  actorIdentityId = null,
+  database,
+  eventType,
+  generateId,
+  now,
+  outcome,
+  reason = null,
+  targetCredentialId = null,
+  targetIdentityId = null,
+}) {
+  createAuditEvent(database, {
+    id: generateId(),
+    eventType,
+    actorIdentityId,
+    targetCredentialId,
+    targetIdentityId,
+    occurredAt: now().toISOString(),
+    outcome,
+    reason,
+  });
+}
+
+function summarizeIdentity(database, identity) {
+  return {
+    id: identity.id,
+    displayName: identity.displayName,
+    state: identity.state,
+    isAdmin: isEffectiveAdmin(database, identity.id),
+  };
+}
+
+function storageReason(error) {
+  if (error?.reason) {
+    return error.reason;
+  }
+
+  throw error;
 }
 
 function isValidBootstrapInput(input) {

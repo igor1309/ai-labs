@@ -93,6 +93,18 @@ The Identity command slice uses Node's built-in crypto APIs for local-password h
 
 The command boundary implements first-Admin bootstrap, login, session resolution, and logout. Bootstrap creates the Identity, local password credential, Admin authority, accepted audit event, and initial session in one database transaction after password hashing. Rejected bootstrap attempts append rejected audit events. Login rejects disabled Identities as `invalid_credentials` so it does not disclose account state.
 
+## Step 5 Admin Command Verification
+
+The Admin command slice adds protected Identity and Admin authority operations on top of session resolution:
+
+- protected commands first resolve the acting session and then require effective Admin authority from server-side storage;
+- Identity creation, credential binding, Identity disablement, Admin grant, and Admin revoke append accepted or rejected audit events;
+- disabled targets cannot receive Admin authority;
+- disabling an Identity revokes its active sessions;
+- last-effective-Admin removal remains guarded at the storage boundary and is audited when rejected.
+
+Admin inspection queries expose Identity summaries, effective Admin state, and audit events for the first internal command layer. HTTP-specific response redaction and pagination are deferred to the HTTP API step.
+
 ## Open questions
 
 - How does credential rotation preserve the same internal Identity?

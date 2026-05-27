@@ -134,6 +134,10 @@ export function getSession(database, id) {
 
 export function grantAdminAuthority(database, { identityId, grantedAt }) {
   assertIdentityExists(database, identityId);
+  if (getIdentity(database, identityId).state === "disabled") {
+    throw new StorageInvariantError("identity_disabled");
+  }
+
   database
     .prepare(
       `insert into admin_authorities (identity_id, granted_at, revoked_at)
@@ -159,6 +163,29 @@ export function revokeAdminAuthority(database, { identityId, revokedAt }) {
 
     return getAdminAuthority(database, identityId);
   })();
+}
+
+export function disableIdentity(database, { identityId, disabledAt }) {
+  return database.transaction(() => {
+    assertIdentityExists(database, identityId);
+
+    if (isEffectiveAdmin(database, identityId) && countEffectiveAdmins(database) === 1) {
+      throw new StorageInvariantError("last_admin_removal");
+    }
+
+    database
+      .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+      .run(disabledAt, identityId);
+    revokeSessionsForIdentity(database, { identityId, revokedAt: disabledAt });
+
+    return getIdentity(database, identityId);
+  })();
+}
+
+export function revokeSessionsForIdentity(database, { identityId, revokedAt }) {
+  database
+    .prepare("update sessions set revoked_at = ? where identity_id = ? and revoked_at is null")
+    .run(revokedAt, identityId);
 }
 
 export function createAuditEvent(
@@ -212,6 +239,16 @@ export function listAuditEvents(database) {
               target_session_id as targetSessionId, occurred_at as occurredAt, outcome, reason
        from audit_events
        order by occurred_at, id`,
+    )
+    .all();
+}
+
+export function listIdentities(database) {
+  return database
+    .prepare(
+      `select id, display_name as displayName, state, created_at as createdAt, disabled_at as disabledAt
+       from identities
+       order by created_at, id`,
     )
     .all();
 }
@@ -280,7 +317,7 @@ function assertIdentityExists(database, identityId) {
   }
 }
 
-function isEffectiveAdmin(database, identityId) {
+export function isEffectiveAdmin(database, identityId) {
   const row = database
     .prepare(
       `select 1

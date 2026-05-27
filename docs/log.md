@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: added Admin-protected Identity operations and audit paths for identity creation, credential binding, disablement, Admin grant/revoke, operational access inspection, identity listing, and audit listing.
 - agonara: implemented first-Admin bootstrap, local-password login, session resolution, and logout over the new Identity storage boundary, with scrypt password hashes and bootstrap audit records.
 - agonara: added the Identity persistence boundary with SQLite-backed records for identities, credentials, sessions, Admin authority, and audit events, including storage-level uniqueness and last-Admin invariants.
 - agonara: added the operational walking skeleton with request correlation, health, diagnostics rejection, structured logs, redacted faults, and container health verification.
