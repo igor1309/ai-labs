@@ -3,7 +3,7 @@ title: Agonara Module Responsibility Map
 date: 2026-05-27
 description: Architecture-level responsibility map for Agonara module boundaries.
 model: gpt-5.5-thinking
-version: 0.3.0
+version: 0.3.1
 ---
 
 # Agonara Module Responsibility Map
@@ -76,7 +76,7 @@ The following responsibility map is provisional. It is intended to make ownershi
 | Corpus Storage | INT-01, INT-02, INT-03, INT-04, INT-05, INT-06 by preserving accepted program structure, materials, checks, and criteria. |
 | Curator Workspace | INT-01 by supporting source collection, draft review, gap discovery, and acceptance into corpus. |
 | Student Workspace | INT-02 through INT-07 by preserving learning sessions, attempts, feedback, weak areas, and progress evidence. |
-| Identity & Role Management | Supports all accepted stories by constraining who may curate, administer, or act as a student in a program. |
+| Identity & Role Management | INT-01 through INT-07 by constraining who may curate, administer, or act as a student in a program; ADM-01 through ADM-11 by owning identity, credential, role, admin, audit, and recovery operations. |
 
 ## Candidate product role rules
 

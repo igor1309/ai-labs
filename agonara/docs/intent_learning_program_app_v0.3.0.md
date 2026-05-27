@@ -1,6 +1,6 @@
 ---
 title: Product Intent: Приложение для программы освоения
-date: 2026-05-26
+date: 2026-05-27
 description: Intent-документ для персонального приложения обучения с разделением программы, корпуса и состояния студента.
 model: gpt-5.5-thinking
 version: 0.3.0
@@ -178,13 +178,13 @@ LLM-предложения являются вспомогательным ма�
 
 | Story | Research | Pre-ADR / ADR | Spec | Implementation plan | Code / tests |
 |---|---|---|---|---|---|
-| INT-01 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
-| INT-02 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
-| INT-03 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
-| INT-04 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
+| INT-01 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
+| INT-02 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
+| INT-03 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
+| INT-04 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
 | INT-05 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.1.md) | n/a | n/a | n/a |
-| INT-06 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
-| INT-07 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.0.md) | n/a | n/a | n/a |
+| INT-06 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
+| INT-07 | n/a | [Module Responsibility Map](agonara_module_responsibility_map_v0.3.1.md) | n/a | n/a | n/a |
 | ADM-01..ADM-11 | [Implementation Notes](agonara-implementation-notes_v0.2.0.md) | [Identity & Role Management First Slice](agonara_identity_role_management_first_slice_v0.2.1.md) | n/a | n/a | n/a |
 
 ## Change review
