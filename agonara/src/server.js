@@ -14,6 +14,6 @@ export function startServer({ host = process.env.HOST ?? "0.0.0.0", port = proce
   return server;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   startServer();
 }
