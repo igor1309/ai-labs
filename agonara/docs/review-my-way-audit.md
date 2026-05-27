@@ -10,8 +10,15 @@ mandatory structures. The project is in early exploration — documents
 are classified at the highest phase they credibly occupy (Product Intent
 or Pre-ADR), not aspirationally upward.
 
-Each finding is tagged **FAIL** (must fix before the artifact can be
-treated as accepted at its phase) or **WARN** (should fix, not blocking).
+Findings use three severity tiers:
+
+- **FAIL-mechanical** — a required field or label is missing; fix is
+  filling in a blank with no authoring judgment (missing `date`, missing
+  story IDs, missing status tags).
+- **FAIL-semantic** — a required section or structural property is
+  missing and fixing it requires thinking about content (writing a
+  product outcome, surfacing alternatives, defining acceptance signals).
+- **WARN** — should fix, not blocking.
 
 ---
 
@@ -19,16 +26,21 @@ treated as accepted at its phase) or **WARN** (should fix, not blocking).
 
 **My Way phase:** 00 — Product Intent
 
-### FAILs
+### FAIL-mechanical
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `date` in front matter. | FM requires `date`, `model`, `description`. | Add `date: 2026-05-26` (or actual creation date). |
-| F2 | No `## Product outcome` section. The doc opens with `## Problem` — valuable context, but the framework requires a concise user-outcome statement. | Structure: `## Product outcome` mandatory. | Add a `## Product outcome` section (1–3 sentences) above or after Problem. Problem can stay as supporting context. |
-| F3 | User stories are not in standard form. The `## User Needs` subsection uses narrative paragraphs ("Куратор хочет…", "Студент хочет…") rather than `As a <type>, I want <goal>, so that <outcome>`. | Stories must be in "recognizable form" with As/want/so-that. | Rewrite each need as a proper user story, or (better) point this section at the separate curator/student story docs which already use standard form. |
-| F4 | Stories lack stable identifiers. | Each story needs a stable identifier. | Assign IDs (e.g., `INT-01`, `INT-02`, …). |
-| F5 | Stories lack per-story acceptance signals. The `## Success` section provides aggregate criteria but nothing per story. | Each story needs an acceptance signal. | Add an `## Acceptance signals` section mapping each story ID to its signal, or add inline signals per story. |
-| F6 | No `## Acceptance signals` section. | Structure: mandatory section. | Create it (see F5). |
+| M1 | Missing `date` in front matter. | FM requires `date`, `model`, `description`. | Add `date: 2026-05-26` (or actual creation date). |
+| M2 | Stories lack stable identifiers. | Each story needs a stable identifier. | Assign IDs (e.g., `INT-01`, `INT-02`, …). |
+
+### FAIL-semantic
+
+| # | Finding | Rule violated | Suggested fix |
+|---|---------|---------------|---------------|
+| S1 | No `## Product outcome` section. The doc opens with `## Problem` — valuable context, but the framework requires a concise user-outcome statement. | Structure: `## Product outcome` mandatory. | Add a `## Product outcome` section (1–3 sentences) above or after Problem. Problem can stay as supporting context. |
+| S2 | User stories are not in standard form. The `## User Needs` subsection uses narrative paragraphs ("Куратор хочет…", "Студент хочет…") rather than `As a <type>, I want <goal>, so that <outcome>`. | Stories must be in "recognizable form" with As/want/so-that. | Rewrite each need as a proper user story, or (better) point this section at the separate curator/student story docs which already use standard form. |
+| S3 | Stories lack per-story acceptance signals. The `## Success` section provides aggregate criteria but nothing per story. | Each story needs an acceptance signal. | Add an `## Acceptance signals` section mapping each story ID to its signal, or add inline signals per story. |
+| S4 | No `## Acceptance signals` section. | Structure: mandatory section. | Create it (see S3). |
 
 ### WARNs
 
@@ -46,14 +58,19 @@ treated as accepted at its phase) or **WARN** (should fix, not blocking).
 
 **My Way phase:** Part of 00 — Product Intent (user stories belong inside or are referenced from the Product Intent doc)
 
-### FAILs
+### FAIL-mechanical
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
-| F2 | Stories lack stable identifiers. | Product Intent structure requires each story to have a stable identifier. | Add IDs (e.g., `CUR-01`, `CUR-02`, …). |
-| F3 | Stories lack acceptance signals. | Each story needs an acceptance signal. | Add acceptance criteria per story or in a summary table. |
-| F4 | Stories lack status. | Each story should have a status (accepted/proposed/deferred). | Add status field per story or mark all as "accepted" if that is the intent. |
+| M1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
+| M2 | Stories lack stable identifiers. | Each story needs a stable identifier. | Add IDs (e.g., `CUR-01`, `CUR-02`, …). |
+| M3 | Stories lack status. | Each story should have a status (accepted/proposed/deferred). | Add status field per story or mark all as "accepted" if that is the intent. |
+
+### FAIL-semantic
+
+| # | Finding | Rule violated | Suggested fix |
+|---|---------|---------------|---------------|
+| S1 | Stories lack acceptance signals. | Each story needs an acceptance signal. | Add acceptance criteria per story or in a summary table. |
 
 ### WARNs
 
@@ -67,16 +84,19 @@ treated as accepted at its phase) or **WARN** (should fix, not blocking).
 
 **My Way phase:** Part of 00 — Product Intent
 
-### FAILs
-
-Same pattern as curator stories:
+### FAIL-mechanical
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
-| F2 | Stories lack stable identifiers. | Stable identifier required. | Add IDs (e.g., `STU-01`, `STU-02`, …). |
-| F3 | Stories lack acceptance signals. | Acceptance signal required per story. | Add acceptance criteria per story. |
-| F4 | Stories lack status. | Status required. | Add status per story. |
+| M1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
+| M2 | Stories lack stable identifiers. | Each story needs a stable identifier. | Add IDs (e.g., `STU-01`, `STU-02`, …). |
+| M3 | Stories lack status. | Each story should have a status (accepted/proposed/deferred). | Add status field per story or mark all as "accepted" if that is the intent. |
+
+### FAIL-semantic
+
+| # | Finding | Rule violated | Suggested fix |
+|---|---------|---------------|---------------|
+| S1 | Stories lack acceptance signals. | Each story needs an acceptance signal. | Add acceptance criteria per story. |
 
 ### WARNs
 
@@ -90,15 +110,20 @@ Same pattern as curator stories:
 
 **My Way phase:** 02 — Pre-ADR. The document explores module boundaries and ownership but the four-module split is not yet a committed ADR. Treating it as Pre-ADR is the honest classification.
 
-### FAILs
+### FAIL-mechanical
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
-| F2 | No `## Context` section. The `## Purpose` disclaimer says what the doc is not, but does not explain what problem or tension drives the module decomposition. | Pre-ADR requires `## Context`. | Add context: what product/design tension makes module boundaries matter at this stage? What constraints are known? |
-| F3 | No `## Options considered`. The four-module split is presented as the only option. Pre-ADR requires at least two candidate directions with tradeoffs. | Pre-ADR requires `## Options considered` with ≥ 2 options. | Add at least one alternative decomposition (e.g., fewer modules, different module cuts, monolith-first) and explain tradeoffs. |
-| F4 | No `## Emerging direction`. The doc presents the map as settled rather than provisional. | Pre-ADR requires `## Emerging direction` (explicitly provisional). | Add an emerging-direction section that names the four-module split as the current best candidate and says why, while marking it as provisional. |
-| F5 | No `## Open questions`. | Pre-ADR requires `## Open questions` — items that must resolve before ADR. | Add open questions (e.g., "Is the Corpus Storage / Curator Workspace boundary in the right place?", "Should Assessment be its own module rather than embedded in Student Workspace?"). |
+| M1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
+
+### FAIL-semantic
+
+| # | Finding | Rule violated | Suggested fix |
+|---|---------|---------------|---------------|
+| S1 | No `## Context` section. The `## Purpose` disclaimer says what the doc is not, but does not explain what problem or tension drives the module decomposition. | Pre-ADR requires `## Context`. | Add context: what product/design tension makes module boundaries matter at this stage? What constraints are known? |
+| S2 | No `## Options considered`. The four-module split is presented as the only option. Pre-ADR requires at least two candidate directions with tradeoffs. | Pre-ADR requires `## Options considered` with ≥ 2 options. | Add at least one alternative decomposition (e.g., fewer modules, different module cuts, monolith-first) and explain tradeoffs. |
+| S3 | No `## Emerging direction`. The doc presents the map as settled rather than provisional. | Pre-ADR requires `## Emerging direction` (explicitly provisional). | Add an emerging-direction section that names the four-module split as the current best candidate and says why, while marking it as provisional. |
+| S4 | No `## Open questions`. | Pre-ADR requires `## Open questions` — items that must resolve before ADR. | Add open questions (e.g., "Is the Corpus Storage / Curator Workspace boundary in the right place?", "Should Assessment be its own module rather than embedded in Student Workspace?"). |
 
 ### WARNs
 
@@ -114,14 +139,14 @@ Same pattern as curator stories:
 
 **My Way phase:** 02 — Pre-ADR. The document calls itself "module-design level" and defines the first implementable slice, but the project has no accepted ADRs yet. The design decisions it contains (identity source, product roles, authorization model) are Pre-ADR-level explorations that need to pass through ADR before they can ground a spec.
 
-### FAILs
+### FAIL-semantic
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | No `## Context` section. The doc jumps from Purpose to Slice Goal without stating the problem or tension being explored. | Pre-ADR requires `## Context`. | Add context: why is identity & role management the right first slice? What constraints drive this choice? |
-| F2 | No `## Options considered`. Key design decisions (internal identity as ownership subject, program-scoped product roles, instance-scoped admin) are presented without alternatives. | Pre-ADR requires `## Options considered` with ≥ 2 options per decision space. | For each design decision, add at least one alternative (e.g., "credentials as identity", "flat role model", "no admin role — peer admin") with tradeoffs. |
-| F3 | No `## Emerging direction` framed as provisional. The document reads as committed design, but without accepted ADRs upstream it is still exploratory. | Pre-ADR requires `## Emerging direction` (provisional). | Reframe current design as the emerging direction, explicitly marked as pre-commitment. |
-| F4 | No `## Open questions`. The `## Deferred Decisions` section lists deferred items but does not frame them as questions that must resolve before ADR. | Pre-ADR requires `## Open questions`. | Transform `## Deferred Decisions` into (or supplement with) an `## Open questions` section where each item is framed as a concrete question that blocks ADR. |
+| S1 | No `## Context` section. The doc jumps from Purpose to Slice Goal without stating the problem or tension being explored. | Pre-ADR requires `## Context`. | Add context: why is identity & role management the right first slice? What constraints drive this choice? |
+| S2 | No `## Options considered`. Key design decisions (internal identity as ownership subject, program-scoped product roles, instance-scoped admin) are presented without alternatives. | Pre-ADR requires `## Options considered` with ≥ 2 options per decision space. | For each design decision, add at least one alternative (e.g., "credentials as identity", "flat role model", "no admin role — peer admin") with tradeoffs. |
+| S3 | No `## Emerging direction` framed as provisional. The document reads as committed design, but without accepted ADRs upstream it is still exploratory. | Pre-ADR requires `## Emerging direction` (provisional). | Reframe current design as the emerging direction, explicitly marked as pre-commitment. |
+| S4 | No `## Open questions`. The `## Deferred Decisions` section lists deferred items but does not frame them as questions that must resolve before ADR. | Pre-ADR requires `## Open questions`. | Transform `## Deferred Decisions` into (or supplement with) an `## Open questions` section where each item is framed as a concrete question that blocks ADR. |
 
 ### WARNs
 
@@ -138,15 +163,20 @@ Same pattern as curator stories:
 
 **My Way phase:** 02 — Pre-ADR. Despite the title saying "Decision," the project has no ADR infrastructure. The document presents a direction without alternatives, context, or consequences — it is best treated as a Pre-ADR that captures an emerging direction.
 
-### FAILs
+### FAIL-mechanical
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `description` in front matter. | FM requires `description`. | Add `description: "Exploring deployment target for Agonara private instances."` |
-| F2 | No `## Context` section. There is no explanation of what problem or constraints drove this direction. | Pre-ADR requires `## Context`. | Add context: why does deployment shape matter now? What constraints (team size, budget, operational skill, privacy) shape the decision space? |
-| F3 | No `## Options considered`. The dockerized self-hosted direction is presented without naming what it was chosen over. | Pre-ADR requires `## Options considered` with ≥ 2 options. | Add at least one alternative (SaaS, desktop-local, serverless, managed PaaS) with tradeoffs, product-intent fit, and risks. |
-| F4 | No `## Emerging direction` framed as provisional. The `## Decision` section reads as final, but there is no ADR infrastructure to make it a commitment. | Pre-ADR requires `## Emerging direction` (provisional). | Rename `## Decision` to `## Emerging direction` and add a note that this becomes a commitment only after ADR acceptance. |
-| F5 | No `## Open questions`. | Pre-ADR requires `## Open questions`. | Add questions that must resolve before ADR (e.g., "Which container registry?", "What managed storage services are acceptable?", "Minimum viable ops requirements for admin?"). |
+| M1 | Missing `description` in front matter. | FM requires `description`. | Add `description: "Exploring deployment target for Agonara private instances."` |
+
+### FAIL-semantic
+
+| # | Finding | Rule violated | Suggested fix |
+|---|---------|---------------|---------------|
+| S1 | No `## Context` section. There is no explanation of what problem or constraints drove this direction. | Pre-ADR requires `## Context`. | Add context: why does deployment shape matter now? What constraints (team size, budget, operational skill, privacy) shape the decision space? |
+| S2 | No `## Options considered`. The dockerized self-hosted direction is presented without naming what it was chosen over. | Pre-ADR requires `## Options considered` with ≥ 2 options. | Add at least one alternative (SaaS, desktop-local, serverless, managed PaaS) with tradeoffs, product-intent fit, and risks. |
+| S3 | No `## Emerging direction` framed as provisional. The `## Decision` section reads as final, but there is no ADR infrastructure to make it a commitment. | Pre-ADR requires `## Emerging direction` (provisional). | Rename `## Decision` to `## Emerging direction` and add a note that this becomes a commitment only after ADR acceptance. |
+| S4 | No `## Open questions`. | Pre-ADR requires `## Open questions`. | Add questions that must resolve before ADR (e.g., "Which container registry?", "What managed storage services are acceptable?", "Minimum viable ops requirements for admin?"). |
 
 ### WARNs
 
@@ -161,13 +191,18 @@ Same pattern as curator stories:
 
 **My Way phase:** 01 — Research (at best). The content is an informal sketch of how identity/auth mapping would work — this is exploratory problem-space thinking, not a committed design.
 
-### FAILs
+### FAIL-mechanical
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
-| F2 | Missing `description` in front matter. | FM requires `description`. | Add `description`. |
-| F3 | No `## Purpose` section. Research requires a 1–3 sentence purpose explaining what question or tension is being explored. | Research requires `## Purpose`. | Add a purpose statement (e.g., "Exploring how external authentication maps to internal Agonara identity and roles"). |
+| M1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
+| M2 | Missing `description` in front matter. | FM requires `description`. | Add `description`. |
+
+### FAIL-semantic
+
+| # | Finding | Rule violated | Suggested fix |
+|---|---------|---------------|---------------|
+| S1 | No `## Purpose` section. Research requires a 1–3 sentence purpose explaining what question or tension is being explored. | Research requires `## Purpose`. | Add a purpose statement (e.g., "Exploring how external authentication maps to internal Agonara identity and roles"). |
 
 ### WARNs
 
@@ -225,29 +260,48 @@ None — this is a placeholder note, not a My Way artifact.
 
 ### FAIL counts by document
 
-| Document | Phase | FAILs |
-|----------|-------|------:|
-| intent doc | Product Intent | 6 |
-| curator stories | Product Intent | 4 |
-| student stories | Product Intent | 4 |
-| module responsibility map | Pre-ADR | 5 |
-| first slice | Pre-ADR | 4 |
-| deployment decision | Pre-ADR | 5 |
-| implementation notes | Research | 3 |
-| **Total** | | **31** |
+| Document | Phase | Mechanical | Semantic | Total |
+|----------|-------|----------:|----------:|------:|
+| intent doc | Product Intent | 2 | 4 | 6 |
+| curator stories | Product Intent | 3 | 1 | 4 |
+| student stories | Product Intent | 3 | 1 | 4 |
+| module responsibility map | Pre-ADR | 1 | 4 | 5 |
+| first slice | Pre-ADR | 0 | 4 | 4 |
+| deployment decision | Pre-ADR | 1 | 4 | 5 |
+| implementation notes | Research | 2 | 1 | 3 |
+| **Total** | | **12** | **19** | **31** |
 
-### Top-priority structural fixes
+### Mechanical FAILs — batch fix
 
-1. **Product Intent layer** (intent doc + both story docs, 14 FAILs combined): The intent doc needs `## Product outcome`, standard story form (or explicit references to the story docs), and `## Acceptance signals`. Both story docs need stable IDs, acceptance signals, and status per story. These are the foundation — everything downstream depends on settled intent.
+12 mechanical FAILs across 7 documents. All are fill-in-the-blank:
 
-2. **Pre-ADR layer** (deployment decision + module map + first slice, 14 FAILs combined): All three lack the core Pre-ADR structure: `## Context`, `## Options considered`, `## Emerging direction`, `## Open questions`. The content is substantive but reads as settled decisions rather than explored options. Adding alternatives and open questions would make the exploratory status honest and flag what must resolve before committing to ADRs.
+- Add missing `date` to 5 front matters.
+- Add missing `description` to 2 front matters.
+- Assign stable IDs to stories in 3 docs (intent, curator, student).
+- Add status tags to stories in 2 docs (curator, student).
 
-3. **Front matter gaps** (`date` missing from 5 docs, `description` missing from 2): Quick universal fix across all docs.
+These can be fixed in a single pass with no design judgment.
+
+### Semantic FAILs — requires authoring
+
+19 semantic FAILs, grouped by theme:
+
+**Product Intent (6 semantic FAILs):**
+- Write a `## Product outcome` statement (intent doc).
+- Rewrite stories in standard form or delegate to story docs (intent doc).
+- Define per-story acceptance signals (intent doc + curator + student).
+
+**Pre-ADR structure (12 semantic FAILs):**
+- Write `## Context` for 3 docs (module map, first slice, deployment).
+- Write `## Options considered` with alternatives for 3 docs.
+- Write `## Emerging direction` with provisional framing for 3 docs.
+- Write `## Open questions` for 3 docs.
+
+**Research (1 semantic FAIL):**
+- Write `## Purpose` for implementation notes.
 
 ### Recurring themes
 
-- **Missing front matter fields** (especially `date`) — 5 docs.
-- **Stories without identifiers, acceptance signals, or status** — all story-bearing docs.
-- **Pre-ADR docs presented as settled decisions** — all three Pre-ADR-level docs lack alternatives, open questions, and provisional framing.
-- **No context sections** — 3 of 3 Pre-ADR docs skip the problem/tension statement.
-- **Phase mixing** — the first-slice doc mixes Pre-ADR decisions with spec-level detail; the implementation notes mix research with design sketches.
+- **Pre-ADR docs presented as settled decisions** — all three Pre-ADR-level docs lack alternatives, open questions, and provisional framing. This is the single biggest structural gap: 12 of 19 semantic FAILs.
+- **Acceptance signals missing** — the only semantic gap in the Product Intent layer that repeats across all three story-bearing docs.
+- **Phase mixing** — the first-slice doc blends Pre-ADR decisions with spec-level detail; the implementation notes blend research with design sketches.
