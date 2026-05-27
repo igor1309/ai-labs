@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Harden the Program Shell and Membership HTTP API spec by separating domain event rejection reasons from transport rejections, restoring effective-participation denial coverage, and tightening malformed JSON and traceability expectations.
 - Add the Program Shell and Membership HTTP API spec, carrying the implemented domain contract into session-backed routes, CSRF enforcement, response envelopes, redaction, event pagination, and executable acceptance scenarios.
 - Implement the Program Shell and Membership first slice: `createProgramShell` with atomic initial curator membership, `joinSelfJoinProgram` / `leaveStudentProgram` with active/left/removed transitions and idempotent active-join + rejoin reuse, read-only `getEffectiveParticipation`, Program and Program Membership event queries with Admin-or-curator authorization, and backup/restore coverage that refuses orphan Program shells without active curator participation.
 - Restyle the Admin operations UI board to match the `docs/my-way/landing.html` dark, mono-accented look (palette, typography, hero pill, surface cards) while preserving every structural marker the admin-board HTTP tests assert on.
