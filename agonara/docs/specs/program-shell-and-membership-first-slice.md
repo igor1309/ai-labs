@@ -49,7 +49,7 @@ type ProgramEvent = {
   id: ProgramEventId;
   eventType: "program_created";
   actorIdentityId: IdentityId;
-  programId: ProgramId;
+  programId?: ProgramId;
   occurredAt: Instant;
   outcome: "accepted" | "rejected";
   reason?: ProgramRejectionReason;
@@ -173,6 +173,7 @@ type ProgramRejectionReason =
   | "program_not_found"
   | "validation_failed"
   | "membership_missing"
+  | "membership_left"
   | "membership_removed"
   | "unsupported_participation_kind"
   | "admin_or_curator_required"
@@ -192,41 +193,57 @@ type ProgramRejectionReason =
 9. If initial curator membership cannot be created, `createProgramShell` rejects with `program_creation_incomplete` and no Program shell remains visible.
 10. Accepted `createProgramShell` creates one accepted `program_created` Program event attributed to the acting Identity.
 11. Accepted `createProgramShell` creates one accepted `initial_curator_membership_created` Program Membership event attributed to the acting Identity.
-12. Program creation does not grant Admin authority.
-13. Program creation does not grant Student participation to the creator.
-14. Program creation does not create learner state, accepted topics, accepted concepts, accepted materials, checks, criteria, or draft suggestions.
-15. `listProgramShells` requires an active acting internal Identity and returns all Program shells visible for self-join or existing participation in this slice.
-16. `getProgramShell` requires an active acting internal Identity and rejects unknown Program identifiers with `program_not_found`.
-17. `joinSelfJoinProgram` requires an active acting internal Identity.
-18. `joinSelfJoinProgram` rejects unknown Program identifiers with `program_not_found`.
-19. `joinSelfJoinProgram` accepts when the Program exists, has `self_join` admission policy, and the acting Identity has no Student membership for that Program.
-20. Accepted first join creates one active `student` membership for the acting Identity and Program.
-21. Accepted first join creates one accepted `student_membership_joined` Program Membership event.
-22. `joinSelfJoinProgram` accepts when the acting Identity has a `left` Student membership for the Program.
-23. Accepted rejoin reuses the existing Student membership record, changes its status to `active`, and creates one accepted `student_membership_rejoined` Program Membership event.
-24. Rejoin must not create a duplicate Student membership for the same Identity and Program.
-25. `joinSelfJoinProgram` rejects when the acting Identity has a `removed` Student membership for the Program.
-26. `joinSelfJoinProgram` is idempotent for active Student membership and returns the existing active membership without creating a duplicate membership record.
-27. `leaveStudentProgram` requires an active acting internal Identity.
-28. `leaveStudentProgram` rejects unknown Program identifiers with `program_not_found`.
-29. `leaveStudentProgram` rejects missing Student membership with `membership_missing`.
-30. `leaveStudentProgram` rejects removed Student membership with `membership_removed`.
-31. Accepted leave changes active Student membership to `left`.
-32. Accepted leave creates one accepted `student_membership_left` Program Membership event.
-33. Leaving Student membership does not delete learner state, Program shell state, Program Curator membership, Program events, or prior Program Membership events.
-34. `getEffectiveParticipation` returns `allowed: true` only for active membership matching the requested Identity, Program, and participation kind.
-35. `getEffectiveParticipation` returns `identity_not_active` when the Identity is disabled.
-36. `getEffectiveParticipation` returns `membership_missing`, `membership_left`, or `membership_removed` for the corresponding membership absence or status.
-37. `getEffectiveParticipation` returns `unsupported_participation_kind` for participation kinds outside `student` and `program_curator`.
-38. `getEffectiveParticipation` is read-only and must not create, reactivate, leave, remove, or recover membership state.
-39. Effective `program_curator` participation is required before curator-sensitive behavior may run in later slices.
-40. Effective `student` participation is required before student learning state may be created, resumed, or exposed in later slices.
-41. Program events and Program Membership events are queryable domain records, not operational logs.
-42. Program events and Program Membership events must not be used as the source of authorization.
-43. Event query responses must not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure secrets.
-44. Backup/restore scope includes Program shells, Program Membership records, Program events, and Program Membership events.
-45. Restore must reject or refuse activation if a Program shell would be restored without at least one active `program_curator` membership.
-46. This slice does not expose invitation creation, invitation acceptance, invitation decline, invitation revocation, Program archival, Program deletion, Program ownership transfer, Program policy changes, controlled Program admission, curator leave, curator removal, Admin exceptional recovery mutations, accepted corpus editing, Student Workspace state, UI, or HTTP route names.
+12. Rejected `createProgramShell` attempts create a rejected `program_created` Program event when the acting Identity exists.
+13. Program creation rejection before a Program shell exists may omit `programId` from the rejected Program event.
+14. Program creation does not grant Admin authority.
+15. Program creation does not grant Student participation to the creator.
+16. Program creation does not create learner state, accepted topics, accepted concepts, accepted materials, checks, criteria, or draft suggestions.
+17. `listProgramShells` requires an active acting internal Identity and returns all Program shells visible for self-join or existing participation in this slice.
+18. `listProgramShells` rejects unknown acting Identities with `identity_not_found`.
+19. `listProgramShells` rejects disabled acting Identities with `identity_disabled`.
+20. `getProgramShell` requires an active acting internal Identity and rejects unknown Program identifiers with `program_not_found`.
+21. `listMyProgramMemberships` requires an active acting internal Identity and returns only memberships whose `identityId` matches the acting Identity.
+22. `listMyProgramMemberships` includes active, left, and removed memberships for the acting Identity.
+23. `joinSelfJoinProgram` requires an active acting internal Identity.
+24. `joinSelfJoinProgram` rejects unknown acting Identities with `identity_not_found`.
+25. `joinSelfJoinProgram` rejects disabled acting Identities with `identity_disabled`.
+26. `joinSelfJoinProgram` rejects unknown Program identifiers with `program_not_found`.
+27. `joinSelfJoinProgram` accepts when the Program exists, has `self_join` admission policy, and the acting Identity has no Student membership for that Program.
+28. Accepted first join creates one active `student` membership for the acting Identity and Program.
+29. Accepted first join creates one accepted `student_membership_joined` Program Membership event.
+30. `joinSelfJoinProgram` accepts when the acting Identity has a `left` Student membership for the Program.
+31. Accepted rejoin reuses the existing Student membership record, changes its status to `active`, and creates one accepted `student_membership_rejoined` Program Membership event.
+32. Rejoin must not create a duplicate Student membership for the same Identity and Program.
+33. `joinSelfJoinProgram` rejects when the acting Identity has a `removed` Student membership for the Program.
+34. Rejected join attempts create a rejected Program Membership event when the acting Identity and Program both exist.
+35. `joinSelfJoinProgram` is idempotent for active Student membership and returns the existing active membership without creating a duplicate membership record or a new Program Membership event.
+36. `leaveStudentProgram` requires an active acting internal Identity.
+37. `leaveStudentProgram` rejects unknown acting Identities with `identity_not_found`.
+38. `leaveStudentProgram` rejects disabled acting Identities with `identity_disabled`.
+39. `leaveStudentProgram` rejects unknown Program identifiers with `program_not_found`.
+40. `leaveStudentProgram` rejects missing Student membership with `membership_missing`.
+41. `leaveStudentProgram` rejects left Student membership with `membership_left`.
+42. `leaveStudentProgram` rejects removed Student membership with `membership_removed`.
+43. Rejected leave attempts create a rejected Program Membership event when the acting Identity and Program both exist.
+44. Accepted leave changes active Student membership to `left`.
+45. Accepted leave creates one accepted `student_membership_left` Program Membership event.
+46. Leaving Student membership does not delete learner state, Program shell state, Program Curator membership, Program events, or prior Program Membership events.
+47. `getEffectiveParticipation` returns `allowed: true` only for active membership matching the requested Identity, Program, and participation kind.
+48. `getEffectiveParticipation` returns `identity_not_active` when the Identity is disabled.
+49. `getEffectiveParticipation` returns `program_not_accepting_participation` when the Program does not exist or is not available for participation decisions.
+50. `getEffectiveParticipation` returns `membership_missing`, `membership_left`, or `membership_removed` for the corresponding membership absence or status.
+51. `getEffectiveParticipation` returns `unsupported_participation_kind` for participation kinds outside `student` and `program_curator`.
+52. `getEffectiveParticipation` is read-only and must not create, reactivate, leave, remove, or recover membership state.
+53. Effective `program_curator` participation is required before curator-sensitive behavior may run in later slices.
+54. Effective `student` participation is required before student learning state may be created, resumed, or exposed in later slices.
+55. Program events and Program Membership events are queryable domain records, not operational logs.
+56. Program events and Program Membership events must not be used as the source of authorization.
+57. Event query responses must not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure secrets.
+58. Program and Program Membership event queries reject non-Admin callers who do not have effective Program Curator participation for each returned Program.
+59. Program and Program Membership event queries with no `programId` return only events for Programs where the acting Identity has effective Program Curator participation, unless the acting Identity has effective Admin authority.
+60. Backup/restore scope includes Program shells, Program Membership records, Program events, and Program Membership events.
+61. Restore must reject or refuse activation if a Program shell would be restored without at least one active `program_curator` membership.
+62. This slice does not expose invitation creation, invitation acceptance, invitation decline, invitation revocation, Program archival, Program deletion, Program ownership transfer, Program policy changes, controlled Program admission, curator leave, curator removal, Admin exceptional recovery mutations, accepted corpus editing, Student Workspace state, UI, or HTTP route names.
 
 ## Product intent traceability
 
@@ -254,47 +271,60 @@ Program shell creation:
 7. Program creation rejects disabled acting Identity with `identity_disabled`.
 8. Program creation rejects empty or whitespace title with `validation_failed`.
 9. Program creation failure during initial curator membership leaves no visible orphan Program shell.
+10. Rejected Program creation with a known acting Identity creates a rejected Program event.
 
 Program discovery:
 
-10. `listProgramShells` returns Program shells visible to an active Identity.
-11. `listProgramShells` rejects disabled acting Identity with `identity_disabled`.
-12. `getProgramShell` returns an existing Program shell for an active Identity.
-13. `getProgramShell` rejects unknown Program identifiers with `program_not_found`.
+11. `listProgramShells` returns Program shells visible to an active Identity.
+12. `listProgramShells` rejects unknown acting Identity with `identity_not_found`.
+13. `listProgramShells` rejects disabled acting Identity with `identity_disabled`.
+14. `getProgramShell` returns an existing Program shell for an active Identity.
+15. `getProgramShell` rejects unknown Program identifiers with `program_not_found`.
+16. `listMyProgramMemberships` returns only memberships for the acting Identity.
+17. `listMyProgramMemberships` includes active, left, and removed memberships for the acting Identity.
 
 Student membership:
 
-14. `joinSelfJoinProgram` accepts for an active Identity and self-join Program with no prior Student membership.
-15. Accepted first join creates active Student membership and a `student_membership_joined` event.
-16. `joinSelfJoinProgram` is idempotent for existing active Student membership and does not create a duplicate membership record.
-17. `joinSelfJoinProgram` reactivates a left Student membership and emits a `student_membership_rejoined` event.
-18. Rejoin reuses the existing membership record.
-19. `joinSelfJoinProgram` rejects removed Student membership.
-20. `joinSelfJoinProgram` rejects unknown Program identifiers with `program_not_found`.
-21. `leaveStudentProgram` changes active Student membership to `left` and emits a `student_membership_left` event.
-22. `leaveStudentProgram` rejects missing Student membership with `membership_missing`.
-23. `leaveStudentProgram` rejects removed Student membership with `membership_removed`.
-24. Leaving Student membership does not delete Program shell, Program Curator membership, learner-state placeholders, or historical events.
+18. `joinSelfJoinProgram` accepts for an active Identity and self-join Program with no prior Student membership.
+19. Accepted first join creates active Student membership and a `student_membership_joined` event.
+20. `joinSelfJoinProgram` is idempotent for existing active Student membership and does not create a duplicate membership record or event.
+21. `joinSelfJoinProgram` reactivates a left Student membership and emits a `student_membership_rejoined` event.
+22. Rejoin reuses the existing membership record.
+23. `joinSelfJoinProgram` rejects removed Student membership and emits a rejected Program Membership event.
+24. `joinSelfJoinProgram` rejects unknown acting Identity with `identity_not_found`.
+25. `joinSelfJoinProgram` rejects disabled acting Identity with `identity_disabled`.
+26. `joinSelfJoinProgram` rejects unknown Program identifiers with `program_not_found`.
+27. `leaveStudentProgram` changes active Student membership to `left` and emits a `student_membership_left` event.
+28. `leaveStudentProgram` rejects unknown acting Identity with `identity_not_found`.
+29. `leaveStudentProgram` rejects disabled acting Identity with `identity_disabled`.
+30. `leaveStudentProgram` rejects missing Student membership with `membership_missing`.
+31. `leaveStudentProgram` rejects left Student membership with `membership_left`.
+32. `leaveStudentProgram` rejects removed Student membership with `membership_removed`.
+33. Rejected leave with a known acting Identity and Program emits a rejected Program Membership event.
+34. Leaving Student membership does not delete Program shell, Program Curator membership, learner-state placeholders, or historical events.
 
 Effective participation:
 
-25. `getEffectiveParticipation` returns allowed for active Student membership.
-26. `getEffectiveParticipation` returns allowed for active Program Curator membership.
-27. `getEffectiveParticipation` returns `membership_missing` when no matching membership exists.
-28. `getEffectiveParticipation` returns `membership_left` for left membership.
-29. `getEffectiveParticipation` returns `membership_removed` for removed membership.
-30. `getEffectiveParticipation` returns `identity_not_active` for disabled Identity.
-31. `getEffectiveParticipation` returns `unsupported_participation_kind` for unsupported participation kind.
-32. `getEffectiveParticipation` does not mutate membership state.
+35. `getEffectiveParticipation` returns allowed for active Student membership.
+36. `getEffectiveParticipation` returns allowed for active Program Curator membership.
+37. `getEffectiveParticipation` returns `program_not_accepting_participation` for an unknown or unavailable Program.
+38. `getEffectiveParticipation` returns `membership_missing` when no matching membership exists.
+39. `getEffectiveParticipation` returns `membership_left` for left membership.
+40. `getEffectiveParticipation` returns `membership_removed` for removed membership.
+41. `getEffectiveParticipation` returns `identity_not_active` for disabled Identity.
+42. `getEffectiveParticipation` returns `unsupported_participation_kind` for unsupported participation kind.
+43. `getEffectiveParticipation` does not mutate membership state.
 
 Events, boundaries, and recovery:
 
-33. Program and Program Membership event queries require Admin authority or effective Program Curator participation for each returned Program.
-34. Event query responses do not expose secrets, session identifiers, CSRF tokens, SQL text, stack traces, or infrastructure secrets.
-35. Program events and Program Membership events are not used as authorization state.
-36. Backup export includes Program shells, Program Membership records, Program events, and Program Membership events.
-37. Restore rejects a Program shell without at least one active Program Curator membership.
-38. No API or command in this slice creates invitations, changes Program policy, transfers Program ownership, removes Program Curator membership, edits accepted corpus, or creates Student Workspace state.
+44. Program and Program Membership event queries require Admin authority or effective Program Curator participation for each returned Program.
+45. Event queries reject non-Admin callers for Programs where they lack effective Program Curator participation.
+46. Unscoped event queries for non-Admin callers return only events for Programs where they have effective Program Curator participation.
+47. Event query responses do not expose secrets, session identifiers, CSRF tokens, SQL text, stack traces, or infrastructure secrets.
+48. Program events and Program Membership events are not used as authorization state.
+49. Backup export includes Program shells, Program Membership records, Program events, and Program Membership events.
+50. Restore rejects a Program shell without at least one active Program Curator membership.
+51. No API or command in this slice creates invitations, changes Program policy, transfers Program ownership, removes Program Curator membership, edits accepted corpus, or creates Student Workspace state.
 
 ## Done criteria
 
