@@ -6,9 +6,12 @@ description: "My Way audit of agonara docs — fails and warns with suggested fi
 # Agonara Docs — My Way Audit
 
 Review of all documents on the `agonara` branch against the My Way
-mandatory structures (phases 00–05, variants). Each finding is tagged
-**FAIL** (must fix before the artifact can be treated as accepted) or
-**WARN** (should fix, but not blocking).
+mandatory structures. The project is in early exploration — documents
+are classified at the highest phase they credibly occupy (Product Intent
+or Pre-ADR), not aspirationally upward.
+
+Each finding is tagged **FAIL** (must fix before the artifact can be
+treated as accepted at its phase) or **WARN** (should fix, not blocking).
 
 ---
 
@@ -22,7 +25,7 @@ mandatory structures (phases 00–05, variants). Each finding is tagged
 |---|---------|---------------|---------------|
 | F1 | Missing `date` in front matter. | FM requires `date`, `model`, `description`. | Add `date: 2026-05-26` (or actual creation date). |
 | F2 | No `## Product outcome` section. The doc opens with `## Problem` — valuable context, but the framework requires a concise user-outcome statement. | Structure: `## Product outcome` mandatory. | Add a `## Product outcome` section (1–3 sentences) above or after Problem. Problem can stay as supporting context. |
-| F3 | User stories are not in standard form. The `## User Needs` subsection uses narrative paragraphs ("Куратор хочет…", "Студент хочет…") rather than `As a <type>, I want <goal>, so that <outcome>`. | Stories must be "recognizable form" with As/want/so-that. | Rewrite each need as a proper user story, or (better) merge the separate curator and student story docs into this document and reference them from here. |
+| F3 | User stories are not in standard form. The `## User Needs` subsection uses narrative paragraphs ("Куратор хочет…", "Студент хочет…") rather than `As a <type>, I want <goal>, so that <outcome>`. | Stories must be in "recognizable form" with As/want/so-that. | Rewrite each need as a proper user story, or (better) point this section at the separate curator/student story docs which already use standard form. |
 | F4 | Stories lack stable identifiers. | Each story needs a stable identifier. | Assign IDs (e.g., `INT-01`, `INT-02`, …). |
 | F5 | Stories lack per-story acceptance signals. The `## Success` section provides aggregate criteria but nothing per story. | Each story needs an acceptance signal. | Add an `## Acceptance signals` section mapping each story ID to its signal, or add inline signals per story. |
 | F6 | No `## Acceptance signals` section. | Structure: mandatory section. | Create it (see F5). |
@@ -33,7 +36,7 @@ mandatory structures (phases 00–05, variants). Each finding is tagged
 |---|---------|---------------|
 | W1 | Section naming diverges from template: `Roles` vs `Actors`, `User Needs` vs `User stories`, `Intent` vs `Product outcome`. | Rename sections to match the mandatory structure names. |
 | W2 | No `## Open product questions` section. | Add it — even if empty, make the absence of open questions explicit. |
-| W3 | No `## Downstream traceability` section. | Add it once downstream artifacts exist. Acceptable to defer if no downstream artifacts yet, but the section header should be present with a note. |
+| W3 | No `## Downstream traceability` section. | Acceptable to defer if no downstream artifacts yet, but the section header should be present with a note. |
 | W4 | No `## Change review` section. | Add the section as a placeholder. |
 | W5 | Document is in Russian, but curator and student stories are separate English-language docs. Language mixing is not a framework violation, but traceability between the intent doc and the story docs should be explicit. | Add cross-references or merge stories into this document. |
 
@@ -85,80 +88,78 @@ Same pattern as curator stories:
 
 ## 4. `agonara_module_responsibility_map_v0.2.2.md` — Module Responsibility Map
 
-**My Way phase:** This document makes architectural commitments (module boundaries, ownership rules, embedded behavior assignments) but does not follow any standard My Way artifact template. It is closest to one or more ADRs.
+**My Way phase:** 02 — Pre-ADR. The document explores module boundaries and ownership but the four-module split is not yet a committed ADR. Treating it as Pre-ADR is the honest classification.
 
 ### FAILs
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
 | F1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
-| F2 | Artifact type is ambiguous. The document makes firm boundary commitments (not exploratory), so it reads as a committed architectural decision — yet it is not an ADR, Pre-ADR, or Spec. | My Way requires each artifact to fit a recognized phase. | Either (a) restructure as one or more ADRs (e.g., "ADR: Agonara uses four bounded modules with single-owner responsibility"), or (b) treat it as a Pre-ADR if the module split is still provisional and add `## Options considered`, `## Emerging direction`, `## Open questions`. |
-| F3 | No alternatives considered. The four-module split is presented as settled without showing what other decompositions were evaluated. | ADR requires rejected alternatives; Pre-ADR requires `## Options considered`. | Add rationale for why this decomposition was chosen over alternatives (monolith, different module cuts, etc.). |
-| F4 | No `## Consequences` or `## Non-goals` (ADR criteria). | ADR mandatory sections. | Add both sections if treating as ADR. |
-| F5 | No `## Context` section explaining what problem/tension drives the module split. | ADR/Pre-ADR require `## Context`. | Add context explaining why module boundaries matter at this stage. |
+| F2 | No `## Context` section. The `## Purpose` disclaimer says what the doc is not, but does not explain what problem or tension drives the module decomposition. | Pre-ADR requires `## Context`. | Add context: what product/design tension makes module boundaries matter at this stage? What constraints are known? |
+| F3 | No `## Options considered`. The four-module split is presented as the only option. Pre-ADR requires at least two candidate directions with tradeoffs. | Pre-ADR requires `## Options considered` with ≥ 2 options. | Add at least one alternative decomposition (e.g., fewer modules, different module cuts, monolith-first) and explain tradeoffs. |
+| F4 | No `## Emerging direction`. The doc presents the map as settled rather than provisional. | Pre-ADR requires `## Emerging direction` (explicitly provisional). | Add an emerging-direction section that names the four-module split as the current best candidate and says why, while marking it as provisional. |
+| F5 | No `## Open questions`. | Pre-ADR requires `## Open questions` — items that must resolve before ADR. | Add open questions (e.g., "Is the Corpus Storage / Curator Workspace boundary in the right place?", "Should Assessment be its own module rather than embedded in Student Workspace?"). |
 
 ### WARNs
 
 | # | Finding | Suggested fix |
 |---|---------|---------------|
-| W1 | The `## Purpose` disclaimer ("not a workflow map, dependency map…") is useful but no positive framing of where this artifact sits in the phase sequence. | Add a sentence placing it in the My Way progression (e.g., "This is the architectural decision behind module boundaries, to be formalized as ADR-NNN"). |
-| W2 | Cross-cutting responsibilities (Logging, Observability, Backup/Restore, Product Analytics) are listed but have no ADR treatment — they may warrant their own ADR or at least explicit design-decision status. | Note which cross-cutting concerns are committed decisions vs. provisional. |
-| W3 | No product intent traceability. The module split affects which user stories each module serves, but this is implicit. | Add a traceability note linking modules to the user stories they enable. |
+| W1 | The doc presents boundary commitments in a flat assertive tone that reads as settled architecture. If it is genuinely Pre-ADR, the language should signal provisionality — otherwise readers will treat the map as decided. | Mark unstable boundaries explicitly. Add a preamble noting this is exploratory and subject to change before ADR. |
+| W2 | Cross-cutting responsibilities (Logging, Observability, Backup/Restore, Product Analytics) are listed without noting whether they are provisional or settled. | Mark each as provisional or note they need their own Pre-ADR/ADR treatment. |
+| W3 | No product intent traceability. The module split affects which user stories each module serves, but this is implicit. | Add a sentence per module linking it to the stories it enables, or a traceability note referencing the Product Intent. |
 
 ---
 
 ## 5. `agonara_identity_role_management_first_slice_v0.1.1.md` — First Slice
 
-**My Way phase:** The document itself says "module-design level." In My Way terms it is closest to a **Spec** (phase 04) — it defines capabilities, authorization principles, consistency rules, and slice boundaries for the first implementable module.
+**My Way phase:** 02 — Pre-ADR. The document calls itself "module-design level" and defines the first implementable slice, but the project has no accepted ADRs yet. The design decisions it contains (identity source, product roles, authorization model) are Pre-ADR-level explorations that need to pass through ADR before they can ground a spec.
 
 ### FAILs
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | No `## Public interface` section. The doc lists capabilities in a table but never defines function signatures, input/output shapes, or typed descriptions. | Spec requires `## Public interface`. | Add a public interface section — at minimum, list the operations with their inputs, outputs, and error cases. |
-| F2 | No `## Tests (required)` section. | Spec requires enumerated test cases mapping to behavior rules. | Add test cases covering each capability and authorization rule. |
-| F3 | No `## Done criteria` section. | Spec requires `## Done criteria`. | Add done criteria (e.g., "all capabilities implemented, authorization rules enforced, tests pass, backup/restore verified"). |
-| F4 | Behavior rules are spread across `## Authorization Principles`, `## Consistency Rules`, and `## Identity Lifecycle` but are not numbered or grouped as testable rules. | Spec requires numbered/grouped `## Behavior rules`, each concrete and testable. | Consolidate into a `## Behavior rules` section with numbered rules. Authorization principles and consistency rules can become subsections within it. |
+| F1 | No `## Context` section. The doc jumps from Purpose to Slice Goal without stating the problem or tension being explored. | Pre-ADR requires `## Context`. | Add context: why is identity & role management the right first slice? What constraints drive this choice? |
+| F2 | No `## Options considered`. Key design decisions (internal identity as ownership subject, program-scoped product roles, instance-scoped admin) are presented without alternatives. | Pre-ADR requires `## Options considered` with ≥ 2 options per decision space. | For each design decision, add at least one alternative (e.g., "credentials as identity", "flat role model", "no admin role — peer admin") with tradeoffs. |
+| F3 | No `## Emerging direction` framed as provisional. The document reads as committed design, but without accepted ADRs upstream it is still exploratory. | Pre-ADR requires `## Emerging direction` (provisional). | Reframe current design as the emerging direction, explicitly marked as pre-commitment. |
+| F4 | No `## Open questions`. The `## Deferred Decisions` section lists deferred items but does not frame them as questions that must resolve before ADR. | Pre-ADR requires `## Open questions`. | Transform `## Deferred Decisions` into (or supplement with) an `## Open questions` section where each item is framed as a concrete question that blocks ADR. |
 
 ### WARNs
 
 | # | Finding | Suggested fix |
 |---|---------|---------------|
-| W1 | Title uses "First Slice" rather than `Spec: Identity & Role Management (v0.1.1)`. | Rename to follow Spec title convention. |
-| W2 | No `## Product intent traceability`. The slice operationalizes intent stories (admin control, identity management) but does not link to them explicitly. | Add a traceability table mapping capabilities to intent/story IDs. |
-| W3 | No ADR traceability. The doc references the Responsibility Map and Deployment Decision but does not formally trace which ADR decisions it operationalizes. | Add ADR references. |
-| W4 | The `## Design Decisions` section (Identity Source, Product Roles, Operational Role) arguably contains ADR-level commitments that should be recorded as ADRs rather than embedded in a spec. | Consider extracting into a dedicated ADR (e.g., "ADR: Agonara separates identity from credentials and roles"). |
+| W1 | The document contains both Pre-ADR-level decisions (identity model, role model, authorization principles) and spec-level detail (capabilities table, lifecycle states, cross-cutting checks). This mixes phases. | Consider splitting: extract the architectural decisions into a focused Pre-ADR, and keep the capabilities/lifecycle/checks as working notes that will become a Spec after ADRs are accepted. |
+| W2 | `## Design Decisions` contains three architectural commitments (Identity Source, Product Roles, Operational Role) that each warrant explicit Pre-ADR treatment with alternatives and tradeoffs. | Give each decision its own options-considered subsection, or split into separate Pre-ADR artifacts. |
+| W3 | No product intent traceability. The slice operationalizes intent stories (admin control, identity management) but does not link to them. | Add references to the Product Intent stories this slice serves. |
+| W4 | `## Consistency Rules` reads like ADR invariants but no ADR exists yet. | Mark these as candidate invariants for a future ADR, not as established rules. |
 
 ---
 
 ## 6. `agonara-deployment-decision.md` — Deployment Decision
 
-**My Way phase:** 03 — ADR
+**My Way phase:** 02 — Pre-ADR. Despite the title saying "Decision," the project has no ADR infrastructure. The document presents a direction without alternatives, context, or consequences — it is best treated as a Pre-ADR that captures an emerging direction.
 
 ### FAILs
 
 | # | Finding | Rule violated | Suggested fix |
 |---|---------|---------------|---------------|
-| F1 | Missing `description` in front matter. | FM requires `description`. | Add `description: "Agonara targets dockerized private self-hosted deployment."` |
-| F2 | Missing ADR number in title. | ADR title must be `# ADR-NNN — Title`. | Assign a number (e.g., `# ADR-001 — Agonara Deployment Target`). |
-| F3 | No `## Executive summary`. | ADR mandatory section. | Add a 2–3 line executive summary. |
-| F4 | No `## Context` section. There is no explanation of what problem or constraints drove this decision. | ADR mandatory section. | Add context: why self-hosted? What alternatives were considered? What constraints shaped the choice? |
-| F5 | No `## Rules / invariants`. No enforceable MUST/MUST NOT statements. | ADR mandatory section. | Add rules (e.g., "Agonara MUST run as a Docker container", "The backend MUST expose an API before any UI surface", etc.). |
-| F6 | No `## Consequences`. | ADR mandatory section. | Add consequences: operational burden on admin, limits on scaling, dependency on Docker, etc. |
-| F7 | No `## Non-goals`. | ADR mandatory section. | Add non-goals (e.g., "SaaS multi-tenant hosting is not a goal", "Mobile-native deployment is not a goal"). |
-| F8 | No alternatives considered. The `## Rationale` section explains why the chosen option works but never names what it was chosen over. | ADR context should include rejected alternatives. | Add brief mention of alternatives (SaaS, desktop-local, serverless, etc.) and why rejected. |
+| F1 | Missing `description` in front matter. | FM requires `description`. | Add `description: "Exploring deployment target for Agonara private instances."` |
+| F2 | No `## Context` section. There is no explanation of what problem or constraints drove this direction. | Pre-ADR requires `## Context`. | Add context: why does deployment shape matter now? What constraints (team size, budget, operational skill, privacy) shape the decision space? |
+| F3 | No `## Options considered`. The dockerized self-hosted direction is presented without naming what it was chosen over. | Pre-ADR requires `## Options considered` with ≥ 2 options. | Add at least one alternative (SaaS, desktop-local, serverless, managed PaaS) with tradeoffs, product-intent fit, and risks. |
+| F4 | No `## Emerging direction` framed as provisional. The `## Decision` section reads as final, but there is no ADR infrastructure to make it a commitment. | Pre-ADR requires `## Emerging direction` (provisional). | Rename `## Decision` to `## Emerging direction` and add a note that this becomes a commitment only after ADR acceptance. |
+| F5 | No `## Open questions`. | Pre-ADR requires `## Open questions`. | Add questions that must resolve before ADR (e.g., "Which container registry?", "What managed storage services are acceptable?", "Minimum viable ops requirements for admin?"). |
 
 ### WARNs
 
 | # | Finding | Suggested fix |
 |---|---------|---------------|
-| W1 | Very brief — the entire ADR is 2 sections. Even with all fixes above, consider whether this is better as part of a broader "ADR: Agonara System Shape" that also covers the API-first decision. | Consider merging related architectural decisions into one ADR if they are interdependent. |
+| W1 | No `## Provisional boundaries`. The deployment shape constrains the system (API-first, Docker, network web UI) but these are not framed as provisional boundaries. | Add a `## Provisional boundaries` section listing the boundary implications of this deployment direction. |
+| W2 | Very brief — two sections total. Even for a Pre-ADR, more structure would help future reviewers. | Expand with context and options. |
 
 ---
 
 ## 7. `agonara-implementation-notes_v0.1.0.md` — Implementation Notes
 
-**My Way phase:** Does not map to any recognized artifact type.
+**My Way phase:** 01 — Research (at best). The content is an informal sketch of how identity/auth mapping would work — this is exploratory problem-space thinking, not a committed design.
 
 ### FAILs
 
@@ -166,13 +167,15 @@ Same pattern as curator stories:
 |---|---------|---------------|---------------|
 | F1 | Missing `date` in front matter. | FM requires `date`. | Add `date`. |
 | F2 | Missing `description` in front matter. | FM requires `description`. | Add `description`. |
-| F3 | Not a recognized My Way artifact. The content (pseudocode flow for identity/auth mapping) belongs either in a Spec (as part of `## Public interface` or `## Behavior rules`) or in an Implementation Plan (as a task description). | My Way requires each document to fit a phase. | Fold the content into the Identity & Role Management spec or remove and reference from an implementation plan. |
+| F3 | No `## Purpose` section. Research requires a 1–3 sentence purpose explaining what question or tension is being explored. | Research requires `## Purpose`. | Add a purpose statement (e.g., "Exploring how external authentication maps to internal Agonara identity and roles"). |
 
 ### WARNs
 
 | # | Finding | Suggested fix |
 |---|---------|---------------|
-| W1 | Useful content but orphaned — not referenced by any other doc. | If kept, add a cross-reference from the first-slice doc. |
+| W1 | Not framed as Research. The content is useful exploration of the identity/auth boundary, but it reads as informal notes rather than a structured research artifact. | Reframe as Research with a purpose and (optionally) open questions, or fold the content into the first-slice Pre-ADR as supporting context. |
+| W2 | No `## Open questions`. If this is research, the unresolved items should be explicit. | Add open questions (e.g., "Which auth frameworks fit the deployment target?", "How does credential rotation work?"). |
+| W3 | Orphaned — not referenced by any other doc. | Add a cross-reference from the first-slice doc. |
 
 ---
 
@@ -188,7 +191,7 @@ None — brand briefs are outside the My Way artifact sequence. The front matter
 
 | # | Finding | Suggested fix |
 |---|---------|---------------|
-| W1 | Not a My Way artifact, so no phase review applies. However, the naming availability assessment references "Naming Availability Standard" — confirm that prompt (`prompts/naming-availability-standard.md`) is the actual standard used. | Verify cross-reference accuracy. |
+| W1 | The naming availability assessment references "Naming Availability Standard" — verify that `prompts/naming-availability-standard.md` is the actual standard used. | Confirm cross-reference accuracy. |
 | W2 | The EN and RU versions should be kept in sync. Content appears aligned at v0.1.0, but there is no explicit versioning link between them. | Add a note in each that they are parallel translations of the same brief. |
 
 ---
@@ -204,7 +207,7 @@ None — this is a placeholder note, not a My Way artifact.
 | # | Finding | Suggested fix |
 |---|---------|---------------|
 | W1 | Missing `description` in front matter. | Add `description: "Deferred design decisions — storage."` |
-| W2 | Very minimal — may be better as a section in another doc than a standalone file. | Consider folding into the responsibility map or a future ADR's "Deferred Decisions" section. |
+| W2 | Very minimal — may be better as an open question in the module-responsibility Pre-ADR than a standalone file. | Consider folding into the responsibility map's `## Open questions`. |
 
 ---
 
@@ -222,33 +225,29 @@ None — this is a placeholder note, not a My Way artifact.
 
 ### FAIL counts by document
 
-| Document | FAILs |
-|----------|------:|
-| intent (product intent) | 6 |
-| curator stories | 4 |
-| student stories | 4 |
-| module responsibility map | 5 |
-| first slice (spec) | 4 |
-| deployment decision (ADR) | 8 |
-| implementation notes | 3 |
-| **Total** | **34** |
+| Document | Phase | FAILs |
+|----------|-------|------:|
+| intent doc | Product Intent | 6 |
+| curator stories | Product Intent | 4 |
+| student stories | Product Intent | 4 |
+| module responsibility map | Pre-ADR | 5 |
+| first slice | Pre-ADR | 4 |
+| deployment decision | Pre-ADR | 5 |
+| implementation notes | Research | 3 |
+| **Total** | | **31** |
 
 ### Top-priority structural fixes
 
-1. **Deployment Decision** needs the most work — 8 FAILs, missing nearly every ADR section. Suggested: rewrite as a proper ADR with number, context, alternatives, rules, consequences, non-goals.
+1. **Product Intent layer** (intent doc + both story docs, 14 FAILs combined): The intent doc needs `## Product outcome`, standard story form (or explicit references to the story docs), and `## Acceptance signals`. Both story docs need stable IDs, acceptance signals, and status per story. These are the foundation — everything downstream depends on settled intent.
 
-2. **Intent doc** needs standard story form, acceptance signals, and outcome section. Consider merging the curator/student story docs into or formally linking from the intent doc.
+2. **Pre-ADR layer** (deployment decision + module map + first slice, 14 FAILs combined): All three lack the core Pre-ADR structure: `## Context`, `## Options considered`, `## Emerging direction`, `## Open questions`. The content is substantive but reads as settled decisions rather than explored options. Adding alternatives and open questions would make the exploratory status honest and flag what must resolve before committing to ADRs.
 
-3. **Module Responsibility Map** needs to declare its artifact type. The content is strong but architecturally committed decisions need ADR treatment.
-
-4. **First Slice** is the most developed doc but needs Spec sections (public interface, tests, done criteria) to be reviewable as a Spec.
-
-5. **Front matter `date` field** is missing from 5 of 11 documents — quick universal fix.
+3. **Front matter gaps** (`date` missing from 5 docs, `description` missing from 2): Quick universal fix across all docs.
 
 ### Recurring themes
 
-- **Missing front matter fields** (especially `date`) — affects 5 docs.
-- **Stories without identifiers, acceptance signals, or status** — affects all story-bearing docs.
-- **Architectural commitments without ADR format** — affects responsibility map and deployment decision.
-- **No test or done-criteria sections** — affects the first-slice spec.
-- **Artifact type ambiguity** — the responsibility map and implementation notes don't fit any My Way phase.
+- **Missing front matter fields** (especially `date`) — 5 docs.
+- **Stories without identifiers, acceptance signals, or status** — all story-bearing docs.
+- **Pre-ADR docs presented as settled decisions** — all three Pre-ADR-level docs lack alternatives, open questions, and provisional framing.
+- **No context sections** — 3 of 3 Pre-ADR docs skip the problem/tension statement.
+- **Phase mixing** — the first-slice doc mixes Pre-ADR decisions with spec-level detail; the implementation notes mix research with design sketches.
