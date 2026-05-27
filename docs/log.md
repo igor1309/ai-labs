@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Process: made My Way implementation-plan structure a hard repo gate in `AGENTS.md`, including required Done criteria, Final closeout, adversarial plan review, and PR title/body quality checks.
 - agonara: added packaged-bin CLI acceptance coverage and a containerized first-Admin bootstrap smoke, fixing the CLI symlink entrypoint guard that prevented the installed bin from running.
 - agonara: updated the project README with concrete CLI, HTTP, and Docker demo commands for the implemented Identity and Operations slice.
 - agonara: fixed the Agonara CI Docker smoke to provide the required bootstrap secret while preserving runtime fail-fast behavior for missing operator configuration.
