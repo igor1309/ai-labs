@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Harden the operational cross-cutting spec with concrete request ID validation, diagnostics rejection mapping, coarse diagnostic reasons, required log correlation, and bounded component names.
 - Add the v0.0.1 operational cross-cutting spec so request IDs, diagnostic logs, health, diagnostics, redaction, and audit/log boundaries have an implementation handoff.
 - Harden the Identity & Role Management API/CLI spec with audit-event shape, JSON stdin bootstrap, login disclosure protection, and auth rate-limit contracts.
 - Add the Identity & Role Management API/CLI spec so first-slice implementation has explicit HTTP, operator CLI, and executable acceptance contracts.
