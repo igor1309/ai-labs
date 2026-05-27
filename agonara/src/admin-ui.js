@@ -341,6 +341,29 @@ export const adminBoardHtml = `<!doctype html>
         <h2>Operational Access</h2>
         <p class="muted" id="operational-access-summary">Select Inspect for an identity.</p>
       </section>
+
+      <section class="surface stack" id="audit-events-panel">
+        <div class="actions">
+          <h2>Audit Events</h2>
+          <button class="secondary" type="button" id="refresh-audit-events-button">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Outcome</th>
+                <th>Actor</th>
+                <th>Target</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="audit-event-list"></tbody>
+          </table>
+        </div>
+        <p class="status" id="audit-event-status"></p>
+      </section>
     </section>
   </main>
   <script>
@@ -352,6 +375,8 @@ export const adminBoardHtml = `<!doctype html>
       };
       const elements = {
         app: document.querySelector("#admin-app"),
+        auditEventList: document.querySelector("#audit-event-list"),
+        auditEventStatus: document.querySelector("#audit-event-status"),
         bootstrapForm: document.querySelector("#bootstrap-form"),
         bootstrapStatus: document.querySelector("#bootstrap-status"),
         createIdentityForm: document.querySelector("#create-identity-form"),
@@ -366,6 +391,7 @@ export const adminBoardHtml = `<!doctype html>
         loginStatus: document.querySelector("#login-status"),
         logoutButton: document.querySelector("#logout-button"),
         operationalAccessSummary: document.querySelector("#operational-access-summary"),
+        refreshAuditEventsButton: document.querySelector("#refresh-audit-events-button"),
         refreshIdentitiesButton: document.querySelector("#refresh-identities-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
         sessionActions: document.querySelector("#session-actions"),
@@ -401,6 +427,7 @@ export const adminBoardHtml = `<!doctype html>
         elements.createIdentityForm.reset();
         renderStatus(elements.createIdentityStatus, result);
         await refreshIdentities();
+        await refreshAuditEvents();
       });
 
       elements.credentialForm.addEventListener("submit", async event => {
@@ -413,6 +440,7 @@ export const adminBoardHtml = `<!doctype html>
         });
         elements.credentialForm.reset();
         renderStatus(elements.credentialStatus, result);
+        await refreshAuditEvents();
       });
 
       elements.identityList.addEventListener("click", async event => {
@@ -435,6 +463,7 @@ export const adminBoardHtml = `<!doctype html>
         }
         const result = await requestJson(request.path, { csrf: true, method: request.method });
         await refreshIdentities();
+        await refreshAuditEvents();
         renderStatus(elements.identityStatus, result);
       });
 
@@ -452,6 +481,7 @@ export const adminBoardHtml = `<!doctype html>
       });
 
       elements.refreshIdentitiesButton.addEventListener("click", refreshIdentities);
+      elements.refreshAuditEventsButton.addEventListener("click", refreshAuditEvents);
       elements.refreshSessionButton.addEventListener("click", refreshSession);
 
       refreshSession();
@@ -519,6 +549,7 @@ export const adminBoardHtml = `<!doctype html>
         state.csrfToken = null;
         state.identity = null;
         state.identities = [];
+        elements.auditEventList.textContent = "";
         elements.sessionActions.classList.add("hidden");
         elements.sessionChip.textContent = "Signed out";
         elements.sessionSummary.textContent = "No active session.";
@@ -549,6 +580,7 @@ export const adminBoardHtml = `<!doctype html>
         setState("signed-in");
         showOnly(elements.sessionPanel);
         refreshIdentities();
+        refreshAuditEvents();
       }
 
       async function refreshIdentities() {
@@ -590,6 +622,27 @@ export const adminBoardHtml = `<!doctype html>
         }
         const value = result.value;
         elements.operationalAccessSummary.textContent = value.identity.displayName + " · effective Admin: " + (value.effectiveAdmin ? "yes" : "no");
+      }
+
+      async function refreshAuditEvents() {
+        const result = await requestJson("/identity/audit-events");
+        if (result.status !== "accepted") {
+          renderStatus(elements.auditEventStatus, result);
+          return;
+        }
+        const auditEvents = result.value.auditEvents;
+        elements.auditEventList.innerHTML = auditEvents.map(auditEvent => (
+          '<tr>' +
+            '<td>' + escapeHtml(auditEvent.occurredAt) + '</td>' +
+            '<td>' + escapeHtml(auditEvent.eventType) + '</td>' +
+            '<td>' + escapeHtml(auditEvent.outcome) + '</td>' +
+            '<td><code>' + escapeHtml(auditEvent.actorIdentityId ?? "") + '</code></td>' +
+            '<td><code>' + escapeHtml(auditEvent.targetIdentityId ?? auditEvent.targetCredentialId ?? "") + '</code></td>' +
+            '<td>' + escapeHtml(auditEvent.reason ?? "") + '</td>' +
+          '</tr>'
+        )).join("");
+        elements.auditEventStatus.textContent = auditEvents.length === 0 ? "No audit events." : "Audit events refreshed.";
+        elements.auditEventStatus.dataset.tone = "accepted";
       }
 
       function requestForIdentityAction(action, identityId) {

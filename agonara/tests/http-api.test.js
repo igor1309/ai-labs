@@ -143,6 +143,38 @@ test("adminBoard_shouldExposeIdentityOperationControls_withoutSensitiveRuntimeVa
   }
 });
 
+test("adminBoard_shouldExposeAuditEventInspection_withoutSensitiveRuntimeValues", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/admin`);
+    const body = await response.text();
+
+    assert.deepEqual(
+      {
+        hasAuditPanel: body.includes('id="audit-events-panel"'),
+        hasAuditList: body.includes('id="audit-event-list"'),
+        hasRefreshAuditButton: body.includes('id="refresh-audit-events-button"'),
+        hasTargetSessionHeader: body.includes("targetSessionId"),
+        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasBootstrapSecret: body.includes("operator-secret"),
+        hasSessionCookieName: body.includes("agonara_session"),
+      },
+      {
+        hasAuditPanel: true,
+        hasAuditList: true,
+        hasRefreshAuditButton: true,
+        hasTargetSessionHeader: false,
+        hasPasswordValue: false,
+        hasBootstrapSecret: false,
+        hasSessionCookieName: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("identityBootstrapStatus_shouldReflectAvailability_beforeAndAfterBootstrap", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 
