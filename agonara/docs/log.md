@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Implement the private Admin operations UI board on `/admin`, covering first-Admin bootstrap, sign in/out, identity creation, local credential binding, disablement, Admin grant/revoke, operational access inspection, and audit event inspection through the existing Identity API.
 - Add the Admin operations UI board implementation plan, scoping the next Agonara slice to a thin private-instance board over the existing Identity HTTP API.
 - Add packaged-bin CLI acceptance coverage and extend the Docker CI smoke to bootstrap the first Admin through the containerized HTTP API, fixing the CLI symlink entrypoint guard uncovered by that test.
 - Update the Agonara README so the implemented Identity and Operations slice is directly runnable through CLI, HTTP, and Docker demo paths instead of still reading as design-only.

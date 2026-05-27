@@ -12,11 +12,11 @@ Build a thin, private-instance Admin operations board for the already implemente
 
 Source artifacts:
 
-- [Identity & Role Management First Slice](../specs/identity-role-management-first-slice.md);
-- [Identity & Role Management API and CLI](../specs/identity-role-management-api-cli.md);
-- [Operational Cross-Cutting First Slice](../specs/operational-cross-cutting-first-slice.md);
-- [Agonara Admin User Stories](../admin_user_stories.md), especially ADM-01 through ADM-05, ADM-08 through ADM-11;
-- [ADR-001](../adr/adr-001-internal-identity-as-agonara-ownership-subject.md), [ADR-002](../adr/adr-002-role-authority-scope-model.md), [ADR-003](../adr/adr-003-admin-recovery-invariant.md), and [ADR-008](../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
+- [Identity & Role Management First Slice](../../specs/identity-role-management-first-slice.md);
+- [Identity & Role Management API and CLI](../../specs/identity-role-management-api-cli.md);
+- [Operational Cross-Cutting First Slice](../../specs/operational-cross-cutting-first-slice.md);
+- [Agonara Admin User Stories](../../admin_user_stories.md), especially ADM-01 through ADM-05, ADM-08 through ADM-11;
+- [ADR-001](../../adr/adr-001-internal-identity-as-agonara-ownership-subject.md), [ADR-002](../../adr/adr-002-role-authority-scope-model.md), [ADR-003](../../adr/adr-003-admin-recovery-invariant.md), and [ADR-008](../../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
 
 ## Execution mode
 
@@ -36,13 +36,13 @@ Gate checklist:
 
 - [x] Preflight verifies `git worktree list --porcelain`, current branch, current worktree path, and separate worktree status before implementation edits.
 - [x] Existing Agonara runtime, package scripts, API routes, Docker behavior, and UI dependency state are verified before choosing the UI substrate.
-- [ ] Every phase ends with targeted verification and a local commit.
-- [ ] Every phase self-review fixes fail/warn findings before the next phase starts.
-- [ ] Code, config, CI, generated-artifact, or executable-example changes run `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "tests" npm test` and `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit` before commit.
-- [ ] Docker-producing changes run local `docker build`, container start, health check, and UI/API smoke verification before push.
-- [ ] UI changes run browser verification against desktop and mobile viewports, with screenshots or equivalent checked evidence.
-- [ ] Docs-only updates run Markdown structure, local-link, and diff-scope checks before commit.
-- [ ] Plan tracker checkboxes are updated only after verified evidence.
+- [x] Every phase ends with targeted verification and a local commit.
+- [x] Every phase self-review fixes fail/warn findings before the next phase starts.
+- [x] Code, config, CI, generated-artifact, or executable-example changes run `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "tests" npm test` and `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit` before commit.
+- [x] Docker-producing changes run local `docker build`, container start, health check, and UI/API smoke verification before push.
+- [x] UI changes run browser verification against desktop and mobile viewports, with screenshots or equivalent checked evidence.
+- [x] Docs-only updates run Markdown structure, local-link, and diff-scope checks before commit.
+- [x] Plan tracker checkboxes are updated only after verified evidence.
 
 ## Scope guardrails
 

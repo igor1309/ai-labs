@@ -55,4 +55,6 @@ jobs:
           grep '"isAdmin":true' /tmp/agonara-bootstrap.json
           curl -fsS http://127.0.0.1:18080/identity/bootstrap/status > /tmp/agonara-bootstrap-status.json
           grep '"available":false' /tmp/agonara-bootstrap-status.json
+          curl -fsS http://127.0.0.1:18080/admin > /tmp/agonara-admin.html
+          grep 'id="admin-app"' /tmp/agonara-admin.html
           docker logs "$cid" | grep '"operation":"GET /operations/health"'

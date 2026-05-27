@@ -95,3 +95,13 @@ Compose exposes the same service on `127.0.0.1:18080` with a named volume:
 ```bash
 AGONARA_BOOTSTRAP_SECRET=operator-secret docker compose -f agonara/compose.yaml up --build
 ```
+
+## Admin Board Demo
+
+The Admin operations board is served by the same Agonara runtime at `/admin`. Start the local or Docker demo, then open:
+
+```text
+http://127.0.0.1:18080/admin
+```
+
+On a clean database, use the bootstrap secret from `AGONARA_BOOTSTRAP_SECRET` to create the first Admin. After bootstrap, the board supports sign in, logout, identity creation, local password credential binding, identity disablement, Admin grant/revoke, operational access inspection, and audit event inspection. Authority decisions and last-Admin protection remain owned by the HTTP API.
