@@ -1,18 +1,23 @@
 ---
 name: Naming Availability Standard
-description: Reusable availability-risk standard for product and project naming sessions.
-date: 2026-05-12
+description: Reusable, domain-agnostic availability-risk standard for product and project naming sessions.
+date: 2026-05-27
 model: gpt-5.5-thinking
-scope: naming, product naming, internal tools, agent orchestration
+scope: naming, product naming
 ---
 
 # Naming Availability Standard
+
+> **Context (to be provided by the user each session)**
+> - **Target field:** the product category where a collision would matter most (e.g., "agent orchestration and AI coding tools").
+> - **Adjacent categories:** related fields where overlap raises concern (e.g., "developer automation, LLM workflow tooling").
+> - **Intended technical surface:** registries, CLI namespaces, or package ecosystems the name must not conflict in (e.g., "npm, GitHub org").
 
 ## Purpose
 
 This standard defines how to evaluate name availability during naming sessions without over-filtering good candidates too early.
 
-The goal is not global uniqueness. The goal is to avoid meaningful collision inside the relevant product field.
+The goal is not global uniqueness. The goal is to avoid meaningful collision inside the target field.
 
 ## Scope
 
@@ -31,22 +36,18 @@ A name should not be rejected merely because the same string appears somewhere o
 
 ## Hard Blockers
 
-Reject a name if there is a same or highly similar name in any of these areas:
+Reject a name if there is a same or highly similar name in:
 
-- agent orchestration;
-- AI coding agents;
-- LLM workflow tooling;
-- LLM eval, review, or adjudication tooling;
-- developer automation systems with close conceptual overlap;
-- review, verdict, policy-routing, or remediation-loop products;
-- active trademark-heavy companies in adjacent developer-tooling or AI-infrastructure categories.
+- the target field;
+- any of the adjacent categories;
+- active trademark-heavy companies in the target field or adjacent categories.
 
 Also reject a name if it has:
 
 - strong negative meaning in a target language or market;
 - pronunciation or spelling ambiguity severe enough to hurt spoken referenceability;
-- package, repo, or command-name conflict in the exact intended technical surface;
-- dominant search results from a close product category.
+- package, repo, or command-name conflict in the intended technical surface;
+- dominant search results from the target field or adjacent categories.
 
 ## Soft Concerns
 
@@ -60,7 +61,7 @@ Do not reject a name only because of:
 - companies in unrelated domains;
 - broad word/root usage;
 - obscure or inactive projects;
-- non-primary package registry appearances outside the intended ecosystem.
+- non-primary package registry appearances outside the intended technical surface.
 
 Neutral cross-language overlays are soft concerns when they create competing interpretations without negative meaning. Treat them as a documentation cost, not a blocker. The launch or README copy should anchor the intended meaning in one clear sentence.
 
@@ -94,9 +95,9 @@ Use this scale:
 
 | Risk | Meaning |
 |---|---|
-| Low | No visible close-field collision; unrelated uses only |
+| Low | No visible target-field collision; unrelated uses only |
 | Medium | Some visible usage, but outside the target field |
-| High | Close adjacent product, AI/developer tooling overlap, or dominant search collision |
+| High | Close adjacent product, adjacent-category overlap, or dominant search collision |
 | Blocked | Same or highly similar name in the target field |
 
 ## Practical Interpretation
@@ -105,7 +106,7 @@ A good candidate can survive medium availability risk if:
 
 - product fit is strong;
 - CLI/spoken usability is strong;
-- the collision is outside the target category;
+- the collision is outside the target field;
 - the name has a clear semantic advantage;
 - launch materials can explain the intended meaning cleanly.
 
@@ -113,6 +114,6 @@ A weak candidate should not be saved merely because it is unique.
 
 ## Naming Target
 
-Prefer names that work inside the actual product reality and do not collide with the relevant field:
+Prefer names that work inside the actual product reality and do not collide with the target field:
 
-> A name should fit the product, survive spoken and CLI use, and avoid close collision in agent orchestration, coding-agent, review-loop, or AI workflow tooling.
+> A name should fit the product, survive spoken and CLI use, and avoid close collision in the target field and adjacent categories.
