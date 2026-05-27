@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 import { startServer } from "../src/server.js";
 
 const cliPath = fileURLToPath(new URL("../src/cli.js", import.meta.url));
+const packagedCliPath = fileURLToPath(
+  new URL(`../../node_modules/.bin/agonara${process.platform === "win32" ? ".cmd" : ""}`, import.meta.url),
+);
 
 test("acceptance_shouldBootstrapThroughCliAndUseHttpSession_onCleanInstance", async () => {
   const workspace = makeWorkspace();
@@ -74,6 +77,31 @@ test("acceptance_shouldBootstrapThroughCliAndUseHttpSession_onCleanInstance", as
     } finally {
       await close();
     }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
+test("acceptance_shouldExposeCliThroughWorkspaceBin_onInstalledWorkspace", () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const packagedBootstrapStatus = runPackagedCli(["identity", "bootstrap-status", "--json"], {
+      dbPath: join(workspace, "agonara.sqlite"),
+    });
+
+    assert.deepEqual(
+      {
+        status: packagedBootstrapStatus.status,
+        body: packagedBootstrapStatus.body,
+        stderr: packagedBootstrapStatus.stderr,
+      },
+      {
+        status: 0,
+        body: { status: "accepted", value: { available: true } },
+        stderr: "",
+      },
+    );
   } finally {
     removeWorkspace(workspace);
   }
@@ -264,7 +292,15 @@ test("acceptance_shouldRateLimitLoginAndCorrelateHealthRequest_onHttpInstance", 
 });
 
 function runCli(args, { dbPath, input }) {
-  const result = spawnSync(process.execPath, [cliPath, ...args], {
+  return runCommand(process.execPath, [cliPath, ...args], { dbPath, input });
+}
+
+function runPackagedCli(args, { dbPath, input = "" }) {
+  return runCommand(packagedCliPath, args, { dbPath, input });
+}
+
+function runCommand(command, args, { dbPath, input }) {
+  const result = spawnSync(command, args, {
     encoding: "utf8",
     env: {
       ...process.env,

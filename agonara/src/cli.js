@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createIdentityCommands } from "./identity.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isCliEntrypoint(process.argv[1])) {
   try {
     const exitCode = await runCli(process.argv.slice(2), {
       env: process.env,
@@ -16,6 +17,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   } catch {
     process.stderr.write("runtime error\n");
     process.exitCode = 1;
+  }
+}
+
+function isCliEntrypoint(argvPath) {
+  if (!argvPath) {
+    return false;
+  }
+
+  try {
+    return realpathSync(argvPath) === fileURLToPath(import.meta.url);
+  } catch {
+    return import.meta.url === pathToFileURL(argvPath).href;
   }
 }
 

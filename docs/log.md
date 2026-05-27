@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- agonara: added packaged-bin CLI acceptance coverage and a containerized first-Admin bootstrap smoke, fixing the CLI symlink entrypoint guard that prevented the installed bin from running.
 - agonara: updated the project README with concrete CLI, HTTP, and Docker demo commands for the implemented Identity and Operations slice.
 - agonara: fixed the Agonara CI Docker smoke to provide the required bootstrap secret while preserving runtime fail-fast behavior for missing operator configuration.
 - Process: added a pre-PR reminder to refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh` after substantial implementation or docs movement, then refreshed the Agonara LOC/dashboard numbers for this branch.
