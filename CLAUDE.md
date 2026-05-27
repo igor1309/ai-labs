@@ -81,7 +81,7 @@ Repo-specific details:
 - Swift-only scopes: `swift test` / `swift build`.
 - Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
 - Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
-- Worktree convention: `worktrees/<slug>` with branch `codex/<slug>`.
+- Worktree convention: `worktrees/<slug>` with branch `<slug>`.
 - Implementation plans must follow `docs/my-way/05-implementation-plan/structure.md`. Required sections are `Goal`, `Execution mode`, `Execution lock`, `Scope guardrails`, phases/tasks, `Done criteria`, and `Final closeout`.
 - Missing required implementation-plan sections are a fail, not a style warning. Do not substitute scattered equivalent bullets for required headings.
 - Implementation plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
