@@ -31,9 +31,9 @@ This ADR does not decide concrete membership policies, membership status schema,
 
 The [Program Membership Pre-ADR](../../../agonara/docs/agonara_program_membership_pre_adr_v0.1.0.md) evaluates whether membership belongs in a separate module, in Student and Curator workspaces, or in Identity & Role Management.
 
-The [Module Responsibility Map](../../../agonara/docs/agonara_module_responsibility_map_v0.4.0.md) identifies Program Membership as the owner of membership lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional recovery hooks.
+The [Module Responsibility Map](../../../agonara/docs/agonara_module_responsibility_map_v0.4.1.md) identifies Program Membership as the owner of membership lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional recovery hooks.
 
-The membership stories require students to join, leave, resume, inspect membership state, and accept or decline invitations; curators to invite, inspect, remove participants, and stop curating; and admins to inspect, recover, revoke, and audit membership state.
+The membership stories require students to join, leave, rejoin after leave, inspect membership state, and accept or decline invitations; curators to invite, inspect, remove participants, and stop curating; and admins to inspect, recover, revoke, and audit membership state.
 
 The rejected alternatives are embedding membership inside Student and Curator workspaces, or treating program participation as ordinary Identity & Role Management state. Both alternatives place participation policy in modules that do not own the full participation lifecycle.
 

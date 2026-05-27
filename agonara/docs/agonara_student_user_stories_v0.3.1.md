@@ -3,7 +3,7 @@ title: Agonara Student User Stories
 date: 2026-05-26
 description: Student-facing user stories for Agonara program освоения.
 model: gpt-5.5-thinking
-version: 0.3.0
+version: 0.3.1
 ---
 
 # Agonara Student User Stories
@@ -167,9 +167,9 @@ Acceptance signal: progress labels expose the attempts, answers, checks, or feed
 
 ## Program Membership
 
-### STU-18 — Join available program
+### STU-18 — Join self-join program
 
-As a student, I want to join an available program so that I can start learning it when the program membership policy permits participation.
+As a student, I want to join a self-join program so that I can start learning it when the program membership policy permits participation.
 
 Status: accepted
 
@@ -183,17 +183,17 @@ Status: accepted
 
 Acceptance signal: leaving changes membership state without deleting historical learning evidence.
 
-### STU-20 — Resume joined program
+### STU-20 — Rejoin left program
 
-As a student, I want to resume a program I have joined so that I can continue from my existing learning state.
+As a student, I want to rejoin a program I previously left so that I can continue from my existing learning state when membership policy allows it.
 
 Status: accepted
 
-Acceptance signal: resuming uses existing membership and existing student state instead of creating duplicate participation.
+Acceptance signal: rejoining reuses existing membership and existing student state instead of creating duplicate participation.
 
 ### STU-21 — View my program membership state
 
-As a student, I want to see whether I have joined, left, completed, or archived a program so that I understand my relationship to that program.
+As a student, I want to see whether my program membership is active, left, or unavailable due to removal so that I understand my relationship to that program.
 
 Status: accepted
 

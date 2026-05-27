@@ -2,6 +2,7 @@
 
 ## 2026-05-27
 
+- Accept ADR-005 for Program Membership state and first admission policy: Students can join self-join Programs, rejoining after leave reuses membership history, and Program Curator self-join stays closed for the first implementation.
 - Align admin and identity docs with ADR-004: product participation is now described as Program Membership-owned, while Identity & Role Management keeps identity, credentials, Admin authority, audit, and recovery primitives.
 - Accept ADR-004 for Program Membership ownership: participation lifecycle and policy now belong to a separate module, with effective Student and Program Curator authority backed by membership grants.
 - Add Program Membership Pre-ADR to pressure-test the separate module, opaque membership policy boundary, and unresolved role/membership authority contract.

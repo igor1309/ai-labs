@@ -26,15 +26,15 @@ It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../.
 
 [ADR-003](../../docs/adr/agonara/adr-003-admin-recovery-invariant.md) establishes recoverable Admin control and attributable sensitive identity-management operations.
 
-The [Module Responsibility Map](agonara_module_responsibility_map_v0.4.0.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional membership recovery hooks.
+The [Module Responsibility Map](agonara_module_responsibility_map_v0.4.1.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional membership recovery hooks.
 
 The story catalogs now include membership stories:
 
-- [Student User Stories](agonara_student_user_stories_v0.3.0.md): STU-18 through STU-23.
+- [Student User Stories](agonara_student_user_stories_v0.3.1.md): STU-18 through STU-23.
 - [Curator User Stories](agonara_curator_user_stories_v0.3.0.md): CUR-14 through CUR-18.
 - [Admin User Stories](agonara_admin_user_stories_v0.2.1.md): ADM-12 through ADM-15.
 
-The missing architectural question is not whether Agonara has identities or Program-scoped roles. Those are already accepted. The missing question is which module owns the product lifecycle of participation in a Program.
+The missing architectural question was not whether Agonara has identities or Program-scoped roles. Those are already accepted. ADR-004 accepts which module owns the product lifecycle of participation in a Program, and ADR-005 accepts the first membership state and admission policy.
 
 ## Options considered
 
@@ -150,9 +150,6 @@ Program Membership excludes:
 
 ## Open questions
 
-- What minimum membership statuses are needed for the first slice?
-- Which membership policy should the first implementation use for Student participation?
-- Which membership policy should the first implementation use for Program Curator participation?
 - Who may change a Program's membership policy?
 - How should invitations expire, be revoked, or be reissued?
 - What membership events require audit records?

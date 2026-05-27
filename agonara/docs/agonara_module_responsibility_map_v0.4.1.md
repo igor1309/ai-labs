@@ -3,7 +3,7 @@ title: Agonara Module Responsibility Map
 date: 2026-05-27
 description: Architecture-level responsibility map for Agonara module boundaries.
 model: gpt-5.5-thinking
-version: 0.4.0
+version: 0.4.1
 ---
 
 # Agonara Module Responsibility Map
@@ -57,7 +57,7 @@ Known constraints:
 
 Option A, the five-module split, is the current best candidate.
 
-It most directly preserves the Product Intent boundary between shared program corpus and personal student state, while giving Program Membership a clear place to own participation lifecycle and giving Identity & Role Management a clear place to own identity and operational authority primitives. Program Membership ownership is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md). The remaining map is provisional: the Corpus Storage / Curator Workspace boundary and assessment ownership boundary need further pressure before ADR acceptance.
+It most directly preserves the Product Intent boundary between shared program corpus and personal student state, while giving Program Membership a clear place to own participation lifecycle and giving Identity & Role Management a clear place to own identity and operational authority primitives. Program Membership ownership is accepted by [ADR-004](../../docs/adr/agonara/adr-004-program-membership-owns-program-participation.md), and first membership state/admission policy is accepted by [ADR-005](../../docs/adr/agonara/adr-005-program-membership-state-and-first-admission-policy.md). The remaining map is provisional: the Corpus Storage / Curator Workspace boundary and assessment ownership boundary need further pressure before ADR acceptance.
 
 ## Provisional boundaries
 
@@ -66,7 +66,7 @@ The following responsibility map is provisional. It is intended to make ownershi
 | Module | Responsibility | Owns | Does Not Own | Key Boundary |
 |---|---|---|---|---|
 | Corpus Storage | Stores accepted program corpus and source materials used by programs. | Programs, topics, concepts, definitions, principles, accepted assessment items, assessment criteria, material references, source metadata, material storage references/copies. | Curator drafts, student attempts, student progress, membership state, LLM suggestions before acceptance. | Only accepted content belongs here. Candidate material enters Corpus Storage only after curator acceptance. |
-| Program Membership | Manages participation of identities in programs. | Program membership lifecycle, join/leave behavior, invitation lifecycle, membership status, membership policy, participant visibility rules, exceptional membership recovery hooks. | Identity lifecycle, credential bindings, accepted program corpus, curator content decisions, student answers, assessment feedback, mastery/progress interpretation. | Membership is product participation in a program; it is not identity management, curation state, or learner progress. |
+| Program Membership | Manages participation of identities in programs. | Program membership lifecycle, join/leave/rejoin behavior, invitation lifecycle, membership status, membership policy, participant visibility rules, exceptional membership recovery hooks. | Identity lifecycle, credential bindings, accepted program corpus, curator content decisions, student answers, assessment feedback, mastery/progress interpretation. | Membership is product participation in a program; it is not identity management, curation state, or learner progress. |
 | Curator Workspace | Supports curator work on researching, assembling, refining, and accepting program content. | Research sources, candidate topics, candidate concepts, candidate materials, candidate checks, draft criteria, LLM-assisted suggestions, curator decisions. | Student learning history, student progress, learner assessment attempts, identity lifecycle, membership policy, membership state. | Curator work may prepare corpus changes, but does not become accepted corpus until accepted. Curator participation is established through Program Membership. |
 | Student Workspace | Supports personal learning state inside joined programs. | Current learning position, learning sessions, answers, attempts, assessment feedback, evidence, mastery state, weak areas, review needs, personal history. | Accepted program corpus, curator drafts, membership lifecycle, membership policy, membership state, material storage ownership. | Student activity uses accepted corpus content after membership allows participation, but must not mutate accepted corpus or own membership lifecycle. |
 | Identity & Role Management | Defines and manages identities, credentials, operational roles, and access primitives. | Internal identities, credential bindings, Admin role, role vocabulary, role invariants, role-management operations, access recovery. | Program membership lifecycle, program content, curator acceptance decisions, learner state, assessment logic. | Defines the internal subject and operational authority; does not own program participation lifecycle or workspace domain state. |
@@ -76,7 +76,7 @@ The following responsibility map is provisional. It is intended to make ownershi
 | Module | Product intent served |
 |---|---|
 | Corpus Storage | INT-01, INT-02, INT-03, INT-04, INT-05, INT-06 by preserving accepted program structure, materials, checks, and criteria. |
-| Program Membership | STU-18 through STU-23, CUR-14 through CUR-18, and ADM-12 through ADM-15 by governing how identities become, remain, or stop being participants in programs. |
+| Program Membership | STU-18 through STU-23, CUR-14 through CUR-18, and ADM-12 through ADM-15 by governing how identities become, remain, rejoin, or stop being participants in programs. |
 | Curator Workspace | INT-01 by supporting source collection, draft review, gap discovery, and acceptance into corpus. |
 | Student Workspace | INT-02 through INT-07 by preserving learning sessions, attempts, feedback, weak areas, and progress evidence. |
 | Identity & Role Management | INT-01 through INT-07 by providing identity and access primitives; ADM-01 through ADM-11 by owning identity, credential, Admin, audit, and recovery operations. |
@@ -87,7 +87,7 @@ Agonara separates identity, product roles, operational roles, and credentials.
 
 An internal Identity is the subject of ownership and action in Agonara.
 
-Product roles are program-scoped. ADR-004 accepts Program Membership as the owner for the lifecycle and policy of an Identity's participation in a Program under these product roles:
+Product roles are program-scoped. ADR-004 accepts Program Membership as the owner for the lifecycle and policy of an Identity's participation in a Program under these product roles, and ADR-005 accepts the first status and admission policy:
 
 - `Student` — participates in a program and owns learner state within that program.
 - `Program Curator` — curates a program and owns curator decisions within that program.
@@ -150,7 +150,6 @@ These responsibilities are also provisional. Each may require its own Pre-ADR or
 ## Open questions
 
 - Is Corpus Storage distinct from Curator Workspace in the first slice, or should accepted and candidate corpus behavior start behind one module boundary?
-- Which membership policy should the first implementation use for student participation and curator participation?
 - Should Assessment remain embedded in Student Workspace, or does open-answer evaluation need an explicit assessment module later?
 - Which module owns versioning when accepted program corpus changes after students already have attempts and progress evidence?
 - Which cross-cutting concerns require their own ADR before implementation: logging, backup/restore, observability, or analytics?
