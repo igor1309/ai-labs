@@ -760,6 +760,64 @@ test("createOpenAnswerCheckCandidateRecord_shouldPersistAndListByProgramAndStatu
   }
 });
 
+test("assessmentCandidateStatusUpdates_shouldPersistUpdatedStatusAndTimestamp_onExistingCandidates", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+    seedAcceptedAssessmentCriterion(database, {
+      candidateId: "criterion-candidate-a",
+      entityId: "criterion-entity-a",
+      programId: "program-a",
+      revisionId: "criterion-revision-a",
+      sourceId: "source-a",
+    });
+    storage.createOpenAnswerCheckCandidateRecord(
+      database,
+      makeOpenAnswerCheckCandidate({
+        id: "check-candidate-a",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+        criterionEntityIds: ["criterion-entity-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        criterion: storage.updateAssessmentCriterionCandidateStatus?.(database, {
+          candidateId: "criterion-candidate-a",
+          status: "rejected",
+          updatedAt: "2026-05-28T11:20:00.000Z",
+        }),
+        check: storage.updateOpenAnswerCheckCandidateStatus?.(database, {
+          candidateId: "check-candidate-a",
+          status: "accepted",
+          updatedAt: "2026-05-28T11:21:00.000Z",
+        }),
+      },
+      {
+        criterion: {
+          ...storage.getAssessmentCriterionCandidateRecord(database, "criterion-candidate-a"),
+          status: "rejected",
+          updatedAt: "2026-05-28T11:20:00.000Z",
+        },
+        check: {
+          ...storage.getOpenAnswerCheckCandidateRecord(database, "check-candidate-a"),
+          status: "accepted",
+          updatedAt: "2026-05-28T11:21:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createAcceptedOpenAnswerCheckRecords_shouldPersistEntityAndCurrentRevisionLink_onExistingCandidate", () => {
   const database = makeInitializedDatabase();
 

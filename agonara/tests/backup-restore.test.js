@@ -496,6 +496,50 @@ test("restoreBackup_shouldRestoreCorpusRecords_onAcceptedBackup", async () => {
   }
 });
 
+test("restoreBackup_shouldClearAssessmentStorageRecords_onBackupWithoutAssessmentPayload", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT({ ids: ["identity-existing", "credential-existing", "session-existing", "audit-existing"] });
+
+  try {
+    await target.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Existing Admin",
+      login: "existing@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+      membershipId: "membership-existing",
+      programEventId: "program-event-existing",
+      membershipEventId: "membership-event-existing",
+    });
+    seedCorpusRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+    });
+    seedAssessmentStorageRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+    });
+
+    const restoreResult = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        assessmentRows: countAssessmentStorageRows(target.database),
+      },
+      {
+        restoreStatus: "accepted",
+        assessmentRows: 0,
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectAcceptedCorpusEntityWithoutCurrentRevision_onBackup", async () => {
   const backup = await makeExportedCorpusBackup();
   const target = makeSUT();
@@ -722,6 +766,117 @@ function seedCorpusRecords(database, { identityId, programId }) {
       "accepted",
       null,
     );
+}
+
+function seedAssessmentStorageRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into assessment_criterion_candidates (
+         id, program_id, title, body, source_ids_json, rationale, status,
+         created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "criterion-candidate-existing",
+      programId,
+      "Criterion",
+      "Criterion body",
+      JSON.stringify(["source-1"]),
+      "Criterion rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:07:00.000Z",
+      "2026-05-27T10:08:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_assessment_criterion_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    )
+    .run("criterion-entity-existing", programId, "criterion-revision-existing");
+  database
+    .prepare(
+      `insert into accepted_assessment_criterion_revisions (
+         id, entity_id, program_id, title, body, accepted_from_candidate_id, source_ids_json,
+         rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "criterion-revision-existing",
+      "criterion-entity-existing",
+      programId,
+      "Accepted criterion",
+      "Accepted criterion body",
+      "criterion-candidate-existing",
+      JSON.stringify(["source-1"]),
+      "Criterion rationale",
+      identityId,
+      "2026-05-27T10:09:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into open_answer_check_candidates (
+         id, program_id, check_kind, title, prompt, source_ids_json, criterion_entity_ids_json,
+         rationale, status, created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "check-candidate-existing",
+      programId,
+      "open_answer",
+      "Check",
+      "Prompt",
+      JSON.stringify(["source-1"]),
+      JSON.stringify(["criterion-entity-existing"]),
+      "Check rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:10:00.000Z",
+      "2026-05-27T10:11:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_open_answer_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    )
+    .run("check-entity-existing", programId, "check-revision-existing");
+  database
+    .prepare(
+      `insert into accepted_open_answer_check_revisions (
+         id, entity_id, program_id, check_kind, title, prompt, accepted_from_candidate_id,
+         source_ids_json, criterion_revision_ids_json, rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "check-revision-existing",
+      "check-entity-existing",
+      programId,
+      "open_answer",
+      "Accepted check",
+      "Accepted prompt",
+      "check-candidate-existing",
+      JSON.stringify(["source-1"]),
+      JSON.stringify(["criterion-revision-existing"]),
+      "Check rationale",
+      identityId,
+      "2026-05-27T10:12:00.000Z",
+    );
+}
+
+function countAssessmentStorageRows(database) {
+  return [
+    "assessment_criterion_candidates",
+    "accepted_assessment_criterion_entities",
+    "accepted_assessment_criterion_revisions",
+    "open_answer_check_candidates",
+    "accepted_open_answer_check_entities",
+    "accepted_open_answer_check_revisions",
+  ].reduce((count, tableName) => {
+    const row = database.prepare(`select count(*) as count from ${tableName}`).get();
+    return count + row.count;
+  }, 0);
 }
 
 async function makeExportedCorpusBackup() {

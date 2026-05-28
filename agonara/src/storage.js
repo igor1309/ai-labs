@@ -745,6 +745,18 @@ export function listAssessmentCriterionCandidateRecords(database, { programId = 
     .map(mapAssessmentCriterionCandidateRecord);
 }
 
+export function updateAssessmentCriterionCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update assessment_criterion_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getAssessmentCriterionCandidateRecord(database, candidateId);
+}
+
 export function createAcceptedAssessmentCriterionEntityRecord(database, { id, programId, currentRevisionId }) {
   assertProgramShellExists(database, programId);
 
@@ -1015,6 +1027,18 @@ export function listOpenAnswerCheckCandidateRecords(database, { programId = null
     )
     .all(programId, status)
     .map(mapOpenAnswerCheckCandidateRecord);
+}
+
+export function updateOpenAnswerCheckCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update open_answer_check_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getOpenAnswerCheckCandidateRecord(database, candidateId);
 }
 
 export function createAcceptedOpenAnswerCheckEntityRecord(database, { id, programId, currentRevisionId }) {
@@ -1781,6 +1805,12 @@ export function restoreIdentityBackup(database, backup) {
   database.transaction(() => {
     database.prepare("delete from sessions").run();
     database.prepare("delete from corpus_events").run();
+    database.prepare("delete from accepted_open_answer_check_revisions").run();
+    database.prepare("delete from accepted_open_answer_check_entities").run();
+    database.prepare("delete from open_answer_check_candidates").run();
+    database.prepare("delete from accepted_assessment_criterion_revisions").run();
+    database.prepare("delete from accepted_assessment_criterion_entities").run();
+    database.prepare("delete from assessment_criterion_candidates").run();
     database.prepare("delete from accepted_corpus_revisions").run();
     database.prepare("delete from accepted_corpus_entities").run();
     database.prepare("delete from corpus_candidates").run();
