@@ -6,11 +6,15 @@ import {
   createIdentity,
   createProgramMembershipRecord,
   createProgramShellRecord,
+  getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
+  getAssessmentCriterionCandidateRecord,
   getCorpusCandidateRecord,
   grantAdminAuthority,
   initializeIdentityStorage,
+  listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
+  listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
   listProgramSourceRecords,
@@ -950,6 +954,667 @@ test("listAcceptedCorpus_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
         other: { status: "rejected", reason: "participation_required" },
         missingRevision: { status: "rejected", reason: "revision_not_found" },
       },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAssessmentCriterionCandidate_shouldCreateDraftCandidateForCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+
+    const result = commands.createAssessmentCriterionCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: " Criterion title ",
+      body: " Criterion body ",
+      sourceIds: ["source-1"],
+      rationale: " Criterion rationale ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidates: listAssessmentCriterionCandidateRecords(database, {
+          programId: "program-a",
+          status: "draft",
+        }),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            assessmentCriterionCandidate: {
+              candidateId: "source-2",
+              programId: "program-a",
+              title: "Criterion title",
+              body: "Criterion body",
+              sourceIds: ["source-1"],
+              rationale: "Criterion rationale",
+              status: "draft",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.002Z",
+              updatedAt: "2026-05-28T11:00:00.002Z",
+            },
+          },
+        },
+        candidates: [
+          {
+            id: "source-2",
+            programId: "program-a",
+            title: "Criterion title",
+            body: "Criterion body",
+            sourceIds: ["source-1"],
+            rationale: "Criterion rationale",
+            status: "draft",
+            createdByIdentityId: "identity-curator",
+            createdAt: "2026-05-28T11:00:00.002Z",
+            updatedAt: "2026-05-28T11:00:00.002Z",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAssessmentCriterionCandidate_shouldRejectInactiveProgramAuthorizationAndInvalidInput", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      sourceKind: "article",
+      title: "Other source",
+    });
+
+    assert.deepEqual(
+      {
+        inactive: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+          title: "Criterion",
+          body: "Body",
+        }),
+        unknownProgram: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-missing",
+          title: "Criterion",
+          body: "Body",
+        }),
+        nonCurator: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+          title: "Criterion",
+          body: "Body",
+        }),
+        title: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          title: " ",
+          body: "Body",
+        }),
+        body: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          title: "Criterion",
+          body: " ",
+        }),
+        rationale: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          title: "Criterion",
+          body: "Body",
+          rationale: " ",
+        }),
+        missingSource: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          title: "Criterion",
+          body: "Body",
+          sourceIds: ["source-missing"],
+        }),
+        crossProgramSource: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          title: "Criterion",
+          body: "Body",
+          sourceIds: ["source-1"],
+        }),
+      },
+      {
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        nonCurator: { status: "rejected", reason: "admin_or_curator_required" },
+        title: { status: "rejected", reason: "validation_failed" },
+        body: { status: "rejected", reason: "validation_failed" },
+        rationale: { status: "rejected", reason: "validation_failed" },
+        missingSource: { status: "rejected", reason: "source_not_found" },
+        crossProgramSource: { status: "rejected", reason: "source_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listAssessmentCriterionCandidates_shouldReturnProgramCandidatesMatchingSupportedStatusForCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Program A draft",
+      body: "Program A body",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      title: "Program B draft",
+      body: "Program B body",
+    });
+
+    assert.deepEqual(
+      {
+        draft: commands.listAssessmentCriterionCandidates?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "draft",
+        }),
+        unsupported: commands.listAssessmentCriterionCandidates?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "archived",
+        }),
+        nonCurator: commands.listAssessmentCriterionCandidates?.({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+          status: "draft",
+        }),
+      },
+      {
+        draft: {
+          status: "accepted",
+          value: {
+            assessmentCriterionCandidates: [
+              {
+                candidateId: "source-1",
+                programId: "program-a",
+                title: "Program A draft",
+                body: "Program A body",
+                sourceIds: [],
+                status: "draft",
+                createdByIdentityId: "identity-curator",
+                createdAt: "2026-05-28T11:00:00.000Z",
+                updatedAt: "2026-05-28T11:00:00.000Z",
+              },
+            ],
+          },
+        },
+        unsupported: { status: "rejected", reason: "validation_failed" },
+        nonCurator: { status: "rejected", reason: "admin_or_curator_required" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptAssessmentCriterionCandidate_shouldCreateAcceptedEntityRevisionAndMarkCandidateAccepted", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Accepted criterion",
+      body: "Accepted body",
+      sourceIds: ["source-1"],
+      rationale: "Accepted rationale",
+    });
+
+    const result = commands.acceptAssessmentCriterionCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-2",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidateStatus: getAssessmentCriterionCandidateRecord(database, "source-2")?.status,
+        entity: listAcceptedAssessmentCriterionEntityRecords(database, { programId: "program-a" }),
+        revision: getAcceptedAssessmentCriterionRevisionRecord(database, "source-3"),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            acceptedAssessmentCriterion: {
+              entityId: "corpus-event-2",
+              revisionId: "source-3",
+              programId: "program-a",
+              title: "Accepted criterion",
+              body: "Accepted body",
+              acceptedFromCandidateId: "source-2",
+              sourceIds: ["source-1"],
+              rationale: "Accepted rationale",
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+        candidateStatus: "accepted",
+        entity: [
+          {
+            id: "corpus-event-2",
+            programId: "program-a",
+            currentRevisionId: "source-3",
+          },
+        ],
+        revision: {
+          id: "source-3",
+          entityId: "corpus-event-2",
+          programId: "program-a",
+          title: "Accepted criterion",
+          body: "Accepted body",
+          acceptedFromCandidateId: "source-2",
+          sourceIds: ["source-1"],
+          rationale: "Accepted rationale",
+          acceptedByIdentityId: "identity-curator",
+          acceptedAt: "2026-05-28T11:00:00.003Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptAssessmentCriterionCandidate_shouldReplaceCurrentRevisionAndKeepHistoricalRevision", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "First criterion",
+      body: "First body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Second criterion",
+      body: "Second body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+      targetEntityId: "corpus-event-1",
+    });
+
+    assert.deepEqual(
+      {
+        current: commands.listAcceptedAssessmentCriteria?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        historical: commands.getAcceptedAssessmentCriterionRevision?.({
+          actingIdentityId: "identity-curator",
+          revisionId: "source-2",
+        }),
+      },
+      {
+        current: {
+          status: "accepted",
+          value: {
+            acceptedAssessmentCriteria: [
+              {
+                entityId: "corpus-event-1",
+                revisionId: "source-3",
+                programId: "program-a",
+                title: "Second criterion",
+                body: "Second body",
+                acceptedFromCandidateId: "corpus-event-2",
+                sourceIds: [],
+                acceptedByIdentityId: "identity-curator",
+                acceptedAt: "2026-05-28T11:00:00.003Z",
+              },
+            ],
+          },
+        },
+        historical: {
+          status: "accepted",
+          value: {
+            acceptedAssessmentCriterion: {
+              entityId: "corpus-event-1",
+              revisionId: "source-2",
+              programId: "program-a",
+              title: "First criterion",
+              body: "First body",
+              acceptedFromCandidateId: "source-1",
+              sourceIds: [],
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.001Z",
+            },
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptAssessmentCriterionCandidate_shouldRejectInvalidCandidateStatesAndTargets", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Accepted criterion",
+      body: "Accepted body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Rejected criterion",
+      body: "Rejected body",
+    });
+    commands.rejectAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      title: "Other criterion",
+      body: "Other body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-3",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Target criterion",
+      body: "Target body",
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.acceptAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "candidate-missing",
+        }),
+        alreadyAccepted: commands.acceptAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-1",
+        }),
+        rejectAlreadyAccepted: commands.rejectAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-1",
+        }),
+        alreadyRejected: commands.acceptAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-2",
+        }),
+        missingTarget: commands.acceptAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-4",
+          targetEntityId: "entity-missing",
+        }),
+        targetProgramMismatch: commands.acceptAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-4",
+          targetEntityId: "corpus-event-3",
+        }),
+      },
+      {
+        unknown: { status: "rejected", reason: "criterion_candidate_not_found" },
+        alreadyAccepted: { status: "rejected", reason: "criterion_candidate_already_accepted" },
+        rejectAlreadyAccepted: {
+          status: "rejected",
+          reason: "criterion_candidate_already_accepted",
+        },
+        alreadyRejected: { status: "rejected", reason: "criterion_candidate_already_rejected" },
+        missingTarget: { status: "rejected", reason: "criterion_entity_not_found" },
+        targetProgramMismatch: { status: "rejected", reason: "criterion_entity_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("rejectAssessmentCriterionCandidate_shouldChangeDraftToRejectedWithoutAcceptedCriterion", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Rejected criterion",
+      body: "Rejected body",
+    });
+
+    const result = commands.rejectAssessmentCriterionCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+    const alreadyRejectedResult = commands.rejectAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        unknown: commands.rejectAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "criterion-candidate-missing",
+        }),
+        alreadyRejectedResult,
+        rejected: commands.listAssessmentCriterionCandidates({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "rejected",
+        }),
+        acceptedEntities: listAcceptedAssessmentCriterionEntityRecords(database, { programId: "program-a" }),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            assessmentCriterionCandidate: {
+              candidateId: "source-1",
+              programId: "program-a",
+              title: "Rejected criterion",
+              body: "Rejected body",
+              sourceIds: [],
+              status: "rejected",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.000Z",
+              updatedAt: "2026-05-28T11:00:00.001Z",
+            },
+          },
+        },
+        unknown: { status: "rejected", reason: "criterion_candidate_not_found" },
+        alreadyRejectedResult: {
+          status: "rejected",
+          reason: "criterion_candidate_already_rejected",
+        },
+        rejected: {
+          status: "accepted",
+          value: {
+            assessmentCriterionCandidates: [
+              {
+                candidateId: "source-1",
+                programId: "program-a",
+                title: "Rejected criterion",
+                body: "Rejected body",
+                sourceIds: [],
+                status: "rejected",
+                createdByIdentityId: "identity-curator",
+                createdAt: "2026-05-28T11:00:00.000Z",
+                updatedAt: "2026-05-28T11:00:00.001Z",
+              },
+            ],
+          },
+        },
+        acceptedEntities: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listAcceptedAssessmentCriteria_shouldAuthorizeStudentCuratorAndAdminOnly", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-05-28T10:47:00.000Z",
+      updatedAt: "2026-05-28T10:47:00.000Z",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Accepted criterion",
+      body: "Accepted body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        student: commands.listAcceptedAssessmentCriteria({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }).status,
+        curator: commands.listAcceptedAssessmentCriteria({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }).status,
+        admin: commands.listAcceptedAssessmentCriteria({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+        }).status,
+        other: commands.listAcceptedAssessmentCriteria({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+        }),
+        adminCreate: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+          title: "Admin criterion",
+          body: "Admin body",
+        }),
+        missingRevision: commands.getAcceptedAssessmentCriterionRevision({
+          actingIdentityId: "identity-curator",
+          revisionId: "revision-missing",
+        }),
+      },
+      {
+        student: "accepted",
+        curator: "accepted",
+        admin: "accepted",
+        other: { status: "rejected", reason: "participation_required" },
+        adminCreate: { status: "rejected", reason: "admin_or_curator_required" },
+        missingRevision: { status: "rejected", reason: "criterion_revision_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("assessmentCriterionResponses_shouldUseRedactedShapes", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Accepted criterion",
+      body: "Accepted body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+    const candidateResult = commands.listAssessmentCriterionCandidates({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const acceptedResult = commands.listAcceptedAssessmentCriteria({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const rejectionResult = commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      containsForbiddenDetail([candidateResult, acceptedResult, rejectionResult]),
+      false,
     );
   } finally {
     database.close();

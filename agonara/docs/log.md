@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Implement the accepted assessment criterion lifecycle over Corpus Storage: curator-owned draft candidates, acceptance into stable current/historical revisions, rejection, accepted criterion reads for Student/Curator/Admin callers, and redacted response coverage.
 - Harden the accepted checks storage substrate after adversarial review by clearing assessment tables during pre-Phase-5 restores and adding criterion/check candidate status update helpers.
 - Start the accepted checks and assessment criteria implementation with the Phase 1 storage substrate: criterion/check candidate records, accepted entity/revision records, current-revision updates, criterion revision references, and structural Program scoping checks.
 - Harden the accepted checks and assessment criteria implementation plan after adversarial review by clarifying Corpus Storage ownership and marking student feedback traceability as prerequisite-only.
