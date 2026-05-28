@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Implement the Corpus Storage persistence substrate for Program sources, Corpus candidates, accepted corpus entities/revisions, and Corpus events, with storage-level Program scoping and current-revision integrity checks.
 - Add the Corpus Storage and Curator Acceptance first-slice implementation plan, sequencing storage, source, candidate, acceptance, backup/restore, event, and executable acceptance work through strict TDD phases with per-phase green-gate commits.
 - Add the Corpus Storage and Curator Acceptance first-slice spec, defining source records, curator topic/concept candidates, explicit acceptance into stable accepted revisions, accepted corpus reads, and required tests.
 - Accept ADR-010 for the Corpus Storage / Curator Workspace boundary: accepted Program corpus and stable accepted revisions belong to Corpus Storage, while drafts, candidates, LLM suggestions, and review state remain in Curator Workspace until explicit curator acceptance.

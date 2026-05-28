@@ -100,6 +100,83 @@ export function initializeIdentityStorage(database) {
       outcome text not null check (outcome in ('accepted', 'rejected')),
       reason text
     );
+
+    create table if not exists program_sources (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      source_kind text not null check (
+        source_kind in (
+          'public_plan',
+          'exam_requirement',
+          'standard',
+          'textbook',
+          'article',
+          'lecture',
+          'course',
+          'note',
+          'research_result',
+          'other'
+        )
+      ),
+      title text not null,
+      locator text,
+      citation text,
+      recorded_by_identity_id text not null references identities(id),
+      recorded_at text not null
+    );
+
+    create table if not exists corpus_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      candidate_kind text not null check (candidate_kind in ('topic', 'concept')),
+      title text not null,
+      body text,
+      source_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists accepted_corpus_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      accepted_kind text not null check (accepted_kind in ('topic', 'concept')),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_corpus_revisions (
+      id text primary key,
+      entity_id text not null references accepted_corpus_entities(id),
+      program_id text not null references program_shells(id),
+      accepted_kind text not null check (accepted_kind in ('topic', 'concept')),
+      title text not null,
+      body text,
+      accepted_from_candidate_id text not null references corpus_candidates(id),
+      source_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists corpus_events (
+      id text primary key,
+      event_type text not null check (
+        event_type in (
+          'program_source_recorded',
+          'corpus_candidate_created',
+          'corpus_candidate_accepted',
+          'corpus_candidate_rejected'
+        )
+      ),
+      actor_identity_id text not null references identities(id),
+      program_id text references program_shells(id),
+      target_id text,
+      occurred_at text not null,
+      outcome text not null check (outcome in ('accepted', 'rejected')),
+      reason text
+    );
   `);
 }
 
@@ -311,6 +388,344 @@ export function listProgramShellRecords(database) {
        order by created_at, id`,
     )
     .all();
+}
+
+export function createProgramSourceRecord(
+  database,
+  { id, programId, sourceKind, title, locator = null, citation = null, recordedByIdentityId, recordedAt },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, recordedByIdentityId);
+
+  database
+    .prepare(
+      `insert into program_sources (
+         id, program_id, source_kind, title, locator, citation, recorded_by_identity_id, recorded_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(id, programId, sourceKind, title, locator, citation, recordedByIdentityId, recordedAt);
+
+  return getProgramSourceRecord(database, id);
+}
+
+export function getProgramSourceRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
+              recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
+       from program_sources
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listProgramSourceRecords(database, { programId }) {
+  return database
+    .prepare(
+      `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
+              recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
+       from program_sources
+       where program_id = ?
+       order by recorded_at, id`,
+    )
+    .all(programId);
+}
+
+export function createCorpusCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    candidateKind,
+    title,
+    body = null,
+    sourceIds = [],
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+
+  database
+    .prepare(
+      `insert into corpus_candidates (
+         id,
+         program_id,
+         candidate_kind,
+         title,
+         body,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      candidateKind,
+      title,
+      body,
+      JSON.stringify(sourceIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getCorpusCandidateRecord(database, id);
+}
+
+export function getCorpusCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+              source_ids_json as sourceIdsJson, rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from corpus_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapCorpusCandidateRecord(row) : null;
+}
+
+export function listCorpusCandidateRecords(database, { programId, status = null }) {
+  if (status === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+                source_ids_json as sourceIdsJson, rationale, status,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt, updated_at as updatedAt
+         from corpus_candidates
+         where program_id = ?
+         order by created_at, id`,
+      )
+      .all(programId)
+      .map(mapCorpusCandidateRecord);
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+              source_ids_json as sourceIdsJson, rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from corpus_candidates
+       where program_id = ? and status = ?
+       order by created_at, id`,
+    )
+    .all(programId, status)
+    .map(mapCorpusCandidateRecord);
+}
+
+export function createAcceptedCorpusEntityRecord(
+  database,
+  { id, programId, acceptedKind, currentRevisionId },
+) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_corpus_entities (id, program_id, accepted_kind, current_revision_id)
+       values (?, ?, ?, ?)`,
+    )
+    .run(id, programId, acceptedKind, currentRevisionId);
+
+  return getAcceptedCorpusEntityRecord(database, id);
+}
+
+export function getAcceptedCorpusEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, accepted_kind as acceptedKind,
+              current_revision_id as currentRevisionId
+       from accepted_corpus_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedCorpusEntityRecords(database, { programId }) {
+  return database
+    .prepare(
+      `select id, program_id as programId, accepted_kind as acceptedKind,
+              current_revision_id as currentRevisionId
+       from accepted_corpus_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
+export function updateAcceptedCorpusEntityCurrentRevision(
+  database,
+  { entityId, currentRevisionId },
+) {
+  const revision = getAcceptedCorpusRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("accepted_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("accepted_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_corpus_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedCorpusEntityRecord(database, entityId);
+}
+
+export function createAcceptedCorpusRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    acceptedKind,
+    title,
+    body = null,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+
+  database
+    .prepare(
+      `insert into accepted_corpus_revisions (
+         id,
+         entity_id,
+         program_id,
+         accepted_kind,
+         title,
+         body,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      acceptedKind,
+      title,
+      body,
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedCorpusRevisionRecord(database, id);
+}
+
+export function getAcceptedCorpusRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, accepted_kind as acceptedKind,
+              title, body, accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_corpus_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedCorpusRevisionRecord(row) : null;
+}
+
+export function createCorpusEventRecord(
+  database,
+  {
+    id,
+    eventType,
+    actorIdentityId,
+    programId = null,
+    targetId = null,
+    occurredAt,
+    outcome,
+    reason = null,
+  },
+) {
+  assertIdentityExists(database, actorIdentityId);
+
+  database
+    .prepare(
+      `insert into corpus_events (
+         id, event_type, actor_identity_id, program_id, target_id, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(id, eventType, actorIdentityId, programId, targetId, occurredAt, outcome, reason);
+
+  return getCorpusEventRecord(database, id);
+}
+
+export function getCorpusEventRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, event_type as eventType, actor_identity_id as actorIdentityId,
+              program_id as programId, target_id as targetId, occurred_at as occurredAt,
+              outcome, reason
+       from corpus_events
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listCorpusEventRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, event_type as eventType, actor_identity_id as actorIdentityId,
+                program_id as programId, target_id as targetId, occurred_at as occurredAt,
+                outcome, reason
+         from corpus_events
+         order by occurred_at, id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, event_type as eventType, actor_identity_id as actorIdentityId,
+              program_id as programId, target_id as targetId, occurred_at as occurredAt,
+              outcome, reason
+       from corpus_events
+       where program_id = ?
+       order by occurred_at, id`,
+    )
+    .all(programId);
 }
 
 export function createProgramMembershipRecord(
@@ -575,6 +990,19 @@ export function listProgramMembershipEventRecords(database, { programId = null }
 function assertProgramShellExists(database, programId) {
   if (!getProgramShellRecord(database, programId)) {
     throw new StorageInvariantError("program_not_found");
+  }
+}
+
+function assertProgramSourcesBelongToProgram(database, { programId, sourceIds }) {
+  for (const sourceId of sourceIds) {
+    const source = getProgramSourceRecord(database, sourceId);
+    if (!source) {
+      throw new StorageInvariantError("program_source_not_found");
+    }
+
+    if (source.programId !== programId) {
+      throw new StorageInvariantError("program_source_mismatch");
+    }
   }
 }
 
@@ -852,6 +1280,38 @@ function getAuditEvent(database, id) {
     .get(id);
 
   return row ?? null;
+}
+
+function mapCorpusCandidateRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    candidateKind: row.candidateKind,
+    title: row.title,
+    body: row.body,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapAcceptedCorpusRevisionRecord(row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    acceptedKind: row.acceptedKind,
+    title: row.title,
+    body: row.body,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
 }
 
 function assertIdentityExists(database, identityId) {
