@@ -315,6 +315,56 @@ test("exportBackup_shouldIncludeProgramShellsMembershipsAndEvents_onBackup", asy
   }
 });
 
+test("exportBackup_shouldIncludeCorpusRecords_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        sourceIds: backup.programSources?.map($0 => $0.id),
+        candidateIds: backup.corpusCandidates?.map($0 => $0.id),
+        entityIds: backup.acceptedCorpusEntities?.map($0 => $0.id),
+        revisionIds: backup.acceptedCorpusRevisions?.map($0 => $0.id),
+        eventTypes: backup.corpusEvents?.map($0 => $0.eventType),
+      },
+      {
+        sourceIds: ["source-1"],
+        candidateIds: ["candidate-1"],
+        entityIds: ["entity-1"],
+        revisionIds: ["revision-1"],
+        eventTypes: ["corpus_candidate_accepted"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectOrphanProgramShellWithoutActiveCuratorMembership", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -398,6 +448,111 @@ test("restoreBackup_shouldRestoreProgramShellsMembershipsAndEvents_onAcceptedBac
   }
 });
 
+test("restoreBackup_shouldRestoreCorpusRecords_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        sourceIds: restoredBackup.programSources.map($0 => $0.id),
+        candidateIds: restoredBackup.corpusCandidates.map($0 => $0.id),
+        entityIds: restoredBackup.acceptedCorpusEntities.map($0 => $0.id),
+        revisionIds: restoredBackup.acceptedCorpusRevisions.map($0 => $0.id),
+        eventIds: restoredBackup.corpusEvents.map($0 => $0.id),
+      },
+      {
+        restoreStatus: "accepted",
+        sourceIds: ["source-1"],
+        candidateIds: ["candidate-1"],
+        entityIds: ["entity-1"],
+        revisionIds: ["revision-1"],
+        eventIds: ["corpus-event-1"],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedCorpusEntityWithoutCurrentRevision_onBackup", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedCorpusRevisions = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "accepted_revision_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithoutCandidate_onBackup", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    backup.corpusCandidates = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "candidate_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithCrossProgramSource_onBackup", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    backup.programSources[0] = {
+      ...backup.programSources[0],
+      programId: "other-program",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "source_program_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
 function seedProgramRecords(database, {
   identityId,
   programId,
@@ -446,6 +601,113 @@ function seedProgramRecords(database, {
       "accepted",
       null,
     );
+}
+
+function seedCorpusRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into program_sources (
+         id, program_id, source_kind, title, locator, citation, recorded_by_identity_id, recorded_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "source-1",
+      programId,
+      "article",
+      "Source",
+      "https://example.test/source",
+      "Citation",
+      identityId,
+      "2026-05-27T10:02:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into corpus_candidates (
+         id, program_id, candidate_kind, title, body, source_ids_json, rationale, status,
+         created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "candidate-1",
+      programId,
+      "topic",
+      "Candidate",
+      "Body",
+      JSON.stringify(["source-1"]),
+      "Rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:03:00.000Z",
+      "2026-05-27T10:04:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_corpus_entities (
+         id, program_id, accepted_kind, current_revision_id
+       ) values (?, ?, ?, ?)`,
+    )
+    .run("entity-1", programId, "topic", "revision-1");
+  database
+    .prepare(
+      `insert into accepted_corpus_revisions (
+         id, entity_id, program_id, accepted_kind, title, body, accepted_from_candidate_id,
+         source_ids_json, rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "revision-1",
+      "entity-1",
+      programId,
+      "topic",
+      "Accepted",
+      "Accepted Body",
+      "candidate-1",
+      JSON.stringify(["source-1"]),
+      "Rationale",
+      identityId,
+      "2026-05-27T10:05:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into corpus_events (
+         id, event_type, actor_identity_id, program_id, target_id, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "corpus-event-1",
+      "corpus_candidate_accepted",
+      identityId,
+      programId,
+      "candidate-1",
+      "2026-05-27T10:06:00.000Z",
+      "accepted",
+      null,
+    );
+}
+
+async function makeExportedCorpusBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
 }
 
 function makeSUT({ ids = [], logEvents = [] } = {}) {

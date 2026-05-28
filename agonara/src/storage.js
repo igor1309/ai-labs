@@ -421,7 +421,18 @@ export function getProgramSourceRecord(database, id) {
   return row ?? null;
 }
 
-export function listProgramSourceRecords(database, { programId }) {
+export function listProgramSourceRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
+                recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
+         from program_sources
+         order by recorded_at, id`,
+      )
+      .all();
+  }
+
   return database
     .prepare(
       `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
@@ -501,7 +512,21 @@ export function getCorpusCandidateRecord(database, id) {
   return row ? mapCorpusCandidateRecord(row) : null;
 }
 
-export function listCorpusCandidateRecords(database, { programId, status = null }) {
+export function listCorpusCandidateRecords(database, { programId = null, status = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+                source_ids_json as sourceIdsJson, rationale, status,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt, updated_at as updatedAt
+         from corpus_candidates
+         order by created_at, id`,
+      )
+      .all()
+      .map(mapCorpusCandidateRecord);
+  }
+
   if (status === null) {
     return database
       .prepare(
@@ -572,7 +597,18 @@ export function getAcceptedCorpusEntityRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedCorpusEntityRecords(database, { programId }) {
+export function listAcceptedCorpusEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, accepted_kind as acceptedKind,
+                current_revision_id as currentRevisionId
+         from accepted_corpus_entities
+         order by id`,
+      )
+      .all();
+  }
+
   return database
     .prepare(
       `select id, program_id as programId, accepted_kind as acceptedKind,
@@ -673,6 +709,20 @@ export function getAcceptedCorpusRevisionRecord(database, id) {
     .get(id);
 
   return row ? mapAcceptedCorpusRevisionRecord(row) : null;
+}
+
+export function listAcceptedCorpusRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, accepted_kind as acceptedKind,
+              title, body, accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_corpus_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedCorpusRevisionRecord);
 }
 
 export function createCorpusEventRecord(
@@ -1029,6 +1079,11 @@ export function exportIdentityBackup(database) {
     programMemberships: listProgramMembershipRecords(database),
     programEvents: listProgramEventRecords(database),
     programMembershipEvents: listProgramMembershipEventRecords(database),
+    programSources: listProgramSourceRecords(database),
+    corpusCandidates: listCorpusCandidateRecords(database),
+    acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
+    acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
+    corpusEvents: listCorpusEventRecords(database),
   };
 }
 
@@ -1045,8 +1100,15 @@ export function restoreIdentityBackup(database, backup) {
     throw new StorageInvariantError("program_curator_missing");
   }
 
+  assertValidCorpusGraphInBackup(backup);
+
   database.transaction(() => {
     database.prepare("delete from sessions").run();
+    database.prepare("delete from corpus_events").run();
+    database.prepare("delete from accepted_corpus_revisions").run();
+    database.prepare("delete from accepted_corpus_entities").run();
+    database.prepare("delete from corpus_candidates").run();
+    database.prepare("delete from program_sources").run();
     database.prepare("delete from program_membership_events").run();
     database.prepare("delete from program_memberships").run();
     database.prepare("delete from program_events").run();
@@ -1141,6 +1203,51 @@ export function restoreIdentityBackup(database, backup) {
          participation_kind, resulting_status, occurred_at, outcome, reason
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertProgramSource = database.prepare(
+      `insert into program_sources (
+         id, program_id, source_kind, title, locator, citation, recorded_by_identity_id, recorded_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertCorpusCandidate = database.prepare(
+      `insert into corpus_candidates (
+         id,
+         program_id,
+         candidate_kind,
+         title,
+         body,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedCorpusEntity = database.prepare(
+      `insert into accepted_corpus_entities (
+         id, program_id, accepted_kind, current_revision_id
+       ) values (?, ?, ?, ?)`,
+    );
+    const insertAcceptedCorpusRevision = database.prepare(
+      `insert into accepted_corpus_revisions (
+         id,
+         entity_id,
+         program_id,
+         accepted_kind,
+         title,
+         body,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertCorpusEvent = database.prepare(
+      `insert into corpus_events (
+         id, event_type, actor_identity_id, program_id, target_id, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
 
     for (const shell of backup.programShells ?? []) {
       insertProgramShell.run(
@@ -1186,6 +1293,73 @@ export function restoreIdentityBackup(database, backup) {
         event.programId,
         event.participationKind,
         event.resultingStatus ?? null,
+        event.occurredAt,
+        event.outcome,
+        event.reason ?? null,
+      );
+    }
+
+    for (const source of backup.programSources ?? []) {
+      insertProgramSource.run(
+        source.id,
+        source.programId,
+        source.sourceKind,
+        source.title,
+        source.locator ?? null,
+        source.citation ?? null,
+        source.recordedByIdentityId,
+        source.recordedAt,
+      );
+    }
+
+    for (const candidate of backup.corpusCandidates ?? []) {
+      insertCorpusCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.candidateKind,
+        candidate.title,
+        candidate.body ?? null,
+        JSON.stringify(candidate.sourceIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+    }
+
+    for (const entity of backup.acceptedCorpusEntities ?? []) {
+      insertAcceptedCorpusEntity.run(
+        entity.id,
+        entity.programId,
+        entity.acceptedKind,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedCorpusRevisions ?? []) {
+      insertAcceptedCorpusRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.acceptedKind,
+        revision.title,
+        revision.body ?? null,
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+    }
+
+    for (const event of backup.corpusEvents ?? []) {
+      insertCorpusEvent.run(
+        event.id,
+        event.eventType,
+        event.actorIdentityId,
+        event.programId ?? null,
+        event.targetId ?? null,
         event.occurredAt,
         event.outcome,
         event.reason ?? null,
@@ -1401,4 +1575,67 @@ function hasActiveCuratorForEveryProgramInBackup(backup) {
       .map($0 => $0.programId),
   );
   return shells.every($0 => curatorPrograms.has($0.id));
+}
+
+function assertValidCorpusGraphInBackup(backup) {
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const candidatesById = new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]));
+  const revisionsById = new Map((backup.acceptedCorpusRevisions ?? []).map($0 => [$0.id, $0]));
+
+  for (const candidate of backup.corpusCandidates ?? []) {
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+  }
+
+  for (const revision of backup.acceptedCorpusRevisions ?? []) {
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("candidate_not_found");
+    }
+
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+  }
+
+  for (const entity of backup.acceptedCorpusEntities ?? []) {
+    const currentRevision = revisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("accepted_revision_not_found");
+    }
+
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("accepted_revision_entity_mismatch");
+    }
+
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("accepted_revision_program_mismatch");
+    }
+
+    if (currentRevision.acceptedKind !== entity.acceptedKind) {
+      throw new StorageInvariantError("accepted_revision_kind_mismatch");
+    }
+  }
+}
+
+function assertSourceIdsBelongToProgram({ programId, sourceIds, sourcesById }) {
+  for (const sourceId of sourceIds) {
+    const source = sourcesById.get(sourceId);
+    if (!source) {
+      throw new StorageInvariantError("program_source_not_found");
+    }
+
+    if (source.programId !== programId) {
+      throw new StorageInvariantError("source_program_mismatch");
+    }
+  }
 }

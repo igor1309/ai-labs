@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Extend Agonara backup/restore to preserve Program sources, Corpus candidates, accepted corpus entities/revisions, and Corpus events, while rejecting invalid accepted-corpus graphs before restore.
 - Implement explicit Corpus candidate acceptance into stable accepted entities and revisions, including current-revision replacement, historical revision reads, and accepted-corpus read authorization.
 - Implement Curator Workspace candidate creation, listing, and rejection over the Corpus boundary, preserving draft/rejected candidate separation and candidate Corpus events.
 - Implement the first Corpus command/query boundary for Program source recording and listing, including effective curator authorization, validation, source persistence, and Corpus source events.
