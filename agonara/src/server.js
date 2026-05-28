@@ -551,8 +551,10 @@ async function handleCorpusApi({
 }) {
   const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
   const candidatesMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-candidates$/);
+  const acceptedCorpusMatch = pathname.match(/^\/programs\/([^/]+)\/accepted-corpus$/);
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
+  const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
   if (request.method === "GET" && sourcesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -617,6 +619,58 @@ async function handleCorpusApi({
       routeKey,
     });
     sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedCorpusMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(acceptedCorpusMatch[1]);
+    const acceptedKind = parseAcceptedKind(request);
+    if (acceptedKind.status === "rejected") {
+      sendJson(response, 400, acceptedKind);
+      return true;
+    }
+
+    const routeKey = `accepted-corpus:${programId}:${acceptedKind.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listAcceptedCorpus({
+      acceptedKind: acceptedKind.value ?? undefined,
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapAcceptedCorpusListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedCorpusRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedCorpusRevision({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedCorpusRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedCorpusResult(result));
     return true;
   }
 
@@ -1184,6 +1238,18 @@ function parseCorpusCandidateStatus(request) {
   return rejected("validation_failed");
 }
 
+function parseAcceptedKind(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const acceptedKind = url.searchParams.get("acceptedKind");
+  if (acceptedKind === null) {
+    return accepted(null);
+  }
+  if (acceptedKind === "topic" || acceptedKind === "concept") {
+    return accepted(acceptedKind);
+  }
+  return rejected("validation_failed");
+}
+
 function isValidCandidateSourceIds(sourceIds) {
   return sourceIds === undefined ||
     (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
@@ -1248,6 +1314,29 @@ function mapCorpusCandidateListResult({ generateToken, listCursors, query, resul
 
   return accepted({
     corpusCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapAcceptedCorpusListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.acceptedCorpus,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    acceptedCorpus: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
