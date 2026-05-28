@@ -569,11 +569,14 @@ async function handleCorpusApi({
       actingIdentityId: session.value.identity.id,
       programId,
     });
-    sendJson(
-      response,
-      statusForResult(result),
-      mapCorpusSourceListResult({ generateToken, listCursors, query: query.value, result, routeKey }),
-    );
+    const mappedResult = mapCorpusSourceListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
     return true;
   }
 

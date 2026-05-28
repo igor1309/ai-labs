@@ -219,6 +219,50 @@ test("corpusSourcesList_shouldRejectInvalidListQueries_withValidationFailed", as
   }
 });
 
+test("corpusSourcesList_shouldRejectStaleCursor_withValidationFailed", async () => {
+  let calls = 0;
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listProgramSources: () => {
+        calls += 1;
+        return {
+          status: "accepted",
+          value: {
+            programSources: calls === 1
+              ? [{ sourceId: "source-1" }, { sourceId: "source-2" }]
+              : [],
+          },
+        };
+      },
+    },
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "cursor-1"],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const firstPage = await fetch(`${baseUrl}/programs/program-1/sources?limit=1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const nextCursor = (await firstPage.json()).value.nextCursor;
+    const staleCursor = await fetch(`${baseUrl}/programs/program-1/sources?cursor=${nextCursor}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: staleCursor.status,
+        body: await staleCursor.json(),
+      },
+      {
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusSourcesCreate_shouldRejectMalformedMissingAndNonObjectBodies_withValidationFailed", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
 
