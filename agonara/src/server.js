@@ -45,6 +45,7 @@ export function createServer({
 
       if (identityCommands && programCommands) {
         const handled = await handleProgramApi({
+          csrfTokens,
           identityCommands,
           pathname,
           programCommands,
@@ -315,6 +316,7 @@ async function handleIdentityApi({
 }
 
 async function handleProgramApi({
+  csrfTokens,
   identityCommands,
   pathname,
   programCommands,
@@ -332,6 +334,45 @@ async function handleProgramApi({
       actingIdentityId: session.value.identity.id,
     });
     sendJson(response, statusForResult(result), mapProgramShellsResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && pathname === "/programs") {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readJson(request);
+    const result = programCommands.createProgramShell({
+      actingIdentityId: session.value.identity.id,
+      description: body?.description,
+      title: body?.title,
+    });
+    sendJson(response, statusForResult(result), mapProgramCreatedResult(result));
+    return true;
+  }
+
+  const programMatch = pathname.match(/^\/programs\/([^/]+)$/);
+  if (request.method === "GET" && programMatch) {
+    const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = programCommands.getProgramShell({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(programMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramShellResult(result));
     return true;
   }
 
@@ -488,6 +529,25 @@ function mapProgramShellsResult(result) {
   }
 
   return accepted({ programs: result.value.programShells });
+}
+
+function mapProgramShellResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted(result.value.programShell);
+}
+
+function mapProgramCreatedResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({
+    initialCuratorMembership: result.value.initialCuratorMembership,
+    program: result.value.programShell,
+  });
 }
 
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
