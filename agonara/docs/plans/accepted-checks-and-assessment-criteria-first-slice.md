@@ -67,6 +67,8 @@ Preflight check: [ ] done
 
 ### Product intent traceability
 
+Student story rows below are prerequisite and boundary-preservation coverage only. This plan makes accepted check and criterion revisions available for later Student Workspace behavior; it does not deliver student attempts, feedback, progress, mastery, or weak-area behavior.
+
 | Story | Phase preserving intent |
 |---|---|
 | CUR-04 - Add checks and assessment items | Phase 3, Phase 5 |
@@ -133,7 +135,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 **Key work items**:
 
-- Add an assessment command/query module composed with the shared database and existing effective participation function.
+- Add or extend the Corpus Storage command/query boundary for accepted assessment criteria, composed with the shared database and existing effective participation function.
 - Implement `createAssessmentCriterionCandidate`.
 - Implement `listAssessmentCriterionCandidates`.
 - Implement `acceptAssessmentCriterionCandidate`.
@@ -166,7 +168,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 **Validation**:
 
-- Targeted assessment domain tests for criterion candidate lifecycle and accepted criterion reads.
+- Targeted Corpus Storage domain tests for criterion candidate lifecycle and accepted criterion reads.
 - `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
@@ -215,7 +217,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 **Validation**:
 
-- Targeted assessment domain tests for open-answer check candidate lifecycle, acceptance, accepted reads, and revision snapshotting.
+- Targeted Corpus Storage domain tests for open-answer check candidate lifecycle, acceptance, accepted reads, and revision snapshotting.
 - `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
@@ -229,7 +231,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **Key work items**:
 
 - Add or extend tests that project all new response shapes and rejection results through redaction sentinels.
-- Add explicit absence checks proving assessment commands do not create Student Workspace attempts, submitted answers, feedback, progress evidence, mastery state, weak-area state, review state, or learning history.
+- Add explicit absence checks proving accepted check and criterion commands do not create Student Workspace attempts, submitted answers, feedback, progress evidence, mastery state, weak-area state, review state, or learning history.
 - Add out-of-scope surface checks for HTTP routes, CLI commands, LLM prompt execution, scoring, and feedback generation.
 - Verify draft and rejected criterion/check candidates never appear in accepted criterion/check reads.
 - Verify rejection and cleanup behavior does not delete accepted criterion revisions, accepted check revisions, or revision references.
@@ -238,7 +240,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 1. RED/GREEN accepted criterion and open-answer check responses never include draft or rejected candidates.
 2. RED/GREEN criterion/check candidate rejection does not delete accepted criterion revisions, accepted check revisions, or criterion revision references.
-3. RED/GREEN assessment commands leave Student Workspace attempts, answers, feedback, progress evidence, mastery state, and weak-area state absent.
+3. RED/GREEN accepted check and criterion commands leave Student Workspace attempts, answers, feedback, progress evidence, mastery state, and weak-area state absent.
 4. RED/GREEN the first slice does not expose HTTP routes, CLI commands, LLM execution, scoring, feedback generation, or human review workflow.
 5. RED/GREEN redaction sentinel tests cover all new assessment response and rejection result shapes.
 
