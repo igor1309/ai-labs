@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Add the Corpus Storage and Curator Acceptance HTTP API spec, carrying the implemented domain contract into session-backed routes, CSRF enforcement, response envelopes, redaction, scoped event and candidate pagination, and executable acceptance scenarios.
 - Harden the Corpus acceptance implementation after adversarial review by adding rejected Corpus events for resolved state/target failures and rejecting restore graphs where accepted revisions point to missing entities or unaccepted candidates.
 - Complete the Corpus Storage and Curator Acceptance first slice with executable domain acceptance coverage, draft/rejected isolation and out-of-scope surface guards, and archived implementation-plan closeout.
 - Harden Corpus event queries and response redaction: Program Curator access is required, events remain Program-scoped read-only records, rejected acceptance/rejection commands are recorded when actor and Program resolve, and Corpus responses stay free of secret/session/infra details.
