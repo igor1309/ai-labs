@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createProgramCommands } from "../src/program.js";
 import {
+  createCorpusEventRecord,
   createIdentity,
   createProgramMembershipRecord,
   createProgramShellRecord,
@@ -955,6 +956,204 @@ test("listAcceptedCorpus_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
   }
 });
 
+test("listCorpusEvents_shouldRejectNonCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    assert.deepEqual(
+      commands.listCorpusEvents?.({
+        actingIdentityId: "identity-curator",
+        programId: "program-a",
+      }),
+      { status: "rejected", reason: "admin_or_curator_required" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptAndRejectCorpusCandidate_shouldEmitRejectedEvents_onResolvedUnauthorizedActor", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Accept target",
+    });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Reject target",
+    });
+
+    commands.acceptCorpusCandidate({
+      actingIdentityId: "identity-other",
+      candidateId: "source-1",
+    });
+    commands.rejectCorpusCandidate({
+      actingIdentityId: "identity-other",
+      candidateId: "source-2",
+    });
+
+    assert.deepEqual(
+      listCorpusEventRecords(database, { programId: "program-a" }).slice(-2).map($0 => ({
+        eventType: $0.eventType,
+        targetId: $0.targetId,
+        outcome: $0.outcome,
+        reason: $0.reason,
+      })),
+      [
+        {
+          eventType: "corpus_candidate_accepted",
+          targetId: "source-1",
+          outcome: "rejected",
+          reason: "admin_or_curator_required",
+        },
+        {
+          eventType: "corpus_candidate_rejected",
+          targetId: "source-2",
+          outcome: "rejected",
+          reason: "admin_or_curator_required",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listCorpusEvents_shouldReturnOnlyProgramEventsWithRedactedShape", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program A source",
+      locator: "https://example.test/source",
+      citation: "Citation",
+    });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "unsupported",
+      title: "Rejected source",
+    });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      sourceKind: "note",
+      title: "Program B source",
+    });
+
+    const result = commands.listCorpusEvents({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const sourceResult = commands.listProgramSources({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Candidate",
+    });
+    commands.acceptCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-3",
+    });
+    const candidateResult = commands.listCorpusCandidates({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const acceptedCorpusResult = commands.listAcceptedCorpus({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        leaksForbiddenDetails: containsForbiddenDetail([
+          result,
+          sourceResult,
+          candidateResult,
+          acceptedCorpusResult,
+        ]),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            corpusEvents: [
+              {
+                corpusEventId: "corpus-event-1",
+                eventType: "program_source_recorded",
+                actorIdentityId: "identity-curator",
+                programId: "program-a",
+                targetId: "source-1",
+                occurredAt: "2026-05-28T11:00:00.001Z",
+                outcome: "accepted",
+              },
+              {
+                corpusEventId: "source-2",
+                eventType: "program_source_recorded",
+                actorIdentityId: "identity-curator",
+                programId: "program-a",
+                occurredAt: "2026-05-28T11:00:00.002Z",
+                outcome: "rejected",
+                reason: "validation_failed",
+              },
+            ],
+          },
+        },
+        leaksForbiddenDetails: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listCorpusEvents_shouldRejectActorWithOnlyPriorCorpusEvent", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    createCorpusEventRecord(database, {
+      id: "event-other",
+      eventType: "program_source_recorded",
+      actorIdentityId: "identity-other",
+      programId: "program-a",
+      occurredAt: "2026-05-28T11:30:00.000Z",
+      outcome: "accepted",
+    });
+
+    assert.deepEqual(
+      commands.listCorpusEvents({
+        actingIdentityId: "identity-other",
+        programId: "program-a",
+      }),
+      { status: "rejected", reason: "admin_or_curator_required" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 async function makeSUT({
   ids = sequentialIds(),
   now = makeAdvancingClock("2026-05-28T11:00:00.000Z"),
@@ -1016,6 +1215,22 @@ function captureResult(run) {
   } catch (error) {
     return { thrown: error.code ?? error.message };
   }
+}
+
+function containsForbiddenDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "passwordhash",
+    "correct horse battery staple",
+    "operator-secret",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "select ",
+    "stack",
+    "127.0.0.1",
+  ].some($0 => serialized.includes($0));
 }
 
 function makeIdentity({ id, state = "active" }) {

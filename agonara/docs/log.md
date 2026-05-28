@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden Corpus event queries and response redaction: Program Curator access is required, events remain Program-scoped read-only records, rejected acceptance/rejection commands are recorded when actor and Program resolve, and Corpus responses stay free of secret/session/infra details.
 - Extend Agonara backup/restore to preserve Program sources, Corpus candidates, accepted corpus entities/revisions, and Corpus events, while rejecting invalid accepted-corpus graphs before restore.
 - Implement explicit Corpus candidate acceptance into stable accepted entities and revisions, including current-revision replacement, historical revision reads, and accepted-corpus read authorization.
 - Implement Curator Workspace candidate creation, listing, and rejection over the Corpus boundary, preserving draft/rejected candidate separation and candidate Corpus events.

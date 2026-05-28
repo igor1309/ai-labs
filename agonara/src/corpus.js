@@ -14,6 +14,7 @@ import {
   isEffectiveAdmin,
   listAcceptedCorpusEntityRecords,
   listCorpusCandidateRecords,
+  listCorpusEventRecords,
   listProgramSourceRecords,
   updateAcceptedCorpusEntityCurrentRevision,
   updateCorpusCandidateStatus,
@@ -50,6 +51,8 @@ export function createCorpusCommands({
       listAcceptedCorpus({ database, getEffectiveParticipation, input }),
     listCorpusCandidates: input =>
       listCorpusCandidates({ database, getEffectiveParticipation, input }),
+    listCorpusEvents: input =>
+      listCorpusEvents({ database, getEffectiveParticipation, input }),
     listProgramSources: input =>
       listProgramSources({ database, getEffectiveParticipation, input }),
     recordProgramSource: input =>
@@ -77,6 +80,19 @@ function acceptCorpusCandidate({ database, generateId, getEffectiveParticipation
     input: { actingIdentityId: input?.actingIdentityId, programId: candidate.programId },
   });
   if (authorization.status === "rejected") {
+    if (authorization.identity && authorization.program) {
+      recordCorpusEvent({
+        database,
+        generateId,
+        now,
+        eventType: "corpus_candidate_accepted",
+        actorIdentityId: authorization.identity.id,
+        programId: authorization.program.id,
+        targetId: candidate.id,
+        outcome: "rejected",
+        reason: authorization.reason,
+      });
+    }
     return rejected(authorization.reason);
   }
 
@@ -385,6 +401,19 @@ function listCorpusCandidates({ database, getEffectiveParticipation, input }) {
   });
 }
 
+function listCorpusEvents({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveCuratorAuthorization({ database, getEffectiveParticipation, input });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  return accepted({
+    corpusEvents: listCorpusEventRecords(database, {
+      programId: authorization.program.id,
+    }).map(summarizeCorpusEvent),
+  });
+}
+
 function rejectCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
   const candidate = getCorpusCandidateRecord(database, input?.candidateId);
   if (!candidate) {
@@ -397,6 +426,19 @@ function rejectCorpusCandidate({ database, generateId, getEffectiveParticipation
     input: { actingIdentityId: input?.actingIdentityId, programId: candidate.programId },
   });
   if (authorization.status === "rejected") {
+    if (authorization.identity && authorization.program) {
+      recordCorpusEvent({
+        database,
+        generateId,
+        now,
+        eventType: "corpus_candidate_rejected",
+        actorIdentityId: authorization.identity.id,
+        programId: authorization.program.id,
+        targetId: candidate.id,
+        outcome: "rejected",
+        reason: authorization.reason,
+      });
+    }
     return rejected(authorization.reason);
   }
 
@@ -431,11 +473,12 @@ function resolveCuratorAuthorization({ database, getEffectiveParticipation, inpu
   if (!identity) {
     return { status: "rejected", reason: "identity_not_found" };
   }
+  const program = getProgramShellRecord(database, input?.programId);
+
   if (identity.state !== "active") {
-    return { status: "rejected", reason: "identity_disabled" };
+    return { status: "rejected", reason: "identity_disabled", identity, program };
   }
 
-  const program = getProgramShellRecord(database, input?.programId);
   if (!program) {
     return { status: "rejected", reason: "program_not_found" };
   }
@@ -446,7 +489,7 @@ function resolveCuratorAuthorization({ database, getEffectiveParticipation, inpu
     participationKind: "program_curator",
   });
   if (!participation.allowed) {
-    return { status: "rejected", reason: "admin_or_curator_required" };
+    return { status: "rejected", reason: "admin_or_curator_required", identity, program };
   }
 
   return { status: "accepted", identity, program };
@@ -572,6 +615,28 @@ function summarizeAcceptedCorpus(revision) {
   }
   if (revision.rationale !== null) {
     summary.rationale = revision.rationale;
+  }
+
+  return summary;
+}
+
+function summarizeCorpusEvent(event) {
+  const summary = {
+    corpusEventId: event.id,
+    eventType: event.eventType,
+    actorIdentityId: event.actorIdentityId,
+    occurredAt: event.occurredAt,
+    outcome: event.outcome,
+  };
+
+  if (event.programId !== null) {
+    summary.programId = event.programId;
+  }
+  if (event.targetId !== null) {
+    summary.targetId = event.targetId;
+  }
+  if (event.reason !== null) {
+    summary.reason = event.reason;
   }
 
   return summary;
