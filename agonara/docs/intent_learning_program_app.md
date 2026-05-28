@@ -178,8 +178,8 @@ LLM-предложения являются вспомогательным ма�
 
 | Story | Research | Pre-ADR / ADR | Spec | Implementation plan | Code / tests |
 |---|---|---|---|---|---|
-| INT-01 | n/a | [Module Responsibility Map](module_responsibility_map.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | n/a | n/a | n/a |
-| INT-02 | n/a | [Module Responsibility Map](module_responsibility_map.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | n/a | n/a | n/a |
+| INT-01 | n/a | [Module Responsibility Map](module_responsibility_map.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | [Corpus Storage and Curator Acceptance First Slice](specs/corpus-storage-and-curator-acceptance-first-slice.md) | n/a | n/a |
+| INT-02 | n/a | [Module Responsibility Map](module_responsibility_map.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | [Corpus Storage and Curator Acceptance First Slice](specs/corpus-storage-and-curator-acceptance-first-slice.md) | n/a | n/a |
 | INT-03 | n/a | [Module Responsibility Map](module_responsibility_map.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | n/a | n/a | n/a |
 | INT-04 | n/a | [Module Responsibility Map](module_responsibility_map.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | n/a | n/a | n/a |
 | INT-05 | [Implementation Notes](implementation-notes.md) | [Identity & Role Management First Slice](identity_role_management_first_slice.md), [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) | n/a | n/a | n/a |

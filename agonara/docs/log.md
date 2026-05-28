@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Add the Corpus Storage and Curator Acceptance first-slice spec, defining source records, curator topic/concept candidates, explicit acceptance into stable accepted revisions, accepted corpus reads, and required tests.
 - Accept ADR-010 for the Corpus Storage / Curator Workspace boundary: accepted Program corpus and stable accepted revisions belong to Corpus Storage, while drafts, candidates, LLM suggestions, and review state remain in Curator Workspace until explicit curator acceptance.
 - Implement the Program Shell and Membership HTTP API, covering session-backed Program shell routes, Student membership join/leave/rejoin, effective participation checks, scoped event pagination, and executable acceptance coverage.
 - Harden the Program Shell and Membership HTTP API implementation plan after adversarial review by fixing mandatory heading order and making early status/session coverage explicit.
