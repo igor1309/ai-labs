@@ -156,7 +156,7 @@ The v0.0.1 minimum operational contract is specified in [Operational Cross-Cutti
 
 ## Open questions
 
-- Which accepted check type should be specified first: quick checks, open answers, topic-level checks, or period-level checks?
+- Which accepted check type should follow the open-answer first slice: quick checks, topic-level checks, or period-level checks?
 - Which accepted revision retention and cleanup policy is needed after students already have attempts and progress evidence?
 - Which cross-cutting concerns require their own ADR beyond the v0.0.1 operational contract: logging, backup/restore, observability, or analytics?
 - How should LLM-assisted learning be bounded so that feedback helps the student without becoming the owner of final progress state?
