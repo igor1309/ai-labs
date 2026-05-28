@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Accept ADR-011 for the accepted checks and Student assessment boundary: accepted checks and criteria belong to versioned Program corpus, while attempts, answers, feedback, mastery, weak areas, and progress evidence belong to Student Workspace.
 - Harden the Corpus HTTP API closeout after adversarial review by asserting transport status codes across the executable Corpus flow and CSRF rejection checks.
 - Complete the Corpus HTTP API implementation closeout with an executable HTTP acceptance flow, Product Intent traceability to the implemented route adapter/tests, and the implementation plan archived under implemented plans.
 - Harden the Corpus event HTTP API after adversarial review by adding fault-response redaction coverage for session, credential, SQL, filesystem path, and database URL leak sentinels.
