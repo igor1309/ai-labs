@@ -10,8 +10,8 @@ description: "Implementation plan for Agonara Program Shell and Membership First
 
 This plan implements:
 
-- [Program Shell and Membership First Slice](../specs/program-shell-and-membership-first-slice.md);
-- [ADR-004](../adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](../adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../adr/adr-006-program-membership-policy-actor.md), [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md), and [ADR-009](../adr/adr-009-program-shell-and-initial-curator-participation.md).
+- [Program Shell and Membership First Slice](../../specs/program-shell-and-membership-first-slice.md);
+- [ADR-004](../../adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](../../adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../../adr/adr-006-program-membership-policy-actor.md), [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md), and [ADR-009](../../adr/adr-009-program-shell-and-initial-curator-participation.md).
 
 The target outcome is a thin vertical backend slice that proves Program shell creation, atomic initial Program Curator participation, Student self-join/leave/rejoin, effective-participation read decisions, queryable Program and Program Membership events, and backup/restore coverage for these records.
 

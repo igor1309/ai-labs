@@ -246,6 +246,146 @@ test("acceptance_shouldExerciseAdminAndCsrfFlows_onHttpInstance", async () => {
   }
 });
 
+test("acceptance_shouldExerciseProgramMembershipApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const missingCreateCsrf = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie },
+      );
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { description: "Foundations", title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      const programs = await getJson(`${baseUrl}/programs`, { cookie: bootstrap.cookie });
+      const invalidJoinCsrf = await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: "invalid-csrf-token" },
+      );
+      const joined = await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const memberships = await getJson(`${baseUrl}/program-memberships/me`, {
+        cookie: bootstrap.cookie,
+      });
+      const missingLeaveCsrf = await deleteJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        { cookie: bootstrap.cookie },
+      );
+      const left = await deleteJson(`${baseUrl}/programs/${programId}/student-membership`, {
+        cookie: bootstrap.cookie,
+        csrfToken: bootstrap.body.value.csrfToken,
+      });
+      const rejoined = await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const studentParticipation = await getJson(
+        `${baseUrl}/programs/${programId}/participation/student`,
+        { cookie: bootstrap.cookie },
+      );
+      const curatorParticipation = await getJson(
+        `${baseUrl}/programs/${programId}/participation/program_curator`,
+        { cookie: bootstrap.cookie },
+      );
+      const programEvents = await getJson(`${baseUrl}/programs/${programId}/events`, {
+        cookie: bootstrap.cookie,
+      });
+      const membershipEvents = await getJson(
+        `${baseUrl}/programs/${programId}/membership-events`,
+        { cookie: bootstrap.cookie },
+      );
+      const unscopedEvents = await getJson(`${baseUrl}/program-events`, {
+        cookie: bootstrap.cookie,
+      });
+
+      assert.deepEqual(
+        {
+          created: {
+            initialCuratorKind:
+              created.body.value.initialCuratorMembership.participationKind,
+            initialCuratorStatus: created.body.value.initialCuratorMembership.status,
+            programIdType: typeof programId,
+            statusCode: created.statusCode,
+          },
+          curatorParticipation: curatorParticipation.body.value.allowed,
+          invalidJoinCsrf: invalidJoinCsrf.body,
+          joined: {
+            kind: joined.body.value.membership.participationKind,
+            status: joined.body.value.membership.status,
+            statusCode: joined.statusCode,
+          },
+          left: {
+            status: left.body.value.membership.status,
+            statusCode: left.statusCode,
+          },
+          memberships: memberships.body.value.memberships.map($0 => ({
+            kind: $0.participationKind,
+            status: $0.status,
+          })),
+          membershipEventTypes: membershipEvents.body.value.events.map($0 => $0.eventType),
+          missingCreateCsrf: missingCreateCsrf.body,
+          missingLeaveCsrf: missingLeaveCsrf.body,
+          programEventTypes: programEvents.body.value.events.map($0 => $0.eventType),
+          programs: programs.body.value.programs.map($0 => $0.programId),
+          rejoined: {
+            status: rejoined.body.value.membership.status,
+            statusCode: rejoined.statusCode,
+          },
+          studentParticipation: studentParticipation.body.value.allowed,
+          unscopedEvents: unscopedEvents.statusCode,
+        },
+        {
+          created: {
+            initialCuratorKind: "program_curator",
+            initialCuratorStatus: "active",
+            programIdType: "string",
+            statusCode: 200,
+          },
+          curatorParticipation: true,
+          invalidJoinCsrf: { status: "rejected", reason: "csrf_invalid" },
+          joined: { kind: "student", status: "active", statusCode: 200 },
+          left: { status: "left", statusCode: 200 },
+          memberships: [
+            { kind: "program_curator", status: "active" },
+            { kind: "student", status: "active" },
+          ],
+          membershipEventTypes: [
+            "initial_curator_membership_created",
+            "student_membership_joined",
+            "student_membership_left",
+            "student_membership_rejoined",
+          ],
+          missingCreateCsrf: { status: "rejected", reason: "csrf_required" },
+          missingLeaveCsrf: { status: "rejected", reason: "csrf_required" },
+          programEventTypes: ["program_created"],
+          programs: [programId],
+          rejoined: { status: "active", statusCode: 200 },
+          studentParticipation: true,
+          unscopedEvents: 404,
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldRateLimitLoginAndCorrelateHealthRequest_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internal Landings</title>
+<style>
+  :root {
+    --page-bg: #0b0d10;
+    --text: #edf1f7;
+    --muted: #a9b0bf;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .container {
+    width: min(1180px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 48px 0 64px;
+  }
+
+  header {
+    margin-bottom: 32px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 600;
+  }
+
+  header p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .gh-links {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .gh-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid #303646;
+    border-radius: 999px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .gh-link:hover {
+    color: var(--text);
+    border-color: var(--text);
+  }
+
+  .gh-link svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 18px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    color: var(--card-text);
+    text-decoration: none;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--card-accent-bar);
+  }
+
+  .card:hover {
+    border-color: var(--card-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--card-shadow);
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 4px 0 6px;
+    color: var(--card-accent);
+  }
+
+  .card-desc {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--card-text);
+    margin: 0 0 8px;
+    opacity: 0.85;
+  }
+
+  .card-path {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--card-muted);
+    word-break: break-all;
+    margin: 0;
+    margin-top: auto;
+    padding-top: 12px;
+  }
+
+  /* Dev Skills — dark slate, multi-accent gradient */
+  .card.dev-skills {
+    --card-bg: #181b23;
+    --card-border: #303646;
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #58a6ff;
+    --card-accent-bar: linear-gradient(90deg, #4ecf8f, #58a6ff, #f6b35b, #f2788f);
+    --card-shadow: rgba(88, 166, 255, 0.18);
+  }
+
+  /* iFora Skills — same family as Dev Skills, violet-led */
+  .card.ifora-skills {
+    --card-bg: #181b23;
+    --card-border: #303646;
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #a08cff;
+    --card-accent-bar: linear-gradient(90deg, #a08cff, #58a6ff, #4ecf8f, #f2788f, #f6b35b);
+    --card-shadow: rgba(160, 140, 255, 0.18);
+  }
+
+  /* Products — deep navy with indigo accent */
+  .card.products {
+    --card-bg: #0f1117;
+    --card-border: rgba(108, 99, 255, 0.3);
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #8b83ff;
+    --card-accent-bar: linear-gradient(90deg, #6c63ff, #8b83ff);
+    --card-shadow: rgba(108, 99, 255, 0.25);
+  }
+
+  /* My Way — black with mint/sky accents */
+  .card.my-way {
+    --card-bg: #14181d;
+    --card-border: rgba(110, 231, 183, 0.25);
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #6ee7b7;
+    --card-accent-bar: linear-gradient(135deg, #6ee7b7, #93c5fd);
+    --card-shadow: rgba(110, 231, 183, 0.2);
+  }
+
+  /* Agonara — warm dark with terracotta */
+  .card.agonara {
+    --card-bg: #1e1d1b;
+    --card-border: rgba(217, 119, 87, 0.3);
+    --card-text: #f4efe6;
+    --card-muted: #b8ad9c;
+    --card-accent: #e89479;
+    --card-accent-bar: linear-gradient(90deg, #d97757, #e89479);
+    --card-shadow: rgba(217, 119, 87, 0.25);
+  }
+
+  /* Reinix — mint/sky on dark */
+  .card.reinix {
+    --card-bg: #14181d;
+    --card-border: rgba(147, 197, 253, 0.25);
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #93c5fd;
+    --card-accent-bar: linear-gradient(135deg, #6ee7b7, #93c5fd);
+    --card-shadow: rgba(147, 197, 253, 0.2);
+  }
+
+  /* Reinix Orchestration — mint/sky with amber highlight */
+  .card.reinix-orch {
+    --card-bg: #1b2027;
+    --card-border: rgba(252, 211, 77, 0.25);
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #fcd34d;
+    --card-accent-bar: linear-gradient(90deg, #6ee7b7, #93c5fd, #fcd34d);
+    --card-shadow: rgba(252, 211, 77, 0.2);
+  }
+
+  /* LOC Dashboard — same indigo family as Products */
+  .card.loc-dashboard {
+    --card-bg: #0f1117;
+    --card-border: rgba(108, 99, 255, 0.3);
+    --card-text: #edf1f7;
+    --card-muted: #a9b0bf;
+    --card-accent: #6c63ff;
+    --card-accent-bar: linear-gradient(90deg, #6c63ff, #8b83ff);
+    --card-shadow: rgba(108, 99, 255, 0.25);
+  }
+
+  /* Am I Done — warm cream / light card */
+  .card.am-i-done {
+    --card-bg: #fff8eb;
+    --card-border: #e7dcc4;
+    --card-text: #4a3a2a;
+    --card-muted: #8a7858;
+    --card-accent: #b9603a;
+    --card-accent-bar: linear-gradient(90deg, #f2ede2, #b9603a);
+    --card-shadow: rgba(185, 96, 58, 0.25);
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Internal Landings</h1>
+      <p>Quick index of landing pages across the workspace.</p>
+      <div class="gh-links">
+        <a class="gh-link" href="https://github.com/igor1309/ai-labs" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          ai-labs
+        </a>
+        <a class="gh-link" href="https://github.com/igor1309/skills" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          skills
+        </a>
+      </div>
+    </header>
+
+    <div class="grid">
+      <a class="card dev-skills" href="dev-skills/index.html">
+        <p class="card-title">Dev Skills</p>
+        <p class="card-desc">Reusable agent skills, playbooks, and review templates.</p>
+        <p class="card-path">dev-skills/index.html</p>
+      </a>
+
+      <a class="card ifora-skills" href="file:///Users/igormalyarov/Developer/Fora/iFora/iOS-app/ios.config/.claude/skills/index.html">
+        <p class="card-title">iFora Skills</p>
+        <p class="card-desc">Claude skills scoped to the iFora iOS app.</p>
+        <p class="card-path">~/Developer/Fora/iFora/iOS-app/ios.config/.claude/skills/index.html</p>
+      </a>
+
+      <a class="card products" href="docs/products.html">
+        <p class="card-title">Products</p>
+        <p class="card-desc">Overview of products built across the workspace.</p>
+        <p class="card-path">docs/products.html</p>
+      </a>
+
+      <a class="card my-way" href="docs/my-way/landing.html">
+        <p class="card-title">My Way</p>
+        <p class="card-desc">Personal engineering process, principles, and methodology.</p>
+        <p class="card-path">docs/my-way/landing.html</p>
+      </a>
+
+      <a class="card agonara" href="agonara/docs/user-stories.html">
+        <p class="card-title">Agonara User Stories</p>
+        <p class="card-desc">User stories driving the Agonara product.</p>
+        <p class="card-path">agonara/docs/user-stories.html</p>
+      </a>
+
+      <a class="card reinix" href="reinix/docs/landing.html">
+        <p class="card-title">Reinix</p>
+        <p class="card-desc">Reinix project landing — scope, docs, and entry points.</p>
+        <p class="card-path">reinix/docs/landing.html</p>
+      </a>
+
+      <a class="card reinix-orch" href="reinix/docs/reinix-orchestration.html">
+        <p class="card-title">Reinix Orchestration</p>
+        <p class="card-desc">Orchestration architecture and workflows for Reinix.</p>
+        <p class="card-path">reinix/docs/reinix-orchestration.html</p>
+      </a>
+
+      <a class="card loc-dashboard" href="docs/loc-dashboard.html">
+        <p class="card-title">LOC Dashboard</p>
+        <p class="card-desc">Lines-of-code dashboard across all repo projects.</p>
+        <p class="card-path">docs/loc-dashboard.html</p>
+      </a>
+
+      <a class="card am-i-done" href="oracle/apps/am-i-done-web/src/landing.html">
+        <p class="card-title">Am I Done</p>
+        <p class="card-desc">Landing page for the Am I Done web app.</p>
+        <p class="card-path">oracle/apps/am-i-done-web/src/landing.html</p>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
