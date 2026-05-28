@@ -552,6 +552,7 @@ async function handleCorpusApi({
   const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
   const candidatesMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-candidates$/);
   const acceptedCorpusMatch = pathname.match(/^\/programs\/([^/]+)\/accepted-corpus$/);
+  const corpusEventsMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-events$/);
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
   const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
@@ -612,6 +613,36 @@ async function handleCorpusApi({
       status: status.value ?? undefined,
     });
     const mappedResult = mapCorpusCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && corpusEventsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(corpusEventsMatch[1]);
+    const routeKey = `corpus-events:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listCorpusEvents({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapCorpusEventListResult({
       generateToken,
       listCursors,
       query: query.value,
@@ -1089,6 +1120,29 @@ function mapAcceptedCorpusResult(result) {
   }
 
   return accepted({ acceptedCorpus: result.value.acceptedCorpus });
+}
+
+function mapCorpusEventListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.corpusEvents,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    corpusEvents: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
 }
 
 function mapProgramEventListResult({
