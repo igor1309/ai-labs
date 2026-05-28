@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Add the Corpus Storage and Curator Acceptance HTTP API implementation plan, sequencing the route adapter work through strict TDD phases for shared transport helpers, source routes, candidate routes, acceptance/rejection, accepted corpus reads, Corpus events, and executable closeout.
 - Harden the Corpus Storage and Curator Acceptance HTTP API spec after adversarial review by removing backup-only rejection reasons from the HTTP contract, making rejection request-body handling explicit, and bounding all Corpus list routes with opaque cursors.
 - Add the Corpus Storage and Curator Acceptance HTTP API spec, carrying the implemented domain contract into session-backed routes, CSRF enforcement, response envelopes, redaction, scoped event and candidate pagination, and executable acceptance scenarios.
 - Harden the Corpus acceptance implementation after adversarial review by adding rejected Corpus events for resolved state/target failures and rejecting restore graphs where accepted revisions point to missing entities or unaccepted candidates.
