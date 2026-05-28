@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-28
+
+- Add the Program Shell and Membership HTTP API implementation plan, sequencing the route adapter work through strict TDD phases with per-phase green-gate commits and explicit done criteria.
+
 ## 2026-05-27
 
 - Harden the Program Shell and Membership HTTP API spec by separating domain event rejection reasons from transport rejections, restoring effective-participation denial coverage, and tightening malformed JSON and traceability expectations.
