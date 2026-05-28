@@ -264,6 +264,48 @@ test("corpusSourcesList_shouldRejectStaleCursor_withValidationFailed", async () 
   }
 });
 
+test("corpusSourcesList_shouldDefaultLimitToFifty", async () => {
+  const programSources = Array.from({ length: 51 }, (_, index) => ({
+    sourceId: `source-${index + 1}`,
+  }));
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listProgramSources: () => ({
+        status: "accepted",
+        value: { programSources },
+      }),
+    },
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "cursor-1"],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/sources`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const body = await response.json();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        sourceCount: body.value.programSources.length,
+        firstSourceId: body.value.programSources[0].sourceId,
+        lastSourceId: body.value.programSources.at(-1).sourceId,
+        hasNextCursor: typeof body.value.nextCursor === "string",
+      },
+      {
+        statusCode: 200,
+        sourceCount: 50,
+        firstSourceId: "source-1",
+        lastSourceId: "source-50",
+        hasNextCursor: true,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusSourcesList_shouldReturnOnlyRequestedProgramSources_forCurator", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: [
