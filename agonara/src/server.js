@@ -15,6 +15,7 @@ export function createServer({
   programCommands = null,
 } = {}) {
   const csrfTokens = new Map();
+  const eventCursors = new Map();
   const failedAuthAttempts = new Map();
 
   return http.createServer(async (request, response) => {
@@ -46,6 +47,8 @@ export function createServer({
       if (identityCommands && programCommands) {
         const handled = await handleProgramApi({
           csrfTokens,
+          eventCursors,
+          generateToken,
           identityCommands,
           pathname,
           programCommands,
@@ -317,6 +320,8 @@ async function handleIdentityApi({
 
 async function handleProgramApi({
   csrfTokens,
+  eventCursors,
+  generateToken,
   identityCommands,
   pathname,
   programCommands,
@@ -454,6 +459,45 @@ async function handleProgramApi({
       programId,
       ...result,
     }));
+    return true;
+  }
+
+  const eventMatch = pathname.match(/^\/programs\/([^/]+)\/(events|membership-events)$/);
+  if (request.method === "GET" && eventMatch) {
+    const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(eventMatch[1]);
+    const eventKind = eventMatch[2];
+    const routeKey = `${eventKind}:${programId}`;
+    const query = parseEventQuery({ eventCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const command = eventKind === "events"
+      ? programCommands.listProgramEvents
+      : programCommands.listProgramMembershipEvents;
+    const result = command({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    sendJson(
+      response,
+      statusForResult(result),
+      mapProgramEventListResult({
+        eventCursors,
+        eventKind,
+        generateToken,
+        query: query.value,
+        result,
+        routeKey,
+      }),
+    );
     return true;
   }
 
@@ -661,6 +705,117 @@ function mapProgramMembershipResult(result) {
   }
 
   return accepted({ membership: result.value.programMembership });
+}
+
+function mapProgramEventListResult({
+  eventCursors,
+  eventKind,
+  generateToken,
+  query,
+  result,
+  routeKey,
+}) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateEvents({
+    eventCursors,
+    events: result.value.events,
+    generateToken,
+    limit: query.limit,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  const mapEvent = eventKind === "events" ? mapProgramEvent : mapProgramMembershipEvent;
+  return accepted({
+    events: page.value.events.map(mapEvent),
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapProgramEvent(event) {
+  return {
+    programEventId: event.id,
+    eventType: event.eventType,
+    actorIdentityId: event.actorIdentityId,
+    programId: event.programId,
+    occurredAt: event.occurredAt,
+    outcome: event.outcome,
+    reason: event.reason,
+  };
+}
+
+function mapProgramMembershipEvent(event) {
+  return {
+    programMembershipEventId: event.id,
+    eventType: event.eventType,
+    actorIdentityId: event.actorIdentityId,
+    targetIdentityId: event.targetIdentityId,
+    programId: event.programId,
+    participationKind: event.participationKind,
+    resultingStatus: event.resultingStatus,
+    occurredAt: event.occurredAt,
+    outcome: event.outcome,
+    reason: event.reason,
+  };
+}
+
+function parseEventQuery({ eventCursors, request, routeKey }) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const limit = parseEventLimit(url.searchParams.get("limit"));
+  if (limit.status === "rejected") {
+    return limit;
+  }
+
+  const cursor = url.searchParams.get("cursor");
+  if (cursor === null) {
+    return accepted({ limit: limit.value, offset: 0 });
+  }
+
+  const cursorState = eventCursors.get(cursor);
+  if (!cursorState || cursorState.routeKey !== routeKey) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ limit: limit.value, offset: cursorState.offset });
+}
+
+function parseEventLimit(rawLimit) {
+  if (rawLimit === null) {
+    return accepted(50);
+  }
+  if (!/^[1-9]\d*$/.test(rawLimit)) {
+    return rejected("validation_failed");
+  }
+
+  const limit = Number(rawLimit);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    return rejected("validation_failed");
+  }
+
+  return accepted(limit);
+}
+
+function paginateEvents({ eventCursors, events, generateToken, limit, offset, routeKey }) {
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > events.length) {
+    return rejected("validation_failed");
+  }
+
+  const nextOffset = offset + limit;
+  const nextCursor = nextOffset < events.length ? generateToken() : undefined;
+  if (nextCursor) {
+    eventCursors.set(nextCursor, { offset: nextOffset, routeKey });
+  }
+
+  return accepted({
+    events: events.slice(offset, nextOffset),
+    nextCursor,
+  });
 }
 
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
