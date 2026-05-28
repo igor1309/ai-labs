@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Corpus Storage and Curator Acceptance
 
 Deliver the Agonara v0.0.1 Corpus Storage and Curator Acceptance HTTP API so browser clients can record Program sources, create and review Corpus candidates, explicitly accept or reject candidates, read accepted corpus revisions, and inspect scoped Corpus events through the existing session, CSRF, envelope, pagination, and redaction conventions.
 
-This plan implements [Corpus Storage and Curator Acceptance API](../specs/corpus-storage-and-curator-acceptance-api.md), [Corpus Storage and Curator Acceptance First Slice](../specs/corpus-storage-and-curator-acceptance-first-slice.md), and [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md). It must preserve the existing Identity API and Program API transport contracts and must not introduce Admin UI, Curator UI, Student UI, CLI commands, material storage, LLM execution, assessment, Student Workspace state, or new Corpus domain rules.
+This plan implements [Corpus Storage and Curator Acceptance API](../../specs/corpus-storage-and-curator-acceptance-api.md), [Corpus Storage and Curator Acceptance First Slice](../../specs/corpus-storage-and-curator-acceptance-first-slice.md), and [ADR-010](../../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md). It must preserve the existing Identity API and Program API transport contracts and must not introduce Admin UI, Curator UI, Student UI, CLI commands, material storage, LLM execution, assessment, Student Workspace state, or new Corpus domain rules.
 
 ## Execution mode
 
@@ -31,7 +31,7 @@ Preflight check: [x] done
 ### In scope
 
 - Server composition changes that inject `corpusCommands` beside `identityCommands` and `programCommands`.
-- HTTP route adapters for the endpoints listed in [Corpus Storage and Curator Acceptance API](../specs/corpus-storage-and-curator-acceptance-api.md).
+- HTTP route adapters for the endpoints listed in [Corpus Storage and Curator Acceptance API](../../specs/corpus-storage-and-curator-acceptance-api.md).
 - Session and CSRF reuse through the existing `agonara_session` and `X-Agonara-CSRF` contract.
 - Response-shaping adapters from existing Corpus command/query result names to API response names.
 - HTTP status mapping for Corpus, session, and CSRF rejection reasons.
@@ -338,7 +338,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Verify accepted corpus is readable by an authorized Student and excludes draft/rejected candidates.
 - Verify scoped Corpus event inspection.
 - Update `agonara/docs/log.md`.
-- Update [Product Intent](../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
+- Update [Product Intent](../../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
 - Move this plan to `agonara/docs/plans/implemented/corpus-storage-and-curator-acceptance-api.md` with `git mv`.
 
 **TDD sequence**:
@@ -363,7 +363,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Done criteria
 
-- The HTTP API implements every endpoint in [Corpus Storage and Curator Acceptance API](../specs/corpus-storage-and-curator-acceptance-api.md).
+- The HTTP API implements every endpoint in [Corpus Storage and Curator Acceptance API](../../specs/corpus-storage-and-curator-acceptance-api.md).
 - Every Corpus API response uses the shared `accepted`, `rejected`, or `fault` envelope.
 - Session and CSRF behavior matches the existing Identity HTTP API and Program HTTP API conventions.
 - All state-changing Corpus API routes reject session and CSRF failures before domain mutation.
