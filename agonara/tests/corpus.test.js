@@ -1082,6 +1082,13 @@ test("createAssessmentCriterionCandidate_shouldRejectInactiveProgramAuthorizatio
           body: "Body",
           rationale: " ",
         }),
+        nullSourceIds: commands.createAssessmentCriterionCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          title: "Criterion",
+          body: "Body",
+          sourceIds: null,
+        }),
         missingSource: commands.createAssessmentCriterionCandidate({
           actingIdentityId: "identity-curator",
           programId: "program-a",
@@ -1104,6 +1111,7 @@ test("createAssessmentCriterionCandidate_shouldRejectInactiveProgramAuthorizatio
         title: { status: "rejected", reason: "validation_failed" },
         body: { status: "rejected", reason: "validation_failed" },
         rationale: { status: "rejected", reason: "validation_failed" },
+        nullSourceIds: { status: "rejected", reason: "validation_failed" },
         missingSource: { status: "rejected", reason: "source_not_found" },
         crossProgramSource: { status: "rejected", reason: "source_program_mismatch" },
       },
@@ -1340,6 +1348,7 @@ test("acceptAssessmentCriterionCandidate_shouldRejectInvalidCandidateStatesAndTa
   const { commands, database } = await makeSUT();
 
   try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
     seedCuratorProgram(database, { programId: "program-a" });
     seedCuratorProgram(database, { programId: "program-b" });
     commands.createAssessmentCriterionCandidate({
@@ -1393,6 +1402,10 @@ test("acceptAssessmentCriterionCandidate_shouldRejectInvalidCandidateStatesAndTa
           actingIdentityId: "identity-curator",
           candidateId: "source-1",
         }),
+        unauthorizedAccepted: commands.acceptAssessmentCriterionCandidate({
+          actingIdentityId: "identity-other",
+          candidateId: "source-1",
+        }),
         alreadyRejected: commands.acceptAssessmentCriterionCandidate({
           actingIdentityId: "identity-curator",
           candidateId: "corpus-event-2",
@@ -1415,6 +1428,7 @@ test("acceptAssessmentCriterionCandidate_shouldRejectInvalidCandidateStatesAndTa
           status: "rejected",
           reason: "criterion_candidate_already_accepted",
         },
+        unauthorizedAccepted: { status: "rejected", reason: "admin_or_curator_required" },
         alreadyRejected: { status: "rejected", reason: "criterion_candidate_already_rejected" },
         missingTarget: { status: "rejected", reason: "criterion_entity_not_found" },
         targetProgramMismatch: { status: "rejected", reason: "criterion_entity_program_mismatch" },

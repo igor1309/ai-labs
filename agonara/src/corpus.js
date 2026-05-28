@@ -90,12 +90,6 @@ function acceptAssessmentCriterionCandidate({ database, generateId, getEffective
   if (!candidate) {
     return rejected("criterion_candidate_not_found");
   }
-  if (candidate.status === "accepted") {
-    return rejected("criterion_candidate_already_accepted");
-  }
-  if (candidate.status === "rejected") {
-    return rejected("criterion_candidate_already_rejected");
-  }
 
   const authorization = resolveAssessmentCuratorAuthorization({
     database,
@@ -104,6 +98,13 @@ function acceptAssessmentCriterionCandidate({ database, generateId, getEffective
   });
   if (authorization.status === "rejected") {
     return rejected(authorization.reason);
+  }
+
+  if (candidate.status === "accepted") {
+    return rejected("criterion_candidate_already_accepted");
+  }
+  if (candidate.status === "rejected") {
+    return rejected("criterion_candidate_already_rejected");
   }
 
   const targetEntity = input?.targetEntityId
@@ -1101,7 +1102,7 @@ function isNonEmptyText(value) {
 }
 
 function isValidIdArray(value) {
-  return value === undefined || value === null || Array.isArray(value);
+  return value === undefined || Array.isArray(value);
 }
 
 function isValidOptionalText(value) {
