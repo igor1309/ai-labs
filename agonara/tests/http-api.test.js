@@ -2490,6 +2490,8 @@ test("corpusEventsList_shouldDefaultLimitRejectInvalidQueriesAndRedactCursor", a
           hasBootstrapSecret: defaultText.includes("operator-secret"),
           hasCookie: defaultText.includes("cookie"),
           hasCsrf: defaultText.includes(bootstrap.csrfToken),
+          hasDatabaseUrl: defaultText.includes("file:"),
+          hasFilesystemPath: defaultText.includes("/Users/"),
           hasPassword: defaultText.includes("correct horse battery staple"),
           hasSession: defaultText.includes("session-1"),
           hasSql: defaultText.toLowerCase().includes("select "),
@@ -2497,7 +2499,9 @@ test("corpusEventsList_shouldDefaultLimitRejectInvalidQueriesAndRedactCursor", a
           nextCursorHasSecrets: [
             bootstrap.csrfToken,
             "cookie",
+            "file:",
             "operator-secret",
+            "/Users/",
             "select ",
             "session-1",
           ].some(secret => defaultBody.value.nextCursor?.includes(secret)),
@@ -2526,11 +2530,74 @@ test("corpusEventsList_shouldDefaultLimitRejectInvalidQueriesAndRedactCursor", a
           hasBootstrapSecret: false,
           hasCookie: false,
           hasCsrf: false,
+          hasDatabaseUrl: false,
+          hasFilesystemPath: false,
           hasPassword: false,
           hasSession: false,
           hasSql: false,
           hasStack: false,
           nextCursorHasSecrets: false,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusEventsList_shouldRedactFaultResponses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listCorpusEvents: () => {
+        throw new Error(
+          "select session_id from sessions where cookie='agonara_session=session-1' " +
+            "authorization='bearer token' csrf='csrf-secret' " +
+            "secret='operator-secret' password='correct horse battery staple' " +
+            "database='file:/Users/igormalyarov/agonara.db'",
+        );
+      },
+    },
+    ids: ["identity-1", "credential-1", "session-1", "audit-1"],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/corpus-events`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const text = await response.text();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: JSON.parse(text),
+        redaction: {
+          hasAuthorization: text.includes("authorization"),
+          hasBootstrapSecret: text.includes("operator-secret"),
+          hasCookie: text.includes("cookie"),
+          hasCsrf: text.includes(bootstrap.csrfToken),
+          hasDatabaseUrl: text.includes("file:"),
+          hasFilesystemPath: text.includes("/Users/"),
+          hasPassword: text.includes("correct horse battery staple"),
+          hasSession: text.includes("session-1"),
+          hasSql: text.toLowerCase().includes("select "),
+          hasStack: text.includes("Error:"),
+        },
+      },
+      {
+        statusCode: 500,
+        body: { status: "fault", reason: "internal_error" },
+        redaction: {
+          hasAuthorization: false,
+          hasBootstrapSecret: false,
+          hasCookie: false,
+          hasCsrf: false,
+          hasDatabaseUrl: false,
+          hasFilesystemPath: false,
+          hasPassword: false,
+          hasSession: false,
+          hasSql: false,
+          hasStack: false,
         },
       },
     );

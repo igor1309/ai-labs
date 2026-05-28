@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden the Corpus event HTTP API after adversarial review by adding fault-response redaction coverage for session, credential, SQL, filesystem path, and database URL leak sentinels.
 - Complete the Corpus HTTP API event route phase with curator-only Program-scoped event reads, route-specific Corpus event response shape, bounded pagination, cursor redaction coverage, domain-only reasons, and out-of-scope surface guards.
 - Harden the accepted corpus HTTP API after adversarial review by covering disabled sessions, unknown Programs, filter-scoped cursors, and Student/Curator/Admin historical revision reads.
 - Complete the Corpus HTTP API accepted corpus read phase with Student/Curator/Admin authorization, accepted-kind filtering, bounded pagination, current-revision listing, historical revision lookup, and draft/rejected candidate exclusion coverage.
