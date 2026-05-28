@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-28
+
+- research/courses: added `careerfactory/` competitor extraction (page-content, course-curriculum, selling-points) for the CareerFactory "Вайб-кодинг на максималках. IT архитектура с AI" landing page, mirroring the `khakhalev/` and `aiforwork/` three-file pattern. The offer targets non-developers (8-week cohort building a deployed Telegram bot; tariffs 19.9k–154k ₽; instructor positioned as Ex-CPO Skyeng), a different audience slice than the two prior surveys. Content was recovered from the Vue SPA's bundled route/section chunks; source discrepancies (instructor name variant, third-party legal seller, stale promo dates) are noted in the extraction rather than silently corrected. `positioning-notes.md`/`decision-matrix.md` not yet refreshed against this third source.
+
 ## 2026-05-27
 
 - Process: pinned the whole repo to Node 22 via a root `.nvmrc`, replacing the per-project pin in `agonara/.nvmrc`. Native modules (`better-sqlite3`) require a single Node ABI across projects; a root pin gives one source of truth for dev, CI, and contributors.
