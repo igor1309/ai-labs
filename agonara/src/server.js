@@ -360,6 +360,45 @@ async function handleProgramApi({
     return true;
   }
 
+  if (request.method === "GET" && pathname === "/program-memberships/me") {
+    const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = programCommands.listMyProgramMemberships({
+      actingIdentityId: session.value.identity.id,
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipsResult(result));
+    return true;
+  }
+
+  const studentMembershipMatch = pathname.match(/^\/programs\/([^/]+)\/student-membership$/);
+  if ((request.method === "POST" || request.method === "DELETE") && studentMembershipMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const command = request.method === "POST"
+      ? programCommands.joinSelfJoinProgram
+      : programCommands.leaveStudentProgram;
+    const result = command({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(studentMembershipMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
   const programMatch = pathname.match(/^\/programs\/([^/]+)$/);
   if (request.method === "GET" && programMatch) {
     const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
@@ -548,6 +587,22 @@ function mapProgramCreatedResult(result) {
     initialCuratorMembership: result.value.initialCuratorMembership,
     program: result.value.programShell,
   });
+}
+
+function mapProgramMembershipsResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ memberships: result.value.programMemberships });
+}
+
+function mapProgramMembershipResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ membership: result.value.programMembership });
 }
 
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
