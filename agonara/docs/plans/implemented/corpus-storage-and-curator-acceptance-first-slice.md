@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Corpus Storage and Curator Acceptance
 
 Deliver the Agonara v0.0.1 Corpus Storage and Curator Acceptance domain contract so effective Program Curators can record Program sources, create topic/concept candidates, explicitly accept or reject candidates, and expose stable accepted corpus revisions without introducing UI, HTTP routes, CLI commands, material storage, LLM execution, assessment, or Student Workspace state.
 
-This plan implements [Corpus Storage and Curator Acceptance First Slice](../specs/corpus-storage-and-curator-acceptance-first-slice.md) and [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md). It must preserve the accepted Program shell and effective participation contracts from [ADR-009](../adr/adr-009-program-shell-and-initial-curator-participation.md) and [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md).
+This plan implements [Corpus Storage and Curator Acceptance First Slice](../../specs/corpus-storage-and-curator-acceptance-first-slice.md) and [ADR-010](../../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md). It must preserve the accepted Program shell and effective participation contracts from [ADR-009](../../adr/adr-009-program-shell-and-initial-curator-participation.md) and [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md).
 
 ## Execution mode
 
@@ -31,7 +31,7 @@ Preflight check: [x] done
 ### In scope
 
 - Storage records and helpers for Program source records, Corpus candidates, accepted corpus entities, accepted corpus revisions, and Corpus events.
-- A domain command/query boundary for the interface in [Corpus Storage and Curator Acceptance First Slice](../specs/corpus-storage-and-curator-acceptance-first-slice.md).
+- A domain command/query boundary for the interface in [Corpus Storage and Curator Acceptance First Slice](../../specs/corpus-storage-and-curator-acceptance-first-slice.md).
 - Effective Program Curator authorization for curator commands and curator-only queries.
 - Effective Student, Program Curator, or Admin authorization for accepted corpus read queries.
 - Candidate status transitions for `draft`, `accepted`, and `rejected`.
@@ -350,7 +350,7 @@ Each implementation phase has its own local commit. Do not bundle unrelated phas
 
 ## Done criteria
 
-- The domain interface implements every command and query in [Corpus Storage and Curator Acceptance First Slice](../specs/corpus-storage-and-curator-acceptance-first-slice.md).
+- The domain interface implements every command and query in [Corpus Storage and Curator Acceptance First Slice](../../specs/corpus-storage-and-curator-acceptance-first-slice.md).
 - Program source records, Corpus candidates, accepted corpus entities, accepted corpus revisions, and Corpus events are persisted.
 - Curator commands and curator-only queries require effective Program Curator participation.
 - Accepted corpus reads require effective Student participation, effective Program Curator participation, or effective Admin authority for the Program.
