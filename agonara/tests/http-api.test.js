@@ -6,6 +6,7 @@ import { createProgramCommands } from "../src/program.js";
 import { createServer } from "../src/server.js";
 import {
   initializeIdentityStorage,
+  listCorpusEventRecords,
   listProgramMembershipEventRecords,
   openIdentityDatabase,
   updateProgramMembershipStatus,
@@ -263,6 +264,131 @@ test("corpusSourcesList_shouldRejectStaleCursor_withValidationFailed", async () 
   }
 });
 
+test("corpusSourcesList_shouldReturnOnlyRequestedProgramSources_forCurator", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+      "source-1",
+      "corpus-event-1",
+      "program-2",
+      "membership-2",
+      "program-event-2",
+      "membership-event-2",
+      "source-2",
+      "corpus-event-2",
+    ],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const programA = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programAId = (await programA.json()).value.program.programId;
+    await createProgramSource(baseUrl, bootstrap, programAId, {
+      sourceKind: "textbook",
+      title: "Program A source",
+    });
+    const programB = await createProgram(baseUrl, bootstrap, { title: "Discrete Math" });
+    const programBId = (await programB.json()).value.program.programId;
+    await createProgramSource(baseUrl, bootstrap, programBId, {
+      sourceKind: "article",
+      title: "Program B source",
+    });
+    const response = await fetch(`${baseUrl}/programs/${programAId}/sources`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          value: {
+            programSources: [
+              {
+                programId: programAId,
+                recordedAt: "2026-05-27T10:00:00.000Z",
+                recordedByIdentityId: "identity-1",
+                sourceId: "source-1",
+                sourceKind: "textbook",
+                title: "Program A source",
+              },
+            ],
+          },
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesList_shouldRejectNonCuratorAndUnknownProgram", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+      "identity-2",
+      "audit-2",
+      "credential-2",
+      "audit-3",
+      "session-2",
+      "audit-4",
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+    ],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const nonCurator = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+      headers: { cookie: ordinary.cookie },
+    });
+    const unknownProgram = await fetch(`${baseUrl}/programs/program-ghost/sources`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        unknownProgram: { body: await unknownProgram.json(), statusCode: unknownProgram.status },
+      },
+      {
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        unknownProgram: {
+          body: { status: "rejected", reason: "program_not_found" },
+          statusCode: 404,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusSourcesCreate_shouldRejectMalformedMissingAndNonObjectBodies_withValidationFailed", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
 
@@ -293,6 +419,185 @@ test("corpusSourcesCreate_shouldRejectMalformedMissingAndNonObjectBodies_withVal
         },
         method: "POST",
       });
+      responses.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(
+      responses,
+      cases.map(() => ({
+        body: { status: "rejected", reason: "validation_failed" },
+        statusCode: 400,
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesCreate_shouldRejectCsrfBeforeDomainMutation", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramAndCorpus({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+    ],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const missing = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+      body: JSON.stringify({ sourceKind: "textbook", title: "Program source" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const invalid = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+      body: JSON.stringify({ sourceKind: "textbook", title: "Program source" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": "wrong-token",
+      },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        missing: { body: await missing.json(), statusCode: missing.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        corpusEvents: listCorpusEventRecords(database, { programId }).map($0 => $0.eventType),
+      },
+      {
+        missing: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "csrf_invalid" },
+          statusCode: 403,
+        },
+        corpusEvents: [],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesCreate_shouldReturnProgramSourceAndRecordEvent_onAccepted", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramAndCorpus({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+      "source-1",
+      "corpus-event-1",
+    ],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const response = await createProgramSource(baseUrl, bootstrap, programId, {
+      citation: " Chapter 1 ",
+      locator: " https://example.test/source ",
+      sourceKind: "textbook",
+      title: " Program source ",
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+        corpusEvents: listCorpusEventRecords(database, { programId }).map($0 => ({
+          eventType: $0.eventType,
+          outcome: $0.outcome,
+          targetId: $0.targetId,
+        })),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          value: {
+            programSource: {
+              citation: "Chapter 1",
+              locator: "https://example.test/source",
+              programId,
+              recordedAt: "2026-05-27T10:00:00.000Z",
+              recordedByIdentityId: "identity-1",
+              sourceId: "source-1",
+              sourceKind: "textbook",
+              title: "Program source",
+            },
+          },
+        },
+        corpusEvents: [
+          {
+            eventType: "program_source_recorded",
+            outcome: "accepted",
+            targetId: "source-1",
+          },
+        ],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesCreate_shouldRejectInvalidSourceFields_withValidationFailed", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+      "corpus-event-1",
+      "corpus-event-2",
+      "corpus-event-3",
+      "corpus-event-4",
+      "corpus-event-5",
+      "corpus-event-6",
+      "corpus-event-7",
+    ],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const cases = [
+      { sourceKind: "unsupported", title: "Program source" },
+      { sourceKind: "textbook" },
+      { sourceKind: "textbook", title: "" },
+      { sourceKind: "textbook", title: " " },
+      { sourceKind: "textbook", title: 42 },
+      { sourceKind: "textbook", title: "Program source", locator: " " },
+      { sourceKind: "textbook", title: "Program source", citation: " " },
+    ];
+    const responses = [];
+    for (const body of cases) {
+      const response = await createProgramSource(baseUrl, bootstrap, programId, body);
       responses.push({ body: await response.json(), statusCode: response.status });
     }
 
@@ -2351,6 +2656,70 @@ async function bootstrapAdmin(baseUrl) {
     cookie: response.headers.get("set-cookie").split(";", 1)[0],
     csrfToken: body.value.csrfToken,
   };
+}
+
+async function createIdentitySession(baseUrl, bootstrap, { displayName, login }) {
+  const created = await fetch(`${baseUrl}/identity/identities`, {
+    body: JSON.stringify({ displayName }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "POST",
+  });
+  const identityId = (await created.json()).value.id;
+  await fetch(`${baseUrl}/identity/identities/${identityId}/local-password`, {
+    body: JSON.stringify({
+      login,
+      password: "correct horse battery staple",
+    }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "POST",
+  });
+  const loginResponse = await fetch(`${baseUrl}/identity/sessions`, {
+    body: JSON.stringify({
+      login,
+      password: "correct horse battery staple",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const body = await loginResponse.json();
+  return {
+    body,
+    cookie: loginResponse.headers.get("set-cookie").split(";", 1)[0],
+    csrfToken: body.value.csrfToken,
+    identityId,
+  };
+}
+
+async function createProgram(baseUrl, session, body) {
+  return fetch(`${baseUrl}/programs`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function createProgramSource(baseUrl, session, programId, body) {
+  return fetch(`${baseUrl}/programs/${programId}/sources`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
 }
 
 async function listenWithIdentity({ ids = defaultIds() } = {}) {
