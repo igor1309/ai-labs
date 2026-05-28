@@ -2000,6 +2000,49 @@ test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
   }
 });
 
+test("acceptedCorpusList_shouldRejectDisabledSessionAndUnknownProgram", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramAndCorpus({
+    ids: manyIds(40),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    database
+      .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+      .run("2026-05-27T10:00:00.000Z", bootstrap.body.value.identity.id);
+    const disabled = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    database
+      .prepare("update identities set state = 'active', disabled_at = null where id = ?")
+      .run(bootstrap.body.value.identity.id);
+    const unknownProgram = await fetch(`${baseUrl}/programs/program-ghost/accepted-corpus`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        disabled: { body: await disabled.json(), statusCode: disabled.status },
+        unknownProgram: { body: await unknownProgram.json(), statusCode: unknownProgram.status },
+      },
+      {
+        disabled: {
+          body: { status: "rejected", reason: "identity_disabled" },
+          statusCode: 403,
+        },
+        unknownProgram: {
+          body: { status: "rejected", reason: "program_not_found" },
+          statusCode: 404,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("acceptedCorpusList_shouldReturnCurrentScopedFilteredAndPaginatedAcceptedCorpusOnly", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(120),
@@ -2112,6 +2155,14 @@ test("acceptedCorpusList_shouldDefaultLimitAndRejectInvalidQueries", async () =>
       });
       invalidQueries.push({ body: await response.json(), statusCode: response.status });
     }
+    const filteredPage = await fetch(`${baseUrl}/programs/program-1/accepted-corpus?acceptedKind=topic&limit=1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const filteredBody = await filteredPage.json();
+    const crossFilterCursor = await fetch(
+      `${baseUrl}/programs/program-1/accepted-corpus?acceptedKind=concept&cursor=${filteredBody.value.nextCursor}`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
 
     assert.deepEqual(
       {
@@ -2123,6 +2174,10 @@ test("acceptedCorpusList_shouldDefaultLimitAndRejectInvalidQueries", async () =>
           titleCount: defaultBody.value?.acceptedCorpus?.length ?? 0,
         },
         invalidQueries,
+        crossFilterCursor: {
+          body: await crossFilterCursor.json(),
+          statusCode: crossFilterCursor.status,
+        },
       },
       {
         defaultPage: {
@@ -2136,6 +2191,10 @@ test("acceptedCorpusList_shouldDefaultLimitAndRejectInvalidQueries", async () =>
           body: { status: "rejected", reason: "validation_failed" },
           statusCode: 400,
         })),
+        crossFilterCursor: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
       },
     );
   } finally {
@@ -2145,54 +2204,51 @@ test("acceptedCorpusList_shouldDefaultLimitAndRejectInvalidQueries", async () =>
 
 test("acceptedCorpusRevisionGet_shouldReturnHistoricalRevisionForAuthorizedCallers", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
-    ids: manyIds(90),
+    ids: manyIds(120),
   });
 
   try {
     const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "curator@example.test",
+    });
     const student = await createIdentitySession(baseUrl, bootstrap, {
       displayName: "Program Student",
       login: "student@example.test",
     });
-    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
     const programId = (await createdProgram.json()).value.program.programId;
-    const firstTopic = await createAcceptedCandidate(baseUrl, bootstrap, programId, {
+    const firstTopic = await createAcceptedCandidate(baseUrl, curator, programId, {
       candidateKind: "topic",
       title: "Historical topic",
     });
-    await createAcceptedCandidate(baseUrl, bootstrap, programId, {
+    await createAcceptedCandidate(baseUrl, curator, programId, {
       candidateKind: "topic",
       targetEntityId: firstTopic.entityId,
       title: "Current topic",
     });
     await joinStudentProgram(baseUrl, student, programId);
-    const response = await fetch(`${baseUrl}/accepted-corpus-revisions/${firstTopic.revisionId}`, {
+    const studentResponse = await fetch(`${baseUrl}/accepted-corpus-revisions/${firstTopic.revisionId}`, {
       headers: { cookie: student.cookie },
+    });
+    const curatorResponse = await fetch(`${baseUrl}/accepted-corpus-revisions/${firstTopic.revisionId}`, {
+      headers: { cookie: curator.cookie },
+    });
+    const adminResponse = await fetch(`${baseUrl}/accepted-corpus-revisions/${firstTopic.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
     });
 
     assert.deepEqual(
       {
-        statusCode: response.status,
-        body: await response.json(),
+        student: acceptedCorpusRevisionProjection(await studentResponse.json(), studentResponse.status),
+        curator: acceptedCorpusRevisionProjection(await curatorResponse.json(), curatorResponse.status),
+        admin: acceptedCorpusRevisionProjection(await adminResponse.json(), adminResponse.status),
       },
       {
-        statusCode: 200,
-        body: {
-          status: "accepted",
-          value: {
-            acceptedCorpus: {
-              acceptedAt: "2026-05-27T10:00:00.000Z",
-              acceptedByIdentityId: bootstrap.body.value.identity.id,
-              acceptedFromCandidateId: firstTopic.acceptedFromCandidateId,
-              acceptedKind: "topic",
-              entityId: firstTopic.entityId,
-              programId,
-              revisionId: firstTopic.revisionId,
-              sourceIds: [],
-              title: "Historical topic",
-            },
-          },
-        },
+        student: { statusCode: 200, title: "Historical topic", revisionId: firstTopic.revisionId },
+        curator: { statusCode: 200, title: "Historical topic", revisionId: firstTopic.revisionId },
+        admin: { statusCode: 200, title: "Historical topic", revisionId: firstTopic.revisionId },
       },
     );
   } finally {
@@ -4527,6 +4583,14 @@ function acceptedCorpusListProjection(body, statusCode) {
     statusCode,
     titles: body.value?.acceptedCorpus?.map($0 => $0.title) ?? [],
     ...(body.value?.nextCursor ? { hasNextCursor: typeof body.value.nextCursor === "string" } : {}),
+  };
+}
+
+function acceptedCorpusRevisionProjection(body, statusCode) {
+  return {
+    statusCode,
+    revisionId: body.value?.acceptedCorpus?.revisionId,
+    title: body.value?.acceptedCorpus?.title,
   };
 }
 

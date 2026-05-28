@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden the accepted corpus HTTP API after adversarial review by covering disabled sessions, unknown Programs, filter-scoped cursors, and Student/Curator/Admin historical revision reads.
 - Complete the Corpus HTTP API accepted corpus read phase with Student/Curator/Admin authorization, accepted-kind filtering, bounded pagination, current-revision listing, historical revision lookup, and draft/rejected candidate exclusion coverage.
 - Harden the Corpus acceptance/rejection HTTP API after adversarial review by rejecting unknown acceptance body fields and covering rejected Corpus events for resolved acceptance/rejection failures.
 - Complete the Corpus HTTP API acceptance/rejection route phase with explicit curator-only state transitions, CSRF-before-mutation checks, target validation, current-revision replacement, historical revision preservation, and Corpus event coverage.
