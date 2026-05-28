@@ -1484,6 +1484,7 @@ test("corpusCandidateAcceptance_shouldRejectCsrfAndInvalidBodies_beforeDomainMut
     const invalidBodyCases = [
       "not valid json{{{",
       JSON.stringify([]),
+      JSON.stringify({ note: "ignored" }),
       JSON.stringify({ targetEntityId: 42 }),
     ];
     const invalidBodyResponses = [];
@@ -1527,7 +1528,7 @@ test("corpusCandidateAcceptance_shouldRejectCsrfAndInvalidBodies_beforeDomainMut
 });
 
 test("corpusCandidateAcceptance_shouldMapStateTargetAndAuthorizationRejections", async () => {
-  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+  const { baseUrl, close, database } = await listenWithIdentityProgramAndCorpus({
     ids: [
       "identity-1",
       "credential-1",
@@ -1634,13 +1635,50 @@ test("corpusCandidateAcceptance_shouldMapStateTargetAndAuthorizationRejections",
     }
 
     assert.deepEqual(
-      responses,
-      cases.map(([, , , reason, statusCode]) => ({
-        body: { status: "rejected", reason },
-        reason,
-        statusCode,
-        expectedStatus: statusCode,
-      })),
+      {
+        responses,
+        rejectedEvents: listCorpusEventRecords(database, { programId: programAId })
+          .filter($0 => $0.eventType === "corpus_candidate_accepted" && $0.outcome === "rejected")
+          .map($0 => ({
+            reason: $0.reason,
+            targetId: $0.targetId,
+          }))
+          .toSorted((left, right) => left.reason.localeCompare(right.reason)),
+      },
+      {
+        responses: cases.map(([, , , reason, statusCode]) => ({
+          body: { status: "rejected", reason },
+          reason,
+          statusCode,
+          expectedStatus: statusCode,
+        })),
+        rejectedEvents: [
+          {
+            reason: "accepted_entity_not_found",
+            targetId: targetCandidateId,
+          },
+          {
+            reason: "accepted_entity_program_mismatch",
+            targetId: targetCandidateId,
+          },
+          {
+            reason: "accepted_kind_mismatch",
+            targetId: targetCandidateId,
+          },
+          {
+            reason: "admin_or_curator_required",
+            targetId: unauthorizedCandidateId,
+          },
+          {
+            reason: "candidate_already_accepted",
+            targetId: alreadyAcceptedCandidateId,
+          },
+          {
+            reason: "candidate_already_rejected",
+            targetId: alreadyRejectedCandidateId,
+          },
+        ],
+      },
     );
   } finally {
     await close();
@@ -1794,7 +1832,7 @@ test("corpusCandidateRejection_shouldAcceptEmptyObjectAndRejectInvalidBodies", a
 });
 
 test("corpusCandidateRejection_shouldMapStateAndAuthorizationRejections", async () => {
-  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+  const { baseUrl, close, database } = await listenWithIdentityProgramAndCorpus({
     ids: [
       "identity-1",
       "credential-1",
@@ -1861,13 +1899,38 @@ test("corpusCandidateRejection_shouldMapStateAndAuthorizationRejections", async 
     }
 
     assert.deepEqual(
-      responses,
-      cases.map(([, , reason, statusCode]) => ({
-        body: { status: "rejected", reason },
-        reason,
-        statusCode,
-        expectedStatus: statusCode,
-      })),
+      {
+        responses,
+        rejectedEvents: listCorpusEventRecords(database, { programId })
+          .filter($0 => $0.eventType === "corpus_candidate_rejected" && $0.outcome === "rejected")
+          .map($0 => ({
+            reason: $0.reason,
+            targetId: $0.targetId,
+          }))
+          .toSorted((left, right) => left.reason.localeCompare(right.reason)),
+      },
+      {
+        responses: cases.map(([, , reason, statusCode]) => ({
+          body: { status: "rejected", reason },
+          reason,
+          statusCode,
+          expectedStatus: statusCode,
+        })),
+        rejectedEvents: [
+          {
+            reason: "admin_or_curator_required",
+            targetId: unauthorizedCandidateId,
+          },
+          {
+            reason: "candidate_already_accepted",
+            targetId: alreadyAcceptedCandidateId,
+          },
+          {
+            reason: "candidate_already_rejected",
+            targetId: alreadyRejectedCandidateId,
+          },
+        ],
+      },
     );
   } finally {
     await close();

@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden the Corpus acceptance/rejection HTTP API after adversarial review by rejecting unknown acceptance body fields and covering rejected Corpus events for resolved acceptance/rejection failures.
 - Complete the Corpus HTTP API acceptance/rejection route phase with explicit curator-only state transitions, CSRF-before-mutation checks, target validation, current-revision replacement, historical revision preservation, and Corpus event coverage.
 - Harden the Corpus candidate HTTP API after adversarial review by adding route-specific default pagination coverage and rejecting non-string source identifiers as malformed request input.
 - Complete the Corpus HTTP API candidate route phase with curator-only candidate listing/creation, status-filtered pagination, CSRF-before-mutation coverage, source ownership rejection mapping, and draft isolation from accepted corpus.

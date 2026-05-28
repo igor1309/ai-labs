@@ -897,6 +897,9 @@ async function readAcceptanceBody(request) {
   if (body.value.kind !== "object") {
     return rejected("validation_failed");
   }
+  if (Object.keys(body.value.body).some($0 => $0 !== "targetEntityId")) {
+    return rejected("validation_failed");
+  }
   if (
     body.value.body.targetEntityId !== undefined &&
     typeof body.value.body.targetEntityId !== "string"
