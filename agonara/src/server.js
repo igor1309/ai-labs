@@ -667,7 +667,7 @@ async function handleCorpusApi({
       sendJson(response, 400, body);
       return true;
     }
-    if (body.value.sourceIds !== undefined && !Array.isArray(body.value.sourceIds)) {
+    if (!isValidCandidateSourceIds(body.value.sourceIds)) {
       sendJson(response, 400, rejected("validation_failed"));
       return true;
     }
@@ -1080,6 +1080,11 @@ function parseCorpusCandidateStatus(request) {
     return accepted(status);
   }
   return rejected("validation_failed");
+}
+
+function isValidCandidateSourceIds(sourceIds) {
+  return sourceIds === undefined ||
+    (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
 }
 
 function paginateList({ generateToken, items, limit, listCursors, offset, routeKey }) {

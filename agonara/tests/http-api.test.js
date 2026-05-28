@@ -842,6 +842,49 @@ test("corpusCandidatesList_shouldApplyStatusFiltersAndRejectCursorAcrossFilters"
   }
 });
 
+test("corpusCandidatesList_shouldDefaultLimitToFifty", async () => {
+  const corpusCandidates = Array.from({ length: 51 }, (_, index) => ({
+    candidateId: `candidate-${index + 1}`,
+    status: "draft",
+  }));
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listCorpusCandidates: () => ({
+        status: "accepted",
+        value: { corpusCandidates },
+      }),
+    },
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "cursor-1"],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/corpus-candidates`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const body = await response.json();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        candidateCount: body.value.corpusCandidates.length,
+        firstCandidateId: body.value.corpusCandidates[0].candidateId,
+        lastCandidateId: body.value.corpusCandidates.at(-1).candidateId,
+        hasNextCursor: typeof body.value.nextCursor === "string",
+      },
+      {
+        statusCode: 200,
+        candidateCount: 50,
+        firstCandidateId: "candidate-1",
+        lastCandidateId: "candidate-50",
+        hasNextCursor: true,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusCandidatesList_shouldRejectInvalidQueriesNonCuratorsAndUnknownPrograms", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: [
@@ -1108,6 +1151,7 @@ test("corpusCandidatesCreate_shouldRejectInvalidBodiesAndFields_withValidationFa
       { body: " ", candidateKind: "topic", title: "Program topic" },
       { candidateKind: "topic", rationale: " ", title: "Program topic" },
       { candidateKind: "topic", sourceIds: "source-1", title: "Program topic" },
+      { candidateKind: "topic", sourceIds: [42], title: "Program topic" },
     ];
     const responses = [];
     for (const body of invalidBodies) {
