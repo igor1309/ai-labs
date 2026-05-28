@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden the accepted checks and assessment criteria spec after adversarial review by requiring criterion references on open-answer checks, tightening read-surface wording, and adding explicit status-filter rejection coverage.
 - Add the accepted checks and assessment criteria first-slice spec, choosing open-answer checks as the narrow first check shape while preserving accepted criterion revisions and excluding Student Workspace attempts and feedback.
 - Harden ADR-011 after adversarial review by clarifying future Assessment module evolution and requiring traceability plus verification for checks, criteria, attempts, feedback, and progress evidence.
 - Accept ADR-011 for the accepted checks and Student assessment boundary: accepted checks and criteria belong to versioned Program corpus, while attempts, answers, feedback, mastery, weak areas, and progress evidence belong to Student Workspace.

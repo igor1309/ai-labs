@@ -124,7 +124,7 @@ createOpenAnswerCheckCandidate(input: {
   title: string;
   prompt: string;
   sourceIds?: ProgramSourceId[];
-  criterionEntityIds?: AcceptedAssessmentCriterionEntityId[];
+  criterionEntityIds: AcceptedAssessmentCriterionEntityId[];
   rationale?: string;
 }) -> CreateOpenAnswerCheckCandidateResult
 
@@ -277,7 +277,7 @@ type AcceptedAssessmentRejectionReason =
 ## Behavior rules
 
 1. Candidate creation accepts only active internal `Identity` actors with effective `Program Curator` participation for the Program.
-2. Accepted corpus read queries accept effective `Student`, effective `Program Curator`, and effective `Admin` callers for the Program.
+2. Accepted check and criterion read queries accept effective `Student`, effective `Program Curator`, and effective `Admin` callers for the Program.
 3. Candidate list queries are curator-only and must not be readable by Students.
 4. Candidate creation rejects unknown Programs with `program_not_found`.
 5. Candidate creation rejects unknown source ids with `source_not_found`.
@@ -285,41 +285,42 @@ type AcceptedAssessmentRejectionReason =
 7. Criterion candidate creation rejects missing, empty, whitespace-only, or non-string `title` and `body` with `validation_failed`.
 8. Open-answer check candidate creation rejects missing, empty, whitespace-only, or non-string `title` and `prompt` with `validation_failed`.
 9. Open-answer check candidate creation rejects unsupported check kinds; the first slice accepts only `open_answer`.
-10. Open-answer check candidates may reference zero or more accepted criterion entities.
-11. Open-answer check candidate creation rejects unknown criterion entities with `criterion_entity_not_found`.
-12. Open-answer check candidate creation rejects criterion entities from another Program with `criterion_entity_program_mismatch`.
-13. Candidate records start in `draft` status and remain separate from accepted corpus.
-14. Candidate listing returns only candidates scoped to the requested Program.
-15. Candidate listing accepts `draft`, `accepted`, and `rejected` status filters and rejects unsupported filters with `validation_failed`.
-16. Criterion acceptance accepts only draft criterion candidates.
-17. Criterion acceptance without `targetEntityId` creates a new accepted criterion entity and one current revision.
-18. Criterion acceptance with `targetEntityId` creates a new current revision for the target entity and preserves previous revisions as addressable historical revisions.
-19. Criterion acceptance rejects unknown candidates with `criterion_candidate_not_found`.
-20. Criterion acceptance rejects already accepted candidates with `criterion_candidate_already_accepted`.
-21. Criterion acceptance rejects already rejected candidates with `criterion_candidate_already_rejected`.
-22. Criterion acceptance rejects unknown target entities with `criterion_entity_not_found`.
-23. Criterion acceptance rejects target entities from another Program with `criterion_entity_program_mismatch`.
-24. Check acceptance accepts only draft open-answer check candidates.
-25. Check acceptance snapshots current accepted criterion revision ids for every referenced criterion entity at the moment the check revision is accepted.
-26. Check acceptance without `targetEntityId` creates a new accepted open-answer check entity and one current revision.
-27. Check acceptance with `targetEntityId` creates a new current revision for the target check entity and preserves previous revisions as addressable historical revisions.
-28. Check acceptance rejects unknown candidates with `check_candidate_not_found`.
-29. Check acceptance rejects already accepted candidates with `check_candidate_already_accepted`.
-30. Check acceptance rejects already rejected candidates with `check_candidate_already_rejected`.
-31. Check acceptance rejects unknown target entities with `check_entity_not_found`.
-32. Check acceptance rejects target entities from another Program with `check_entity_program_mismatch`.
-33. Rejection changes a draft candidate to `rejected` and must not create accepted corpus.
-34. Rejection rejects unknown, already accepted, and already rejected candidates with the matching rejection reason.
-35. Accepted criterion listing returns only current accepted criterion revisions scoped to the requested Program.
-36. Accepted check listing returns only current accepted open-answer check revisions scoped to the requested Program.
-37. Historical revision queries return addressable historical criterion and check revisions after they are no longer current.
-38. Historical revision queries reject unknown revisions with `criterion_revision_not_found` or `check_revision_not_found`.
-39. Updating accepted criteria must not rewrite accepted check revisions that already snapshotted earlier criterion revisions.
-40. Updating accepted checks or criteria must not create, rewrite, or delete Student Workspace attempts, answers, feedback, progress evidence, mastery state, or weak-area state.
-41. Candidate cleanup or rejection must not delete accepted check revisions, accepted criterion revisions, or future student references to those revisions.
-42. Admin authority may read accepted checks and criteria but must not create, accept, or reject candidate checks or criteria through this first-slice contract unless the Admin is also an effective Program Curator.
-43. Commands and queries must not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-44. This first slice does not expose student attempts, submitted answers, selected answers, evaluation results, feedback generation, scoring, mastery calculation, weak-area calculation, LLM prompt execution, human review workflow, UI, HTTP routes, or CLI commands.
+10. Open-answer check candidate creation requires at least one accepted criterion entity reference.
+11. Open-answer check candidate creation rejects missing, empty, or non-array criterion references with `validation_failed`.
+12. Open-answer check candidate creation rejects unknown criterion entities with `criterion_entity_not_found`.
+13. Open-answer check candidate creation rejects criterion entities from another Program with `criterion_entity_program_mismatch`.
+14. Candidate records start in `draft` status and remain separate from accepted corpus.
+15. Candidate listing returns only candidates scoped to the requested Program.
+16. Candidate listing accepts `draft`, `accepted`, and `rejected` status filters and rejects unsupported filters with `validation_failed`.
+17. Criterion acceptance accepts only draft criterion candidates.
+18. Criterion acceptance without `targetEntityId` creates a new accepted criterion entity and one current revision.
+19. Criterion acceptance with `targetEntityId` creates a new current revision for the target entity and preserves previous revisions as addressable historical revisions.
+20. Criterion acceptance rejects unknown candidates with `criterion_candidate_not_found`.
+21. Criterion acceptance rejects already accepted candidates with `criterion_candidate_already_accepted`.
+22. Criterion acceptance rejects already rejected candidates with `criterion_candidate_already_rejected`.
+23. Criterion acceptance rejects unknown target entities with `criterion_entity_not_found`.
+24. Criterion acceptance rejects target entities from another Program with `criterion_entity_program_mismatch`.
+25. Check acceptance accepts only draft open-answer check candidates.
+26. Check acceptance snapshots current accepted criterion revision ids for every referenced criterion entity at the moment the check revision is accepted.
+27. Check acceptance without `targetEntityId` creates a new accepted open-answer check entity and one current revision.
+28. Check acceptance with `targetEntityId` creates a new current revision for the target check entity and preserves previous revisions as addressable historical revisions.
+29. Check acceptance rejects unknown candidates with `check_candidate_not_found`.
+30. Check acceptance rejects already accepted candidates with `check_candidate_already_accepted`.
+31. Check acceptance rejects already rejected candidates with `check_candidate_already_rejected`.
+32. Check acceptance rejects unknown target entities with `check_entity_not_found`.
+33. Check acceptance rejects target entities from another Program with `check_entity_program_mismatch`.
+34. Rejection changes a draft candidate to `rejected` and must not create accepted corpus.
+35. Rejection rejects unknown, already accepted, and already rejected candidates with the matching rejection reason.
+36. Accepted criterion listing returns only current accepted criterion revisions scoped to the requested Program.
+37. Accepted check listing returns only current accepted open-answer check revisions scoped to the requested Program.
+38. Historical revision queries return addressable historical criterion and check revisions after they are no longer current.
+39. Historical revision queries reject unknown revisions with `criterion_revision_not_found` or `check_revision_not_found`.
+40. Updating accepted criteria must not rewrite accepted check revisions that already snapshotted earlier criterion revisions.
+41. Updating accepted checks or criteria must not create, rewrite, or delete Student Workspace attempts, answers, feedback, progress evidence, mastery state, or weak-area state.
+42. Candidate cleanup or rejection must not delete accepted check revisions, accepted criterion revisions, or future student references to those revisions.
+43. Admin authority may read accepted checks and criteria but must not create, accept, or reject candidate checks or criteria through this first-slice contract unless the Admin is also an effective Program Curator.
+44. Commands and queries must not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+45. This first slice does not expose student attempts, submitted answers, selected answers, evaluation results, feedback generation, scoring, mastery calculation, weak-area calculation, LLM prompt execution, human review workflow, UI, HTTP routes, or CLI commands.
 
 ## Tests
 
@@ -336,7 +337,7 @@ type AcceptedAssessmentRejectionReason =
 11. `listAcceptedAssessmentCriteria` returns only current accepted criterion revisions for the requested Program.
 12. `getAcceptedAssessmentCriterionRevision` returns a historical criterion revision to authorized callers and rejects unknown revisions with `criterion_revision_not_found`.
 13. `createOpenAnswerCheckCandidate` accepts an effective Program Curator and returns a draft open-answer check candidate.
-14. `createOpenAnswerCheckCandidate` rejects invalid `title`, invalid `prompt`, unsupported check kind, and non-array source or criterion references with `validation_failed`.
+14. `createOpenAnswerCheckCandidate` rejects invalid `title`, invalid `prompt`, unsupported check kind, non-array source references, and missing, empty, or non-array criterion references with `validation_failed`.
 15. `createOpenAnswerCheckCandidate` rejects unknown and cross-Program source ids with `source_not_found` and `source_program_mismatch`.
 16. `createOpenAnswerCheckCandidate` rejects unknown and cross-Program criterion entities with `criterion_entity_not_found` and `criterion_entity_program_mismatch`.
 17. `acceptOpenAnswerCheckCandidate` creates a new accepted open-answer check entity and snapshots current criterion revision ids.
@@ -348,12 +349,13 @@ type AcceptedAssessmentRejectionReason =
 23. `listAcceptedOpenAnswerChecks` returns only current accepted check revisions for the requested Program.
 24. `getAcceptedOpenAnswerCheckRevision` returns a historical check revision to authorized callers and rejects unknown revisions with `check_revision_not_found`.
 25. Candidate list queries return only requested-Program candidates and apply `draft`, `accepted`, and `rejected` filters.
-26. Accepted check and criterion responses never include draft or rejected candidates.
-27. Candidate rejection or cleanup does not delete accepted revisions.
-28. Accepted check and criterion commands do not create Student Workspace attempts, answers, feedback, progress evidence, mastery state, or weak-area state.
-29. Admin callers without effective Program Curator participation can read accepted checks and criteria but cannot create, accept, or reject candidates.
-30. Responses and rejection results satisfy the redaction rules.
-31. Executable acceptance flow: a Program Curator creates and accepts a criterion, creates and accepts an open-answer check linked to that criterion, revises the criterion, verifies the accepted check revision still points at the original criterion revision, lists the accepted check as a Student, fetches historical criterion and check revisions, rejects separate draft candidates, and verifies no Student Workspace state or assessment feedback is created.
+26. Candidate list queries reject unsupported status filters with `validation_failed`.
+27. Accepted check and criterion responses never include draft or rejected candidates.
+28. Candidate rejection or cleanup does not delete accepted revisions.
+29. Accepted check and criterion commands do not create Student Workspace attempts, answers, feedback, progress evidence, mastery state, or weak-area state.
+30. Admin callers without effective Program Curator participation can read accepted checks and criteria but cannot create, accept, or reject candidates.
+31. Responses and rejection results satisfy the redaction rules.
+32. Executable acceptance flow: a Program Curator creates and accepts a criterion, creates and accepts an open-answer check linked to that criterion, revises the criterion, verifies the accepted check revision still points at the original criterion revision, lists the accepted check as a Student, fetches historical criterion and check revisions, rejects separate draft candidates, and verifies no Student Workspace state or assessment feedback is created.
 
 ## Done criteria
 
@@ -361,6 +363,7 @@ type AcceptedAssessmentRejectionReason =
 - Effective Program Curator participation is required for all candidate creation, acceptance, and rejection commands.
 - Effective Student, Program Curator, or Admin authority is required for accepted check and accepted criterion read queries.
 - Draft and rejected candidates remain outside accepted corpus.
+- Accepted open-answer checks require at least one accepted assessment criterion reference.
 - Accepted check revisions snapshot criterion revision ids and do not drift when criteria are revised later.
 - Historical check and criterion revisions remain addressable.
 - Student Workspace attempts, answers, feedback, progress evidence, mastery state, and weak-area state are not introduced by this slice.
