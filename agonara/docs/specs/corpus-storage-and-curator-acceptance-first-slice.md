@@ -127,12 +127,12 @@ createCorpusCandidate(input: {
 acceptCorpusCandidate(input: {
   actingIdentityId: IdentityId;
   candidateId: CorpusCandidateId;
+  targetEntityId?: AcceptedCorpusEntityId;
 }) -> AcceptCorpusCandidateResult
 
 rejectCorpusCandidate(input: {
   actingIdentityId: IdentityId;
   candidateId: CorpusCandidateId;
-  rationale?: string;
 }) -> RejectCorpusCandidateResult
 ```
 
@@ -218,6 +218,21 @@ type AcceptedCorpusSummary = {
   acceptedAt: string;
 };
 
+type CorpusEventSummary = {
+  corpusEventId: string;
+  eventType:
+    | "program_source_recorded"
+    | "corpus_candidate_created"
+    | "corpus_candidate_accepted"
+    | "corpus_candidate_rejected";
+  actorIdentityId: string;
+  programId?: string;
+  targetId?: string;
+  occurredAt: string;
+  outcome: "accepted" | "rejected";
+  reason?: CorpusRejectionReason;
+};
+
 type CorpusRejectionReason =
   | "identity_not_found"
   | "identity_disabled"
@@ -226,6 +241,9 @@ type CorpusRejectionReason =
   | "participation_required"
   | "candidate_not_found"
   | "revision_not_found"
+  | "accepted_entity_not_found"
+  | "accepted_entity_program_mismatch"
+  | "accepted_kind_mismatch"
   | "candidate_already_accepted"
   | "candidate_already_rejected"
   | "source_not_found"
@@ -260,41 +278,46 @@ type CorpusRejectionReason =
 23. `acceptCorpusCandidate` rejects already rejected candidates with `candidate_already_rejected`.
 24. `acceptCorpusCandidate` requires effective `Program Curator` participation for the candidate's Program.
 25. Accepted `acceptCorpusCandidate` changes the candidate status to `accepted`.
-26. Accepted `acceptCorpusCandidate` creates one accepted corpus entity when no accepted entity exists for that candidate.
-27. Accepted `acceptCorpusCandidate` creates one accepted corpus revision.
-28. Accepted corpus revisions preserve the accepted candidate id, source ids, curator rationale when present, accepting Identity id, Program id, accepted kind, title, body, and acceptance time.
-29. Accepted corpus revisions are immutable after creation.
-30. Accepted corpus entities expose their current accepted revision.
-31. Accepting a candidate does not create Student Workspace state.
-32. Accepting a candidate does not grant Program Membership or Admin authority.
-33. Accepting a candidate does not delete source records or candidate records.
-34. `rejectCorpusCandidate` rejects unknown candidates with `candidate_not_found`.
-35. `rejectCorpusCandidate` rejects already accepted candidates with `candidate_already_accepted`.
-36. `rejectCorpusCandidate` rejects already rejected candidates with `candidate_already_rejected`.
-37. Accepted `rejectCorpusCandidate` changes the candidate status to `rejected`.
-38. Rejected candidates are not visible through accepted corpus queries.
-39. Rejecting a candidate does not delete accepted corpus.
-40. Rejecting a candidate does not delete source records.
-41. `listProgramSources` returns only source records scoped to the requested Program.
-42. `listCorpusCandidates` returns only candidates scoped to the requested Program.
-43. `listCorpusCandidates` applies the optional status filter exactly when provided.
-44. `listAcceptedCorpus` returns only accepted current revisions scoped to the requested Program.
-45. `listAcceptedCorpus` applies the optional accepted kind filter exactly when provided.
-46. `getAcceptedCorpusRevision` returns historical accepted revisions even when they are no longer current.
-47. `getAcceptedCorpusRevision` rejects unknown revision identifiers with `revision_not_found`.
-48. Accepted corpus queries never expose draft-only candidate records that have not been accepted.
-49. Source and candidate queries never expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure details.
-50. Corpus events are domain records, not operational logs.
-51. Accepted source recording creates one accepted `program_source_recorded` Corpus event.
-52. Accepted candidate creation creates one accepted `corpus_candidate_created` Corpus event.
-53. Accepted candidate acceptance creates one accepted `corpus_candidate_accepted` Corpus event.
-54. Accepted candidate rejection creates one accepted `corpus_candidate_rejected` Corpus event.
-55. Rejected curator commands create rejected Corpus events when the acting Identity and Program can be resolved.
-56. Corpus events must not be used as the source of authorization.
-57. Backup/restore scope includes Program source records, candidate records, accepted corpus entities, accepted corpus revisions, and Corpus events.
-58. Restore must reject or refuse activation if an accepted corpus entity has no current accepted revision.
-59. Restore must reject or refuse activation if an accepted corpus revision points to a missing accepted candidate or a source from another Program.
-60. This slice does not expose material file storage, accepted checks, accepted assessment criteria, LLM prompt execution, source reliability scoring, student attempts, assessment feedback, progress state, corpus editing UI, Student Workspace UI, Admin UI, HTTP routes, CLI commands, collaborative editing, branching, merge, or conflict-resolution behavior.
+26. `acceptCorpusCandidate` without `targetEntityId` creates one accepted corpus entity.
+27. `acceptCorpusCandidate` with `targetEntityId` rejects unknown target entities with `accepted_entity_not_found`.
+28. `acceptCorpusCandidate` with `targetEntityId` rejects target entities from another Program with `accepted_entity_program_mismatch`.
+29. `acceptCorpusCandidate` with `targetEntityId` rejects target entities whose accepted kind differs from the candidate kind with `accepted_kind_mismatch`.
+30. Accepted `acceptCorpusCandidate` creates one accepted corpus revision.
+31. Accepted `acceptCorpusCandidate` with `targetEntityId` updates that entity's current revision to the new revision.
+32. Accepted corpus revisions preserve the accepted candidate id, source ids, curator rationale when present, accepting Identity id, Program id, accepted kind, title, body, and acceptance time.
+33. Accepted corpus revisions are immutable after creation.
+34. Accepted corpus entities expose their current accepted revision.
+35. Accepting a candidate does not create Student Workspace state.
+36. Accepting a candidate does not grant Program Membership or Admin authority.
+37. Accepting a candidate does not delete source records or candidate records.
+38. `rejectCorpusCandidate` rejects unknown candidates with `candidate_not_found`.
+39. `rejectCorpusCandidate` rejects already accepted candidates with `candidate_already_accepted`.
+40. `rejectCorpusCandidate` rejects already rejected candidates with `candidate_already_rejected`.
+41. Accepted `rejectCorpusCandidate` changes the candidate status to `rejected`.
+42. Rejected candidates are not visible through accepted corpus queries.
+43. Rejecting a candidate does not delete accepted corpus.
+44. Rejecting a candidate does not delete source records.
+45. `listProgramSources` returns only source records scoped to the requested Program.
+46. `listCorpusCandidates` returns only candidates scoped to the requested Program.
+47. `listCorpusCandidates` applies the optional status filter exactly when provided.
+48. `listAcceptedCorpus` returns only accepted current revisions scoped to the requested Program.
+49. `listAcceptedCorpus` applies the optional accepted kind filter exactly when provided.
+50. `getAcceptedCorpusRevision` returns historical accepted revisions even when they are no longer current.
+51. `getAcceptedCorpusRevision` rejects unknown revision identifiers with `revision_not_found`.
+52. `getAcceptedCorpusRevision` applies accepted corpus read authorization for the revision's Program after resolving the revision.
+53. Accepted corpus queries never expose draft-only candidate records that have not been accepted.
+54. Source and candidate queries never expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure details.
+55. Corpus events are domain records, not operational logs.
+56. Accepted source recording creates one accepted `program_source_recorded` Corpus event.
+57. Accepted candidate creation creates one accepted `corpus_candidate_created` Corpus event.
+58. Accepted candidate acceptance creates one accepted `corpus_candidate_accepted` Corpus event.
+59. Accepted candidate rejection creates one accepted `corpus_candidate_rejected` Corpus event.
+60. Rejected curator commands create rejected Corpus events when the acting Identity and Program can be resolved.
+61. Corpus events must not be used as the source of authorization.
+62. Backup/restore scope includes Program source records, candidate records, accepted corpus entities, accepted corpus revisions, and Corpus events.
+63. Restore must reject or refuse activation if an accepted corpus entity has no current accepted revision.
+64. Restore must reject or refuse activation if an accepted corpus revision points to a missing accepted candidate or a source from another Program.
+65. This slice does not expose material file storage, accepted checks, accepted assessment criteria, LLM prompt execution, source reliability scoring, student attempts, assessment feedback, progress state, corpus editing UI, Student Workspace UI, Admin UI, HTTP routes, CLI commands, collaborative editing, branching, merge, or conflict-resolution behavior.
 
 ## Product intent traceability
 
@@ -333,21 +356,29 @@ type CorpusRejectionReason =
 17. Accepted revisions preserve candidate id, source ids, rationale, accepting Identity id, Program id, accepted kind, title, body, and acceptance time.
 18. Accepted revisions remain addressable through `getAcceptedCorpusRevision`.
 19. `getAcceptedCorpusRevision` rejects unknown revision identifiers with `revision_not_found`.
-20. Repeating `acceptCorpusCandidate` for the same candidate rejects with `candidate_already_accepted`.
-21. `rejectCorpusCandidate` changes draft candidate status to `rejected`.
-22. Rejected candidates do not appear in `listAcceptedCorpus`.
-23. Accepting a rejected candidate rejects with `candidate_already_rejected`.
-24. Rejecting an accepted candidate rejects with `candidate_already_accepted`.
-25. `listProgramSources` returns only sources for the requested Program.
-26. `listCorpusCandidates` returns only candidates for the requested Program and honors the status filter.
-27. `listAcceptedCorpus` rejects callers without effective Student, Program Curator, or Admin access with `participation_required`.
-28. `listAcceptedCorpus` returns only accepted current revisions for the requested Program and honors the accepted kind filter.
-29. Accepted corpus reads never expose draft-only candidate records.
-30. Source, candidate, accepted corpus, and event responses do not expose password hashes, plaintext passwords, bootstrap secrets, sessions, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure details.
-31. Corpus events are created for accepted and rejected curator commands and are not used as authorization input.
-32. Backup/restore includes source records, candidates, accepted corpus entities, accepted corpus revisions, and Corpus events.
-33. Restore rejects accepted corpus entities without current accepted revisions.
-34. Restore rejects accepted revisions pointing to missing candidates or sources from another Program.
+20. Accepting another candidate into an existing accepted entity creates a new current revision while the previous revision remains addressable.
+21. Accepting a candidate into an unknown target entity rejects with `accepted_entity_not_found`.
+22. Accepting a candidate into a target entity from another Program rejects with `accepted_entity_program_mismatch`.
+23. Accepting a candidate into a target entity with a different accepted kind rejects with `accepted_kind_mismatch`.
+24. Repeating `acceptCorpusCandidate` for the same candidate rejects with `candidate_already_accepted`.
+25. `rejectCorpusCandidate` changes draft candidate status to `rejected`.
+26. Rejected candidates do not appear in `listAcceptedCorpus`.
+27. Accepting a rejected candidate rejects with `candidate_already_rejected`.
+28. Rejecting an accepted candidate rejects with `candidate_already_accepted`.
+29. `rejectCorpusCandidate` rejects callers without effective `Program Curator` participation for the candidate Program with `admin_or_curator_required`.
+30. `listProgramSources` returns only sources for the requested Program.
+31. `listCorpusCandidates` returns only candidates for the requested Program and honors the status filter.
+32. `listAcceptedCorpus` rejects callers without effective Student, Program Curator, or Admin access with `participation_required`.
+33. `listAcceptedCorpus` returns only accepted current revisions for the requested Program and honors the accepted kind filter.
+34. `getAcceptedCorpusRevision` rejects callers without effective Student, Program Curator, or Admin access to the revision's Program with `participation_required`.
+35. Accepted corpus reads never expose draft-only candidate records.
+36. `listCorpusEvents` rejects callers without effective `Program Curator` participation with `admin_or_curator_required`.
+37. `listCorpusEvents` returns only Corpus events for the requested Program.
+38. Source, candidate, accepted corpus, and event responses do not expose password hashes, plaintext passwords, bootstrap secrets, sessions, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure details.
+39. Corpus events are created for accepted and rejected curator commands and are not used as authorization input.
+40. Backup/restore includes source records, candidates, accepted corpus entities, accepted corpus revisions, and Corpus events.
+41. Restore rejects accepted corpus entities without current accepted revisions.
+42. Restore rejects accepted revisions pointing to missing candidates or sources from another Program.
 
 ## Done criteria
 
