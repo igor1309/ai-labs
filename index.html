@@ -80,7 +80,8 @@
   }
 
   .card {
-    display: block;
+    display: flex;
+    flex-direction: column;
     position: relative;
     padding: 18px 20px;
     background: var(--card-bg);
@@ -113,11 +114,22 @@
     color: var(--card-accent);
   }
 
+  .card-desc {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--card-text);
+    margin: 0 0 8px;
+    opacity: 0.85;
+  }
+
   .card-path {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
+    font-size: 10px;
     color: var(--card-muted);
     word-break: break-all;
+    margin: 0;
+    margin-top: auto;
+    padding-top: 12px;
   }
 
   /* Dev Skills — dark slate, multi-accent gradient */
@@ -240,46 +252,55 @@
     <div class="grid">
       <a class="card dev-skills" href="dev-skills/index.html">
         <p class="card-title">Dev Skills</p>
+        <p class="card-desc">Reusable agent skills, playbooks, and review templates.</p>
         <p class="card-path">dev-skills/index.html</p>
       </a>
 
       <a class="card ifora-skills" href="file:///Users/igormalyarov/Developer/Fora/iFora/iOS-app/ios.config/.claude/skills/index.html">
         <p class="card-title">iFora Skills</p>
+        <p class="card-desc">Claude skills scoped to the iFora iOS app.</p>
         <p class="card-path">~/Developer/Fora/iFora/iOS-app/ios.config/.claude/skills/index.html</p>
       </a>
 
       <a class="card products" href="docs/products.html">
         <p class="card-title">Products</p>
+        <p class="card-desc">Overview of products built across the workspace.</p>
         <p class="card-path">docs/products.html</p>
       </a>
 
       <a class="card my-way" href="docs/my-way/landing.html">
         <p class="card-title">My Way</p>
+        <p class="card-desc">Personal engineering process, principles, and methodology.</p>
         <p class="card-path">docs/my-way/landing.html</p>
       </a>
 
       <a class="card agonara" href="agonara/docs/user-stories.html">
         <p class="card-title">Agonara User Stories</p>
+        <p class="card-desc">User stories driving the Agonara product.</p>
         <p class="card-path">agonara/docs/user-stories.html</p>
       </a>
 
       <a class="card reinix" href="reinix/docs/landing.html">
         <p class="card-title">Reinix</p>
+        <p class="card-desc">Reinix project landing — scope, docs, and entry points.</p>
         <p class="card-path">reinix/docs/landing.html</p>
       </a>
 
       <a class="card reinix-orch" href="reinix/docs/reinix-orchestration.html">
         <p class="card-title">Reinix Orchestration</p>
+        <p class="card-desc">Orchestration architecture and workflows for Reinix.</p>
         <p class="card-path">reinix/docs/reinix-orchestration.html</p>
       </a>
 
       <a class="card loc-dashboard" href="docs/loc-dashboard.html">
         <p class="card-title">LOC Dashboard</p>
+        <p class="card-desc">Lines-of-code dashboard across all repo projects.</p>
         <p class="card-path">docs/loc-dashboard.html</p>
       </a>
 
       <a class="card am-i-done" href="oracle/apps/am-i-done-web/src/landing.html">
         <p class="card-title">Am I Done</p>
+        <p class="card-desc">Landing page for the Am I Done web app.</p>
         <p class="card-path">oracle/apps/am-i-done-web/src/landing.html</p>
       </a>
     </div>
