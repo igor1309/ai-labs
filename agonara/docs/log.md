@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Implement the accepted open-answer check lifecycle over Corpus Storage: curator-owned check candidates, required criterion references, acceptance into current/historical check revisions, criterion revision snapshotting, rejection, accepted check reads, and redacted response coverage.
 - Harden the accepted assessment criterion lifecycle after adversarial review by authorizing acceptance before candidate state disclosure and rejecting malformed `sourceIds` input.
 - Implement the accepted assessment criterion lifecycle over Corpus Storage: curator-owned draft candidates, acceptance into stable current/historical revisions, rejection, accepted criterion reads for Student/Curator/Admin callers, and redacted response coverage.
 - Harden the accepted checks storage substrate after adversarial review by clearing assessment tables during pre-Phase-5 restores and adding criterion/check candidate status update helpers.

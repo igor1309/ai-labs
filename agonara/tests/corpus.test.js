@@ -8,15 +8,19 @@ import {
   createProgramShellRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
+  getAcceptedOpenAnswerCheckRevisionRecord,
   getAssessmentCriterionCandidateRecord,
   getCorpusCandidateRecord,
+  getOpenAnswerCheckCandidateRecord,
   grantAdminAuthority,
   initializeIdentityStorage,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
+  listAcceptedOpenAnswerCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
+  listOpenAnswerCheckCandidateRecords,
   listProgramSourceRecords,
   openIdentityDatabase,
 } from "../src/storage.js";
@@ -1635,6 +1639,864 @@ test("assessmentCriterionResponses_shouldUseRedactedShapes", async () => {
   }
 });
 
+test("createOpenAnswerCheckCandidate_shouldCreateDraftCandidateForCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Criterion",
+      body: "Criterion body",
+    });
+
+    const result = commands.createOpenAnswerCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: " Check title ",
+      prompt: " Check prompt ",
+      sourceIds: ["source-1"],
+      criterionEntityIds: ["corpus-event-2"],
+      rationale: " Check rationale ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidates: listOpenAnswerCheckCandidateRecords(database, {
+          programId: "program-a",
+          status: "draft",
+        }),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            openAnswerCheckCandidate: {
+              candidateId: "corpus-event-3",
+              programId: "program-a",
+              checkKind: "open_answer",
+              title: "Check title",
+              prompt: "Check prompt",
+              sourceIds: ["source-1"],
+              criterionEntityIds: ["corpus-event-2"],
+              rationale: "Check rationale",
+              status: "draft",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.004Z",
+              updatedAt: "2026-05-28T11:00:00.004Z",
+            },
+          },
+        },
+        candidates: [
+          {
+            id: "corpus-event-3",
+            programId: "program-a",
+            checkKind: "open_answer",
+            title: "Check title",
+            prompt: "Check prompt",
+            sourceIds: ["source-1"],
+            criterionEntityIds: ["corpus-event-2"],
+            rationale: "Check rationale",
+            status: "draft",
+            createdByIdentityId: "identity-curator",
+            createdAt: "2026-05-28T11:00:00.004Z",
+            updatedAt: "2026-05-28T11:00:00.004Z",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createOpenAnswerCheckCandidate_shouldRejectInvalidAuthorizationInputSourcesAndCriteria", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      sourceKind: "article",
+      title: "Other source",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Criterion",
+      body: "Criterion body",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-b",
+      title: "Other criterion",
+      body: "Other criterion body",
+    });
+
+    assert.deepEqual(
+      {
+        inactive: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        unknownProgram: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-missing",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        nonCurator: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        checkKind: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "multiple_choice",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        title: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: " ",
+          prompt: "Prompt",
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        prompt: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: " ",
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        rationale: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["corpus-event-2"],
+          rationale: " ",
+        }),
+        nullSourceIds: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          sourceIds: null,
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        emptyCriteria: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: [],
+        }),
+        missingCriteria: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+        }),
+        missingSource: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          sourceIds: ["source-missing"],
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        crossProgramSource: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          sourceIds: ["source-1"],
+          criterionEntityIds: ["corpus-event-2"],
+        }),
+        missingCriterion: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["criterion-missing"],
+        }),
+        crossProgramCriterion: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: ["source-4"],
+        }),
+      },
+      {
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        nonCurator: { status: "rejected", reason: "admin_or_curator_required" },
+        checkKind: { status: "rejected", reason: "validation_failed" },
+        title: { status: "rejected", reason: "validation_failed" },
+        prompt: { status: "rejected", reason: "validation_failed" },
+        rationale: { status: "rejected", reason: "validation_failed" },
+        nullSourceIds: { status: "rejected", reason: "validation_failed" },
+        emptyCriteria: { status: "rejected", reason: "validation_failed" },
+        missingCriteria: { status: "rejected", reason: "validation_failed" },
+        missingSource: { status: "rejected", reason: "source_not_found" },
+        crossProgramSource: { status: "rejected", reason: "source_program_mismatch" },
+        missingCriterion: { status: "rejected", reason: "criterion_entity_not_found" },
+        crossProgramCriterion: {
+          status: "rejected",
+          reason: "criterion_entity_program_mismatch",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listOpenAnswerCheckCandidates_shouldReturnProgramCandidatesMatchingSupportedStatusForCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Program A criterion",
+      body: "Program A criterion body",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-b",
+      title: "Program B criterion",
+      body: "Program B criterion body",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Program A check",
+      prompt: "Program A prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      checkKind: "open_answer",
+      title: "Program B check",
+      prompt: "Program B prompt",
+      criterionEntityIds: ["source-3"],
+    });
+
+    assert.deepEqual(
+      {
+        draft: commands.listOpenAnswerCheckCandidates?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "draft",
+        }),
+        unsupported: commands.listOpenAnswerCheckCandidates?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "archived",
+        }),
+        nonCurator: commands.listOpenAnswerCheckCandidates?.({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+          status: "draft",
+        }),
+      },
+      {
+        draft: {
+          status: "accepted",
+          value: {
+            openAnswerCheckCandidates: [
+              {
+                candidateId: "source-4",
+                programId: "program-a",
+                checkKind: "open_answer",
+                title: "Program A check",
+                prompt: "Program A prompt",
+                sourceIds: [],
+                criterionEntityIds: ["corpus-event-1"],
+                status: "draft",
+                createdByIdentityId: "identity-curator",
+                createdAt: "2026-05-28T11:00:00.004Z",
+                updatedAt: "2026-05-28T11:00:00.004Z",
+              },
+            ],
+          },
+        },
+        unsupported: { status: "rejected", reason: "validation_failed" },
+        nonCurator: { status: "rejected", reason: "admin_or_curator_required" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptOpenAnswerCheckCandidate_shouldCreateAcceptedRevisionAndSnapshotCurrentCriterionRevision", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Criterion",
+      body: "Criterion body",
+      sourceIds: ["source-1"],
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Accepted check",
+      prompt: "Accepted prompt",
+      sourceIds: ["source-1"],
+      criterionEntityIds: ["corpus-event-2"],
+      rationale: "Accepted rationale",
+    });
+
+    const result = commands.acceptOpenAnswerCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-3",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidateStatus: getOpenAnswerCheckCandidateRecord(database, "corpus-event-3")?.status,
+        entity: listAcceptedOpenAnswerCheckEntityRecords(database, { programId: "program-a" }),
+        revision: getAcceptedOpenAnswerCheckRevisionRecord(database, "corpus-event-4"),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            acceptedOpenAnswerCheck: {
+              entityId: "source-4",
+              revisionId: "corpus-event-4",
+              programId: "program-a",
+              checkKind: "open_answer",
+              title: "Accepted check",
+              prompt: "Accepted prompt",
+              acceptedFromCandidateId: "corpus-event-3",
+              sourceIds: ["source-1"],
+              criterionRevisionIds: ["source-3"],
+              rationale: "Accepted rationale",
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.005Z",
+            },
+          },
+        },
+        candidateStatus: "accepted",
+        entity: [
+          {
+            id: "source-4",
+            programId: "program-a",
+            currentRevisionId: "corpus-event-4",
+          },
+        ],
+        revision: {
+          id: "corpus-event-4",
+          entityId: "source-4",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Accepted check",
+          prompt: "Accepted prompt",
+          acceptedFromCandidateId: "corpus-event-3",
+          sourceIds: ["source-1"],
+          criterionRevisionIds: ["source-3"],
+          rationale: "Accepted rationale",
+          acceptedByIdentityId: "identity-curator",
+          acceptedAt: "2026-05-28T11:00:00.005Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptOpenAnswerCheckCandidate_shouldKeepCriterionSnapshotAndHistoricalCheckRevision", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "First criterion",
+      body: "First criterion body",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "First check",
+      prompt: "First prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+    });
+    commands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Second criterion",
+      body: "Second criterion body",
+    });
+    commands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-4",
+      targetEntityId: "corpus-event-1",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Second check",
+      prompt: "Second prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-5",
+      targetEntityId: "source-3",
+    });
+
+    assert.deepEqual(
+      {
+        current: commands.listAcceptedOpenAnswerChecks?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        historical: commands.getAcceptedOpenAnswerCheckRevision?.({
+          actingIdentityId: "identity-curator",
+          revisionId: "corpus-event-3",
+        }),
+      },
+      {
+        current: {
+          status: "accepted",
+          value: {
+            acceptedOpenAnswerChecks: [
+              {
+                entityId: "source-3",
+                revisionId: "corpus-event-5",
+                programId: "program-a",
+                checkKind: "open_answer",
+                title: "Second check",
+                prompt: "Second prompt",
+                acceptedFromCandidateId: "source-5",
+                sourceIds: [],
+                criterionRevisionIds: ["corpus-event-4"],
+                acceptedByIdentityId: "identity-curator",
+                acceptedAt: "2026-05-28T11:00:00.007Z",
+              },
+            ],
+          },
+        },
+        historical: {
+          status: "accepted",
+          value: {
+            acceptedOpenAnswerCheck: {
+              entityId: "source-3",
+              revisionId: "corpus-event-3",
+              programId: "program-a",
+              checkKind: "open_answer",
+              title: "First check",
+              prompt: "First prompt",
+              acceptedFromCandidateId: "corpus-event-2",
+              sourceIds: [],
+              criterionRevisionIds: ["source-2"],
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptOpenAnswerCheckCandidate_shouldRejectInvalidCandidateStatesAndTargets", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Program A criterion",
+      body: "Program A criterion body",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-b",
+      title: "Program B criterion",
+      body: "Program B criterion body",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Accepted check",
+      prompt: "Accepted prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-4",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Rejected check",
+      prompt: "Rejected prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.rejectOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-5",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      checkKind: "open_answer",
+      title: "Other check",
+      prompt: "Other prompt",
+      criterionEntityIds: ["source-3"],
+    });
+    commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-6",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Target check",
+      prompt: "Target prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "check-candidate-missing",
+        }),
+        alreadyAccepted: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-4",
+        }),
+        rejectAlreadyAccepted: commands.rejectOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-4",
+        }),
+        unauthorizedAccepted: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-other",
+          candidateId: "source-4",
+        }),
+        alreadyRejected: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-5",
+        }),
+        missingTarget: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-7",
+          targetEntityId: "check-entity-missing",
+        }),
+        targetProgramMismatch: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-7",
+          targetEntityId: "corpus-event-6",
+        }),
+      },
+      {
+        unknown: { status: "rejected", reason: "check_candidate_not_found" },
+        alreadyAccepted: { status: "rejected", reason: "check_candidate_already_accepted" },
+        rejectAlreadyAccepted: {
+          status: "rejected",
+          reason: "check_candidate_already_accepted",
+        },
+        unauthorizedAccepted: { status: "rejected", reason: "admin_or_curator_required" },
+        alreadyRejected: { status: "rejected", reason: "check_candidate_already_rejected" },
+        missingTarget: { status: "rejected", reason: "check_entity_not_found" },
+        targetProgramMismatch: { status: "rejected", reason: "check_entity_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("rejectOpenAnswerCheckCandidate_shouldChangeDraftToRejectedWithoutAcceptedCheck", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Criterion",
+      body: "Criterion body",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Rejected check",
+      prompt: "Rejected prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+
+    const result = commands.rejectOpenAnswerCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+    });
+    const alreadyRejectedResult = commands.rejectOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        unknown: commands.rejectOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "check-candidate-missing",
+        }),
+        alreadyRejectedResult,
+        rejected: commands.listOpenAnswerCheckCandidates({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "rejected",
+        }),
+        acceptedEntities: listAcceptedOpenAnswerCheckEntityRecords(database, { programId: "program-a" }),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            openAnswerCheckCandidate: {
+              candidateId: "corpus-event-2",
+              programId: "program-a",
+              checkKind: "open_answer",
+              title: "Rejected check",
+              prompt: "Rejected prompt",
+              sourceIds: [],
+              criterionEntityIds: ["corpus-event-1"],
+              status: "rejected",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.002Z",
+              updatedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+        unknown: { status: "rejected", reason: "check_candidate_not_found" },
+        alreadyRejectedResult: {
+          status: "rejected",
+          reason: "check_candidate_already_rejected",
+        },
+        rejected: {
+          status: "accepted",
+          value: {
+            openAnswerCheckCandidates: [
+              {
+                candidateId: "corpus-event-2",
+                programId: "program-a",
+                checkKind: "open_answer",
+                title: "Rejected check",
+                prompt: "Rejected prompt",
+                sourceIds: [],
+                criterionEntityIds: ["corpus-event-1"],
+                status: "rejected",
+                createdByIdentityId: "identity-curator",
+                createdAt: "2026-05-28T11:00:00.002Z",
+                updatedAt: "2026-05-28T11:00:00.003Z",
+              },
+            ],
+          },
+        },
+        acceptedEntities: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listAcceptedOpenAnswerChecks_shouldAuthorizeStudentCuratorAndAdminOnly", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-05-28T10:47:00.000Z",
+      updatedAt: "2026-05-28T10:47:00.000Z",
+    });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Criterion",
+      body: "Criterion body",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Accepted check",
+      prompt: "Accepted prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+    });
+
+    assert.deepEqual(
+      {
+        student: commands.listAcceptedOpenAnswerChecks({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }).status,
+        curator: commands.listAcceptedOpenAnswerChecks({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }).status,
+        admin: commands.listAcceptedOpenAnswerChecks({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+        }).status,
+        other: commands.listAcceptedOpenAnswerChecks({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+        }),
+        adminCreate: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Admin check",
+          prompt: "Admin prompt",
+          criterionEntityIds: ["corpus-event-1"],
+        }),
+        missingRevision: commands.getAcceptedOpenAnswerCheckRevision({
+          actingIdentityId: "identity-curator",
+          revisionId: "check-revision-missing",
+        }),
+      },
+      {
+        student: "accepted",
+        curator: "accepted",
+        admin: "accepted",
+        other: { status: "rejected", reason: "participation_required" },
+        adminCreate: { status: "rejected", reason: "admin_or_curator_required" },
+        missingRevision: { status: "rejected", reason: "check_revision_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("openAnswerCheckResponses_shouldUseRedactedShapes", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedAcceptedAssessmentCriterion(commands, {
+      programId: "program-a",
+      title: "Criterion",
+      body: "Criterion body",
+    });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Accepted check",
+      prompt: "Accepted prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
+    commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-4",
+    });
+    const candidateResult = commands.listOpenAnswerCheckCandidates({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const acceptedResult = commands.listAcceptedOpenAnswerChecks({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const rejectionResult = commands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-2",
+    });
+
+    assert.deepEqual(
+      containsForbiddenDetail([candidateResult, acceptedResult, rejectionResult]),
+      false,
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listCorpusEvents_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 
@@ -2023,6 +2885,23 @@ function containsForbiddenDetail(values) {
     "stack",
     "127.0.0.1",
   ].some($0 => serialized.includes($0));
+}
+
+function seedAcceptedAssessmentCriterion(
+  commands,
+  { programId, title, body, sourceIds = [] },
+) {
+  const candidate = commands.createAssessmentCriterionCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    title,
+    body,
+    sourceIds,
+  });
+  commands.acceptAssessmentCriterionCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.assessmentCriterionCandidate.candidateId,
+  });
 }
 
 function makeIdentity({ id, state = "active" }) {
