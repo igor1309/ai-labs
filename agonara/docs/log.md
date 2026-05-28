@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Implement Curator Workspace candidate creation, listing, and rejection over the Corpus boundary, preserving draft/rejected candidate separation and candidate Corpus events.
 - Implement the first Corpus command/query boundary for Program source recording and listing, including effective curator authorization, validation, source persistence, and Corpus source events.
 - Implement the Corpus Storage persistence substrate for Program sources, Corpus candidates, accepted corpus entities/revisions, and Corpus events, with storage-level Program scoping and current-revision integrity checks.
 - Add the Corpus Storage and Curator Acceptance first-slice implementation plan, sequencing storage, source, candidate, acceptance, backup/restore, event, and executable acceptance work through strict TDD phases with per-phase green-gate commits.

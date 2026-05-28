@@ -531,6 +531,18 @@ export function listCorpusCandidateRecords(database, { programId, status = null 
     .map(mapCorpusCandidateRecord);
 }
 
+export function updateCorpusCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update corpus_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getCorpusCandidateRecord(database, candidateId);
+}
+
 export function createAcceptedCorpusEntityRecord(
   database,
   { id, programId, acceptedKind, currentRevisionId },

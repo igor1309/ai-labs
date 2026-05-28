@@ -6,6 +6,7 @@ import {
   createProgramMembershipRecord,
   createProgramShellRecord,
   initializeIdentityStorage,
+  listCorpusCandidateRecords,
   listCorpusEventRecords,
   listProgramSourceRecords,
   openIdentityDatabase,
@@ -251,6 +252,370 @@ test("listProgramSources_shouldReturnOnlySourcesForRequestedProgram", async () =
             },
           ],
         },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createCorpusCandidate_shouldRejectNonCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    assert.deepEqual(
+      commands.createCorpusCandidate?.({
+        actingIdentityId: "identity-curator",
+        programId: "program-a",
+        candidateKind: "topic",
+        title: "Candidate",
+      }),
+      { status: "rejected", reason: "admin_or_curator_required" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createCorpusCandidate_shouldCreateDraftCandidateAndEvent_onValidSource", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+
+    const result = commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: " Candidate ",
+      body: " Body ",
+      sourceIds: ["source-1"],
+      rationale: " Rationale ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidates: listCorpusCandidateRecords(database, {
+          programId: "program-a",
+          status: "draft",
+        }),
+        events: listCorpusEventRecords(database, { programId: "program-a" }).map($0 => ({
+          eventType: $0.eventType,
+          targetId: $0.targetId,
+          outcome: $0.outcome,
+          reason: $0.reason,
+        })),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            corpusCandidate: {
+              candidateId: "source-2",
+              programId: "program-a",
+              candidateKind: "topic",
+              title: "Candidate",
+              body: "Body",
+              sourceIds: ["source-1"],
+              rationale: "Rationale",
+              status: "draft",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.002Z",
+              updatedAt: "2026-05-28T11:00:00.002Z",
+            },
+          },
+        },
+        candidates: [
+          {
+            id: "source-2",
+            programId: "program-a",
+            candidateKind: "topic",
+            title: "Candidate",
+            body: "Body",
+            sourceIds: ["source-1"],
+            rationale: "Rationale",
+            status: "draft",
+            createdByIdentityId: "identity-curator",
+            createdAt: "2026-05-28T11:00:00.002Z",
+            updatedAt: "2026-05-28T11:00:00.002Z",
+          },
+        ],
+        events: [
+          {
+            eventType: "program_source_recorded",
+            targetId: "source-1",
+            outcome: "accepted",
+            reason: null,
+          },
+          {
+            eventType: "corpus_candidate_created",
+            targetId: "source-2",
+            outcome: "accepted",
+            reason: null,
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createCorpusCandidate_shouldRejectInvalidCandidateInputAndSources", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      sourceKind: "article",
+      title: "Other source",
+    });
+
+    assert.deepEqual(
+      {
+        candidateKind: commands.createCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "unsupported",
+          title: "Candidate",
+        }),
+        title: commands.createCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: " ",
+        }),
+        body: commands.createCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: "Candidate",
+          body: " ",
+        }),
+        rationale: commands.createCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: "Candidate",
+          rationale: " ",
+        }),
+        missingSource: commands.createCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: "Candidate",
+          sourceIds: ["source-missing"],
+        }),
+        crossProgramSource: commands.createCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: "Candidate",
+          sourceIds: ["source-1"],
+        }),
+      },
+      {
+        candidateKind: { status: "rejected", reason: "validation_failed" },
+        title: { status: "rejected", reason: "validation_failed" },
+        body: { status: "rejected", reason: "validation_failed" },
+        rationale: { status: "rejected", reason: "validation_failed" },
+        missingSource: { status: "rejected", reason: "source_not_found" },
+        crossProgramSource: { status: "rejected", reason: "source_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listCorpusCandidates_shouldReturnOnlyProgramCandidatesMatchingStatus", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Program A draft",
+    });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      candidateKind: "topic",
+      title: "Program B draft",
+    });
+
+    assert.deepEqual(
+      commands.listCorpusCandidates?.({
+        actingIdentityId: "identity-curator",
+        programId: "program-a",
+        status: "draft",
+      }),
+      {
+        status: "accepted",
+        value: {
+          corpusCandidates: [
+            {
+              candidateId: "source-1",
+              programId: "program-a",
+              candidateKind: "topic",
+              title: "Program A draft",
+              sourceIds: [],
+              status: "draft",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.000Z",
+              updatedAt: "2026-05-28T11:00:00.000Z",
+            },
+          ],
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("rejectCorpusCandidate_shouldChangeDraftToRejectedAndEmitEvent", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Candidate",
+    });
+
+    const result = commands.rejectCorpusCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        rejected: commands.listCorpusCandidates({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "rejected",
+        }),
+        draft: commands.listCorpusCandidates({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "draft",
+        }),
+        events: listCorpusEventRecords(database, { programId: "program-a" }).map($0 => ({
+          eventType: $0.eventType,
+          targetId: $0.targetId,
+          outcome: $0.outcome,
+          reason: $0.reason,
+        })),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            corpusCandidate: {
+              candidateId: "source-1",
+              programId: "program-a",
+              candidateKind: "topic",
+              title: "Candidate",
+              sourceIds: [],
+              status: "rejected",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.000Z",
+              updatedAt: "2026-05-28T11:00:00.002Z",
+            },
+          },
+        },
+        rejected: {
+          status: "accepted",
+          value: {
+            corpusCandidates: [
+              {
+                candidateId: "source-1",
+                programId: "program-a",
+                candidateKind: "topic",
+                title: "Candidate",
+                sourceIds: [],
+                status: "rejected",
+                createdByIdentityId: "identity-curator",
+                createdAt: "2026-05-28T11:00:00.000Z",
+                updatedAt: "2026-05-28T11:00:00.002Z",
+              },
+            ],
+          },
+        },
+        draft: {
+          status: "accepted",
+          value: { corpusCandidates: [] },
+        },
+        events: [
+          {
+            eventType: "corpus_candidate_created",
+            targetId: "source-1",
+            outcome: "accepted",
+            reason: null,
+          },
+          {
+            eventType: "corpus_candidate_rejected",
+            targetId: "source-1",
+            outcome: "accepted",
+            reason: null,
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("rejectCorpusCandidate_shouldRejectUnknownAndAlreadyRejectedCandidates", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Candidate",
+    });
+    commands.rejectCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.rejectCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "candidate-missing",
+        }),
+        alreadyRejected: commands.rejectCorpusCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-1",
+        }),
+      },
+      {
+        unknown: { status: "rejected", reason: "candidate_not_found" },
+        alreadyRejected: { status: "rejected", reason: "candidate_already_rejected" },
       },
     );
   } finally {
