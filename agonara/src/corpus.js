@@ -1,14 +1,21 @@
 import { randomUUID } from "node:crypto";
 import {
   StorageInvariantError,
+  createAcceptedCorpusEntityRecord,
+  createAcceptedCorpusRevisionRecord,
   createCorpusCandidateRecord,
   createCorpusEventRecord,
   createProgramSourceRecord,
+  getAcceptedCorpusEntityRecord,
+  getAcceptedCorpusRevisionRecord,
   getCorpusCandidateRecord,
   getIdentity,
   getProgramShellRecord,
+  isEffectiveAdmin,
+  listAcceptedCorpusEntityRecords,
   listCorpusCandidateRecords,
   listProgramSourceRecords,
+  updateAcceptedCorpusEntityCurrentRevision,
   updateCorpusCandidateStatus,
 } from "./storage.js";
 
@@ -33,8 +40,14 @@ export function createCorpusCommands({
   now = () => new Date(),
 } = {}) {
   return {
+    acceptCorpusCandidate: input =>
+      acceptCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     createCorpusCandidate: input =>
       createCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
+    getAcceptedCorpusRevision: input =>
+      getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }),
+    listAcceptedCorpus: input =>
+      listAcceptedCorpus({ database, getEffectiveParticipation, input }),
     listCorpusCandidates: input =>
       listCorpusCandidates({ database, getEffectiveParticipation, input }),
     listProgramSources: input =>
@@ -44,6 +57,132 @@ export function createCorpusCommands({
     rejectCorpusCandidate: input =>
       rejectCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
   };
+}
+
+function acceptCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
+  const candidate = getCorpusCandidateRecord(database, input?.candidateId);
+  if (!candidate) {
+    return rejected("candidate_not_found");
+  }
+  if (candidate.status === "accepted") {
+    return rejected("candidate_already_accepted");
+  }
+  if (candidate.status === "rejected") {
+    return rejected("candidate_already_rejected");
+  }
+
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: candidate.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const entityId = input?.targetEntityId ?? generateId();
+  const revisionId = generateId();
+  const acceptedAt = now().toISOString();
+  const targetEntity = input?.targetEntityId ? getAcceptedCorpusEntityRecord(database, input.targetEntityId) : null;
+
+  if (input?.targetEntityId && !targetEntity) {
+    return rejected("accepted_entity_not_found");
+  }
+  if (targetEntity && targetEntity.programId !== candidate.programId) {
+    return rejected("accepted_entity_program_mismatch");
+  }
+  if (targetEntity && targetEntity.acceptedKind !== candidate.candidateKind) {
+    return rejected("accepted_kind_mismatch");
+  }
+
+  const revision = database.transaction(() => {
+    if (!input?.targetEntityId) {
+      createAcceptedCorpusEntityRecord(database, {
+        id: entityId,
+        programId: candidate.programId,
+        acceptedKind: candidate.candidateKind,
+        currentRevisionId: revisionId,
+      });
+    }
+
+    const createdRevision = createAcceptedCorpusRevisionRecord(database, {
+      id: revisionId,
+      entityId,
+      programId: candidate.programId,
+      acceptedKind: candidate.candidateKind,
+      title: candidate.title,
+      body: candidate.body,
+      acceptedFromCandidateId: candidate.id,
+      sourceIds: candidate.sourceIds,
+      rationale: candidate.rationale,
+      acceptedByIdentityId: authorization.identity.id,
+      acceptedAt,
+    });
+    if (input?.targetEntityId) {
+      updateAcceptedCorpusEntityCurrentRevision(database, {
+        entityId,
+        currentRevisionId: revisionId,
+      });
+    }
+    updateCorpusCandidateStatus(database, {
+      candidateId: candidate.id,
+      status: "accepted",
+      updatedAt: acceptedAt,
+    });
+    return createdRevision;
+  })();
+
+  recordCorpusEvent({
+    database,
+    generateId,
+    now,
+    eventType: "corpus_candidate_accepted",
+    actorIdentityId: authorization.identity.id,
+    programId: authorization.program.id,
+    targetId: candidate.id,
+    outcome: "accepted",
+  });
+
+  return accepted({ acceptedCorpus: summarizeAcceptedCorpus(revision) });
+}
+
+function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveAcceptedReadAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const entities = listAcceptedCorpusEntityRecords(database, {
+    programId: authorization.program.id,
+  }).filter($0 => input?.acceptedKind === undefined || $0.acceptedKind === input.acceptedKind);
+
+  return accepted({
+    acceptedCorpus: entities.map($0 =>
+      summarizeAcceptedCorpus(getAcceptedCorpusRevisionRecord(database, $0.currentRevisionId)),
+    ),
+  });
+}
+
+function getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }) {
+  const revision = getAcceptedCorpusRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("revision_not_found");
+  }
+
+  const authorization = resolveAcceptedReadAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: revision.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  return accepted({ acceptedCorpus: summarizeAcceptedCorpus(revision) });
 }
 
 function createCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
@@ -313,6 +452,42 @@ function resolveCuratorAuthorization({ database, getEffectiveParticipation, inpu
   return { status: "accepted", identity, program };
 }
 
+function resolveAcceptedReadAuthorization({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity) {
+    return { status: "rejected", reason: "identity_not_found" };
+  }
+  if (identity.state !== "active") {
+    return { status: "rejected", reason: "identity_disabled" };
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return { status: "rejected", reason: "program_not_found" };
+  }
+
+  if (isEffectiveAdmin(database, identity.id)) {
+    return { status: "accepted", identity, program };
+  }
+
+  const studentParticipation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  const curatorParticipation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "program_curator",
+  });
+
+  if (studentParticipation.allowed || curatorParticipation.allowed) {
+    return { status: "accepted", identity, program };
+  }
+
+  return { status: "rejected", reason: "participation_required" };
+}
+
 function recordCorpusEvent({
   database,
   generateId,
@@ -374,6 +549,29 @@ function summarizeCorpusCandidate(candidate) {
   }
   if (candidate.rationale !== null) {
     summary.rationale = candidate.rationale;
+  }
+
+  return summary;
+}
+
+function summarizeAcceptedCorpus(revision) {
+  const summary = {
+    entityId: revision.entityId,
+    revisionId: revision.id,
+    programId: revision.programId,
+    acceptedKind: revision.acceptedKind,
+    title: revision.title,
+    acceptedFromCandidateId: revision.acceptedFromCandidateId,
+    sourceIds: revision.sourceIds,
+    acceptedByIdentityId: revision.acceptedByIdentityId,
+    acceptedAt: revision.acceptedAt,
+  };
+
+  if (revision.body !== null) {
+    summary.body = revision.body;
+  }
+  if (revision.rationale !== null) {
+    summary.rationale = revision.rationale;
   }
 
   return summary;
