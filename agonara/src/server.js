@@ -550,6 +550,7 @@ async function handleCorpusApi({
   response,
 }) {
   const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
+  const candidatesMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-candidates$/);
   if (request.method === "GET" && sourcesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -570,6 +571,43 @@ async function handleCorpusApi({
       programId,
     });
     const mappedResult = mapCorpusSourceListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && candidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(candidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `corpus-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listCorpusCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapCorpusCandidateListResult({
       generateToken,
       listCursors,
       query: query.value,
@@ -608,6 +646,42 @@ async function handleCorpusApi({
       title: body.value.title,
     });
     sendJson(response, statusForResult(result), mapProgramSourceResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && candidatesMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    if (body.value.sourceIds !== undefined && !Array.isArray(body.value.sourceIds)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createCorpusCandidate({
+      actingIdentityId: session.value.identity.id,
+      body: body.value.body,
+      candidateKind: body.value.candidateKind,
+      programId: decodeURIComponent(candidatesMatch[1]),
+      rationale: body.value.rationale,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapCorpusCandidateResult(result));
     return true;
   }
 
@@ -853,6 +927,14 @@ function mapProgramSourceResult(result) {
   return accepted({ programSource: result.value.programSource });
 }
 
+function mapCorpusCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ corpusCandidate: result.value.corpusCandidate });
+}
+
 function mapProgramEventListResult({
   eventCursors,
   eventKind,
@@ -988,6 +1070,18 @@ function parseListLimit(rawLimit) {
   return parseEventLimit(rawLimit);
 }
 
+function parseCorpusCandidateStatus(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const status = url.searchParams.get("status");
+  if (status === null) {
+    return accepted(null);
+  }
+  if (status === "draft" || status === "accepted" || status === "rejected") {
+    return accepted(status);
+  }
+  return rejected("validation_failed");
+}
+
 function paginateList({ generateToken, items, limit, listCursors, offset, routeKey }) {
   if (!Number.isSafeInteger(offset) || offset < 0 || offset > items.length) {
     return rejected("validation_failed");
@@ -1024,6 +1118,29 @@ function mapCorpusSourceListResult({ generateToken, listCursors, query, result, 
 
   return accepted({
     programSources: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapCorpusCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.corpusCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    corpusCandidates: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }

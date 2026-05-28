@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Complete the Corpus HTTP API candidate route phase with curator-only candidate listing/creation, status-filtered pagination, CSRF-before-mutation coverage, source ownership rejection mapping, and draft isolation from accepted corpus.
 - Complete the Corpus HTTP API Program source route phase with HTTP coverage for Program-scoped source listing, curator-only access, unknown Program rejection, CSRF-before-mutation behavior, accepted source creation events, and source validation failures.
 - Start the Corpus Storage and Curator Acceptance HTTP API implementation with the Phase 1 transport substrate: dedicated worktree preflight, Corpus command composition, session-backed source route dispatch, Corpus status mapping, shared list pagination, and strict Corpus JSON body classification.
 - Add the Corpus Storage and Curator Acceptance HTTP API implementation plan, sequencing the route adapter work through strict TDD phases for shared transport helpers, source routes, candidate routes, acceptance/rejection, accepted corpus reads, Corpus events, and executable closeout.
