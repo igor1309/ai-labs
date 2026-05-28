@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
+import { createCorpusCommands } from "./corpus.js";
 import { createIdentityCommands } from "./identity.js";
 import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
@@ -9,6 +10,7 @@ import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 export function createServer({
   generateToken = randomUUID,
   healthCheck = () => "ok",
+  corpusCommands = null,
   identityCommands = null,
   log = logToStdout,
   now = () => new Date(),
@@ -16,6 +18,7 @@ export function createServer({
 } = {}) {
   const csrfTokens = new Map();
   const eventCursors = new Map();
+  const listCursors = new Map();
   const failedAuthAttempts = new Map();
 
   return http.createServer(async (request, response) => {
@@ -52,6 +55,22 @@ export function createServer({
           identityCommands,
           pathname,
           programCommands,
+          request,
+          response,
+        });
+        if (handled) {
+          return;
+        }
+      }
+
+      if (identityCommands && corpusCommands) {
+        const handled = await handleCorpusApi({
+          corpusCommands,
+          csrfTokens,
+          generateToken,
+          identityCommands,
+          listCursors,
+          pathname,
           request,
           response,
         });
@@ -520,6 +539,78 @@ async function handleProgramApi({
   return false;
 }
 
+async function handleCorpusApi({
+  corpusCommands,
+  csrfTokens,
+  generateToken,
+  identityCommands,
+  listCursors,
+  pathname,
+  request,
+  response,
+}) {
+  const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
+  if (request.method === "GET" && sourcesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(sourcesMatch[1]);
+    const routeKey = `corpus-sources:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listProgramSources({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    sendJson(
+      response,
+      statusForResult(result),
+      mapCorpusSourceListResult({ generateToken, listCursors, query: query.value, result, routeKey }),
+    );
+    return true;
+  }
+
+  if (request.method === "POST" && sourcesMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.recordProgramSource({
+      actingIdentityId: session.value.identity.id,
+      citation: body.value.citation,
+      locator: body.value.locator,
+      programId: decodeURIComponent(sourcesMatch[1]),
+      sourceKind: body.value.sourceKind,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapProgramSourceResult(result));
+    return true;
+  }
+
+  return false;
+}
+
 export function startServer({
   bootstrapSecret = process.env.AGONARA_BOOTSTRAP_SECRET,
   databasePath = process.env.AGONARA_DB_PATH ?? ":memory:",
@@ -533,14 +624,19 @@ export function startServer({
 
   const database = openIdentityDatabase(databasePath);
   initializeIdentityStorage(database);
+  const programCommands = createProgramCommands({
+    database,
+  });
   const server = createServer({
+    corpusCommands: createCorpusCommands({
+      database,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    }),
     identityCommands: createIdentityCommands({
       bootstrapSecret,
       database,
     }),
-    programCommands: createProgramCommands({
-      database,
-    }),
+    programCommands,
     log,
   });
   server.on("close", () => {
@@ -600,6 +696,10 @@ function rejected(reason) {
   return { status: "rejected", reason };
 }
 
+function resolveHttpSession({ identityCommands, request }) {
+  return identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+}
+
 async function readJson(request) {
   let text = "";
   for await (const chunk of request) {
@@ -615,6 +715,41 @@ async function readJson(request) {
   } catch {
     return {};
   }
+}
+
+async function readRequiredJsonObject(request) {
+  const body = await readJsonBody(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (body.value.kind !== "object") {
+    return rejected("validation_failed");
+  }
+  return accepted(body.value.body);
+}
+
+async function readJsonBody(request) {
+  let text = "";
+  for await (const chunk of request) {
+    text += chunk;
+  }
+
+  if (!text) {
+    return accepted({ kind: "missing" });
+  }
+
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return accepted({ kind: "malformed" });
+  }
+
+  if (body === null || Array.isArray(body) || typeof body !== "object") {
+    return accepted({ kind: "non_object", body });
+  }
+
+  return accepted({ kind: "object", body });
 }
 
 function sessionSummary({ identity, session }, csrfToken, identityCommands) {
@@ -705,6 +840,14 @@ function mapProgramMembershipResult(result) {
   }
 
   return accepted({ membership: result.value.programMembership });
+}
+
+function mapProgramSourceResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ programSource: result.value.programSource });
 }
 
 function mapProgramEventListResult({
@@ -818,6 +961,70 @@ function paginateEvents({ eventCursors, events, generateToken, limit, offset, ro
   });
 }
 
+function parseListQuery({ listCursors, request, routeKey }) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const limit = parseListLimit(url.searchParams.get("limit"));
+  if (limit.status === "rejected") {
+    return limit;
+  }
+
+  const cursor = url.searchParams.get("cursor");
+  if (cursor === null) {
+    return accepted({ limit: limit.value, offset: 0 });
+  }
+
+  const cursorState = listCursors.get(cursor);
+  if (!cursorState || cursorState.routeKey !== routeKey) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ limit: limit.value, offset: cursorState.offset });
+}
+
+function parseListLimit(rawLimit) {
+  return parseEventLimit(rawLimit);
+}
+
+function paginateList({ generateToken, items, limit, listCursors, offset, routeKey }) {
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > items.length) {
+    return rejected("validation_failed");
+  }
+
+  const nextOffset = offset + limit;
+  const nextCursor = nextOffset < items.length ? generateToken() : undefined;
+  if (nextCursor) {
+    listCursors.set(nextCursor, { offset: nextOffset, routeKey });
+  }
+
+  return accepted({
+    items: items.slice(offset, nextOffset),
+    nextCursor,
+  });
+}
+
+function mapCorpusSourceListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.programSources,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    programSources: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
   const csrfToken = generateToken();
   csrfTokens.set(sessionId, csrfToken);
@@ -885,11 +1092,19 @@ function httpStatusFor(reason) {
     case "csrf_invalid":
     case "csrf_required":
     case "identity_disabled":
+    case "participation_required":
       return 403;
     case "identity_not_found":
+    case "accepted_entity_not_found":
+    case "candidate_not_found":
     case "program_not_found":
+    case "revision_not_found":
       return 404;
+    case "accepted_entity_program_mismatch":
+    case "accepted_kind_mismatch":
     case "bootstrap_already_completed":
+    case "candidate_already_accepted":
+    case "candidate_already_rejected":
     case "identity_already_has_credential":
     case "last_admin_removal":
     case "login_already_bound":
@@ -897,6 +1112,8 @@ function httpStatusFor(reason) {
     case "membership_missing":
     case "membership_removed":
     case "program_creation_incomplete":
+    case "source_not_found":
+    case "source_program_mismatch":
       return 409;
     case "rate_limited":
       return 429;

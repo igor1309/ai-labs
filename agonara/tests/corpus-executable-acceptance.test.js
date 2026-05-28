@@ -271,7 +271,7 @@ function listOutOfScopeTables(database) {
 
 function listOutOfScopeSurfaces() {
   const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-  const checkedFiles = ["src/server.js", "src/cli.js", "src/admin-ui.js"];
+  const checkedFiles = ["src/cli.js", "src/admin-ui.js"];
   return checkedFiles.filter(file => {
     const content = readFileSync(join(projectRoot, file), "utf8");
     return /createCorpusCommands|corpusCommands|\/corpus|\/programs\/[^"'`]*\/corpus/.test(content);

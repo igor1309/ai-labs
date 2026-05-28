@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
 import { createServer } from "../src/server.js";
@@ -117,6 +118,146 @@ test("programsList_shouldReturnEmptyPrograms_onActiveSessionWithEmptyStore", asy
         statusCode: 200,
         body: { status: "accepted", value: { programs: [] } },
       },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesList_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs/program-1/sources`);
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listProgramSources: ({ programId }) => ({ status: "rejected", reason: programId }),
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      ["participation_required", 403],
+      ["candidate_not_found", 404],
+      ["revision_not_found", 404],
+      ["accepted_entity_not_found", 404],
+      ["source_not_found", 409],
+      ["source_program_mismatch", 409],
+      ["candidate_already_accepted", 409],
+      ["candidate_already_rejected", 409],
+    ];
+    const responses = [];
+    for (const [reason] of cases) {
+      const response = await fetch(`${baseUrl}/programs/${reason}/sources`, {
+        headers: { cookie: bootstrap.cookie },
+      });
+      responses.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(
+      responses,
+      cases.map(([reason, statusCode]) => ({
+        body: { status: "rejected", reason },
+        statusCode,
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesList_shouldRejectInvalidListQueries_withValidationFailed", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/programs`, {
+      body: JSON.stringify({ title: "Linear Algebra" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+      },
+      method: "POST",
+    });
+    const cases = ["limit=0", "limit=101", "limit=abc", "cursor=unknown"];
+    const responses = [];
+    for (const query of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/sources?${query}`, {
+        headers: { cookie: bootstrap.cookie },
+      });
+      responses.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(
+      responses,
+      cases.map(() => ({
+        body: { status: "rejected", reason: "validation_failed" },
+        statusCode: 400,
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourcesCreate_shouldRejectMalformedMissingAndNonObjectBodies_withValidationFailed", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/programs`, {
+      body: JSON.stringify({ title: "Linear Algebra" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+      },
+      method: "POST",
+    });
+    const cases = [
+      undefined,
+      "not valid json{{{",
+      JSON.stringify([]),
+    ];
+    const responses = [];
+    for (const body of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/sources`, {
+        body,
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+        },
+        method: "POST",
+      });
+      responses.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(
+      responses,
+      cases.map(() => ({
+        body: { status: "rejected", reason: "validation_failed" },
+        statusCode: 400,
+      })),
     );
   } finally {
     await close();
@@ -2205,6 +2346,46 @@ async function listenWithIdentityAndProgram({ ids = defaultIds() } = {}) {
     programCommands: createProgramCommands({
       database,
       generateId,
+      now,
+    }),
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    database,
+  };
+}
+
+async function listenWithIdentityProgramAndCorpus({
+  corpusCommandsOverride = null,
+  ids = defaultIds(),
+} = {}) {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-05-27T10:00:00.000Z");
+  const generateId = makeIdGenerator(ids);
+  const programCommands = createProgramCommands({
+    database,
+    generateId,
+    now,
+  });
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands,
+    corpusCommands: corpusCommandsOverride ?? createCorpusCommands({
+      database,
+      generateId,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
       now,
     }),
     log: () => {},
