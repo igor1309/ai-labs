@@ -551,6 +551,8 @@ async function handleCorpusApi({
 }) {
   const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
   const candidatesMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-candidates$/);
+  const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
+  const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
   if (request.method === "GET" && sourcesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -680,6 +682,61 @@ async function handleCorpusApi({
       rationale: body.value.rationale,
       sourceIds: body.value.sourceIds,
       title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapCorpusCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && candidateAcceptanceMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptCorpusCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(candidateAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapAcceptedCorpusResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && candidateRejectionMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectCorpusCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(candidateRejectionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapCorpusCandidateResult(result));
     return true;
@@ -829,6 +886,40 @@ async function readJsonBody(request) {
   return accepted({ kind: "object", body });
 }
 
+async function readAcceptanceBody(request) {
+  const body = await readJsonBody(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (body.value.kind === "missing") {
+    return accepted({});
+  }
+  if (body.value.kind !== "object") {
+    return rejected("validation_failed");
+  }
+  if (
+    body.value.body.targetEntityId !== undefined &&
+    typeof body.value.body.targetEntityId !== "string"
+  ) {
+    return rejected("validation_failed");
+  }
+  return accepted({ targetEntityId: body.value.body.targetEntityId });
+}
+
+async function readRejectionBody(request) {
+  const body = await readJsonBody(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (body.value.kind === "missing") {
+    return accepted({});
+  }
+  if (body.value.kind === "object" && Object.keys(body.value.body).length === 0) {
+    return accepted({});
+  }
+  return rejected("validation_failed");
+}
+
 function sessionSummary({ identity, session }, csrfToken, identityCommands) {
   const access = identityCommands.getOperationalAccessState({
     actingSessionId: session.id,
@@ -933,6 +1024,14 @@ function mapCorpusCandidateResult(result) {
   }
 
   return accepted({ corpusCandidate: result.value.corpusCandidate });
+}
+
+function mapAcceptedCorpusResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ acceptedCorpus: result.value.acceptedCorpus });
 }
 
 function mapProgramEventListResult({
