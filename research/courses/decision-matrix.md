@@ -1,6 +1,6 @@
 ---
-date: 2026-04-30
-model: claude-opus-4-7
+date: 2026-05-28
+model: claude-opus-4-8
 description: First-draft inventory of the decision angles for our prospective course. Not content; a map of questions to answer. JTBD applied as a lens (candidate-jobs axis added) over the matrix — multi-dimensional uncertainty preserved.
 ---
 
@@ -99,7 +99,7 @@ What does the student walk out with?
 ## Differentiation
 
 ### Positioning vs surveyed competitors
-What is the angle relative to what already exists (e.g., Khakhalev, others)?
+What is the angle relative to what already exists? Surveyed so far: Khakhalev (developer ICs), AI For Work (non-developer operators), CareerFactory (non-developer product-builders). See `positioning-notes.md` for the full market map.
 - Same audience, different method
 - Same method, different audience
 - Different topic entirely
@@ -215,5 +215,5 @@ Quality checks to run on any future drafts (audience copy, course pages, positio
 - Which **1–2 candidate jobs** (CJ1–CJ8) do we want to take seriously enough to investigate further? (Choosing where to start, not what to answer.)
 - What evidence would shift weight between candidate jobs?
 - Is this primarily a teaching project, a marketing project for `ai-labs`, or a revenue project? (These weight every other angle differently.)
-- Does the existence of well-positioned competitors (e.g., Khakhalev) change *what* to do, or only *how* to position?
+- Does the existence of well-positioned competitors (Khakhalev, AI For Work, CareerFactory) change *what* to do, or only *how* to position? Two of the three now target non-developers — does that crowding shift weight toward the still-empty manager (CJ4) or senior-judgment (CJ8) slots?
 - What evidence would tell me to stop pursuing this idea?
