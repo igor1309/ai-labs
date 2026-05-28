@@ -139,6 +139,74 @@ export function initializeIdentityStorage(database) {
       updated_at text not null
     );
 
+    create table if not exists assessment_criterion_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      title text not null,
+      body text not null,
+      source_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists accepted_assessment_criterion_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_assessment_criterion_revisions (
+      id text primary key,
+      entity_id text not null references accepted_assessment_criterion_entities(id),
+      program_id text not null references program_shells(id),
+      title text not null,
+      body text not null,
+      accepted_from_candidate_id text not null references assessment_criterion_candidates(id),
+      source_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists open_answer_check_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      check_kind text not null check (check_kind in ('open_answer')),
+      title text not null,
+      prompt text not null,
+      source_ids_json text not null,
+      criterion_entity_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists accepted_open_answer_check_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_open_answer_check_revisions (
+      id text primary key,
+      entity_id text not null references accepted_open_answer_check_entities(id),
+      program_id text not null references program_shells(id),
+      check_kind text not null check (check_kind in ('open_answer')),
+      title text not null,
+      prompt text not null,
+      accepted_from_candidate_id text not null references open_answer_check_candidates(id),
+      source_ids_json text not null,
+      criterion_revision_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
     create table if not exists accepted_corpus_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -566,6 +634,544 @@ export function updateCorpusCandidateStatus(database, { candidateId, status, upd
     .run(status, updatedAt, candidateId);
 
   return getCorpusCandidateRecord(database, candidateId);
+}
+
+export function createAssessmentCriterionCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    title,
+    body,
+    sourceIds = [],
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+
+  database
+    .prepare(
+      `insert into assessment_criterion_candidates (
+         id,
+         program_id,
+         title,
+         body,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      title,
+      body,
+      JSON.stringify(sourceIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getAssessmentCriterionCandidateRecord(database, id);
+}
+
+export function getAssessmentCriterionCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, title, body,
+              source_ids_json as sourceIdsJson, rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from assessment_criterion_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAssessmentCriterionCandidateRecord(row) : null;
+}
+
+export function listAssessmentCriterionCandidateRecords(database, { programId = null, status = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, title, body,
+                source_ids_json as sourceIdsJson, rationale, status,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt, updated_at as updatedAt
+         from assessment_criterion_candidates
+         order by created_at, id`,
+      )
+      .all()
+      .map(mapAssessmentCriterionCandidateRecord);
+  }
+
+  if (status === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, title, body,
+                source_ids_json as sourceIdsJson, rationale, status,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt, updated_at as updatedAt
+         from assessment_criterion_candidates
+         where program_id = ?
+         order by created_at, id`,
+      )
+      .all(programId)
+      .map(mapAssessmentCriterionCandidateRecord);
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, title, body,
+              source_ids_json as sourceIdsJson, rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from assessment_criterion_candidates
+       where program_id = ? and status = ?
+       order by created_at, id`,
+    )
+    .all(programId, status)
+    .map(mapAssessmentCriterionCandidateRecord);
+}
+
+export function createAcceptedAssessmentCriterionEntityRecord(database, { id, programId, currentRevisionId }) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_assessment_criterion_entities (id, program_id, current_revision_id)
+       values (?, ?, ?)`,
+    )
+    .run(id, programId, currentRevisionId);
+
+  return getAcceptedAssessmentCriterionEntityRecord(database, id);
+}
+
+export function getAcceptedAssessmentCriterionEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_assessment_criterion_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedAssessmentCriterionEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, current_revision_id as currentRevisionId
+         from accepted_assessment_criterion_entities
+         order by id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_assessment_criterion_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
+export function updateAcceptedAssessmentCriterionEntityCurrentRevision(database, { entityId, currentRevisionId }) {
+  const revision = getAcceptedAssessmentCriterionRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("accepted_criterion_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("accepted_criterion_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_assessment_criterion_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedAssessmentCriterionEntityRecord(database, entityId);
+}
+
+export function createAcceptedAssessmentCriterionRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    title,
+    body,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertAssessmentCriterionCandidateBelongsToProgram(database, { programId, candidateId: acceptedFromCandidateId });
+  assertAcceptedAssessmentCriterionEntityBelongsToProgram(database, { programId, entityId });
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+
+  database
+    .prepare(
+      `insert into accepted_assessment_criterion_revisions (
+         id,
+         entity_id,
+         program_id,
+         title,
+         body,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      title,
+      body,
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedAssessmentCriterionRevisionRecord(database, id);
+}
+
+export function getAcceptedAssessmentCriterionRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, title, body,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_assessment_criterion_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedAssessmentCriterionRevisionRecord(row) : null;
+}
+
+export function listAcceptedAssessmentCriterionRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, title, body,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_assessment_criterion_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedAssessmentCriterionRevisionRecord);
+}
+
+export function createOpenAnswerCheckCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    checkKind,
+    title,
+    prompt,
+    sourceIds = [],
+    criterionEntityIds,
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertAcceptedAssessmentCriterionEntitiesBelongToProgram(database, { programId, criterionEntityIds });
+
+  database
+    .prepare(
+      `insert into open_answer_check_candidates (
+         id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         source_ids_json,
+         criterion_entity_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      checkKind,
+      title,
+      prompt,
+      JSON.stringify(sourceIds),
+      JSON.stringify(criterionEntityIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getOpenAnswerCheckCandidateRecord(database, id);
+}
+
+export function getOpenAnswerCheckCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, check_kind as checkKind, title, prompt,
+              source_ids_json as sourceIdsJson,
+              criterion_entity_ids_json as criterionEntityIdsJson,
+              rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from open_answer_check_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapOpenAnswerCheckCandidateRecord(row) : null;
+}
+
+export function listOpenAnswerCheckCandidateRecords(database, { programId = null, status = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, check_kind as checkKind, title, prompt,
+                source_ids_json as sourceIdsJson,
+                criterion_entity_ids_json as criterionEntityIdsJson,
+                rationale, status,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt, updated_at as updatedAt
+         from open_answer_check_candidates
+         order by created_at, id`,
+      )
+      .all()
+      .map(mapOpenAnswerCheckCandidateRecord);
+  }
+
+  if (status === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, check_kind as checkKind, title, prompt,
+                source_ids_json as sourceIdsJson,
+                criterion_entity_ids_json as criterionEntityIdsJson,
+                rationale, status,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt, updated_at as updatedAt
+         from open_answer_check_candidates
+         where program_id = ?
+         order by created_at, id`,
+      )
+      .all(programId)
+      .map(mapOpenAnswerCheckCandidateRecord);
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, check_kind as checkKind, title, prompt,
+              source_ids_json as sourceIdsJson,
+              criterion_entity_ids_json as criterionEntityIdsJson,
+              rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from open_answer_check_candidates
+       where program_id = ? and status = ?
+       order by created_at, id`,
+    )
+    .all(programId, status)
+    .map(mapOpenAnswerCheckCandidateRecord);
+}
+
+export function createAcceptedOpenAnswerCheckEntityRecord(database, { id, programId, currentRevisionId }) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_open_answer_check_entities (id, program_id, current_revision_id)
+       values (?, ?, ?)`,
+    )
+    .run(id, programId, currentRevisionId);
+
+  return getAcceptedOpenAnswerCheckEntityRecord(database, id);
+}
+
+export function getAcceptedOpenAnswerCheckEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_open_answer_check_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedOpenAnswerCheckEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, current_revision_id as currentRevisionId
+         from accepted_open_answer_check_entities
+         order by id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_open_answer_check_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
+export function updateAcceptedOpenAnswerCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
+  const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("accepted_check_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("accepted_check_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_open_answer_check_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedOpenAnswerCheckEntityRecord(database, entityId);
+}
+
+export function createAcceptedOpenAnswerCheckRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    checkKind,
+    title,
+    prompt,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    criterionRevisionIds,
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertOpenAnswerCheckCandidateBelongsToProgram(database, { programId, candidateId: acceptedFromCandidateId });
+  assertAcceptedOpenAnswerCheckEntityBelongsToProgram(database, { programId, entityId });
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertAcceptedAssessmentCriterionRevisionsBelongToProgram(database, { programId, criterionRevisionIds });
+
+  database
+    .prepare(
+      `insert into accepted_open_answer_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         accepted_from_candidate_id,
+         source_ids_json,
+         criterion_revision_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      checkKind,
+      title,
+      prompt,
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      JSON.stringify(criterionRevisionIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedOpenAnswerCheckRevisionRecord(database, id);
+}
+
+export function getAcceptedOpenAnswerCheckRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, check_kind as checkKind,
+              title, prompt, accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              rationale, accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_open_answer_check_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedOpenAnswerCheckRevisionRecord(row) : null;
+}
+
+export function listAcceptedOpenAnswerCheckRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, check_kind as checkKind,
+              title, prompt, accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              rationale, accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_open_answer_check_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedOpenAnswerCheckRevisionRecord);
 }
 
 export function createAcceptedCorpusEntityRecord(
@@ -1068,6 +1674,76 @@ function assertProgramSourcesBelongToProgram(database, { programId, sourceIds })
   }
 }
 
+function assertAcceptedAssessmentCriterionEntitiesBelongToProgram(database, { programId, criterionEntityIds }) {
+  for (const criterionEntityId of criterionEntityIds) {
+    const criterionEntity = getAcceptedAssessmentCriterionEntityRecord(database, criterionEntityId);
+    if (!criterionEntity) {
+      throw new StorageInvariantError("criterion_entity_not_found");
+    }
+
+    if (criterionEntity.programId !== programId) {
+      throw new StorageInvariantError("criterion_entity_program_mismatch");
+    }
+  }
+}
+
+function assertAssessmentCriterionCandidateBelongsToProgram(database, { programId, candidateId }) {
+  const candidate = getAssessmentCriterionCandidateRecord(database, candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("criterion_candidate_not_found");
+  }
+
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("criterion_candidate_program_mismatch");
+  }
+}
+
+function assertAcceptedAssessmentCriterionEntityBelongsToProgram(database, { programId, entityId }) {
+  const entity = getAcceptedAssessmentCriterionEntityRecord(database, entityId);
+  if (!entity) {
+    throw new StorageInvariantError("criterion_entity_not_found");
+  }
+
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("criterion_entity_program_mismatch");
+  }
+}
+
+function assertAcceptedAssessmentCriterionRevisionsBelongToProgram(database, { programId, criterionRevisionIds }) {
+  for (const criterionRevisionId of criterionRevisionIds) {
+    const criterionRevision = getAcceptedAssessmentCriterionRevisionRecord(database, criterionRevisionId);
+    if (!criterionRevision) {
+      throw new StorageInvariantError("criterion_revision_not_found");
+    }
+
+    if (criterionRevision.programId !== programId) {
+      throw new StorageInvariantError("criterion_revision_program_mismatch");
+    }
+  }
+}
+
+function assertOpenAnswerCheckCandidateBelongsToProgram(database, { programId, candidateId }) {
+  const candidate = getOpenAnswerCheckCandidateRecord(database, candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("check_candidate_not_found");
+  }
+
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("check_candidate_program_mismatch");
+  }
+}
+
+function assertAcceptedOpenAnswerCheckEntityBelongsToProgram(database, { programId, entityId }) {
+  const entity = getAcceptedOpenAnswerCheckEntityRecord(database, entityId);
+  if (!entity) {
+    throw new StorageInvariantError("check_entity_not_found");
+  }
+
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("check_entity_program_mismatch");
+  }
+}
+
 export function exportIdentityBackup(database) {
   return {
     version: 1,
@@ -1481,6 +2157,70 @@ function mapCorpusCandidateRecord(row) {
     createdByIdentityId: row.createdByIdentityId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function mapAssessmentCriterionCandidateRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    title: row.title,
+    body: row.body,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapAcceptedAssessmentCriterionRevisionRecord(row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    title: row.title,
+    body: row.body,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+}
+
+function mapOpenAnswerCheckCandidateRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    checkKind: row.checkKind,
+    title: row.title,
+    prompt: row.prompt,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    criterionEntityIds: JSON.parse(row.criterionEntityIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapAcceptedOpenAnswerCheckRevisionRecord(row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    checkKind: row.checkKind,
+    title: row.title,
+    prompt: row.prompt,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    rationale: row.rationale,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
   };
 }
 

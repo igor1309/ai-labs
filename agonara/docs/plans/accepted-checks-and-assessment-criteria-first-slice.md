@@ -24,7 +24,7 @@ Push policy: no push
 Worktree mode: create new
 Expected worktree: `worktrees/agonara-accepted-checks-first-slice`
 Expected branch: `codex/agonara-accepted-checks-first-slice`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 

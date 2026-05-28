@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Start the accepted checks and assessment criteria implementation with the Phase 1 storage substrate: criterion/check candidate records, accepted entity/revision records, current-revision updates, criterion revision references, and structural Program scoping checks.
 - Harden the accepted checks and assessment criteria implementation plan after adversarial review by clarifying Corpus Storage ownership and marking student feedback traceability as prerequisite-only.
 - Add the accepted checks and assessment criteria implementation plan, sequencing storage, criterion lifecycle, open-answer check lifecycle, Student Workspace exclusion, backup/restore, and executable acceptance through strict TDD phases.
 - Harden the accepted checks and assessment criteria spec after adversarial review by requiring criterion references on open-answer checks, tightening read-surface wording, and adding explicit status-filter rejection coverage.
