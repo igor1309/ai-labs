@@ -1378,11 +1378,11 @@ function isNonEmptyText(value) {
 }
 
 function isValidIdArray(value) {
-  return value === undefined || Array.isArray(value);
+  return value === undefined || (Array.isArray(value) && value.every(isNonEmptyText));
 }
 
 function isNonEmptyIdArray(value) {
-  return Array.isArray(value) && value.length > 0;
+  return Array.isArray(value) && value.length > 0 && value.every(isNonEmptyText);
 }
 
 function isValidOptionalText(value) {

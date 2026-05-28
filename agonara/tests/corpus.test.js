@@ -1811,6 +1811,15 @@ test("createOpenAnswerCheckCandidate_shouldRejectInvalidAuthorizationInputSource
           sourceIds: null,
           criterionEntityIds: ["corpus-event-2"],
         }),
+        nonStringSourceIds: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          sourceIds: [null],
+          criterionEntityIds: ["corpus-event-2"],
+        }),
         emptyCriteria: commands.createOpenAnswerCheckCandidate({
           actingIdentityId: "identity-curator",
           programId: "program-a",
@@ -1818,6 +1827,14 @@ test("createOpenAnswerCheckCandidate_shouldRejectInvalidAuthorizationInputSource
           title: "Check",
           prompt: "Prompt",
           criterionEntityIds: [],
+        }),
+        nonStringCriteria: commands.createOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          checkKind: "open_answer",
+          title: "Check",
+          prompt: "Prompt",
+          criterionEntityIds: [null],
         }),
         missingCriteria: commands.createOpenAnswerCheckCandidate({
           actingIdentityId: "identity-curator",
@@ -1870,7 +1887,9 @@ test("createOpenAnswerCheckCandidate_shouldRejectInvalidAuthorizationInputSource
         prompt: { status: "rejected", reason: "validation_failed" },
         rationale: { status: "rejected", reason: "validation_failed" },
         nullSourceIds: { status: "rejected", reason: "validation_failed" },
+        nonStringSourceIds: { status: "rejected", reason: "validation_failed" },
         emptyCriteria: { status: "rejected", reason: "validation_failed" },
+        nonStringCriteria: { status: "rejected", reason: "validation_failed" },
         missingCriteria: { status: "rejected", reason: "validation_failed" },
         missingSource: { status: "rejected", reason: "source_not_found" },
         crossProgramSource: { status: "rejected", reason: "source_program_mismatch" },
@@ -2407,6 +2426,14 @@ test("listAcceptedOpenAnswerChecks_shouldAuthorizeStudentCuratorAndAdminOnly", a
       actingIdentityId: "identity-curator",
       candidateId: "corpus-event-2",
     });
+    commands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "open_answer",
+      title: "Admin blocked check",
+      prompt: "Admin blocked prompt",
+      criterionEntityIds: ["corpus-event-1"],
+    });
 
     assert.deepEqual(
       {
@@ -2434,6 +2461,14 @@ test("listAcceptedOpenAnswerChecks_shouldAuthorizeStudentCuratorAndAdminOnly", a
           prompt: "Admin prompt",
           criterionEntityIds: ["corpus-event-1"],
         }),
+        adminAccept: commands.acceptOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-admin",
+          candidateId: "source-4",
+        }),
+        adminReject: commands.rejectOpenAnswerCheckCandidate({
+          actingIdentityId: "identity-admin",
+          candidateId: "source-4",
+        }),
         missingRevision: commands.getAcceptedOpenAnswerCheckRevision({
           actingIdentityId: "identity-curator",
           revisionId: "check-revision-missing",
@@ -2445,6 +2480,8 @@ test("listAcceptedOpenAnswerChecks_shouldAuthorizeStudentCuratorAndAdminOnly", a
         admin: "accepted",
         other: { status: "rejected", reason: "participation_required" },
         adminCreate: { status: "rejected", reason: "admin_or_curator_required" },
+        adminAccept: { status: "rejected", reason: "admin_or_curator_required" },
+        adminReject: { status: "rejected", reason: "admin_or_curator_required" },
         missingRevision: { status: "rejected", reason: "check_revision_not_found" },
       },
     );
