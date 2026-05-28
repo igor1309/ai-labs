@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createIdentityCommands } from "../src/identity.js";
+import { createProgramCommands } from "../src/program.js";
 import { createServer } from "../src/server.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "../src/storage.js";
 
@@ -38,6 +39,78 @@ test("identityBootstrap_shouldSetCookieAndHideSessionId_onAcceptedBootstrap", as
         identityId: "identity-1",
         isAdmin: true,
         hasCsrfToken: true,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programsList_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs`);
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programsList_shouldRejectDisabledSessionIdentity_withIdentityDisabled", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityAndProgram();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    database
+      .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+      .run("2026-05-27T10:00:00.000Z", bootstrap.body.value.identity.id);
+    const response = await fetch(`${baseUrl}/programs`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 403,
+        body: { status: "rejected", reason: "identity_disabled" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programsList_shouldReturnEmptyPrograms_onActiveSessionWithEmptyStore", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 200,
+        body: { status: "accepted", value: { programs: [] } },
       },
     );
   } finally {
@@ -476,6 +549,36 @@ async function listenWithIdentity({ ids = defaultIds() } = {}) {
       await close(server);
       database.close();
     },
+  };
+}
+
+async function listenWithIdentityAndProgram({ ids = defaultIds() } = {}) {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-05-27T10:00:00.000Z");
+  const generateId = makeIdGenerator(ids);
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands: createProgramCommands({
+      database,
+      generateId,
+      now,
+    }),
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    database,
   };
 }
 

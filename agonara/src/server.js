@@ -3,6 +3,7 @@ import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
 import { createIdentityCommands } from "./identity.js";
+import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 
 export function createServer({
@@ -11,6 +12,7 @@ export function createServer({
   identityCommands = null,
   log = logToStdout,
   now = () => new Date(),
+  programCommands = null,
 } = {}) {
   const csrfTokens = new Map();
   const failedAuthAttempts = new Map();
@@ -33,6 +35,19 @@ export function createServer({
           generateToken,
           identityCommands,
           pathname,
+          request,
+          response,
+        });
+        if (handled) {
+          return;
+        }
+      }
+
+      if (identityCommands && programCommands) {
+        const handled = await handleProgramApi({
+          identityCommands,
+          pathname,
+          programCommands,
           request,
           response,
         });
@@ -299,6 +314,30 @@ async function handleIdentityApi({
   return false;
 }
 
+async function handleProgramApi({
+  identityCommands,
+  pathname,
+  programCommands,
+  request,
+  response,
+}) {
+  if (request.method === "GET" && pathname === "/programs") {
+    const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = programCommands.listProgramShells({
+      actingIdentityId: session.value.identity.id,
+    });
+    sendJson(response, statusForResult(result), mapProgramShellsResult(result));
+    return true;
+  }
+
+  return false;
+}
+
 export function startServer({
   bootstrapSecret = process.env.AGONARA_BOOTSTRAP_SECRET,
   databasePath = process.env.AGONARA_DB_PATH ?? ":memory:",
@@ -315,6 +354,9 @@ export function startServer({
   const server = createServer({
     identityCommands: createIdentityCommands({
       bootstrapSecret,
+      database,
+    }),
+    programCommands: createProgramCommands({
       database,
     }),
     log,
@@ -440,6 +482,14 @@ function mapAuditEventsResult(result) {
   });
 }
 
+function mapProgramShellsResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ programs: result.value.programShells });
+}
+
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
   const csrfToken = generateToken();
   csrfTokens.set(sessionId, csrfToken);
@@ -494,6 +544,7 @@ function statusForResult(result) {
 function httpStatusFor(reason) {
   switch (reason) {
     case "validation_failed":
+    case "unsupported_participation_kind":
       return 400;
     case "invalid_bootstrap_secret":
     case "invalid_credentials":
@@ -502,16 +553,22 @@ function httpStatusFor(reason) {
     case "session_revoked":
       return 401;
     case "admin_required":
+    case "admin_or_curator_required":
     case "csrf_invalid":
     case "csrf_required":
     case "identity_disabled":
       return 403;
     case "identity_not_found":
+    case "program_not_found":
       return 404;
     case "bootstrap_already_completed":
     case "identity_already_has_credential":
     case "last_admin_removal":
     case "login_already_bound":
+    case "membership_left":
+    case "membership_missing":
+    case "membership_removed":
+    case "program_creation_incomplete":
       return 409;
     case "rate_limited":
       return 429;
