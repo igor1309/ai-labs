@@ -532,6 +532,45 @@ test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithoutCandidate_onBackup"
   }
 });
 
+test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithUnacceptedCandidate_onBackup", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    backup.corpusCandidates[0] = {
+      ...backup.corpusCandidates[0],
+      status: "draft",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "candidate_not_accepted",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithoutEntity_onBackup", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedCorpusEntities = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "accepted_entity_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithCrossProgramSource_onBackup", async () => {
   const backup = await makeExportedCorpusBackup();
   const target = makeSUT();

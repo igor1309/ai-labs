@@ -68,9 +68,29 @@ function acceptCorpusCandidate({ database, generateId, getEffectiveParticipation
     return rejected("candidate_not_found");
   }
   if (candidate.status === "accepted") {
+    recordRejectedCandidateEventIfResolved({
+      database,
+      eventType: "corpus_candidate_accepted",
+      generateId,
+      getEffectiveParticipation,
+      input,
+      candidate,
+      now,
+      reason: "candidate_already_accepted",
+    });
     return rejected("candidate_already_accepted");
   }
   if (candidate.status === "rejected") {
+    recordRejectedCandidateEventIfResolved({
+      database,
+      eventType: "corpus_candidate_accepted",
+      generateId,
+      getEffectiveParticipation,
+      input,
+      candidate,
+      now,
+      reason: "candidate_already_rejected",
+    });
     return rejected("candidate_already_rejected");
   }
 
@@ -102,12 +122,39 @@ function acceptCorpusCandidate({ database, generateId, getEffectiveParticipation
   const targetEntity = input?.targetEntityId ? getAcceptedCorpusEntityRecord(database, input.targetEntityId) : null;
 
   if (input?.targetEntityId && !targetEntity) {
+    recordRejectedCandidateEvent({
+      database,
+      eventType: "corpus_candidate_accepted",
+      generateId,
+      now,
+      authorization,
+      candidate,
+      reason: "accepted_entity_not_found",
+    });
     return rejected("accepted_entity_not_found");
   }
   if (targetEntity && targetEntity.programId !== candidate.programId) {
+    recordRejectedCandidateEvent({
+      database,
+      eventType: "corpus_candidate_accepted",
+      generateId,
+      now,
+      authorization,
+      candidate,
+      reason: "accepted_entity_program_mismatch",
+    });
     return rejected("accepted_entity_program_mismatch");
   }
   if (targetEntity && targetEntity.acceptedKind !== candidate.candidateKind) {
+    recordRejectedCandidateEvent({
+      database,
+      eventType: "corpus_candidate_accepted",
+      generateId,
+      now,
+      authorization,
+      candidate,
+      reason: "accepted_kind_mismatch",
+    });
     return rejected("accepted_kind_mismatch");
   }
 
@@ -443,9 +490,27 @@ function rejectCorpusCandidate({ database, generateId, getEffectiveParticipation
   }
 
   if (candidate.status === "accepted") {
+    recordRejectedCandidateEvent({
+      database,
+      eventType: "corpus_candidate_rejected",
+      generateId,
+      now,
+      authorization,
+      candidate,
+      reason: "candidate_already_accepted",
+    });
     return rejected("candidate_already_accepted");
   }
   if (candidate.status === "rejected") {
+    recordRejectedCandidateEvent({
+      database,
+      eventType: "corpus_candidate_rejected",
+      generateId,
+      now,
+      authorization,
+      candidate,
+      reason: "candidate_already_rejected",
+    });
     return rejected("candidate_already_rejected");
   }
 
@@ -550,6 +615,58 @@ function recordCorpusEvent({
     targetId,
     occurredAt: now().toISOString(),
     outcome,
+    reason,
+  });
+}
+
+function recordRejectedCandidateEventIfResolved({
+  database,
+  eventType,
+  generateId,
+  getEffectiveParticipation,
+  input,
+  candidate,
+  now,
+  reason,
+}) {
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: candidate.programId },
+  });
+  recordRejectedCandidateEvent({
+    database,
+    eventType,
+    generateId,
+    now,
+    authorization,
+    candidate,
+    reason,
+  });
+}
+
+function recordRejectedCandidateEvent({
+  database,
+  eventType,
+  generateId,
+  now,
+  authorization,
+  candidate,
+  reason,
+}) {
+  if (!authorization.identity || !authorization.program) {
+    return;
+  }
+
+  recordCorpusEvent({
+    database,
+    generateId,
+    now,
+    eventType,
+    actorIdentityId: authorization.identity.id,
+    programId: authorization.program.id,
+    targetId: candidate.id,
+    outcome: "rejected",
     reason,
   });
 }

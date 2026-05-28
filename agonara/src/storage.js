@@ -1580,6 +1580,7 @@ function hasActiveCuratorForEveryProgramInBackup(backup) {
 function assertValidCorpusGraphInBackup(backup) {
   const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
   const candidatesById = new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map((backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]));
   const revisionsById = new Map((backup.acceptedCorpusRevisions ?? []).map($0 => [$0.id, $0]));
 
   for (const candidate of backup.corpusCandidates ?? []) {
@@ -1591,9 +1592,26 @@ function assertValidCorpusGraphInBackup(backup) {
   }
 
   for (const revision of backup.acceptedCorpusRevisions ?? []) {
+    const entity = entitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("accepted_entity_not_found");
+    }
+
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("accepted_revision_program_mismatch");
+    }
+
+    if (entity.acceptedKind !== revision.acceptedKind) {
+      throw new StorageInvariantError("accepted_revision_kind_mismatch");
+    }
+
     const candidate = candidatesById.get(revision.acceptedFromCandidateId);
     if (!candidate) {
       throw new StorageInvariantError("candidate_not_found");
+    }
+
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("candidate_not_accepted");
     }
 
     if (candidate.programId !== revision.programId) {

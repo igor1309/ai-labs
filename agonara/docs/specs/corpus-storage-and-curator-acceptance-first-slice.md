@@ -240,6 +240,7 @@ type CorpusRejectionReason =
   | "admin_or_curator_required"
   | "participation_required"
   | "candidate_not_found"
+  | "candidate_not_accepted"
   | "revision_not_found"
   | "accepted_entity_not_found"
   | "accepted_entity_program_mismatch"
@@ -316,7 +317,7 @@ type CorpusRejectionReason =
 61. Corpus events must not be used as the source of authorization.
 62. Backup/restore scope includes Program source records, candidate records, accepted corpus entities, accepted corpus revisions, and Corpus events.
 63. Restore must reject or refuse activation if an accepted corpus entity has no current accepted revision.
-64. Restore must reject or refuse activation if an accepted corpus revision points to a missing accepted candidate or a source from another Program.
+64. Restore must reject or refuse activation if an accepted corpus revision points to a missing candidate, an unaccepted candidate, or a source from another Program.
 65. This slice does not expose material file storage, accepted checks, accepted assessment criteria, LLM prompt execution, source reliability scoring, student attempts, assessment feedback, progress state, corpus editing UI, Student Workspace UI, Admin UI, HTTP routes, CLI commands, collaborative editing, branching, merge, or conflict-resolution behavior.
 
 ## Product intent traceability
