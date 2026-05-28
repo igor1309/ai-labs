@@ -6,19 +6,11 @@ description: "Implementation plan: Agonara Program shell and membership HTTP API
 
 # Program Shell and Membership HTTP API Implementation Plan
 
-## Source
-
-This plan implements:
-
-- [Program Shell and Membership API](../specs/program-shell-and-membership-api.md);
-- [Program Shell and Membership First Slice](../specs/program-shell-and-membership-first-slice.md);
-- [ADR-004](../adr/adr-004-program-membership-owns-program-participation.md), [ADR-005](../adr/adr-005-program-membership-state-and-first-admission-policy.md), [ADR-006](../adr/adr-006-program-membership-policy-actor.md), [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md), and [ADR-009](../adr/adr-009-program-shell-and-initial-curator-participation.md).
-
-The target outcome is a session-backed HTTP API over the existing Program shell and Program Membership service. The API must preserve the existing Identity API conventions for envelopes, session cookies, CSRF, status mapping, redaction, and fault responses.
-
 ## Goal
 
 Deliver the Agonara v0.0.1 Program shell and Program Membership HTTP API so browser clients can create and inspect Program shells, join/leave/rejoin Student membership, inspect effective participation, and inspect scoped Program domain events without introducing UI, CLI, corpus editing, or new Program domain rules.
+
+This plan implements [Program Shell and Membership API](../specs/program-shell-and-membership-api.md), [Program Shell and Membership First Slice](../specs/program-shell-and-membership-first-slice.md), and ADR-004 through ADR-007 plus ADR-009. The API must preserve the existing Identity API conventions for envelopes, session cookies, CSRF, status mapping, redaction, and fault responses.
 
 ## Execution mode
 
@@ -101,14 +93,17 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Compose `createProgramCommands` in `startServer` using the same database as Identity commands.
 - Add a `handleProgramApi` boundary that runs after Identity API handling and before `404`.
 - Add shared helpers for resolving the session Identity id and for shaping accepted/rejected Program API responses.
+- Extend shared HTTP status mapping for Program rejection reasons so unknown Program reasons do not fall through to `500`.
 - Implement the minimum `GET /programs` route needed to prove session resolution and empty-list response behavior.
 
 **TDD sequence**:
 
 1. RED: `GET /programs` without a session returns `401 session_not_found`.
 2. GREEN: add Program route dispatch and session rejection mapping.
-3. RED: `GET /programs` with a valid active session returns `AcceptedResult<{ programs: [] }>` for an empty store.
-4. GREEN: inject `programCommands`, resolve the session Identity, and call `listProgramShells`.
+3. RED: `GET /programs` with a disabled session Identity returns `403 identity_disabled`.
+4. GREEN: reuse Identity session resolution before calling Program commands.
+5. RED: `GET /programs` with a valid active session returns `AcceptedResult<{ programs: [] }>` for an empty store.
+6. GREEN: inject `programCommands`, resolve the session Identity, call `listProgramShells`, and map Program rejections through the shared HTTP status helper.
 
 **Dependencies**: existing Identity session API and Program service implementation.
 

@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden the Program Shell and Membership HTTP API implementation plan after adversarial review by fixing mandatory heading order and making early status/session coverage explicit.
 - Add the Program Shell and Membership HTTP API implementation plan, sequencing the route adapter work through strict TDD phases with per-phase green-gate commits and explicit done criteria.
 
 ## 2026-05-27
