@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Program shell and membership HTTP API
 
 Deliver the Agonara v0.0.1 Program shell and Program Membership HTTP API so browser clients can create and inspect Program shells, join/leave/rejoin Student membership, inspect effective participation, and inspect scoped Program domain events without introducing UI, CLI, corpus editing, or new Program domain rules.
 
-This plan implements [Program Shell and Membership API](../specs/program-shell-and-membership-api.md), [Program Shell and Membership First Slice](../specs/program-shell-and-membership-first-slice.md), and ADR-004 through ADR-007 plus ADR-009. The API must preserve the existing Identity API conventions for envelopes, session cookies, CSRF, status mapping, redaction, and fault responses.
+This plan implements [Program Shell and Membership API](../../specs/program-shell-and-membership-api.md), [Program Shell and Membership First Slice](../../specs/program-shell-and-membership-first-slice.md), and ADR-004 through ADR-007 plus ADR-009. The API must preserve the existing Identity API conventions for envelopes, session cookies, CSRF, status mapping, redaction, and fault responses.
 
 ## Execution mode
 
@@ -31,7 +31,7 @@ Preflight check: [x] done
 ### In scope
 
 - Server composition changes that inject `programCommands` beside `identityCommands`.
-- HTTP route adapters for the endpoints listed in [Program Shell and Membership API](../specs/program-shell-and-membership-api.md).
+- HTTP route adapters for the endpoints listed in [Program Shell and Membership API](../../specs/program-shell-and-membership-api.md).
 - Session and CSRF reuse through the existing `agonara_session` and `X-Agonara-CSRF` contract.
 - Response-shaping adapters from existing Program service result names to API response names.
 - HTTP status mapping for Program, session, and CSRF rejection reasons.
@@ -301,7 +301,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Done criteria
 
-- The HTTP API implements every endpoint in [Program Shell and Membership API](../specs/program-shell-and-membership-api.md).
+- The HTTP API implements every endpoint in [Program Shell and Membership API](../../specs/program-shell-and-membership-api.md).
 - Every Program API response uses the shared `accepted`, `rejected`, or `fault` envelope.
 - Session and CSRF behavior matches the existing Identity HTTP API conventions.
 - All state-changing Program API routes reject session and CSRF failures before domain mutation.
