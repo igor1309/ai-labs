@@ -399,6 +399,64 @@ async function handleProgramApi({
     return true;
   }
 
+  const participationMatch = pathname.match(/^\/programs\/([^/]+)\/participation\/([^/]+)$/);
+  if (request.method === "GET" && participationMatch) {
+    const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(participationMatch[1]);
+    const program = programCommands.getProgramShell({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    if (program.status === "rejected") {
+      sendJson(response, httpStatusFor(program.reason), program);
+      return true;
+    }
+
+    const participationKind = decodeURIComponent(participationMatch[2]);
+    if (!isSupportedParticipationKind(participationKind)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const url = new URL(request.url ?? "/", "http://localhost");
+    const identityId = url.searchParams.get("identityId") ?? session.value.identity.id;
+    if (identityId !== session.value.identity.id) {
+      const access = identityCommands.getOperationalAccessState({
+        actingSessionId: session.value.session.id,
+        identityId: session.value.identity.id,
+      });
+      const curatorParticipation = programCommands.getEffectiveParticipation({
+        identityId: session.value.identity.id,
+        participationKind: "program_curator",
+        programId,
+      });
+      const allowedInspector =
+        (access.status === "accepted" && access.value.effectiveAdmin) ||
+        curatorParticipation.allowed === true;
+      if (!allowedInspector) {
+        sendJson(response, 403, rejected("admin_or_curator_required"));
+        return true;
+      }
+    }
+    const result = programCommands.getEffectiveParticipation({
+      identityId,
+      participationKind,
+      programId,
+    });
+    sendJson(response, 200, accepted({
+      identityId,
+      participationKind,
+      programId,
+      ...result,
+    }));
+    return true;
+  }
+
   const programMatch = pathname.match(/^\/programs\/([^/]+)$/);
   if (request.method === "GET" && programMatch) {
     const session = identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
@@ -694,6 +752,10 @@ function httpStatusFor(reason) {
 
 function isRateLimited(failedAuthAttempts, key) {
   return (failedAuthAttempts.get(key) ?? 0) >= 5;
+}
+
+function isSupportedParticipationKind(participationKind) {
+  return participationKind === "student" || participationKind === "program_curator";
 }
 
 function trackAuthFailure(failedAuthAttempts, key, reason) {
