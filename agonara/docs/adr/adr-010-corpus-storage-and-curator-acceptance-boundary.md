@@ -35,7 +35,7 @@ The [Product Intent](../intent_learning_program_app.md) requires Agonara to keep
 
 The [Curator User Stories](../curator_user_stories.md) require curators to add topics, concepts, materials, checks, criteria, sources, extracted candidates, coverage gaps, and LLM suggestions while keeping accepted content separate from drafts.
 
-The [Module Responsibility Map](../module_responsibility_map.md) identifies Corpus Storage as the owner of accepted corpus and Curator Workspace as the owner of draft/research work, but still leaves their detailed acceptance workflow provisional.
+The [Module Responsibility Map](../module_responsibility_map.md) identifies Corpus Storage as the owner of accepted corpus and Curator Workspace as the owner of draft/research work. This ADR accepts the boundary for how candidate curation state crosses into accepted corpus.
 
 The architectural tension is that accepted corpus must be stable enough for students to learn against while curator work must remain flexible enough to hold incomplete, speculative, or LLM-generated material. If candidate material and accepted corpus share one owner and state model, drafts can leak into the student experience. If acceptance history is mutable, later corpus edits can erase the evidence behind student attempts and curator decisions.
 

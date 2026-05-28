@@ -61,7 +61,7 @@ It most directly preserves the Product Intent boundary between shared program co
 
 ## Provisional boundaries
 
-The following responsibility map is provisional. It is intended to make ownership questions explicit before storage, schema, or implementation planning.
+The following responsibility map includes accepted boundaries from ADRs and remaining provisional boundaries. It is intended to make ownership questions explicit before storage, schema, or implementation planning.
 
 | Module | Responsibility | Owns | Does Not Own | Key Boundary |
 |---|---|---|---|---|
