@@ -51,7 +51,7 @@ Corpus Storage MUST preserve stable accepted revisions for accepted checks and c
 
 Student Workspace MUST own student attempts, submitted answers, selected answers, evaluation results, feedback, evidence, mastery state, weak-area state, review state, and learning history.
 
-Student Workspace MUST evaluate or orchestrate evaluation of a student's attempt against accepted check and criterion revisions. The evaluation may use deterministic logic, human review, or LLM assistance later, but the resulting student-specific outcome remains Student Workspace state.
+Until a later ADR introduces a separate Assessment module, Student Workspace MUST evaluate or orchestrate evaluation of a student's attempt against accepted check and criterion revisions. The evaluation may use deterministic logic, human review, or LLM assistance later, but the resulting student-specific outcome remains Student Workspace state.
 
 Student Workspace MUST reference accepted check and criterion revisions instead of copying ownership of checks, prompts, rubrics, or criteria.
 
@@ -87,6 +87,7 @@ Admin authority remains operational recovery authority. Admin authority MUST NOT
 - LLM-assisted evaluation MAY support Student Workspace assessment behavior later, but LLM output MUST NOT become final feedback, mastery state, or progress evidence until Student Workspace applies its assessment rules.
 - LLM-generated checks or criteria MAY support Curator Workspace curation later, but they MUST remain draft candidate material until accepted by an effective `Program Curator`.
 - A later Assessment module MAY be introduced by a new ADR only if it preserves Corpus Storage ownership of accepted checks and criteria and Student Workspace ownership of student-specific attempts, outcomes, feedback, and progress evidence.
+- Specs and implementation plans that add checks, criteria, attempts, feedback, or progress evidence MUST include traceability to these ownership invariants and tests or review checks that prove accepted corpus state remains separate from Student Workspace state.
 - Later specs MAY define check types, criterion schema, scoring, evaluation workflows, LLM prompts, UI, API routes, storage tables, migration strategy, and review operations only if they preserve this ownership boundary.
 
 ## Consequences
@@ -101,7 +102,7 @@ Student attempts and feedback must store references to accepted check and criter
 
 LLM assistance stays bounded. It can propose checks or evaluate answers later, but it does not become an owner of accepted corpus or final student progress state.
 
-A future standalone Assessment module remains possible, but it must be justified by concrete coordination needs such as reusable evaluation engines, queueing, human review, or model orchestration. That future module would orchestrate behavior; it would not take ownership of accepted checks or personal student state without a new ADR.
+A future standalone Assessment module remains possible, but it must be justified by concrete coordination needs such as reusable evaluation engines, queueing, human review, or model orchestration. That future module may take over evaluation orchestration only through a new ADR; it would not take ownership of accepted checks or personal student state without a new ADR.
 
 Future specs should choose the smallest check shape that proves the boundary. A narrow first implementation can start with accepted quick checks or open-answer prompts and one criterion reference, as long as attempts and feedback reference accepted revisions instead of copying or mutating corpus records.
 

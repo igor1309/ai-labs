@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Harden ADR-011 after adversarial review by clarifying future Assessment module evolution and requiring traceability plus verification for checks, criteria, attempts, feedback, and progress evidence.
 - Accept ADR-011 for the accepted checks and Student assessment boundary: accepted checks and criteria belong to versioned Program corpus, while attempts, answers, feedback, mastery, weak areas, and progress evidence belong to Student Workspace.
 - Harden the Corpus HTTP API closeout after adversarial review by asserting transport status codes across the executable Corpus flow and CSRF rejection checks.
 - Complete the Corpus HTTP API implementation closeout with an executable HTTP acceptance flow, Product Intent traceability to the implemented route adapter/tests, and the implementation plan archived under implemented plans.
