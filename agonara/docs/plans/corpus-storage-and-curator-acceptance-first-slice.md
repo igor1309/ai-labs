@@ -56,7 +56,7 @@ Preflight check: [ ] done
 
 | ADR | Invariant | Phase |
 |---|---|---|
-| ADR-007 | Effective participation is the read-only authorization contract used by other modules. | Phase 3, Phase 5 |
+| ADR-007 | Effective participation is the read-only authorization contract used by other modules. | Phase 2, Phase 3, Phase 4, Phase 6 |
 | ADR-009 | Accepted corpus records are scoped to stable Program shells. | Phase 1, Phase 2, Phase 4 |
 | ADR-010 | Corpus Storage owns accepted Program corpus and stable accepted revisions. | Phase 1, Phase 4, Phase 6 |
 | ADR-010 | Curator Workspace owns candidates, drafts, LLM suggestions, and review state before acceptance. | Phase 1, Phase 3 |
@@ -101,7 +101,7 @@ Each implementation phase has its own local commit. Do not bundle unrelated phas
 
 - Add storage schema for Program source records, Corpus candidates, accepted corpus entities, accepted corpus revisions, and Corpus events.
 - Add storage create/get/list helpers for the new records.
-- Enforce Program ownership checks for source and candidate records.
+- Enforce structural Program scoping checks for source and candidate records.
 - Enforce accepted entity current revision integrity.
 - Keep new storage helpers separate from Identity, Program shell, and Program Membership ownership rules.
 
@@ -133,7 +133,7 @@ Each implementation phase has its own local commit. Do not bundle unrelated phas
 
 **Key work items**:
 
-- Add a Corpus command/query module composed with the shared database and existing Program/Identity participation checks.
+- Add a Corpus command/query module composed with the shared database, existing Identity resolution, and Program Membership effective participation/access checks.
 - Implement `recordProgramSource`.
 - Implement `listProgramSources`.
 - Validate `SourceKind`, `title`, `locator`, and `citation`.
