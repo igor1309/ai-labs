@@ -4,6 +4,46 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-05-27
+
+- process-gates v1.1.0 + adr-governance v1.0.1: pushed the repo's implementation-plan structure gate down into the public skills so plan discipline travels with the plugin, not just `CLAUDE.md`. process-gates gains a dedicated `Plan Structure Gate` (Goal / Execution mode / Execution lock / Scope guardrails / phases / Done criteria / Final closeout as blocking required headings), two new Pre-Push items (adversarial plan-structure review when a plan changed; PR title/body derived from plan goal/scope/gates), and four new Completion Verification checks (structure present, Done criteria explicit, Final closeout declares archive + push policy, plan moved to implemented/ in the same change set). adr-governance reference `implementation-plan-planner-requirements.md` mirrors the same heading list and now ties section 10's Completion Definition to an explicit `## Done criteria` heading and section 11's Operational Contract to `## Execution mode` + `## Execution lock` + `## Final closeout` headings. Marketplace v1.48.0.
+
+## 2026-05-25
+
+- postmortem v0.1.1 + publishing checklist polish: wrap `$ARGUMENTS` in backticks in postmortem SKILL.md so the empty-argument case renders as a visible `` `` `` rather than a silent double-space hole (caught by invoking `/dev-skills:postmortem postmortem` on itself). Update `dev-skills/.claude/CLAUDE.md` publishing step 3 to require (a) adding the new skill to the plugin's long `description` enumeration in `marketplace.json` and (b) bumping any modified SKILL.md versions per the Skill Versioning section — both were tribal knowledge the checklist didn't enforce. Marketplace v1.47.1.
+- postmortem v0.1.0: new skill migrating the user-level `/postmortem` slash command into the plugin so it's distributable and namespaced as `/dev-skills:postmortem`. Reflects on the current session and proposes polish/tweaks/fixes for a named skill, grounded in conversation evidence (rejects generic "best-practice" filler). Session-scoped sibling to `skill-review`, which audits skills as artifacts; `postmortem` reviews how a skill played out in one session. Ships with `disable-model-invocation: true` — intentionally manual. skill-review v1.1.4 cross-links to it. Marketplace v1.47.0.
+
+## 2026-05-24
+
+- state-machine-impl-dod v0.1.1 + state-machine-spec-dod v0.2.0: two new skills lifted from `prompts/state-machine-{impl,spec}-dod.md`. Both are DoD checklists for state-machine work — `spec-dod` gates the executable-spec seed test list before implementation handoff; `impl-dod` gates the implementation against that seed test list. `impl-dod` adopts the intake-style `$ARGUMENTS` pattern for the seed test list path with an empty-fallback that infers from conversation context or asks the user. Marketplace v1.46.0.
+- using-dev-skills v1.0.1: new entry-map skill that groups the toolkit into eight ladders (TDD, Spec, Architecture review, Debugging, Planning, Release/CI, Swift/iOS, Skill maintenance) keyed by the input the agent has, so the right skill is invoked without enumerating the catalog. Deliberately not a methodology: ladders compose per task. Marketplace v1.45.0.
+- Codex plugin manifest: added `public/.codex-plugin/plugin.json` so dev-skills can be consumed as a Codex plugin alongside the existing Claude Code marketplace manifest. Lives next to `.claude-plugin/marketplace.json` so the existing `sync-skills-public.yml` workflow ships it without changes; `"skills": "./"` points at the package root after sync. Publishing checklist (`dev-skills/.claude/CLAUDE.md`) now requires bumping `plugin.json` `version` alongside `marketplace.json`. Marketplace v1.44.0.
+
+## 2026-05-16
+
+- intake v1.4.1 + remove rpi-research: merged rpi-research into intake. Phase 2 schema is now `What I'm Building / What I'm Touching / Findings (Scope + Pattern evidence lead bullets) / Key Constraints / Risks & Unknowns / Reproduction (bug only) / Questions / Large-Scope Mode` — absorbed rpi-research's output schema while preserving intake's battle-tested task-shaped sections. Phase 4 reframed from "Transition to Planning" (auto EnterPlanMode) to "Capture" (ask where to save, write the brief, stop). Description rewritten trigger-led per the canonical Agent Skills spec, covering both well-defined and open-ended scope. Stale "planning"-handoff references cleaned from Hard Rules and Anti-Patterns. Removed `EnterPlanMode` from `allowed-tools`, added `Write`. Rationale: once intake's planning auto-transition was removed, the two skills described the same activity with overlapping triggers and output schemas. No alias for `/rpi-research` — removed cleanly. Marketplace v1.43.0.
+- dev-skills landing: added `dev-skills/index.html`, a static catalog page with a workflow graph, skill-group summaries, marketplace/public-repo links, and a grouped catalog of all 36 published skill directories. Gives the project a local visual entry point without changing the published skill payload.
+- skill-review v1.1.3: ground the rubric in the canonical Agent Skills spec (agentskills.io) and Anthropic guidance. Adds a new front-matter integrity axis (`description`/`name`/`author` gates), the 1024-char description limit, the 500-line / 5,000-token body gate, an LLM-generic-padding noise category, and a reference-load-condition check. Drops the unsupported "third-person description" rule and softens "WHEN, not WHAT" to "WHAT + WHEN" — matching Anthropic's own canonical example. Research notes captured under `dev-skills/public/skill-review/research/`.
+- Publishing gate: `dev-skills/.claude/CLAUDE.md` now requires `author: Igor Malyarov` in SKILL.md front-matter before any skill can ship; backfilled the 26 skills that were missing it. Prevents recurrence of the silent author-stripping that motivated the gate.
+- dev-skills README: promoted `**Development:**` / `**Publishing:**` pseudo-headings to real `###` headings (AGENTS.md global rule), re-nested Publish Exclusions under Publishing where it logically belongs, and replaced the duplicated 5-step Publishing recap with a single pointer to `.claude/CLAUDE.md` (eliminating drift). Marketplace v1.41.0.
+
+## 2026-05-01
+
+- best-free-openrouter-llm v1.0.0: new skill that picks the current best free OpenRouter model from the public ranking endpoint at `shir-man.com/api/free-llm/top-models` and emits text, JSON, or shell-export output for agent/CLI configuration. Refuses to invent a model ID (only `openrouter/free` as hardcoded fallback) and gates on `--min-confidence` so low-confidence rankings fail closed. Marketplace v1.40.0.
+
+## 2026-04-30
+
+- jtbd v1.0.0: new skill applying Jobs-to-be-Done as a product-development framing in three explicit modes — `discover` (Christensen/Moesta switch interviews and forces of progress), `decompose` (Ulwick/ODI job statements, job map, outcome statements, opportunity scores), and `frame` (Klement job stories). Hard-enforces grammars and refuses to silently mix the Christensen and Ulwick vocabularies — the most common JTBD incoherence in the wild. Marketplace v1.39.0.
+
+## 2026-04-27
+
+- Publish procedure: replaced "push to trunk" with the PR-based flow (branch → push → `gh pr create` → `gh pr merge --merge --auto --delete-branch`) in `dev-skills/.claude/CLAUDE.md` and `dev-skills/README.md` to match the protected-trunk policy inherited from the parent repo. Also removed stale `public/README.md` references — that file was deleted on 2026-04-21 to keep the public skills repo installable by web agents without auth friction.
+- process-gates v1.0.2 and strict-tdd v1.0.1: made execution mode plan-aware, distinguishing self-review from human review and allowing auto-continue after RED/GREEN and task gates when the active plan declares it. Marketplace v1.38.0.
+
+## 2026-04-26
+
+- process-gates v1.0.1: clarified that pre-commit, step closeout, pre-push, hard-gate reporting, and completion checklists run scope-appropriate verification (docs-only changes don't require full test/build gates). Marketplace v1.37.0.
+
 ## 2026-04-24
 
 - pr-ci-watch v1.2.3: added note about `/tmp` write permission prompt tradeoff. Marketplace v1.36.0.

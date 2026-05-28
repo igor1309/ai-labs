@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reinix Orchestration — Recursive composition over a valid task</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-elev: #14181d;
+    --bg-elev-2: #1b2027;
+    --border: #262d36;
+    --text: #e6edf3;
+    --text-dim: #8b96a3;
+    --accent: #6ee7b7;
+    --accent-2: #93c5fd;
+    --warn: #fcd34d;
+    --danger: #fca5a5;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 96px 0 64px;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(ellipse at top, rgba(110, 231, 183, 0.08), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(147, 197, 253, 0.06), transparent 50%);
+  }
+  .hero h1 {
+    font-size: 56px;
+    margin: 0 0 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero .tagline {
+    font-size: 21px;
+    color: var(--text-dim);
+    max-width: 760px;
+    margin: 0 0 24px;
+  }
+  .hero .pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero .meta {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .hero .meta span { margin-right: 18px; }
+  .hero .draft-note {
+    margin-top: 20px;
+    padding: 12px 16px;
+    background: rgba(252, 211, 77, 0.06);
+    border: 1px solid rgba(252, 211, 77, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--warn);
+    max-width: 760px;
+  }
+
+  /* Section */
+  section { padding: 72px 0; border-bottom: 1px solid var(--border); }
+  section h2 {
+    font-size: 30px;
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  section .lead {
+    color: var(--text-dim);
+    font-size: 17px;
+    max-width: 800px;
+    margin: 0 0 36px;
+  }
+
+  /* Assumptions */
+  .assumptions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .assumption {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    font-size: 14px;
+  }
+  .assumption .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--warn);
+    margin-bottom: 10px;
+  }
+  .assumption p { margin: 0; color: var(--text-dim); }
+  .assumption strong { color: var(--text); }
+
+  /* Invariant callout */
+  .invariant {
+    background: linear-gradient(135deg, rgba(110, 231, 183, 0.04), rgba(147, 197, 253, 0.04));
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 28px 32px;
+  }
+  .invariant p { margin: 0 0 14px; font-size: 16px; }
+  .invariant p:last-child { margin-bottom: 0; }
+  .invariant code, .invariant strong { color: var(--accent); }
+  .invariant em { color: var(--text); font-style: normal; font-weight: 600; }
+
+  /* Actor cards */
+  .actors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .actor {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    position: relative;
+  }
+  .actor.producer  { border-top: 3px solid var(--accent); }
+  .actor.reviewer  { border-top: 3px solid var(--accent-2); }
+  .actor.remediator{ border-top: 3px solid var(--danger); }
+  .actor.orchestrator { border-top: 3px solid var(--warn); }
+  .actor h3 {
+    font-size: 20px;
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .actor .tier {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    letter-spacing: 0.08em;
+  }
+  .actor.producer h3   { color: var(--accent); }
+  .actor.reviewer h3   { color: var(--accent-2); }
+  .actor.remediator h3 { color: var(--danger); }
+  .actor.orchestrator h3 { color: var(--warn); }
+  .actor .io {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 12px;
+    background: var(--bg-elev-2);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .actor .io .row { display: flex; gap: 10px; }
+  .actor .io .k { color: var(--text-dim); min-width: 50px; }
+  .actor .io .v { color: var(--text); }
+  .actor p { margin: 0; color: var(--text-dim); font-size: 14px; }
+
+  /* Flow steps */
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: step;
+  }
+  .steps li {
+    counter-increment: step;
+    padding: 18px 18px 18px 60px;
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+    font-size: 15px;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 16px;
+    top: 18px;
+    width: 30px;
+    height: 30px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .steps strong { color: var(--text); }
+  .steps span { color: var(--text-dim); }
+  .steps code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg-elev-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  /* Policy */
+  .policy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 780px) { .policy-grid { grid-template-columns: 1fr; } }
+  .policy-owns {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .policy-owns .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--warn);
+    margin-bottom: 8px;
+  }
+  .policy-owns h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .policy-owns p { margin: 0; color: var(--text-dim); font-size: 13px; }
+
+  /* Decision table */
+  .decisions {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 14px;
+  }
+  .decisions th, .decisions td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .decisions th {
+    background: var(--bg-elev-2);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .decisions tr:last-child td { border-bottom: none; }
+  .decisions td.condition { color: var(--text); }
+  .decisions td.decision { font-family: var(--mono); font-size: 13px; }
+  .decisions .ok { color: var(--accent); }
+  .decisions .fail { color: var(--danger); }
+  .decisions .remediate { color: var(--warn); }
+
+  /* Deferred items */
+  .deferred {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .deferred-item {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--text-dim);
+    border-radius: 6px;
+    padding: 18px 20px;
+  }
+  .deferred-item h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .deferred-item p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* Addendum */
+  .addendum {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 720px) { .addendum { grid-template-columns: 1fr; } }
+  .addendum-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .addendum-row .from {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .addendum-row .arrow {
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+  .addendum-row .to {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    padding: 6px 10px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  footer {
+    padding: 48px 0 64px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer code {
+    font-family: var(--mono);
+    background: var(--bg-elev);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="container">
+    <span class="pill">Initial draft · Architecture concept</span>
+    <h1>Reinix Orchestration</h1>
+    <p class="tagline">
+      A recursive composition over a single primitive — a verifiable task — coordinated by
+      three flow-ignorant agents and an injected adjudication policy.
+    </p>
+    <div class="meta">
+      <span>v0.0.1</span>
+      <span>2026-04-22</span>
+      <span>source: reinix-orchestration.md</span>
+    </div>
+    <div class="draft-note">
+      Initial draft — records ideas and architecture-level concepts. Not exhaustive, not complete.
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <h2>Simplifying assumptions</h2>
+    <p class="lead">Intentional simplifications that scope this draft.</p>
+    <div class="assumptions">
+      <div class="assumption">
+        <div class="label">Assumption</div>
+        <p><strong>Async &amp; failable.</strong> All agent calls are async and failable.</p>
+      </div>
+      <div class="assumption">
+        <div class="label">Assumption</div>
+        <p><strong>Stop on failure.</strong> Any agent failure stops the flow.</p>
+      </div>
+      <div class="assumption">
+        <div class="label">Assumption</div>
+        <p><strong>Separate workspace.</strong> Work is performed in a separate workspace.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Core invariant</h2>
+    <p class="lead">One primitive holds the whole flow together.</p>
+    <div class="invariant">
+      <p>
+        The flow is a recursive composition over a single primitive: a <strong>valid task</strong>
+        — a verifiable task, i.e. one containing <em>&ldquo;done&rdquo; criteria</em>.
+      </p>
+      <p>
+        Every entry point to the Orchestrator&rsquo;s loop — initial input <em>and</em> Remediator
+        output alike — is a valid task. The Orchestrator has no separate &ldquo;fresh task&rdquo;
+        vs &ldquo;fix task&rdquo; code paths.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Actors</h2>
+    <p class="lead">
+      Three agents, all flow-ignorant peers. Each is defined by a typed input/output contract,
+      unaware of each other or of the loop. The Orchestrator coordinates them.
+    </p>
+    <div class="actors">
+      <div class="actor producer">
+        <h3>Producer</h3>
+        <div class="tier">Sonnet-level · Agent</div>
+        <div class="io">
+          <div class="row"><span class="k">in</span><span class="v">valid task</span></div>
+          <div class="row"><span class="k">out</span><span class="v">list of artifacts</span></div>
+        </div>
+        <p>
+          Performs the task and returns artifacts as a grounded claim of completion, carrying
+          evidence against the done criteria and the walked checklist. No judgment — the claim
+          is grounded in the task&rsquo;s own done criteria.
+        </p>
+      </div>
+
+      <div class="actor reviewer">
+        <h3>Reviewer</h3>
+        <div class="tier">Opus-level · Agent</div>
+        <div class="io">
+          <div class="row"><span class="k">in</span><span class="v">task + work</span></div>
+          <div class="row"><span class="k">out</span><span class="v">structured verdict</span></div>
+        </div>
+        <p>
+          Adversarial and broad: structure, clarity, quality, and completeness beyond the stated
+          criteria. Reviewer assesses <em>the work</em>; Producer grounds <em>the claim</em>.
+          Review schema is reused from the existing review skill.
+        </p>
+      </div>
+
+      <div class="actor remediator">
+        <h3>Remediator</h3>
+        <div class="tier">Opus-level · Agent</div>
+        <div class="io">
+          <div class="row"><span class="k">in</span><span class="v">task + work + verdict + history</span></div>
+          <div class="row"><span class="k">out</span><span class="v">valid task (fix plan)</span></div>
+        </div>
+        <p>
+          Produces a valid task — a fix plan conforming to the same verifiable-task contract
+          the Orchestrator accepts at entry. Knows nothing about the flow.
+        </p>
+      </div>
+
+      <div class="actor orchestrator">
+        <h3>Orchestrator</h3>
+        <div class="tier">Runtime · Coordinator</div>
+        <div class="io">
+          <div class="row"><span class="k">graph</span><span class="v">tree, never cyclic</span></div>
+          <div class="row"><span class="k">scope</span><span class="v">sequencing + stop-on-failure</span></div>
+        </div>
+        <p>
+          Runs within a selected workspace, sequences agent calls, enforces stop-on-failure.
+          Consults <code>ReviewFixPolicy</code> for every routing decision. Workspace lifecycle
+          is intentionally out of scope. Agents never invoke each other or the Orchestrator.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Flow</h2>
+    <p class="lead">Five steps. Step&nbsp;5 re-enters Step&nbsp;2 with the remediated task.</p>
+    <ol class="steps">
+      <li><strong>Orchestrator</strong> <span>receives a valid task.</span></li>
+      <li><strong>Orchestrator calls Producer.</strong> <span>On failure, stop. On success, Producer returns a list of artifacts.</span></li>
+      <li><strong>Orchestrator calls Reviewer.</strong> <span>On failure, stop. On success, Reviewer returns a structured verdict.</span></li>
+      <li><strong>Orchestrator calls <code>ReviewFixPolicy</code></strong> <span>with the verdict and the current session. Policy returns a decision — one of <code>complete-ok</code>, <code>complete-fail</code>, <code>remediate</code> — and the session for the next round.</span></li>
+      <li><strong>On <code>remediate</code>,</strong> <span>Orchestrator calls Remediator, receives a new valid task, and re-enters step&nbsp;2.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>ReviewFixPolicy</h2>
+    <p class="lead">
+      A protocol injected into the Orchestrator. The adjudicator of the flow. Given a verdict
+      and the current session, returns a routing decision and the session for the next round.
+      The Orchestrator is the courier of the session across rounds — it threads it through
+      but does not inspect it.
+    </p>
+
+    <div class="policy-grid">
+      <div class="policy-owns">
+        <div class="label">Owns</div>
+        <h4>Turn budget</h4>
+        <p>Whether the loop can afford another round.</p>
+      </div>
+      <div class="policy-owns">
+        <div class="label">Owns</div>
+        <h4>Routing decision</h4>
+        <p>Where the flow goes next based on verdict severity and session state.</p>
+      </div>
+      <div class="policy-owns">
+        <div class="label">Owns</div>
+        <h4>Session</h4>
+        <p>Opaque object threaded across rounds for cross-round reasoning: no-progress detection, iteration comparison, per-task-class accounting.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size: 18px; margin: 0 0 14px; font-weight: 600;">Example policy behaviors</h3>
+    <table class="decisions">
+      <thead>
+        <tr>
+          <th>Condition</th>
+          <th>Decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="condition">No failures, no warnings</td>
+          <td class="decision"><span class="ok">complete-ok</span></td>
+        </tr>
+        <tr>
+          <td class="condition">F1 failures present, budget exhausted</td>
+          <td class="decision"><span class="fail">complete-fail</span></td>
+        </tr>
+        <tr>
+          <td class="condition">F2-only failures, budget remaining</td>
+          <td class="decision"><span class="remediate">remediate</span></td>
+        </tr>
+        <tr>
+          <td class="condition">Same F2 finding recurring across rounds (via session)</td>
+          <td class="decision"><span class="fail">complete-fail</span> <span style="color: var(--text-dim);">— even with budget remaining</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="lead" style="margin-top: 28px;">
+      Threshold tuning, severity mapping, per-task-class policies, and convergence detection
+      are all policy concerns and evolve independently of the Orchestrator.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Out of scope for this draft</h2>
+    <p class="lead">Acknowledged and intentionally deferred, not forgotten.</p>
+    <div class="deferred">
+      <div class="deferred-item">
+        <h4>Context management</h4>
+        <p>What exactly Producer returns, what Reviewer inspects, how artifacts are framed. A separate concern with its own responsibility; deliberately not mixed into this doc.</p>
+      </div>
+      <div class="deferred-item">
+        <h4>Workspace lifecycle</h4>
+        <p>Creation, integration on success, cleanup on stop/exhaustion. Simple, to be specified.</p>
+      </div>
+      <div class="deferred-item">
+        <h4>Review verdict schema</h4>
+        <p>Reused from the existing review skill.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Addendum: coding-task specialization</h2>
+    <p class="lead">When the task is a coding change, two specializations apply.</p>
+    <div class="addendum">
+      <div class="addendum-row">
+        <span class="from">Workspace</span>
+        <span class="arrow">→</span>
+        <span class="to">git worktree</span>
+      </div>
+      <div class="addendum-row">
+        <span class="from">Artifacts</span>
+        <span class="arrow">→</span>
+        <span class="to">commits</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Reinix · Orchestration concept draft · Source: <code>reinix/docs/reinix-orchestration.md</code>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,6 +1,8 @@
 ---
 title: Bug Fix
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Lightweight My Way path for evidence-based bug fixes."
 author: Igor Malyarov
 version: 0.0.1
 format: note
@@ -56,6 +58,7 @@ Typical inputs include:
 - reproduction steps
 - logs, traces, screenshots, or other operational evidence
 - existing expected behavior from spec, product understanding, or system rules
+- Product Intent when the defect involves a user-facing promise or ambiguous expected outcome
 - affected code or component context
 - prior incidents if relevant
 - focused Q&A or clarification sub-sessions where behavior is disputed or unclear
@@ -74,6 +77,7 @@ A useful bug-fix artifact should make clear:
 - what risks the fix introduces
 - what regression tests or checks are required
 - whether expected behavior needs clarification in spec or other docs
+- whether accepted user intent needs clarification in Product Intent
 
 In practice, this often takes the form of a concise defect note plus an implementation and regression plan.
 
@@ -102,6 +106,7 @@ The work includes a clear view of how recurrence will be detected or prevented. 
 When the bug reveals deeper issues, escalation is made explicit rather than ignored. Concrete triggers:
 
 - expected behavior was never defined → escalate to a spec update
+- accepted user intent is missing, ambiguous, or being meaningfully changed → escalate to Product Intent
 - the defect violates an invariant that no ADR covers → escalate to a pre-ADR
 - the fix would require a new boundary, protocol, or dependency direction → escalate to the full pre-coding sequence
 

@@ -1,13 +1,13 @@
 ---
 name: spec-drafting
-description: Use when accepted architectural decisions need to be translated into explicit behavior, contracts, flows, edge cases, and testable expectations before implementation.
+description: Use when accepted Product Intent or architectural decisions need to be translated into explicit behavior, contracts, flows, edge cases, and testable expectations before implementation.
 ---
 
 # Spec Drafting
 
 ## Overview
 
-Use this skill to turn accepted architectural decisions into a spec. The spec is the behavioral layer of the pre-coding phase: it defines what the system must do, how its parts are expected to behave, and what contracts must hold between them.
+Use this skill to turn accepted Product Intent and architectural decisions into a spec. The spec is the behavioral layer of the pre-coding phase: it defines what the system must do, how its parts are expected to behave, and what contracts must hold between them.
 
 A spec does not decide architecture. It operationalizes it.
 
@@ -15,7 +15,7 @@ A spec does not decide architecture. It operationalizes it.
 
 This skill applies when:
 
-- accepted ADRs exist and need to be translated into implementable behavior
+- accepted Product Intent or ADRs need to be translated into implementable behavior
 - the missing clarity is behavioral rather than architectural
 - downstream implementation, review, or testing needs explicit expectations
 - an existing spec draft needs revision so behavior and contracts are no longer left to interpretation
@@ -26,7 +26,8 @@ Do not use this skill when the central question is still how the system should b
 
 Read the minimum context needed to define behavior:
 
-- accepted ADRs being operationalized
+- accepted Product Intent stories being translated into behavior
+- accepted ADRs being operationalized, if any
 - pre-ADR or research artifacts only when they clarify constraints or terminology
 - product or business requirements
 - domain rules and existing contracts
@@ -40,7 +41,8 @@ Read enough to define behavior clearly. Do not reopen already-settled architectu
 ## Preserve This Judgment
 
 - The spec is a behavioral definition, not an architectural decision record.
-- The spec must work from accepted ADRs rather than quietly redefining them.
+- The spec operationalizes accepted Product Intent; it does not redefine Product Intent.
+- The spec must work from accepted Product Intent and ADRs rather than quietly redefining them.
 - The spec must make behavior explicit enough that implementation and testing do not depend on private interpretation.
 - The spec must stay out of execution order, delivery slicing, and other implementation-plan concerns.
 - The spec must address failure behavior and edge cases, not only the happy path.
@@ -50,6 +52,7 @@ Read enough to define behavior clearly. Do not reopen already-settled architectu
 Help produce or revise a spec that makes clear:
 
 - what the system or feature does
+- which accepted stories the behavior satisfies when Product Intent exists
 - the responsibilities of relevant parts
 - public interfaces and input/output shapes
 - behavior rules, states, flows, and transitions
@@ -62,7 +65,7 @@ Write the spec so implementation, review, and testing can use it as a common ref
 
 ## Workflow
 
-1. Start from accepted ADRs and identify what architectural decisions the spec is operationalizing.
+1. Start from accepted Product Intent and any accepted ADRs, then identify what user stories and architectural decisions the spec is operationalizing.
 2. Define the public interface and contract surface.
 3. Write concrete behavior rules, including validation, state changes, and failure behavior.
 4. Enumerate test cases that cover those rules.

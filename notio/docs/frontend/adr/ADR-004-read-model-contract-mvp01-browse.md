@@ -22,7 +22,7 @@ Accepted
 
 ADR-001 treats the browsed table row as the read model but does not name which table or which columns. Without a pinned contract, the capture side can silently break the frontend by renaming a column, changing a type, or dropping a field. For a single-user discovery product this is low-impact but still easy to avoid, and pinning the contract costs one short ADR.
 
-The underlying table, owned by the capture side, is `captured_items` (see `notio/supabase/migrations/000_create_captured_items.sql`, `001_add_enrichment_columns.sql`).
+The underlying table, owned by the capture side, is `captured_items` (see `notio/backend/supabase/migrations/000_create_captured_items.sql`, `001_add_enrichment_columns.sql`).
 
 ## Decision
 

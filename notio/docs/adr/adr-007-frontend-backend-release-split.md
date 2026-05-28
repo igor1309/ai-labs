@@ -41,7 +41,7 @@ The two deployables are independently developed:
 - frontend changes can ship browse UI, auth, config, and Pages deployment changes without backend process changes
 - Cloudflare Pages deployment and VPS Docker deployment have different operational surfaces
 
-Despite this independence, the current structure still exposes only one release unit named `notio`, with `notio/release.toml` as canonical metadata. This creates ambiguity:
+Despite this independence, the pre-split structure exposed only one release unit named `notio`, with `notio/release.toml` as canonical metadata. This created ambiguity:
 
 - `notio/` sometimes means the product and sometimes means the backend implementation
 - frontend versioning is not represented in release-unit metadata

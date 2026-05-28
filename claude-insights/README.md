@@ -20,22 +20,22 @@ Aggregates Claude Code usage data (`~/.claude/usage-data/`) into a weekly JSON s
 
 ```bash
 # last 7 days (default)
-python3 tools/claude-insights/claude-insights.py
+python3 claude-insights/claude-insights.py
 
 # last 30 days
-python3 tools/claude-insights/claude-insights.py --days 30
+python3 claude-insights/claude-insights.py --days 30
 
 # specific date range
-python3 tools/claude-insights/claude-insights.py --since 2026-03-01 --until 2026-03-07
+python3 claude-insights/claude-insights.py --since 2026-03-01 --until 2026-03-07
 
 # write to file
-python3 tools/claude-insights/claude-insights.py -o weekly.json
+python3 claude-insights/claude-insights.py -o weekly.json
 
 # push to Supabase (triggers Telegram notification)
-python3 tools/claude-insights/claude-insights.py --days 7 --push
+python3 claude-insights/claude-insights.py --days 7 --push
 
 # refresh cache first (runs `claude --print /insights`), then push
-python3 tools/claude-insights/claude-insights.py --days 7 --push --refresh
+python3 claude-insights/claude-insights.py --days 7 --push --refresh
 ```
 
 ## Output
@@ -73,15 +73,16 @@ A macOS launchd agent runs the push every Sunday at 8:40 AM local time. Use `--r
 
 - **Supabase project**: `uvnxjuzofcdxhdkrsocq` (West EU)
 - **Table**: `public.claude_insights` (RLS enabled)
+- **Table**: `public.keepalive` (RLS enabled, single row id=1) — heartbeat target for the `Supabase Keep-Alive` workflow (`.github/workflows/supabase-keepalive.yml`), which PATCHes `last_ping_at` every 3 days so a real DB write resets the free-tier inactivity timer
 - **DB trigger**: `on_insights_change` → `notify_insights_webhook()` via `pg_net`
 - **Edge Functions**: `notify-insights`, `telegram-bot` (both no-verify-jwt)
 - **Secrets**: `BOT_TOKEN`, `INBOX_CHAT_ID`, `NOMOS_BASE_URL`, `NOMOS_API_KEY` (set via `supabase secrets`)
-- **Local credentials**: `tools/claude-insights/.env` (gitignored)
+- **Local credentials**: `claude-insights/.env` (gitignored)
 
 ## Deploying Edge Functions
 
 ```bash
-cd tools/claude-insights
+cd claude-insights
 export SUPABASE_ACCESS_TOKEN=<token>
 supabase functions deploy notify-insights --no-verify-jwt --project-ref uvnxjuzofcdxhdkrsocq
 supabase functions deploy telegram-bot --no-verify-jwt --project-ref uvnxjuzofcdxhdkrsocq
@@ -90,3 +91,15 @@ supabase functions deploy telegram-bot --no-verify-jwt --project-ref uvnxjuzofcd
 ## Next steps
 
 - Configurable model selection for `/compare` analysis
+
+## Description
+
+Aggregates local session data into metrics — sessions, code churn, tool usage, goals, friction points — then pushes to Supabase and *notifies via Telegram*.
+
+## Stack
+
+- Python
+- Supabase
+- Edge Functions
+- Telegram Bot
+- Nomos

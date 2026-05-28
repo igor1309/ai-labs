@@ -4,8 +4,10 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   claude-insights, corpus-scout, dev-skills, loki, neris, nexum, niora,
-#   nomos, notio, oracle, regentara, sandbox, tools, web-scout
+#   agonara, claude-insights, clipdeck, corpus-scout, dashboard-sync-agent, debates,
+#   dev-skills, doc-drift-agent, dragoman, gemini, insights, loki, neris,
+#   nexum, niora, nomos, notio, oracle, prompts, reading, reinix, sandbox,
+#   session-digest, tools, web-scout
 
 set -euo pipefail
 
@@ -57,7 +59,7 @@ divider() {
 # ---------- counting ----------
 
 # Shared exclusions for all find commands
-EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" )
+EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.venv/*" ! -path "*/.build/*" ! -path "*/worktrees/*" ! -path "*/.wrangler/*" ! -path "*/wrangler/*" ! -path "*/img/*" ! -path "*/images/*" )
 
 count_project() {
   local dir="$1"
@@ -143,16 +145,32 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known="agents claude-insights corpus-scout debates dev-skills docker docs gemini insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading regentara research sandbox scripts tests tools vendor web-scout worktrees _inbox"
+  local known=".claude .codex .git .github .lazyweb .wrangler agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
+  # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
+  local optional="node_modules vendor worktrees _inbox"
   local unknown=""
+  local missing=""
   for d in */; do
     d="${d%/}"
     if ! echo " $known " | grep -q " $d "; then
       unknown="${unknown} ${d}"
     fi
   done
+  for k in $known; do
+    [[ "$k" == .* ]] && continue
+    if echo " $optional " | grep -q " $k "; then
+      continue
+    fi
+    if [[ ! -d "$k" ]]; then
+      missing="${missing} ${k}"
+    fi
+  done
   if [[ -n "$unknown" ]]; then
     echo "  ⚠ unknown top-level dirs (classify in loc-dashboard.sh):${unknown}"
+  fi
+  if [[ -n "$missing" ]]; then
+    echo "  ⚠ known dirs missing on disk (stale entries in loc-dashboard.sh):${missing}"
   fi
 }
 
@@ -167,7 +185,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in claude-insights corpus-scout dev-skills loki neris nexum niora nomos notio oracle regentara sandbox tools web-scout; do
+for proj in agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent dragoman gemini insights loki neris nexum niora nomos notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"
@@ -180,6 +198,7 @@ REPO_TESTS=$((REPO_TESTS + $(loc_find "scripts/tests" \( -name "*.test.js" -o -n
 emit_row "repo-scripts" "$REPO_CODE" "$REPO_TESTS" "0"
 
 TEXT=$(count_text)
+# Synthetic aggregate row for repo-wide text/docs; not a real directory.
 emit_row "agents" "0" "0" "$TEXT"
 
 # print sorted rows, then grand total

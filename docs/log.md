@@ -1,19 +1,167 @@
 # Log
 
+## 2026-05-27
+
+- Process: pinned the whole repo to Node 22 via a root `.nvmrc`, replacing the per-project pin in `agonara/.nvmrc`. Native modules (`better-sqlite3`) require a single Node ABI across projects; a root pin gives one source of truth for dev, CI, and contributors.
+- agonara: implemented the Program Shell and Membership first slice. The new program module exposes the spec's command/query surface (Program shell creation with atomic initial curator membership, self-join/leave/rejoin Student membership, read-only effective participation, and Admin-or-curator-scoped event queries) and extends backup/restore with the new state and an orphan-shell guard.
+- agonara: implemented the private Admin operations UI board over the existing Identity HTTP API, including bootstrap/login/logout, identity operations, operational access inspection, audit inspection, and container UI smoke coverage.
+- agonara: added the Admin operations UI board implementation plan, keeping the next slice focused on private-instance identity operations over the existing API.
+- Process: pushed the implementation-plan structure gate down into the public skills. `dev-skills/public/process-gates` v1.1.0 adds a dedicated Plan Structure Gate (mandatory `Goal` / `Execution mode` / `Execution lock` / `Scope guardrails` / phases / `Done criteria` / `Final closeout` headings) plus pre-push adversarial plan review and PR-narrative quality checks; `dev-skills/public/adr-governance` reference now mirrors the same heading list and binds section 10/11 to explicit headings. Marketplace v1.48.0.
+- Process: made My Way implementation-plan structure a hard repo gate in `AGENTS.md`, including required Done criteria, Final closeout, adversarial plan review, and PR title/body quality checks.
+- agonara: added packaged-bin CLI acceptance coverage and a containerized first-Admin bootstrap smoke, fixing the CLI symlink entrypoint guard that prevented the installed bin from running.
+- agonara: updated the project README with concrete CLI, HTTP, and Docker demo commands for the implemented Identity and Operations slice.
+- agonara: fixed the Agonara CI Docker smoke to provide the required bootstrap secret while preserving runtime fail-fast behavior for missing operator configuration.
+- Process: added a pre-PR reminder to refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh` after substantial implementation or docs movement, then refreshed the Agonara LOC/dashboard numbers for this branch.
+- agonara: completed the Identity and Operations first slice with executable acceptance coverage for CLI bootstrap, HTTP sessions, Admin flows, CSRF, rate limiting, request correlation, audit listing, and redaction.
+- agonara: added minimum Identity backup/restore behavior for identity, credential, Admin authority, and audit state, with active sessions excluded and no-Admin restores rejected.
+- agonara: added the first operator CLI for identity bootstrap status and first-Admin bootstrap, using JSON stdin for secrets and JSON stdout envelopes with accepted/rejected exit-code behavior.
+- agonara: added the first Identity HTTP API routes with session cookies, CSRF checks, login/bootstrap rate limiting, audit response redaction, and Admin-session diagnostics.
+- agonara: added Admin-protected Identity operations and audit paths for identity creation, credential binding, disablement, Admin grant/revoke, operational access inspection, identity listing, and audit listing.
+- agonara: implemented first-Admin bootstrap, local-password login, session resolution, and logout over the new Identity storage boundary, with scrypt password hashes and bootstrap audit records.
+- agonara: added the Identity persistence boundary with SQLite-backed records for identities, credentials, sessions, Admin authority, and audit events, including storage-level uniqueness and last-Admin invariants.
+- agonara: added the operational walking skeleton with request correlation, health, diagnostics rejection, structured logs, redacted faults, and container health verification.
+- agonara: started the identity and operations implementation with a dedicated backend workspace, per-project CI workflow dispatch, and Docker container-start smoke path.
+- agonara: registered the project in the repo dashboard surfaces and tightened the implementation handoff so Dockerized private self-hosting is an explicit build, health, and log-verification gate before implementation PRs.
+- agonara: moved accepted project ADRs from the repo-level ADR tree into `agonara/docs/adr/`, keeping project decisions co-located with Agonara docs while preserving repo-level ADRs for cross-project concerns.
+- my-way: documented the method as semi-authoritative rather than rigid doctrine, and clarified that Pre-ADRs may include provisional candidate capability notes when they sharpen architectural discussion.
+- prompts: decoupled `naming-availability-standard.md` from domain-specific references (agent orchestration, AI coding agents, LLM tooling). Hard Blockers, Availability Risk Reading, and Naming Target sections now reference user-supplied context parameters (target field, adjacent categories, intended technical surface) instead of hardcoded domains. Prompt is now reusable for any product naming context.
+
+## 2026-05-25
+
+- loc-dashboard drift: extended `check_project_drift` in `scripts/loc-dashboard.sh` with reverse drift detection — flags entries in the `known` list that no longer have a directory on disk. Catches the same class of stale-entry bug a human reviewer found in PR #405. Dotfile entries and known-transient dirs (`node_modules`, `vendor`, `worktrees`, `_inbox`) are skipped. The synthetic `agents` aggregate row is now self-documenting via a one-line comment. Two new tests cover the clean-trunk and missing-dir cases.
+
+## 2026-05-24
+
+- dev-skills: added Codex plugin manifest at `dev-skills/public/.codex-plugin/plugin.json` so dev-skills publishes as a Codex plugin in addition to the Claude Code marketplace. CI now guards version parity between `marketplace.json` and `plugin.json` in the `dev-skills-validation` job to prevent silent drift.
+
+## 2026-05-23
+
+- mac-health: bug fix after first live install — `check-disk.sh` was querying `df /` and reporting `status=ok / free_pct=48` on a Catalina+ machine that was actually at 1.2% free. Root cause: APFS shares space across a read-only system snapshot and a writable data volume; `/` reports capacity per-snapshot, not against the shared container. Fix: query `/System/Volumes/Data` on Catalina+ with fallback to `/`. Spec updated.
+- mac-health: new personal-tooling subdirectory under `tools/mac-health/` for scheduled launchd-driven macOS health checks (memory, disk, leftovers). Landed intent + ADR-001 + spec (v0.1), checks runtime (`lib/common.sh`, three check scripts + a disk-leftovers wrapper), two LaunchAgent plists, `newsyslog` rotation config (1 MB / 5 gzipped archives), `install.sh`/`uninstall.sh` (installer refuses if `terminal-notifier` is missing on `PATH`), and `README.md`. 27-case shell test suite covers all 15 spec behavior tests. By design not an ai-labs project: no CI workflow, no release unit, no Components row, no `loc-dashboard` entry.
+
+## 2026-05-17
+
+- my-way: added `docs/my-way/prd-vs-product-intent.md`, a short framing note contrasting Product Intent with a PRD — PRD as a god document optimizing for "one place to look", Product Intent as a deliberately narrow layer optimizing for "one thing per place" with the rest delegated down the artifact chain.
+
+## 2026-05-16
+
+- dev-skills: added a local landing at `dev-skills/index.html` with a workflow graph and full 36-skill catalog. Linked the Dev Skills product card to the landing so the marketplace surface is discoverable from `docs/products.html`.
+
+## 2026-05-12
+
+- research/courses: added `aiforwork/` competitor extraction (page-content, course-curriculum, selling-points) mirroring the `khakhalev/` three-file pattern, plus a top-level `positioning-notes.md` distilling both surveys into a market map and a list of unfilled positioning slots (engineering-manager audience, EN-language market, senior judgment / failure post-mortems, curated cross-role structured path, async durable-artifact format, B2B-led channel). Inputs to `decision-matrix.md`; no commitments. The two surveyed RU offers split by *object of practice* (shared codebase vs participant's own routine), not by level — informing how the decision matrix reads its `Who` axis.
+- Reinix rename: completed the pre-public product rename from Regentara to Reinix across the workspace package, CLI/runtime identity, release unit config, CI workflow, dashboard registries, docs, examples, and tests. No compatibility aliases were retained for the old CLI/config/URI names.
+
+## 2026-05-10
+
+- dashboard-sync-agent: Phase B complete and live. New OpenClaw account `dashboardsync` bound to bot `@dashboard_sync_agent_bot` (allowlisted DMs from chat 54589373); agent `dashboard-sync-agent` with workspace `/home/openclaw/.openclaw/workspace-dashboard-sync`; daily cron at 18:00 UTC (wrapper enforces 6h post-manual-run suppression). End-to-end dry run on `gpt-5.5` produced PR #355 covering all three surfaces (script header/loop/known list, products.html cards, loc-dashboard.html data array); merged. Cosmetic imperfection: Oracle's curated subtitle `"Oracle — Am I Done?"` lands inside the `<strong>` lead instead of replacing the card name — mirrors the existing Dragoman style. Spec iteration on `gpt-5.2` had revealed two model-interpretation issues (inverted "no product-type chip" rule, sub-component misclassification); both resolved by switching the OpenClaw default to `gpt-5.5`, not by spec changes. Plan archived to `dashboard-sync-agent/docs/plans/implemented/`.
+- dashboard-sync-agent: B1 — CI sync workflow at `.github/workflows/dashboard-sync-agent-sync.yml` watches `dashboard-sync-agent/agent/**` on `trunk` and rsyncs to the OpenClaw VPS workspace, renaming `agent.md` → `AGENTS.md` on copy. Reuses the existing `OPENCLAW_DEPLOY_SSH_KEY` repo secret. Mirrors `doc-drift-agent`'s sync workflow.
+- Products page: removed redundant type chips from grouped product cards in `docs/products.html`; the group headers now carry the category, and a regression test covers the static page markup.
+- dashboard-sync-agent: Phase A complete. In-repo agent definition under `dashboard-sync-agent/agent/` — project-registry rule, synthesis spec, agent.md system prompt, report-format + fix-PR-template, notification spec (silent on scheduled+no-drift), and suppression policy (6h gate). Single stable branch `dashboard-sync/daily`; PR title `[dashboard-sync] daily sync — YYYY-MM-DD`. Open Questions resolved during Phase A. Phase B (CI sync workflow, VPS workspace, cron, dry run) remains.
+- dashboard-sync-agent: registered as a top-level project for a sibling OpenClaw agent that keeps `scripts/loc-dashboard.sh`, `docs/products.html`, and the `docs/loc-dashboard.html` `data` array in sync with repo state on a daily 18:00 UTC cron. The root `README.md` `## Components` and `## Structure` tables are the authoritative project registries. Initial artifact set: intent + ADR v0.0.1 (proposed) + project README. README drift remains owned by `doc-drift-agent`; the two agents have disjoint editable-file allowlists.
+- Process: clarified the plan-archive rule in `CLAUDE.md` — the `git mv docs/plans/<name>.md docs/plans/implemented/<name>.md` ships in the **same PR as the implementation**, not as a follow-up. The current loc-dashboard split landed in two PRs (#339 implementation, #340 plan archive) before the rule was sharpened; the new rule prevents the brief incoherent window on trunk where the implementation is in but the plan still sits as "to do".
+- LOC dashboard: split `docs/loc-dashboard.html` into a LOC-only page plus a new `docs/products.html` portfolio page, each linking to the other. Refreshed the data array (clipdeck and doc-drift-agent had drifted post-merge), added a `Last updated:` footer line on the LOC page, and grouped the 18 product cards by category. Drove from validated design research; the rejected recommendations (grouped bars, hiding zero-rows, hero-ratio promotion) are recorded in the implementation plan as out of scope.
+- doc-drift-agent: added PR-idempotence to the agent prompt. The agent now lists open `[doc-drift]` PRs before opening new ones and marks already-covered findings as `existing` instead of duplicating. Report and Telegram notification surfaces extended to carry `new`/`existing` status. Without the check, daily scheduled runs against an unmerged backlog of fix PRs would have produced duplicates each cycle.
+- doc-drift-agent: rotated the docdrift bot token after GitGuardian flagged inline-token commits on the PR branch. Wrapper now reads the token from `openclaw.json` via `jq`; branch history rewritten and force-pushed (sanitized commit `c6621d90`). Token rotated via BotFather and updated on VPS. Inventory log records the incident.
+
+## 2026-05-09
+
+- doc-drift-agent: closed the manual-run timestamp gap. Probed the agent's tools live (write, exec, others — confirmed unrestricted). Added step 9 to the agent prompt: on manual runs, the agent writes `last_manual_run_utc` to `state.json` itself. Verified by isolating step 9 in a one-shot invocation. The 12h suppression gate is now operational.
+- doc-drift-agent: live on OpenClaw VPS. Phase B end-to-end: CI sync workflow ships `doc-drift-agent/agent/**` on trunk merge; new Telegram bot `@igor1309_ai_labs_bot` routes to a dedicated agent with allowlisted DMs from chat `54589373`; daily cron at 01:00 UTC fires the agent against a refreshed `/home/openclaw/ai-labs` clone, posting a Telegram ack on every run; fix PRs are opened against `igor1309/ai-labs` via the maintainer's `gh auth` PAT. Dry run produced PRs #337 and #338 with the `[doc-drift]` title prefix. The original Phase A architecture assumed the wrong OpenClaw layout (a per-agent prompt directory under `~/.openclaw/agents/<name>/agent/`); the live layout uses workspace + binding with `AGENTS.md` as the system prompt — corrected during Phase B Task B1 plan rewrite.
+
+- doc-drift-agent: Phase A complete. Committed the agent's full in-repo definition set — README inventory, drift methodology, agent prompt (`agent/agent.md`), drift report format, fix-PR template, Telegram notification spec, and 12-hour UTC suppression policy — under `doc-drift-agent/`. Branch convention pinned to `doc-drift/<slug>`; agent prompt filename inside `~/.openclaw/agents/doc-drift-agent/agent/` left provisional with verification owed to Phase B Task B2 (recorded as new open question #7). Plan stays at `doc-drift-agent/docs/plans/doc-drift-agent.md` until Phase B closes.
+- doc-drift-agent: registered as a top-level project for the specialized OpenClaw agent that reviews README drift across `ai-labs`. Added project README and seed log, root `README.md` Components row, `scripts/loc-dashboard.sh` (header comment, per-project loop, drift `known` list), and `docs/loc-dashboard.html` product card + data array entry. `release-units.config.toml` intentionally not updated — the runtime lives in OpenClaw, not in this repo. Implementation plan in `doc-drift-agent/docs/plans/doc-drift-agent.md`; integration wiring (Phase B) is blocked on six open questions.
+
+## 2026-05-07
+
+- Scheduled workflows hardened against GitHub-hosted runner contention: shifted both `scheduled-health.yml` (06:00 → 06:17 UTC) and `loc-dashboard.yml` (06:00 → 06:23 UTC) off the top-of-hour cron herd that caused both runs to fail on 2026-05-06 with "The job was not acquired by Runner of type hosted even after multiple attempts" (15-minute queue timeouts, no script ever ran). Also added a Telegram failure-notify job to `loc-dashboard.yml` (mirroring the existing pattern in `scheduled-health.yml`) so a future silent miss surfaces instead of just being a missing daily snapshot.
+
+## 2026-05-05
+
+- clipdeck: app version moved from footer to header (next to the `clipdeck` wordmark), keeping the original subtle styling. Bumped to v0.1.12 to ship together with the v0.1.11 prompt title/subtitle flip whose tag was never created.
+
+## 2026-05-04
+
+- my-way: added `docs/my-way/informal-brief.md`, a personal-voice companion to the formal pre-/coding-phase notes that names the intuitions the structured docs cannot carry — intent is the hard part, brainstorm with a harness when it is stuck, prune to ~7 stories with forced justification, downstream must bend to intent. Linked from the landing hero and footer.
+- my-way: copy-edit pass across `landing.html`, `pre-coding-phase.md`, `coding-phase.md`, the Product Intent note, the bug-fix variant, and the research and product-intent-review skills. Mostly added missing relative `that` (notably `"the user promise that downstream artifacts must preserve"` on the landing) and fixed tense/aspect (`"the process broke"` → `"is broken"`, `"meaningfully changing"` → `"being meaningfully changed"`).
+
+## 2026-05-02
+
+- LOC dashboard: refreshed the static landing from `scripts/loc-dashboard.sh` after the Product Intent docs landed on `user-stories`; agents docs now report 4,941 lines and repo total is 104,263.
+- LOC dashboard refresh: synced `docs/loc-dashboard.html` data array with current `scripts/loc-dashboard.sh` output (clipdeck 0/0/290 → 1114/1472/1782; reinix 952/1712/4585 → 2792/4906/7964; smaller drift in nomos, dev-skills, session-digest, agents, repo-scripts, claude-insights). Updated the Clipdeck product card from docs-only to a deployed Cloudflare Worker (clipdeck.enoa.ai) with refreshed stack tags.
+- my-way: implemented the Product Intent layer above research/pre-ADR/ADR/spec/implementation planning, adding story-centered note/structure/example artifacts, drafting/review skills, downstream traceability guidance, and lightweight variant escalation rules.
+- GitHub Actions Node 20 deprecation cleared — bumped `actions/checkout@v4 → v5` (Node 24 runtime) and `dorny/paths-filter@v3 → v4` across all workflows ahead of the June 2026 forced upgrade and the September 2026 Node 20 removal. Stayed on `checkout@v5` rather than `v6` to avoid the credential-handling change in v6.
+- clipdeck v0.1.7: added a deployed-version footer (`/api/version` + bottom-of-page render) so we can confirm at a glance which Worker build a browser is actually loading. Backfilled a missing frontend test that asserts the rendered subtitle text matches `item.subtitle` to lock in the description-fetch behavior shipped in v0.1.5/v0.1.6.
+
+## 2026-05-01
+
+- LOC dashboard landing: refreshed product cards in `docs/loc-dashboard.html` — promoted reinix from `Concept`/Design to a `CLI` MVP workflow runner with current tags, and renamed dragoman to "The Dragoman" with description and tags reflecting a posts-and-imagery channel rather than docs-only. `scripts/loc-dashboard.sh` was reviewed and needs no changes (it counts LOC and does not classify project type).
+- clipdeck: added release-unit and CI/CD wiring for tag-driven Cloudflare Worker deploys, plus the first-deploy operator runbook and README component update.
+- clipdeck: implemented the static iPhone frontend and Worker Static Assets routing, including unlock, reload, copy feedback, and resource-backed skill styling tests.
+- clipdeck: implemented the authenticated `GET /api/items` Worker endpoint with GitHub Contents API reads, sanitized section assembly, and spec-shaped upstream/source-missing errors.
+- clipdeck: implemented Phase 1 pure units for front matter stripping, prompt/skill discovery, and response section assembly, covering malformed front matter tolerance and deterministic item ordering.
+- clipdeck: scaffolded as a private TypeScript Cloudflare Worker workspace with Wrangler config, Workers-pool Vitest coverage, and root test-gate integration.
+- clipdeck: registered as a docs-only top-level project — added to `README.md` Components table, `scripts/loc-dashboard.sh` (loop, header comment, drift `known` list), and the `docs/loc-dashboard.html` landing (product card + data row). Initial artifacts are an accepted ADR and a draft spec for an iPhone-friendly private webpage that copies prompts/skills with server-side front matter stripping.
+- New Project Checklist: added `docs/loc-dashboard.html` (product card + data array) and `<project>/docs/log.md` (seed entry) as required surfaces in `CLAUDE.md`, closing the drift that left dragoman off the landing on 2026-04-29. Also backfilled the dragoman product card and data row to clear that gap.
+- Supabase keep-alive: switched the scheduled workflow from a SELECT ping to a PATCH against a dedicated `public.keepalive` table (`claude-insights/migrations/002_keepalive_table.sql`). Read-only pings did not reliably reset the free-tier inactivity timer — Supabase still issued a pause warning despite three days of green keep-alive runs. A write is unambiguous DB activity. Migration must be applied before the workflow change merges.
+
+## 2026-04-30
+
+- Linear: added `course-exploration` project (id `f4aa9d0e-3646-411c-8763-8239a2979937`) as a sibling of `ai-labs` to hold a raw, unstructured course-development idea; updated `CLAUDE.md` Linear section to list both projects under the shared workspace/team. Materials remain under `research/courses/` in this repo.
+- pr-ci-watch: added `scripts/watch-pr.sh` wrapper and the `Bash(./scripts/watch-pr.sh:*)` allow rule so PR CI watching no longer triggers a permission prompt for the `/tmp/<repo>-pr-<pr>.log` redirect. The wildcard `Bash(... > /tmp/*)` form does not match a redirect with a trailing `2>&1`, so encapsulating the redirect inside a script is the cleanest fix.
+- Linear: linked the repo to Linear project `ai-labs` (workspace `igor1309`, team `IG`, id `e94949cf-0479-4539-bced-7a737e5d874b`) by recording the metadata in `CLAUDE.md` so agents skip the lookup. Considered also adding a `.linear.toml` at the repo root for `schpet/linear-cli` compatibility — deferred until that CLI is actually adopted.
+- Research: added a structured extraction, derived curriculum, and selling-points brief for Timur Khakhalev's AI Coding course landing page under `research/courses/khakhalev/`.
+
+## 2026-04-29
+
+- dragoman: renamed the docs-only top-level project directory from `the-dragoman/` to `dragoman/` so the project slug is distinct from the "The Dragoman" Telegram channel name.
+- dragoman: registered as a docs-only top-level project — added to `scripts/loc-dashboard.sh` and the README `## Components` table. No CI changes needed: the project is absent from every `ci.yml` path filter, so per-project core jobs stay skipped on doc/image-only changes.
+- LOC dashboard: classified `img`/`images` as known top-level dirs and added them to `EXCLUDES` in `scripts/loc-dashboard.sh` so README banner asset folders are explicitly skipped and no longer trip drift detection.
+- LOC dashboard workflow: added `curl --max-time 30` to the Telegram step so a hung Telegram connection fails fast instead of stalling the run (root cause of the 2026-04-29 exit-56 failure).
+
+## 2026-04-28
+
+- Refreshed `docs/loc-dashboard.html` data array to match current `scripts/loc-dashboard.sh` output; reinix now reflects post-MVP code (`952/1712/4585`), and drifted entries for nomos, dev-skills, agents, session-digest, and repo-scripts updated.
+
+## 2026-04-27
+
+- ADR: added `docs/adr/cli-settings-convention.md` — repo-level rule covering discovery precedence, first-run bootstrap, structural-vs-catalog split, and settings-error class for CLI tools. Lists known violations in `reinix` and `session-digest` to close via per-tool plans.
+- Nomos: remove inert `nomos-shared` declaration from the repo prod compose (CI never copies it) and the orphan `docker build -t nomos:latest .` from staging deploy. Cleanup of dead promises after the rollback redesign. See `nomos/docs/log.md`.
+- Nomos: rewrite rollback path to operate on the actually-used `nomos-nomos:latest` image so a failed prod deploy can restore the previous version. See `nomos/docs/log.md`.
+- Nomos: force `--build` on prod compose so deploys rebuild the auto-named prod image instead of caching the previously built version. See `nomos/docs/log.md`.
+- Nomos: declare `nomos-shared` external network in the prod compose so Caddy retains staging connectivity across `docker compose down/up`. See `nomos/docs/log.md`.
+- reinix: scaffolded as a Node ESM workspace package and release unit; LOC dashboard tests now treat it as an implemented code component instead of docs-only.
+- reinix: created MVP workflow runner implementation plan from accepted spec and ADRs; addressed architecture-doc review (test ownership, skill references, release-unit posture, provider-CLI module split, worktree creation step, Node version pin, commit staging scope). See `reinix/docs/log.md`.
+- Reverted out-of-scope Nomos release/deploy changes from the session-digest branch and removed the mistaken Nomos release tags.
+- session-digest: replaced the Deep Agents prototype role with a V2 local-ledger and bounded-synthesis CLI, including dependency cleanup and component documentation updates.
+- Process docs: made implementation plans explicitly declare execution mode, review stops, worktree mode, push policy, and final archiving so future plan execution can auto-continue without ambiguity.
+
+## 2026-04-26
+
+- session-digest: exploration docs complete (ADR-001, CLI spec, Deep Agents/NVIDIA NIM use cases, and TypeScript implementation plan). See `session-digest/docs/log.md`.
+
+## 2026-04-25
+
+- reinix: MVP ADR set complete (agent settings, model routing, CLI execution boundary, failure policy, run artifact storage). All reviewed and accepted. See `reinix/docs/log.md`.
+
 ## 2026-04-24
+
+- Notio frontend v0.1.0: dark theme UI, fixed Cloudflare Pages deploy project name.
+
+- AI Labs landing page: product cards for all 14 projects with 2-column grid and scroll/hover animations.
 
 - Release docs: aligned explicit configured basename invariants and README component entries with the Notio backend/frontend release split.
 
 - Release ADRs: clarified explicit configured basenames for nested release units so symmetric component folders can still use globally unambiguous tags.
 
-- LOC dashboard: consolidated oracle into single row, added missing code extensions (.svelte, .sql, .css, .html, .mjs), merged gen/scripts columns into code, renamed text to docs, added per-project .md counting, added nexum/niora/regentara as regular rows, added .wrangler to exclusions.
+- LOC dashboard: consolidated oracle into single row, added missing code extensions (.svelte, .sql, .css, .html, .mjs), merged gen/scripts columns into code, renamed text to docs, added per-project .md counting, added nexum/niora/reinix as regular rows, added .wrangler to exclusions.
 
 - CI: narrowed `notio` path filter to Swift-only paths (Sources, Tests, Package.swift, Package.resolved), removing infra paths (supabase, Dockerfile, docker-compose, scripts, release.toml) that don't need the 15-min Swift test suite.
 
 ## 2026-04-23
 
-- LOC dashboard: added regentara to known dirs and docs-only list, clearing drift warning.
-- regentara: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
+- LOC dashboard: added reinix to known dirs and docs-only list, clearing drift warning.
+- reinix: new project — AI orchestrator (governance/routing layer over other agents). Initial docs: naming brief, name pool, orchestration design, and research notes.
 - CI: switched `notio` path filter from catch-all `notio/**` to inclusion-only (Sources, Tests, Package.swift, Dockerfile, etc.) so doc-only changes skip the expensive `notio-core` Swift build. Negation patterns don't work — `dorny/paths-filter` OR's all lines.
 
 ## 2026-04-21

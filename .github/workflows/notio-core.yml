@@ -19,10 +19,10 @@ jobs:
       image: swift:6.1
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref || github.sha }}
 
       - name: Run tests
-        working-directory: notio
+        working-directory: notio/backend
         run: swift test

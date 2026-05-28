@@ -72,12 +72,16 @@ Frontend ADRs are tracked separately under [`docs/frontend/adr/`](docs/frontend/
 - [Frontend ADR-004 — read-model contract for mvp_01 browse](docs/frontend/adr/ADR-004-read-model-contract-mvp01-browse.md)
 - [Frontend ADR-005 — single-user data model for mvp_01 frontend](docs/frontend/adr/ADR-005-single-user-data-model-mvp01-frontend.md)
 - [Frontend ADR-006 — platform, hosting, and repo layout for mvp_01 frontend](docs/frontend/adr/ADR-006-platform-hosting-repo-layout-mvp01-frontend.md)
+- [Frontend ADR-007 — frontend deployment verification by page version](docs/frontend/adr/ADR-007-frontend-deployment-verification-page-version.md)
+- [Frontend ADR-008 — local browser testing for mvp_01 frontend](docs/frontend/adr/ADR-008-local-browser-testing-mvp01-frontend.md)
 
 Specs: [`docs/specs/`](docs/specs/). Plans: [`docs/plans/`](docs/plans/).
 
-## Stack
+## Stack overview
 
 Swift 6.1 + [Hummingbird 2](https://github.com/hummingbird-project/hummingbird). Single executable (`NotioServer`) built from the `NotioApp` library. Deployed as a Docker container behind Cloudflare Tunnel.
+
+Backend files live under [`backend/`](backend/). Frontend files live under [`frontend/`](frontend/). Product docs remain under [`docs/`](docs/).
 
 ## Deployment topology (v1)
 
@@ -109,6 +113,8 @@ One process initially; ingress and core stay logically separate.
 
 ## Local development
 
+Run backend commands from `notio/backend/`.
+
 ```bash
 swift test              # unit tests
 swift build             # debug build
@@ -128,9 +134,17 @@ Diagnostic-only local run without Telegram feedback or persistence:
 NOTIO_WEBHOOK_PATH=test-webhook NOTIO_DIAGNOSTIC_MODE=ack swift run NotioServer
 ```
 
+Run the frontend local browser-testing runtime from `notio/frontend/`.
+
+```bash
+npm run dev:local
+```
+
+This serves the same Svelte app through Vite with deterministic in-memory auth and browse data. It is for local browser inspection only: it uses mock local data and does not validate Supabase RLS, magic-link delivery, network behavior, or real database ordering.
+
 ## Release
 
-Notio is being split into independently released backend and frontend units. Backend tags will follow `notio-backend_v<version>`; frontend tags will follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
+Notio is split into independently released backend and frontend units. Backend tags follow `notio-backend_v<version>`; frontend tags follow `notio-frontend_v<version>`. Historical `notio_v<version>` tags remain pre-split backend releases. Release checklist guidance is in [docs/release.md](docs/release.md); full policy is in repo-level `CLAUDE.md` and [ADR-007](docs/adr/adr-007-frontend-backend-release-split.md).
 
 ## Status
 
@@ -143,3 +157,16 @@ v1 capture pipeline with two-phase feedback (`notio_v0.3.0`): full parse → enr
 - query/read/edit clients
 - multiple storage implementations in parallel
 - reprocessing of previously captured items
+
+## Description
+
+Send a link or a note from Telegram and it lands in a persistent inbox. The core is *ingress- and storage-agnostic* — Telegram is just one input, Supabase just one backend. Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+
+## Stack
+
+- Swift 6.1
+- Hummingbird 2
+- Supabase
+- Docker
+- Cloudflare Tunnel
+- Telegram Bot

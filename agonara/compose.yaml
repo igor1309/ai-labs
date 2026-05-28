@@ -1,0 +1,13 @@
+services:
+  agonara:
+    build:
+      context: .
+    environment:
+      AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - agonara-data:/data
+
+volumes:
+  agonara-data:

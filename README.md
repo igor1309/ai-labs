@@ -1,5 +1,7 @@
 # ai-labs
 
+![ai-labs](img/image.PNG)
+
 Applied AI experiments and systems engineering.
 
 This repo also holds a reusable library of agent-oriented instructions, prompts, skills, and exploratory tooling for AI-assisted development.
@@ -25,6 +27,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | `prompts/` | Focused one-shot task instructions |
 | `dev-skills/` | Development workspace for Claude Code skills; published to `igor1309/skills` |
 | `tools/` | Small shell utilities and local workflow helpers |
+| `tools/mac-health/` | Scheduled launchd-driven macOS health checks (memory, disk, leftovers) — JSONL log + threshold notifications, no resident process |
 | `sandbox/` | Experiments and WIP explorations |
 | `insights/` | Notes on AI tooling and usage patterns |
 | `reading/` | Reading notes and curated references |
@@ -41,17 +44,29 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| nexum | Product | Private single-user repo memory system (full Swift stack) |
-| notio | Product family | Personal capture + browse system split into `notio-backend` and `notio-frontend` release units |
+| agonara | Product | Structured learning program environment with curated programs, learner progression, and evidence of mastery |
+| nexum | Product | Private repo memory system |
+| notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
-| oracle | Product | AI-powered web app (Cloudflare Pages + Workers) |
-| nomos | Service | LLM access control proxy — auth, cost budgets, unified API |
-| corpus-scout | MCP tool | Lexical search and section reading over a local text corpus |
-| web-scout | MCP tool | Web search via SearXNG |
-| loki | Service (on hold) | Centralized logging stack (Loki + Grafana + Alloy) |
-| claude-insights | Service | Weekly Claude Code usage aggregator with Telegram bot and LLM trend analysis |
+| oracle | Product | "Oracle — Am I Done?" One-shot career outlook tool |
+| reinix | CLI release unit | Workflow runner for governed coding-agent loops |
+| nomos | Service | AI sovereignty layer |
+| corpus-scout | MCP tool | Lexical search over a local text corpus |
+| web-scout | MCP tool | SearXNG search for Claude Code |
+| loki | Service (on hold) | Centralized logging stack |
+| claude-insights | Service | Weekly Claude Code usage reports |
+| session-digest | CLI | Claude Code session postmortems |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
+| dragoman | Editorial channel | "The Dragoman" Telegram channel |
+| clipdeck | Product | iPhone copy library for private prompts and skills |
+| doc-drift-agent | Agent definition | README drift reviewer |
+| dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
+| neris | Framework | Agentic execution layer in Swift |
+| niora | Concept | Contextual field of emergence |
+| tools | Tooling | Developer workflow helpers |
+| dev-skills | Tooling | Claude Code skills marketplace |
+| sandbox | Research | Experiments and prototypes |
 
 ## Architecture
 
@@ -62,7 +77,7 @@ Architecture Decision Records (ADRs) live in `docs/adr/`, organized by domain:
 
 ## Releases
 
-Each project is an independent release unit. Releases are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for configured units and `release-units.toml` for the current manifest. Full release policy is in `CLAUDE.md` under "Release Process".
+Configured release units are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for configured units and `release-units.toml` for the current manifest. Full release policy is in `CLAUDE.md` under "Release Process".
 
 ## LOC Dashboard
 

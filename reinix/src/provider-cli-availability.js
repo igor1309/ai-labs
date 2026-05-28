@@ -1,0 +1,67 @@
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
+import { delimiter, join } from "node:path";
+
+import { StartupValidationFailure } from "./errors.js";
+
+const RUNNER_COMMANDS = new Map([
+  ["claude-code", "claude"],
+  ["codex", "codex"],
+]);
+
+export async function validateProviderCliAvailability(runners, options = {}) {
+  const commandExists = options.commandExists ?? ((command) => defaultCommandExists(command, options));
+
+  for (const runner of new Set(runners)) {
+    const command = RUNNER_COMMANDS.get(runner);
+    if (!command) {
+      continue;
+    }
+
+    if (!(await commandExists(command))) {
+      throw new StartupValidationFailure(`required provider CLI unavailable: ${command}`);
+    }
+  }
+
+  return {
+    available: true,
+  };
+}
+
+async function defaultCommandExists(command, options = {}) {
+  const environment = options.environment ?? process.env;
+  const fileIsExecutable = options.fileIsExecutable ?? defaultFileIsExecutable;
+  const executableExtensions = executableFileExtensions(environment);
+  const pathEntries = (environment.PATH ?? "")
+    .split(delimiter)
+    .filter(Boolean);
+
+  for (const pathEntry of pathEntries) {
+    for (const extension of executableExtensions) {
+      if (await fileIsExecutable(join(pathEntry, `${command}${extension}`))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+async function defaultFileIsExecutable(path) {
+  try {
+    await access(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function executableFileExtensions(environment) {
+  if (process.platform !== "win32") {
+    return [""];
+  }
+
+  return (environment.PATHEXT ?? ".EXE;.CMD;.BAT;.COM")
+    .split(";")
+    .filter(Boolean);
+}

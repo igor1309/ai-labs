@@ -7,25 +7,28 @@
 **NEVER modify `~/.codex/skills/`** - that is the user's personal installation directory, NOT this repository.
 
 When publishing skills:
-1. Move to `public/<skill-name>/` when ready to publish
-2. Update `public/.claude-plugin/marketplace.json`: add/update the skill entry in the skills array, and bump `metadata.version`
-3. Update `public/README.md`
+1. Verify the SKILL.md front matter contains `author: Igor Malyarov`. Missing or empty `author` blocks publishing — add it before continuing. (Background: the field was removed from all skills at some point; re-introducing this gate prevents recurrence.)
+2. Move to `public/<skill-name>/` when ready to publish
+3. Update `public/.claude-plugin/marketplace.json`:
+   - Add/update the skill entry in the skills array (alphabetical — see "Alphabetical Ordering" below).
+   - If the plugin's long `description` string enumerates skills, add this skill to it too. The description is the marketplace-facing copy; missing entries make the skill invisible to listings even when present in the array.
+   - Bump `metadata.version`.
+   - Bump `public/.codex-plugin/plugin.json` `version` to match.
+   - Bump any modified SKILL.md `version` per the "Skill Versioning" section below.
 4. Update `dev-skills/docs/log.md` for project-scoped changes. Update repo-root `docs/log.md` too only when the change is genuinely repo-wide.
-5. Stop to commit.
-6. Push to trunk.
-7. After ~1 min, verify CI and skills repo:
+5. Stop to commit on a dedicated branch (never directly on `trunk` — it is protected at the repo level).
+6. Push the branch and open a PR into `trunk`, then enable auto-merge:
+   - `git push -u origin <branch>`
+   - `gh pr create --base trunk --title "<title>" --body "<body>"`
+   - `gh pr merge <number> --merge --auto --delete-branch`
+7. After the PR merges, ~1 min later, verify CI and skills repo:
    - Check CI completed: `gh run list --repo igor1309/skills --limit 1 --json status,conclusion,name`
    - Verify release version matches marketplace version: `gh release list --repo igor1309/skills --limit 1`
    - Verify skill exists in skills repo: `gh api repos/igor1309/skills/contents/<skill-name>/SKILL.md --jq '.name'`
 
 ## Alphabetical Ordering
 
-**Skills MUST be listed in alphabetical order** in:
-- `public/.claude-plugin/marketplace.json` (skills array)
-- `public/README.md` (both Skills section and Usage section)
-- Installation commands in `public/README.md`
-
-This ensures consistency and makes it easy for users to find skills.
+**Skills MUST be listed in alphabetical order** in `public/.claude-plugin/marketplace.json` (skills array). This ensures consistency and makes it easy for users to find skills.
 
 ## Skill Versioning
 

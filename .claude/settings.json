@@ -9,5 +9,13 @@
         "repo": "igor1309/skills"
       }
     }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/run_silent.sh:*)",
+      "Bash(./scripts/watch-pr.sh:*)",
+      "Bash(node --test reinix/tests:*)",
+      "Bash(gh pr checks:*)"
+    ]
   }
 }

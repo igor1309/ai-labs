@@ -1,11 +1,13 @@
 name: LOC Dashboard
 
 # Daily lines-of-code snapshot sent to Telegram.
-# Runs at 06:00 UTC (09:00 Moscow time) — same window as scheduled-health.
+# Runs at 06:23 UTC (09:23 Moscow time) — staggered from scheduled-health
+# to avoid the top-of-hour GitHub-hosted runner contention that caused
+# 2026-05-06's "runner not acquired" failure.
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "23 6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -21,7 +23,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check project drift
         run: |
@@ -67,4 +69,18 @@ jobs:
           MSG: ${{ steps.loc.outputs.msg }}
         run: |
           msg_html=$(printf '%s' "$MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-          curl -fsS -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=<pre>${msg_html}</pre>"
+          curl -fsS --max-time 30 -X POST "https://api.telegram.org/bot${CI_BOT_TOKEN}/sendMessage" -d "chat_id=${CI_CHAT_ID}" -d "parse_mode=HTML" --data-urlencode "text=<pre>${msg_html}</pre>"
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.report.result == 'failure' }}
+    needs: [report]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "LOC Dashboard"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        report=${{ needs.report.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

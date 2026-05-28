@@ -37,6 +37,10 @@ For release units discovered through `release-units.config.toml`,
 The basename MAY differ from the unit root leaf directory when needed to
 keep nested release units globally unambiguous.
 
+The basename MUST differ from the unit root leaf directory when a nested
+unit's leaf name would be ambiguous in repo-wide release history, such
+as `notio/backend` and `notio/frontend`.
+
 This amendment supersedes the leaf-directory basename rule for units
 with an explicit configured basename.
 

@@ -52,6 +52,20 @@ Example:
 - `test_<event>_shouldChangeState_*`
 - `test_<event>_shouldDeliverEffect_*`
 
+#### Pair Tests Adjacently in the File
+
+Each `(setup, event)` cell produces **both** a state test and an effect test. They must sit **next to each other** in the file — state-test immediately followed by its matching effect-test for the same setup and event. Do not list all state tests first and then all effect tests, even if the spec's test plan tables present them that way.
+
+```
+test_<event>_should<StateAssertion>_on<Condition>
+test_<event>_shouldDeliverXEffect_on<Condition>          // or shouldNotDeliverEffect
+test_<event>_should<StateAssertion>_on<NextCondition>
+test_<event>_shouldDeliverYEffect_on<NextCondition>
+...
+```
+
+Pairing keeps the two halves of the same observation together so a reader can see the full behavioral spec for one `(setup, event)` cell at a glance, and so a failure in one half is read alongside the assertion in the other.
+
 ## Effect Handler Testing Pattern
 
 ### Collaboration Testing

@@ -1,5 +1,6 @@
 ---
 name: docker-discipline
+author: Igor Malyarov
 version: "1.0.0"
 description: Docker compose, deploy fix, local verification, and cross-platform gotchas for Docker-producing units
 trigger: when working with Dockerfiles, docker compose, deploy scripts, or Docker-producing units

@@ -10,11 +10,14 @@
 - If the user narrows scope or corrects direction, immediately stop the previous plan and follow the new scope.
 - Before making changes, restate the requested scope in one sentence and execute only that scope.
 - Follow the written plan/docs as the source of truth; do not invent steps or rename phases.
-- Make small, reviewable changes and stop after each step for review.
+- Make small, reviewable changes. Stop after each step for human review only when the active plan declares `human-review-gated`; otherwise auto-continue after green gates and local commit.
 - Add tests alongside changes, not later.
 - Always run tests on code changes.
-- Require a full test suite pass before declaring completion.
-- Require a full test suite pass for each phase step before moving to the next step.
+- Require scope-appropriate verification before declaring completion.
+- Full test/build gates are required for code, config, dependency, CI, release, or generated-artifact changes.
+- Docs-only changes do not require test/build runs unless the docs change executable examples, generated outputs, CI/release behavior, or package/tooling configuration.
+- For docs-only changes, verify Markdown structure, required front matter, required sections, links/references when relevant, and git diff scope.
+- Require scope-appropriate verification for each phase step before moving to the next step.
 - Commit only when tests are passing for the current branch state.
 - `trunk` is a protected branch. Never commit or push directly to `trunk`. All changes must go through a PR from a dedicated branch.
 - PR merge strategy: use merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
@@ -30,6 +33,7 @@ Use the `pr-ci-watch` skill. See `dev-skills/public/pr-ci-watch/SKILL.md`.
 Repo-specific details:
 - PR merge strategy: merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
 - `gh pr create` does NOT support `--auto` or `--merge` flags. Auto-merge is a separate step: `gh pr merge <number> --merge --auto --delete-branch`.
+- Use `./scripts/watch-pr.sh <pr>` instead of invoking `gh pr checks <pr> --watch --fail-fast > /tmp/...` directly. The wrapper encapsulates the `/tmp` redirect so the call is auto-allowed by the `Bash(./scripts/watch-pr.sh:*)` permission rule. The wrapper exits with the same status as `gh pr checks` and prints the log path on stdout.
 
 ## Specs
 
@@ -42,6 +46,18 @@ The `## Components` table in `README.md` lists every component with its type and
 - Add a row when a new component (product, service, MCP tool, observability) is introduced.
 - Update the Type or Description when a component's role changes.
 - Remove the row when a component is deleted from the repo.
+
+## New Project Checklist
+
+When a new top-level project directory is added (or an existing one is renamed/removed), update all of the following in the same change set:
+
+- `scripts/loc-dashboard.sh`: add the project to the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`.
+- `README.md` `## Components` table: add a row with type and one-line description.
+- `docs/loc-dashboard.html`: add a `product reveal` card under `## Components` and a corresponding entry in the `data` array used by the chart.
+- `<project>/docs/log.md`: seed a project log with an initial entry (project established, scope, initial artifacts).
+- `docs/log.md`: add a top-level entry summarizing the landing.
+- `release-units.config.toml` (only if the project ships a release unit).
+- Per-project CI workflow (`<project>-core.yml`) per the "Per-Project CI Isolation" section, only if the project has tests/build to run.
 
 ## Log
 
@@ -61,11 +77,19 @@ Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
 Use the `process-gates` skill. See `dev-skills/public/process-gates/SKILL.md`.
 
 Repo-specific details:
-- Pre-commit/pre-push verification for Node/TypeScript: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
+- Pre-commit/pre-push verification for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
 - Swift-only scopes: `swift test` / `swift build`.
 - Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
 - Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
-- Worktree convention: `worktrees/<slug>` with branch `codex/<slug>`.
+- Worktree convention: `worktrees/<slug>` with branch `<slug>`.
+- Implementation plans must follow `docs/my-way/05-implementation-plan/structure.md`. Required sections are `Goal`, `Execution mode`, `Execution lock`, `Scope guardrails`, phases/tasks, `Done criteria`, and `Final closeout`.
+- Missing required implementation-plan sections are a fail, not a style warning. Do not substitute scattered equivalent bullets for required headings.
+- Implementation plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
+- Default preferred execution mode is `auto-continue` unless the plan explicitly says `human-review-gated`.
+- Completed plans move to the relevant `implemented/` directory as the final closeout step. The move (`git mv docs/plans/<name>.md docs/plans/implemented/<name>.md`) ships in the **same PR as the implementation**, not as a follow-up PR — the merge is the moment the plan becomes implemented, so trunk never sees a state where the implementation is in but the plan still sits in `docs/plans/` as "to do".
+- Before committing or opening a PR for implementation-plan changes, run adversarial review against the implementation-plan review skill and mandatory structure. Fix fail/warn findings before committing or opening the PR.
+- PR titles and bodies for plan/implementation PRs must be derived from the plan goal, scope, source artifacts, verification gates, and changed docs/code. Do not use a vague commit-summary title or body when a plan provides better context.
+- Before opening a PR after substantial implementation or documentation movement, refresh `docs/loc-dashboard.html` from `./scripts/loc-dashboard.sh --sort=name` and verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
 
 ## Release Process
 
@@ -99,6 +123,10 @@ When adding a new project with its own dependencies, create a dedicated `<projec
 ## Nomos API Keys
 
 Each project must have its own Nomos project and API key. Do not reuse Nomos keys across projects.
+
+## Linear
+
+See [`docs/linear.md`](docs/linear.md) for Linear procedures, role-of-Linear rules, authoring conventions, project metadata, and MCP access notes.
 
 ## Context-Efficient Commands
 
@@ -138,3 +166,7 @@ When a spec pins a dependency with a floor version (`>=X.0.0`), the implementati
 ## Architecture Doc Review
 
 Use the `arch-doc-review` skill. See `dev-skills/public/arch-doc-review/SKILL.md`.
+
+## Review Discipline: Verify Before Hedging
+
+When reviewing changes, verify state on disk before writing conditional findings. Do not produce review bullets of the form "if X still exists…", "may cause Y…", or "worth confirming Z" when a single `ls`, `grep`, `git log`, or `gh` call would resolve the conditional. Run the check inline and state the finding flatly. Reserve hedges for things that genuinely cannot be verified from current state (intent, future plans, runtime behavior on unreachable infra).

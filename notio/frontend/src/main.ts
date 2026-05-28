@@ -5,11 +5,9 @@ import App from "./app.svelte";
 import { SupabaseAuthSession } from "./auth/SupabaseAuthSession";
 import { SupabaseBrowseItemsReader } from "./browse/SupabaseBrowseItemsReader";
 import { readConfig } from "./config";
+import { createLocalRuntime, type NotioRuntime } from "./local-browser-testing/createLocalRuntime";
 
-const config = readConfig();
-const client = createClient(config.supabaseUrl, config.supabaseAnonKey);
-const authSession = new SupabaseAuthSession(client);
-const reader = new SupabaseBrowseItemsReader(client);
+const runtime = createRuntime();
 const target = document.getElementById("app");
 
 if (target === null) {
@@ -18,8 +16,22 @@ if (target === null) {
 
 export default mount(App, {
   props: {
-    authSession,
-    reader
+    authSession: runtime.authSession,
+    reader: runtime.reader
   },
   target
 });
+
+function createRuntime(): NotioRuntime {
+  if (import.meta.env.VITE_NOTIO_RUNTIME === "local") {
+    return createLocalRuntime();
+  }
+
+  const config = readConfig();
+  const client = createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+  return {
+    authSession: new SupabaseAuthSession(client),
+    reader: new SupabaseBrowseItemsReader(client)
+  };
+}

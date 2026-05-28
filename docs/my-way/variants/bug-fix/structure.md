@@ -1,6 +1,8 @@
 ---
 title: Bug Fix — Mandatory Structure
 date: 2026-04-12
+model: gpt-5.5-thinking
+description: "Bug fix mandatory structure."
 author: Igor Malyarov
 version: 0.0.1
 format: structure
@@ -36,6 +38,10 @@ Concrete steps, inputs, environment, and the observed actual outcome. If reprodu
 
 Why the system diverges from expected behavior. Distinguish the underlying cause from the visible failure. If the cause is not yet known, mark this section as "under investigation" and list the leading hypotheses.
 
+### `## Expected behavior source`
+
+Reference the spec, Product Intent, existing test, user report, or other source that defines the expected behavior. If the source is missing or ambiguous, say so explicitly and include the required escalation.
+
 ### `## Fix strategy`
 
 The narrowest change that addresses the cause. Include:
@@ -54,6 +60,7 @@ The automated check that fails on the unfixed system and passes after the fix. B
 Optional. Include only when the defect reveals deeper issues:
 
 - expected behavior was never defined → link to the spec update
+- accepted user intent was missing, ambiguous, or has changed → link to the Product Intent update
 - the defect violates an invariant no ADR covers → link to the pre-ADR
 - the fix would require new boundaries → link to the full pre-coding sequence
 

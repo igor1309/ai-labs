@@ -1,0 +1,47 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { validateProviderCliAvailability } from "../src/provider-cli-availability.js";
+
+test("validateProviderCliAvailability should check runner commands by scanning the process PATH", async () => {
+  const checkedPaths = [];
+
+  await validateProviderCliAvailability(["codex"], {
+    commandExists: undefined,
+    environment: {
+      PATH: "/opt/bin:/usr/local/bin",
+    },
+    fileIsExecutable: async (path) => {
+      checkedPaths.push(path);
+      return path === "/usr/local/bin/codex";
+    },
+  });
+
+  assert.deepEqual(checkedPaths, ["/opt/bin/codex", "/usr/local/bin/codex"]);
+});
+
+test("validateProviderCliAvailability should check built-in adapter command names", async () => {
+  const checkedCommands = [];
+
+  await validateProviderCliAvailability(["claude-code", "codex"], {
+    commandExists: async (command) => {
+      checkedCommands.push(command);
+      return true;
+    },
+  });
+
+  assert.deepEqual(checkedCommands, ["claude", "codex"]);
+});
+
+test("validateProviderCliAvailability should leave custom catalog runners to execution adapters", async () => {
+  const checkedCommands = [];
+
+  await validateProviderCliAvailability(["custom-runner"], {
+    commandExists: async (command) => {
+      checkedCommands.push(command);
+      return false;
+    },
+  });
+
+  assert.deepEqual(checkedCommands, []);
+});

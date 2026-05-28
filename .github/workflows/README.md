@@ -21,9 +21,20 @@ This ensures the `report` job (a required status check for branch protection) al
 
 Per-project workflows do not need their own path filters — the dispatcher's `changes` job already prevents them from running on unrelated changes.
 
+## Notio Split
+
+Notio has separate backend and frontend release units:
+
+- `notio-core.yml` runs Swift tests from `notio/backend/`.
+- `notio-frontend-core.yml` runs the frontend typecheck, tests, and build from `notio/frontend/`.
+- `release-unit.yml` deploys `notio-backend_v<version>` tags to the VPS Docker service.
+- `notio-frontend-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `notio-frontend_v<version>` tags after the frontend core gate. A Notio frontend release succeeds only after the production Cloudflare Pages app renders the expected `Version` text in the browser-rendered page-version smoke check.
+
+There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
+
 ## Shared Infrastructure
 
-- **Path detection**: `dorny/paths-filter@v3` in the `changes` job
+- **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
 - **Timezone**: all cron schedules target Moscow morning (UTC+3), documented in each file

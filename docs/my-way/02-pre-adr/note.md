@@ -1,8 +1,10 @@
 ---
 title: Pre-ADR
-date: 2026-04-12
+date: 2026-05-27
+model: gpt-5.5-thinking
+description: "Note defining Pre-ADR as the exploratory architecture layer before formal decisions."
 author: Igor Malyarov
-version: 0.0.2
+version: 0.0.3
 format: note
 ---
 
@@ -15,6 +17,8 @@ Pre-ADR is the exploratory design stage that sits between research and formal ar
 Its purpose is to turn raw understanding into structured architectural discussion before commitment is made. It helps examine candidate directions, pressure-test assumptions, and shape the system at a stage where correction is still relatively cheap.
 
 Pre-ADR is not the final decision record. It is the workspace in which that decision is approached.
+
+A pre-ADR may include candidate capabilities or first-slice notes when they clarify the decision space, as long as they are marked provisional and do not pretend to be an accepted spec.
 
 ## What it is / what it is not
 

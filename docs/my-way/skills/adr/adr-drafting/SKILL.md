@@ -26,6 +26,7 @@ Do not use this skill when the work still belongs in research or pre-ADR.
 
 Read the minimum context needed to understand the decision:
 
+- accepted Product Intent stories when the decision enables, protects, or constrains user-facing capability
 - the relevant pre-ADR and research artifacts
 - adjacent accepted ADRs that may constrain or conflict with this decision
 - notes from design discussion if they materially shaped the outcome
@@ -41,6 +42,7 @@ Do not restage the whole exploratory history inside the ADR. Read enough to iden
 - The ADR must define boundaries: what this decision governs and what it does not.
 - The ADR must capture consequences and tradeoffs, not present the choice as cost-free.
 - The ADR must stay architectural. Behavioral detail belongs in the spec. Execution detail belongs in the implementation plan.
+- Product Intent can explain why the decision matters, but the ADR must not become a product document.
 - The ADR exists to reduce reinterpretation, drift, and repeated debate around already-resolved matters.
 
 ## Produce
@@ -50,6 +52,7 @@ Help produce or revise an ADR that makes clear:
 - what decision was made
 - why this direction was chosen over the main alternatives
 - what constraints materially shaped the decision
+- what accepted Product Intent, if any, the decision enables, protects, or constrains
 - what boundaries, responsibilities, or contracts the decision establishes
 - what consequences follow from accepting it
 - what is explicitly out of scope

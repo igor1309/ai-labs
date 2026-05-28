@@ -26,6 +26,7 @@ Do not use this skill to review a final committed decision. That belongs in ADR 
 
 Read the pre-ADR under review first, then pull only the context needed to test it:
 
+- accepted Product Intent stories the pre-ADR claims to support or protect
 - the research artifacts it builds on
 - relevant brainstorming or Q&A notes when they explain the option space
 - existing system constraints that materially affect the options
@@ -46,6 +47,7 @@ Review the pre-ADR as exploratory design work, not as a final decision record.
 
 - **Option quality**: are the candidate directions plausible and distinct?
 - **Tradeoff clarity**: are tradeoffs and risks explicit rather than implied?
+- **Product-intent fit**: are accepted stories considered where options materially affect user outcomes?
 - **Constraint visibility**: are the relevant constraints shaping the comparison?
 - **Provisional boundary clarity**: are emerging responsibilities and coupling decisions visible, while still marked as provisional?
 - **Open-question quality**: are the remaining unresolved items concrete and bounded enough to feed ADR?

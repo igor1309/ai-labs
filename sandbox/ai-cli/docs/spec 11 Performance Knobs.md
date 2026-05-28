@@ -1,0 +1,12 @@
+---
+date: 2025-08-31
+description: "spec 11 Performance Knobs"
+---
+
+The next section, **Performance Knobs**, outlines the strategies and features designed to optimize the AI Context Runner’s efficiency, particularly concerning cost, latency, and the handling of large prompt bundles. These features help manage the computational resources involved in interacting with Large Language Models (LLMs).
+
+Key performance considerations and solutions include:
+
+*   **Bundle Cache**: The tool will utilize a **bundle cache** which identifies unique prompt bundles by their hash (calculated from the assembled files). This allows the system to **reuse previously compiled bundles across runs**, significantly reducing redundant assembly work and potentially associated costs. The `ai explain` feature will also show the bundle hash, enabling users to understand and reason about cache hits.
+*   **Provider-Specific Prompt Caching**: The tool will support toggling **provider-specific prompt caching** features. For instance, Anthropic’s prompt caching is explicitly mentioned as a feature that makes large, mostly-static instructions more affordable and is designed for the “big system preamble + small user input” pattern. These toggles can be configured in `providers/<name>/overlay.md` or `config.yml`. This is particularly useful when concatenating many rule files, which can otherwise lead to increased cost and latency.
+*   **Budget Awareness**: The system will offer **token estimates per section** of the assembled prompt bundle. This provides users with **warnings before sending** a prompt if it approaches or exceeds token limits, helping to manage costs and ensure the prompt fits within the model’s context window.

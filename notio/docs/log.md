@@ -2,6 +2,34 @@
 
 ## 2026-04-24
 
+- Fixed the ADR-008 review warning by making local in-memory auth teardown stop later state emissions, aligning the local adapter with the shared `AuthSession` lifecycle contract.
+
+- Reviewed the ADR-008 local browser-testing implementation and saved one lifecycle warning: `InMemoryAuthSession.destroy()` should stop later local auth emissions to match the public `AuthSession` contract.
+
+- Implemented Frontend ADR-008: `dev:local` now serves an explicit local browser-testing runtime with in-memory auth, deterministic browse scenarios, import-boundary gates, and docs for mock-data browser inspection without Supabase credentials.
+
+- Implemented Frontend ADR-007 deployment verification: Cloudflare Pages deploys now derive the expected frontend version, load the configured production URL through Playwright, and fail the release unless the rendered `Version` element matches.
+
+- Planned Frontend ADR-007 implementation: derive deployment expected version from frontend tags or package metadata, verify the deployed production page with a browser-rendered `Version` check, and gate Cloudflare Pages releases on that smoke result.
+
+- Planned Frontend ADR-008 implementation: explicit `dev:local` runtime selection, in-memory auth and browse adapters, deterministic local browse scenarios, and documentation/import gates.
+
+- Frontend ADR-008: local browser testing uses a Vite-served mock runtime behind the existing auth and browse interfaces so the authenticated UI can be exercised locally without production Supabase credentials.
+
+- Frontend ADR-007: made Notio frontend production deploy success depend on loading the deployed Cloudflare Pages app and verifying the rendered visible version matches the expected frontend version from the release tag or checked-out `package.json`.
+
+- Notio frontend v0.1.1: fixed deploy to target production branch (`--branch trunk`); v0.1.0 deployed to preview instead of production.
+
+- Notio frontend v0.1.0: dark theme styling for login form and browse view (2-column card grid, hover effects, mouse-tracking glow). Fixed deploy workflow Cloudflare project name (`notio-frontend` → `notio`).
+
+- Cleaned up Notio release-split docs: product docs now point at backend/frontend component roots, workflow docs describe split tag deploys, and the frontend release checklist asks for the minimum compatible backend tag.
+
+- Added frontend-visible version display from `notio/frontend/package.json`; the Vite build injects the frontend package version and the UI renders it without Git SHA data.
+
+- Split Notio release registration and release workflows into `notio-backend` and `notio-frontend` units: backend tags drive VPS Docker deploys, frontend tags drive Cloudflare Pages deploys, and trunk-push frontend deploys are no longer active.
+
+- Moved backend-owned Swift, Docker, deploy, release metadata, and Supabase migration files under `notio/backend/` so the backend and frontend now have symmetric component roots.
+
 - Closed ADR-007 review follow-ups: explicit configured basenames now override path leaves, frontend compatibility declarations use `notio/docs/log.md`, and the repo Components table names the Notio backend/frontend release units.
 
 - Tightened ADR-007 review fixes: Notio backend/frontend tags are explicitly `notio-backend_v<version>` and `notio-frontend_v<version>`, compatibility declarations name the minimum backend tag, and ADR namespaces now distinguish frontend-only ADRs from product/capture/backend ADRs.

@@ -3,15 +3,36 @@
 
 
 [[units]]
+basename = "clipdeck"
+path = "clipdeck"
+metadata = "package.json"
+version = "0.1.15"
+docker = false
+
+[[units]]
 basename = "nomos"
 path = "nomos"
 metadata = "package.json"
-version = "0.8.4"
+version = "0.8.9"
 docker = true
 
 [[units]]
-basename = "notio"
-path = "notio"
+basename = "notio-backend"
+path = "notio/backend"
 metadata = "release.toml"
 version = "0.3.0"
 docker = true
+
+[[units]]
+basename = "notio-frontend"
+path = "notio/frontend"
+metadata = "package.json"
+version = "0.1.1"
+docker = false
+
+[[units]]
+basename = "reinix"
+path = "reinix"
+metadata = "package.json"
+version = "0.0.6"
+docker = false

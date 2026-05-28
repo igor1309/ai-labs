@@ -1,0 +1,8 @@
+---
+date: 2025-11-01
+description: "Smart API Test Case Generator Ingests an OpenAPI (Swagger"
+---
+
+Smart API Test Case Generator: Ingests an OpenAPI (Swagger) specification and uses an AI to generate a suite of logical, human-readable test cases for the API endpoints. This requires parsing a structured specification file and programmatically iterating through its contents to generate targeted outputs, which a single prompt cannot orchestrate.
+
+- Gemini 2.5 Pro suggesting weekend AI project ideas, 13.09.2025

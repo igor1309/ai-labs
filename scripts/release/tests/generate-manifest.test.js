@@ -100,4 +100,27 @@ describe('discoverUnits', () => {
     assert.equal(units[0].basename, 'my-api');
     assert.equal(units[0].path, 'apps/my-api');
   });
+
+  it('uses explicit basenames for nested paths', () => {
+    mkdirSync(join(tmp, 'notio', 'backend'), { recursive: true });
+    writeFileSync(join(tmp, 'notio', 'backend', 'release.toml'), 'version = "0.1.0"\n');
+    mkdirSync(join(tmp, 'notio', 'frontend'), { recursive: true });
+    writeFileSync(
+      join(tmp, 'notio', 'frontend', 'package.json'),
+      JSON.stringify({ version: '0.2.0' }),
+    );
+
+    const units = discoverUnits(tmp, [
+      { path: 'notio/backend', basename: 'notio-backend' },
+      { path: 'notio/frontend', basename: 'notio-frontend' },
+    ]);
+
+    assert.deepEqual(
+      units.map($0 => [$0.basename, $0.path, $0.metadata, $0.version]),
+      [
+        ['notio-backend', 'notio/backend', 'release.toml', '0.1.0'],
+        ['notio-frontend', 'notio/frontend', 'package.json', '0.2.0'],
+      ],
+    );
+  });
 });
