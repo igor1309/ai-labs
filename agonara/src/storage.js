@@ -1784,6 +1784,12 @@ export function exportIdentityBackup(database) {
     acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
     acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
     corpusEvents: listCorpusEventRecords(database),
+    assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
+    acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
+    acceptedAssessmentCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database),
+    openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
+    acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
+    acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
   };
 }
 
@@ -1801,6 +1807,7 @@ export function restoreIdentityBackup(database, backup) {
   }
 
   assertValidCorpusGraphInBackup(backup);
+  assertValidAssessmentGraphInBackup(backup);
 
   database.transaction(() => {
     database.prepare("delete from sessions").run();
@@ -1954,6 +1961,76 @@ export function restoreIdentityBackup(database, backup) {
          id, event_type, actor_identity_id, program_id, target_id, occurred_at, outcome, reason
        ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertAssessmentCriterionCandidate = database.prepare(
+      `insert into assessment_criterion_candidates (
+         id,
+         program_id,
+         title,
+         body,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedAssessmentCriterionEntity = database.prepare(
+      `insert into accepted_assessment_criterion_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    );
+    const insertAcceptedAssessmentCriterionRevision = database.prepare(
+      `insert into accepted_assessment_criterion_revisions (
+         id,
+         entity_id,
+         program_id,
+         title,
+         body,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertOpenAnswerCheckCandidate = database.prepare(
+      `insert into open_answer_check_candidates (
+         id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         source_ids_json,
+         criterion_entity_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedOpenAnswerCheckEntity = database.prepare(
+      `insert into accepted_open_answer_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    );
+    const insertAcceptedOpenAnswerCheckRevision = database.prepare(
+      `insert into accepted_open_answer_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         accepted_from_candidate_id,
+         source_ids_json,
+         criterion_revision_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
 
     for (const shell of backup.programShells ?? []) {
       insertProgramShell.run(
@@ -2069,6 +2146,86 @@ export function restoreIdentityBackup(database, backup) {
         event.occurredAt,
         event.outcome,
         event.reason ?? null,
+      );
+    }
+
+    for (const candidate of backup.assessmentCriterionCandidates ?? []) {
+      insertAssessmentCriterionCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.title,
+        candidate.body,
+        JSON.stringify(candidate.sourceIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+    }
+
+    for (const entity of backup.acceptedAssessmentCriterionEntities ?? []) {
+      insertAcceptedAssessmentCriterionEntity.run(
+        entity.id,
+        entity.programId,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedAssessmentCriterionRevisions ?? []) {
+      insertAcceptedAssessmentCriterionRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.title,
+        revision.body,
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+    }
+
+    for (const candidate of backup.openAnswerCheckCandidates ?? []) {
+      insertOpenAnswerCheckCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.checkKind,
+        candidate.title,
+        candidate.prompt,
+        JSON.stringify(candidate.sourceIds ?? []),
+        JSON.stringify(candidate.criterionEntityIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+    }
+
+    for (const entity of backup.acceptedOpenAnswerCheckEntities ?? []) {
+      insertAcceptedOpenAnswerCheckEntity.run(
+        entity.id,
+        entity.programId,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedOpenAnswerCheckRevisions ?? []) {
+      insertAcceptedOpenAnswerCheckRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.checkKind,
+        revision.title,
+        revision.prompt,
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        JSON.stringify(revision.criterionRevisionIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
       );
     }
   })();
@@ -2415,6 +2572,144 @@ function assertValidCorpusGraphInBackup(backup) {
   }
 }
 
+function assertValidAssessmentGraphInBackup(backup) {
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const criterionCandidatesById = new Map(
+    (backup.assessmentCriterionCandidates ?? []).map($0 => [$0.id, $0]),
+  );
+  const criterionEntitiesById = new Map(
+    (backup.acceptedAssessmentCriterionEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const criterionRevisionsById = new Map(
+    (backup.acceptedAssessmentCriterionRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+  const checkCandidatesById = new Map(
+    (backup.openAnswerCheckCandidates ?? []).map($0 => [$0.id, $0]),
+  );
+  const checkEntitiesById = new Map(
+    (backup.acceptedOpenAnswerCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const checkRevisionsById = new Map(
+    (backup.acceptedOpenAnswerCheckRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+
+  for (const candidate of backup.assessmentCriterionCandidates ?? []) {
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+  }
+
+  for (const revision of backup.acceptedAssessmentCriterionRevisions ?? []) {
+    const entity = criterionEntitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("criterion_entity_not_found");
+    }
+
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("criterion_revision_program_mismatch");
+    }
+
+    const candidate = criterionCandidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("criterion_candidate_not_found");
+    }
+
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("criterion_candidate_not_accepted");
+    }
+
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("criterion_candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+  }
+
+  for (const entity of backup.acceptedAssessmentCriterionEntities ?? []) {
+    const currentRevision = criterionRevisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("criterion_revision_not_found");
+    }
+
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("criterion_revision_entity_mismatch");
+    }
+
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("criterion_revision_program_mismatch");
+    }
+  }
+
+  for (const candidate of backup.openAnswerCheckCandidates ?? []) {
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+    assertCriterionEntityIdsBelongToProgram({
+      programId: candidate.programId,
+      criterionEntityIds: candidate.criterionEntityIds,
+      criterionEntitiesById,
+    });
+  }
+
+  for (const revision of backup.acceptedOpenAnswerCheckRevisions ?? []) {
+    const entity = checkEntitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("check_entity_not_found");
+    }
+
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("check_revision_program_mismatch");
+    }
+
+    const candidate = checkCandidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("check_candidate_not_found");
+    }
+
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("check_candidate_not_accepted");
+    }
+
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("check_candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+    assertCriterionRevisionIdsBelongToProgram({
+      programId: revision.programId,
+      criterionRevisionIds: revision.criterionRevisionIds,
+      criterionRevisionsById,
+    });
+  }
+
+  for (const entity of backup.acceptedOpenAnswerCheckEntities ?? []) {
+    const currentRevision = checkRevisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("check_revision_not_found");
+    }
+
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("check_revision_entity_mismatch");
+    }
+
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("check_revision_program_mismatch");
+    }
+  }
+}
+
 function assertSourceIdsBelongToProgram({ programId, sourceIds, sourcesById }) {
   for (const sourceId of sourceIds) {
     const source = sourcesById.get(sourceId);
@@ -2424,6 +2719,48 @@ function assertSourceIdsBelongToProgram({ programId, sourceIds, sourcesById }) {
 
     if (source.programId !== programId) {
       throw new StorageInvariantError("source_program_mismatch");
+    }
+  }
+}
+
+function assertCriterionEntityIdsBelongToProgram({
+  programId,
+  criterionEntityIds,
+  criterionEntitiesById,
+}) {
+  if (!Array.isArray(criterionEntityIds) || criterionEntityIds.length === 0) {
+    throw new StorageInvariantError("criterion_entity_not_found");
+  }
+
+  for (const criterionEntityId of criterionEntityIds) {
+    const criterionEntity = criterionEntitiesById.get(criterionEntityId);
+    if (!criterionEntity) {
+      throw new StorageInvariantError("criterion_entity_not_found");
+    }
+
+    if (criterionEntity.programId !== programId) {
+      throw new StorageInvariantError("criterion_entity_program_mismatch");
+    }
+  }
+}
+
+function assertCriterionRevisionIdsBelongToProgram({
+  programId,
+  criterionRevisionIds,
+  criterionRevisionsById,
+}) {
+  if (!Array.isArray(criterionRevisionIds) || criterionRevisionIds.length === 0) {
+    throw new StorageInvariantError("criterion_revision_not_found");
+  }
+
+  for (const criterionRevisionId of criterionRevisionIds) {
+    const criterionRevision = criterionRevisionsById.get(criterionRevisionId);
+    if (!criterionRevision) {
+      throw new StorageInvariantError("criterion_revision_not_found");
+    }
+
+    if (criterionRevision.programId !== programId) {
+      throw new StorageInvariantError("criterion_revision_program_mismatch");
     }
   }
 }

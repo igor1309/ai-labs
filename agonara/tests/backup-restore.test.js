@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
+import { createProgramCommands } from "../src/program.js";
 import {
   countEffectiveAdmins,
   getLocalPasswordCredentialByLogin,
@@ -365,6 +367,63 @@ test("exportBackup_shouldIncludeCorpusRecords_onBackup", async () => {
   }
 });
 
+test("exportBackup_shouldIncludeAssessmentRecords_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        criterionCandidateIds: backup.assessmentCriterionCandidates?.map($0 => $0.id),
+        criterionEntityIds: backup.acceptedAssessmentCriterionEntities?.map($0 => $0.id),
+        criterionRevisionIds: backup.acceptedAssessmentCriterionRevisions?.map($0 => $0.id),
+        checkCandidateIds: backup.openAnswerCheckCandidates?.map($0 => $0.id),
+        checkEntityIds: backup.acceptedOpenAnswerCheckEntities?.map($0 => $0.id),
+        checkRevisionIds: backup.acceptedOpenAnswerCheckRevisions?.map($0 => $0.id),
+        checkCriterionRevisionIds: backup.acceptedOpenAnswerCheckRevisions?.flatMap(
+          $0 => $0.criterionRevisionIds,
+        ),
+      },
+      {
+        criterionCandidateIds: ["criterion-candidate-existing"],
+        criterionEntityIds: ["criterion-entity-existing"],
+        criterionRevisionIds: ["criterion-revision-existing"],
+        checkCandidateIds: ["check-candidate-existing"],
+        checkEntityIds: ["check-entity-existing"],
+        checkRevisionIds: ["check-revision-existing"],
+        checkCriterionRevisionIds: ["criterion-revision-existing"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectOrphanProgramShellWithoutActiveCuratorMembership", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -496,6 +555,67 @@ test("restoreBackup_shouldRestoreCorpusRecords_onAcceptedBackup", async () => {
   }
 });
 
+test("restoreBackup_shouldRestoreAssessmentRecordsAndRevisionGraph_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+    const corpusCommands = makeCorpusCommands(target.database);
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        criterionCandidateIds: restoredBackup.assessmentCriterionCandidates.map($0 => $0.id),
+        criterionEntityIds: restoredBackup.acceptedAssessmentCriterionEntities.map($0 => $0.id),
+        criterionRevisionIds: restoredBackup.acceptedAssessmentCriterionRevisions.map($0 => $0.id),
+        checkCandidateIds: restoredBackup.openAnswerCheckCandidates.map($0 => $0.id),
+        checkEntityIds: restoredBackup.acceptedOpenAnswerCheckEntities.map($0 => $0.id),
+        checkRevisionIds: restoredBackup.acceptedOpenAnswerCheckRevisions.map($0 => $0.id),
+        acceptedCriterionTitles: corpusCommands.listAcceptedAssessmentCriteria({
+          actingIdentityId: "identity-1",
+          programId: "program-1",
+        }).value.acceptedAssessmentCriteria.map($0 => $0.title),
+        historicalCheckCriterionRevisionIds: corpusCommands.getAcceptedOpenAnswerCheckRevision({
+          actingIdentityId: "identity-1",
+          revisionId: "check-revision-existing",
+        }).value.acceptedOpenAnswerCheck.criterionRevisionIds,
+      },
+      {
+        restoreStatus: "accepted",
+        criterionCandidateIds: ["criterion-candidate-existing"],
+        criterionEntityIds: ["criterion-entity-existing"],
+        criterionRevisionIds: ["criterion-revision-existing"],
+        checkCandidateIds: ["check-candidate-existing"],
+        checkEntityIds: ["check-entity-existing"],
+        checkRevisionIds: ["check-revision-existing"],
+        acceptedCriterionTitles: ["Accepted criterion"],
+        historicalCheckCriterionRevisionIds: ["criterion-revision-existing"],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldClearAssessmentStorageRecords_onBackupWithoutAssessmentPayload", async () => {
   const backup = await makeExportedCorpusBackup();
   const target = makeSUT({ ids: ["identity-existing", "credential-existing", "session-existing", "audit-existing"] });
@@ -535,6 +655,88 @@ test("restoreBackup_shouldClearAssessmentStorageRecords_onBackupWithoutAssessmen
         assessmentRows: 0,
       },
     );
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedAssessmentCriterionEntityWithoutCurrentRevision_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedAssessmentCriterionRevisions = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_revision_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckRevisionWithUnacceptedCandidate_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerCheckCandidates[0] = {
+      ...backup.openAnswerCheckCandidates[0],
+      status: "draft",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "check_candidate_not_accepted",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckRevisionWithMissingCriterionRevision_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedOpenAnswerCheckRevisions[0] = {
+      ...backup.acceptedOpenAnswerCheckRevisions[0],
+      criterionRevisionIds: ["criterion-revision-missing"],
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_revision_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerCheckCandidateWithCrossProgramCriterionEntity_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerCheckCandidates[0] = {
+      ...backup.openAnswerCheckCandidates[0],
+      programId: "other-program",
+      sourceIds: [],
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_entity_program_mismatch",
+    });
   } finally {
     target.database.close();
   }
@@ -904,6 +1106,32 @@ async function makeExportedCorpusBackup() {
   }
 }
 
+async function makeExportedAssessmentBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
 function makeSUT({ ids = [], logEvents = [] } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -915,6 +1143,20 @@ function makeSUT({ ids = [], logEvents = [] } = {}) {
     operationLog: event => logEvents.push(event),
   });
   return { commands, database };
+}
+
+function makeCorpusCommands(database) {
+  const programCommands = createProgramCommands({
+    database,
+    generateId: makeIdGenerator([]),
+    now: () => new Date("2026-05-27T10:00:00.000Z"),
+  });
+  return createCorpusCommands({
+    database,
+    generateId: makeIdGenerator([]),
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    now: () => new Date("2026-05-27T10:00:00.000Z"),
+  });
 }
 
 function makeIdGenerator(ids) {

@@ -204,6 +204,142 @@ test("corpusAcceptance_shouldKeepDraftRejectedAndOutOfScopeSurfacesSeparate", ()
   }
 });
 
+test("assessmentAcceptance_shouldCompleteCriterionToOpenAnswerCheckLifecycle", () => {
+  const { corpusCommands, database, programCommands } = makeSUT();
+
+  try {
+    const program = programCommands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Algorithms",
+    }).value.programShell;
+    programCommands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const source = corpusCommands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      sourceKind: "article",
+      title: "Graph traversal source",
+    }).value.programSource;
+    const firstCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Explain traversal",
+      body: "Answer identifies graph traversal order and visited tracking.",
+      sourceIds: [source.sourceId],
+    }).value.assessmentCriterionCandidate;
+    const firstCriterion = corpusCommands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: firstCriterionCandidate.candidateId,
+    }).value.acceptedAssessmentCriterion;
+    const checkCandidate = corpusCommands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      checkKind: "open_answer",
+      title: "Graph traversal explanation",
+      prompt: "Explain how breadth-first traversal avoids revisiting nodes.",
+      sourceIds: [source.sourceId],
+      criterionEntityIds: [firstCriterion.entityId],
+    }).value.openAnswerCheckCandidate;
+    const acceptedCheck = corpusCommands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: checkCandidate.candidateId,
+    }).value.acceptedOpenAnswerCheck;
+    const revisedCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Explain traversal with queue",
+      body: "Answer identifies queue order, visited tracking, and termination.",
+      sourceIds: [source.sourceId],
+    }).value.assessmentCriterionCandidate;
+    const revisedCriterion = corpusCommands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: revisedCriterionCandidate.candidateId,
+      targetEntityId: firstCriterion.entityId,
+    }).value.acceptedAssessmentCriterion;
+    const rejectedCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Rejected criterion",
+      body: "Rejected criterion body",
+    }).value.assessmentCriterionCandidate;
+    const rejectedCriterionResult = corpusCommands.rejectAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedCriterionCandidate.candidateId,
+    });
+    const rejectedCheckCandidate = corpusCommands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      checkKind: "open_answer",
+      title: "Rejected check",
+      prompt: "Rejected prompt",
+      criterionEntityIds: [firstCriterion.entityId],
+    }).value.openAnswerCheckCandidate;
+    const rejectedCheckResult = corpusCommands.rejectOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedCheckCandidate.candidateId,
+    });
+    const studentChecksResult = corpusCommands.listAcceptedOpenAnswerChecks({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const historicalCriterionResult = corpusCommands.getAcceptedAssessmentCriterionRevision({
+      actingIdentityId: "identity-student",
+      revisionId: firstCriterion.revisionId,
+    });
+    const historicalCheckResult = corpusCommands.getAcceptedOpenAnswerCheckRevision({
+      actingIdentityId: "identity-student",
+      revisionId: acceptedCheck.revisionId,
+    });
+    const currentCriteriaResult = corpusCommands.listAcceptedAssessmentCriteria({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+
+    assert.deepEqual(
+      {
+        currentCriterionRevisionIds: currentCriteriaResult.value.acceptedAssessmentCriteria.map(
+          $0 => $0.revisionId,
+        ),
+        currentCriterionTitles: currentCriteriaResult.value.acceptedAssessmentCriteria.map($0 => $0.title),
+        studentCheckCriterionRevisionIds: studentChecksResult.value.acceptedOpenAnswerChecks.flatMap(
+          $0 => $0.criterionRevisionIds,
+        ),
+        historicalCriterionTitle: historicalCriterionResult.value.acceptedAssessmentCriterion.title,
+        historicalCheckCriterionRevisionIds: historicalCheckResult.value.acceptedOpenAnswerCheck.criterionRevisionIds,
+        rejectedStatuses: [
+          rejectedCriterionResult.value.assessmentCriterionCandidate.status,
+          rejectedCheckResult.value.openAnswerCheckCandidate.status,
+        ],
+        leaksForbiddenDetails: containsForbiddenDetail([
+          studentChecksResult,
+          historicalCriterionResult,
+          historicalCheckResult,
+          currentCriteriaResult,
+          rejectedCriterionResult,
+          rejectedCheckResult,
+        ]),
+        outOfScopeTables: listOutOfScopeTables(database),
+        outOfScopeSurfaces: listOutOfScopeSurfaces(),
+      },
+      {
+        currentCriterionRevisionIds: [revisedCriterion.revisionId],
+        currentCriterionTitles: ["Explain traversal with queue"],
+        studentCheckCriterionRevisionIds: [firstCriterion.revisionId],
+        historicalCriterionTitle: "Explain traversal",
+        historicalCheckCriterionRevisionIds: [firstCriterion.revisionId],
+        rejectedStatuses: ["rejected", "rejected"],
+        leaksForbiddenDetails: false,
+        outOfScopeTables: [],
+        outOfScopeSurfaces: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("assessmentAcceptance_shouldKeepDraftRejectedStudentWorkspaceAndOutOfScopeSurfacesSeparate", () => {
   const { corpusCommands, database, programCommands } = makeSUT();
 

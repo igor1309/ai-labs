@@ -2,6 +2,7 @@
 
 ## 2026-05-28
 
+- Complete the accepted checks and assessment criteria first slice with assessment backup/restore preservation, restore graph validation, an executable criterion-to-check lifecycle, and archived plan closeout.
 - Add executable boundary hardening for accepted assessment criteria and open-answer checks, proving draft/rejected candidates stay out of accepted reads while Student Workspace, scoring, feedback, LLM, and review surfaces remain absent.
 - Harden the accepted open-answer check lifecycle after adversarial review by rejecting malformed source/criterion reference arrays and proving Admin-without-curator cannot accept or reject check candidates.
 - Implement the accepted open-answer check lifecycle over Corpus Storage: curator-owned check candidates, required criterion references, acceptance into current/historical check revisions, criterion revision snapshotting, rejection, accepted check reads, and redacted response coverage.
