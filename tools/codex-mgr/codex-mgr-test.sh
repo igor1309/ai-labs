@@ -79,6 +79,9 @@ case "$authorization" in
     "Authorization: Bearer token-null")
         printf '{"rate_limit":{"primary_window":{"used_percent":8,"reset_at":1774382400},"secondary_window":null}}'
         ;;
+    "Authorization: Bearer token-bad")
+        printf 'not json'
+        ;;
     "Authorization: Bearer token-fail")
         exit 22
         ;;
@@ -124,6 +127,7 @@ run_limits_scenario() {
     write_profile "$profiles_dir" "first@example.com" '{"tokens":{"access_token":"token-1","account_id":"acct-1"}}'
     write_profile "$profiles_dir" "missing@example.com" '{"tokens":{}}'
     write_profile "$profiles_dir" "nulledge@example.com" '{"tokens":{"access_token":"token-null","account_id":"acct-null"}}'
+    write_profile "$profiles_dir" "ybad@example.com" '{"tokens":{"access_token":"token-bad","account_id":"acct-bad"}}'
     write_profile "$profiles_dir" "zfail@example.com" '{"tokens":{"access_token":"token-fail","account_id":"acct-fail"}}'
 
     # Mark active@example.com as the live profile.
@@ -171,6 +175,9 @@ nulledge@example.com
   5h:       8% used, resets 23:00 24.03
   weekly:  unknown
 
+ybad@example.com
+  unavailable: usage response was invalid
+
 zfail@example.com
   unavailable: usage request failed
 EOF
@@ -178,6 +185,7 @@ log<<EOF
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-active | ChatGPT-Account-Id: acct-active | User-Agent: codex-cli
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-1 | ChatGPT-Account-Id: acct-1 | User-Agent: codex-cli
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-null | ChatGPT-Account-Id: acct-null | User-Agent: codex-cli
+curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-bad | ChatGPT-Account-Id: acct-bad | User-Agent: codex-cli
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-fail | ChatGPT-Account-Id: acct-fail | User-Agent: codex-cli
 EOF
 __EXPECTED__

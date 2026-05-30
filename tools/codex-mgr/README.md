@@ -70,7 +70,7 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 
 ## Requirements
 
-- Bash 4+
+- Bash 3.2+ (macOS default)
 - `jq`, `curl`
 
 ## Storage

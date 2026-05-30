@@ -6,6 +6,13 @@ description: "Intake brief for adding a `limits` subcommand to codex_mgr, mirror
 
 # Intake: codex-mgr `limits` Command
 
+> **Addendum (2026-05-30):** This brief is a frozen snapshot from intake, when the
+> tool still lived at `sandbox/codex_mgr/`. The `limits` command was implemented and,
+> in the same line of work, the tool was promoted to `tools/codex-mgr/` (script renamed
+> to `codex-mgr.sh`, with `install.sh`/`uninstall.sh`). Paths below reflect the original
+> sandbox location and the then-current "no promotion" scope; they are intentionally
+> left unchanged as the historical record.
+
 ## What I'm Building
 
 A new `limits` subcommand for `sandbox/codex_mgr/codex_mgr.sh` that, for each saved
