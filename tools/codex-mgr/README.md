@@ -10,6 +10,24 @@ description: "Usage and behavior for the codex-mgr profile manager"
 
 `codex-mgr` is a standalone script for saving, listing, and switching Codex CLI auth profiles.
 
+## Install
+
+Make `codex-mgr` invokable from any shell by symlinking it into a directory on your `PATH`:
+
+```sh
+./install.sh
+```
+
+- Default target: `~/.local/bin/codex-mgr` (override with `CODEX_MGR_BIN_DIR`)
+- The installer warns if the target directory is not on your `PATH`
+- Remove the symlink with `./uninstall.sh`
+
+Manual alternative:
+
+```sh
+ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
+```
+
 ## Usage
 
 - `codex-mgr save <email>`
@@ -44,9 +62,16 @@ description: "Usage and behavior for the codex-mgr profile manager"
 - Queries the Codex usage endpoint with the access token from each profile's
   `auth.json`; see `docs/research-codex-usage-api.md` for the endpoint contract
 
+## Test
+
+```sh
+./codex-mgr-test.sh
+```
+
 ## Requirements
 
-- Bash 4+ (uses `mapfile`)
+- Bash 4+
+- `jq`, `curl`
 
 ## Storage
 

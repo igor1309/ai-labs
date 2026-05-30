@@ -3,7 +3,7 @@
 set -euo pipefail
 
 test_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-script_path="$test_dir/codex_mgr.sh"
+script_path="$test_dir/codex-mgr.sh"
 
 assert_equal() {
     local expected="$1"
@@ -185,3 +185,30 @@ __EXPECTED__
 
 assert_equal "$expected_result" "$(run_limits_scenario)"
 printf 'ok: limits\n'
+
+run_install_uninstall_scenario() {
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-install-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    local bin_dir="$temp_dir/bin"
+    local link_path="$bin_dir/codex-mgr"
+
+    # PATH excludes bin_dir so install.sh emits the not-on-PATH warning.
+    local install_out
+    install_out=$(CODEX_MGR_BIN_DIR="$bin_dir" PATH="/usr/bin:/bin" sh "$test_dir/install.sh" 2>&1)
+
+    local linked=no warned=no points_at_script=no removed=no
+    [[ -L "$link_path" ]] && linked=yes
+    [[ "$(readlink "$link_path" 2>/dev/null)" == "$test_dir/codex-mgr.sh" ]] && points_at_script=yes
+    [[ "$install_out" == *"is not on your PATH"* ]] && warned=yes
+
+    CODEX_MGR_BIN_DIR="$bin_dir" sh "$test_dir/uninstall.sh" >/dev/null 2>&1
+    [[ ! -e "$link_path" ]] && removed=yes
+
+    printf 'linked=%s points_at_script=%s warned=%s removed=%s\n' \
+        "$linked" "$points_at_script" "$warned" "$removed"
+}
+
+assert_equal "linked=yes points_at_script=yes warned=yes removed=yes" "$(run_install_uninstall_scenario)"
+printf 'ok: install/uninstall\n'
