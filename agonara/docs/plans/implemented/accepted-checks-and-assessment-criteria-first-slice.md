@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara accepted checks and assessment criter
 
 Deliver the Agonara v0.0.1 backend domain contract for Program-scoped accepted assessment criteria and accepted open-answer checks as versioned Program corpus, with curator-owned candidate state before acceptance.
 
-This plan implements [Accepted Checks and Assessment Criteria First Slice](../specs/accepted-checks-and-assessment-criteria-first-slice.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), and the effective participation contract from [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md). It must preserve INT-05 from [Product Intent](../intent_learning_program_app.md) by making accepted criteria and open-answer checks addressable without introducing student attempts or feedback in this slice.
+This plan implements [Accepted Checks and Assessment Criteria First Slice](../../specs/accepted-checks-and-assessment-criteria-first-slice.md), [ADR-011](../../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-010](../../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), and the effective participation contract from [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md). It must preserve INT-05 from [Product Intent](../../intent_learning_program_app.md) by making accepted criteria and open-answer checks addressable without introducing student attempts or feedback in this slice.
 
 ## Execution mode
 
@@ -31,7 +31,7 @@ Preflight check: [x] done
 ### In scope
 
 - Storage records and helpers for assessment criterion candidates, accepted assessment criterion entities, accepted assessment criterion revisions, open-answer check candidates, accepted open-answer check entities, and accepted open-answer check revisions.
-- A domain command/query boundary for the interface in [Accepted Checks and Assessment Criteria First Slice](../specs/accepted-checks-and-assessment-criteria-first-slice.md).
+- A domain command/query boundary for the interface in [Accepted Checks and Assessment Criteria First Slice](../../specs/accepted-checks-and-assessment-criteria-first-slice.md).
 - Effective Program Curator authorization for all candidate creation, candidate listing, acceptance, and rejection commands.
 - Effective Student, Program Curator, or Admin authorization for accepted criterion and accepted open-answer check read queries.
 - Candidate lifecycle states `draft`, `accepted`, and `rejected`.
@@ -305,7 +305,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Backup/restore preserves and validates all new assessment records and revision graph invariants.
 - Student Workspace attempts, answers, feedback, progress evidence, mastery state, weak-area state, review state, and learning history are not introduced by this slice.
 - HTTP routes, CLI commands, UI, LLM execution, scoring, feedback generation, and human review workflow remain out of scope.
-- Every behavior rule and listed test from [Accepted Checks and Assessment Criteria First Slice](../specs/accepted-checks-and-assessment-criteria-first-slice.md) is covered by targeted tests or the executable acceptance flow.
+- Every behavior rule and listed test from [Accepted Checks and Assessment Criteria First Slice](../../specs/accepted-checks-and-assessment-criteria-first-slice.md) is covered by targeted tests or the executable acceptance flow.
 - Every phase has a green targeted test run, a green full Node test/build gate, and its own local commit.
 
 ## Final closeout

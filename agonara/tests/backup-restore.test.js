@@ -678,6 +678,63 @@ test("restoreBackup_shouldRejectAcceptedAssessmentCriterionEntityWithoutCurrentR
   }
 });
 
+test("restoreBackup_shouldRejectAcceptedAssessmentCriterionRevisionWithoutCandidate_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.assessmentCriterionCandidates = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_candidate_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedAssessmentCriterionRevisionWithoutEntity_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedAssessmentCriterionEntities = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_entity_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedAssessmentCriterionRevisionWithUnacceptedCandidate_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.assessmentCriterionCandidates[0] = {
+      ...backup.assessmentCriterionCandidates[0],
+      status: "draft",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_candidate_not_accepted",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckRevisionWithUnacceptedCandidate_onBackup", async () => {
   const backup = await makeExportedAssessmentBackup();
   const target = makeSUT();
@@ -693,6 +750,60 @@ test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckRevisionWithUnacceptedCan
     assert.deepEqual(result, {
       status: "rejected",
       reason: "check_candidate_not_accepted",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckEntityWithoutCurrentRevision_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedOpenAnswerCheckRevisions = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "check_revision_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckRevisionWithoutCandidate_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerCheckCandidates = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "check_candidate_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectAcceptedOpenAnswerCheckRevisionWithoutEntity_onBackup", async () => {
+  const backup = await makeExportedAssessmentBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedOpenAnswerCheckEntities = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "check_entity_not_found",
     });
   } finally {
     target.database.close();
