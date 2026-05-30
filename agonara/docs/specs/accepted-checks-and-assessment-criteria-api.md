@@ -77,6 +77,8 @@ type ApiRejectionReason =
   | "validation_failed";
 ```
 
+The endpoint table lists the session-level disabled Identity response as `403 identity_disabled`. If a delegated domain command returns `identity_not_active`, the HTTP route must preserve that reason and map it to `403`.
+
 Fault responses do not include password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, stack traces, SQL text, filesystem paths, database URLs, or infrastructure details.
 
 ### Shared API shapes
@@ -226,13 +228,13 @@ type AcceptedListQuery = {
 };
 ```
 
-Acceptance routes accept a missing body or an empty JSON object when no `targetEntityId` is supplied. Rejection routes accept a missing body and reject malformed or non-empty JSON bodies with `400 validation_failed`.
+Acceptance routes accept a missing body, an empty JSON object, or an object containing only optional `targetEntityId`. Acceptance routes reject malformed JSON, non-object JSON, unsupported fields, or malformed `targetEntityId` values with `400 validation_failed`. Rejection routes accept a missing body and reject malformed or non-empty JSON bodies with `400 validation_failed`.
 
 ## Behavior rules
 
 1. Every route requires a valid active HTTP session.
 2. Session resolution rejects missing, unknown, expired, and revoked sessions with the same `401` status and reason as the Identity API.
-3. Session resolution rejects inactive Identities with `403 identity_disabled`.
+3. Session resolution rejects disabled Identities with `403 identity_disabled`; delegated domain `identity_not_active` rejections map to `403 identity_not_active`.
 4. State-changing routes reject missing sessions with `401 session_not_found` before CSRF validation.
 5. State-changing routes reject missing or invalid CSRF tokens before applying domain changes.
 6. State-changing routes do not create or rotate sessions.
@@ -263,38 +265,40 @@ Acceptance routes accept a missing body or an empty JSON object when no `targetE
 31. Criterion candidate acceptance rejects target criterion entities from another Program with `409 criterion_entity_program_mismatch`.
 32. Criterion candidate acceptance without `targetEntityId` creates one accepted criterion entity and one current revision.
 33. Criterion candidate acceptance with `targetEntityId` creates a new current revision and preserves the previous historical revision.
-34. Criterion candidate rejection resolves the candidate before checking Program Curator authorization for the candidate's Program.
-35. Criterion candidate rejection accepts a missing request body and rejects malformed or non-empty JSON bodies with `400 validation_failed`.
-36. Criterion candidate rejection changes a draft candidate status to `rejected` and creates no accepted criterion entity or revision.
-37. Criterion candidate rejection must not delete accepted criterion revisions.
-38. Open-answer check candidate creation maps to `createOpenAnswerCheckCandidate` for the resolved session Identity and requested Program.
-39. Open-answer check candidate creation accepts only JSON objects matching `CreateOpenAnswerCheckCandidateRequest`.
-40. Open-answer check candidate creation rejects malformed JSON, non-object JSON, missing bodies, unsupported fields, unsupported check kinds, missing titles, empty titles, whitespace-only titles, non-string titles, missing prompts, empty prompts, whitespace-only prompts, non-string prompts, malformed rationales, non-array `sourceIds`, non-string `sourceIds`, missing `criterionEntityIds`, empty `criterionEntityIds`, non-array `criterionEntityIds`, or non-string `criterionEntityIds` with `400 validation_failed`.
-41. Open-answer check candidate creation rejects unknown source ids with `409 source_not_found`.
-42. Open-answer check candidate creation rejects source ids from another Program with `409 source_program_mismatch`.
-43. Open-answer check candidate creation rejects unknown criterion entities with `404 criterion_entity_not_found`.
-44. Open-answer check candidate creation rejects criterion entities from another Program with `409 criterion_entity_program_mismatch`.
-45. Accepted open-answer check candidate creation creates one `draft` check candidate and no accepted check revision.
-46. Open-answer check candidate acceptance resolves the candidate before checking Program Curator authorization for the candidate's Program.
-47. Open-answer check candidate acceptance rejects unknown candidates with `404 check_candidate_not_found`.
-48. Open-answer check candidate acceptance rejects already accepted candidates with `409 check_candidate_already_accepted`.
-49. Open-answer check candidate acceptance rejects already rejected candidates with `409 check_candidate_already_rejected`.
-50. Open-answer check candidate acceptance rejects unknown `targetEntityId` values with `404 check_entity_not_found`.
-51. Open-answer check candidate acceptance rejects target check entities from another Program with `409 check_entity_program_mismatch`.
-52. Open-answer check candidate acceptance snapshots current accepted criterion revision ids for every referenced criterion entity.
-53. Open-answer check candidate acceptance without `targetEntityId` creates one accepted open-answer check entity and one current revision.
-54. Open-answer check candidate acceptance with `targetEntityId` creates a new current revision and preserves the previous historical revision.
-55. Revisions of accepted criteria after check acceptance must not rewrite the accepted check revision's `criterionRevisionIds`.
-56. Open-answer check candidate rejection resolves the candidate before checking Program Curator authorization for the candidate's Program.
-57. Open-answer check candidate rejection accepts a missing request body and rejects malformed or non-empty JSON bodies with `400 validation_failed`.
-58. Open-answer check candidate rejection changes a draft candidate status to `rejected` and creates no accepted check entity or revision.
-59. Open-answer check candidate rejection must not delete accepted check revisions or accepted check-to-criterion revision references.
-60. Criterion and open-answer check list routes accept `limit` values from `1` through `100`, default to `50`, and reject invalid limits with `400 validation_failed`.
-61. List route cursors are opaque strings returned by the API; malformed, unknown, or route-mismatched cursors reject with `400 validation_failed`.
-62. List route cursors must not encode secrets, SQL text, filesystem paths, stack traces, session identifiers, CSRF tokens, cookie headers, or authorization headers.
-63. Responses and faults never include password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-64. Unexpected failures map to `500` with `FaultResult`.
-65. This API slice does not expose Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, submitted answers, selected answers, evaluation results, scoring, generated feedback, mastery calculation, weak-area calculation, progress evidence, LLM prompt execution, human review workflow, quick checks, multiple-choice checks, or topic-level checks.
+34. Criterion candidate acceptance rejects malformed JSON, non-object JSON, unsupported fields, and malformed `targetEntityId` values with `400 validation_failed`.
+35. Criterion candidate rejection resolves the candidate before checking Program Curator authorization for the candidate's Program.
+36. Criterion candidate rejection accepts a missing request body and rejects malformed or non-empty JSON bodies with `400 validation_failed`.
+37. Criterion candidate rejection changes a draft candidate status to `rejected` and creates no accepted criterion entity or revision.
+38. Criterion candidate rejection must not delete accepted criterion revisions.
+39. Open-answer check candidate creation maps to `createOpenAnswerCheckCandidate` for the resolved session Identity and requested Program.
+40. Open-answer check candidate creation accepts only JSON objects matching `CreateOpenAnswerCheckCandidateRequest`.
+41. Open-answer check candidate creation rejects malformed JSON, non-object JSON, missing bodies, unsupported fields, unsupported check kinds, missing titles, empty titles, whitespace-only titles, non-string titles, missing prompts, empty prompts, whitespace-only prompts, non-string prompts, malformed rationales, non-array `sourceIds`, non-string `sourceIds`, missing `criterionEntityIds`, empty `criterionEntityIds`, non-array `criterionEntityIds`, or non-string `criterionEntityIds` with `400 validation_failed`.
+42. Open-answer check candidate creation rejects unknown source ids with `409 source_not_found`.
+43. Open-answer check candidate creation rejects source ids from another Program with `409 source_program_mismatch`.
+44. Open-answer check candidate creation rejects unknown criterion entities with `404 criterion_entity_not_found`.
+45. Open-answer check candidate creation rejects criterion entities from another Program with `409 criterion_entity_program_mismatch`.
+46. Accepted open-answer check candidate creation creates one `draft` check candidate and no accepted check revision.
+47. Open-answer check candidate acceptance resolves the candidate before checking Program Curator authorization for the candidate's Program.
+48. Open-answer check candidate acceptance rejects unknown candidates with `404 check_candidate_not_found`.
+49. Open-answer check candidate acceptance rejects already accepted candidates with `409 check_candidate_already_accepted`.
+50. Open-answer check candidate acceptance rejects already rejected candidates with `409 check_candidate_already_rejected`.
+51. Open-answer check candidate acceptance rejects unknown `targetEntityId` values with `404 check_entity_not_found`.
+52. Open-answer check candidate acceptance rejects target check entities from another Program with `409 check_entity_program_mismatch`.
+53. Open-answer check candidate acceptance rejects malformed JSON, non-object JSON, unsupported fields, and malformed `targetEntityId` values with `400 validation_failed`.
+54. Open-answer check candidate acceptance snapshots current accepted criterion revision ids for every referenced criterion entity.
+55. Open-answer check candidate acceptance without `targetEntityId` creates one accepted open-answer check entity and one current revision.
+56. Open-answer check candidate acceptance with `targetEntityId` creates a new current revision and preserves the previous historical revision.
+57. Revisions of accepted criteria after check acceptance must not rewrite the accepted check revision's `criterionRevisionIds`.
+58. Open-answer check candidate rejection resolves the candidate before checking Program Curator authorization for the candidate's Program.
+59. Open-answer check candidate rejection accepts a missing request body and rejects malformed or non-empty JSON bodies with `400 validation_failed`.
+60. Open-answer check candidate rejection changes a draft candidate status to `rejected` and creates no accepted check entity or revision.
+61. Open-answer check candidate rejection must not delete accepted check revisions or accepted check-to-criterion revision references.
+62. Criterion and open-answer check list routes accept `limit` values from `1` through `100`, default to `50`, and reject invalid limits with `400 validation_failed`.
+63. List route cursors are opaque strings returned by the API; malformed, unknown, or route-mismatched cursors reject with `400 validation_failed`.
+64. List route cursors must not encode secrets, SQL text, filesystem paths, stack traces, session identifiers, CSRF tokens, cookie headers, or authorization headers.
+65. Responses and faults never include password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+66. Unexpected failures map to `500` with `FaultResult`.
+67. This API slice does not expose Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, submitted answers, selected answers, evaluation results, scoring, generated feedback, mastery calculation, weak-area calculation, progress evidence, LLM prompt execution, human review workflow, quick checks, multiple-choice checks, or topic-level checks.
 
 ## Product intent traceability
 
@@ -342,85 +346,87 @@ Criterion acceptance and rejection routes:
 21. Criterion acceptance rejects unknown target entities with `404 criterion_entity_not_found`.
 22. Criterion acceptance rejects cross-Program target entities with `409 criterion_entity_program_mismatch`.
 23. Criterion acceptance rejects non-curator callers with `403 admin_or_curator_required`.
-24. `POST /assessment-criteria/candidates/{candidateId}/rejection` accepts a Program Curator and returns the rejected `AssessmentCriterionCandidateSummary`.
-25. Criterion rejection rejects malformed and non-empty JSON bodies with `400 validation_failed`.
-26. Criterion rejection rejects unknown candidates with `404 criterion_candidate_not_found`.
-27. Criterion rejection rejects already accepted candidates with `409 criterion_candidate_already_accepted`.
-28. Criterion rejection rejects already rejected candidates with `409 criterion_candidate_already_rejected`.
-29. Criterion rejection rejects non-curator callers with `403 admin_or_curator_required`.
-30. Criterion rejection does not delete accepted criterion revisions.
+24. Criterion acceptance rejects malformed JSON, non-object JSON, unsupported fields, and malformed `targetEntityId` values with `400 validation_failed`.
+25. `POST /assessment-criteria/candidates/{candidateId}/rejection` accepts a Program Curator and returns the rejected `AssessmentCriterionCandidateSummary`.
+26. Criterion rejection rejects malformed and non-empty JSON bodies with `400 validation_failed`.
+27. Criterion rejection rejects unknown candidates with `404 criterion_candidate_not_found`.
+28. Criterion rejection rejects already accepted candidates with `409 criterion_candidate_already_accepted`.
+29. Criterion rejection rejects already rejected candidates with `409 criterion_candidate_already_rejected`.
+30. Criterion rejection rejects non-curator callers with `403 admin_or_curator_required`.
+31. Criterion rejection does not delete accepted criterion revisions.
 
 Accepted criterion routes:
 
-31. `GET /programs/{programId}/assessment-criteria` accepts an effective Student for the requested Program.
-32. `GET /programs/{programId}/assessment-criteria` accepts an effective Program Curator for the requested Program.
-33. `GET /programs/{programId}/assessment-criteria` accepts an effective Admin.
-34. `GET /programs/{programId}/assessment-criteria` rejects callers without Student, Curator, or Admin access with `403 participation_required`.
-35. Criterion listing returns only current accepted revisions scoped to the requested Program.
-36. Criterion listing never exposes draft or rejected candidates.
-37. Criterion listing defaults `limit` to `50` and rejects invalid limits or malformed cursors with `400 validation_failed`.
-38. `GET /assessment-criteria/revisions/{revisionId}` returns an addressable historical criterion revision for an authorized Student, Curator, or Admin.
-39. `GET /assessment-criteria/revisions/{revisionId}` rejects unknown revision ids with `404 criterion_revision_not_found`.
-40. `GET /assessment-criteria/revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
+32. `GET /programs/{programId}/assessment-criteria` accepts an effective Student for the requested Program.
+33. `GET /programs/{programId}/assessment-criteria` accepts an effective Program Curator for the requested Program.
+34. `GET /programs/{programId}/assessment-criteria` accepts an effective Admin.
+35. `GET /programs/{programId}/assessment-criteria` rejects callers without Student, Curator, or Admin access with `403 participation_required`.
+36. Criterion listing returns only current accepted revisions scoped to the requested Program.
+37. Criterion listing never exposes draft or rejected candidates.
+38. Criterion listing defaults `limit` to `50` and rejects invalid limits or malformed cursors with `400 validation_failed`.
+39. `GET /assessment-criteria/revisions/{revisionId}` returns an addressable historical criterion revision for an authorized Student, Curator, or Admin.
+40. `GET /assessment-criteria/revisions/{revisionId}` rejects unknown revision ids with `404 criterion_revision_not_found`.
+41. `GET /assessment-criteria/revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
 
 Open-answer check candidate routes:
 
-41. `GET /programs/{programId}/open-answer-checks/candidates` accepts an effective Program Curator and returns only check candidates for the requested Program.
-42. `GET /programs/{programId}/open-answer-checks/candidates` applies `draft`, `accepted`, and `rejected` status filters.
-43. `GET /programs/{programId}/open-answer-checks/candidates` rejects unsupported status filters, invalid limits, and malformed cursors with `400 validation_failed`.
-44. `GET /programs/{programId}/open-answer-checks/candidates` rejects Students, Admin-without-curator, and other non-curators with `403 admin_or_curator_required`.
-45. `POST /programs/{programId}/open-answer-checks/candidates` accepts valid open-answer check input and returns a `draft` `OpenAnswerCheckCandidateSummary`.
-46. Accepted check candidate creation does not create accepted checks.
-47. Check candidate creation rejects malformed JSON, non-object JSON, missing bodies, unsupported fields, unsupported check kinds, malformed titles, malformed prompts, malformed rationales, non-array `sourceIds`, non-string `sourceIds`, missing `criterionEntityIds`, empty `criterionEntityIds`, non-array `criterionEntityIds`, and non-string `criterionEntityIds` with `400 validation_failed`.
-48. Check candidate creation rejects unknown source ids with `409 source_not_found`.
-49. Check candidate creation rejects cross-Program source ids with `409 source_program_mismatch`.
-50. Check candidate creation rejects unknown criterion entities with `404 criterion_entity_not_found`.
-51. Check candidate creation rejects cross-Program criterion entities with `409 criterion_entity_program_mismatch`.
+42. `GET /programs/{programId}/open-answer-checks/candidates` accepts an effective Program Curator and returns only check candidates for the requested Program.
+43. `GET /programs/{programId}/open-answer-checks/candidates` applies `draft`, `accepted`, and `rejected` status filters.
+44. `GET /programs/{programId}/open-answer-checks/candidates` rejects unsupported status filters, invalid limits, and malformed cursors with `400 validation_failed`.
+45. `GET /programs/{programId}/open-answer-checks/candidates` rejects Students, Admin-without-curator, and other non-curators with `403 admin_or_curator_required`.
+46. `POST /programs/{programId}/open-answer-checks/candidates` accepts valid open-answer check input and returns a `draft` `OpenAnswerCheckCandidateSummary`.
+47. Accepted check candidate creation does not create accepted checks.
+48. Check candidate creation rejects malformed JSON, non-object JSON, missing bodies, unsupported fields, unsupported check kinds, malformed titles, malformed prompts, malformed rationales, non-array `sourceIds`, non-string `sourceIds`, missing `criterionEntityIds`, empty `criterionEntityIds`, non-array `criterionEntityIds`, and non-string `criterionEntityIds` with `400 validation_failed`.
+49. Check candidate creation rejects unknown source ids with `409 source_not_found`.
+50. Check candidate creation rejects cross-Program source ids with `409 source_program_mismatch`.
+51. Check candidate creation rejects unknown criterion entities with `404 criterion_entity_not_found`.
+52. Check candidate creation rejects cross-Program criterion entities with `409 criterion_entity_program_mismatch`.
 
 Open-answer check acceptance and rejection routes:
 
-52. `POST /open-answer-checks/candidates/{candidateId}/acceptance` accepts a Program Curator for the candidate Program and returns `AcceptedOpenAnswerCheckSummary`.
-53. Check acceptance without `targetEntityId` creates one accepted entity and one accepted revision.
-54. Check acceptance snapshots current criterion revision ids for every referenced criterion entity.
-55. Check acceptance with `targetEntityId` creates a new current revision and preserves the previous historical revision.
-56. Check acceptance rejects unknown candidates with `404 check_candidate_not_found`.
-57. Check acceptance rejects already accepted candidates with `409 check_candidate_already_accepted`.
-58. Check acceptance rejects already rejected candidates with `409 check_candidate_already_rejected`.
-59. Check acceptance rejects unknown target entities with `404 check_entity_not_found`.
-60. Check acceptance rejects cross-Program target entities with `409 check_entity_program_mismatch`.
-61. Check acceptance rejects non-curator callers with `403 admin_or_curator_required`.
-62. `POST /open-answer-checks/candidates/{candidateId}/rejection` accepts a Program Curator and returns the rejected `OpenAnswerCheckCandidateSummary`.
-63. Check rejection rejects malformed and non-empty JSON bodies with `400 validation_failed`.
-64. Check rejection rejects unknown candidates with `404 check_candidate_not_found`.
-65. Check rejection rejects already accepted candidates with `409 check_candidate_already_accepted`.
-66. Check rejection rejects already rejected candidates with `409 check_candidate_already_rejected`.
-67. Check rejection rejects non-curator callers with `403 admin_or_curator_required`.
-68. Check rejection does not delete accepted check revisions or criterion revision references.
+53. `POST /open-answer-checks/candidates/{candidateId}/acceptance` accepts a Program Curator for the candidate Program and returns `AcceptedOpenAnswerCheckSummary`.
+54. Check acceptance without `targetEntityId` creates one accepted entity and one accepted revision.
+55. Check acceptance snapshots current criterion revision ids for every referenced criterion entity.
+56. Check acceptance with `targetEntityId` creates a new current revision and preserves the previous historical revision.
+57. Check acceptance rejects unknown candidates with `404 check_candidate_not_found`.
+58. Check acceptance rejects already accepted candidates with `409 check_candidate_already_accepted`.
+59. Check acceptance rejects already rejected candidates with `409 check_candidate_already_rejected`.
+60. Check acceptance rejects unknown target entities with `404 check_entity_not_found`.
+61. Check acceptance rejects cross-Program target entities with `409 check_entity_program_mismatch`.
+62. Check acceptance rejects non-curator callers with `403 admin_or_curator_required`.
+63. Check acceptance rejects malformed JSON, non-object JSON, unsupported fields, and malformed `targetEntityId` values with `400 validation_failed`.
+64. `POST /open-answer-checks/candidates/{candidateId}/rejection` accepts a Program Curator and returns the rejected `OpenAnswerCheckCandidateSummary`.
+65. Check rejection rejects malformed and non-empty JSON bodies with `400 validation_failed`.
+66. Check rejection rejects unknown candidates with `404 check_candidate_not_found`.
+67. Check rejection rejects already accepted candidates with `409 check_candidate_already_accepted`.
+68. Check rejection rejects already rejected candidates with `409 check_candidate_already_rejected`.
+69. Check rejection rejects non-curator callers with `403 admin_or_curator_required`.
+70. Check rejection does not delete accepted check revisions or criterion revision references.
 
 Accepted open-answer check routes:
 
-69. `GET /programs/{programId}/open-answer-checks` accepts an effective Student for the requested Program.
-70. `GET /programs/{programId}/open-answer-checks` accepts an effective Program Curator for the requested Program.
-71. `GET /programs/{programId}/open-answer-checks` accepts an effective Admin.
-72. `GET /programs/{programId}/open-answer-checks` rejects callers without Student, Curator, or Admin access with `403 participation_required`.
-73. Check listing returns only current accepted revisions scoped to the requested Program.
-74. Check listing never exposes draft or rejected candidates.
-75. Check listing defaults `limit` to `50` and rejects invalid limits or malformed cursors with `400 validation_failed`.
-76. `GET /open-answer-checks/revisions/{revisionId}` returns an addressable historical check revision for an authorized Student, Curator, or Admin.
-77. `GET /open-answer-checks/revisions/{revisionId}` rejects unknown revision ids with `404 check_revision_not_found`.
-78. `GET /open-answer-checks/revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
-79. A check revision remains linked to the original criterion revision after the accepted criterion is revised.
+71. `GET /programs/{programId}/open-answer-checks` accepts an effective Student for the requested Program.
+72. `GET /programs/{programId}/open-answer-checks` accepts an effective Program Curator for the requested Program.
+73. `GET /programs/{programId}/open-answer-checks` accepts an effective Admin.
+74. `GET /programs/{programId}/open-answer-checks` rejects callers without Student, Curator, or Admin access with `403 participation_required`.
+75. Check listing returns only current accepted revisions scoped to the requested Program.
+76. Check listing never exposes draft or rejected candidates.
+77. Check listing defaults `limit` to `50` and rejects invalid limits or malformed cursors with `400 validation_failed`.
+78. `GET /open-answer-checks/revisions/{revisionId}` returns an addressable historical check revision for an authorized Student, Curator, or Admin.
+79. `GET /open-answer-checks/revisions/{revisionId}` rejects unknown revision ids with `404 check_revision_not_found`.
+80. `GET /open-answer-checks/revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
+81. A check revision remains linked to the original criterion revision after the accepted criterion is revised.
 
 Redaction and out-of-scope routes:
 
-80. Candidate, accepted-list, historical-revision, acceptance, and rejection responses do not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-81. Candidate and accepted-list cursors do not expose secrets, SQL text, filesystem paths, stack traces, session identifiers, CSRF tokens, cookie headers, or authorization headers.
-82. Fault responses map unexpected errors to `500 internal_error` without leaking implementation details.
-83. The API does not expose Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, submitted answers, selected answers, evaluation results, scoring, generated feedback, mastery calculation, weak-area calculation, progress evidence, LLM execution, or human review workflow.
+82. Candidate, accepted-list, historical-revision, acceptance, and rejection responses do not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+83. Candidate and accepted-list cursors do not expose secrets, SQL text, filesystem paths, stack traces, session identifiers, CSRF tokens, cookie headers, or authorization headers.
+84. Fault responses map unexpected errors to `500 internal_error` without leaking implementation details.
+85. The API does not expose Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, submitted answers, selected answers, evaluation results, scoring, generated feedback, mastery calculation, weak-area calculation, progress evidence, LLM execution, or human review workflow.
 
 Executable acceptance flow:
 
-84. A logged-in Program Curator creates a Program through the existing Program API, records a source, creates and accepts a criterion, creates and accepts an open-answer check linked to that criterion, revises the criterion, verifies the accepted check revision still points at the original criterion revision, lists accepted checks and criteria as a Student, fetches historical criterion and check revisions, rejects separate draft criterion and check candidates, confirms draft/rejected candidates are absent from accepted reads, and verifies no Student Workspace state, scoring, feedback, LLM, human review, UI, or CLI surface is introduced.
+86. A logged-in Program Curator creates a Program through the existing Program API, records a source, creates and accepts a criterion, creates and accepts an open-answer check linked to that criterion, revises the criterion, verifies the accepted check revision still points at the original criterion revision, lists accepted checks and criteria as a Student, fetches historical criterion and check revisions, rejects separate draft criterion and check candidates, confirms draft/rejected candidates are absent from accepted reads, and verifies no Student Workspace state, scoring, feedback, LLM, human review, UI, or CLI surface is introduced.
 
 ## Done criteria
 
