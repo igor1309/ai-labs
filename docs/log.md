@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-30
+
+- tools/codex-mgr: added a `limits` command (per-profile Codex usage — 5h + weekly windows) against a live-verified ChatGPT usage endpoint, and promoted the tool from `sandbox/codex_mgr` to `tools/codex-mgr` with `install.sh`/`uninstall.sh` and mocked tests.
+
 ## 2026-05-28
 
 - research/courses: refreshed the cross-source `positioning-notes.md` and `decision-matrix.md` against the new `careerfactory/` source. The two-half audience map (developers vs non-developer operators) was an artifact of the two-source sample; with a third source the organizing axis (object of practice) gains a third value and the "non-developer" audience splits into *operator automating their own routine* (AI For Work) vs *builder shipping their own product* (CareerFactory). Several earlier "both courses do X" patterns drop to "some": "system, not tricks" and "verification as a first-class step" are now 2-of-3, seat-capped scarcity is not universal (CareerFactory uses time/price scarcity), and "vibe coding" is shown to be contested (rejected by Khakhalev, reclaimed by CareerFactory) rather than uniformly avoided. EN-market and manager/senior-judgment white space is reinforced now that two of three offers target non-developers.
