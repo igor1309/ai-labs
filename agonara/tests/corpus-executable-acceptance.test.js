@@ -216,45 +216,50 @@ test("assessmentAcceptance_shouldKeepDraftRejectedStudentWorkspaceAndOutOfScopeS
       actingIdentityId: "identity-student",
       programId: program.programId,
     });
-    const acceptedCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+    const acceptedCriterionCandidateResult = corpusCommands.createAssessmentCriterionCandidate({
       actingIdentityId: "identity-curator",
       programId: program.programId,
       title: "Accepted rubric",
       body: "Accepted rubric body",
-    }).value.assessmentCriterionCandidate;
-    const acceptedCriterion = corpusCommands.acceptAssessmentCriterionCandidate({
+    });
+    const acceptedCriterionCandidate = acceptedCriterionCandidateResult.value.assessmentCriterionCandidate;
+    const acceptedCriterionResult = corpusCommands.acceptAssessmentCriterionCandidate({
       actingIdentityId: "identity-curator",
       candidateId: acceptedCriterionCandidate.candidateId,
-    }).value.acceptedAssessmentCriterion;
-    corpusCommands.createAssessmentCriterionCandidate({
+    });
+    const acceptedCriterion = acceptedCriterionResult.value.acceptedAssessmentCriterion;
+    const draftCriterionCandidateResult = corpusCommands.createAssessmentCriterionCandidate({
       actingIdentityId: "identity-curator",
       programId: program.programId,
       title: "Draft-only rubric",
       body: "Draft-only rubric body",
     });
-    const rejectedCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+    const rejectedCriterionCandidateResult = corpusCommands.createAssessmentCriterionCandidate({
       actingIdentityId: "identity-curator",
       programId: program.programId,
       title: "Rejected rubric",
       body: "Rejected rubric body",
-    }).value.assessmentCriterionCandidate;
-    corpusCommands.rejectAssessmentCriterionCandidate({
+    });
+    const rejectedCriterionCandidate = rejectedCriterionCandidateResult.value.assessmentCriterionCandidate;
+    const rejectedCriterionResult = corpusCommands.rejectAssessmentCriterionCandidate({
       actingIdentityId: "identity-curator",
       candidateId: rejectedCriterionCandidate.candidateId,
     });
-    const acceptedCheckCandidate = corpusCommands.createOpenAnswerCheckCandidate({
+    const acceptedCheckCandidateResult = corpusCommands.createOpenAnswerCheckCandidate({
       actingIdentityId: "identity-curator",
       programId: program.programId,
       checkKind: "open_answer",
       title: "Accepted open answer",
       prompt: "Explain graph traversal",
       criterionEntityIds: [acceptedCriterion.entityId],
-    }).value.openAnswerCheckCandidate;
-    const acceptedCheck = corpusCommands.acceptOpenAnswerCheckCandidate({
+    });
+    const acceptedCheckCandidate = acceptedCheckCandidateResult.value.openAnswerCheckCandidate;
+    const acceptedCheckResult = corpusCommands.acceptOpenAnswerCheckCandidate({
       actingIdentityId: "identity-curator",
       candidateId: acceptedCheckCandidate.candidateId,
-    }).value.acceptedOpenAnswerCheck;
-    corpusCommands.createOpenAnswerCheckCandidate({
+    });
+    const acceptedCheck = acceptedCheckResult.value.acceptedOpenAnswerCheck;
+    const draftCheckCandidateResult = corpusCommands.createOpenAnswerCheckCandidate({
       actingIdentityId: "identity-curator",
       programId: program.programId,
       checkKind: "open_answer",
@@ -262,37 +267,78 @@ test("assessmentAcceptance_shouldKeepDraftRejectedStudentWorkspaceAndOutOfScopeS
       prompt: "Explain sorting",
       criterionEntityIds: [acceptedCriterion.entityId],
     });
-    const rejectedCheckCandidate = corpusCommands.createOpenAnswerCheckCandidate({
+    const rejectedCheckCandidateResult = corpusCommands.createOpenAnswerCheckCandidate({
       actingIdentityId: "identity-curator",
       programId: program.programId,
       checkKind: "open_answer",
       title: "Rejected open answer",
       prompt: "Explain recursion",
       criterionEntityIds: [acceptedCriterion.entityId],
-    }).value.openAnswerCheckCandidate;
-    corpusCommands.rejectOpenAnswerCheckCandidate({
+    });
+    const rejectedCheckCandidate = rejectedCheckCandidateResult.value.openAnswerCheckCandidate;
+    const rejectedCheckResult = corpusCommands.rejectOpenAnswerCheckCandidate({
       actingIdentityId: "identity-curator",
       candidateId: rejectedCheckCandidate.candidateId,
+    });
+    const acceptedCriteriaResult = corpusCommands.listAcceptedAssessmentCriteria({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const acceptedChecksResult = corpusCommands.listAcceptedOpenAnswerChecks({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const historicalCriterionResult = corpusCommands.getAcceptedAssessmentCriterionRevision({
+      actingIdentityId: "identity-student",
+      revisionId: acceptedCriterion.revisionId,
+    });
+    const historicalCheckResult = corpusCommands.getAcceptedOpenAnswerCheckRevision({
+      actingIdentityId: "identity-student",
+      revisionId: acceptedCheck.revisionId,
+    });
+    const criterionCandidatesResult = corpusCommands.listAssessmentCriterionCandidates({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+    });
+    const checkCandidatesResult = corpusCommands.listOpenAnswerCheckCandidates({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+    });
+    const duplicateCriterionAcceptanceResult = corpusCommands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: acceptedCriterionCandidate.candidateId,
+    });
+    const duplicateCheckAcceptanceResult = corpusCommands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: acceptedCheckCandidate.candidateId,
     });
 
     assert.deepEqual(
       {
-        acceptedCriterionTitles: corpusCommands.listAcceptedAssessmentCriteria({
-          actingIdentityId: "identity-student",
-          programId: program.programId,
-        }).value.acceptedAssessmentCriteria.map($0 => $0.title),
-        acceptedCheckTitles: corpusCommands.listAcceptedOpenAnswerChecks({
-          actingIdentityId: "identity-student",
-          programId: program.programId,
-        }).value.acceptedOpenAnswerChecks.map($0 => $0.title),
-        historicalCriterionTitle: corpusCommands.getAcceptedAssessmentCriterionRevision({
-          actingIdentityId: "identity-student",
-          revisionId: acceptedCriterion.revisionId,
-        }).value.acceptedAssessmentCriterion.title,
-        historicalCheckCriterionRevisionIds: corpusCommands.getAcceptedOpenAnswerCheckRevision({
-          actingIdentityId: "identity-student",
-          revisionId: acceptedCheck.revisionId,
-        }).value.acceptedOpenAnswerCheck.criterionRevisionIds,
+        acceptedCriterionTitles: acceptedCriteriaResult.value.acceptedAssessmentCriteria.map($0 => $0.title),
+        acceptedCheckTitles: acceptedChecksResult.value.acceptedOpenAnswerChecks.map($0 => $0.title),
+        historicalCriterionTitle: historicalCriterionResult.value.acceptedAssessmentCriterion.title,
+        historicalCheckCriterionRevisionIds: historicalCheckResult.value.acceptedOpenAnswerCheck.criterionRevisionIds,
+        leaksForbiddenDetails: containsForbiddenDetail([
+          acceptedCriterionCandidateResult,
+          acceptedCriterionResult,
+          draftCriterionCandidateResult,
+          rejectedCriterionCandidateResult,
+          rejectedCriterionResult,
+          acceptedCriteriaResult,
+          historicalCriterionResult,
+          criterionCandidatesResult,
+          duplicateCriterionAcceptanceResult,
+          acceptedCheckCandidateResult,
+          acceptedCheckResult,
+          draftCheckCandidateResult,
+          rejectedCheckCandidateResult,
+          rejectedCheckResult,
+          acceptedChecksResult,
+          historicalCheckResult,
+          checkCandidatesResult,
+          duplicateCheckAcceptanceResult,
+        ]),
         outOfScopeTables: listOutOfScopeTables(database),
         outOfScopeSurfaces: listOutOfScopeSurfaces(),
       },
@@ -301,6 +347,7 @@ test("assessmentAcceptance_shouldKeepDraftRejectedStudentWorkspaceAndOutOfScopeS
         acceptedCheckTitles: ["Accepted open answer"],
         historicalCriterionTitle: "Accepted rubric",
         historicalCheckCriterionRevisionIds: [acceptedCriterion.revisionId],
+        leaksForbiddenDetails: false,
         outOfScopeTables: [],
         outOfScopeSurfaces: [],
       },
@@ -370,6 +417,9 @@ function listOutOfScopeTables(database) {
   const forbiddenNames = new Set([
     "assessment_criteria",
     "assessment_results",
+    "answer_feedback",
+    "evaluation_results",
+    "human_reviews",
     "open_answer_attempts",
     "open_answer_feedback",
     "llm_runs",
@@ -379,8 +429,10 @@ function listOutOfScopeTables(database) {
     "student_answers",
     "student_attempts",
     "student_feedback",
+    "student_learning_history",
     "student_mastery",
     "student_progress",
+    "student_reviews",
     "student_weak_areas",
     "student_workspace",
   ]);
@@ -396,15 +448,34 @@ function listOutOfScopeSurfaces() {
   const checkedFiles = ["src/admin-ui.js", "src/cli.js", "src/server.js"];
   const forbiddenPatterns = [
     /\/assessments\b/,
+    /\/feedback\b/,
     /\/corpus-events\/llm\b/,
     /\/corpus-events\/student-workspace\b/,
+    /\/human-review\b/,
+    /\/learning-history\b/,
+    /\/mastery\b/,
+    /\/student-answers\b/,
+    /\/student-attempts\b/,
+    /\/student-feedback\b/,
+    /\/student-progress\b/,
+    /\/weak-areas\b/,
     /\bassessmentFeedback\b/,
+    /\bassessmentResults\b/,
     /\bevaluateOpenAnswer\b/,
     /\bhumanReview\b/,
+    /\blearningHistory\b/,
     /\bllmRuns\b/,
+    /\bopenAnswerAttempts\b/,
+    /\bopenAnswerFeedback\b/,
     /\bscoreOpenAnswer\b/,
+    /\bstudentAnswers\b/,
     /\bstudentAttempts\b/,
+    /\bstudentFeedback\b/,
+    /\bstudentMastery\b/,
+    /\bstudentProgress\b/,
+    /\bstudentWeakAreas\b/,
     /\bsubmitOpenAnswer\b/,
+    /\bweakAreas\b/,
   ];
   return checkedFiles.flatMap(file => {
     const content = readFileSync(join(projectRoot, file), "utf8");
@@ -412,6 +483,22 @@ function listOutOfScopeSurfaces() {
       .filter($0 => $0.test(content))
       .map($0 => `${file}:${$0.source}`);
   });
+}
+
+function containsForbiddenDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "passwordhash",
+    "correct horse battery staple",
+    "operator-secret",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "select ",
+    "stack",
+    "127.0.0.1",
+  ].some($0 => serialized.includes($0));
 }
 
 function makeIdentity(id) {
