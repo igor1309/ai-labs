@@ -1,5 +1,9 @@
 # Log
 
+## 2026-05-30
+
+- Add the accepted checks and assessment criteria HTTP API spec, carrying the implemented domain contract into session-backed routes with CSRF, pagination, redaction, authorization, and Student Workspace exclusion requirements.
+
 ## 2026-05-28
 
 - Complete the accepted checks and assessment criteria first slice with assessment backup/restore preservation, restore graph validation, an executable criterion-to-check lifecycle, and archived plan closeout.
