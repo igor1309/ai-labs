@@ -9,7 +9,13 @@ description: "Research notes on the Codex CLI usage/limits API and auth.json str
 Source: web research of the openai/codex Rust source, official docs, and 2025–2026
 issues/PRs (via subagent). Confirmed against ~`rust-v0.131`/`v0.132` (May 2026). This
 is an **undocumented internal ChatGPT backend**; exact strings are version-dependent
-and must be verified against the installed Codex CLI before being hard-coded.
+and should be re-verified if Codex changes the contract.
+
+**Verified live on 2026-05-30:** `codex-mgr limits` successfully queried
+`GET https://chatgpt.com/backend-api/wham/usage` with the access token + account id
+from each profile's `auth.json` and parsed `.rate_limit.primary_window` /
+`.secondary_window` (`used_percent`, `reset_at`) for real accounts. The contract below
+matches the live response.
 
 ## auth.json Structure
 

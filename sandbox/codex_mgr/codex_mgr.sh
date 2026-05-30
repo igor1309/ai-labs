@@ -132,9 +132,9 @@ sync_active_profile_from_live() {
 }
 
 # Usage/limits reporting (mirrors tools/ccswitch-limits for Codex profiles).
-# Endpoint and field paths are sourced from the Codex CLI internals; see
-# docs/research-codex-usage-api.md. Verify against the installed Codex version
-# before relying on these values.
+# Endpoint and field paths are sourced from the Codex CLI internals and were
+# verified against the live endpoint on 2026-05-30; see
+# docs/research-codex-usage-api.md. Re-verify if Codex changes the contract.
 USAGE_URL="https://chatgpt.com/backend-api/wham/usage"
 USAGE_USER_AGENT="codex-cli"
 
