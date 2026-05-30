@@ -16,6 +16,7 @@ description: "Usage and behavior for the codex-mgr profile manager"
 - `codex-mgr load <email>`
 - `codex-mgr list`
 - `codex-mgr switch`
+- `codex-mgr limits`
 - `codex-mgr delete <email>`
 - `codex-mgr help`
 - Email is required and must include `@`
@@ -31,6 +32,17 @@ description: "Usage and behavior for the codex-mgr profile manager"
 
 - Switches to the next profile in list order and wraps to the first
 - If no active profile is detected, switches to the first profile
+
+## Limits
+
+- Prints usage limits per profile, one block per saved profile
+- Active profile is marked with `(active)`
+- Each block shows the `5h` and `weekly` windows as `<pct>% used, resets <HH:MM dd.mm>`
+- Reset times use the local timezone (resolved from `/etc/localtime`, falling back to UTC)
+- Degrades gracefully per profile: `unavailable: OAuth token not found`,
+  `unavailable: usage request failed`, or `unavailable: usage response was invalid`
+- Queries the Codex usage endpoint with the access token from each profile's
+  `auth.json`; see `docs/research-codex-usage-api.md` for the endpoint contract
 
 ## Requirements
 
