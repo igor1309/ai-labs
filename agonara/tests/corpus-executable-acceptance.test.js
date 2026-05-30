@@ -204,6 +204,112 @@ test("corpusAcceptance_shouldKeepDraftRejectedAndOutOfScopeSurfacesSeparate", ()
   }
 });
 
+test("assessmentAcceptance_shouldKeepDraftRejectedStudentWorkspaceAndOutOfScopeSurfacesSeparate", () => {
+  const { corpusCommands, database, programCommands } = makeSUT();
+
+  try {
+    const program = programCommands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Algorithms",
+    }).value.programShell;
+    programCommands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const acceptedCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Accepted rubric",
+      body: "Accepted rubric body",
+    }).value.assessmentCriterionCandidate;
+    const acceptedCriterion = corpusCommands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: acceptedCriterionCandidate.candidateId,
+    }).value.acceptedAssessmentCriterion;
+    corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Draft-only rubric",
+      body: "Draft-only rubric body",
+    });
+    const rejectedCriterionCandidate = corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Rejected rubric",
+      body: "Rejected rubric body",
+    }).value.assessmentCriterionCandidate;
+    corpusCommands.rejectAssessmentCriterionCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedCriterionCandidate.candidateId,
+    });
+    const acceptedCheckCandidate = corpusCommands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      checkKind: "open_answer",
+      title: "Accepted open answer",
+      prompt: "Explain graph traversal",
+      criterionEntityIds: [acceptedCriterion.entityId],
+    }).value.openAnswerCheckCandidate;
+    const acceptedCheck = corpusCommands.acceptOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: acceptedCheckCandidate.candidateId,
+    }).value.acceptedOpenAnswerCheck;
+    corpusCommands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      checkKind: "open_answer",
+      title: "Draft-only open answer",
+      prompt: "Explain sorting",
+      criterionEntityIds: [acceptedCriterion.entityId],
+    });
+    const rejectedCheckCandidate = corpusCommands.createOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      checkKind: "open_answer",
+      title: "Rejected open answer",
+      prompt: "Explain recursion",
+      criterionEntityIds: [acceptedCriterion.entityId],
+    }).value.openAnswerCheckCandidate;
+    corpusCommands.rejectOpenAnswerCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedCheckCandidate.candidateId,
+    });
+
+    assert.deepEqual(
+      {
+        acceptedCriterionTitles: corpusCommands.listAcceptedAssessmentCriteria({
+          actingIdentityId: "identity-student",
+          programId: program.programId,
+        }).value.acceptedAssessmentCriteria.map($0 => $0.title),
+        acceptedCheckTitles: corpusCommands.listAcceptedOpenAnswerChecks({
+          actingIdentityId: "identity-student",
+          programId: program.programId,
+        }).value.acceptedOpenAnswerChecks.map($0 => $0.title),
+        historicalCriterionTitle: corpusCommands.getAcceptedAssessmentCriterionRevision({
+          actingIdentityId: "identity-student",
+          revisionId: acceptedCriterion.revisionId,
+        }).value.acceptedAssessmentCriterion.title,
+        historicalCheckCriterionRevisionIds: corpusCommands.getAcceptedOpenAnswerCheckRevision({
+          actingIdentityId: "identity-student",
+          revisionId: acceptedCheck.revisionId,
+        }).value.acceptedOpenAnswerCheck.criterionRevisionIds,
+        outOfScopeTables: listOutOfScopeTables(database),
+        outOfScopeSurfaces: listOutOfScopeSurfaces(),
+      },
+      {
+        acceptedCriterionTitles: ["Accepted rubric"],
+        acceptedCheckTitles: ["Accepted open answer"],
+        historicalCriterionTitle: "Accepted rubric",
+        historicalCheckCriterionRevisionIds: [acceptedCriterion.revisionId],
+        outOfScopeTables: [],
+        outOfScopeSurfaces: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 function makeSUT() {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -242,6 +348,16 @@ function makeSUT() {
       "candidate-4",
       "corpus-event-7",
       "corpus-event-8",
+      "entity-3",
+      "revision-3",
+      "corpus-event-9",
+      "candidate-5",
+      "corpus-event-10",
+      "candidate-6",
+      "corpus-event-11",
+      "entity-4",
+      "revision-4",
+      "corpus-event-12",
     ]),
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
     now,
@@ -254,12 +370,18 @@ function listOutOfScopeTables(database) {
   const forbiddenNames = new Set([
     "assessment_criteria",
     "assessment_results",
+    "open_answer_attempts",
+    "open_answer_feedback",
     "llm_runs",
     "llm_suggestions",
     "material_files",
     "materials",
+    "student_answers",
     "student_attempts",
+    "student_feedback",
+    "student_mastery",
     "student_progress",
+    "student_weak_areas",
     "student_workspace",
   ]);
   return database
@@ -271,10 +393,24 @@ function listOutOfScopeTables(database) {
 
 function listOutOfScopeSurfaces() {
   const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-  const checkedFiles = ["src/cli.js", "src/admin-ui.js"];
-  return checkedFiles.filter(file => {
+  const checkedFiles = ["src/admin-ui.js", "src/cli.js", "src/server.js"];
+  const forbiddenPatterns = [
+    /\/assessments\b/,
+    /\/corpus-events\/llm\b/,
+    /\/corpus-events\/student-workspace\b/,
+    /\bassessmentFeedback\b/,
+    /\bevaluateOpenAnswer\b/,
+    /\bhumanReview\b/,
+    /\bllmRuns\b/,
+    /\bscoreOpenAnswer\b/,
+    /\bstudentAttempts\b/,
+    /\bsubmitOpenAnswer\b/,
+  ];
+  return checkedFiles.flatMap(file => {
     const content = readFileSync(join(projectRoot, file), "utf8");
-    return /createCorpusCommands|corpusCommands|\/corpus|\/programs\/[^"'`]*\/corpus/.test(content);
+    return forbiddenPatterns
+      .filter($0 => $0.test(content))
+      .map($0 => `${file}:${$0.source}`);
   });
 }
 
