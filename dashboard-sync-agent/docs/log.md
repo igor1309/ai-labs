@@ -2,6 +2,9 @@
 
 ## 2026-06-01
 
+- notification-spec: added a `## Rendering` section — never post the agent's raw Markdown run report (the `##` headers and `| Surface | … |` table read as noise in Telegram and don't render), send the compact format as plain text with no parse mode, one message per run. Refreshed the stale `## Channel` (and the matching `agent.md` runtime-layout line) from the retired `dashboardsync` bot + DM `54589373` to the live shared `@igor1309_ai_labs_bot` supergroup topic `#dashboard-sync` (thread 6). Addresses the unreadable-Telegram-message report. The actual fix to stop forwarding the raw report is VPS-side (`dashboard-sync-cron.sh`); the spec now makes the required behavior unambiguous.
+- schedule: moved the scheduled cron from `0 18 * * *` to `30 1 * * *` (01:30 UTC) across `agent.md`, `intent.md`, `README.md`, and the `suppression-policy.md` worked examples/prose. The live `/etc/cron.d/openclaw-dashboard-sync` entry on the VPS must be updated separately.
+- LOC drift threshold: added a `--loc-threshold=<N>` trigger argument (default 300) and a `synthesis-spec.md` "Surface (3) drift tolerance" rule — numeric-only `docs/loc-dashboard.html` drift summing to `< N` lines is held `clean (below LOC threshold)` and opens no PR; structural drift (a project row added/removed) always surfaces regardless of magnitude. Lets small daily LOC jitter be skipped instead of generating review noise.
 - fix-pr-template: added a `## Mechanics` section requiring the PR title/body to be passed to `gh` via a temp file and `--body-file`, never via an inline `$(cat <<'EOF' … )` heredoc. The heredoc collapses to a single line through the tool layer and fails — surfacing as the noisy `body=$(cat <<'EOF' …)` failed-command line in the daily run report (seen on PR #451). The body still got set on recovery, so the failure was non-fatal noise; the spec now prescribes the robust path. No surface-render or allowlist behavior changed.
 
 ## 2026-05-25
