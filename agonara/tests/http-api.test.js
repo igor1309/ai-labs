@@ -400,6 +400,59 @@ test("assessmentCriterionRejection_shouldRejectDraftCandidate_onCuratorSession",
   }
 });
 
+test("acceptedAssessmentCriteria_shouldListCurrentAndReturnHistoricalRevision_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const firstCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition.",
+      title: "Vector-space closure",
+    });
+    const firstCandidateId = (await firstCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const firstAccepted = await acceptAssessmentCriterionCandidate(baseUrl, bootstrap, firstCandidateId, {});
+    const firstAcceptedCriterion = (await firstAccepted.json()).value.acceptedAssessmentCriterion;
+    const replacementCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition and scalar multiplication.",
+      title: "Vector-space closure revised",
+    });
+    const replacementCandidateId = (await replacementCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    await acceptAssessmentCriterionCandidate(baseUrl, bootstrap, replacementCandidateId, {
+      targetEntityId: firstAcceptedCriterion.entityId,
+    });
+    const listed = await fetch(`${baseUrl}/programs/${programId}/assessment-criteria`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const historical = await fetch(`${baseUrl}/assessment-criteria/revisions/${firstAcceptedCriterion.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        historical: acceptedAssessmentCriterionProjection(await historical.json()),
+        historicalStatusCode: historical.status,
+        listedTitles: (await listed.json()).value.acceptedAssessmentCriteria.map($0 => $0.title),
+        listedStatusCode: listed.status,
+      },
+      {
+        historical: {
+          acceptedFromCandidateId: firstCandidateId,
+          programId,
+          sourceIds: [],
+          title: "Vector-space closure",
+        },
+        historicalStatusCode: 200,
+        listedTitles: ["Vector-space closure revised"],
+        listedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {

@@ -566,6 +566,9 @@ async function handleCorpusApi({
   const assessmentCriterionRejectionMatch = pathname.match(
     /^\/assessment-criteria\/candidates\/([^/]+)\/rejection$/,
   );
+  const acceptedAssessmentCriterionRevisionMatch = pathname.match(
+    /^\/assessment-criteria\/revisions\/([^/]+)$/,
+  );
   const acceptedOpenAnswerChecksMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-checks$/);
   if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
@@ -631,6 +634,21 @@ async function handleCorpusApi({
       routeKey,
     });
     sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedAssessmentCriterionRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedAssessmentCriterionRevision({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedAssessmentCriterionRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedAssessmentCriterionResult(result));
     return true;
   }
 
