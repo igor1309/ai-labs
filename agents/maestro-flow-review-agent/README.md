@@ -14,13 +14,18 @@ This directory owns the source of truth for what the agent inspects and how it r
 
 ## Status
 
-**Draft — definition authored 2026-05-30.** Not yet deployed. The new `agents/` directory is registered in the repo dashboards (`scripts/loc-dashboard.sh`, `docs/loc-dashboard.html`) and the `README.md` `## Components` table. Runtime wiring (account binding, cron entry/cadence, suppression window, checkout path, CI sync workflow) is left for the maintainer to settle before deployment. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
+**Draft — definition authored 2026-05-30; observability artifacts added 2026-06-01.** Not yet deployed. The new `agents/` directory is registered in the repo dashboards (`scripts/loc-dashboard.sh`, `docs/loc-dashboard.html`) and the `README.md` `## Components` table. The notify/suppression specs and the cron wrapper are authored (heartbeat model — one message per scheduled tick, so absence means failure). Remaining before deployment: live VPS provisioning (OpenClaw account/bot binding, the `ios.config` checkout) and a CI sync workflow under `.github/workflows/`. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
 | `agent/agent.md` | Agent system prompt |
+| `agent/notification-spec.md` | Heartbeat notification contract (findings / clean / suppressed) |
+| `agent/suppression-policy.md` | 12h scheduled-run suppression gate |
+| `runtime/cron/maestro-review-cron.sh` | VPS cron wrapper (refresh, gate, invoke, post one message/tick) |
+| `runtime/cron/openclaw-maestro-review.cron` | `/etc/cron.d` entry (daily 06:00 UTC) |
+| `runtime/README.md` | VPS-side deployment notes |
 | `docs/log.md` | Project log |
 | `README.md` | This file |
 | `TODO.md` | Project TODO list |
