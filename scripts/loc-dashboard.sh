@@ -108,8 +108,8 @@ count_text() {
     total=$((total + $(wc -l < "$f")))
   done < <(find . -name "AGENTS.md" -not -path "./AGENTS.md" ! -path "*/worktrees/*" ! -path "*/node_modules/*" ! -path "*/.build/*" 2>/dev/null)
 
-  # .claude/ directory (skills, settings, memory — not JSON)
-  [[ -d ".claude" ]] && total=$((total + $(loc_find ".claude" -type f ! -name "*.json" ! -path "*/worktrees/*")))
+  # .claude/ directory (skills, settings, memory — not JSON or OS junk)
+  [[ -d ".claude" ]] && total=$((total + $(loc_find ".claude" -type f ! -name "*.json" ! -name ".DS_Store" ! -path "*/worktrees/*")))
 
   # docs/my-way/ methodology docs
   [[ -d "docs/my-way" ]] && total=$((total + $(loc_find "docs/my-way" -type f -name "*.md")))
