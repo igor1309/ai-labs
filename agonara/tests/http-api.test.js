@@ -674,6 +674,41 @@ test("acceptedOpenAnswerChecks_shouldListCurrentAndPreserveCriterionSnapshot_onC
   }
 });
 
+test("assessmentAcceptance_shouldRejectBlankTargetEntityIds_withValidationFailed", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      "/assessment-criteria/candidates/candidate-1/acceptance",
+      "/open-answer-checks/candidates/candidate-1/acceptance",
+    ];
+    const responses = [];
+    for (const route of cases) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        body: JSON.stringify({ targetEntityId: "   " }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+        },
+        method: "POST",
+      });
+      responses.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(
+      responses,
+      cases.map(() => ({
+        body: { status: "rejected", reason: "validation_failed" },
+        statusCode: 400,
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {

@@ -627,6 +627,170 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
   }
 });
 
+test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      const source = await postJson(
+        `${baseUrl}/programs/${programId}/sources`,
+        { sourceKind: "textbook", title: "Linear Algebra Done Right" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const sourceId = source.body.value.programSource.sourceId;
+      const missingCriterionCsrf = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Explain closure.", title: "Closure" },
+        { cookie: bootstrap.cookie },
+      );
+      const criterionCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Explain closure.", sourceIds: [sourceId], title: "Closure" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const criterionCandidateId = criterionCandidate.body.value.assessmentCriterionCandidate.candidateId;
+      const criterion = await postJson(
+        `${baseUrl}/assessment-criteria/candidates/${criterionCandidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const criterionEntityId = criterion.body.value.acceptedAssessmentCriterion.entityId;
+      const historicalCriterionRevisionId = criterion.body.value.acceptedAssessmentCriterion.revisionId;
+      const checkCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/open-answer-checks/candidates`,
+        {
+          checkKind: "open_answer",
+          criterionEntityIds: [criterionEntityId],
+          prompt: "Why is closure required?",
+          sourceIds: [sourceId],
+          title: "Closure check",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const checkCandidateId = checkCandidate.body.value.openAnswerCheckCandidate.candidateId;
+      const check = await postJson(
+        `${baseUrl}/open-answer-checks/candidates/${checkCandidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const historicalCheckRevisionId = check.body.value.acceptedOpenAnswerCheck.revisionId;
+      const revisedCriterionCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Explain closure under both operations.", sourceIds: [sourceId], title: "Closure revised" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJson(
+        `${baseUrl}/assessment-criteria/candidates/${revisedCriterionCandidate.body.value.assessmentCriterionCandidate.candidateId}/acceptance`,
+        { targetEntityId: criterionEntityId },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCriterionCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Rejected criterion.", title: "Rejected criterion" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCriterion = await postJson(
+        `${baseUrl}/assessment-criteria/candidates/${rejectedCriterionCandidate.body.value.assessmentCriterionCandidate.candidateId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCheckCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/open-answer-checks/candidates`,
+        {
+          checkKind: "open_answer",
+          criterionEntityIds: [criterionEntityId],
+          prompt: "Rejected prompt.",
+          title: "Rejected check",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCheck = await postJson(
+        `${baseUrl}/open-answer-checks/candidates/${rejectedCheckCandidate.body.value.openAnswerCheckCandidate.candidateId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const acceptedCriteria = await getJson(`${baseUrl}/programs/${programId}/assessment-criteria`, {
+        cookie: student.cookie,
+      });
+      const acceptedChecks = await getJson(`${baseUrl}/programs/${programId}/open-answer-checks`, {
+        cookie: student.cookie,
+      });
+      const historicalCriterion = await getJson(
+        `${baseUrl}/assessment-criteria/revisions/${historicalCriterionRevisionId}`,
+        { cookie: student.cookie },
+      );
+      const historicalCheck = await getJson(`${baseUrl}/open-answer-checks/revisions/${historicalCheckRevisionId}`, {
+        cookie: student.cookie,
+      });
+      const outOfScopeRoutes = [];
+      for (const route of ["/assessments", "/student-workspace", "/assessment-feedback", "/assessment-cli"]) {
+        outOfScopeRoutes.push((await getJson(`${baseUrl}${route}`, { cookie: student.cookie })).statusCode);
+      }
+
+      assert.deepEqual(
+        {
+          acceptedCriterionTitles: acceptedCriteria.body.value.acceptedAssessmentCriteria.map($0 => $0.title),
+          acceptedCheckTitles: acceptedChecks.body.value.acceptedOpenAnswerChecks.map($0 => $0.title),
+          historicalCriterionTitle: historicalCriterion.body.value.acceptedAssessmentCriterion.title,
+          historicalCheckCriterionRevisionIds:
+            historicalCheck.body.value.acceptedOpenAnswerCheck.criterionRevisionIds,
+          httpStatusCodes: {
+            acceptedChecks: acceptedChecks.statusCode,
+            acceptedCriteria: acceptedCriteria.statusCode,
+            historicalCheck: historicalCheck.statusCode,
+            historicalCriterion: historicalCriterion.statusCode,
+            missingCriterionCsrf: missingCriterionCsrf.statusCode,
+          },
+          missingCriterionCsrf: missingCriterionCsrf.body,
+          outOfScopeRoutes,
+          rejectedCheckStatus: rejectedCheck.body.value.openAnswerCheckCandidate.status,
+          rejectedCriterionStatus: rejectedCriterion.body.value.assessmentCriterionCandidate.status,
+        },
+        {
+          acceptedCriterionTitles: ["Closure revised"],
+          acceptedCheckTitles: ["Closure check"],
+          historicalCriterionTitle: "Closure",
+          historicalCheckCriterionRevisionIds: [historicalCriterionRevisionId],
+          httpStatusCodes: {
+            acceptedChecks: 200,
+            acceptedCriteria: 200,
+            historicalCheck: 200,
+            historicalCriterion: 200,
+            missingCriterionCsrf: 403,
+          },
+          missingCriterionCsrf: { status: "rejected", reason: "csrf_required" },
+          outOfScopeRoutes: [404, 404, 404, 404],
+          rejectedCheckStatus: "rejected",
+          rejectedCriterionStatus: "rejected",
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldRateLimitLoginAndCorrelateHealthRequest_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 

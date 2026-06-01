@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara accepted checks and assessment criter
 
 Deliver the Agonara v0.0.1 HTTP API for Program-scoped accepted assessment criteria and accepted open-answer checks so browser clients can curate candidates, explicitly accept or reject them, and read current or historical accepted revisions through the existing session, CSRF, envelope, pagination, and redaction conventions.
 
-This plan implements [Accepted Checks and Assessment Criteria API](../specs/accepted-checks-and-assessment-criteria-api.md), [Accepted Checks and Assessment Criteria First Slice](../specs/accepted-checks-and-assessment-criteria-first-slice.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), and the accepted Corpus HTTP boundary from [Corpus Storage and Curator Acceptance API](../specs/corpus-storage-and-curator-acceptance-api.md). It exposes the implemented assessment corpus domain contract without introducing Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, scoring, feedback, LLM execution, or human review workflow.
+This plan implements [Accepted Checks and Assessment Criteria API](../../specs/accepted-checks-and-assessment-criteria-api.md), [Accepted Checks and Assessment Criteria First Slice](../../specs/accepted-checks-and-assessment-criteria-first-slice.md), [ADR-011](../../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), and the accepted Corpus HTTP boundary from [Corpus Storage and Curator Acceptance API](../../specs/corpus-storage-and-curator-acceptance-api.md). It exposes the implemented assessment corpus domain contract without introducing Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, scoring, feedback, LLM execution, or human review workflow.
 
 ## Execution mode
 
@@ -30,7 +30,7 @@ Preflight check: [x] done
 
 ### In scope
 
-- HTTP route adapters for every endpoint listed in [Accepted Checks and Assessment Criteria API](../specs/accepted-checks-and-assessment-criteria-api.md).
+- HTTP route adapters for every endpoint listed in [Accepted Checks and Assessment Criteria API](../../specs/accepted-checks-and-assessment-criteria-api.md).
 - Extension of the existing Corpus HTTP adapter over the implemented assessment methods on `corpusCommands`.
 - Reuse of the existing `agonara_session` cookie and `X-Agonara-CSRF` contract.
 - Reuse of existing accepted/rejected/fault envelopes, bounded list pagination, opaque cursors, JSON body classification, and redaction conventions.
@@ -372,7 +372,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Verify accepted criteria and checks are readable by an authorized Student while draft and rejected candidates remain excluded.
 - Verify no Student Workspace, scoring, feedback, LLM, human review, UI, or CLI surface is introduced.
 - Update `agonara/docs/log.md`.
-- Update [Product Intent](../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
+- Update [Product Intent](../../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
 - Move this plan to `agonara/docs/plans/implemented/accepted-checks-and-assessment-criteria-api.md` with `git mv`.
 - Rewrite this plan's relative Markdown links for the `plans/implemented/` depth and verify every local link target after the move.
 
@@ -398,7 +398,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Done criteria
 
-- Every endpoint in [Accepted Checks and Assessment Criteria API](../specs/accepted-checks-and-assessment-criteria-api.md) is implemented.
+- Every endpoint in [Accepted Checks and Assessment Criteria API](../../specs/accepted-checks-and-assessment-criteria-api.md) is implemented.
 - Every assessment API response uses the shared `accepted`, `rejected`, or `fault` envelope.
 - Session and CSRF behavior matches the existing Identity, Program, and Corpus HTTP conventions.
 - All state-changing assessment routes reject session and CSRF failures before domain mutation.

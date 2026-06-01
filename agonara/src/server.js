@@ -1351,7 +1351,10 @@ async function readAcceptanceBody(request) {
   }
   if (
     body.value.body.targetEntityId !== undefined &&
-    typeof body.value.body.targetEntityId !== "string"
+    (
+      typeof body.value.body.targetEntityId !== "string" ||
+      !body.value.body.targetEntityId.trim()
+    )
   ) {
     return rejected("validation_failed");
   }
