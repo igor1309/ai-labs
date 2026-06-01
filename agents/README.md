@@ -16,7 +16,7 @@ Specialized OpenClaw agents whose definitions live in `ai-labs` and whose runtim
 
 All `igor1309/ai-labs`-defined OpenClaw agents reuse the **`@igor1309_ai_labs_bot`** Telegram bot (OpenClaw account `docdrift`) for notifications to chat `54589373`. A new agent's cron wrapper reads `channels.telegram.accounts.docdrift.botToken`; it does **not** provision its own bot/account. A cron-invoked agent (invoked by id, e.g. `maestro-flow-review-agent`) needs no inbound `bindings` entry at all.
 
-Exception: `dashboard-sync-agent` predates this convention and notifies via its own `@dashboard_sync_agent_bot`; migrating it to the shared bot is tracked in `TODO.md`.
+`dashboard-sync-agent` was migrated to the shared bot on 2026-06-01 (its wrapper now reads `accounts.docdrift.botToken`). Its old `@dashboard_sync_agent_bot` / `dashboardsync` account survives only for inbound DM triggering and is slated for teardown — see `TODO.md`.
 
 ### Runtime deployment
 
