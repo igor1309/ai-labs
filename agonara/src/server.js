@@ -570,6 +570,9 @@ async function handleCorpusApi({
     /^\/assessment-criteria\/revisions\/([^/]+)$/,
   );
   const acceptedOpenAnswerChecksMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-checks$/);
+  const openAnswerCheckCandidatesMatch = pathname.match(
+    /^\/programs\/([^/]+)\/open-answer-checks\/candidates$/,
+  );
   if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -658,6 +661,43 @@ async function handleCorpusApi({
       sendJson(response, httpStatusFor(session.reason), session);
       return true;
     }
+  }
+
+  if (request.method === "GET" && openAnswerCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(openAnswerCheckCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `open-answer-check-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listOpenAnswerCheckCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapOpenAnswerCheckCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
   }
 
   if (request.method === "GET" && sourcesMatch) {
@@ -868,6 +908,39 @@ async function handleCorpusApi({
       title: body.value.title,
     });
     sendJson(response, statusForResult(result), mapAssessmentCriterionCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && openAnswerCheckCandidatesMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidOpenAnswerCheckCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createOpenAnswerCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      checkKind: body.value.checkKind,
+      criterionEntityIds: body.value.criterionEntityIds,
+      programId: decodeURIComponent(openAnswerCheckCandidatesMatch[1]),
+      prompt: body.value.prompt,
+      rationale: body.value.rationale,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapOpenAnswerCheckCandidateResult(result));
     return true;
   }
 
@@ -1312,6 +1385,14 @@ function mapAssessmentCriterionCandidateResult(result) {
   return accepted({ assessmentCriterionCandidate: result.value.assessmentCriterionCandidate });
 }
 
+function mapOpenAnswerCheckCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ openAnswerCheckCandidate: result.value.openAnswerCheckCandidate });
+}
+
 function mapAcceptedCorpusResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -1520,6 +1601,21 @@ function isValidAssessmentCriterionCandidateBody(body) {
     isValidCandidateSourceIds(body.sourceIds);
 }
 
+function isValidOpenAnswerCheckCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "checkKind",
+    "criterionEntityIds",
+    "prompt",
+    "rationale",
+    "sourceIds",
+    "title",
+  ]) &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    Array.isArray(body.criterionEntityIds) &&
+    body.criterionEntityIds.length > 0 &&
+    body.criterionEntityIds.every($0 => typeof $0 === "string");
+}
+
 function hasOnlyKeys(body, allowedKeys) {
   return Object.keys(body).every($0 => allowedKeys.includes($0));
 }
@@ -1612,6 +1708,35 @@ function mapAssessmentCriterionCandidateListResult({
 
   return accepted({
     assessmentCriterionCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapOpenAnswerCheckCandidateListResult({
+  generateToken,
+  listCursors,
+  query,
+  result,
+  routeKey,
+}) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.openAnswerCheckCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    openAnswerCheckCandidates: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }

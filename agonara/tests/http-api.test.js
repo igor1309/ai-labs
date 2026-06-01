@@ -453,6 +453,61 @@ test("acceptedAssessmentCriteria_shouldListCurrentAndReturnHistoricalRevision_on
   }
 });
 
+test("openAnswerCheckCandidates_shouldCreateAndListDraftCandidate_onAcceptedCriterion", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const criterionCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition.",
+      title: "Vector-space closure",
+    });
+    const criterionCandidateId = (await criterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const acceptedCriterion = await acceptAssessmentCriterionCandidate(
+      baseUrl,
+      bootstrap,
+      criterionCandidateId,
+      {},
+    );
+    const criterionEntityId = (await acceptedCriterion.json()).value.acceptedAssessmentCriterion.entityId;
+    const createdCheck = await createOpenAnswerCheckCandidate(baseUrl, bootstrap, programId, {
+      checkKind: "open_answer",
+      criterionEntityIds: [criterionEntityId],
+      prompt: "Why is closure under addition required?",
+      title: "Closure check",
+    });
+    const listedChecks = await fetch(`${baseUrl}/programs/${programId}/open-answer-checks/candidates?status=draft`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        created: openAnswerCheckCandidateProjection(await createdCheck.json()),
+        createdStatusCode: createdCheck.status,
+        listed: openAnswerCheckCandidateListProjection(await listedChecks.json()),
+        listedStatusCode: listedChecks.status,
+      },
+      {
+        created: {
+          checkKind: "open_answer",
+          criterionEntityIds: [criterionEntityId],
+          programId,
+          prompt: "Why is closure under addition required?",
+          status: "draft",
+          title: "Closure check",
+        },
+        createdStatusCode: 200,
+        listed: ["Closure check"],
+        listedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {
@@ -5154,6 +5209,18 @@ async function rejectAssessmentCriterionCandidate(baseUrl, session, candidateId,
   });
 }
 
+async function createOpenAnswerCheckCandidate(baseUrl, session, programId, body) {
+  return fetch(`${baseUrl}/programs/${programId}/open-answer-checks/candidates`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
   const { targetEntityId, ...candidateBody } = body;
   const candidate = await createCorpusCandidate(baseUrl, session, programId, candidateBody);
@@ -5341,6 +5408,22 @@ function acceptedAssessmentCriterionProjection(body) {
     sourceIds: criterion?.sourceIds,
     title: criterion?.title,
   };
+}
+
+function openAnswerCheckCandidateProjection(body) {
+  const candidate = body.value?.openAnswerCheckCandidate;
+  return {
+    checkKind: candidate?.checkKind,
+    criterionEntityIds: candidate?.criterionEntityIds,
+    programId: candidate?.programId,
+    prompt: candidate?.prompt,
+    status: candidate?.status,
+    title: candidate?.title,
+  };
+}
+
+function openAnswerCheckCandidateListProjection(body) {
+  return body.value?.openAnswerCheckCandidates?.map($0 => $0.title) ?? [];
 }
 
 function acceptedCorpusRevisionProjection(body, statusCode) {
