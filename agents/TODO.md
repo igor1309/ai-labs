@@ -1,12 +1,12 @@
 ---
 date: 2026-06-01
 model: claude-opus-4-8
-description: "Cross-cutting TODO for the agents/ directory — a unified run-observability (dead-man's-switch) system for all cron-based OpenClaw agents, plus other concerns spanning more than one agent"
+description: "Cross-cutting TODO for the agents/ directory — concerns spanning more than one OpenClaw agent; open items numbered, completed work under Done"
 ---
 
 # agents/ — Cross-Cutting TODO
 
-Concerns that span more than one agent under `agents/` live here, not in a single agent's `TODO.md`. Per-agent tasks stay in `agents/<agent>/TODO.md`.
+Concerns that span more than one agent under `agents/` live here, not in a single agent's `TODO.md`. Per-agent tasks stay in `agents/<agent>/TODO.md`. Open items are numbered below; completed work is under **Done** at the end.
 
 ## 1. Unified run-observability for cron-based agents (dead-man's-switch)
 
@@ -56,34 +56,7 @@ The per-agent `<agent>-sync.yml` workflow ships only `agent/**` to the VPS works
 - [ ] Decide: extend a sync mechanism to also ship `runtime/cron/*.sh` (mode 700), or formally document the manual re-deploy as a required step in each runtime README and a checklist.
 - [ ] Whichever is chosen, make wrapper drift detectable (e.g. a checksum compare on deploy).
 
-## 3. Retire the dashboard-sync dedicated bot/account — DONE (2026-06-01)
-
-Fully retired. Notifications migrated to the shared account (now `accounts["ai-labs"].botToken`, renamed from `docdrift` on 2026-06-01); then `@dashboard_sync_agent_bot` deleted via BotFather and the `dashboardsync` account + binding removed from `openclaw.json` (gateway restarted, no longer polling a dead token). `dashboard-sync-agent` is now reached via its `#dashboard-sync` topic (thread 6) + cron. Recorded in `inventory`.
-
-## 4. Consolidate to one bot + per-agent Telegram topics — DONE (2026-06-01)
-
-**Implemented and live.** Supergroup chatId `-1003954520541` on `@igor1309_ai_labs_bot`; topics `#maestro-review`=2, `#doc-drift`=4, `#dashboard-sync`=6, `#health`=8. Inbound via `accounts["ai-labs"].groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true`); outbound wrappers post `message_thread_id={2,4,6}`. Verified with a test ping into each topic. (The shared account was renamed `docdrift` → `ai-labs` on 2026-06-01.) See `README.md` and the `inventory` OpenClaw README/log. Remaining cleanup is item #3 (delete `@dashboard_sync_agent_bot`, drop the `dashboardsync` account). The reference notes below are retained for context.
-
-**Feasibility: confirmed** against the installed OpenClaw 2026.5.28 docs (`docs/channels/{telegram,channel-routing,groups}.md`, `docs/concepts/multi-agent.md`). OpenClaw natively routes different agents to different Telegram **forum topics** inside one supergroup behind one bot:
-
-- **Inbound, two ways:**
-  - Per-topic `agentId`: `channels.telegram.groups.<chatId>.topics.<threadId>.agentId` — *topic-only, does not inherit from group defaults* — assigns a topic directly to an agent.
-  - Or a `bindings[]` peer entry: `match: { channel: "telegram", peer: { kind: "group", id: "<chatId>:topic:<threadId>" } }`. Routing rule #1 is "exact peer match"; threads inherit via rule #2.
-- **Isolated sessions per topic:** session key `agent:<id>:telegram:group:<chatId>:topic:<threadId>` — each agent gets its own brain/context automatically.
-- **Outbound:** post to a topic via `messageThreadId` on `sendMessage`; OpenClaw can even create topics (`createForumTopic` / the `topic-create` action).
-- **Caveats:** the **General** topic (`threadId=1`) must omit `message_thread_id` on sends (Telegram rejects `thread_id=1`); the supergroup must have Topics enabled and the bot must be admin; per-topic overrides exist for `requireMention`/`allowFrom`/`systemPrompt`/`enabled`.
-
-**Target architecture:** one bot (`@igor1309_ai_labs_bot`), one supergroup with Topics on, one topic per agent (`#maestro-review`, `#doc-drift`, `#dashboard-sync`, + a `#health` topic for the dead-man's-switch in item 1). This **supersedes the per-agent-account pattern** and upgrades the shared-bot convention from "one bot → one flat chat" to "one bot → per-agent topic" — regaining per-agent separation (visual thread + inbound trigger + isolated session) with zero extra bots/accounts. It also makes the maestro "no account" oddity the intended shape, not a deviation.
-
-Tasks:
-
-- [ ] Create the supergroup, enable Topics, add `@igor1309_ai_labs_bot` as admin; create one topic per agent (manually or via `topic-create`).
-- [ ] Record each topic's `<chatId>:topic:<threadId>`; map agents via per-topic `agentId` (or `bindings[]` peer entries) in `openclaw.json`.
-- [ ] Repoint each cron wrapper to post with the agent's `messageThreadId` instead of the flat chat `54589373` (mind the General-topic id=1 special case).
-- [ ] Fold inbound triggers into topics and retire the dedicated accounts/bots (`dashboardsync`, and `docdrift`'s inbound role) once topic routing is proven.
-- [ ] Reflect the full topology in `inventory` (`vps/OpenClaw/*`) in the same change.
-
-## 5. `/run` (or a slash command) to invoke an agent from its topic
+## 3. `/run` (or a slash command) to invoke an agent from its topic
 
 Today an agent is triggered by `@`-mentioning the bot in its topic with an instruction (`requireMention: true`). To get a simple `/run`:
 
@@ -92,3 +65,8 @@ Today an agent is triggered by `@`-mentioning the bot in its topic with an instr
 
 - [ ] Decide A vs B (A preferred for a deliberate trigger).
 - [ ] If A: add the `customCommands` menu entry + update each agent's system prompt to handle `/run`.
+
+## Done
+
+- **dashboard-sync dedicated bot/account retired** (2026-06-01) — notifications moved to the shared `ai-labs` account; `@dashboard_sync_agent_bot` deleted via BotFather; the `dashboardsync` account + binding removed from `openclaw.json`. Record: `docs/log.md` + `inventory`.
+- **one bot + per-agent Telegram topics live** (2026-06-01) — supergroup `-1003954520541` on `@igor1309_ai_labs_bot`, one topic per agent; the shared account was renamed `docdrift` → `ai-labs`. Operative details: [`runbook.md`](runbook.md) + [`gotchas.md`](gotchas.md). Record: `docs/log.md` + `inventory`.

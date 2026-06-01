@@ -27,7 +27,7 @@ Operational details for the shared Telegram surface. Conceptual model: [`README.
 
 ## Triggering an agent
 
-`@`-mention the bot in its topic with an instruction — e.g. in `#doc-drift`: `@igor1309_ai_labs_bot run a drift review`. (A `/run`-style trigger is [`TODO.md`](TODO.md) #5.)
+`@`-mention the bot in its topic with an instruction — e.g. in `#doc-drift`: `@igor1309_ai_labs_bot run a drift review`. (A `/run`-style trigger is [`TODO.md`](TODO.md) #3.)
 
 ## Bot requirements
 
