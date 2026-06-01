@@ -2,6 +2,7 @@
 
 ## 2026-06-01
 
+- Harden the Student Workspace open-answer attempt spec after adversarial review by narrowing first-slice evaluator kinds, using `attempt_already_evaluating`, and avoiding private attempt existence leaks for non-owners.
 - Add the Student Workspace open-answer attempt first-slice spec, defining submitted answer attempts, evaluation outcomes, idempotent submission, accepted revision references, owner-only reads, backup/restore rules, and out-of-scope boundaries.
 - Harden ADR-012 after adversarial review by making submission idempotency consistently client-keyed and rejecting conflicting idempotency-key reuse.
 - Accept ADR-012 for the Student Workspace open-answer attempt lifecycle: attempts, submitted answers, evaluation outcomes, and feedback stay personal student state while referencing accepted check and criterion revisions.

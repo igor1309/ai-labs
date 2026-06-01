@@ -32,10 +32,7 @@ type OpenAnswerEvaluationCriterionOutcome =
   | "missing"
   | "unclear";
 
-type OpenAnswerEvaluatorKind =
-  | "student_workspace"
-  | "llm_assisted"
-  | "human_reviewed";
+type OpenAnswerEvaluatorKind = "student_workspace";
 
 type OpenAnswerAttempt = {
   id: OpenAnswerAttemptId;
@@ -189,7 +186,6 @@ type StudentWorkspaceAttemptRejectionReason =
   | "check_revision_not_found"
   | "check_revision_program_mismatch"
   | "attempt_not_found"
-  | "attempt_not_owned"
   | "attempt_already_evaluating"
   | "attempt_already_evaluated"
   | "idempotency_conflict"
@@ -215,12 +211,12 @@ type StudentWorkspaceAttemptRejectionReason =
 15. Submitting an attempt must not create, update, reject, or delete accepted checks, accepted criteria, accepted revisions, or curator candidates.
 16. `markOpenAnswerAttemptEvaluating` rejects unknown attempts with `attempt_not_found`.
 17. `markOpenAnswerAttemptEvaluating` changes a `submitted` or `evaluation_failed` attempt to `evaluating`.
-18. `markOpenAnswerAttemptEvaluating` returns an already `evaluating` attempt without creating duplicate evaluation state.
+18. `markOpenAnswerAttemptEvaluating` rejects an already `evaluating` attempt with `attempt_already_evaluating`.
 19. `markOpenAnswerAttemptEvaluating` rejects an `evaluated` attempt with `attempt_already_evaluated`.
 20. `recordOpenAnswerEvaluation` rejects unknown attempts with `attempt_not_found`.
 21. `recordOpenAnswerEvaluation` accepts `submitted`, `evaluating`, or `evaluation_failed` attempts.
 22. `recordOpenAnswerEvaluation` rejects already evaluated attempts with `attempt_already_evaluated`.
-23. `recordOpenAnswerEvaluation` requires `evaluatorKind` to be one of `student_workspace`, `llm_assisted`, or `human_reviewed`.
+23. `recordOpenAnswerEvaluation` requires `evaluatorKind` to be `student_workspace`.
 24. `recordOpenAnswerEvaluation` rejects missing, empty, whitespace-only, or non-string summary feedback with `validation_failed`.
 25. `recordOpenAnswerEvaluation` requires exactly one criterion feedback item for each criterion revision id snapshotted on the attempt.
 26. `recordOpenAnswerEvaluation` rejects missing, duplicate, unknown, or extra criterion feedback revision ids with `validation_failed`.
@@ -235,18 +231,19 @@ type StudentWorkspaceAttemptRejectionReason =
 35. `recordOpenAnswerEvaluationFailure` changes the attempt status to `evaluation_failed`.
 36. `recordOpenAnswerEvaluationFailure` preserves the submitted answer and accepted revision references.
 37. `getOpenAnswerAttempt` rejects unknown attempts with `attempt_not_found`.
-38. `getOpenAnswerAttempt` rejects non-owning Students, Program Curators, Admins, and other callers with `attempt_not_owned`.
-39. `getOpenAnswerAttempt` returns the attempt detail, including evaluation or failure detail when present.
-40. `listOpenAnswerAttempts` rejects inactive or unknown acting Identities with `identity_not_active`.
-41. `listOpenAnswerAttempts` rejects unknown Programs with `program_not_found`.
-42. `listOpenAnswerAttempts` rejects callers without effective `Student` participation for the Program with `participation_required`.
-43. `listOpenAnswerAttempts` returns only attempts owned by the acting Student Identity for the requested Program.
-44. `listOpenAnswerAttempts` applies supported status filters and rejects unsupported status filters with `validation_failed`.
-45. `listOpenAnswerAttempts` applies `checkRevisionId` filters only after enforcing Program and owning-student scope.
-46. Attempt summaries and details must not expose idempotency keys, raw LLM prompts, raw model responses, evaluator diagnostics, password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-47. Backup export and restore must preserve open-answer attempts, evaluation outcomes, evaluation failures, and accepted revision references.
-48. Restore must reject backups that orphan attempts from required Program, Identity, accepted check revision, or accepted criterion revision records.
-49. This first slice does not expose HTTP routes, CLI commands, Student UI, Admin UI, Program Curator read access, Admin read access, LLM provider calls, raw prompt storage, human review workflow, mastery calculation, weak-area calculation, review scheduling, progress interpretation, quick-check attempts, topic-level attempts, period-level attempts, or institutional grading behavior.
+38. `getOpenAnswerAttempt` rejects inactive or unknown acting Identities with `identity_not_active`.
+39. `getOpenAnswerAttempt` rejects non-owning Students, Program Curators, Admins, and other callers with `attempt_not_found`.
+40. `getOpenAnswerAttempt` returns the attempt detail, including evaluation or failure detail when present.
+41. `listOpenAnswerAttempts` rejects inactive or unknown acting Identities with `identity_not_active`.
+42. `listOpenAnswerAttempts` rejects unknown Programs with `program_not_found`.
+43. `listOpenAnswerAttempts` rejects callers without effective `Student` participation for the Program with `participation_required`.
+44. `listOpenAnswerAttempts` returns only attempts owned by the acting Student Identity for the requested Program.
+45. `listOpenAnswerAttempts` applies supported status filters and rejects unsupported status filters with `validation_failed`.
+46. `listOpenAnswerAttempts` applies `checkRevisionId` filters only after enforcing Program and owning-student scope.
+47. Attempt summaries and details must not expose idempotency keys, raw LLM prompts, raw model responses, evaluator diagnostics, password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+48. Backup export and restore must preserve open-answer attempts, evaluation outcomes, evaluation failures, and accepted revision references.
+49. Restore must reject backups that orphan attempts from required Program, Identity, accepted check revision, or accepted criterion revision records.
+50. This first slice does not expose HTTP routes, CLI commands, Student UI, Admin UI, Program Curator read access, Admin read access, LLM provider calls, raw prompt storage, human review workflow, mastery calculation, weak-area calculation, review scheduling, progress interpretation, quick-check attempts, topic-level attempts, period-level attempts, or institutional grading behavior.
 
 ## Tests (required)
 
@@ -263,7 +260,7 @@ type StudentWorkspaceAttemptRejectionReason =
 11. `submitOpenAnswerAttempt` does not mutate accepted checks, accepted criteria, accepted revisions, or curator candidates.
 12. Later accepted check or criterion revisions do not rewrite the attempt's accepted revision references.
 13. `markOpenAnswerAttemptEvaluating` changes submitted and failed attempts to `evaluating`.
-14. `markOpenAnswerAttemptEvaluating` is idempotent for an already evaluating attempt.
+14. `markOpenAnswerAttemptEvaluating` rejects an already evaluating attempt with `attempt_already_evaluating`.
 15. `markOpenAnswerAttemptEvaluating` rejects evaluated attempts with `attempt_already_evaluated`.
 16. `recordOpenAnswerEvaluation` accepts a submitted or evaluating attempt and returns an evaluated attempt plus evaluation summary.
 17. `recordOpenAnswerEvaluation` rejects unknown and already evaluated attempts with the specified reasons.
@@ -274,14 +271,15 @@ type StudentWorkspaceAttemptRejectionReason =
 22. `recordOpenAnswerEvaluationFailure` preserves the submitted answer and accepted revision references.
 23. `getOpenAnswerAttempt` returns the owning Student's attempt detail with evaluation detail when present.
 24. `getOpenAnswerAttempt` rejects unknown attempts with `attempt_not_found`.
-25. `getOpenAnswerAttempt` rejects non-owning Students, Program Curators, Admins, and other callers with `attempt_not_owned`.
-26. `listOpenAnswerAttempts` returns only attempts owned by the acting Student in the requested Program.
-27. `listOpenAnswerAttempts` applies supported status and check revision filters.
-28. `listOpenAnswerAttempts` rejects unsupported status filters with `validation_failed`.
-29. Attempt responses do not expose idempotency keys, raw LLM prompts, raw model responses, evaluator diagnostics, secrets, session identifiers, CSRF tokens, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-30. Backup and restore preserve attempts, evaluations, failures, and accepted revision references.
-31. Restore rejects orphan attempts that reference missing Program, Identity, accepted check revision, or accepted criterion revision records.
-32. Executable acceptance flow: a Student joins a Program, submits an open answer against an accepted open-answer check revision, receives an evaluation tied to the accepted criterion revision ids, retries the submission with the same idempotency key without duplicating the attempt, revises the accepted criterion after submission, verifies the attempt still references the original criterion revision ids, reads only the Student's own attempt history, records a failed evaluation for a separate attempt, and verifies no accepted corpus, curator candidate, mastery, weak-area, progress, UI, CLI, LLM provider, or human review state is introduced.
+25. `getOpenAnswerAttempt` rejects inactive Identities with `identity_not_active`.
+26. `getOpenAnswerAttempt` rejects non-owning Students, Program Curators, Admins, and other callers with `attempt_not_found`.
+27. `listOpenAnswerAttempts` returns only attempts owned by the acting Student in the requested Program.
+28. `listOpenAnswerAttempts` applies supported status and check revision filters.
+29. `listOpenAnswerAttempts` rejects unsupported status filters with `validation_failed`.
+30. Attempt responses do not expose idempotency keys, raw LLM prompts, raw model responses, evaluator diagnostics, secrets, session identifiers, CSRF tokens, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+31. Backup and restore preserve attempts, evaluations, failures, and accepted revision references.
+32. Restore rejects orphan attempts that reference missing Program, Identity, accepted check revision, or accepted criterion revision records.
+33. Executable acceptance flow: a Student joins a Program, submits an open answer against an accepted open-answer check revision, receives an evaluation tied to the accepted criterion revision ids, retries the submission with the same idempotency key without duplicating the attempt, revises the accepted criterion after submission, verifies the attempt still references the original criterion revision ids, reads only the Student's own attempt history, records a failed evaluation for a separate attempt, and verifies no accepted corpus, curator candidate, mastery, weak-area, progress, UI, CLI, LLM provider, or human review state is introduced.
 
 ## Done criteria
 
