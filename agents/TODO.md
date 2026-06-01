@@ -48,3 +48,16 @@ One cross-cutting watcher for every cron-based agent (`doc-drift-agent`, `dashbo
 - [ ] Add the check-in `curl` to each cron wrapper (`doc-drift`, `dashboard-sync`, `maestro-flow-review`), gated on the same success bar as the heartbeat.
 - [ ] Pick and wire the independent alarm channel.
 - [ ] Write the design up (own doc/ADR) and reflect the live wiring in `inventory` (under `vps/monitoring/` or a new `vps/agent-watchdog/`).
+
+## 2. Runtime cron wrappers are not CI-synced
+
+The per-agent `<agent>-sync.yml` workflow ships only `agent/**` to the VPS workspace. The `runtime/` cron wrapper (`<agent>-cron.sh`) is deployed manually (scp + `chmod 700`), so a wrapper edit in the repo does **not** reach the VPS until someone re-deploys it. Same gap for `doc-drift-agent` and `maestro-flow-review-agent`.
+
+- [ ] Decide: extend a sync mechanism to also ship `runtime/cron/*.sh` (mode 700), or formally document the manual re-deploy as a required step in each runtime README and a checklist.
+- [ ] Whichever is chosen, make wrapper drift detectable (e.g. a checksum compare on deploy).
+
+## 3. Migrate dashboard-sync-agent to the shared notification bot
+
+Per the convention in `README.md`, all ai-labs OpenClaw agents should notify via `@igor1309_ai_labs_bot` (account `docdrift`). `dashboard-sync-agent` predates this and still uses its own `@dashboard_sync_agent_bot`.
+
+- [ ] Repoint `dashboard-sync-cron.sh` to read `accounts.docdrift.botToken`; redeploy the wrapper; verify a notification lands. (Live runtime change — coordinate with the maintainer; the dedicated `dashboardsync` account/bot can then be retired or left dormant.)

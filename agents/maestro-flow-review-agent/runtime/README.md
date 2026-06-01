@@ -8,7 +8,7 @@ description: "Runtime infrastructure for maestro-flow-review-agent on the OpenCl
 
 Files here describe the VPS-side wiring needed to run the maestro-flow-review-agent. They are NOT loaded by OpenClaw at agent runtime — only `agent/` is. These are operator-facing artifacts kept under version control so the deployment is reproducible.
 
-> **Account reuse.** No new Telegram bot/account is provisioned. The agent is invoked by id from cron (`openclaw agent --agent maestro-flow-review-agent`), so it needs **no inbound binding**; notifications reuse the existing `docdrift` bot (`@igor1309_ai_labs_bot`) to the maintainer chat `54589373`. The agent appears only in `openclaw.json` `agents.list` (id + workspace), not in `channels.telegram.accounts` or `bindings`.
+> **Account reuse.** No new Telegram bot/account is provisioned. Per the ai-labs OpenClaw notification convention (see `agents/README.md`), notifications reuse the shared `@igor1309_ai_labs_bot` bot (account `docdrift`) to chat `54589373`. The agent is invoked by id from cron (`openclaw agent --agent maestro-flow-review-agent`), so it needs **no inbound binding** — it appears only in `openclaw.json` `agents.list` (id + workspace), not in `channels.telegram.accounts` or `bindings`.
 
 ## Layout
 
