@@ -24,7 +24,7 @@ Push policy: no push
 Worktree mode: create new
 Expected worktree: `worktrees/agonara-assessment-api`
 Expected branch: `codex/agonara-assessment-api`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 

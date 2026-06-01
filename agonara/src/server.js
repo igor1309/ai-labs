@@ -556,6 +556,46 @@ async function handleCorpusApi({
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
   const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
+  const acceptedAssessmentCriteriaMatch = pathname.match(/^\/programs\/([^/]+)\/assessment-criteria$/);
+  const acceptedOpenAnswerChecksMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-checks$/);
+  if (request.method === "GET" && acceptedAssessmentCriteriaMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(acceptedAssessmentCriteriaMatch[1]);
+    const routeKey = `accepted-assessment-criteria:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listAcceptedAssessmentCriteria({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapAcceptedAssessmentCriteriaListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedOpenAnswerChecksMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+  }
+
   if (request.method === "GET" && sourcesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1395,6 +1435,29 @@ function mapAcceptedCorpusListResult({ generateToken, listCursors, query, result
   });
 }
 
+function mapAcceptedAssessmentCriteriaListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.acceptedAssessmentCriteria,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    acceptedAssessmentCriteria: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
   const csrfToken = generateToken();
   csrfTokens.set(sessionId, csrfToken);
@@ -1462,11 +1525,18 @@ function httpStatusFor(reason) {
     case "csrf_invalid":
     case "csrf_required":
     case "identity_disabled":
+    case "identity_not_active":
     case "participation_required":
       return 403;
     case "identity_not_found":
     case "accepted_entity_not_found":
     case "candidate_not_found":
+    case "check_candidate_not_found":
+    case "check_entity_not_found":
+    case "check_revision_not_found":
+    case "criterion_candidate_not_found":
+    case "criterion_entity_not_found":
+    case "criterion_revision_not_found":
     case "program_not_found":
     case "revision_not_found":
       return 404;
@@ -1475,6 +1545,12 @@ function httpStatusFor(reason) {
     case "bootstrap_already_completed":
     case "candidate_already_accepted":
     case "candidate_already_rejected":
+    case "check_candidate_already_accepted":
+    case "check_candidate_already_rejected":
+    case "check_entity_program_mismatch":
+    case "criterion_candidate_already_accepted":
+    case "criterion_candidate_already_rejected":
+    case "criterion_entity_program_mismatch":
     case "identity_already_has_credential":
     case "last_admin_removal":
     case "login_already_bound":

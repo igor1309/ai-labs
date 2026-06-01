@@ -148,6 +148,136 @@ test("corpusSourcesList_shouldRejectMissingSession_withSessionNotFound", async (
   }
 });
 
+test("assessmentCriteriaList_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs/program-1/assessment-criteria`);
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerChecksList_shouldRejectDisabledSessionIdentity_withIdentityDisabled", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    database
+      .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+      .run("2026-05-27T10:00:00.000Z", bootstrap.body.value.identity.id);
+    const response = await fetch(`${baseUrl}/programs/program-1/open-answer-checks`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 403,
+        body: { status: "rejected", reason: "identity_disabled" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("assessmentCriteriaList_shouldDelegateToCorpusCommands_onActiveSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listAcceptedAssessmentCriteria: ({ actingIdentityId, programId }) => ({
+        status: "accepted",
+        value: {
+          acceptedAssessmentCriteria: [{ actingIdentityId, programId }],
+        },
+      }),
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/assessment-criteria`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          value: {
+            acceptedAssessmentCriteria: [{ actingIdentityId: "identity-1", programId: "program-1" }],
+          },
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("assessmentRoutes_shouldMapAssessmentRejections_toHttpStatuses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      listAcceptedAssessmentCriteria: ({ programId }) => ({ status: "rejected", reason: programId }),
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      ["identity_not_active", 403],
+      ["criterion_candidate_not_found", 404],
+      ["criterion_entity_not_found", 404],
+      ["criterion_revision_not_found", 404],
+      ["check_candidate_not_found", 404],
+      ["check_entity_not_found", 404],
+      ["check_revision_not_found", 404],
+      ["criterion_candidate_already_accepted", 409],
+      ["criterion_candidate_already_rejected", 409],
+      ["criterion_entity_program_mismatch", 409],
+      ["check_candidate_already_accepted", 409],
+      ["check_candidate_already_rejected", 409],
+      ["check_entity_program_mismatch", 409],
+    ];
+    const responses = [];
+    for (const [reason] of cases) {
+      const response = await fetch(`${baseUrl}/programs/${reason}/assessment-criteria`, {
+        headers: { cookie: bootstrap.cookie },
+      });
+      responses.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(
+      responses,
+      cases.map(([reason, statusCode]) => ({
+        body: { status: "rejected", reason },
+        statusCode,
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {
