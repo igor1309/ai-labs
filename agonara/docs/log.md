@@ -2,6 +2,7 @@
 
 ## 2026-06-01
 
+- Start the Student Workspace open-answer attempt implementation with the Phase 1 persistence substrate: attempt, evaluation, failure, status, idempotency, and accepted-revision graph storage helpers.
 - Harden the Student Workspace open-answer attempt implementation plan after adversarial review by adding explicit phase status gates and clarifying docs-only closeout behavior.
 - Add the Student Workspace open-answer attempt implementation plan, sequencing storage, idempotent submission, evaluation lifecycle, owner-only reads, backup/restore, and executable acceptance through strict TDD phase commits.
 - Harden the Student Workspace open-answer attempt spec after adversarial review by narrowing first-slice evaluator kinds, using `attempt_already_evaluating`, and avoiding private attempt existence leaks for non-owners.

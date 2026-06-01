@@ -24,7 +24,7 @@ Push policy: no push
 Worktree mode: create new
 Expected worktree: `worktrees/agonara-student-attempt-first-slice`
 Expected branch: `codex/agonara-student-attempt-first-slice`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
@@ -94,7 +94,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 1 — Student Workspace persistence substrate
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: add storage-level persistence for open-answer attempts, evaluations, evaluation failures, and idempotency lookup records without exposing domain commands yet.
 

@@ -207,6 +207,38 @@ export function initializeIdentityStorage(database) {
       accepted_at text not null
     );
 
+    create table if not exists open_answer_attempts (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      check_revision_id text not null references accepted_open_answer_check_revisions(id),
+      criterion_revision_ids_json text not null,
+      submitted_answer text not null,
+      idempotency_key text not null,
+      status text not null check (status in ('submitted', 'evaluating', 'evaluated', 'evaluation_failed')),
+      submitted_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists open_answer_evaluations (
+      id text primary key,
+      attempt_id text not null unique references open_answer_attempts(id),
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      check_revision_id text not null references accepted_open_answer_check_revisions(id),
+      criterion_revision_ids_json text not null,
+      evaluator_kind text not null check (evaluator_kind in ('student_workspace')),
+      summary_feedback text not null,
+      criterion_feedback_json text not null,
+      evaluated_at text not null
+    );
+
+    create table if not exists open_answer_evaluation_failures (
+      attempt_id text primary key references open_answer_attempts(id),
+      reason text not null,
+      failed_at text not null
+    );
+
     create table if not exists accepted_corpus_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -1198,6 +1230,228 @@ export function listAcceptedOpenAnswerCheckRevisionRecords(database) {
     .map(mapAcceptedOpenAnswerCheckRevisionRecord);
 }
 
+export function createOpenAnswerAttemptRecord(
+  database,
+  {
+    id,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+    submittedAnswer,
+    idempotencyKey,
+    status,
+    submittedAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, studentIdentityId);
+  assertAcceptedOpenAnswerCheckRevisionBelongsToProgram(database, { programId, revisionId: checkRevisionId });
+  assertAcceptedAssessmentCriterionRevisionsBelongToProgram(database, { programId, criterionRevisionIds });
+  assertOpenAnswerAttemptCriterionSnapshotMatchesCheck(database, { checkRevisionId, criterionRevisionIds });
+  assertOpenAnswerAttemptIdempotencyScopeAvailable(database, {
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    idempotencyKey,
+  });
+
+  database
+    .prepare(
+      `insert into open_answer_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         submitted_answer,
+         idempotency_key,
+         status,
+         submitted_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+      JSON.stringify(criterionRevisionIds),
+      submittedAnswer,
+      idempotencyKey,
+      status,
+      submittedAt,
+      updatedAt,
+    );
+
+  return getOpenAnswerAttemptRecord(database, id);
+}
+
+export function getOpenAnswerAttemptRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              submitted_answer as submittedAnswer, idempotency_key as idempotencyKey,
+              status, submitted_at as submittedAt, updated_at as updatedAt
+       from open_answer_attempts
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapOpenAnswerAttemptRecord(row) : null;
+}
+
+export function listOpenAnswerAttemptRecords(
+  database,
+  { programId = null, studentIdentityId = null, status = null, checkRevisionId = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (studentIdentityId !== null) {
+    filters.push("student_identity_id = ?");
+    values.push(studentIdentityId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+  if (checkRevisionId !== null) {
+    filters.push("check_revision_id = ?");
+    values.push(checkRevisionId);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              submitted_answer as submittedAnswer, idempotency_key as idempotencyKey,
+              status, submitted_at as submittedAt, updated_at as updatedAt
+       from open_answer_attempts
+       ${whereClause}
+       order by submitted_at, id`,
+    )
+    .all(...values)
+    .map(mapOpenAnswerAttemptRecord);
+}
+
+export function updateOpenAnswerAttemptStatus(database, { attemptId, status, updatedAt }) {
+  database
+    .prepare(
+      `update open_answer_attempts
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, attemptId);
+
+  return getOpenAnswerAttemptRecord(database, attemptId);
+}
+
+export function createOpenAnswerEvaluationRecord(
+  database,
+  {
+    id,
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+    evaluatorKind,
+    summaryFeedback,
+    criterionFeedback,
+    evaluatedAt,
+  },
+) {
+  assertOpenAnswerEvaluationMatchesAttempt(database, {
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+  });
+
+  database
+    .prepare(
+      `insert into open_answer_evaluations (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_kind,
+         summary_feedback,
+         criterion_feedback_json,
+         evaluated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      attemptId,
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+      JSON.stringify(criterionRevisionIds),
+      evaluatorKind,
+      summaryFeedback,
+      JSON.stringify(criterionFeedback),
+      evaluatedAt,
+    );
+
+  return getOpenAnswerEvaluationRecord(database, id);
+}
+
+export function getOpenAnswerEvaluationRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_kind as evaluatorKind, summary_feedback as summaryFeedback,
+              criterion_feedback_json as criterionFeedbackJson, evaluated_at as evaluatedAt
+       from open_answer_evaluations
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapOpenAnswerEvaluationRecord(row) : null;
+}
+
+export function createOpenAnswerEvaluationFailureRecord(database, { attemptId, reason, failedAt }) {
+  assertOpenAnswerAttemptExists(database, attemptId);
+
+  database
+    .prepare(
+      `insert into open_answer_evaluation_failures (attempt_id, reason, failed_at)
+       values (?, ?, ?)
+       on conflict(attempt_id) do update set reason = excluded.reason, failed_at = excluded.failed_at`,
+    )
+    .run(attemptId, reason, failedAt);
+
+  return getOpenAnswerEvaluationFailureRecord(database, attemptId);
+}
+
+export function getOpenAnswerEvaluationFailureRecord(database, attemptId) {
+  const row = database
+    .prepare(
+      `select attempt_id as attemptId, reason, failed_at as failedAt
+       from open_answer_evaluation_failures
+       where attempt_id = ?`,
+    )
+    .get(attemptId);
+
+  return row ?? null;
+}
+
 export function createAcceptedCorpusEntityRecord(
   database,
   { id, programId, acceptedKind, currentRevisionId },
@@ -1765,6 +2019,73 @@ function assertAcceptedOpenAnswerCheckEntityBelongsToProgram(database, { program
 
   if (entity.programId !== programId) {
     throw new StorageInvariantError("check_entity_program_mismatch");
+  }
+}
+
+function assertAcceptedOpenAnswerCheckRevisionBelongsToProgram(database, { programId, revisionId }) {
+  const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, revisionId);
+  if (!revision) {
+    throw new StorageInvariantError("check_revision_not_found");
+  }
+
+  if (revision.programId !== programId) {
+    throw new StorageInvariantError("check_revision_program_mismatch");
+  }
+}
+
+function assertOpenAnswerAttemptIdempotencyScopeAvailable(
+  database,
+  { programId, studentIdentityId, checkRevisionId, idempotencyKey },
+) {
+  const row = database
+    .prepare(
+      `select 1
+       from open_answer_attempts
+       where program_id = ?
+         and student_identity_id = ?
+         and check_revision_id = ?
+         and idempotency_key = ?`,
+    )
+    .get(programId, studentIdentityId, checkRevisionId, idempotencyKey);
+
+  if (row) {
+    throw new StorageInvariantError("attempt_idempotency_conflict");
+  }
+}
+
+function assertOpenAnswerAttemptCriterionSnapshotMatchesCheck(database, { checkRevisionId, criterionRevisionIds }) {
+  const checkRevision = getAcceptedOpenAnswerCheckRevisionRecord(database, checkRevisionId);
+  if (JSON.stringify(checkRevision.criterionRevisionIds) !== JSON.stringify(criterionRevisionIds)) {
+    throw new StorageInvariantError("check_criterion_revision_mismatch");
+  }
+}
+
+function assertOpenAnswerEvaluationMatchesAttempt(
+  database,
+  { attemptId, programId, studentIdentityId, checkRevisionId, criterionRevisionIds },
+) {
+  const attempt = getOpenAnswerAttemptRecord(database, attemptId);
+  if (!attempt) {
+    throw new StorageInvariantError("attempt_not_found");
+  }
+
+  if (attempt.programId !== programId) {
+    throw new StorageInvariantError("attempt_program_mismatch");
+  }
+  if (attempt.studentIdentityId !== studentIdentityId) {
+    throw new StorageInvariantError("attempt_student_mismatch");
+  }
+  if (attempt.checkRevisionId !== checkRevisionId) {
+    throw new StorageInvariantError("attempt_check_revision_mismatch");
+  }
+  if (JSON.stringify(attempt.criterionRevisionIds) !== JSON.stringify(criterionRevisionIds)) {
+    throw new StorageInvariantError("attempt_criterion_revisions_mismatch");
+  }
+}
+
+function assertOpenAnswerAttemptExists(database, attemptId) {
+  if (!getOpenAnswerAttemptRecord(database, attemptId)) {
+    throw new StorageInvariantError("attempt_not_found");
   }
 }
 
@@ -2408,6 +2729,36 @@ function mapAcceptedOpenAnswerCheckRevisionRecord(row) {
     rationale: row.rationale,
     acceptedByIdentityId: row.acceptedByIdentityId,
     acceptedAt: row.acceptedAt,
+  };
+}
+
+function mapOpenAnswerAttemptRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    submittedAnswer: row.submittedAnswer,
+    idempotencyKey: row.idempotencyKey,
+    status: row.status,
+    submittedAt: row.submittedAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapOpenAnswerEvaluationRecord(row) {
+  return {
+    id: row.id,
+    attemptId: row.attemptId,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    evaluatorKind: row.evaluatorKind,
+    summaryFeedback: row.summaryFeedback,
+    criterionFeedback: JSON.parse(row.criterionFeedbackJson),
+    evaluatedAt: row.evaluatedAt,
   };
 }
 

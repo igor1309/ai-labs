@@ -556,7 +556,6 @@ function listOutOfScopeTables(database) {
     "answer_feedback",
     "evaluation_results",
     "human_reviews",
-    "open_answer_attempts",
     "open_answer_feedback",
     "llm_runs",
     "llm_suggestions",
