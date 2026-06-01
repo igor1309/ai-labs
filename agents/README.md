@@ -14,11 +14,18 @@ Specialized OpenClaw agents whose definitions live in `ai-labs` and whose runtim
 
 ### Telegram routing — one bot, one topic per agent
 
-**Adopted architecture (rollout tracked in `TODO.md` #4).** All `igor1309/ai-labs`-defined OpenClaw agents — `maestro-flow-review-agent`, `doc-drift-agent`, `dashboard-sync-agent` — share the single bot **`@igor1309_ai_labs_bot`** inside one Telegram **supergroup with Topics enabled**, with **one forum topic per agent** (`#maestro-review`, `#doc-drift`, `#dashboard-sync`, plus a `#health` topic for the dead-man's-switch, item #1).
+**Live (2026-06-01).** All `igor1309/ai-labs`-defined OpenClaw agents share the single bot **`@igor1309_ai_labs_bot`** (account `docdrift`) inside one Telegram **forum supergroup**, chatId **`-1003954520541`**, one topic per agent:
 
-Per-topic routing is native in OpenClaw: a topic-only `channels.telegram.groups.<chatId>.topics.<threadId>.agentId` (or a `bindings[]` peer entry `{kind:"group", id:"<chatId>:topic:<threadId>"}`) assigns each topic to its agent; each topic gets an isolated session; wrappers post notifications to their topic via `messageThreadId`. **No per-agent accounts or bots** — this supersedes the old per-agent-account pattern (`docdrift`, `dashboardsync`) and makes the cron-only `maestro-flow-review-agent` shape the norm.
+| Topic | threadId | Agent |
+|-------|----------|-------|
+| `#maestro-review` | `2` | `maestro-flow-review-agent` |
+| `#doc-drift` | `4` | `doc-drift-agent` |
+| `#dashboard-sync` | `6` | `dashboard-sync-agent` |
+| `#health` | `8` | — (dead-man's-switch, item #1) |
 
-Interim state until the supergroup is live: wrappers post via the `docdrift` bot token (`@igor1309_ai_labs_bot`) to the flat chat `54589373`. The dedicated `@dashboard_sync_agent_bot` / `dashboardsync` account is retired as part of the topics cutover (`TODO.md` #3/#4).
+Per-topic routing is native in OpenClaw: **inbound** via `channels.telegram.accounts.docdrift.groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true` — `@`-mention the bot in a topic to trigger its agent); each topic has an isolated session. **Outbound** notifications: each cron wrapper posts `chat_id=-1003954520541` + `message_thread_id=<2|4|6>`. **No per-agent accounts or bots** — this supersedes the per-agent-account pattern and makes the cron-only `maestro-flow-review-agent` shape the norm. The bot must stay **admin** in the supergroup (admins receive all posts; privacy mode otherwise blocks non-mention messages).
+
+The old `@dashboard_sync_agent_bot` / `dashboardsync` account is now unused — teardown tracked in `TODO.md` #3.
 
 ### Runtime deployment
 

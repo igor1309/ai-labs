@@ -25,7 +25,8 @@ STATE_FILE=/home/openclaw/.openclaw/agents/maestro-flow-review-agent/state.json
 LOG_FILE=/home/openclaw/.openclaw/logs/maestro-review-cron.log
 REPO_PATH=/home/openclaw/ios.config
 OPENCLAW_JSON=/home/openclaw/.openclaw/openclaw.json
-CHAT_ID=54589373
+CHAT_ID=-1003954520541          # ai-labs agents supergroup
+THREAD_ID=2                     # #maestro-review forum topic
 TG_LIMIT=4000  # headroom under Telegram's 4096-char per-message limit
 
 BOT_TOKEN=$(jq -r '.channels.telegram.accounts.docdrift.botToken // empty' "$OPENCLAW_JSON" 2>/dev/null)
@@ -38,6 +39,7 @@ tg() {
   local text="$1"
   curl -fsS -m 10 -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
     --data-urlencode "chat_id=${CHAT_ID}" \
+    --data-urlencode "message_thread_id=${THREAD_ID}" \
     --data-urlencode "text=${text}" \
     --data-urlencode "disable_web_page_preview=true" \
     -o /dev/null || true
