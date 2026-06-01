@@ -560,6 +560,12 @@ async function handleCorpusApi({
   const assessmentCriterionCandidatesMatch = pathname.match(
     /^\/programs\/([^/]+)\/assessment-criteria\/candidates$/,
   );
+  const assessmentCriterionAcceptanceMatch = pathname.match(
+    /^\/assessment-criteria\/candidates\/([^/]+)\/acceptance$/,
+  );
+  const assessmentCriterionRejectionMatch = pathname.match(
+    /^\/assessment-criteria\/candidates\/([^/]+)\/rejection$/,
+  );
   const acceptedOpenAnswerChecksMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-checks$/);
   if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
@@ -842,6 +848,61 @@ async function handleCorpusApi({
       rationale: body.value.rationale,
       sourceIds: body.value.sourceIds,
       title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapAssessmentCriterionCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && assessmentCriterionAcceptanceMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptAssessmentCriterionCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(assessmentCriterionAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapAcceptedAssessmentCriterionResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && assessmentCriterionRejectionMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectAssessmentCriterionCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(assessmentCriterionRejectionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapAssessmentCriterionCandidateResult(result));
     return true;
@@ -1239,6 +1300,14 @@ function mapAcceptedCorpusResult(result) {
   }
 
   return accepted({ acceptedCorpus: result.value.acceptedCorpus });
+}
+
+function mapAcceptedAssessmentCriterionResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ acceptedAssessmentCriterion: result.value.acceptedAssessmentCriterion });
 }
 
 function mapCorpusEventListResult({ generateToken, listCursors, query, result, routeKey }) {

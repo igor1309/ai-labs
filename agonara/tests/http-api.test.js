@@ -325,6 +325,81 @@ test("assessmentCriterionCandidates_shouldCreateAndListDraftCandidate_onCuratorS
   }
 });
 
+test("assessmentCriterionAcceptance_shouldCreateAcceptedRevision_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const createdSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "textbook",
+      title: "Linear Algebra Done Right",
+    });
+    const sourceId = (await createdSource.json()).value.programSource.sourceId;
+    const firstCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition.",
+      sourceIds: [sourceId],
+      title: "Vector-space closure",
+    });
+    const firstCandidateId = (await firstCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const firstAccepted = await acceptAssessmentCriterionCandidate(baseUrl, bootstrap, firstCandidateId, {});
+
+    assert.deepEqual(
+      {
+        body: acceptedAssessmentCriterionProjection(await firstAccepted.json()),
+        statusCode: firstAccepted.status,
+      },
+      {
+        body: {
+          acceptedFromCandidateId: firstCandidateId,
+          programId,
+          sourceIds: [sourceId],
+          title: "Vector-space closure",
+        },
+        statusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("assessmentCriterionRejection_shouldRejectDraftCandidate_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(30) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const candidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain rejected criterion.",
+      title: "Rejected criterion",
+    });
+    const candidateId = (await candidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const rejected = await rejectAssessmentCriterionCandidate(baseUrl, bootstrap, candidateId);
+
+    assert.deepEqual(
+      {
+        body: assessmentCriterionCandidateProjection(await rejected.json()),
+        statusCode: rejected.status,
+      },
+      {
+        body: {
+          body: "Explain rejected criterion.",
+          programId,
+          sourceIds: [],
+          status: "rejected",
+          title: "Rejected criterion",
+        },
+        statusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {
@@ -5002,6 +5077,30 @@ async function createAssessmentCriterionCandidate(baseUrl, session, programId, b
   });
 }
 
+async function acceptAssessmentCriterionCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/assessment-criteria/candidates/${candidateId}/acceptance`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function rejectAssessmentCriterionCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/assessment-criteria/candidates/${candidateId}/rejection`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
   const { targetEntityId, ...candidateBody } = body;
   const candidate = await createCorpusCandidate(baseUrl, session, programId, candidateBody);
@@ -5179,6 +5278,16 @@ function assessmentCriterionCandidateProjection(body) {
 
 function assessmentCriterionCandidateListProjection(body) {
   return body.value?.assessmentCriterionCandidates?.map($0 => $0.title) ?? [];
+}
+
+function acceptedAssessmentCriterionProjection(body) {
+  const criterion = body.value?.acceptedAssessmentCriterion;
+  return {
+    acceptedFromCandidateId: criterion?.acceptedFromCandidateId,
+    programId: criterion?.programId,
+    sourceIds: criterion?.sourceIds,
+    title: criterion?.title,
+  };
 }
 
 function acceptedCorpusRevisionProjection(body, statusCode) {
