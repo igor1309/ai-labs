@@ -606,6 +606,74 @@ test("openAnswerCheckRejection_shouldRejectDraftCandidate_onCuratorSession", asy
   }
 });
 
+test("acceptedOpenAnswerChecks_shouldListCurrentAndPreserveCriterionSnapshot_onCriterionRevision", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const criterionCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition.",
+      title: "Vector-space closure",
+    });
+    const criterionCandidateId = (await criterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const acceptedCriterion = await acceptAssessmentCriterionCandidate(
+      baseUrl,
+      bootstrap,
+      criterionCandidateId,
+      {},
+    );
+    const acceptedCriterionBody = (await acceptedCriterion.json()).value.acceptedAssessmentCriterion;
+    const checkCandidate = await createOpenAnswerCheckCandidate(baseUrl, bootstrap, programId, {
+      checkKind: "open_answer",
+      criterionEntityIds: [acceptedCriterionBody.entityId],
+      prompt: "Why is closure under addition required?",
+      title: "Closure check",
+    });
+    const checkCandidateId = (await checkCandidate.json()).value.openAnswerCheckCandidate.candidateId;
+    const acceptedCheck = await acceptOpenAnswerCheckCandidate(baseUrl, bootstrap, checkCandidateId, {});
+    const acceptedCheckBody = (await acceptedCheck.json()).value.acceptedOpenAnswerCheck;
+    const replacementCriterionCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition and scalar multiplication.",
+      title: "Vector-space closure revised",
+    });
+    const replacementCriterionCandidateId =
+      (await replacementCriterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    await acceptAssessmentCriterionCandidate(baseUrl, bootstrap, replacementCriterionCandidateId, {
+      targetEntityId: acceptedCriterionBody.entityId,
+    });
+    const listed = await fetch(`${baseUrl}/programs/${programId}/open-answer-checks`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const historical = await fetch(`${baseUrl}/open-answer-checks/revisions/${acceptedCheckBody.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        historical: acceptedOpenAnswerCheckProjection(await historical.json()),
+        historicalStatusCode: historical.status,
+        listed: acceptedOpenAnswerCheckListProjection(await listed.json()),
+        listedStatusCode: listed.status,
+      },
+      {
+        historical: {
+          acceptedFromCandidateId: checkCandidateId,
+          criterionRevisionIds: [acceptedCriterionBody.revisionId],
+          programId,
+          title: "Closure check",
+        },
+        historicalStatusCode: 200,
+        listed: ["Closure check"],
+        listedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {
@@ -5556,6 +5624,10 @@ function acceptedOpenAnswerCheckProjection(body) {
     programId: check?.programId,
     title: check?.title,
   };
+}
+
+function acceptedOpenAnswerCheckListProjection(body) {
+  return body.value?.acceptedOpenAnswerChecks?.map($0 => $0.title) ?? [];
 }
 
 function acceptedCorpusRevisionProjection(body, statusCode) {

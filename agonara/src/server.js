@@ -579,6 +579,9 @@ async function handleCorpusApi({
   const openAnswerCheckRejectionMatch = pathname.match(
     /^\/open-answer-checks\/candidates\/([^/]+)\/rejection$/,
   );
+  const acceptedOpenAnswerCheckRevisionMatch = pathname.match(
+    /^\/open-answer-checks\/revisions\/([^/]+)$/,
+  );
   if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -667,6 +670,43 @@ async function handleCorpusApi({
       sendJson(response, httpStatusFor(session.reason), session);
       return true;
     }
+
+    const programId = decodeURIComponent(acceptedOpenAnswerChecksMatch[1]);
+    const routeKey = `accepted-open-answer-checks:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listAcceptedOpenAnswerChecks({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapAcceptedOpenAnswerCheckListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedOpenAnswerCheckRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedOpenAnswerCheckRevision({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedOpenAnswerCheckRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedOpenAnswerCheckResult(result));
+    return true;
   }
 
   if (request.method === "GET" && openAnswerCheckCandidatesMatch) {
@@ -1852,6 +1892,29 @@ function mapAcceptedAssessmentCriteriaListResult({ generateToken, listCursors, q
 
   return accepted({
     acceptedAssessmentCriteria: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapAcceptedOpenAnswerCheckListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.acceptedOpenAnswerChecks,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    acceptedOpenAnswerChecks: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
