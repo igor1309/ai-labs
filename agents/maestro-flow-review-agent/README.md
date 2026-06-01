@@ -14,7 +14,7 @@ This directory owns the source of truth for what the agent inspects and how it r
 
 ## Status
 
-**Draft — definition authored 2026-05-30.** Not yet deployed. Runtime wiring (account binding, cron entry/cadence, suppression window, checkout path, CI sync workflow) and registration of the `agents/` directory in the repo dashboards/Components table are left for the maintainer to settle before deployment.
+**Draft — definition authored 2026-05-30.** Not yet deployed. The new `agents/` directory is registered in the repo dashboards (`scripts/loc-dashboard.sh`, `docs/loc-dashboard.html`) and the `README.md` `## Components` table. Runtime wiring (account binding, cron entry/cadence, suppression window, checkout path, CI sync workflow) is left for the maintainer to settle before deployment. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
 
 ## Layout
 
@@ -34,7 +34,7 @@ The review rubric is **not** vendored here — it lives in the repository under 
 
 ## Boundaries
 
-- **Opens PRs; never merges or approves.** The agent pushes a `maestro-review/<slug>` branch and opens a PR against the ios.config default branch. Auto-merge is never enabled; it never approves.
+- **Opens a fix PR when there's a Verified change; never merges or approves.** With ≥1 Verified fix, it pushes a `maestro-review/<slug>` branch and opens a PR against the ios.config default branch (Provisional-only runs have no diff, so they post review comments / a report instead of an empty PR). Auto-merge is never enabled; it never approves.
 - **Only Verified fixes become code.** Provisional findings are line-anchored comments, checklist items, or commented-out drafts with a verification recipe — never a live step. With no simulator, a fix is Verified only when read off the code or an existing flow.
 - **The rubric is `review.md`, read fresh.** No private copy, no softened criteria. A finding is enforcible (file, line, why, concrete fix) or it is discarded — `review.md`'s rule is absolute: no `fix:`, no finding.
 - **Edits only `.maestro/flows/**`.** It never touches app source, project config, or the `maestro-flows` skill itself (skill updates are *proposed* in the review, not committed). Each Verified change is the minimum edit.
