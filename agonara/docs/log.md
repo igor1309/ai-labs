@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-01
+
+- Add the accepted checks and assessment criteria HTTP API implementation plan, sequencing strict-TDD route delivery over the existing Corpus adapter through criterion and open-answer check curation, accepted revision reads, redaction, boundary guards, and executable closeout.
+
 ## 2026-05-30
 
 - Add the accepted checks and assessment criteria HTTP API spec, carrying the implemented domain contract into session-backed routes with CSRF, pagination, redaction, authorization, and Student Workspace exclusion requirements.
