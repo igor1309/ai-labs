@@ -16,7 +16,7 @@
 # Never inlined into this file.
 #
 # Deployed to: /home/openclaw/.openclaw/scripts/maestro-review-cron.sh (mode 700, owner openclaw).
-# Notifications post via the shared `docdrift` bot (@igor1309_ai_labs_bot) into the
+# Notifications post via the shared `ai-labs` account (@igor1309_ai_labs_bot) into the
 # #maestro-review topic (CHAT_ID=-1003954520541, THREAD_ID=2) of the ai-labs agents
 # supergroup — no per-agent bot/account. The agent is invoked by id
 # (`openclaw agent --agent maestro-flow-review-agent`); inbound triggering is via the
@@ -31,9 +31,9 @@ CHAT_ID=-1003954520541          # ai-labs agents supergroup
 THREAD_ID=2                     # #maestro-review forum topic
 TG_LIMIT=4000  # headroom under Telegram's 4096-char per-message limit
 
-BOT_TOKEN=$(jq -r '.channels.telegram.accounts.docdrift.botToken // empty' "$OPENCLAW_JSON" 2>/dev/null)
+BOT_TOKEN=$(jq -r '.channels.telegram.accounts["ai-labs"].botToken // empty' "$OPENCLAW_JSON" 2>/dev/null)
 if [[ -z "$BOT_TOKEN" ]]; then
-  logger -t openclaw-maestro-review "ERROR: docdrift bot token missing in $OPENCLAW_JSON"
+  logger -t openclaw-maestro-review "ERROR: ai-labs bot token missing in $OPENCLAW_JSON"
   exit 1
 fi
 

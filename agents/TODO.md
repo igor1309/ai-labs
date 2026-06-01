@@ -58,11 +58,11 @@ The per-agent `<agent>-sync.yml` workflow ships only `agent/**` to the VPS works
 
 ## 3. Retire the dashboard-sync dedicated bot/account — DONE (2026-06-01)
 
-Fully retired. Notification migration to `accounts.docdrift.botToken` done; then `@dashboard_sync_agent_bot` deleted via BotFather and the `dashboardsync` account + binding removed from `openclaw.json` (gateway restarted, no longer polling a dead token). `dashboard-sync-agent` is now reached via its `#dashboard-sync` topic (thread 6) + cron. Recorded in `inventory`.
+Fully retired. Notifications migrated to the shared account (now `accounts["ai-labs"].botToken`, renamed from `docdrift` on 2026-06-01); then `@dashboard_sync_agent_bot` deleted via BotFather and the `dashboardsync` account + binding removed from `openclaw.json` (gateway restarted, no longer polling a dead token). `dashboard-sync-agent` is now reached via its `#dashboard-sync` topic (thread 6) + cron. Recorded in `inventory`.
 
 ## 4. Consolidate to one bot + per-agent Telegram topics — DONE (2026-06-01)
 
-**Implemented and live.** Supergroup chatId `-1003954520541` on `@igor1309_ai_labs_bot`; topics `#maestro-review`=2, `#doc-drift`=4, `#dashboard-sync`=6, `#health`=8. Inbound via `accounts.docdrift.groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true`); outbound wrappers post `message_thread_id={2,4,6}`. Verified with a test ping into each topic. See `README.md` and the `inventory` OpenClaw README/log. Remaining cleanup is item #3 (delete `@dashboard_sync_agent_bot`, drop the `dashboardsync` account). The reference notes below are retained for context.
+**Implemented and live.** Supergroup chatId `-1003954520541` on `@igor1309_ai_labs_bot`; topics `#maestro-review`=2, `#doc-drift`=4, `#dashboard-sync`=6, `#health`=8. Inbound via `accounts["ai-labs"].groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true`); outbound wrappers post `message_thread_id={2,4,6}`. Verified with a test ping into each topic. (The shared account was renamed `docdrift` → `ai-labs` on 2026-06-01.) See `README.md` and the `inventory` OpenClaw README/log. Remaining cleanup is item #3 (delete `@dashboard_sync_agent_bot`, drop the `dashboardsync` account). The reference notes below are retained for context.
 
 **Feasibility: confirmed** against the installed OpenClaw 2026.5.28 docs (`docs/channels/{telegram,channel-routing,groups}.md`, `docs/concepts/multi-agent.md`). OpenClaw natively routes different agents to different Telegram **forum topics** inside one supergroup behind one bot:
 

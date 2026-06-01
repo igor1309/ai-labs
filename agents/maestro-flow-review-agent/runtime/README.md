@@ -8,7 +8,7 @@ description: "Runtime infrastructure for maestro-flow-review-agent on the OpenCl
 
 Files here describe the VPS-side wiring needed to run the maestro-flow-review-agent. They are NOT loaded by OpenClaw at agent runtime — only `agent/` is. These are operator-facing artifacts kept under version control so the deployment is reproducible.
 
-> **Topic routing.** No per-agent Telegram bot/account. Per the ai-labs OpenClaw convention (see `agents/README.md`), the agent lives in the shared supergroup `-1003954520541` on `@igor1309_ai_labs_bot` (account `docdrift`): notifications post to the **`#maestro-review` topic (thread 2)** via `message_thread_id`; inbound triggering is routed by that topic's per-topic `agentId`. The agent appears only in `openclaw.json` `agents.list` (id + workspace) plus `accounts.docdrift.groups."-1003954520541".topics."2".agentId` — no `channels.telegram.accounts`/`bindings` entry of its own.
+> **Topic routing.** No per-agent Telegram bot/account. Per the ai-labs OpenClaw convention (see `agents/README.md`), the agent lives in the shared supergroup `-1003954520541` on `@igor1309_ai_labs_bot` (account `ai-labs`): notifications post to the **`#maestro-review` topic (thread 2)** via `message_thread_id`; inbound triggering is routed by that topic's per-topic `agentId`. The agent appears only in `openclaw.json` `agents.list` (id + workspace) plus `accounts["ai-labs"].groups."-1003954520541".topics."2".agentId` — no `channels.telegram.accounts`/`bindings` entry of its own.
 
 ## Layout
 
@@ -29,7 +29,7 @@ If the model/auth is genuinely unavailable (Codex OAuth invalid *and* OpenRouter
 
 ## Bot token
 
-Reused, not new: the wrapper reads `channels.telegram.accounts.docdrift.botToken` from `~/.openclaw/openclaw.json` (mode 600) at runtime via `jq`; never inlined into any version-controlled file. Rotating the `docdrift` bot token rotates this agent's notifier too.
+Reused, not new: the wrapper reads `channels.telegram.accounts["ai-labs"].botToken` from `~/.openclaw/openclaw.json` (mode 600) at runtime via `jq`; never inlined into any version-controlled file. Rotating the `ai-labs` (`@igor1309_ai_labs_bot`) bot token rotates this agent's notifier too.
 
 ## Heartbeat notification behavior
 
@@ -56,6 +56,6 @@ This `runtime/` tree is operator-applied once on the VPS:
 2. `mkdir -p ~/.openclaw/agents/maestro-flow-review-agent` (state dir).
 3. Copy `cron/maestro-review-cron.sh` → `~/.openclaw/scripts/maestro-review-cron.sh`, `chmod 700`.
 4. Install `cron/openclaw-maestro-review.cron` → `/etc/cron.d/openclaw-maestro-review` (root:root, 644).
-5. Add `{ "id": "maestro-flow-review-agent", "workspace": "/home/openclaw/.openclaw/workspace-maestro-review" }` to `openclaw.json` `agents.list` (no account/binding — reuses `docdrift` for notifications), then `systemctl restart openclaw`.
+5. Add `{ "id": "maestro-flow-review-agent", "workspace": "/home/openclaw/.openclaw/workspace-maestro-review" }` to `openclaw.json` `agents.list` (no account/binding — reuses the `ai-labs` account for notifications), then `systemctl restart openclaw`.
 
 The live VPS state must be reflected in the `inventory` repo (`vps/OpenClaw/README.md`, `migration.md`, `log.md`) in the same change.
