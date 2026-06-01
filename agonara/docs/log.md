@@ -2,6 +2,7 @@
 
 ## 2026-06-01
 
+- Accept ADR-012 for the Student Workspace open-answer attempt lifecycle: attempts, submitted answers, evaluation outcomes, and feedback stay personal student state while referencing accepted check and criterion revisions.
 - Harden the accepted checks and assessment criteria HTTP API after adversarial review with explicit mutation CSRF, malformed-body, pagination, cursor-scope, authorization, and fault-redaction adapter coverage.
 - Complete the accepted checks and assessment criteria HTTP API with session-backed criterion and open-answer check curation, accepted revision reads, strict transport validation, snapshot preservation, executable HTTP acceptance, and archived-plan closeout.
 - Add the accepted checks and assessment criteria HTTP API implementation plan, sequencing strict-TDD route delivery over the existing Corpus adapter through criterion and open-answer check curation, accepted revision reads, redaction, boundary guards, and executable closeout.
