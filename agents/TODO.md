@@ -56,8 +56,9 @@ The per-agent `<agent>-sync.yml` workflow ships only `agent/**` to the VPS works
 - [ ] Decide: extend a sync mechanism to also ship `runtime/cron/*.sh` (mode 700), or formally document the manual re-deploy as a required step in each runtime README and a checklist.
 - [ ] Whichever is chosen, make wrapper drift detectable (e.g. a checksum compare on deploy).
 
-## 3. Migrate dashboard-sync-agent to the shared notification bot
+## 3. Retire the dashboard-sync dedicated bot/account
 
-Per the convention in `README.md`, all ai-labs OpenClaw agents should notify via `@igor1309_ai_labs_bot` (account `docdrift`). `dashboard-sync-agent` predates this and still uses its own `@dashboard_sync_agent_bot`.
+Notification migration **done 2026-06-01**: the live `dashboard-sync-cron.sh` now reads `accounts.docdrift.botToken`, so it notifies via the shared `@igor1309_ai_labs_bot` (verified with a test ping). Remaining teardown:
 
-- [ ] Repoint `dashboard-sync-cron.sh` to read `accounts.docdrift.botToken`; redeploy the wrapper; verify a notification lands. (Live runtime change — coordinate with the maintainer; the dedicated `dashboardsync` account/bot can then be retired or left dormant.)
+- [ ] Delete `@dashboard_sync_agent_bot` via BotFather (maintainer action).
+- [ ] After the bot is deleted, remove the `dashboardsync` account + its `bindings` entry from `openclaw.json` and restart the gateway — otherwise the gateway keeps polling a dead bot token. Note: this also removes `dashboard-sync-agent`'s inbound DM trigger, leaving it cron/CLI-only (like `maestro-flow-review-agent`).
