@@ -56,12 +56,9 @@ The per-agent `<agent>-sync.yml` workflow ships only `agent/**` to the VPS works
 - [ ] Decide: extend a sync mechanism to also ship `runtime/cron/*.sh` (mode 700), or formally document the manual re-deploy as a required step in each runtime README and a checklist.
 - [ ] Whichever is chosen, make wrapper drift detectable (e.g. a checksum compare on deploy).
 
-## 3. Retire the dashboard-sync dedicated bot/account
+## 3. Retire the dashboard-sync dedicated bot/account — DONE (2026-06-01)
 
-Notification migration **done 2026-06-01**: the live `dashboard-sync-cron.sh` now reads `accounts.docdrift.botToken`, so it notifies via the shared `@igor1309_ai_labs_bot` (verified with a test ping). Remaining teardown:
-
-- [ ] Delete `@dashboard_sync_agent_bot` via BotFather (maintainer action).
-- [ ] After the bot is deleted, remove the `dashboardsync` account + its `bindings` entry from `openclaw.json` and restart the gateway — otherwise the gateway keeps polling a dead bot token. Note: this also removes `dashboard-sync-agent`'s inbound DM trigger, leaving it cron/CLI-only (like `maestro-flow-review-agent`). Superseded in the long run by item 4 (per-agent topics restore inbound triggering on the shared bot).
+Fully retired. Notification migration to `accounts.docdrift.botToken` done; then `@dashboard_sync_agent_bot` deleted via BotFather and the `dashboardsync` account + binding removed from `openclaw.json` (gateway restarted, no longer polling a dead token). `dashboard-sync-agent` is now reached via its `#dashboard-sync` topic (thread 6) + cron. Recorded in `inventory`.
 
 ## 4. Consolidate to one bot + per-agent Telegram topics — DONE (2026-06-01)
 
@@ -85,3 +82,13 @@ Tasks:
 - [ ] Repoint each cron wrapper to post with the agent's `messageThreadId` instead of the flat chat `54589373` (mind the General-topic id=1 special case).
 - [ ] Fold inbound triggers into topics and retire the dedicated accounts/bots (`dashboardsync`, and `docdrift`'s inbound role) once topic routing is proven.
 - [ ] Reflect the full topology in `inventory` (`vps/OpenClaw/*`) in the same change.
+
+## 5. `/run` (or a slash command) to invoke an agent from its topic
+
+Today an agent is triggered by `@`-mentioning the bot in its topic with an instruction (`requireMention: true`). To get a simple `/run`:
+
+- **A — real `/run` trigger:** add `channels.telegram.customCommands: [{command:"run", description:"…"}]` (Telegram menu entry — note: `customCommands` are menu-only, they do **not** implement behavior) **and** teach each agent's `AGENTS.md`/system prompt to treat a bare `/run` as "do your job" (maestro → review the flow collection; doc-drift → drift review; dashboard-sync → sync).
+- **B — type-anything:** set a topic's `requireMention: false` so any message there triggers its agent (no command needed; noisier — every stray note triggers a run).
+
+- [ ] Decide A vs B (A preferred for a deliberate trigger).
+- [ ] If A: add the `customCommands` menu entry + update each agent's system prompt to handle `/run`.
