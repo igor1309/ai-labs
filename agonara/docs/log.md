@@ -2,6 +2,7 @@
 
 ## 2026-06-01
 
+- Add the Student Workspace open-answer attempt implementation plan, sequencing storage, idempotent submission, evaluation lifecycle, owner-only reads, backup/restore, and executable acceptance through strict TDD phase commits.
 - Harden the Student Workspace open-answer attempt spec after adversarial review by narrowing first-slice evaluator kinds, using `attempt_already_evaluating`, and avoiding private attempt existence leaks for non-owners.
 - Add the Student Workspace open-answer attempt first-slice spec, defining submitted answer attempts, evaluation outcomes, idempotent submission, accepted revision references, owner-only reads, backup/restore rules, and out-of-scope boundaries.
 - Harden ADR-012 after adversarial review by making submission idempotency consistently client-keyed and rejecting conflicting idempotency-key reuse.
