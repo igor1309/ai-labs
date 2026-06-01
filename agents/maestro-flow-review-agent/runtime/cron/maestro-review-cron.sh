@@ -16,9 +16,11 @@
 # Never inlined into this file.
 #
 # Deployed to: /home/openclaw/.openclaw/scripts/maestro-review-cron.sh (mode 700, owner openclaw).
-# Notifications reuse the existing `docdrift` bot (@igor1309_ai_labs_bot) to the maintainer
-# chat 54589373 — no new account/bot is provisioned. The agent itself is invoked by id
-# (`openclaw agent --agent maestro-flow-review-agent`) and needs no inbound Telegram binding.
+# Notifications post via the shared `docdrift` bot (@igor1309_ai_labs_bot) into the
+# #maestro-review topic (CHAT_ID=-1003954520541, THREAD_ID=2) of the ai-labs agents
+# supergroup — no per-agent bot/account. The agent is invoked by id
+# (`openclaw agent --agent maestro-flow-review-agent`); inbound triggering is via the
+# supergroup topic's per-topic agentId, not a dedicated binding.
 set -uo pipefail
 
 STATE_FILE=/home/openclaw/.openclaw/agents/maestro-flow-review-agent/state.json
