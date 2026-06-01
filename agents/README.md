@@ -12,11 +12,13 @@ Specialized OpenClaw agents whose definitions live in `ai-labs` and whose runtim
 
 ## Conventions
 
-### Notification bot
+### Telegram routing — one bot, one topic per agent
 
-All `igor1309/ai-labs`-defined OpenClaw agents reuse the **`@igor1309_ai_labs_bot`** Telegram bot (OpenClaw account `docdrift`) for notifications to chat `54589373`. A new agent's cron wrapper reads `channels.telegram.accounts.docdrift.botToken`; it does **not** provision its own bot/account. A cron-invoked agent (invoked by id, e.g. `maestro-flow-review-agent`) needs no inbound `bindings` entry at all.
+**Adopted architecture (rollout tracked in `TODO.md` #4).** All `igor1309/ai-labs`-defined OpenClaw agents — `maestro-flow-review-agent`, `doc-drift-agent`, `dashboard-sync-agent` — share the single bot **`@igor1309_ai_labs_bot`** inside one Telegram **supergroup with Topics enabled**, with **one forum topic per agent** (`#maestro-review`, `#doc-drift`, `#dashboard-sync`, plus a `#health` topic for the dead-man's-switch, item #1).
 
-`dashboard-sync-agent` was migrated to the shared bot on 2026-06-01 (its wrapper now reads `accounts.docdrift.botToken`). Its old `@dashboard_sync_agent_bot` / `dashboardsync` account survives only for inbound DM triggering and is slated for teardown — see `TODO.md`.
+Per-topic routing is native in OpenClaw: a topic-only `channels.telegram.groups.<chatId>.topics.<threadId>.agentId` (or a `bindings[]` peer entry `{kind:"group", id:"<chatId>:topic:<threadId>"}`) assigns each topic to its agent; each topic gets an isolated session; wrappers post notifications to their topic via `messageThreadId`. **No per-agent accounts or bots** — this supersedes the old per-agent-account pattern (`docdrift`, `dashboardsync`) and makes the cron-only `maestro-flow-review-agent` shape the norm.
+
+Interim state until the supergroup is live: wrappers post via the `docdrift` bot token (`@igor1309_ai_labs_bot`) to the flat chat `54589373`. The dedicated `@dashboard_sync_agent_bot` / `dashboardsync` account is retired as part of the topics cutover (`TODO.md` #3/#4).
 
 ### Runtime deployment
 
