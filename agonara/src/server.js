@@ -557,7 +557,47 @@ async function handleCorpusApi({
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
   const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
   const acceptedAssessmentCriteriaMatch = pathname.match(/^\/programs\/([^/]+)\/assessment-criteria$/);
+  const assessmentCriterionCandidatesMatch = pathname.match(
+    /^\/programs\/([^/]+)\/assessment-criteria\/candidates$/,
+  );
   const acceptedOpenAnswerChecksMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-checks$/);
+  if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(assessmentCriterionCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `assessment-criterion-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listAssessmentCriterionCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapAssessmentCriterionCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
   if (request.method === "GET" && acceptedAssessmentCriteriaMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -773,6 +813,37 @@ async function handleCorpusApi({
       title: body.value.title,
     });
     sendJson(response, statusForResult(result), mapProgramSourceResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && assessmentCriterionCandidatesMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidAssessmentCriterionCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createAssessmentCriterionCandidate({
+      actingIdentityId: session.value.identity.id,
+      body: body.value.body,
+      programId: decodeURIComponent(assessmentCriterionCandidatesMatch[1]),
+      rationale: body.value.rationale,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapAssessmentCriterionCandidateResult(result));
     return true;
   }
 
@@ -1154,6 +1225,14 @@ function mapCorpusCandidateResult(result) {
   return accepted({ corpusCandidate: result.value.corpusCandidate });
 }
 
+function mapAssessmentCriterionCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ assessmentCriterionCandidate: result.value.assessmentCriterionCandidate });
+}
+
 function mapAcceptedCorpusResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -1349,6 +1428,15 @@ function isValidCandidateSourceIds(sourceIds) {
     (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
 }
 
+function isValidAssessmentCriterionCandidateBody(body) {
+  return hasOnlyKeys(body, ["body", "rationale", "sourceIds", "title"]) &&
+    isValidCandidateSourceIds(body.sourceIds);
+}
+
+function hasOnlyKeys(body, allowedKeys) {
+  return Object.keys(body).every($0 => allowedKeys.includes($0));
+}
+
 function paginateList({ generateToken, items, limit, listCursors, offset, routeKey }) {
   if (!Number.isSafeInteger(offset) || offset < 0 || offset > items.length) {
     return rejected("validation_failed");
@@ -1408,6 +1496,35 @@ function mapCorpusCandidateListResult({ generateToken, listCursors, query, resul
 
   return accepted({
     corpusCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapAssessmentCriterionCandidateListResult({
+  generateToken,
+  listCursors,
+  query,
+  result,
+  routeKey,
+}) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.assessmentCriterionCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    assessmentCriterionCandidates: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
