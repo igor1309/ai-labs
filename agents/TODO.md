@@ -6,7 +6,7 @@ description: "Cross-cutting TODO for the agents/ directory — concerns spanning
 
 # agents/ — Cross-Cutting TODO
 
-Concerns that span more than one agent under `agents/` live here, not in a single agent's `TODO.md`. Per-agent tasks stay in `agents/<agent>/TODO.md`. Open items are numbered below; completed work is under **Done** at the end.
+Concerns that span more than one agent under `agents/` live here, not in a single agent's `TODO.md`. Per-agent tasks stay in `agents/<agent>/TODO.md`. Open items are numbered below.
 
 ## 1. Unified run-observability for cron-based agents (dead-man's-switch)
 
@@ -65,8 +65,3 @@ Today an agent is triggered by `@`-mentioning the bot in its topic with an instr
 
 - [ ] Decide A vs B (A preferred for a deliberate trigger).
 - [ ] If A: add the `customCommands` menu entry + update each agent's system prompt to handle `/run`.
-
-## Done
-
-- **dashboard-sync dedicated bot/account retired** (2026-06-01) — notifications moved to the shared `ai-labs` account; `@dashboard_sync_agent_bot` deleted via BotFather; the `dashboardsync` account + binding removed from `openclaw.json`. Record: `docs/log.md` + `inventory`.
-- **one bot + per-agent Telegram topics live** (2026-06-01) — supergroup `-1003954520541` on `@igor1309_ai_labs_bot`, one topic per agent; the shared account was renamed `docdrift` → `ai-labs`. Operative details: [`runbook.md`](runbook.md) + [`gotchas.md`](gotchas.md). Record: `docs/log.md` + `inventory`.
