@@ -107,10 +107,11 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **TDD sequence**:
 
 1. RED/GREEN `GET /programs/{programId}/assessment-criteria` without a session returns `401 session_not_found`.
-2. RED/GREEN the assessment handler delegates through the existing `corpusCommands` dependency without changing existing route behavior.
-3. RED/GREEN assessment reason mapping returns the API-specified representative `403`, `404`, and `409` statuses, including `403 identity_not_active`.
-4. RED/GREEN assessment list query parsing defaults `limit` to `50`, rejects invalid limits, and rejects malformed or route-mismatched cursors with `400 validation_failed`.
-5. RED/GREEN assessment body parsing distinguishes missing, malformed, non-object, empty-object, supported-object, and unsupported-field cases for later route tests.
+2. RED/GREEN `GET /programs/{programId}/open-answer-checks` with a disabled session Identity returns `403 identity_disabled`.
+3. RED/GREEN the assessment handler delegates through the existing `corpusCommands` dependency without changing existing route behavior.
+4. RED/GREEN assessment reason mapping returns the API-specified representative `403`, `404`, and `409` statuses, including `403 identity_not_active`.
+5. RED/GREEN assessment list query parsing defaults `limit` to `50`, rejects invalid limits, and rejects malformed or route-mismatched cursors with `400 validation_failed`.
+6. RED/GREEN assessment body parsing distinguishes missing, malformed, non-object, empty-object, supported-object, and unsupported-field cases for later route tests.
 
 **Dependencies**: existing Identity session API, Program API, Corpus HTTP adapter, and implemented assessment methods on `corpusCommands`.
 
@@ -148,6 +149,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 5. RED/GREEN accepted candidate creation returns a `draft` candidate and creates no accepted criterion revision.
 6. RED/GREEN invalid candidate creation bodies reject with `400 validation_failed`.
 7. RED/GREEN candidate creation maps unknown and cross-Program source ids to the specified `409` reasons.
+8. RED/GREEN candidate listing and creation reject unknown Program path ids with `404 program_not_found`.
 
 **Dependencies**: Phase 1.
 
@@ -224,6 +226,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 4. RED/GREEN listing defaults `limit` to `50` and rejects invalid limits or malformed cursors.
 5. RED/GREEN historical revision lookup returns addressable old revisions for authorized callers.
 6. RED/GREEN historical revision lookup rejects unknown revisions with `404 criterion_revision_not_found` and unauthorized callers with `403 participation_required`.
+7. RED/GREEN accepted criterion listing rejects unknown Program path ids with `404 program_not_found`.
 
 **Dependencies**: Phase 3.
 
@@ -261,6 +264,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 5. RED/GREEN accepted candidate creation returns a `draft` open-answer check and creates no accepted check revision.
 6. RED/GREEN invalid candidate creation bodies reject with `400 validation_failed`.
 7. RED/GREEN candidate creation maps unknown and cross-Program source or criterion references to the specified `404` and `409` reasons.
+8. RED/GREEN candidate listing and creation reject unknown Program path ids with `404 program_not_found`.
 
 **Dependencies**: Phase 4.
 
@@ -341,6 +345,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 7. RED/GREEN a check revision remains linked to the original criterion revision after the accepted criterion is revised.
 8. RED/GREEN assessment API responses, cursors, and faults satisfy redaction rules.
 9. RED/GREEN out-of-scope HTTP routes remain unavailable.
+10. RED/GREEN accepted check listing rejects unknown Program path ids with `404 program_not_found`.
 
 **Dependencies**: Phase 6.
 
@@ -369,6 +374,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Update `agonara/docs/log.md`.
 - Update [Product Intent](../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
 - Move this plan to `agonara/docs/plans/implemented/accepted-checks-and-assessment-criteria-api.md` with `git mv`.
+- Rewrite this plan's relative Markdown links for the `plans/implemented/` depth and verify every local link target after the move.
 
 **TDD sequence**:
 
@@ -410,6 +416,6 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 ## Final closeout
 
 Final gates: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`, `./scripts/run_silent.sh "tests" npm test`, `./scripts/run_silent.sh "build" npx tsc --noEmit`, docs structure/link checks for touched Markdown, and `git status --short` clean.
-Archive plan: move to `agonara/docs/plans/implemented/accepted-checks-and-assessment-criteria-api.md`.
+Archive plan: move to `agonara/docs/plans/implemented/accepted-checks-and-assessment-criteria-api.md`, rewrite its relative Markdown links for the archived depth, and verify all local link targets.
 Commit archive move: yes.
 Push/PR: follow push policy; do not push unless explicitly requested later.
