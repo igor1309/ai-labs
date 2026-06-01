@@ -14,7 +14,7 @@ Specialized OpenClaw agents whose definitions live in `ai-labs` and whose runtim
 
 ### Telegram routing — one bot, one topic per agent
 
-**Live (2026-06-01).** All `igor1309/ai-labs`-defined OpenClaw agents share the single bot **`@igor1309_ai_labs_bot`** (account `docdrift`) inside one Telegram **forum supergroup**, chatId **`-1003954520541`**, one topic per agent:
+**Live (2026-06-01).** All `igor1309/ai-labs`-defined OpenClaw agents share the single bot **`@igor1309_ai_labs_bot`** (account `ai-labs`) inside one Telegram **forum supergroup**, chatId **`-1003954520541`**, one topic per agent:
 
 | Topic | threadId | Agent |
 |-------|----------|-------|
@@ -23,7 +23,7 @@ Specialized OpenClaw agents whose definitions live in `ai-labs` and whose runtim
 | `#dashboard-sync` | `6` | `dashboard-sync-agent` |
 | `#health` | `8` | — (dead-man's-switch, item #1) |
 
-Per-topic routing is native in OpenClaw: **inbound** via `channels.telegram.accounts.docdrift.groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true` — `@`-mention the bot in a topic to trigger its agent); each topic has an isolated session. **Outbound** notifications: each cron wrapper posts `chat_id=-1003954520541` + `message_thread_id=<2|4|6>`. **No per-agent accounts or bots** — this supersedes the per-agent-account pattern and makes the cron-only `maestro-flow-review-agent` shape the norm. The bot must stay **admin** in the supergroup (admins receive all posts; privacy mode otherwise blocks non-mention messages).
+Per-topic routing is native in OpenClaw: **inbound** via `channels.telegram.accounts["ai-labs"].groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true` — `@`-mention the bot in a topic to trigger its agent); each topic has an isolated session. **Outbound** notifications: each cron wrapper posts `chat_id=-1003954520541` + `message_thread_id=<2|4|6>`. **No per-agent accounts or bots** — this supersedes the per-agent-account pattern and makes the cron-only `maestro-flow-review-agent` shape the norm. The bot must stay **admin** in the supergroup (admins receive all posts; privacy mode otherwise blocks non-mention messages).
 
 The old `@dashboard_sync_agent_bot` / `dashboardsync` account is now unused — teardown tracked in `TODO.md` #3.
 
