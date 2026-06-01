@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-01
+
+- fix-pr-template: added a `## Mechanics` section requiring the PR title/body to be passed to `gh` via a temp file and `--body-file`, never via an inline `$(cat <<'EOF' … )` heredoc. The heredoc collapses to a single line through the tool layer and fails — surfacing as the noisy `body=$(cat <<'EOF' …)` failed-command line in the daily run report (seen on PR #451). The body still got set on recovery, so the failure was non-fatal noise; the spec now prescribes the robust path. No surface-render or allowlist behavior changed.
+
 ## 2026-05-25
 
 - project-registry: extended the excluded-directories list with the seven workspace dirs (`docker`, `docs`, `img`, `migrate-to-skills`, `research`, `scripts`, `tests`) that appeared in every daily PR's "Untracked candidates" section as permanent noise. With `neris` and `niora` already in `## Components`, the agent now finds no untracked candidates against `trunk@HEAD`. Worked example updated to the 2026-05-25 baseline.
