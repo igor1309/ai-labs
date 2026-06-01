@@ -14,7 +14,7 @@ This directory owns the source of truth for what the agent inspects and how it r
 
 ## Status
 
-**Deploying (2026-06-01).** Definition + observability artifacts complete; CI sync workflow added (`.github/workflows/maestro-flow-review-agent-sync.yml`). Going live on the OpenClaw VPS: agent added to `openclaw.json` `agents.list`, `ios.config` cloned, cron wrapper + `/etc/cron.d/openclaw-maestro-review` (03:00 UTC) installed. No new Telegram bot — notifications reuse the `docdrift` bot to chat `54589373`; the agent is invoked by id from cron, so it needs no inbound binding. Registered in the repo dashboards and `## Components` table. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
+**Live (2026-06-01).** Deployed on the OpenClaw VPS: agent in `openclaw.json` `agents.list`, `ios.config` cloned, cron wrapper + `/etc/cron.d/openclaw-maestro-review` (03:00 UTC), CI sync workflow (`.github/workflows/maestro-flow-review-agent-sync.yml`). Runs on the shared `@igor1309_ai_labs_bot` in the ai-labs agents supergroup (`-1003954520541`): notifications post to the **`#maestro-review` topic (thread 2)**; inbound triggering is via that topic's per-topic `agentId` (`@`-mention the bot). No per-agent bot/account. First real run opened ios.config#10. Registered in the repo dashboards and `## Components` table. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
 
 ## Layout
 
