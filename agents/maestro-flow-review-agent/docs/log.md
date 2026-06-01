@@ -1,0 +1,5 @@
+# Log
+
+## 2026-05-30
+
+- Project established under a new top-level `agents/` directory: a draft OpenClaw agent that reviews Maestro flow YAML in `igor1309/ios.config` against that repo's own `maestro-flows` review rubric (`.claude/skills/maestro-flows/review.md`) and proposes fixes as PRs. Sibling to `doc-drift-agent` and `dashboard-sync-agent` (same manual+scheduled trigger / per-agent suppression-state pattern) but it reviews a *different repository* and *owns no rubric* — the standard lives in ios.config and is read fresh each run, never vendored. Fixes route by the rubric's confidence model: Verified → applied as code on a `maestro-review/<slug>` branch; Provisional → line-anchored PR comments or commented-out drafts, never a live step (no simulator, so nothing is tagged Verified off a run). The agent opens PRs but never merges or approves. Initial artifacts: `agent/agent.md` system prompt + project README. Runtime wiring (account binding, cron cadence, suppression window, CI sync workflow) is left to the maintainer before deployment. A follow-up will consolidate the existing top-level agents into `agents/`.

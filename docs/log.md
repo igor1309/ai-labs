@@ -2,6 +2,7 @@
 
 ## 2026-05-30
 
+- agents/maestro-flow-review-agent: drafted a new specialized OpenClaw agent (third sibling to `doc-drift-agent` and `dashboard-sync-agent`) under a new top-level `agents/` directory. It reviews Maestro flow YAML in the external `igor1309/ios.config` repo against that repo's own `maestro-flows` review rubric (read fresh each run, never vendored) and proposes fixes as PRs — Verified findings applied as code on a `maestro-review/<slug>` branch, Provisional findings carried as line-anchored comments or commented-out drafts; never merges or approves. Registered the new top-level dir across the dashboard surfaces: `scripts/loc-dashboard.sh` (loop, `known` list, header) now tracks `agents`, and the pre-existing synthetic repo-wide-docs row — confusingly named `agents` — was renamed to `repo-text` (parallel to `repo-scripts`) to free the name; `README.md` `## Components` and `docs/loc-dashboard.html` (summary cards, table footer, `data` array) refreshed from `loc-dashboard.sh --sort=name`. Follow-up tracked to consolidate the existing top-level agents into `agents/`.
 - tools/codex-mgr: added a `limits` command (per-profile Codex usage — 5h + weekly windows) against a live-verified ChatGPT usage endpoint, and promoted the tool from `sandbox/codex_mgr` to `tools/codex-mgr` with `install.sh`/`uninstall.sh` and mocked tests.
 
 ## 2026-05-28
