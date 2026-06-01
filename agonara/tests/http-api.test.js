@@ -508,6 +508,104 @@ test("openAnswerCheckCandidates_shouldCreateAndListDraftCandidate_onAcceptedCrit
   }
 });
 
+test("openAnswerCheckAcceptance_shouldSnapshotCriterionRevision_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const criterionCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition.",
+      title: "Vector-space closure",
+    });
+    const criterionCandidateId = (await criterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const acceptedCriterion = await acceptAssessmentCriterionCandidate(
+      baseUrl,
+      bootstrap,
+      criterionCandidateId,
+      {},
+    );
+    const acceptedCriterionBody = (await acceptedCriterion.json()).value.acceptedAssessmentCriterion;
+    const checkCandidate = await createOpenAnswerCheckCandidate(baseUrl, bootstrap, programId, {
+      checkKind: "open_answer",
+      criterionEntityIds: [acceptedCriterionBody.entityId],
+      prompt: "Why is closure under addition required?",
+      title: "Closure check",
+    });
+    const checkCandidateId = (await checkCandidate.json()).value.openAnswerCheckCandidate.candidateId;
+    const acceptedCheck = await acceptOpenAnswerCheckCandidate(baseUrl, bootstrap, checkCandidateId, {});
+
+    assert.deepEqual(
+      {
+        body: acceptedOpenAnswerCheckProjection(await acceptedCheck.json()),
+        statusCode: acceptedCheck.status,
+      },
+      {
+        body: {
+          acceptedFromCandidateId: checkCandidateId,
+          criterionRevisionIds: [acceptedCriterionBody.revisionId],
+          programId,
+          title: "Closure check",
+        },
+        statusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerCheckRejection_shouldRejectDraftCandidate_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const criterionCandidate = await createAssessmentCriterionCandidate(baseUrl, bootstrap, programId, {
+      body: "Explain closure under addition.",
+      title: "Vector-space closure",
+    });
+    const criterionCandidateId = (await criterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const acceptedCriterion = await acceptAssessmentCriterionCandidate(
+      baseUrl,
+      bootstrap,
+      criterionCandidateId,
+      {},
+    );
+    const criterionEntityId = (await acceptedCriterion.json()).value.acceptedAssessmentCriterion.entityId;
+    const checkCandidate = await createOpenAnswerCheckCandidate(baseUrl, bootstrap, programId, {
+      checkKind: "open_answer",
+      criterionEntityIds: [criterionEntityId],
+      prompt: "Why is closure under addition required?",
+      title: "Rejected closure check",
+    });
+    const checkCandidateId = (await checkCandidate.json()).value.openAnswerCheckCandidate.candidateId;
+    const rejectedCheck = await rejectOpenAnswerCheckCandidate(baseUrl, bootstrap, checkCandidateId);
+
+    assert.deepEqual(
+      {
+        body: openAnswerCheckCandidateProjection(await rejectedCheck.json()),
+        statusCode: rejectedCheck.status,
+      },
+      {
+        body: {
+          checkKind: "open_answer",
+          criterionEntityIds: [criterionEntityId],
+          programId,
+          prompt: "Why is closure under addition required?",
+          status: "rejected",
+          title: "Rejected closure check",
+        },
+        statusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusRoutes_shouldMapCorpusRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     corpusCommandsOverride: {
@@ -5221,6 +5319,30 @@ async function createOpenAnswerCheckCandidate(baseUrl, session, programId, body)
   });
 }
 
+async function acceptOpenAnswerCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/open-answer-checks/candidates/${candidateId}/acceptance`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function rejectOpenAnswerCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/open-answer-checks/candidates/${candidateId}/rejection`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
   const { targetEntityId, ...candidateBody } = body;
   const candidate = await createCorpusCandidate(baseUrl, session, programId, candidateBody);
@@ -5424,6 +5546,16 @@ function openAnswerCheckCandidateProjection(body) {
 
 function openAnswerCheckCandidateListProjection(body) {
   return body.value?.openAnswerCheckCandidates?.map($0 => $0.title) ?? [];
+}
+
+function acceptedOpenAnswerCheckProjection(body) {
+  const check = body.value?.acceptedOpenAnswerCheck;
+  return {
+    acceptedFromCandidateId: check?.acceptedFromCandidateId,
+    criterionRevisionIds: check?.criterionRevisionIds,
+    programId: check?.programId,
+    title: check?.title,
+  };
 }
 
 function acceptedCorpusRevisionProjection(body, statusCode) {
