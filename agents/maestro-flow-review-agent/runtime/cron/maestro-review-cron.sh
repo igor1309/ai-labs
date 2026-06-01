@@ -16,8 +16,9 @@
 # Never inlined into this file.
 #
 # Deployed to: /home/openclaw/.openclaw/scripts/maestro-review-cron.sh (mode 700, owner openclaw).
-# Account name `maestroreview` below is a placeholder; the maintainer pins the real
-# OpenClaw account/bot binding during runtime wiring.
+# Notifications reuse the existing `docdrift` bot (@igor1309_ai_labs_bot) to the maintainer
+# chat 54589373 — no new account/bot is provisioned. The agent itself is invoked by id
+# (`openclaw agent --agent maestro-flow-review-agent`) and needs no inbound Telegram binding.
 set -uo pipefail
 
 STATE_FILE=/home/openclaw/.openclaw/agents/maestro-flow-review-agent/state.json
@@ -27,9 +28,9 @@ OPENCLAW_JSON=/home/openclaw/.openclaw/openclaw.json
 CHAT_ID=54589373
 TG_LIMIT=4000  # headroom under Telegram's 4096-char per-message limit
 
-BOT_TOKEN=$(jq -r '.channels.telegram.accounts.maestroreview.botToken // empty' "$OPENCLAW_JSON" 2>/dev/null)
+BOT_TOKEN=$(jq -r '.channels.telegram.accounts.docdrift.botToken // empty' "$OPENCLAW_JSON" 2>/dev/null)
 if [[ -z "$BOT_TOKEN" ]]; then
-  logger -t openclaw-maestro-review "ERROR: maestroreview bot token missing in $OPENCLAW_JSON"
+  logger -t openclaw-maestro-review "ERROR: docdrift bot token missing in $OPENCLAW_JSON"
   exit 1
 fi
 

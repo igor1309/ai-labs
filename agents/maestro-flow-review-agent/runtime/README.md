@@ -8,7 +8,7 @@ description: "Runtime infrastructure for maestro-flow-review-agent on the OpenCl
 
 Files here describe the VPS-side wiring needed to run the maestro-flow-review-agent. They are NOT loaded by OpenClaw at agent runtime — only `agent/` is. These are operator-facing artifacts kept under version control so the deployment is reproducible.
 
-> **Draft / placeholders.** The OpenClaw account binding (`maestroreview`), bot, chat, and the on-host checkout of `igor1309/ios.config` are not provisioned yet. The account name in the wrapper is a placeholder the maintainer pins during runtime wiring.
+> **Account reuse.** No new Telegram bot/account is provisioned. The agent is invoked by id from cron (`openclaw agent --agent maestro-flow-review-agent`), so it needs **no inbound binding**; notifications reuse the existing `docdrift` bot (`@igor1309_ai_labs_bot`) to the maintainer chat `54589373`. The agent appears only in `openclaw.json` `agents.list` (id + workspace), not in `channels.telegram.accounts` or `bindings`.
 
 ## Layout
 
@@ -29,7 +29,7 @@ If the model/auth is genuinely unavailable (Codex OAuth invalid *and* OpenRouter
 
 ## Bot token
 
-Stored only in `~/.openclaw/openclaw.json` under `channels.telegram.accounts.maestroreview.botToken` (file mode 600). The wrapper reads it at runtime via `jq`; never inlined into any version-controlled file. Rotate by replacing the value and restarting the gateway.
+Reused, not new: the wrapper reads `channels.telegram.accounts.docdrift.botToken` from `~/.openclaw/openclaw.json` (mode 600) at runtime via `jq`; never inlined into any version-controlled file. Rotating the `docdrift` bot token rotates this agent's notifier too.
 
 ## Heartbeat notification behavior
 
@@ -48,4 +48,14 @@ The 12h suppression gate (`agent/suppression-policy.md`) reads `/home/openclaw/.
 
 ## Deployment
 
-Not yet deployed. A CI sync workflow (to be added under `.github/workflows/`) would ship `agent/**` to the OpenClaw workspace, mirroring `doc-drift-agent-sync.yml`. This `runtime/` tree is operator-applied: scp `cron/maestro-review-cron.sh` to the path above and `chmod 700`, install the `.cron` entry, then provision the account/bot/checkout.
+The agent definition (`agent/**`) ships to `~/.openclaw/workspace-maestro-review/` via `.github/workflows/maestro-flow-review-agent-sync.yml` on `trunk` push (renaming `agent.md` → `AGENTS.md`), mirroring `doc-drift-agent-sync.yml` and reusing the `OPENCLAW_DEPLOY_SSH_KEY` secret.
+
+This `runtime/` tree is operator-applied once on the VPS:
+
+1. `git clone` (or `gh repo clone`) `igor1309/ios.config` to `/home/openclaw/ios.config`, on `trunk`.
+2. `mkdir -p ~/.openclaw/agents/maestro-flow-review-agent` (state dir).
+3. Copy `cron/maestro-review-cron.sh` → `~/.openclaw/scripts/maestro-review-cron.sh`, `chmod 700`.
+4. Install `cron/openclaw-maestro-review.cron` → `/etc/cron.d/openclaw-maestro-review` (root:root, 644).
+5. Add `{ "id": "maestro-flow-review-agent", "workspace": "/home/openclaw/.openclaw/workspace-maestro-review" }` to `openclaw.json` `agents.list` (no account/binding — reuses `docdrift` for notifications), then `systemctl restart openclaw`.
+
+The live VPS state must be reflected in the `inventory` repo (`vps/OpenClaw/README.md`, `migration.md`, `log.md`) in the same change.

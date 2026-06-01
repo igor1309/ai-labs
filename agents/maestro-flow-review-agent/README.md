@@ -14,7 +14,7 @@ This directory owns the source of truth for what the agent inspects and how it r
 
 ## Status
 
-**Draft — definition authored 2026-05-30; observability artifacts added 2026-06-01.** Not yet deployed. The new `agents/` directory is registered in the repo dashboards (`scripts/loc-dashboard.sh`, `docs/loc-dashboard.html`) and the `README.md` `## Components` table. The notify/suppression specs and the cron wrapper are authored (heartbeat model — one message per scheduled tick, so absence means failure). Remaining before deployment: live VPS provisioning (OpenClaw account/bot binding, the `ios.config` checkout) and a CI sync workflow under `.github/workflows/`. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
+**Deploying (2026-06-01).** Definition + observability artifacts complete; CI sync workflow added (`.github/workflows/maestro-flow-review-agent-sync.yml`). Going live on the OpenClaw VPS: agent added to `openclaw.json` `agents.list`, `ios.config` cloned, cron wrapper + `/etc/cron.d/openclaw-maestro-review` (03:00 UTC) installed. No new Telegram bot — notifications reuse the `docdrift` bot to chat `54589373`; the agent is invoked by id from cron, so it needs no inbound binding. Registered in the repo dashboards and `## Components` table. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
 
 ## Layout
 
