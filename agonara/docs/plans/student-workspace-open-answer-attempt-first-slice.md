@@ -67,7 +67,7 @@ Preflight check: [ ] done
 
 ## Product intent traceability
 
-| Story | Phase preserving or delivering intent |
+| Story | Phase preserving prerequisite or delivering intent |
 |---|---|
 | STU-12 - Submit open answer | Phase 2, Phase 5 |
 | STU-13 - Receive open-answer feedback | Phase 3, Phase 5 |
@@ -80,7 +80,7 @@ Curator story rows are prerequisite and boundary-preservation coverage only. Thi
 
 ## TDD and commit discipline
 
-Every implementation phase must use strict TDD:
+Every phase that changes executable behavior must use strict TDD:
 
 - Add or update one focused failing test at a time.
 - Run the targeted Agonara test command and capture a RED assertion failure. Compilation errors are not RED.
@@ -90,9 +90,11 @@ Every implementation phase must use strict TDD:
 - Commit only the files tied to that phase after GREEN gates pass.
 - Self-review the phase against this plan, the spec, and ADR invariants before advancing. Fix fail/warn findings immediately, rerun the phase gates, and commit the fix.
 
-Each phase has its own local commit. Do not bundle unrelated phase work into one commit.
+Each phase has its own local commit. Do not bundle unrelated phase work into one commit. The docs-only archive closeout uses document gates instead of RED/GREEN behavior tests.
 
 ## Phase 1 — Student Workspace persistence substrate
+
+**Status**: [ ] pending
 
 **Objective**: add storage-level persistence for open-answer attempts, evaluations, evaluation failures, and idempotency lookup records without exposing domain commands yet.
 
@@ -130,6 +132,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **Completion signal**: Phase 1 storage tests pass, full Node gates pass, and local commit `add agonara student attempt storage` is created.
 
 ## Phase 2 — Attempt submission and idempotency
+
+**Status**: [ ] pending
 
 **Objective**: implement `submitOpenAnswerAttempt` with effective Student authorization, accepted revision resolution, immutable submitted answers, and scoped idempotency.
 
@@ -174,6 +178,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 3 — Evaluation lifecycle
 
+**Status**: [ ] pending
+
 **Objective**: implement the internal Student Workspace evaluation commands and state transitions while preserving submitted answers and accepted revision references.
 
 **Key work items**:
@@ -215,6 +221,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **Completion signal**: Phase 3 evaluation tests pass, full Node gates pass, and local commit `implement agonara student attempt evaluation` is created.
 
 ## Phase 4 — Owner-only reads and boundary hardening
+
+**Status**: [ ] pending
 
 **Objective**: implement `getOpenAnswerAttempt` and `listOpenAnswerAttempts` with owner-only access, redacted summaries, filters, and first-slice absence checks.
 
@@ -258,6 +266,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 5 — Backup/restore and executable acceptance closeout
 
+**Status**: [ ] pending
+
 **Objective**: preserve Student Workspace attempt state through backup/restore, reject orphan restored graphs, and prove the full first-slice flow end to end.
 
 **Key work items**:
@@ -294,6 +304,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **Completion signal**: Phase 5 backup/restore and executable acceptance tests pass, full Node gates pass, and local commit `complete agonara student attempt slice` is created.
 
 ## Phase 6 — Plan archive and implementation closeout
+
+**Status**: [ ] pending
 
 **Objective**: close the implementation branch with the plan status, archive move, log, and final gates in the same change set as the implementation.
 
