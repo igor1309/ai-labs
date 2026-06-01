@@ -61,4 +61,25 @@ The per-agent `<agent>-sync.yml` workflow ships only `agent/**` to the VPS works
 Notification migration **done 2026-06-01**: the live `dashboard-sync-cron.sh` now reads `accounts.docdrift.botToken`, so it notifies via the shared `@igor1309_ai_labs_bot` (verified with a test ping). Remaining teardown:
 
 - [ ] Delete `@dashboard_sync_agent_bot` via BotFather (maintainer action).
-- [ ] After the bot is deleted, remove the `dashboardsync` account + its `bindings` entry from `openclaw.json` and restart the gateway — otherwise the gateway keeps polling a dead bot token. Note: this also removes `dashboard-sync-agent`'s inbound DM trigger, leaving it cron/CLI-only (like `maestro-flow-review-agent`).
+- [ ] After the bot is deleted, remove the `dashboardsync` account + its `bindings` entry from `openclaw.json` and restart the gateway — otherwise the gateway keeps polling a dead bot token. Note: this also removes `dashboard-sync-agent`'s inbound DM trigger, leaving it cron/CLI-only (like `maestro-flow-review-agent`). Superseded in the long run by item 4 (per-agent topics restore inbound triggering on the shared bot).
+
+## 4. Consolidate to one bot + per-agent Telegram topics
+
+**Feasibility: confirmed** against the installed OpenClaw 2026.5.28 docs (`docs/channels/{telegram,channel-routing,groups}.md`, `docs/concepts/multi-agent.md`). OpenClaw natively routes different agents to different Telegram **forum topics** inside one supergroup behind one bot:
+
+- **Inbound, two ways:**
+  - Per-topic `agentId`: `channels.telegram.groups.<chatId>.topics.<threadId>.agentId` — *topic-only, does not inherit from group defaults* — assigns a topic directly to an agent.
+  - Or a `bindings[]` peer entry: `match: { channel: "telegram", peer: { kind: "group", id: "<chatId>:topic:<threadId>" } }`. Routing rule #1 is "exact peer match"; threads inherit via rule #2.
+- **Isolated sessions per topic:** session key `agent:<id>:telegram:group:<chatId>:topic:<threadId>` — each agent gets its own brain/context automatically.
+- **Outbound:** post to a topic via `messageThreadId` on `sendMessage`; OpenClaw can even create topics (`createForumTopic` / the `topic-create` action).
+- **Caveats:** the **General** topic (`threadId=1`) must omit `message_thread_id` on sends (Telegram rejects `thread_id=1`); the supergroup must have Topics enabled and the bot must be admin; per-topic overrides exist for `requireMention`/`allowFrom`/`systemPrompt`/`enabled`.
+
+**Target architecture:** one bot (`@igor1309_ai_labs_bot`), one supergroup with Topics on, one topic per agent (`#maestro-review`, `#doc-drift`, `#dashboard-sync`, + a `#health` topic for the dead-man's-switch in item 1). This **supersedes the per-agent-account pattern** and upgrades the shared-bot convention from "one bot → one flat chat" to "one bot → per-agent topic" — regaining per-agent separation (visual thread + inbound trigger + isolated session) with zero extra bots/accounts. It also makes the maestro "no account" oddity the intended shape, not a deviation.
+
+Tasks:
+
+- [ ] Create the supergroup, enable Topics, add `@igor1309_ai_labs_bot` as admin; create one topic per agent (manually or via `topic-create`).
+- [ ] Record each topic's `<chatId>:topic:<threadId>`; map agents via per-topic `agentId` (or `bindings[]` peer entries) in `openclaw.json`.
+- [ ] Repoint each cron wrapper to post with the agent's `messageThreadId` instead of the flat chat `54589373` (mind the General-topic id=1 special case).
+- [ ] Fold inbound triggers into topics and retire the dedicated accounts/bots (`dashboardsync`, and `docdrift`'s inbound role) once topic routing is proven.
+- [ ] Reflect the full topology in `inventory` (`vps/OpenClaw/*`) in the same change.
