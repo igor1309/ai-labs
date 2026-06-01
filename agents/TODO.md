@@ -63,7 +63,9 @@ Notification migration **done 2026-06-01**: the live `dashboard-sync-cron.sh` no
 - [ ] Delete `@dashboard_sync_agent_bot` via BotFather (maintainer action).
 - [ ] After the bot is deleted, remove the `dashboardsync` account + its `bindings` entry from `openclaw.json` and restart the gateway — otherwise the gateway keeps polling a dead bot token. Note: this also removes `dashboard-sync-agent`'s inbound DM trigger, leaving it cron/CLI-only (like `maestro-flow-review-agent`). Superseded in the long run by item 4 (per-agent topics restore inbound triggering on the shared bot).
 
-## 4. Consolidate to one bot + per-agent Telegram topics
+## 4. Consolidate to one bot + per-agent Telegram topics — DONE (2026-06-01)
+
+**Implemented and live.** Supergroup chatId `-1003954520541` on `@igor1309_ai_labs_bot`; topics `#maestro-review`=2, `#doc-drift`=4, `#dashboard-sync`=6, `#health`=8. Inbound via `accounts.docdrift.groups."-1003954520541".topics.<threadId>.agentId` (`groupPolicy: allowlist`, `requireMention: true`); outbound wrappers post `message_thread_id={2,4,6}`. Verified with a test ping into each topic. See `README.md` and the `inventory` OpenClaw README/log. Remaining cleanup is item #3 (delete `@dashboard_sync_agent_bot`, drop the `dashboardsync` account). The reference notes below are retained for context.
 
 **Feasibility: confirmed** against the installed OpenClaw 2026.5.28 docs (`docs/channels/{telegram,channel-routing,groups}.md`, `docs/concepts/multi-agent.md`). OpenClaw natively routes different agents to different Telegram **forum topics** inside one supergroup behind one bot:
 
