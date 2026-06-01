@@ -17,7 +17,7 @@ Student Workspace owns the submitted answer, evaluation lifecycle, feedback, and
 
 Corpus Storage remains the owner of accepted checks and criteria; attempts must not copy ownership of accepted corpus.
 
-The first implementable slice should support open-answer attempts before mastery, weak-area, topic-level, quick-check, UI, or Admin behavior.
+The next first-slice spec is narrowed to open-answer attempts before mastery, weak-area, topic-level, quick-check, UI, or Admin behavior.
 
 Evaluation may be synchronous, queued, deterministic, LLM-assisted, or human-reviewed later, but Student Workspace remains the owner of final student-facing outcomes.
 
@@ -90,7 +90,8 @@ Program Curator authority MUST NOT by itself submit attempts or rewrite student 
 - Candidate rejection or cleanup MUST NOT delete attempts or evaluation outcomes that reference accepted revisions.
 - Submitted answer text MUST be immutable after submission.
 - Corrective feedback, evaluator notes, and evaluation status changes MUST be stored as new evaluation state or explicit state transitions, not as edits to the submitted answer.
-- Retryable submission APIs MUST require or produce an idempotency key and MUST return the same attempt result for repeated equivalent submissions under the same key.
+- Retryable submission APIs MUST require a client-provided idempotency key and MUST return the same attempt result for repeated equivalent submissions under the same key.
+- Reusing an idempotency key with materially different submission input MUST be rejected without creating or changing an attempt.
 - Idempotency keys MUST be scoped so one student cannot collide with or observe another student's submission.
 - Idempotency keys MUST NOT be treated as authentication or authorization tokens.
 - Evaluation may be synchronous only when it can complete within the normal request/response budget without hiding long-running work.
