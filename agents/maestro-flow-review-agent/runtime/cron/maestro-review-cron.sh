@@ -6,7 +6,11 @@
 #     findings>0           → Findings message (PR opened/updated)
 #     findings==0          → Heartbeat message ("✓ ran — 0 findings")  ← the liveness ping
 #     suppressed           → Suppressed message (this wrapper posts it; agent not invoked)
-#   Absence of a message at the cron cadence therefore means the cron/host failed.
+#     invocation failed    → FAILED alert (non-zero exit OR no run summary)
+#   The FAILED branch is fail-closed: if the model/auth is unavailable (codex OAuth
+#   down, OpenRouter fallback also failing) the agent call errors or emits no summary,
+#   and we must NOT silently post a clean heartbeat. Absence of any message at the
+#   cron cadence means the cron/host itself failed.
 #
 # The bot token is read from ~/.openclaw/openclaw.json (mode 600) at runtime.
 # Never inlined into this file.
@@ -74,12 +78,29 @@ output_file=$(mktemp)
 trap 'rm -f "$output_file"' EXIT
 
 openclaw agent --agent maestro-flow-review-agent --message "/maestro-review --scheduled" > "$output_file" 2>&1
+rc=$?
 end_iso=$(date -u +%FT%TZ)
 
-{ echo "=== ${now_iso} scheduled run starting ==="
+{ echo "=== ${now_iso} scheduled run starting (rc=${rc}) ==="
   cat "$output_file"
   echo "=== ${end_iso} scheduled run completed ==="
 } >> "$LOG_FILE" 2>&1
+
+# --- fail-closed: a real run exits 0 AND emits the parseable run summary.
+# A model/auth outage (codex OAuth invalid, OpenRouter fallback also down) makes the
+# call error or print no summary; without this guard `findings` would default to 0 and
+# we would post a FALSE "✓ ran — 0 findings" heartbeat. Alert instead.
+if (( rc != 0 )) || ! grep -qE "^- Findings: " "$output_file"; then
+  logger -t openclaw-maestro-review "ERROR: agent run failed (rc=${rc}, summary $(grep -qE '^- Findings: ' "$output_file" && echo present || echo missing))"
+  tg "[maestro-review] ⚠ run FAILED — no valid result
+
+Run: scheduled · ${now_human}
+Exit: ${rc} · run summary: $(grep -qE '^- Findings: ' "$output_file" && echo present || echo missing)
+Likely the model/auth was unavailable (codex OAuth or OpenRouter fallback). Check the gateway and OAuth.
+
+$(tail -c 1200 "$output_file")"
+  exit 1
+fi
 
 # --- parse the agent's run summary (agent/notification-spec.md) ---
 field() { grep -E "^- $1: " "$output_file" | head -1 | sed -E "s/^- $1: //"; }

@@ -19,8 +19,11 @@ This differs deliberately from `doc-drift-agent`, which is silent on a clean sch
 | ran (scheduled) | ≥ 1 | **Findings** message |
 | ran (scheduled) | 0 | **Heartbeat** message (`Run: scheduled`) |
 | suppressed (scheduled) | — | **Suppressed** message |
+| failed (any) | — | **Failed** message (wrapper-posted) |
 
 Every row posts. There is no silent outcome.
+
+"Failed" covers the case where the agent invocation does not return a valid result — a non-zero exit, or output with no parseable run summary. This is the model-unavailable path: the gateway model is the OpenClaw default (`agents.defaults.model.primary`, currently `codex/gpt-5.5` over OAuth, with OpenRouter as the gateway's fallback). If Codex auth is invalid and the OpenRouter fallback also fails, the call errors and emits no summary. The wrapper is **fail-closed**: it must post the Failed message, never a `0`-defaulted heartbeat that would falsely read as "✓ ran — 0 findings".
 
 ## Parseable run summary (agent → runtime)
 
@@ -85,6 +88,22 @@ Run: scheduled · <YYYY-MM-DD HH:MM UTC>
 ```
 
 Rationale: without this, a suppressed tick would be indistinguishable from a failed tick, breaking the "absence = failure" guarantee. The maintainer already saw the manual run's message; this just confirms the scheduled cron fired and chose to defer.
+
+## Failed message (wrapper-posted)
+
+When the agent invocation exits non-zero or returns no parseable run summary, the wrapper posts:
+
+```
+[maestro-review] ⚠ run FAILED — no valid result
+
+Run: scheduled · <YYYY-MM-DD HH:MM UTC>
+Exit: <code> · run summary: <present | missing>
+Likely the model/auth was unavailable (codex OAuth or OpenRouter fallback). Check the gateway and OAuth.
+
+<last ~1200 chars of the run output>
+```
+
+This is the fail-closed branch — the deliberate opposite of a silent or falsely-clean heartbeat. A model outage, an OAuth-invalid gateway, or a crashed run all land here, not in the heartbeat. The included output tail lets the maintainer tell a model/auth failure from a code/runtime one without SSHing in.
 
 ## Telegram chat
 

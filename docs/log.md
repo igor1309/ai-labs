@@ -2,6 +2,7 @@
 
 ## 2026-06-01
 
+- agents/maestro-flow-review-agent: moved the scheduled cadence to **03:00 UTC daily** (clear of OpenClaw's 04:00 OAuth-refresh window) and made the heartbeat wrapper **fail-closed**. The agent inherits the gateway model (`agents.defaults.model.primary = codex/gpt-5.5` over OAuth, OpenRouter fallback; no per-agent override). A model/auth outage previously would have posted a false `✓ ran — 0 findings` heartbeat; the wrapper now checks exit code + run-summary presence and posts a `⚠ run FAILED` alert instead. Refreshed `docs/loc-dashboard.html` (`agents` → 134/0/444; total → 137,348).
 - agents/maestro-flow-review-agent: added the run-observability layer on a **heartbeat** model — every scheduled tick emits exactly one Telegram message (findings / `✓ ran — 0 findings` / `⏸ suppressed`), so a missing message at the daily 06:00 UTC cadence means the cron/host failed rather than "nothing happened". New `agent/notification-spec.md` + `agent/suppression-policy.md` (12h gate) and a `runtime/` cron wrapper; `agent.md` gained a step-9 parseable run summary the wrapper reads. Diverges from `doc-drift-agent` (silent on clean scheduled runs) by design. Refreshed `docs/loc-dashboard.html` (`agents` row → 113/0/414; total → 137,297).
 
 ## 2026-05-30

@@ -21,17 +21,24 @@ Files here describe the VPS-side wiring needed to run the maestro-flow-review-ag
 
 The agent reviews `igor1309/ios.config`, **not** `ai-labs`. The wrapper refreshes a checkout at `/home/openclaw/ios.config` to the latest `trunk` (ios.config's default branch) before invoking the agent.
 
+## Model
+
+The agent runs on the **gateway default model** — `openclaw.json` → `agents.defaults.model.primary`, currently `codex/gpt-5.5` (codex harness over OpenAI OAuth). There is no per-agent model override; it inherits whatever the gateway is set to (`openclaw models set <model>`). The gateway also has **OpenRouter configured as a fallback** (`OPENROUTER_API_KEY` is loaded and OpenRouter models are in the list), so OpenRouter activates only if Codex fails — a single-provider outage degrades the model rather than killing the run.
+
+If the model/auth is genuinely unavailable (Codex OAuth invalid *and* OpenRouter fallback failing), the `openclaw agent` call errors or returns no run summary. The wrapper is **fail-closed**: it posts the `⚠ run FAILED` message (`notification-spec.md`), never a falsely-clean heartbeat. OAuth liveness is maintained out-of-band by OpenClaw's daily 04:00 UTC proactive-refresh + 04:30 monitor; a hard auth failure stops the gateway and raises a "manual reauth required" alert, in which case this agent's 03:00 tick simply cannot fire (absence = failure, as designed).
+
 ## Bot token
 
 Stored only in `~/.openclaw/openclaw.json` under `channels.telegram.accounts.maestroreview.botToken` (file mode 600). The wrapper reads it at runtime via `jq`; never inlined into any version-controlled file. Rotate by replacing the value and restarting the gateway.
 
 ## Heartbeat notification behavior
 
-This agent uses the **heartbeat model** (`agent/notification-spec.md`): the wrapper posts **exactly one message per cron tick**, so the absence of a message at the scheduled cadence (06:00 UTC daily) means the cron or host failed — not that nothing happened.
+This agent uses the **heartbeat model** (`agent/notification-spec.md`): the wrapper posts **exactly one message per cron tick**, so the absence of a message at the scheduled cadence (03:00 UTC daily) means the cron or host failed — not that nothing happened.
 
 - **Findings > 0:** Findings message (counts + PR link); body truncated at ~4000 chars, remainder in the cron log.
 - **0 findings (clean run):** `✓ ran — 0 findings` heartbeat — the liveness ping. This is the deliberate difference from `doc-drift-agent`, which is silent on a clean scheduled run.
 - **Suppressed tick:** the wrapper posts `⏸ suppressed — manual run <Xh Ym> ago` itself (the agent is never invoked), so suppression is distinguishable from failure.
+- **Invocation failed:** `⚠ run FAILED` — non-zero exit or no parseable run summary (the model-unavailable path; see **Model** above). Fail-closed so a failure never masquerades as a clean heartbeat.
 
 The wrapper fills these templates from the agent's parseable run summary (the `- Findings: …` / `- Commit: …` block defined in `notification-spec.md`).
 

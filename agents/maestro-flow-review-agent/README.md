@@ -24,7 +24,7 @@ This directory owns the source of truth for what the agent inspects and how it r
 | `agent/notification-spec.md` | Heartbeat notification contract (findings / clean / suppressed) |
 | `agent/suppression-policy.md` | 12h scheduled-run suppression gate |
 | `runtime/cron/maestro-review-cron.sh` | VPS cron wrapper (refresh, gate, invoke, post one message/tick) |
-| `runtime/cron/openclaw-maestro-review.cron` | `/etc/cron.d` entry (daily 06:00 UTC) |
+| `runtime/cron/openclaw-maestro-review.cron` | `/etc/cron.d` entry (daily 03:00 UTC) |
 | `runtime/README.md` | VPS-side deployment notes |
 | `docs/log.md` | Project log |
 | `README.md` | This file |
