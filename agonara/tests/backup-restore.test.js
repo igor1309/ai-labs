@@ -660,6 +660,54 @@ test("restoreBackup_shouldClearAssessmentStorageRecords_onBackupWithoutAssessmen
   }
 });
 
+test("restoreBackup_shouldClearStudentAttemptStorageBeforeAssessmentRecords_onBackupWithoutAttempts", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT({ ids: ["identity-existing", "credential-existing", "session-existing", "audit-existing"] });
+
+  try {
+    await target.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Existing Admin",
+      login: "existing@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+      membershipId: "membership-existing",
+      programEventId: "program-event-existing",
+      membershipEventId: "membership-event-existing",
+    });
+    seedCorpusRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+    });
+    seedAssessmentStorageRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+    });
+    seedStudentAttemptStorageRecords(target.database, {
+      identityId: "identity-existing",
+      programId: "program-existing",
+    });
+
+    const restoreResult = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        studentAttemptRows: countStudentAttemptStorageRows(target.database),
+      },
+      {
+        restoreStatus: "accepted",
+        studentAttemptRows: 0,
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectAcceptedAssessmentCriterionEntityWithoutCurrentRevision_onBackup", async () => {
   const backup = await makeExportedAssessmentBackup();
   const target = makeSUT();
@@ -1186,6 +1234,86 @@ function countAssessmentStorageRows(database) {
     "open_answer_check_candidates",
     "accepted_open_answer_check_entities",
     "accepted_open_answer_check_revisions",
+  ].reduce((count, tableName) => {
+    const row = database.prepare(`select count(*) as count from ${tableName}`).get();
+    return count + row.count;
+  }, 0);
+}
+
+function seedStudentAttemptStorageRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into open_answer_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         submitted_answer,
+         idempotency_key,
+         status,
+         submitted_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "attempt-existing",
+      programId,
+      identityId,
+      "check-revision-existing",
+      JSON.stringify(["criterion-revision-existing"]),
+      "Submitted answer",
+      "idempotency-existing",
+      "evaluated",
+      "2026-05-27T10:13:00.000Z",
+      "2026-05-27T10:14:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into open_answer_evaluations (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_kind,
+         summary_feedback,
+         criterion_feedback_json,
+         evaluated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "evaluation-existing",
+      "attempt-existing",
+      programId,
+      identityId,
+      "check-revision-existing",
+      JSON.stringify(["criterion-revision-existing"]),
+      "student_workspace",
+      "Summary feedback",
+      JSON.stringify([
+        {
+          criterionRevisionId: "criterion-revision-existing",
+          outcome: "met",
+          feedback: "Criterion feedback",
+        },
+      ]),
+      "2026-05-27T10:15:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into open_answer_evaluation_failures (attempt_id, reason, failed_at)
+       values (?, ?, ?)`,
+    )
+    .run("attempt-existing", "temporary evaluator outage", "2026-05-27T10:16:00.000Z");
+}
+
+function countStudentAttemptStorageRows(database) {
+  return [
+    "open_answer_evaluation_failures",
+    "open_answer_evaluations",
+    "open_answer_attempts",
   ].reduce((count, tableName) => {
     const row = database.prepare(`select count(*) as count from ${tableName}`).get();
     return count + row.count;

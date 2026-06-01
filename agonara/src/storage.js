@@ -217,7 +217,8 @@ export function initializeIdentityStorage(database) {
       idempotency_key text not null,
       status text not null check (status in ('submitted', 'evaluating', 'evaluated', 'evaluation_failed')),
       submitted_at text not null,
-      updated_at text not null
+      updated_at text not null,
+      unique (program_id, student_identity_id, check_revision_id, idempotency_key)
     );
 
     create table if not exists open_answer_evaluations (
@@ -2133,6 +2134,9 @@ export function restoreIdentityBackup(database, backup) {
   database.transaction(() => {
     database.prepare("delete from sessions").run();
     database.prepare("delete from corpus_events").run();
+    database.prepare("delete from open_answer_evaluation_failures").run();
+    database.prepare("delete from open_answer_evaluations").run();
+    database.prepare("delete from open_answer_attempts").run();
     database.prepare("delete from accepted_open_answer_check_revisions").run();
     database.prepare("delete from accepted_open_answer_check_entities").run();
     database.prepare("delete from open_answer_check_candidates").run();

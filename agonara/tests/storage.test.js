@@ -1174,6 +1174,51 @@ test("createOpenAnswerAttemptRecord_shouldEnforceScopedIdempotency_onDuplicateSc
   }
 });
 
+test("openAnswerAttemptStorage_shouldRejectRawDuplicateIdempotencyScope_onDatabaseConstraint", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        idempotencyKey: "same-key",
+      }),
+    );
+
+    assert.throws(
+      () =>
+        database
+          .prepare(
+            `insert into open_answer_attempts (
+               id, program_id, student_identity_id, check_revision_id, criterion_revision_ids_json,
+               submitted_answer, idempotency_key, status, submitted_at, updated_at
+             ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            "attempt-b",
+            "program-a",
+            "identity-a",
+            "check-revision-a",
+            JSON.stringify(["criterion-revision-a"]),
+            "Another answer",
+            "same-key",
+            "submitted",
+            "2026-06-02T10:01:00.000Z",
+            "2026-06-02T10:01:00.000Z",
+          ),
+      error => error.code === "SQLITE_CONSTRAINT_UNIQUE",
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("updateOpenAnswerAttemptStatus_shouldPreserveSubmittedAnswerAndReferences_onExistingAttempt", () => {
   const database = makeInitializedDatabase();
 

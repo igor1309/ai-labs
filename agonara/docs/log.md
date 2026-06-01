@@ -2,6 +2,7 @@
 
 ## 2026-06-01
 
+- Harden the Student Workspace open-answer attempt storage substrate after adversarial review with database-enforced scoped idempotency and restore cleanup for attempt child records.
 - Start the Student Workspace open-answer attempt implementation with the Phase 1 persistence substrate: attempt, evaluation, failure, status, idempotency, and accepted-revision graph storage helpers.
 - Harden the Student Workspace open-answer attempt implementation plan after adversarial review by adding explicit phase status gates and clarifying docs-only closeout behavior.
 - Add the Student Workspace open-answer attempt implementation plan, sequencing storage, idempotent submission, evaluation lifecycle, owner-only reads, backup/restore, and executable acceptance through strict TDD phase commits.
