@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Add the Student Workspace open-answer evaluator worker implementation plan, sequencing the in-process worker through strict TDD phases for claiming, policy resolution, provider request redaction, output and budget gates, completion, boundary isolation, backup/restore, executable acceptance, and closeout.
 - Harden the evaluator worker spec after adversarial review by making post-claim provider failures flow through Student Workspace retry/failure behavior, pinning claim-next ordering to the existing claimable-job query, and requiring evaluator policy retry policy to match the claimed job.
 - Add the Student Workspace open-answer evaluator worker spec, defining the in-process single-run worker contract, evaluator policy shape, provider adapter boundary, output validation, budget enforcement, retry/failure handling, redaction, and executable acceptance expectations.
 - Harden ADR-015 after adversarial review by defining evaluator worker, provider adapter, evaluator policy, and raw evaluator artifact terms before the decision rules rely on them.
