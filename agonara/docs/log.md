@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-03
+
+- Implement Phase 8 of the Quick Check first-slice plan with protected backup and restore support for candidates, accepted revisions, answer keys, attempts, matched results, historical references, redacted restored reads, and malformed graph rejection.
+
 ## 2026-06-02
 
 - Harden Phase 7 Quick Check boundary tests after adversarial review with positive controls for public quick-check transport surfaces, internal answer-key resolver leaks, candidate-id leakage, and provider, queue, and human-review expansions.

@@ -3475,6 +3475,10 @@ export function exportIdentityBackup(database) {
     assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
     acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
     acceptedAssessmentCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database),
+    quickCheckCandidates: listQuickCheckCandidateRecords(database),
+    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
+    acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
+    quickCheckAttempts: listQuickCheckAttemptRecords(database),
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
@@ -3501,6 +3505,7 @@ export function restoreIdentityBackup(database, backup) {
 
   assertValidCorpusGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
+  assertValidQuickCheckGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
@@ -3511,9 +3516,15 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from open_answer_evaluation_failures").run();
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
+    database.prepare("delete from quick_check_attempts").run();
     database.prepare("delete from accepted_open_answer_check_revisions").run();
     database.prepare("delete from accepted_open_answer_check_entities").run();
     database.prepare("delete from open_answer_check_candidates").run();
+    database.prepare("delete from accepted_quick_check_revision_options").run();
+    database.prepare("delete from accepted_quick_check_revisions").run();
+    database.prepare("delete from accepted_quick_check_entities").run();
+    database.prepare("delete from quick_check_candidate_options").run();
+    database.prepare("delete from quick_check_candidates").run();
     database.prepare("delete from accepted_assessment_criterion_revisions").run();
     database.prepare("delete from accepted_assessment_criterion_entities").run();
     database.prepare("delete from assessment_criterion_candidates").run();
@@ -3693,6 +3704,51 @@ export function restoreIdentityBackup(database, backup) {
          accepted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertQuickCheckCandidate = database.prepare(
+      `insert into quick_check_candidates (
+         id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertQuickCheckCandidateOption = database.prepare(
+      `insert into quick_check_candidate_options (candidate_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    );
+    const insertAcceptedQuickCheckEntity = database.prepare(
+      `insert into accepted_quick_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    );
+    const insertAcceptedQuickCheckRevision = database.prepare(
+      `insert into accepted_quick_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedQuickCheckRevisionOption = database.prepare(
+      `insert into accepted_quick_check_revision_options (revision_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    );
     const insertOpenAnswerCheckCandidate = database.prepare(
       `insert into open_answer_check_candidates (
          id,
@@ -3743,6 +3799,18 @@ export function restoreIdentityBackup(database, backup) {
          submitted_at,
          updated_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertQuickCheckAttempt = database.prepare(
+      `insert into quick_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         selected_option_id,
+         matched,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertOpenAnswerEvaluation = database.prepare(
       `insert into open_answer_evaluations (
@@ -3960,6 +4028,64 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const candidate of backup.quickCheckCandidates ?? []) {
+      insertQuickCheckCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.checkKind,
+        candidate.title,
+        candidate.prompt,
+        candidate.answerKeyOptionId,
+        JSON.stringify(candidate.sourceIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+      for (const [optionIndex, option] of candidate.options.entries()) {
+        insertQuickCheckCandidateOption.run(
+          candidate.id,
+          option.id,
+          optionIndex,
+          option.text,
+        );
+      }
+    }
+
+    for (const entity of backup.acceptedQuickCheckEntities ?? []) {
+      insertAcceptedQuickCheckEntity.run(
+        entity.id,
+        entity.programId,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedQuickCheckRevisions ?? []) {
+      insertAcceptedQuickCheckRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.checkKind,
+        revision.title,
+        revision.prompt,
+        revision.answerKeyOptionId,
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+      for (const [optionIndex, option] of revision.options.entries()) {
+        insertAcceptedQuickCheckRevisionOption.run(
+          revision.id,
+          option.id,
+          optionIndex,
+          option.text,
+        );
+      }
+    }
+
     for (const candidate of backup.openAnswerCheckCandidates ?? []) {
       insertOpenAnswerCheckCandidate.run(
         candidate.id,
@@ -3999,6 +4125,19 @@ export function restoreIdentityBackup(database, backup) {
         revision.rationale ?? null,
         revision.acceptedByIdentityId,
         revision.acceptedAt,
+      );
+    }
+
+    for (const attempt of backup.quickCheckAttempts ?? []) {
+      insertQuickCheckAttempt.run(
+        attempt.id,
+        attempt.programId,
+        attempt.studentIdentityId,
+        attempt.checkRevisionId,
+        attempt.selectedOptionId,
+        attempt.matched ? 1 : 0,
+        attempt.idempotencyKey,
+        attempt.submittedAt,
       );
     }
 
@@ -4757,6 +4896,128 @@ function assertValidAssessmentGraphInBackup(backup) {
 
     if (currentRevision.programId !== entity.programId) {
       throw new StorageInvariantError("check_revision_program_mismatch");
+    }
+  }
+}
+
+function assertValidQuickCheckGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const candidatesById = new Map((backup.quickCheckCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map((backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]));
+  const revisionsById = new Map((backup.acceptedQuickCheckRevisions ?? []).map($0 => [$0.id, $0]));
+
+  for (const candidate of backup.quickCheckCandidates ?? []) {
+    if (!programShellsById.has(candidate.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(candidate.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+    assertQuickCheckOptionCollection({
+      options: candidate.options,
+      answerKeyOptionId: candidate.answerKeyOptionId,
+    });
+  }
+
+  for (const revision of backup.acceptedQuickCheckRevisions ?? []) {
+    if (!programShellsById.has(revision.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(revision.acceptedByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    const entity = entitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("quick_check_entity_not_found");
+    }
+
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("quick_check_revision_program_mismatch");
+    }
+
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("quick_check_candidate_not_found");
+    }
+
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("quick_check_candidate_not_accepted");
+    }
+
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("quick_check_candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+    assertQuickCheckOptionCollection({
+      options: revision.options,
+      answerKeyOptionId: revision.answerKeyOptionId,
+    });
+  }
+
+  for (const entity of backup.acceptedQuickCheckEntities ?? []) {
+    if (!programShellsById.has(entity.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    const currentRevision = revisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("quick_check_revision_not_found");
+    }
+
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("quick_check_revision_entity_mismatch");
+    }
+
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("quick_check_revision_program_mismatch");
+    }
+  }
+
+  for (const attempt of backup.quickCheckAttempts ?? []) {
+    if (!programShellsById.has(attempt.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(attempt.studentIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    const revision = revisionsById.get(attempt.checkRevisionId);
+    if (!revision) {
+      throw new StorageInvariantError("quick_check_revision_not_found");
+    }
+
+    if (revision.programId !== attempt.programId) {
+      throw new StorageInvariantError("quick_check_revision_program_mismatch");
+    }
+
+    const selectedOption = revision.options.find($0 => $0.id === attempt.selectedOptionId);
+    if (!selectedOption) {
+      throw new StorageInvariantError("quick_check_selected_option_mismatch");
+    }
+
+    if (typeof attempt.matched !== "boolean") {
+      throw new StorageInvariantError("quick_check_attempt_matched_invalid");
+    }
+
+    if ((attempt.selectedOptionId === revision.answerKeyOptionId) !== attempt.matched) {
+      throw new StorageInvariantError("quick_check_attempt_matched_mismatch");
     }
   }
 }

@@ -351,7 +351,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 8 — Backup and restore
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: preserve protected quick-check graphs through backup/restore and reject malformed candidates, accepted revisions, answer keys, attempts, and matched results.
 

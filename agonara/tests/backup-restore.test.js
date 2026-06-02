@@ -3,6 +3,7 @@ import test from "node:test";
 import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
+import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
 import {
   countEffectiveAdmins,
   getLocalPasswordCredentialByLogin,
@@ -800,6 +801,154 @@ test("restoreBackup_shouldRestoreStudentAttemptRecords_onAcceptedBackup", async 
             failedAt: "2026-05-27T10:16:00.000Z",
           },
         ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("exportBackup_shouldIncludeQuickCheckGraphAndAttempts_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(database, { programId: "program-1" });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        candidateIds: backup.quickCheckCandidates?.map($0 => $0.id),
+        candidateAnswerKeys: backup.quickCheckCandidates?.map($0 => $0.answerKeyOptionId),
+        candidateOptionIds: backup.quickCheckCandidates?.flatMap($0 => $0.options.map(option => option.id)),
+        entityIds: backup.acceptedQuickCheckEntities?.map($0 => $0.id),
+        entityCurrentRevisionIds: backup.acceptedQuickCheckEntities?.map($0 => $0.currentRevisionId),
+        revisionIds: backup.acceptedQuickCheckRevisions?.map($0 => $0.id),
+        revisionAnswerKeys: backup.acceptedQuickCheckRevisions?.map($0 => $0.answerKeyOptionId),
+        revisionCandidateIds: backup.acceptedQuickCheckRevisions?.map($0 => $0.acceptedFromCandidateId),
+        revisionOptionIds: backup.acceptedQuickCheckRevisions?.flatMap($0 => $0.options.map(option => option.id)),
+        attemptIds: backup.quickCheckAttempts?.map($0 => $0.id),
+        attemptRevisionIds: backup.quickCheckAttempts?.map($0 => $0.checkRevisionId),
+        attemptSelections: backup.quickCheckAttempts?.map($0 => $0.selectedOptionId),
+        attemptMatchedResults: backup.quickCheckAttempts?.map($0 => $0.matched),
+        attemptIdempotencyKeys: backup.quickCheckAttempts?.map($0 => $0.idempotencyKey),
+      },
+      {
+        candidateIds: ["quick-check-candidate-existing"],
+        candidateAnswerKeys: ["quick-check-candidate-existing-option-a"],
+        candidateOptionIds: [
+          "quick-check-candidate-existing-option-a",
+          "quick-check-candidate-existing-option-b",
+        ],
+        entityIds: ["quick-check-entity-existing"],
+        entityCurrentRevisionIds: ["quick-check-revision-existing"],
+        revisionIds: ["quick-check-revision-existing"],
+        revisionAnswerKeys: ["quick-check-revision-existing-option-a"],
+        revisionCandidateIds: ["quick-check-candidate-existing"],
+        revisionOptionIds: [
+          "quick-check-revision-existing-option-a",
+          "quick-check-revision-existing-option-b",
+        ],
+        attemptIds: ["quick-check-attempt-existing"],
+        attemptRevisionIds: ["quick-check-revision-existing"],
+        attemptSelections: ["quick-check-revision-existing-option-a"],
+        attemptMatchedResults: [true],
+        attemptIdempotencyKeys: ["idempotency-quick-check-existing"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreQuickCheckGraphAndKeepStudentReadsRedacted_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+    const corpusCommands = makeCorpusCommands(target.database);
+    const studentWorkspaceCommands = makeStudentWorkspaceCommands(target.database);
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        candidateIds: restoredBackup.quickCheckCandidates.map($0 => $0.id),
+        revisionIds: restoredBackup.acceptedQuickCheckRevisions.map($0 => $0.id),
+        attempts: restoredBackup.quickCheckAttempts.map(projectQuickCheckAttemptBackupRecord),
+        deliveryContainsForbiddenDetails: containsQuickCheckForbiddenStudentReadDetail(
+          corpusCommands.getQuickCheckDelivery({
+            actingIdentityId: "identity-student",
+            programId: "program-1",
+            revisionId: "quick-check-revision-existing",
+          }).value.quickCheckDelivery,
+        ),
+        attemptContainsForbiddenDetails: containsQuickCheckForbiddenStudentReadDetail(
+          studentWorkspaceCommands.getQuickCheckAttempt({
+            actingIdentityId: "identity-student",
+            programId: "program-1",
+            attemptId: "quick-check-attempt-existing",
+          }).value.quickCheckAttempt,
+        ),
+      },
+      {
+        restoreStatus: "accepted",
+        candidateIds: ["quick-check-candidate-existing"],
+        revisionIds: ["quick-check-revision-existing"],
+        attempts: [
+          {
+            id: "quick-check-attempt-existing",
+            programId: "program-1",
+            studentIdentityId: "identity-student",
+            checkRevisionId: "quick-check-revision-existing",
+            selectedOptionId: "quick-check-revision-existing-option-a",
+            matched: true,
+            idempotencyKey: "idempotency-quick-check-existing",
+          },
+        ],
+        deliveryContainsForbiddenDetails: false,
+        attemptContainsForbiddenDetails: false,
       },
     );
   } finally {
@@ -1702,6 +1851,64 @@ test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithCrossProgramSource_onB
   }
 });
 
+test("restoreBackup_shouldRejectMalformedQuickCheckGraphs_onBackup", async () => {
+  const backup = await makeExportedQuickCheckBackup();
+  const invalidBackups = [
+    {
+      mutate: value => {
+        value.quickCheckCandidates[0] = {
+          ...value.quickCheckCandidates[0],
+          options: [
+            { id: "quick-check-candidate-existing-option-a", text: "Duplicate text" },
+            { id: "quick-check-candidate-existing-option-b", text: "Duplicate text" },
+          ],
+        };
+      },
+      expectedReason: "quick_check_option_collection_invalid",
+    },
+    {
+      mutate: value => {
+        value.quickCheckCandidates = [];
+      },
+      expectedReason: "quick_check_candidate_not_found",
+    },
+    {
+      mutate: value => {
+        value.acceptedQuickCheckRevisions[0] = {
+          ...value.acceptedQuickCheckRevisions[0],
+          answerKeyOptionId: "quick-check-revision-existing-option-missing",
+        };
+      },
+      expectedReason: "quick_check_answer_key_option_mismatch",
+    },
+    {
+      mutate: value => {
+        value.quickCheckAttempts[0] = {
+          ...value.quickCheckAttempts[0],
+          selectedOptionId: "quick-check-revision-existing-option-b",
+        };
+      },
+      expectedReason: "quick_check_attempt_matched_mismatch",
+    },
+  ];
+
+  const reasons = invalidBackups.map(({ mutate }) => {
+    const target = makeSUT();
+    const candidateBackup = structuredClone(backup);
+    try {
+      mutate(candidateBackup);
+      return target.commands.restoreBackup(candidateBackup).reason;
+    } finally {
+      target.database.close();
+    }
+  });
+
+  assert.deepEqual(
+    reasons,
+    invalidBackups.map($0 => $0.expectedReason),
+  );
+});
+
 function seedProgramRecords(database, {
   identityId,
   programId,
@@ -1831,6 +2038,129 @@ function seedCorpusRecords(database, { identityId, programId }) {
       "2026-05-27T10:06:00.000Z",
       "accepted",
       null,
+    );
+}
+
+function seedQuickCheckStudentIdentityAndMembership(database, { programId }) {
+  database
+    .prepare(
+      `insert into identities (id, display_name, state, created_at, disabled_at)
+       values (?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "identity-student",
+      "Student",
+      "active",
+      "2026-05-27T10:06:30.000Z",
+      null,
+    );
+  database
+    .prepare(
+      `insert into program_memberships (
+         id, program_id, identity_id, participation_kind, status, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "membership-student",
+      programId,
+      "identity-student",
+      "student",
+      "active",
+      "2026-05-27T10:06:45.000Z",
+      "2026-05-27T10:06:45.000Z",
+    );
+}
+
+function seedQuickCheckStorageRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into quick_check_candidates (
+         id, program_id, check_kind, title, prompt, answer_key_option_id, source_ids_json,
+         rationale, status, created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "quick-check-candidate-existing",
+      programId,
+      "single_select_quick_check",
+      "Quick check",
+      "Quick prompt",
+      "quick-check-candidate-existing-option-a",
+      JSON.stringify(["source-1"]),
+      "Quick rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:07:00.000Z",
+      "2026-05-27T10:08:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into quick_check_candidate_options (candidate_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-candidate-existing", "quick-check-candidate-existing-option-a", 0, "Candidate option A");
+  database
+    .prepare(
+      `insert into quick_check_candidate_options (candidate_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-candidate-existing", "quick-check-candidate-existing-option-b", 1, "Candidate option B");
+  database
+    .prepare(
+      `insert into accepted_quick_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    )
+    .run("quick-check-entity-existing", programId, "quick-check-revision-existing");
+  database
+    .prepare(
+      `insert into accepted_quick_check_revisions (
+         id, entity_id, program_id, check_kind, title, prompt, answer_key_option_id,
+         accepted_from_candidate_id, source_ids_json, rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "quick-check-revision-existing",
+      "quick-check-entity-existing",
+      programId,
+      "single_select_quick_check",
+      "Accepted quick check",
+      "Accepted quick prompt",
+      "quick-check-revision-existing-option-a",
+      "quick-check-candidate-existing",
+      JSON.stringify(["source-1"]),
+      "Accepted quick rationale",
+      identityId,
+      "2026-05-27T10:09:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_quick_check_revision_options (revision_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-revision-existing", "quick-check-revision-existing-option-a", 0, "Revision option A");
+  database
+    .prepare(
+      `insert into accepted_quick_check_revision_options (revision_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-revision-existing", "quick-check-revision-existing-option-b", 1, "Revision option B");
+  database
+    .prepare(
+      `insert into quick_check_attempts (
+         id, program_id, student_identity_id, check_revision_id, selected_option_id,
+         matched, idempotency_key, submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "quick-check-attempt-existing",
+      programId,
+      "identity-student",
+      "quick-check-revision-existing",
+      "quick-check-revision-existing-option-a",
+      1,
+      "idempotency-quick-check-existing",
+      "2026-05-27T10:10:00.000Z",
     );
 }
 
@@ -2175,6 +2505,18 @@ function projectEvaluationBackupRecord(evaluation) {
   };
 }
 
+function projectQuickCheckAttemptBackupRecord(attempt) {
+  return {
+    id: attempt.id,
+    programId: attempt.programId,
+    studentIdentityId: attempt.studentIdentityId,
+    checkRevisionId: attempt.checkRevisionId,
+    selectedOptionId: attempt.selectedOptionId,
+    matched: attempt.matched,
+    idempotencyKey: attempt.idempotencyKey,
+  };
+}
+
 function projectEvaluatorRunBackupRecord(evaluatorRun) {
   return {
     id: evaluatorRun.id,
@@ -2221,6 +2563,20 @@ function containsForbiddenBackupDetail(values) {
   ].some($0 => serialized.includes($0));
 }
 
+function containsQuickCheckForbiddenStudentReadDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "answerkey",
+    "acceptedby",
+    "acceptedfromcandidate",
+    "candidateid",
+    "correctoption",
+    "createdby",
+    "idempotency",
+    "rationale",
+  ].some($0 => serialized.includes($0));
+}
+
 async function makeExportedCorpusBackup() {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
 
@@ -2239,6 +2595,33 @@ async function makeExportedCorpusBackup() {
       membershipEventId: "membership-event-1",
     });
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedQuickCheckBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
 
     return source.commands.exportBackup().value.backup;
   } finally {
@@ -2350,6 +2733,20 @@ function makeCorpusCommands(database) {
     now: () => new Date("2026-05-27T10:00:00.000Z"),
   });
   return createCorpusCommands({
+    database,
+    generateId: makeIdGenerator([]),
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    now: () => new Date("2026-05-27T10:00:00.000Z"),
+  });
+}
+
+function makeStudentWorkspaceCommands(database) {
+  const programCommands = createProgramCommands({
+    database,
+    generateId: makeIdGenerator([]),
+    now: () => new Date("2026-05-27T10:00:00.000Z"),
+  });
+  return createStudentWorkspaceCommands({
     database,
     generateId: makeIdGenerator([]),
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
