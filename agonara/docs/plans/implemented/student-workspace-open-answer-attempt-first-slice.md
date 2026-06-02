@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer attempt
 
 Deliver the Agonara v0.0.1 backend domain contract for Student Workspace-owned open-answer attempts, submitted answers, evaluation outcomes, failure states, and owner-only attempt reads.
 
-This plan implements [Student Workspace Open-Answer Attempt First Slice](../specs/student-workspace-open-answer-attempt-first-slice.md), [ADR-012](../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md), the accepted check and criterion revision boundary from [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), the accepted corpus boundary from [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), and the effective participation contract from [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md). It preserves INT-05 from [Product Intent](../intent_learning_program_app.md) by recording personal attempts and feedback separately from accepted Program corpus.
+This plan implements [Student Workspace Open-Answer Attempt First Slice](../../specs/student-workspace-open-answer-attempt-first-slice.md), [ADR-012](../../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md), the accepted check and criterion revision boundary from [ADR-011](../../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), the accepted corpus boundary from [ADR-010](../../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), and the effective participation contract from [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md). It preserves INT-05 from [Product Intent](../../intent_learning_program_app.md) by recording personal attempts and feedback separately from accepted Program corpus.
 
 ## Execution mode
 
@@ -31,7 +31,7 @@ Preflight check: [x] done
 ### In scope
 
 - Storage records and helpers for open-answer attempts, evaluations, evaluation failures, and idempotent submission lookups.
-- A Student Workspace domain command/query boundary for the interface in [Student Workspace Open-Answer Attempt First Slice](../specs/student-workspace-open-answer-attempt-first-slice.md).
+- A Student Workspace domain command/query boundary for the interface in [Student Workspace Open-Answer Attempt First Slice](../../specs/student-workspace-open-answer-attempt-first-slice.md).
 - Effective Student authorization for submission and owner-only attempt reads.
 - Accepted open-answer check revision and accepted assessment criterion revision references resolved from Corpus Storage.
 - Immutable submitted answers with surrounding whitespace trimmed before persistence.
@@ -305,7 +305,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 6 — Plan archive and implementation closeout
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: close the implementation branch with the plan status, archive move, log, and final gates in the same change set as the implementation.
 
