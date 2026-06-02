@@ -248,7 +248,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 5 — Leased completion and idempotent final acceptance
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement `completeOpenAnswerEvaluatorJob` with lease validation, budget gates, LLM output validation, final feedback recording, and idempotent repeated completion.
 

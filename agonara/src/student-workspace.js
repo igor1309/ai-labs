@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   StorageInvariantError,
+  clearOpenAnswerEvaluatorJobLease,
   createOpenAnswerAttemptRecord,
   createOpenAnswerEvaluationFailureRecord,
   createOpenAnswerEvaluationRecord,
@@ -59,6 +60,8 @@ export function createStudentWorkspaceCommands({
       cancelOpenAnswerEvaluatorRun({ database, input, now }),
     claimOpenAnswerEvaluatorJob: input =>
       claimOpenAnswerEvaluatorJob({ database, generateId, input, now }),
+    completeOpenAnswerEvaluatorJob: input =>
+      completeOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     completeOpenAnswerEvaluatorRun: input =>
       completeOpenAnswerEvaluatorRun({ database, generateId, input, now }),
     failOpenAnswerEvaluatorRun: input =>
@@ -443,6 +446,149 @@ function isValidLeaseDurationSeconds(value) {
 
 function addSecondsIso(iso, seconds) {
   return new Date(Date.parse(iso) + seconds * 1000).toISOString();
+}
+
+function completeOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
+  if (!isNonEmptyText(input?.leaseId) || !isNonEmptyText(input?.workerId)) {
+    return rejected("validation_failed");
+  }
+  const completedAt = now().toISOString();
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const completedRejection = getCompletedEvaluatorJobRejection(database, evaluatorJob, input);
+  if (completedRejection) {
+    return completedRejection;
+  }
+  const leaseRejection = getLeasedEvidenceJobRejection(evaluatorJob, input, completedAt);
+  if (leaseRejection) {
+    return leaseRejection;
+  }
+  const inputRejection = getEvaluatorJobCompletionInputRejection(input, evaluatorJob);
+  if (inputRejection) {
+    return inputRejection;
+  }
+
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentCompletedRejection = getCompletedEvaluatorJobRejection(database, currentJob, input);
+    if (currentCompletedRejection) {
+      return { rejection: currentCompletedRejection };
+    }
+    const currentLeaseRejection = getLeasedEvidenceJobRejection(currentJob, input, completedAt);
+    if (currentLeaseRejection) {
+      return { rejection: currentLeaseRejection };
+    }
+    const currentInputRejection = getEvaluatorJobCompletionInputRejection(input, currentJob);
+    if (currentInputRejection) {
+      return { rejection: currentInputRejection };
+    }
+
+    const updatedRun = updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: currentJob.evaluatorRunId,
+      status: "succeeded",
+      completedAt,
+    });
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: currentJob.attemptId,
+      status: "evaluated",
+      updatedAt: completedAt,
+    });
+    const evaluation = createOpenAnswerEvaluationRecord(database, {
+      id: generateId(),
+      attemptId: currentJob.attemptId,
+      programId: currentJob.programId,
+      studentIdentityId: currentJob.studentIdentityId,
+      checkRevisionId: currentJob.checkRevisionId,
+      criterionRevisionIds: currentJob.criterionRevisionIds,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: input.summaryFeedback.trim(),
+      criterionFeedback: normalizeCriterionFeedback(input.criterionFeedback),
+      evaluatedAt: completedAt,
+    });
+    deleteOpenAnswerEvaluationFailureRecord(database, currentJob.attemptId);
+    clearOpenAnswerEvaluatorJobLease(database, {
+      evaluatorJobId: currentJob.evaluatorJobId,
+      jobStatus: "succeeded",
+      updatedAt: completedAt,
+    });
+    return {
+      evaluatorJob: getOpenAnswerEvaluatorJobRecord(database, currentJob.evaluatorJobId),
+      evaluatorRun: updatedRun,
+      evaluation,
+      updated: updatedAttempt,
+    };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+    evaluation: summarizeEvaluation(transition.evaluation),
+  });
+}
+
+function getCompletedEvaluatorJobRejection(database, evaluatorJob, input) {
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+  if (evaluatorJob.jobStatus !== "succeeded") {
+    return null;
+  }
+  const evaluation = getOpenAnswerEvaluationRecordByAttemptId(database, evaluatorJob.attemptId);
+  if (!evaluation) {
+    return rejected("evaluator_job_conflict");
+  }
+  if (!isEquivalentCompletionInput(input, evaluatorJob, evaluation)) {
+    return rejected("evaluator_job_conflict");
+  }
+  return accepted({
+    attempt: summarizeAttempt(getOpenAnswerAttemptRecord(database, evaluatorJob.attemptId)),
+    evaluatorJob: summarizeEvaluatorJob(evaluatorJob),
+    evaluation: summarizeEvaluation(evaluation),
+  });
+}
+
+function getEvaluatorJobCompletionInputRejection(input, evaluatorJob) {
+  if (!isValidEvaluationInput(makeEvaluatorRunEvaluationInput(input), evaluatorJob)) {
+    return rejected("validation_failed");
+  }
+  if (exceedsEvaluatorBudget(input?.providerUsage, evaluatorJob.budgetPolicy)) {
+    return rejected("evaluator_budget_exceeded");
+  }
+  if (evaluatorJob.evaluatorPathKind === "llm_assisted" && !isPassedOutputValidation(input?.outputValidation)) {
+    return rejected("evaluator_output_rejected");
+  }
+  return null;
+}
+
+function isEquivalentCompletionInput(input, evaluatorJob, evaluation) {
+  return (
+    isValidEvaluationInput(makeEvaluatorRunEvaluationInput(input), evaluatorJob) &&
+    input.summaryFeedback.trim() === evaluation.summaryFeedback &&
+    JSON.stringify(normalizeCriterionFeedback(input.criterionFeedback)) ===
+      JSON.stringify(evaluation.criterionFeedback)
+  );
+}
+
+function exceedsEvaluatorBudget(providerUsage, budgetPolicy) {
+  if (!budgetPolicy || !providerUsage) {
+    return false;
+  }
+  return (
+    exceedsBudgetField(providerUsage.providerCalls, budgetPolicy.maxProviderCalls) ||
+    exceedsBudgetField(providerUsage.inputTokens, budgetPolicy.maxInputTokens) ||
+    exceedsBudgetField(providerUsage.outputTokens, budgetPolicy.maxOutputTokens) ||
+    exceedsBudgetField(providerUsage.estimatedCostMinorUnits, budgetPolicy.maxEstimatedCostMinorUnits)
+  );
+}
+
+function exceedsBudgetField(value, limit) {
+  return limit !== undefined && Number.isInteger(value) && value > limit;
+}
+
+function isPassedOutputValidation(outputValidation) {
+  return isNonEmptyText(outputValidation?.validatorPolicyId) && outputValidation.passed === true;
 }
 
 function recordOpenAnswerEvaluatorJobEvidence({ database, generateId, input, now }) {
