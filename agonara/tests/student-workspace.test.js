@@ -1640,6 +1640,142 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldBuildRedactedProviderRequest_fromCl
   }
 });
 
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRetryProviderExecutionFailure_onThrownAdapter", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [
+      makeProviderAdapter({
+        evaluate: () => {
+          throw new Error("provider unavailable");
+        },
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    assert.deepEqual(
+      {
+        result: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        evaluations: listOpenAnswerEvaluationRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            summary: makeEvaluatorWorkerSummary({
+              mode: "single_job",
+              evaluatorJobId: "evaluator-run-1",
+              claimed: true,
+              retried: true,
+              failureReason: "provider_execution_failed",
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "retry_waiting",
+              attemptNumber: 2,
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+              budgetPolicy: null,
+              nextRetryAt: "2026-06-02T10:01:00.000Z",
+              failureReason: "provider_execution_failed",
+            }),
+          },
+        },
+        evaluations: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRetryProviderExecutionFailure_onMalformedAdapterResult", () => {
+  assert.deepEqual(
+    [
+      undefined,
+      null,
+      [],
+      {},
+      makeProviderResult({ providerUsage: { providerCalls: -1 } }),
+      makeProviderResult({ providerUsage: { rawPrompt: 1 } }),
+    ].map(providerResult =>
+      runProviderOutputWorker({
+        evaluate: () => providerResult,
+      }),
+    ),
+    Array.from({ length: 6 }, () =>
+      makeProviderWorkerFailureResult({
+        failureReason: "provider_execution_failed",
+      }),
+    ),
+  );
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRetryBudgetFailure_onExceededProviderUsage", () => {
+  assert.deepEqual(
+    runProviderOutputWorker({
+      budgetPolicy: { maxProviderCalls: 1 },
+      evaluate: () => makeProviderResult({ providerUsage: { providerCalls: 2 } }),
+    }),
+    makeProviderWorkerFailureResult({
+      budgetPolicy: { maxProviderCalls: 1 },
+      failureReason: "provider_budget_exceeded",
+    }),
+  );
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRetryProviderOutputRejection_onInvalidOrUnsafeOutput", () => {
+  assert.deepEqual(
+    [
+      makeProviderResult({ outputValidation: null }),
+      makeProviderResult({ outputValidation: { validatorPolicyId: "validator-a", passed: false } }),
+      makeProviderResult({ outputValidation: { validatorPolicyId: "validator-b", passed: true } }),
+      makeProviderResult({ criterionFeedback: [] }),
+      makeProviderResult({ summaryFeedback: "raw prompt leaked" }),
+      makeProviderResult({ criterionFeedback: [makeCriterionFeedback({ feedback: "stack trace leaked" })] }),
+      makeProviderResult({ redactedEvidenceSummary: "authorization leaked" }),
+    ].map(providerResult =>
+      runProviderOutputWorker({
+        evaluate: () => providerResult,
+      }),
+    ),
+    Array.from({ length: 7 }, () =>
+      makeProviderWorkerFailureResult({
+        failureReason: "provider_output_rejected",
+      }),
+    ),
+  );
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordTerminalFailure_onExhaustedProviderRetry", () => {
+  assert.deepEqual(
+    runProviderOutputWorker({
+      evaluate: () => {
+        throw new Error("provider unavailable");
+      },
+      retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+    }),
+    makeProviderWorkerFailureResult({
+      failureReason: "provider_execution_failed",
+      retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+      terminal: true,
+    }),
+  );
+});
+
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProviderAdapterCall", () => {
   const providerAdapter = {
     providerAdapterId: "adapter-a",
@@ -6818,6 +6954,7 @@ function makeEvaluatorPolicy({
 function makeProviderAdapter({
   providerAdapterId = "adapter-a",
   evaluatorPathKind = "deterministic",
+  evaluate,
   providerCredential,
   providerRequests,
 } = {}) {
@@ -6825,9 +6962,101 @@ function makeProviderAdapter({
     providerAdapterId,
     evaluatorPathKind,
     ...(providerCredential ? { providerCredential } : {}),
-    evaluate: providerRequest => {
+    evaluate: evaluate ?? (providerRequest => {
       providerRequests?.push(providerRequest);
+      return makeProviderResult();
+    }),
+  };
+}
+
+function makeProviderResult({
+  summaryFeedback = "Good explanation.",
+  criterionFeedback = [makeCriterionFeedback()],
+  providerUsage,
+  outputValidation = { validatorPolicyId: "validator-a", passed: true },
+  redactedEvidenceSummary,
+} = {}) {
+  return {
+    summaryFeedback,
+    criterionFeedback,
+    ...(providerUsage ? { providerUsage } : {}),
+    outputValidation,
+    ...(redactedEvidenceSummary ? { redactedEvidenceSummary } : {}),
+  };
+}
+
+function runProviderOutputWorker({
+  budgetPolicy,
+  evaluate,
+  retryPolicy = { maxAttempts: 2, backoffSeconds: [60] },
+}) {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy({ retryPolicy })],
+    providerAdapters: [makeProviderAdapter({ evaluate })],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy,
+      ...(budgetPolicy ? { budgetPolicy } : {}),
+    });
+    return {
+      result: commands.runOpenAnswerEvaluatorWorkerOnce({
+        workerId: "worker-a",
+        mode: "single_job",
+        evaluatorJobId: "evaluator-run-1",
+        leaseDurationSeconds: 300,
+      }),
+      evaluations: listOpenAnswerEvaluationRecords(database),
+      failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+    };
+  } finally {
+    database.close();
+  }
+}
+
+function makeProviderWorkerFailureResult({
+  budgetPolicy,
+  failureReason,
+  retryPolicy = { maxAttempts: 2, backoffSeconds: [60] },
+  terminal = false,
+}) {
+  return {
+    result: {
+      status: "accepted",
+      value: {
+        summary: makeEvaluatorWorkerSummary({
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          claimed: true,
+          retried: !terminal,
+          failed: terminal,
+          failureReason,
+        }),
+        evaluatorJob: makeEvaluatorJobSummary({
+          status: terminal ? "failed" : "retry_waiting",
+          attemptNumber: terminal ? 1 : 2,
+          retryPolicy,
+          budgetPolicy: budgetPolicy ?? null,
+          ...(terminal ? {} : { nextRetryAt: "2026-06-02T10:01:00.000Z" }),
+          failureReason,
+        }),
+      },
     },
+    evaluations: [],
+    failure: terminal
+      ? {
+          attemptId: "attempt-1",
+          reason: failureReason,
+          failedAt: "2026-06-02T10:00:00.000Z",
+        }
+      : null,
   };
 }
 

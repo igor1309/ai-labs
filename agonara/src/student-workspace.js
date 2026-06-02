@@ -418,13 +418,59 @@ function runOpenAnswerEvaluatorWorkerOnce({
   if (!attempt) {
     return rejected("attempt_not_found");
   }
-  adapter.value.adapter.evaluate(
-    buildOpenAnswerEvaluatorProviderRequest({
-      attempt,
+  let providerResult;
+  try {
+    providerResult = adapter.value.adapter.evaluate(
+      buildOpenAnswerEvaluatorProviderRequest({
+        attempt,
+        evaluatorJob: claim.value.evaluatorJob,
+        policy: policy.value.policy,
+      }),
+    );
+  } catch {
+    return failOpenAnswerEvaluatorWorkerRun({
+      database,
       evaluatorJob: claim.value.evaluatorJob,
-      policy: policy.value.policy,
-    }),
-  );
+      failureReason: "provider_execution_failed",
+      lease: claim.value.lease,
+      mode: workerInput.mode,
+      now,
+      workerId: workerInput.workerId,
+    });
+  }
+  if (!isValidOpenAnswerEvaluatorProviderResult(providerResult)) {
+    return failOpenAnswerEvaluatorWorkerRun({
+      database,
+      evaluatorJob: claim.value.evaluatorJob,
+      failureReason: "provider_execution_failed",
+      lease: claim.value.lease,
+      mode: workerInput.mode,
+      now,
+      workerId: workerInput.workerId,
+    });
+  }
+  if (exceedsEvaluatorBudget(providerResult.providerUsage, claim.value.evaluatorJob.budgetPolicy)) {
+    return failOpenAnswerEvaluatorWorkerRun({
+      database,
+      evaluatorJob: claim.value.evaluatorJob,
+      failureReason: "provider_budget_exceeded",
+      lease: claim.value.lease,
+      mode: workerInput.mode,
+      now,
+      workerId: workerInput.workerId,
+    });
+  }
+  if (!isAcceptedOpenAnswerEvaluatorProviderResult(providerResult, claim.value.evaluatorJob, policy.value.policy)) {
+    return failOpenAnswerEvaluatorWorkerRun({
+      database,
+      evaluatorJob: claim.value.evaluatorJob,
+      failureReason: "provider_output_rejected",
+      lease: claim.value.lease,
+      mode: workerInput.mode,
+      now,
+      workerId: workerInput.workerId,
+    });
+  }
 
   return accepted({
     summary: summarizeEvaluatorWorkerRun({
@@ -434,6 +480,92 @@ function runOpenAnswerEvaluatorWorkerOnce({
       claimed: true,
     }),
     evaluatorJob: claim.value.evaluatorJob,
+  });
+}
+
+function isValidOpenAnswerEvaluatorProviderResult(providerResult) {
+  return (
+    providerResult !== null &&
+    typeof providerResult === "object" &&
+    !Array.isArray(providerResult) &&
+    typeof providerResult.summaryFeedback === "string" &&
+    Array.isArray(providerResult.criterionFeedback) &&
+    isValidOptionalProviderUsage(providerResult.providerUsage)
+  );
+}
+
+function isValidOptionalProviderUsage(providerUsage) {
+  if (providerUsage === undefined) {
+    return true;
+  }
+  if (providerUsage === null || typeof providerUsage !== "object" || Array.isArray(providerUsage)) {
+    return false;
+  }
+  const supportedFields = new Set([
+    "providerCalls",
+    "inputTokens",
+    "outputTokens",
+    "estimatedCostMinorUnits",
+  ]);
+  return Object.entries(providerUsage).every(
+    ([field, value]) => supportedFields.has(field) && Number.isInteger(value) && value >= 0,
+  );
+}
+
+function isAcceptedOpenAnswerEvaluatorProviderResult(providerResult, evaluatorJob, policy) {
+  return (
+    isValidEvaluationInput(makeEvaluatorRunEvaluationInput(providerResult), evaluatorJob) &&
+    providerResult.outputValidation?.validatorPolicyId === policy.outputValidatorPolicyId &&
+    isPassedOutputValidation(providerResult.outputValidation) &&
+    isSafeOpenAnswerEvaluatorProviderFeedback(providerResult)
+  );
+}
+
+function isSafeOpenAnswerEvaluatorProviderFeedback(providerResult) {
+  return (
+    !containsForbiddenResponseDetail(providerResult.summaryFeedback) &&
+    providerResult.criterionFeedback.every($0 => !containsForbiddenResponseDetail($0.feedback)) &&
+    (providerResult.redactedEvidenceSummary === undefined ||
+      (isNonEmptyText(providerResult.redactedEvidenceSummary) &&
+        !containsForbiddenResponseDetail(providerResult.redactedEvidenceSummary)))
+  );
+}
+
+function failOpenAnswerEvaluatorWorkerRun({
+  database,
+  evaluatorJob,
+  failureReason,
+  lease,
+  mode,
+  now,
+  workerId,
+}) {
+  const failure = failOpenAnswerEvaluatorJob({
+    database,
+    input: {
+      evaluatorJobId: evaluatorJob.evaluatorJobId,
+      leaseId: lease.leaseId,
+      workerId,
+      reason: failureReason,
+      retry: true,
+    },
+    now,
+  });
+  if (failure.status === "rejected") {
+    return failure;
+  }
+  const retried = failure.value.evaluatorJob.status === "retry_waiting";
+  return accepted({
+    summary: summarizeEvaluatorWorkerRun({
+      mode,
+      workerId,
+      evaluatorJobId: evaluatorJob.evaluatorJobId,
+      claimed: true,
+      retried,
+      failed: !retried,
+      failureReason,
+    }),
+    evaluatorJob: failure.value.evaluatorJob,
   });
 }
 
