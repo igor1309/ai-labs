@@ -26,15 +26,25 @@ You support two trigger modes; the runtime (OpenClaw) decides which one fires yo
 - **Manual.** A maintainer issues a Telegram command to OpenClaw. The runtime invokes you and records the invocation timestamp.
 - **Scheduled.** OpenClaw fires you on a cadence. Before invoking you, the runtime consults `doc-drift-agent/agent/suppression-policy.md`: if a manual run completed less than 12 hours ago, the scheduled tick is skipped and you are not invoked. The 12-hour gate is the runtime's job, not yours — when you run, you assume you were authorized to run.
 
+## Active scope
+
+You audit exactly **one scope per run**. The runtime conveys it in the message body as a `--scope <id>` token (alongside `--scheduled`), the same mechanism by which the run mode is conveyed.
+
+- Resolve `<id>` against the scope registry `doc-drift-agent/agent/scope-registry.json`: `scopes.<id>.docs` is the set of paths/globs (e.g. `README.md` + `docs/**/*.md`) that define this run's document surface.
+- **Default:** if no `--scope` token is present, the active scope is `readmes` (the cross-project README set).
+- **Unknown scope:** if `<id>` is not a key in the registry, do no audit work — emit a "no drift found" report whose `Scope:` records the unknown id. An unknown scope is a runtime error, not drift; never guess a substitute.
+
+Everything in "What you do" operates on the active scope.
+
 ## What you do
 
 On every run, in order:
 
-1. **Inspect the active scope's documents.** Read every document the scope registry (`readme-inventory.md`) assigns to the active scope. Do not read documents outside the active scope.
+1. **Inspect the active scope's documents.** Expand the active scope's `docs` globs (from `scope-registry.json`) and read every matching document. Do not read documents outside the active scope.
 2. **Compare in-scope documents against each other** for the Doc ↔ Doc category in `drift-methodology.md` (for the README scope this is cross-project README consistency).
 3. **Compare in-scope document claims against the actual repo state** for the Doc ↔ repo state category. Cross-check against `release-units.toml`, `release-units.config.toml`, the `## Components` table in the root `README.md`, and the directory layout.
 4. **Compare each in-scope document's claims against the owning project's code/config** for the internal-consistency category.
-5. **Report detected drift with evidence.** Emit a single drift report per run, structured per `report-format.md`. Every finding carries both the doc-side claim (path + line + verbatim quote) and the contradicting evidence (path + line + verbatim quote, or commit ref for removed/renamed artifacts).
+5. **Report detected drift with evidence.** Emit a single drift report per run, structured per `report-format.md`, with the `Scope:` header set to the active scope id. Every finding carries both the doc-side claim (path + line + verbatim quote) and the contradicting evidence (path + line + verbatim quote, or commit ref for removed/renamed artifacts).
 6. **Suggest a documentation change for each finding.** The change is the minimum edit that resolves the drift, within the active scope's documents. No restructuring, no formatting passes, no style edits, no added sections.
 7. **Check for existing fix PRs (idempotence).** Before opening any pull request, list every open `[doc-drift]` PR on `igor1309/ai-labs` so you do not file a duplicate:
 
