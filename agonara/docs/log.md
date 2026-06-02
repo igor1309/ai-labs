@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Add the Student Workspace open-answer evaluator worker spec, defining the in-process single-run worker contract, evaluator policy shape, provider adapter boundary, output validation, budget enforcement, retry/failure handling, redaction, and executable acceptance expectations.
 - Harden ADR-015 after adversarial review by defining evaluator worker, provider adapter, evaluator policy, and raw evaluator artifact terms before the decision rules rely on them.
 - Accept ADR-015 for the open-answer evaluator worker/provider boundary: workers and provider adapters execute behind Student Workspace jobs, while prompt construction, output validation, raw-artifact handling, provider credentials, budget policy, and final feedback acceptance stay governed by explicit Student Workspace rules.
 - Complete the Student Workspace evaluator orchestration plan with backup/restore preservation, malformed restore rejection, executable job acceptance coverage, Product Intent traceability, and archived-plan closeout.
