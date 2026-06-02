@@ -34,6 +34,7 @@ import {
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedOpenAnswerCheckRevisionRecords,
   listAssessmentCriterionCandidateRecords,
+  listCorpusCandidateRecords,
   listLocalPasswordCredentials,
   listOpenAnswerEvaluationRecords,
   listOpenAnswerAttemptRecords,
@@ -41,6 +42,7 @@ import {
   listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
   listProgramMembershipRecords,
+  listProgramSourceRecords,
   openIdentityDatabase,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
@@ -2114,6 +2116,100 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectConcurrentLeaseAndTerminalCha
       makeProviderWorkerRejectionResult("evaluator_job_conflict"),
     ],
   );
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomainsAndExcludeOutOfScopeSurfaces_onSuccessfulAdapterExecution", () => {
+  const providerCalls = [];
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [
+      makeProviderAdapter({
+        providerCredential: "authorization bearer provider-secret",
+        evaluate: (...args) => {
+          providerCalls.push(args);
+          return makeProviderResult({ redactedEvidenceSummary: "Matched accepted criterion." });
+        },
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    seedProtectedIdentityState(database);
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    const csrfTokens = new Map([["session-protected", "csrf-token-protected"]]);
+    const adjacentBefore = {
+      corpus: projectAdjacentCorpusState(database),
+      memberships: listProgramMembershipRecords(database),
+      studentIdentity: getIdentity(database, "identity-student"),
+      protectedIdentity: getIdentity(database, "identity-active-other"),
+      protectedSession: getSession(database, "session-protected"),
+      credentials: listLocalPasswordCredentials(database),
+      authorities: listAdminAuthorities(database),
+      csrfTokens: [...csrfTokens.entries()],
+      backup: projectProtectedAdjacentBackupState(exportIdentityBackup(database)),
+    };
+
+    const result = commands.runOpenAnswerEvaluatorWorkerOnce({
+      workerId: "worker-a",
+      mode: "single_job",
+      evaluatorJobId: "evaluator-run-1",
+      leaseDurationSeconds: 300,
+    });
+
+    assert.deepEqual(
+      {
+        providerCalls,
+        adjacentAfter: {
+          corpus: projectAdjacentCorpusState(database),
+          memberships: listProgramMembershipRecords(database),
+          studentIdentity: getIdentity(database, "identity-student"),
+          protectedIdentity: getIdentity(database, "identity-active-other"),
+          protectedSession: getSession(database, "session-protected"),
+          credentials: listLocalPasswordCredentials(database),
+          authorities: listAdminAuthorities(database),
+          csrfTokens: [...csrfTokens.entries()],
+          backup: projectProtectedAdjacentBackupState(exportIdentityBackup(database)),
+        },
+        exposesForbiddenDetails: containsForbiddenDetail(result),
+        exposesOutOfScopeSurfaces: containsAnyOutOfScopeEvaluatorWorkerSurface({
+          adminUiSource: readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+          cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+          serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+          workspaceSource: readFileSync(new URL("../src/student-workspace.js", import.meta.url), "utf8"),
+        }),
+      },
+      {
+        providerCalls: [
+          [
+            {
+              evaluatorJobId: "evaluator-run-1",
+              attemptId: "attempt-1",
+              programId: "program-a",
+              studentIdentityId: "identity-student",
+              checkRevisionId: "check-revision-a",
+              criterionRevisionIds: ["criterion-revision-a"],
+              submittedAnswer: "Answer",
+              evaluatorPolicyId: "policy-a",
+              outputValidatorPolicyId: "validator-a",
+            },
+          ],
+        ],
+        adjacentAfter: adjacentBefore,
+        exposesForbiddenDetails: false,
+        exposesOutOfScopeSurfaces: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
 });
 
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProviderAdapterCall", () => {
@@ -7772,6 +7868,14 @@ function projectAcceptedAssessmentState(database) {
   };
 }
 
+function projectAdjacentCorpusState(database) {
+  return {
+    ...projectAcceptedAssessmentState(database),
+    sources: listProgramSourceRecords(database),
+    corpusCandidates: listCorpusCandidateRecords(database),
+  };
+}
+
 function projectProtectedBackupState(backup) {
   return {
     identities: backup.identities,
@@ -7785,6 +7889,26 @@ function projectProtectedBackupState(backup) {
     acceptedOpenAnswerCheckEntities: backup.acceptedOpenAnswerCheckEntities,
     acceptedOpenAnswerCheckRevisions: backup.acceptedOpenAnswerCheckRevisions,
     openAnswerEvaluations: backup.openAnswerEvaluations,
+  };
+}
+
+function projectProtectedAdjacentBackupState(backup) {
+  return {
+    identities: backup.identities,
+    localPasswordCredentials: backup.localPasswordCredentials,
+    adminAuthorities: backup.adminAuthorities,
+    programShells: backup.programShells,
+    programMemberships: backup.programMemberships,
+    programSources: backup.programSources,
+    corpusCandidates: backup.corpusCandidates,
+    acceptedCorpusEntities: backup.acceptedCorpusEntities,
+    acceptedCorpusRevisions: backup.acceptedCorpusRevisions,
+    assessmentCriterionCandidates: backup.assessmentCriterionCandidates,
+    acceptedAssessmentCriterionEntities: backup.acceptedAssessmentCriterionEntities,
+    acceptedAssessmentCriterionRevisions: backup.acceptedAssessmentCriterionRevisions,
+    openAnswerCheckCandidates: backup.openAnswerCheckCandidates,
+    acceptedOpenAnswerCheckEntities: backup.acceptedOpenAnswerCheckEntities,
+    acceptedOpenAnswerCheckRevisions: backup.acceptedOpenAnswerCheckRevisions,
   };
 }
 
@@ -7868,6 +7992,42 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
     "period_attempt",
     "grading",
   ].some($0 => normalized.includes($0));
+}
+
+function containsAnyOutOfScopeEvaluatorWorkerSurface({
+  adminUiSource,
+  cliSource,
+  serverSource,
+  workspaceSource,
+}) {
+  const publicSources = [adminUiSource, cliSource, serverSource].join("\n");
+  const normalizedWorkspace = workspaceSource.toLowerCase();
+  return (
+    ["runOpenAnswerEvaluatorWorkerOnce", "providerAdapters", "evaluatorPolicies"].some($0 =>
+      publicSources.includes($0),
+    ) ||
+    [
+      "openai",
+      "anthropic",
+      "bullmq",
+      "rabbitmq",
+      "kafka",
+      "redis",
+      "worker_threads",
+      "child_process",
+      "mastery",
+      "weak_area",
+      "progress",
+      "next_step",
+      "grading",
+      "analytics",
+      "reporting",
+      "http://",
+      "https://",
+      "process.env",
+      "listen(",
+    ].some($0 => normalizedWorkspace.includes($0))
+  );
 }
 
 function makeIdentity({ id, state = "active" }) {

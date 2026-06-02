@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Prove evaluator worker ownership boundaries with a successful adapter execution test that snapshots adjacent domains, checks the bounded request-only adapter contract, and guards against out-of-scope worker surfaces.
 - Complete Phase 5 of the Student Workspace evaluator worker plan after adversarial review added explicit LLM-assisted completion-signature replay coverage.
 - Implement redacted evidence and successful completion for the Student Workspace evaluator worker, keeping writes behind leased Student Workspace commands with duplicate-safe terminal rerun rejection and concurrent lease-state coverage.
 - Complete Phase 4 of the Student Workspace evaluator worker plan after adversarial review expanded explicit output-validation coverage across malformed validation, criterion mismatches, blank summaries, redacted evidence, and LLM-assisted output.
