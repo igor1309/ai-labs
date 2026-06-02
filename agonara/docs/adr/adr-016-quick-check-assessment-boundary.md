@@ -55,7 +55,11 @@ Student Workspace MUST own each quick-check attempt, selected option identifier,
 
 At submission time, Student Workspace MUST resolve one accepted quick-check revision, require effective `Student` participation for its Program, validate that the selected option belongs to that revision, and record an immutable attempt.
 
-Student Workspace MUST evaluate the selected option against the answer key through a server-side boundary that does not expose the answer key through student-facing reads, faults, logs, backups intended for student delivery, or transport metadata.
+Student Workspace MUST evaluate the selected option against the answer key through a server-side boundary. Student-facing reads, faults, logs, and transport metadata MUST NOT expose answer keys or option correctness metadata.
+
+The deterministic result MUST record whether the selected answer matched the answer key. Student-facing result reads MAY expose that matched-or-not-matched outcome and the student's selected option identifier while withholding the answer key and correctness metadata for every option.
+
+Protected operational backup and restore MUST preserve accepted quick-check revisions, options, and answer keys inside the protected backup contract. They MUST NOT turn answer keys or option correctness metadata into student-facing payloads.
 
 Quick-check submission MUST be idempotent for client retries. Equivalent reuse of a client-provided idempotency key within the acting student, Program, and accepted quick-check revision boundary MUST return the same attempt result. Materially different reuse MUST be rejected without creating or changing an attempt.
 
@@ -77,6 +81,7 @@ Program Curator authority MUST NOT by itself submit attempts for a student or re
 - An accepted quick-check revision MUST belong to one stable `Program`.
 - An accepted quick-check revision MUST have at least two answer options.
 - Each accepted quick-check answer option MUST have a stable identifier within its revision.
+- Student-facing option identifiers MUST be opaque and MUST NOT encode correctness, answer-key status, or curator-only metadata.
 - An accepted quick-check revision MUST have exactly one answer-key option identifier.
 - The answer-key option identifier MUST reference an option in the accepted quick-check revision.
 - Accepted quick-check revisions MUST preserve curator attribution and provenance through the existing acceptance boundary.
@@ -95,13 +100,17 @@ Program Curator authority MUST NOT by itself submit attempts for a student or re
 - Idempotency keys MUST NOT be treated as authentication or authorization tokens.
 - Evaluation MUST compare the selected option identifier to the accepted revision answer key on the server side.
 - Student-facing reads, faults, logs, and transport metadata MUST NOT expose answer keys or option correctness metadata.
+- A deterministic result MUST preserve whether the selected answer matched the answer key.
+- Student-facing result reads MAY expose the matched-or-not-matched outcome and selected option identifier while withholding the answer key and correctness metadata for every option.
+- Protected operational backup and restore MUST preserve accepted quick-check revisions, options, and answer keys without exposing them through student-facing projections.
+- Restore MUST reject accepted quick-check revisions whose answer key is missing, duplicated, or references an option outside the revision.
 - Backup and restore MUST preserve accepted quick-check revision references and historical quick-check attempts and results.
 - Restore MUST reject quick-check attempts that reference missing Programs, missing Identities, missing accepted quick-check revisions, or selected option identifiers outside the referenced revision.
 - Updating or rejecting draft quick-check candidates MUST NOT rewrite accepted quick-check revisions or historical Student Workspace evidence.
 - Accepting a later quick-check revision MUST NOT rewrite prior attempts or results.
 - Quick-check recording MUST NOT mutate accepted corpus, curator candidates, Program Membership state, Identity state, sessions, credentials, Admin authority, or CSRF state.
 - Quick-check recording MUST NOT create mastery, weak-area, progress, review-scheduling, next-step, topic-readiness, period-readiness, grading, analytics, or reporting state.
-- Specs and implementation plans for quick checks MUST include tests or review checks for answer-key exclusion, accepted-revision references, selected-option validation, idempotent submission, immutable history, backup/restore graph validation, ownership isolation, and absence of hidden learner-state interpretation.
+- Specs and implementation plans for quick checks MUST include tests or review checks for answer-key exclusion, opaque student-facing option identifiers, bounded matched-or-not-matched result reads, accepted-revision references, selected-option validation, idempotent submission, immutable history, protected backup preservation, backup/restore graph validation, ownership isolation, and absence of hidden learner-state interpretation.
 
 ## Consequences
 
