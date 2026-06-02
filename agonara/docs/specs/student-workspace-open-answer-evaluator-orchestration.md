@@ -36,7 +36,6 @@ type StudentWorkspaceEvaluatorOrchestrationRejectionReason =
   | "evaluator_job_not_claimed"
   | "evaluator_job_lease_mismatch"
   | "evaluator_job_lease_expired"
-  | "evaluator_retry_not_allowed"
   | "evaluator_budget_exceeded"
   | "evaluator_output_rejected"
   | "validation_failed";
@@ -70,6 +69,12 @@ type OpenAnswerEvaluatorBudgetPolicy = {
   maxInputTokens?: number;
   maxOutputTokens?: number;
   maxEstimatedCostMinorUnits?: number;
+};
+
+type OpenAnswerEvaluatorOutputValidation = {
+  validatorPolicyId: string;
+  passed: boolean;
+  rejectedReason?: string;
 };
 
 type OpenAnswerEvaluatorLease = {
@@ -165,6 +170,7 @@ completeOpenAnswerEvaluatorJob(input: {
     outputTokens?: number;
     estimatedCostMinorUnits?: number;
   };
+  outputValidation?: OpenAnswerEvaluatorOutputValidation;
 }) -> StudentWorkspaceEvaluatorOrchestrationResult<{
   evaluatorJob: OpenAnswerEvaluatorJob;
   attempt: OpenAnswerAttemptSummary;
@@ -256,36 +262,37 @@ These commands and queries are internal Student Workspace domain operations. Ord
 30. `recordOpenAnswerEvaluatorJobEvidence` rejects unknown, unclaimed, mismatched-lease, expired-lease, and terminal-job cases with the specified reasons.
 31. `completeOpenAnswerEvaluatorJob` accepts only `leased` jobs with a valid, unexpired matching lease.
 32. `completeOpenAnswerEvaluatorJob` rejects provider usage that exceeds `budgetPolicy` with `evaluator_budget_exceeded`.
-33. `completeOpenAnswerEvaluatorJob` rejects malformed or unconstrained model/provider output with `evaluator_output_rejected` before it can be recorded as final feedback.
-34. `completeOpenAnswerEvaluatorJob` applies the same summary feedback, criterion feedback, supported outcome, duplicate criterion, missing criterion, extra criterion, and accepted criterion revision validation rules as `completeOpenAnswerEvaluatorRun`.
-35. `completeOpenAnswerEvaluatorJob` changes the job status to `succeeded`, clears the lease, changes the evaluator run to `succeeded`, changes the attempt status to `evaluated`, clears active evaluation failure state, and records final evaluation feedback.
-36. `completeOpenAnswerEvaluatorJob` is idempotent for repeated calls with the same `evaluatorJobId`, `leaseId`, `workerId`, and equivalent final feedback after the job already succeeded.
-37. `completeOpenAnswerEvaluatorJob` rejects attempts to complete a cancelled, failed, timed-out, superseded, or differently leased job with `evaluator_job_conflict` or `evaluator_job_lease_mismatch`.
-38. `completeOpenAnswerEvaluatorJob` must not create duplicate final evaluation records for one successful job result.
-39. `failOpenAnswerEvaluatorJob` accepts only `leased` jobs with a valid, unexpired matching lease.
-40. `failOpenAnswerEvaluatorJob` rejects missing, empty, whitespace-only, or non-string reasons with `validation_failed`.
-41. `failOpenAnswerEvaluatorJob` changes the job to `retry_waiting`, clears the lease, increments `attemptNumber`, and sets `nextRetryAt` from the retry policy when `retryRequested` is true and retry attempts remain.
-42. `failOpenAnswerEvaluatorJob` rejects retry requests when no retry attempts remain with `evaluator_retry_not_allowed`.
-43. `failOpenAnswerEvaluatorJob` changes the job to `failed`, clears the lease, changes the evaluator run to `failed`, changes the attempt status to `evaluation_failed`, and records an active evaluation failure when `retryRequested` is false.
-44. `failOpenAnswerEvaluatorJob` changes the job to `failed` and records an active evaluation failure when retry attempts are exhausted.
-45. `failOpenAnswerEvaluatorJob` must preserve submitted answer and accepted revision references.
-46. `cancelOpenAnswerEvaluatorJob` accepts jobs in `waiting`, `retry_waiting`, or `leased` status.
-47. `cancelOpenAnswerEvaluatorJob` rejects `succeeded`, `failed`, `cancelled`, and `timed_out` jobs with `evaluator_job_conflict`.
-48. `cancelOpenAnswerEvaluatorJob` rejects missing, empty, whitespace-only, or non-string reasons with `validation_failed`.
-49. `cancelOpenAnswerEvaluatorJob` changes the job to `cancelled`, clears any lease, changes the evaluator run to `cancelled`, and restores the attempt to `submitted` or `evaluation_failed` according to the pre-run failure state.
-50. `cancelOpenAnswerEvaluatorJob` must make later completion, evidence, failure, renewal, or timeout calls for the cancelled job reject.
-51. `timeOutOpenAnswerEvaluatorJob` accepts only `leased` jobs whose lease `expiresAt` is less than or equal to `now`.
-52. `timeOutOpenAnswerEvaluatorJob` rejects unexpired leases with `evaluator_job_conflict`.
-53. `timeOutOpenAnswerEvaluatorJob` rejects terminal jobs with `evaluator_job_conflict`.
-54. `timeOutOpenAnswerEvaluatorJob` changes the job to `timed_out`, clears the lease, changes the evaluator run to `failed`, changes the attempt status to `evaluation_failed`, and records an active timeout failure.
-55. `timeOutOpenAnswerEvaluatorJob` must preserve submitted answer and accepted revision references.
-56. `getOpenAnswerEvaluatorJob` returns the job by id without raw evaluator artifacts.
-57. `listClaimableOpenAnswerEvaluatorJobs` returns only `waiting` jobs and `retry_waiting` jobs whose `nextRetryAt` is due.
-58. `listClaimableOpenAnswerEvaluatorJobs` applies a bounded default and maximum limit.
-59. All job responses must omit raw prompts, raw model responses, provider diagnostics, reviewer notes, secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
-60. Orchestration commands must not mutate accepted checks, accepted criteria, accepted revisions, source records, curator candidates, Program Membership state, Identity state, sessions, or CSRF state.
-61. Orchestration commands must not create mastery, weak-area, progress, review-scheduling, next-step, grading, analytics, reporting, or institutional state.
-62. This spec does not expose public HTTP evaluation mutation routes, CLI commands, Student UI, Admin UI, Curator UI, reviewer UI, LLM provider calls, raw prompt storage, human review queues, mastery, weak-area, progress, next-step, grading, analytics, reporting, queue technology, worker process topology, deployment target, or infrastructure port behavior.
+33. `completeOpenAnswerEvaluatorJob` requires `outputValidation` with a non-empty `validatorPolicyId` and `passed: true` for `llm_assisted` jobs.
+34. `completeOpenAnswerEvaluatorJob` rejects `llm_assisted` completion with missing, malformed, or failed `outputValidation` using `evaluator_output_rejected` before feedback can be recorded.
+35. `completeOpenAnswerEvaluatorJob` accepts omitted `outputValidation` for `student_workspace`, `deterministic`, and `human_reviewed` jobs.
+36. `completeOpenAnswerEvaluatorJob` applies the same summary feedback, criterion feedback, supported outcome, duplicate criterion, missing criterion, extra criterion, and accepted criterion revision validation rules as `completeOpenAnswerEvaluatorRun`.
+37. `completeOpenAnswerEvaluatorJob` changes the job status to `succeeded`, clears the lease, changes the evaluator run to `succeeded`, changes the attempt status to `evaluated`, clears active evaluation failure state, and records final evaluation feedback.
+38. `completeOpenAnswerEvaluatorJob` is idempotent for repeated calls with the same `evaluatorJobId`, `leaseId`, `workerId`, equivalent final feedback, equivalent provider usage, and equivalent output validation after the job already succeeded.
+39. `completeOpenAnswerEvaluatorJob` rejects attempts to complete a cancelled, failed, timed-out, superseded, or differently leased job with `evaluator_job_conflict` or `evaluator_job_lease_mismatch`.
+40. `completeOpenAnswerEvaluatorJob` must not create duplicate final evaluation records for one successful job result.
+41. `failOpenAnswerEvaluatorJob` accepts only `leased` jobs with a valid, unexpired matching lease.
+42. `failOpenAnswerEvaluatorJob` rejects missing, empty, whitespace-only, or non-string reasons with `validation_failed`.
+43. `failOpenAnswerEvaluatorJob` changes the job to `retry_waiting`, clears the lease, increments `attemptNumber`, and sets `nextRetryAt` from the retry policy when `retryRequested` is true and retry attempts remain.
+44. `failOpenAnswerEvaluatorJob` changes the job to `failed`, clears the lease, changes the evaluator run to `failed`, changes the attempt status to `evaluation_failed`, and records an active evaluation failure when `retryRequested` is false.
+45. `failOpenAnswerEvaluatorJob` changes the job to `failed` and records an active evaluation failure when `retryRequested` is true but retry attempts are exhausted.
+46. `failOpenAnswerEvaluatorJob` must preserve submitted answer and accepted revision references.
+47. `cancelOpenAnswerEvaluatorJob` accepts jobs in `waiting`, `retry_waiting`, or `leased` status.
+48. `cancelOpenAnswerEvaluatorJob` rejects `succeeded`, `failed`, `cancelled`, and `timed_out` jobs with `evaluator_job_conflict`.
+49. `cancelOpenAnswerEvaluatorJob` rejects missing, empty, whitespace-only, or non-string reasons with `validation_failed`.
+50. `cancelOpenAnswerEvaluatorJob` changes the job to `cancelled`, clears any lease, changes the evaluator run to `cancelled`, and restores the attempt to `submitted` or `evaluation_failed` according to the pre-run failure state.
+51. `cancelOpenAnswerEvaluatorJob` must make later completion, evidence, failure, renewal, or timeout calls for the cancelled job reject.
+52. `timeOutOpenAnswerEvaluatorJob` accepts only `leased` jobs whose lease `expiresAt` is less than or equal to `now`.
+53. `timeOutOpenAnswerEvaluatorJob` rejects unexpired leases with `evaluator_job_conflict`.
+54. `timeOutOpenAnswerEvaluatorJob` rejects terminal jobs with `evaluator_job_conflict`.
+55. `timeOutOpenAnswerEvaluatorJob` changes the job to `timed_out`, clears the lease, changes the evaluator run to `failed`, changes the attempt status to `evaluation_failed`, and records an active timeout failure.
+56. `timeOutOpenAnswerEvaluatorJob` must preserve submitted answer and accepted revision references.
+57. `getOpenAnswerEvaluatorJob` returns the job by id without raw evaluator artifacts.
+58. `listClaimableOpenAnswerEvaluatorJobs` returns only `waiting` jobs and `retry_waiting` jobs whose `nextRetryAt` is due.
+59. `listClaimableOpenAnswerEvaluatorJobs` applies a bounded default and maximum limit.
+60. All job responses must omit raw prompts, raw model responses, provider diagnostics, reviewer notes, secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
+61. Orchestration commands must not mutate accepted checks, accepted criteria, accepted revisions, source records, curator candidates, Program Membership state, Identity state, sessions, or CSRF state.
+62. Orchestration commands must not create mastery, weak-area, progress, review-scheduling, next-step, grading, analytics, reporting, or institutional state.
+63. This spec does not expose public HTTP evaluation mutation routes, CLI commands, Student UI, Admin UI, Curator UI, reviewer UI, LLM provider calls, raw prompt storage, human review queues, mastery, weak-area, progress, next-step, grading, analytics, reporting, queue technology, worker process topology, deployment target, or infrastructure port behavior.
 
 ## Product intent traceability
 
@@ -318,30 +325,31 @@ Evidence and completion:
 12. `recordOpenAnswerEvaluatorJobEvidence` rejects unknown, unclaimed, mismatched, expired, and terminal jobs.
 13. `completeOpenAnswerEvaluatorJob` completes a valid leased job, records final feedback, marks job/run succeeded, changes the attempt to `evaluated`, and clears active failure state.
 14. `completeOpenAnswerEvaluatorJob` rejects budget-exceeded provider usage.
-15. `completeOpenAnswerEvaluatorJob` rejects unconstrained or malformed provider output.
-16. `completeOpenAnswerEvaluatorJob` is idempotent for equivalent repeated completion under the same job and lease.
-17. `completeOpenAnswerEvaluatorJob` does not create duplicate final evaluations.
-18. `completeOpenAnswerEvaluatorJob` rejects cancelled, failed, timed-out, superseded, mismatched-lease, and expired-lease cases.
+15. `completeOpenAnswerEvaluatorJob` rejects missing, malformed, or failed output validation for `llm_assisted` jobs.
+16. `completeOpenAnswerEvaluatorJob` accepts omitted output validation for non-LLM jobs.
+17. `completeOpenAnswerEvaluatorJob` is idempotent for equivalent repeated completion under the same job and lease.
+18. `completeOpenAnswerEvaluatorJob` does not create duplicate final evaluations.
+19. `completeOpenAnswerEvaluatorJob` rejects cancelled, failed, timed-out, superseded, mismatched-lease, and expired-lease cases.
 
 Failure, retry, cancellation, and timeout:
 
-19. `failOpenAnswerEvaluatorJob` schedules a retry when retry is requested and attempts remain.
-20. `failOpenAnswerEvaluatorJob` rejects retry when attempts are exhausted.
-21. `failOpenAnswerEvaluatorJob` records a final evaluation failure when retry is not requested or retries are exhausted.
-22. `cancelOpenAnswerEvaluatorJob` cancels waiting, retry-waiting, and leased jobs and restores the attempt according to pre-run failure state.
-23. `cancelOpenAnswerEvaluatorJob` makes later completion, evidence, failure, renewal, and timeout calls reject.
-24. `timeOutOpenAnswerEvaluatorJob` times out an expired leased job and records an active timeout failure.
-25. `timeOutOpenAnswerEvaluatorJob` rejects unexpired and terminal jobs.
-26. Failure, retry, cancellation, and timeout preserve submitted answers and accepted revision references.
+20. `failOpenAnswerEvaluatorJob` schedules a retry when retry is requested and attempts remain.
+21. `failOpenAnswerEvaluatorJob` records a final evaluation failure when retry is not requested.
+22. `failOpenAnswerEvaluatorJob` records a final evaluation failure when retry is requested but attempts are exhausted.
+23. `cancelOpenAnswerEvaluatorJob` cancels waiting, retry-waiting, and leased jobs and restores the attempt according to pre-run failure state.
+24. `cancelOpenAnswerEvaluatorJob` makes later completion, evidence, failure, renewal, and timeout calls reject.
+25. `timeOutOpenAnswerEvaluatorJob` times out an expired leased job and records an active timeout failure.
+26. `timeOutOpenAnswerEvaluatorJob` rejects unexpired and terminal jobs.
+27. Failure, retry, cancellation, and timeout preserve submitted answers and accepted revision references.
 
 Queries and boundaries:
 
-27. `getOpenAnswerEvaluatorJob` returns job state without raw evaluator artifacts.
-28. `listClaimableOpenAnswerEvaluatorJobs` returns only waiting and due retry jobs with bounded pagination.
-29. Job responses satisfy the redaction rules.
-30. Orchestration commands do not mutate accepted checks, accepted criteria, accepted revisions, source records, curator candidates, Program Membership state, Identity state, sessions, or CSRF state.
-31. Orchestration commands do not create mastery, weak-area, progress, review-scheduling, next-step, grading, analytics, reporting, or institutional state.
-32. Executable acceptance flow: a Student submits an open answer, Student Workspace schedules evaluator work, a worker claims the job, records redacted internal evidence, renews the lease, completes the job into final feedback tied to accepted criterion revision ids, verifies idempotent repeated completion, verifies non-claimable terminal state, verifies redaction, and verifies no public HTTP mutation route, UI, CLI, LLM provider call, human-review queue, mastery, weak-area, progress, next-step, grading, analytics, reporting, queue technology, worker topology, deployment target, or infrastructure port behavior is introduced.
+28. `getOpenAnswerEvaluatorJob` returns job state without raw evaluator artifacts.
+29. `listClaimableOpenAnswerEvaluatorJobs` returns only waiting and due retry jobs with bounded pagination.
+30. Job responses satisfy the redaction rules.
+31. Orchestration commands do not mutate accepted checks, accepted criteria, accepted revisions, source records, curator candidates, Program Membership state, Identity state, sessions, or CSRF state.
+32. Orchestration commands do not create mastery, weak-area, progress, review-scheduling, next-step, grading, analytics, reporting, or institutional state.
+33. Executable acceptance flow: a Student submits an open answer, Student Workspace schedules evaluator work, a worker claims the job, records redacted internal evidence, renews the lease, completes the job into final feedback tied to accepted criterion revision ids, verifies idempotent repeated completion, verifies non-claimable terminal state, verifies redaction, and verifies no public HTTP mutation route, UI, CLI, LLM provider call, human-review queue, mastery, weak-area, progress, next-step, grading, analytics, reporting, queue technology, worker topology, deployment target, or infrastructure port behavior is introduced.
 
 ## Done criteria
 
@@ -351,7 +359,7 @@ Queries and boundaries:
 - Leased worker operations require matching unexpired leases.
 - Completion is idempotent for equivalent repeated completion and does not duplicate final evaluations.
 - Retry behavior is bounded by explicit retry policy.
-- Budget and provider-output gates are specified before provider integration exists.
+- Budget and LLM output-validation gates are specified before provider integration exists.
 - Redaction rules prevent raw evaluator artifacts and operational secrets from surfacing through job responses.
 - Accepted corpus, curator candidates, Program Membership, Identity, session, and CSRF state are not mutated by orchestration behavior.
 - Mastery, weak-area, progress, review scheduling, next-step, grading, analytics, reporting, LLM provider calls, human-review workflow, UI, CLI, queue technology, worker topology, deployment targets, infrastructure ports, and public HTTP evaluator mutation routes remain out of scope.
