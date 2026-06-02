@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the quick-check first-slice spec after adversarial review with an explicit internal answer-key resolution boundary, deterministic query rejections, fault/log/transport redaction, and restore-time graph and matched-result validation.
 - Specify the deterministic single-select quick-check first slice: Corpus Storage owns accepted options and protected answer keys, Student Workspace owns immutable idempotent attempts and matched evidence, and student-safe delivery projections exclude curator-only metadata.
 - Harden ADR-016 after adversarial review with protected answer-key backup semantics, opaque student-facing option identifiers, bounded matched-or-not-matched result reads, and a current assessment decision trail.
 - Accept ADR-016 for deterministic single-select quick checks: Corpus Storage owns versioned accepted questions and answer keys, Student Workspace owns immutable idempotent attempts and evidence, and learner-state interpretation remains deferred.

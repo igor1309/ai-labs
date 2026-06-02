@@ -184,6 +184,17 @@ Delivery queries require effective `Student` participation for the Program. They
 
 Attempt queries require the owning `Student` Identity. Program Curator and Admin read access are out of scope for this first slice.
 
+### Internal collaborator boundary
+
+```ts
+resolveAcceptedQuickCheckRevisionForEvaluation(input: {
+  programId: ProgramId;
+  revisionId: AcceptedQuickCheckRevisionId;
+}) -> ResolveAcceptedQuickCheckRevisionForEvaluationResult
+```
+
+`resolveAcceptedQuickCheckRevisionForEvaluation` is an internal Corpus Storage query for Student Workspace submission handling. It returns the accepted revision, including its answer key, only after `submitQuickCheckAttempt` has established the active acting Identity, Program, and effective `Student` participation. It is not a product-role query and must not be reachable through student-facing, Program Curator, Admin, HTTP, or CLI surfaces.
+
 ### Result summaries
 
 ```ts
@@ -297,38 +308,43 @@ type QuickCheckAssessmentRejectionReason =
 23. Curation revision reads reject unknown revisions with `quick_check_revision_not_found`.
 24. Curation revision reads reject inactive Identities with `identity_not_active` and unauthorized callers with `admin_or_curator_required`.
 25. Delivery listing returns only current accepted quick-check revisions scoped to the requested Program.
-26. Delivery revision reads return current or historical accepted quick-check revisions as student-safe delivery projections after resolving access through the revision's Program.
-27. Delivery queries require an active Identity with effective `Student` participation for the Program.
-28. Delivery projections include revision id, Program id, check kind, title, prompt, and answerable options.
-29. Delivery projections must not expose answer keys, option correctness flags, curator-only metadata, candidate ids, rationale, accepting curator attribution, or acceptance time.
-30. `submitQuickCheckAttempt` rejects inactive or unknown acting Identities with `identity_not_active`.
-31. `submitQuickCheckAttempt` rejects unknown Programs with `program_not_found`.
-32. `submitQuickCheckAttempt` rejects callers without effective `Student` participation for the Program with `participation_required`.
-33. `submitQuickCheckAttempt` rejects unknown accepted revision ids, draft candidate ids, and rejected candidate ids with `quick_check_revision_not_found`.
-34. `submitQuickCheckAttempt` rejects accepted revisions from another Program with `quick_check_revision_program_mismatch`.
-35. `submitQuickCheckAttempt` rejects option ids outside the accepted revision with `selected_option_not_found`.
-36. `submitQuickCheckAttempt` rejects missing, empty, whitespace-only, or non-string idempotency keys with `validation_failed`.
-37. `submitQuickCheckAttempt` scopes idempotency to acting Student Identity, Program, accepted quick-check revision, and idempotency key.
-38. `submitQuickCheckAttempt` returns the original accepted attempt for an equivalent retry with the same scoped idempotency key and selected option id.
-39. `submitQuickCheckAttempt` rejects reuse of the same scoped idempotency key with a different selected option id with `idempotency_conflict`.
-40. `submitQuickCheckAttempt` creates one immutable attempt on first accepted submission.
-41. `submitQuickCheckAttempt` records whether the selected option matched the accepted revision answer key.
-42. A corrective answer creates a new attempt with a new idempotency key and must not mutate the prior attempt or result.
-43. Later accepted quick-check revisions must not rewrite historical attempts or results.
-44. Attempt queries return only attempts owned by the acting Student Identity.
-45. `getQuickCheckAttempt` rejects unknown attempts with `attempt_not_found`.
-46. `getQuickCheckAttempt` rejects inactive Identities with `identity_not_active`.
-47. `getQuickCheckAttempt` rejects non-owning Students, Program Curators, Admins, and other callers with `attempt_not_found`.
-48. `listQuickCheckAttempts` rejects inactive Identities with `identity_not_active`, unknown Programs with `program_not_found`, and callers without effective Student participation with `participation_required`.
-49. `listQuickCheckAttempts` applies `checkRevisionId` filters only after enforcing Program and owning-Student scope.
-50. Student-facing delivery and attempt responses must not expose answer keys, option correctness metadata for individual options, idempotency keys, candidate ids, curator-only metadata, password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-51. Candidate acceptance, delivery queries, attempt submission, and attempt queries must not create, update, reject, or delete open-answer checks, assessment criteria, unrelated accepted corpus, unrelated curator candidates, Program Membership state, Identity state, sessions, credentials, Admin authority, or CSRF state.
-52. Quick-check behavior must not create or update mastery, weak-area, progress, review-scheduling, next-step, topic-readiness, period-readiness, grading, analytics, or reporting state.
-53. Protected operational backup and restore must preserve quick-check candidates, accepted entities, accepted revisions, accepted options, answer keys, attempts, results, and historical references.
-54. Restore must reject accepted revisions with fewer than two options, duplicate accepted option ids, missing answer keys, duplicated answer keys, or answer keys outside the accepted revision.
-55. Restore must reject attempts that reference missing Programs, missing Identities, missing accepted quick-check revisions, or selected option ids outside the referenced revision.
-56. Restore must reject candidate records whose answer key does not reference one option on that candidate.
-57. This first slice does not expose HTTP routes, CLI commands, Student UI, Admin UI, Curator UI, option randomization, multiple-select checks, topic-level checks, period-level checks, mastery interpretation, progress interpretation, review scheduling, next-step recommendation, grading, analytics, reporting, external provider calls, evaluator workers, queues, or human review behavior.
+26. Delivery listing rejects inactive Identities with `identity_not_active`, unknown Programs with `program_not_found`, and callers without effective `Student` participation with `participation_required`.
+27. Delivery revision reads return current or historical accepted quick-check revisions as student-safe delivery projections after resolving access through the revision's Program.
+28. Delivery revision reads reject inactive Identities with `identity_not_active`, unknown revisions with `quick_check_revision_not_found`, and callers without effective `Student` participation with `participation_required`.
+29. Delivery projections include revision id, Program id, check kind, title, prompt, and answerable options.
+30. Delivery projections must not expose answer keys, option correctness flags, curator-only metadata, candidate ids, rationale, accepting curator attribution, or acceptance time.
+31. `submitQuickCheckAttempt` rejects inactive or unknown acting Identities with `identity_not_active`.
+32. `submitQuickCheckAttempt` rejects unknown Programs with `program_not_found`.
+33. `submitQuickCheckAttempt` rejects callers without effective `Student` participation for the Program with `participation_required`.
+34. `submitQuickCheckAttempt` resolves the accepted revision and answer key through `resolveAcceptedQuickCheckRevisionForEvaluation` only after establishing the active acting Identity, Program, and effective `Student` participation.
+35. `resolveAcceptedQuickCheckRevisionForEvaluation` rejects unknown accepted revision ids, draft candidate ids, and rejected candidate ids with `quick_check_revision_not_found`.
+36. `resolveAcceptedQuickCheckRevisionForEvaluation` rejects accepted revisions from another Program with `quick_check_revision_program_mismatch`.
+37. `resolveAcceptedQuickCheckRevisionForEvaluation` must not be reachable through student-facing, Program Curator, Admin, HTTP, or CLI surfaces.
+38. `submitQuickCheckAttempt` rejects option ids outside the accepted revision with `selected_option_not_found`.
+39. `submitQuickCheckAttempt` rejects missing, empty, whitespace-only, or non-string idempotency keys with `validation_failed`.
+40. `submitQuickCheckAttempt` scopes idempotency to acting Student Identity, Program, accepted quick-check revision, and idempotency key.
+41. `submitQuickCheckAttempt` returns the original accepted attempt for an equivalent retry with the same scoped idempotency key and selected option id.
+42. `submitQuickCheckAttempt` rejects reuse of the same scoped idempotency key with a different selected option id with `idempotency_conflict`.
+43. `submitQuickCheckAttempt` creates one immutable attempt on first accepted submission.
+44. `submitQuickCheckAttempt` records whether the selected option matched the accepted revision answer key.
+45. A corrective answer creates a new attempt with a new idempotency key and must not mutate the prior attempt or result.
+46. Later accepted quick-check revisions must not rewrite historical attempts or results.
+47. Attempt queries return only attempts owned by the acting Student Identity.
+48. `getQuickCheckAttempt` rejects unknown attempts with `attempt_not_found`.
+49. `getQuickCheckAttempt` rejects inactive Identities with `identity_not_active`.
+50. `getQuickCheckAttempt` rejects non-owning Students, Program Curators, Admins, and other callers with `attempt_not_found`.
+51. `listQuickCheckAttempts` rejects inactive Identities with `identity_not_active`, unknown Programs with `program_not_found`, and callers without effective Student participation with `participation_required`.
+52. `listQuickCheckAttempts` applies `checkRevisionId` filters only after enforcing Program and owning-Student scope.
+53. `listQuickCheckAttempts` rejects unknown `checkRevisionId` filters with `quick_check_revision_not_found` and cross-Program filters with `quick_check_revision_program_mismatch`.
+54. Student-facing delivery and attempt responses, faults, operational logs, and transport metadata must not expose answer keys, option correctness metadata for individual options, idempotency keys, candidate ids, curator-only metadata, password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+55. Candidate acceptance, delivery queries, attempt submission, and attempt queries must not create, update, reject, or delete open-answer checks, assessment criteria, unrelated accepted corpus, unrelated curator candidates, Program Membership state, Identity state, sessions, credentials, Admin authority, or CSRF state.
+56. Quick-check behavior must not create or update mastery, weak-area, progress, review-scheduling, next-step, topic-readiness, period-readiness, grading, analytics, or reporting state.
+57. Protected operational backup and restore must preserve quick-check candidates, accepted entities, accepted revisions, accepted options, answer keys, attempts, results, and historical references.
+58. Restore must reject candidates with missing Programs, missing creator Identities, missing or cross-Program sources, fewer than two options, duplicate candidate option ids, duplicate trimmed option text, empty option text, or answer keys outside the candidate.
+59. Restore must reject accepted entities with missing Programs, missing current revisions, or current revisions from another Program or entity.
+60. Restore must reject accepted revisions with missing Programs, missing or cross-Program entities, missing candidate provenance, missing or cross-Program source records, missing accepting Identities, fewer than two options, duplicate accepted option ids, duplicate trimmed option text, empty option text, missing answer keys, duplicated answer keys, or answer keys outside the accepted revision.
+61. Restore must reject attempts that reference missing Programs, missing Identities, missing accepted quick-check revisions, accepted quick-check revisions from another Program, selected option ids outside the referenced revision, or `matched` results inconsistent with the referenced revision answer key.
+62. This first slice does not expose HTTP routes, CLI commands, Student UI, Admin UI, Curator UI, option randomization, multiple-select checks, topic-level checks, period-level checks, mastery interpretation, progress interpretation, review scheduling, next-step recommendation, grading, analytics, reporting, external provider calls, evaluator workers, queues, or human review behavior.
 
 ## Tests (required)
 
@@ -349,24 +365,27 @@ type QuickCheckAssessmentRejectionReason =
 15. `getQuickCheckDelivery` returns a current or historical student-safe delivery projection to an effective Student.
 16. Delivery queries reject inactive Identities, unknown Programs or revisions, and callers without effective Student participation with the specified reasons.
 17. Delivery projections exclude answer keys, option correctness flags, curator-only metadata, candidate ids, rationale, accepting curator attribution, and acceptance time.
-18. `submitQuickCheckAttempt` accepts an effective Student and returns an immutable attempt referencing the accepted revision, selected option, and matched-or-not-matched result.
-19. `submitQuickCheckAttempt` rejects inactive Identities, unknown Programs, callers without effective Student participation, unknown revisions, candidate ids, cross-Program revisions, option ids outside the revision, and invalid idempotency keys with the specified reasons.
-20. `submitQuickCheckAttempt` returns the original attempt for an equivalent retry with the same scoped idempotency key and selected option id.
-21. `submitQuickCheckAttempt` rejects conflicting selected-option reuse of the same scoped idempotency key with `idempotency_conflict`.
-22. A corrective answer creates a new attempt without mutating the prior attempt or result.
-23. Later accepted quick-check revisions do not rewrite historical attempts or results.
-24. `getQuickCheckAttempt` returns the owning Student's attempt result.
-25. `getQuickCheckAttempt` rejects inactive Identities, unknown attempts, non-owning Students, Program Curators, Admins, and other callers with the specified reasons.
-26. `listQuickCheckAttempts` returns only attempts owned by the acting Student in the requested Program.
-27. `listQuickCheckAttempts` applies accepted revision filters after enforcing Program and owning-Student scope.
-28. Student-facing delivery and attempt responses exclude answer keys, per-option correctness metadata, idempotency keys, candidate ids, curator-only metadata, secrets, session identifiers, CSRF tokens, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
-29. Quick-check behavior does not mutate open-answer checks, assessment criteria, unrelated accepted corpus, unrelated curator candidates, Program Membership state, Identity state, session state, credential state, Admin authority, or CSRF state.
-30. Quick-check behavior does not create mastery, weak-area, progress, review-scheduling, next-step, topic-readiness, period-readiness, grading, analytics, or reporting state.
-31. Backup and restore preserve candidates, accepted revisions, accepted options, answer keys, attempts, matched results, and historical references.
-32. Restore rejects malformed accepted revisions with fewer than two options, duplicate option ids, missing or duplicated answer keys, or answer keys outside the accepted revision.
-33. Restore rejects attempts that reference missing Programs, missing Identities, missing accepted revisions, or selected option ids outside the referenced revision.
-34. Restore rejects candidate records whose answer key does not reference an option on that candidate.
-35. Executable acceptance flow: a Program Curator creates and accepts a quick-check candidate, a Student receives a delivery projection without the answer key, submits a matching answer, retries with the same idempotency key without duplicating the attempt, submits a corrective answer as a new attempt, the curator accepts a later revision, the Student reads historical results still linked to their original accepted revisions, backup and restore preserve the graph, and no open-answer, mastery, weak-area, progress, UI, CLI, provider, worker, queue, or human review state is introduced.
+18. `resolveAcceptedQuickCheckRevisionForEvaluation` returns an accepted revision with its answer key only through the internal Corpus Storage boundary after authorized Student submission checks.
+19. `resolveAcceptedQuickCheckRevisionForEvaluation` rejects unknown revisions, candidate ids, and cross-Program revisions with the specified reasons and is not exposed through product-role, HTTP, or CLI surfaces.
+20. `submitQuickCheckAttempt` accepts an effective Student and returns an immutable attempt referencing the accepted revision, selected option, and matched-or-not-matched result.
+21. `submitQuickCheckAttempt` rejects inactive Identities, unknown Programs, callers without effective Student participation, unknown revisions, candidate ids, cross-Program revisions, option ids outside the revision, and invalid idempotency keys with the specified reasons.
+22. `submitQuickCheckAttempt` returns the original attempt for an equivalent retry with the same scoped idempotency key and selected option id.
+23. `submitQuickCheckAttempt` rejects conflicting selected-option reuse of the same scoped idempotency key with `idempotency_conflict`.
+24. A corrective answer creates a new attempt without mutating the prior attempt or result.
+25. Later accepted quick-check revisions do not rewrite historical attempts or results.
+26. `getQuickCheckAttempt` returns the owning Student's attempt result.
+27. `getQuickCheckAttempt` rejects inactive Identities, unknown attempts, non-owning Students, Program Curators, Admins, and other callers with the specified reasons.
+28. `listQuickCheckAttempts` returns only attempts owned by the acting Student in the requested Program.
+29. `listQuickCheckAttempts` applies accepted revision filters after enforcing Program and owning-Student scope.
+30. `listQuickCheckAttempts` rejects unknown and cross-Program accepted revision filters with the specified reasons.
+31. Student-facing delivery and attempt responses, faults, operational logs, and transport metadata exclude answer keys, per-option correctness metadata, idempotency keys, candidate ids, curator-only metadata, secrets, session identifiers, CSRF tokens, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
+32. Quick-check behavior does not mutate open-answer checks, assessment criteria, unrelated accepted corpus, unrelated curator candidates, Program Membership state, Identity state, session state, credential state, Admin authority, or CSRF state.
+33. Quick-check behavior does not create mastery, weak-area, progress, review-scheduling, next-step, topic-readiness, period-readiness, grading, analytics, or reporting state.
+34. Backup and restore preserve candidates, accepted entities, accepted revisions, accepted options, answer keys, attempts, matched results, and historical references.
+35. Restore rejects malformed candidate graphs, including missing owner records, missing or cross-Program sources, invalid option collections, and invalid answer keys.
+36. Restore rejects malformed accepted-entity and accepted-revision graphs, including missing or cross-Program owner records, missing candidate provenance, invalid option collections, and invalid answer keys.
+37. Restore rejects attempts that reference missing Programs, missing Identities, missing or cross-Program accepted revisions, selected option ids outside the referenced revision, or inconsistent `matched` results.
+38. Executable acceptance flow: a Program Curator creates and accepts a quick-check candidate, a Student receives a delivery projection without the answer key, Student Workspace resolves the answer key only through its internal authorized submission boundary, the Student submits a matching answer, retries with the same idempotency key without duplicating the attempt, submits a corrective answer as a new attempt, the curator accepts a later revision, the Student reads historical results still linked to their original accepted revisions, backup and restore preserve the graph, and no open-answer, mastery, weak-area, progress, UI, CLI, provider, worker, queue, or human review state is introduced.
 
 ## Done criteria
 
@@ -374,10 +393,12 @@ type QuickCheckAssessmentRejectionReason =
 - Curator Workspace keeps draft, accepted, and rejected candidate lifecycle separate from accepted corpus.
 - Effective Program Curator participation is required for candidate commands, candidate queries, and accepted revision reads that expose answer keys.
 - Effective Student participation is required for student-safe delivery projections and Student Workspace attempt submission.
+- Student Workspace resolves answer keys only through the internal Corpus Storage evaluation boundary after authorized submission checks.
 - Student-facing delivery projections never expose answer keys, option correctness metadata, or curator-only metadata.
 - Student Workspace exposes immutable append-only attempts with selected option, matched-or-not-matched result, and scoped idempotency behavior.
 - Owning-Student attempt reads expose personal evidence without exposing answer keys, per-option correctness metadata, or idempotency keys.
-- Protected backup and restore preserve quick-check graphs and reject malformed answer-key or attempt references.
+- Student-facing responses, faults, operational logs, and transport metadata do not expose answer keys or per-option correctness metadata.
+- Protected backup and restore preserve quick-check graphs and reject malformed owner, answer-key, attempt, or matched-result references.
 - Quick-check behavior does not mutate adjacent modules or create hidden learner-state interpretation.
 - Every behavior rule is covered by a listed test or the executable acceptance flow.
 - No HTTP routes, CLI commands, UI, option randomization, multiple-select checks, topic-level checks, period-level checks, mastery interpretation, progress interpretation, review scheduling, next-step recommendation, grading, analytics, reporting, external provider calls, evaluator workers, queues, or human review behavior is introduced by this first slice.
