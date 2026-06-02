@@ -65,3 +65,32 @@ Today an agent is triggered by `@`-mentioning the bot in its topic with an instr
 
 - [ ] Decide A vs B (A preferred for a deliberate trigger).
 - [ ] If A: add the `customCommands` menu entry + update each agent's system prompt to handle `/run`.
+
+## 4. Watch: tasks/TaskFlow ledger not populating on the VPS
+
+The OpenClaw **tasks / TaskFlow ledger** records nothing on the live unit
+(`107.172.143.196`, OpenClaw `2026.5.28`), for any run type tested — foreground
+`openclaw agent`, the in-gateway `lobster` tool, or cron-dispatched isolated
+turns. Evidence and full diagnosis: `agents/research/phase4-substrate-spike-findings.md` §4.
+The docs say cron and CLI runs **should** create task records; the machinery
+exists (`task_runs` table, `recordTask`, cron files wired) and `doctor` finds no
+fault, but `runs.sqlite` stayed ~9 h stale while a 10-minute cron succeeded, and
+`tasks maintenance` is all-zeros. Root cause undetermined; likely a `2026.5.x`
+behavior/version gap. Not doctor-fixable, no config gate.
+
+This blocks consolidating run observability onto the ledger (ties to §1). Until it
+resolves, the orchestrator (ADR-001 §7 amendment) uses **cron run history**
+(`openclaw cron runs --id`) for observability instead.
+
+### Watch
+
+- **Next check: 2026-06-16** (~2 weeks). Re-verify on the then-current OpenClaw
+  version whether the ledger populates.
+- Recheck procedure: trigger one isolated cron/agent run, then
+  `openclaw tasks list --json` + `openclaw tasks maintenance --json`; compare the
+  `~/.openclaw/tasks/runs.sqlite` mtime against the run time.
+- If it populates: file/close the upstream issue note, and reconsider moving
+  observability from cron run history onto the ledger (revisit ADR-001 §7).
+- If still empty: bump the next check another 2 weeks and consider filing an
+  upstream issue with the §4 evidence; record the live observation in `inventory`
+  `vps/OpenClaw/migration.md`.

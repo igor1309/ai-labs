@@ -1,9 +1,9 @@
 ---
 date: 2026-06-02
 author: Igor Malyarov
-version: 0.0.2
+version: 0.0.3
 status: proposed
-description: "Orchestrate scoped agent runs via OpenClaw Lobster/TaskFlow; scope selection as tested TS step CLIs; observability via the TaskFlow/tasks ledger. First adopter: doc-drift scoped audit."
+description: "Orchestrate scoped agent runs; scope selection as tested TS step CLIs; one scope per run; every run resolves to an observable terminal status. Substrate amended (2026-06-02, §7): native-cron agent turn + cron run history, after the Phase 4 spike found the in-gateway Lobster/TaskFlow path unviable on the live unit. First adopter: doc-drift scoped audit."
 ---
 
 # ADR: Scoped Agent Orchestration & Observability via OpenClaw Lobster/TaskFlow
@@ -176,3 +176,57 @@ relying on the in-gateway path.
 - Not building a bespoke scheduler/queue when the platform provides one.
 - Not retiring the fleet's existing heartbeat / dead-man's-switch — any
   consolidation onto the ledger is a separate future decision.
+
+## 7. Amendment 2026-06-02 — Phase 4 spike: substrate swap to native cron + cron run history
+
+**Status:** proposed (draft for review). Supersedes the Lobster/TaskFlow substrate
+invariants below; the core decision (§3) is unchanged.
+
+The Phase 4 spike (evidence: `agents/research/phase4-substrate-spike-findings.md`,
+verified live on OpenClaw `2026.5.28` / `107.172.143.196`, 2026-06-02) resolved the
+"Known risk to spike" against the in-gateway path on two independent grounds:
+
+- A `.lobster` step that invokes a nested `openclaw agent` turn **deadlocks**
+  under the embedded runner (`lobster runtime timed out`); the `llm-task`
+  mitigation is disabled on the host and is not a drop-in for a full agent turn.
+- The **TaskFlow / tasks ledger does not populate** on this unit for any run type
+  tested (foreground agent, lobster tool, or cron-dispatched isolated turn):
+  `runs.sqlite` ~9 h stale while a 10-minute cron succeeded repeatedly,
+  `tasks maintenance` all-zeros, `doctor` finds no fault, no config gate. The
+  observability premise the ledger invariants rested on therefore does not hold
+  here.
+
+This is exactly the case §5 *Decision stability* anticipated, so it is handled
+**within ADR-001** (substrate swap), not a new ADR.
+
+### Amended invariants
+
+- **Trigger / pipeline.** The run is launched by a native **`openclaw cron`**
+  scheduled **agent turn**. The §4 invariants requiring a version-controlled
+  `.lobster` file, `lobster graph` inspectability, the pipeline running as the
+  bundled Lobster tool, and `tools.alsoAllow: ["lobster"]` **no longer apply** to
+  the production path. (Native `openclaw cron` showed no gotcha-#13 RPC timeout on
+  this unit; the §4 external-`/etc/cron.d` preference is downgraded to optional.)
+- **Worker invocation.** The worker is invoked as a plain `openclaw agent`
+  subprocess from the scheduled turn / its wrapper — never nested inside an
+  embedded Lobster tool call.
+- **Observability.** "Recorded in the TaskFlow / tasks ledger with a terminal
+  status" is replaced by: each run's terminal status is durably recorded in
+  **cron run history** (`openclaw cron runs --id <jobId>` — status, duration,
+  model, token usage, delivery), with the existing Telegram notification for
+  human glance-value. The tasks/TaskFlow ledger is **not** depended upon while the
+  watch item (`agents/TODO.md` §4) stands; if it begins populating, reconsider
+  consolidating observability onto it.
+
+### Unchanged (core decision, §3)
+
+Scope selection / state read / state commit as tested, version-controlled TS CLIs,
+never bash or LLM; one scope per run; eligible set = changed ∪ stale under budget,
+changed before stale; per-scope state distinct from any in-flight runtime state;
+auto-merge / auto-approve forbidden.
+
+### Plan impact
+
+`docs/plans/scoped-agent-orchestration-and-observability.md` Phases 5–6 must be
+revised to the native-cron substrate (no production `.lobster`); Phase 4 is closed
+by the spike findings. The selection CLIs (Phases 1–3) are untouched.

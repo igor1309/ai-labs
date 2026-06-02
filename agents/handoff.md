@@ -1,7 +1,7 @@
 ---
 date: 2026-06-02
 model: claude-opus-4-8
-description: "Session handoff: scoped-agent orchestrator (ADR-001) Phases 1–3 merged; doc-drift-agent relocation executed AND merged into gateway (5b4c6e31c); next is the Phase 4 Lobster substrate spike (human-review-gated, live gateway/VPS)."
+description: "Session handoff: scoped-agent orchestrator (ADR-001) Phases 1–3 merged; relocation merged into gateway; Phase 4 spike RESOLVED 2026-06-02 — Lobster/tasks-ledger path found unviable, substrate swapped to native cron + cron run history (ADR-001 §7). Next: revise+execute Phases 5–6."
 ---
 
 # Session Handoff — Scoped Doc-Drift Orchestrator + Relocation
@@ -63,24 +63,22 @@ Merged to trunk:
 - `worktrees/scoped-orchestrator-gateway` (`scoped-orchestrator-gateway`): integration
   branch, at `5b4c6e31c`. Carries relocation + this handoff. Gates green: 31/31
   `agents/doc-drift-agent/tests/*` pass, `tsc --noEmit` ok. `doc-drift-agent/` now lives
-  at `agents/doc-drift-agent/` with `scope-select/` (Phases 1–3) intact. The earlier WIP
-  `smoke.lobster` was **removed** (used the disproven `openclaw.invoke` mechanism) — to be
-  recreated in Phase 4 with the subprocess mechanism at `agents/doc-drift-agent/runtime/smoke.lobster`.
+  at `agents/doc-drift-agent/` with `scope-select/` (Phases 1–3) intact. No `smoke.lobster`
+  — Lobster was dropped from the production path by the Phase 4 spike (see below; ADR-001 §7).
 
-## NEXT ACTIONS — Phase 4 (Lobster substrate spike), human-review-gated
+## NEXT ACTIONS — Phase 5–6 on the amended (native-cron) substrate
 
-The plan (`docs/plans/scoped-agent-orchestration-and-observability.md`) is
-`human-review-gated`; Phases 4–6 each require human review before starting because they
-touch the live gateway/VPS. **Phase 4 also needs explicit per-session SSH authorization
-naming the VPS host.** Do not proceed into live/destructive ops without it.
+Phase 4 is **closed** (spike done 2026-06-02; see below + ADR-001 §7). The plan
+(`docs/plans/scoped-agent-orchestration-and-observability.md`) is `human-review-gated`;
+Phases 5–6 touch the live gateway/VPS and need human review + explicit per-session SSH
+authorization naming the host before starting.
 
-1. Recreate the smoke `.lobster` at `agents/doc-drift-agent/runtime/smoke.lobster` using the
-   subprocess mechanism (`openclaw agent`, NOT `openclaw.invoke`). Validate locally with the
-   bundled runner: `graph --file --format ascii` + `run --dry-run` (non-destructive, file-based).
-2. Run it gateway-side and **assert the ledger from `openclaw tasks … --json`** (parsed status):
-   a clean run registers a terminal status; an induced-failure run shows `failed`. (This is the
-   one OPEN Phase-4 item.)
-3. Commit the smoke `.lobster` + record the audit-step mechanism decision. Then gate to Phase 5.
+1. **Revise plan Phases 5–6 to the native-cron substrate** (no production `.lobster`,
+   no tasks-ledger dependency), per ADR-001 §7. Phase 5 = `select → openclaw agent
+   worker → commit` driven by a native `openclaw cron` agent turn; observability via
+   `openclaw cron runs --id`. Phase 6 = schedule + deploy (the `runtime/**` hand-deploy gap).
+2. Execute the revised Phases 5–6 (human-review-gated, live).
+3. Watch item: tasks/TaskFlow ledger gap — recheck **2026-06-16** (`agents/TODO.md` §4).
 
 Relocation cleanup (housekeeping, any time): `git worktree remove worktrees/relocate-doc-drift-agent`.
 
@@ -93,16 +91,26 @@ Move `doc-drift-agent/` → `agents/doc-drift-agent/` (consolidation; maestro al
 - Phase 2: `scripts/loc-dashboard.sh` (drop from loop/known/header → folds into `agents`), `docs/loc-dashboard.html`, `docs/products.html`, README `## Components` (remove standalone row).
 - Phase 3: logs (`docs/log.md` + relocated `agents/doc-drift-agent/docs/log.md`) + `git mv` plan to `docs/plans/implemented/`.
 
-## Phase 4 spike (paused) — findings + decisions
+## Phase 4 spike — RESOLVED 2026-06-02 (substrate swapped)
 
-Goal: prove in-gateway Lobster + resolve ADR-001 risk (embedded Lobster "does not reliably support `openclaw.invoke` for nested calls").
+Full evidence: `agents/research/phase4-substrate-spike-findings.md`. Decision recorded
+as ADR-001 §7 amendment (version 0.0.3).
 
-- Lobster plugin **loaded + enabled** (`tools.alsoAllow:["lobster"]`). No standalone `lobster` on PATH; bundled runner: `node ~/.openclaw/extensions/lobster/node_modules/@clawdbot/lobster/bin/lobster.js` (`run --file`, `run --dry-run`, `graph --file --format ascii|mermaid|dot`).
-- `.lobster` schema (from OpenClaw examples `~/.npm-global/lib/node_modules/openclaw/skills/taskflow/examples/*.lobster`): `name:` + `steps:` each `{id, command, stdin: $step.stdout, condition}`.
-- **`command:` runs via `/bin/sh` in BOTH standalone and in-gateway.** `openclaw.invoke` is NOT a shell binary → fails `127` in both. → **MECHANISM DECISION: audit step = `openclaw agent` subprocess**, not `openclaw.invoke`.
-- Ledger = `openclaw tasks list/show/flow --json`. **OPEN**: confirm a clean (passing) in-gateway smoke registers a terminal status; also assert an induced-failure run shows `failed`. (Standalone runs don't register; the one prior run failed at the invoke step.)
-- Driver agent for the nightly turn: **user chose a NEW dedicated orchestrator agent** (driver ≠ worker). NO `ai-labs` agent exists — `ai-labs` is the shared Telegram account. Agents: `main`(default), `doc-drift-agent`, `dashboard-sync-agent`, `maestro-flow-review-agent`, `son`, `wife`.
-- Recreate the smoke `.lobster` (subprocess mechanism) at `agents/doc-drift-agent/runtime/smoke.lobster` post-relocation; `graph` + `--dry-run` validate; run in-gateway; assert ledger.
+- **In-gateway Lobster path is unviable**, two independent grounds: (1) a `.lobster`
+  step that invokes a nested `openclaw agent` turn **deadlocks** under the embedded
+  runner (`lobster runtime timed out`); `llm-task` mitigation is disabled on the host.
+  (2) The **tasks/TaskFlow ledger does not populate** on this unit for any run type
+  (foreground agent, lobster tool, OR cron-dispatched isolated turn) — `runs.sqlite`
+  ~9 h stale while a 10-min cron succeeded; `tasks maintenance` all-zeros; `doctor`
+  finds no fault; no config gate. Not a Lobster/design flaw — a `2026.5.x` ledger gap.
+- **Substrate now (ADR-001 §7):** native `openclaw cron` agent turn → tested
+  `scope-select/` CLIs → `openclaw agent` worker (plain subprocess, not nested) →
+  commit. **Observability = `openclaw cron runs --id`** (terminal status/duration/
+  usage — works today) + Telegram notification. **Lobster dropped** from the prod path.
+- **Watch:** tasks/TaskFlow ledger emptiness → `agents/TODO.md` §4, recheck **2026-06-16**.
+- Confirmed working: native `openclaw cron add` (no gotcha-#13 timeout on this unit);
+  step `command:` runs via `/bin/sh`; `openclaw.invoke` is a Lobster pipeline stage,
+  not a shell binary. Mechanism finding stands; the substrate around it changed.
 
 ## Environment / key facts
 
