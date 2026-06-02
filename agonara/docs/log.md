@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 5 of the Quick Check first-slice plan with Student Workspace quick-check submission, internal answer-key resolution after Student authorization, deterministic matched results, scoped idempotency, corrective attempts, and historical revision stability.
 - Harden Phase 4 Quick Check delivery after adversarial review by extending delivery-read non-mutation coverage to candidate and accepted revision option rows.
 - Implement Phase 4 of the Quick Check first-slice plan with student-only delivery listing and historical revision reads that return answerable options while redacting answer keys, curator metadata, provenance, and operational details.
 - Harden Phase 3 Quick Check acceptance after adversarial review by covering replacement curation reads across current and historical revisions and proving adjacent domain counts stay unchanged during acceptance.

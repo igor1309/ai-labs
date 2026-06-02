@@ -240,7 +240,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 5 — Student Workspace attempt submission
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: record immutable Student-owned quick-check attempts with deterministic matched results and scoped idempotency.
 

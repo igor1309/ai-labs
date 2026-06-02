@@ -7,8 +7,10 @@ import {
   createOpenAnswerEvaluationRecord,
   createOpenAnswerEvaluatorEvidenceRecord,
   createOpenAnswerEvaluatorRunRecord,
+  createQuickCheckAttemptRecord,
   deleteOpenAnswerEvaluationFailureRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
+  getAcceptedQuickCheckRevisionRecord,
   getIdentity,
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
@@ -20,6 +22,7 @@ import {
   listOpenAnswerAttemptRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
+  listQuickCheckAttemptRecords,
   updateOpenAnswerAttemptStatus,
   updateOpenAnswerEvaluatorJobLease,
   updateOpenAnswerEvaluatorJobRecovery,
@@ -109,6 +112,8 @@ export function createStudentWorkspaceCommands({
       }),
     scheduleOpenAnswerEvaluatorJob: input =>
       scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
+    submitQuickCheckAttempt: input =>
+      submitQuickCheckAttempt({ database, generateId, getEffectiveParticipation, input, now }),
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
     timeOutOpenAnswerEvaluatorJob: input =>
@@ -1641,6 +1646,80 @@ function recordOpenAnswerEvaluationFailure({ database, input, now }) {
   });
 }
 
+function submitQuickCheckAttempt({ database, generateId, getEffectiveParticipation, input, now }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return rejected("program_not_found");
+  }
+
+  const participation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  if (!participation.allowed) {
+    return rejected("participation_required");
+  }
+
+  const resolution = resolveAcceptedQuickCheckRevisionForEvaluation({
+    database,
+    programId: program.id,
+    revisionId: input?.checkRevisionId,
+  });
+  if (resolution.status === "rejected") {
+    return rejected(resolution.reason);
+  }
+
+  if (!isNonEmptyText(input?.selectedOptionId) || !isNonEmptyText(input?.idempotencyKey)) {
+    return rejected("validation_failed");
+  }
+
+  const revision = resolution.value.acceptedQuickCheck;
+  const selectedOptionId = input.selectedOptionId.trim();
+  const selectedOption = revision.options.find($0 => $0.optionId === selectedOptionId);
+  if (!selectedOption) {
+    return rejected("selected_option_not_found");
+  }
+  const existing = findIdempotentQuickCheckAttempt(database, {
+    programId: program.id,
+    studentIdentityId: identity.id,
+    checkRevisionId: revision.revisionId,
+    idempotencyKey: input.idempotencyKey,
+  });
+  const matched = selectedOptionId === revision.answerKeyOptionId;
+  if (existing) {
+    if (existing.selectedOptionId === selectedOptionId && existing.matched === matched) {
+      return accepted({ quickCheckAttempt: summarizeQuickCheckAttempt(existing) });
+    }
+    return rejected("idempotency_conflict");
+  }
+
+  try {
+    const attempt = createQuickCheckAttemptRecord(database, {
+      id: generateId(),
+      programId: program.id,
+      studentIdentityId: identity.id,
+      checkRevisionId: revision.revisionId,
+      selectedOptionId,
+      matched,
+      idempotencyKey: input.idempotencyKey,
+      submittedAt: now().toISOString(),
+    });
+
+    return accepted({ quickCheckAttempt: summarizeQuickCheckAttempt(attempt) });
+  } catch (error) {
+    if (error instanceof StorageInvariantError) {
+      return rejected(mapQuickCheckAttemptStorageRejection(error.reason));
+    }
+    throw error;
+  }
+}
+
 function submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -1723,6 +1802,40 @@ function findIdempotentAttempt(database, { programId, studentIdentityId, checkRe
   );
 }
 
+function findIdempotentQuickCheckAttempt(
+  database,
+  { programId, studentIdentityId, checkRevisionId, idempotencyKey },
+) {
+  return (
+    listQuickCheckAttemptRecords(database, {
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+    }).find($0 => $0.idempotencyKey === idempotencyKey) ?? null
+  );
+}
+
+export function resolveAcceptedQuickCheckRevisionForEvaluation({ database, programId, revisionId }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, revisionId);
+  if (!revision) {
+    return rejected("quick_check_revision_not_found");
+  }
+  if (revision.programId !== programId) {
+    return rejected("quick_check_revision_program_mismatch");
+  }
+
+  return accepted({
+    acceptedQuickCheck: {
+      entityId: revision.entityId,
+      revisionId: revision.id,
+      programId: revision.programId,
+      checkKind: revision.checkKind,
+      options: revision.options.map($0 => ({ optionId: $0.id, text: $0.text })),
+      answerKeyOptionId: revision.answerKeyOptionId,
+    },
+  });
+}
+
 function summarizeAttempt(attempt) {
   return {
     attemptId: attempt.id,
@@ -1734,6 +1847,18 @@ function summarizeAttempt(attempt) {
     status: attempt.status,
     submittedAt: attempt.submittedAt,
     updatedAt: attempt.updatedAt,
+  };
+}
+
+function summarizeQuickCheckAttempt(attempt) {
+  return {
+    attemptId: attempt.id,
+    programId: attempt.programId,
+    studentIdentityId: attempt.studentIdentityId,
+    checkRevisionId: attempt.checkRevisionId,
+    selectedOptionId: attempt.selectedOptionId,
+    matched: attempt.matched,
+    submittedAt: attempt.submittedAt,
   };
 }
 
@@ -1895,6 +2020,22 @@ function summarizeEvaluationStatus(database, attempt) {
     detail.evaluationFailure = summarizeEvaluationFailure(failure);
   }
   return detail;
+}
+
+function mapQuickCheckAttemptStorageRejection(reason) {
+  if (reason === "quick_check_attempt_idempotency_conflict") {
+    return "idempotency_conflict";
+  }
+  if (reason === "quick_check_selected_option_mismatch") {
+    return "selected_option_not_found";
+  }
+  if (reason === "quick_check_revision_not_found") {
+    return "quick_check_revision_not_found";
+  }
+  if (reason === "quick_check_revision_program_mismatch") {
+    return "quick_check_revision_program_mismatch";
+  }
+  return "validation_failed";
 }
 
 function isValidEvaluationInput(input, attempt) {
