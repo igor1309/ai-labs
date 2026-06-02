@@ -2779,6 +2779,203 @@ test("restoreIdentityBackup_shouldClearEvaluatorRecords_beforeDeletingAttempts",
   }
 });
 
+test("exportIdentityBackup_shouldPreserveOpenAnswerEvaluatorJobOrchestrationState_onBackupRestore", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.updateAssessmentCriterionCandidateStatus(database, {
+      candidateId: "criterion-candidate-a",
+      status: "accepted",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.updateOpenAnswerCheckCandidateStatus(database, {
+      candidateId: "check-candidate-a",
+      status: "accepted",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-02T10:00:00.000Z",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        status: "evaluating",
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        jobStatus: "leased",
+        attemptNumber: 2,
+        retryPolicy: { maxAttempts: 3, backoffSeconds: [60, 300] },
+        budgetPolicy: { maxProviderCalls: 2 },
+        leaseId: "lease-a",
+        workerId: "worker-a",
+        leaseClaimedAt: "2026-06-02T10:20:00.000Z",
+        leaseExpiresAt: "2026-06-02T10:25:00.000Z",
+      }),
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    storage.restoreIdentityBackup(restored, backup);
+
+    assert.deepEqual(
+      {
+        exportedRun: backup.openAnswerEvaluatorRuns[0],
+        restoredJob: storage.getOpenAnswerEvaluatorJobRecord(restored, "evaluator-run-a"),
+      },
+      {
+        exportedRun: {
+          ...makeOpenAnswerEvaluatorRun({
+            id: "evaluator-run-a",
+            attemptId: "attempt-a",
+            programId: "program-a",
+            studentIdentityId: "identity-a",
+            checkRevisionId: "check-revision-a",
+            criterionRevisionIds: ["criterion-revision-a"],
+            jobStatus: "leased",
+            attemptNumber: 2,
+            retryPolicy: { maxAttempts: 3, backoffSeconds: [60, 300] },
+            budgetPolicy: { maxProviderCalls: 2 },
+            leaseId: "lease-a",
+            workerId: "worker-a",
+            leaseClaimedAt: "2026-06-02T10:20:00.000Z",
+            leaseExpiresAt: "2026-06-02T10:25:00.000Z",
+          }),
+        },
+        restoredJob: {
+          evaluatorJobId: "evaluator-run-a",
+          evaluatorRunId: "evaluator-run-a",
+          attemptId: "attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          runStatus: "running",
+          jobStatus: "leased",
+          attemptNumber: 2,
+          retryPolicy: { maxAttempts: 3, backoffSeconds: [60, 300] },
+          budgetPolicy: { maxProviderCalls: 2 },
+          lease: {
+            leaseId: "lease-a",
+            workerId: "worker-a",
+            claimedAt: "2026-06-02T10:20:00.000Z",
+            expiresAt: "2026-06-02T10:25:00.000Z",
+          },
+          nextRetryAt: null,
+          cancellationReason: null,
+          timeoutReason: null,
+          jobFailureReason: null,
+          createdAt: "2026-06-02T10:20:00.000Z",
+          updatedAt: "2026-06-02T10:20:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldRejectMalformedOpenAnswerEvaluatorJobOrchestrationState", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.updateAssessmentCriterionCandidateStatus(database, {
+      candidateId: "criterion-candidate-a",
+      status: "accepted",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.updateOpenAnswerCheckCandidateStatus(database, {
+      candidateId: "check-candidate-a",
+      status: "accepted",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-02T10:00:00.000Z",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        status: "evaluating",
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        jobStatus: "waiting",
+        attemptNumber: 1,
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      }),
+    );
+    const backup = storage.exportIdentityBackup(database);
+    backup.openAnswerEvaluatorRuns[0] = {
+      ...backup.openAnswerEvaluatorRuns[0],
+      jobStatus: "leased",
+      leaseId: null,
+      workerId: null,
+      leaseClaimedAt: null,
+      leaseExpiresAt: null,
+    };
+
+    assert.deepEqual(
+      captureStorageInvariantReason(() => storage.restoreIdentityBackup(restored, backup)),
+      "validation_failed",
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
 test("createOpenAnswerAttemptRecord_shouldRejectCriterionRevisionOutsideAcceptedCheck_onGraphMismatch", () => {
   const database = makeInitializedDatabase();
 

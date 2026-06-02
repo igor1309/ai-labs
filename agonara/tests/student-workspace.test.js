@@ -5315,6 +5315,208 @@ test("studentWorkspaceEvaluationStatusEvidenceExecutableAcceptance_shouldCoverDo
   }
 });
 
+test("studentWorkspaceEvaluatorOrchestrationExecutableAcceptance_shouldCoverFullJobFlow", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+
+    const submitted = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Initial answer",
+      idempotencyKey: "sensitive-idempotency-key",
+    });
+    const scheduled = commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      budgetPolicy: { maxProviderCalls: 2 },
+    });
+    const claimed = commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 300,
+    });
+    const evidence = commands.recordOpenAnswerEvaluatorJobEvidence({
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Matched accepted criterion.",
+    });
+    const renewed = commands.renewOpenAnswerEvaluatorJobLease({
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 600,
+    });
+    const completionInput = {
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+      providerUsage: { providerCalls: 1 },
+    };
+    const completed = commands.completeOpenAnswerEvaluatorJob(completionInput);
+    const repeated = commands.completeOpenAnswerEvaluatorJob(completionInput);
+    const terminalClaim = commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-b",
+      leaseDurationSeconds: 300,
+    });
+    const terminalEvidence = commands.recordOpenAnswerEvaluatorJobEvidence({
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      evidenceKind: "criterion_match",
+    });
+
+    assert.deepEqual(
+      {
+        submitted,
+        scheduled,
+        claimed,
+        evidence,
+        renewed,
+        completed,
+        repeated,
+        terminalClaim,
+        terminalEvidence,
+        evaluations: listOpenAnswerEvaluationRecords(database),
+        redacted: containsForbiddenDetail([
+          submitted,
+          scheduled,
+          claimed,
+          evidence,
+          renewed,
+          completed,
+          repeated,
+          terminalClaim,
+          terminalEvidence,
+        ]),
+        httpMutationExposed: containsAnyOutOfScopeStudentWorkspaceHttpMutation(
+          readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+        ),
+      },
+      {
+        submitted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "submitted",
+              submittedAnswer: "Initial answer",
+            }),
+          },
+        },
+        scheduled: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluating",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+            }),
+          },
+        },
+        claimed: {
+          status: "accepted",
+          value: {
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "leased",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+              lease: makeEvaluatorLease(),
+            }),
+            lease: makeEvaluatorLease(),
+          },
+        },
+        evidence: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary({
+              redactedSummary: "Matched accepted criterion.",
+            }),
+          },
+        },
+        renewed: {
+          status: "accepted",
+          value: {
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "leased",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+              lease: makeEvaluatorLease({ expiresAt: "2026-06-02T10:10:00.000Z" }),
+            }),
+            lease: makeEvaluatorLease({ expiresAt: "2026-06-02T10:10:00.000Z" }),
+          },
+        },
+        completed: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluated",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "succeeded",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        repeated: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluated",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "succeeded",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        terminalClaim: { status: "rejected", reason: "evaluator_job_conflict" },
+        terminalEvidence: { status: "rejected", reason: "evaluator_job_conflict" },
+        evaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+        redacted: false,
+        httpMutationExposed: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluation-1"],

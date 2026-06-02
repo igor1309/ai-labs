@@ -1779,6 +1779,32 @@ export function listOpenAnswerEvaluatorRunRecords(database, { attemptId = null, 
     .map(mapOpenAnswerEvaluatorRunRecord);
 }
 
+function listOpenAnswerEvaluatorRunBackupRecords(database) {
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status, requested_by_identity_id as requestedByIdentityId,
+              reviewer_identity_id as reviewerIdentityId, reviewer_capability as reviewerCapability,
+              started_at as startedAt, completed_at as completedAt, failed_at as failedAt,
+              failure_reason as failureReason, prior_failure_reason as priorFailureReason,
+              prior_failed_at as priorFailedAt, job_status as jobStatus,
+              attempt_number as attemptNumber, retry_policy_json as retryPolicyJson,
+              budget_policy_json as budgetPolicyJson, lease_id as leaseId, worker_id as workerId,
+              lease_claimed_at as leaseClaimedAt, lease_expires_at as leaseExpiresAt,
+              next_retry_at as nextRetryAt, cancellation_reason as cancellationReason,
+              timeout_reason as timeoutReason, job_failure_reason as jobFailureReason,
+              terminal_completion_signature_json as terminalCompletionSignatureJson,
+              job_created_at as jobCreatedAt, job_updated_at as jobUpdatedAt
+       from open_answer_evaluator_runs
+       order by started_at, id`,
+    )
+    .all()
+    .map(mapOpenAnswerEvaluatorRunBackupRecord);
+}
+
 export function listClaimableOpenAnswerEvaluatorJobRecords(database, { now, limit = 50 } = {}) {
   const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 50;
   return database
@@ -2865,7 +2891,7 @@ export function exportIdentityBackup(database) {
     openAnswerAttempts: listOpenAnswerAttemptRecords(database),
     openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
     openAnswerEvaluationFailures: listOpenAnswerEvaluationFailureRecords(database),
-    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunRecords(database),
+    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunBackupRecords(database),
     openAnswerEvaluatorEvidence: listOpenAnswerEvaluatorEvidenceRecords(database),
   };
 }
@@ -3165,8 +3191,23 @@ export function restoreIdentityBackup(database, backup) {
          failed_at,
          failure_reason,
          prior_failure_reason,
-         prior_failed_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         prior_failed_at,
+         job_status,
+         attempt_number,
+         retry_policy_json,
+         budget_policy_json,
+         lease_id,
+         worker_id,
+         lease_claimed_at,
+         lease_expires_at,
+         next_retry_at,
+         cancellation_reason,
+         timeout_reason,
+         job_failure_reason,
+         terminal_completion_signature_json,
+         job_created_at,
+         job_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertOpenAnswerEvaluatorEvidence = database.prepare(
       `insert into open_answer_evaluator_evidence (
@@ -3429,6 +3470,23 @@ export function restoreIdentityBackup(database, backup) {
         evaluatorRun.failureReason ?? null,
         evaluatorRun.priorFailureReason ?? null,
         evaluatorRun.priorFailedAt ?? null,
+        evaluatorRun.jobStatus ?? null,
+        evaluatorRun.attemptNumber ?? null,
+        evaluatorRun.retryPolicy ? JSON.stringify(evaluatorRun.retryPolicy) : null,
+        evaluatorRun.budgetPolicy ? JSON.stringify(evaluatorRun.budgetPolicy) : null,
+        evaluatorRun.leaseId ?? null,
+        evaluatorRun.workerId ?? null,
+        evaluatorRun.leaseClaimedAt ?? null,
+        evaluatorRun.leaseExpiresAt ?? null,
+        evaluatorRun.nextRetryAt ?? null,
+        evaluatorRun.cancellationReason ?? null,
+        evaluatorRun.timeoutReason ?? null,
+        evaluatorRun.jobFailureReason ?? null,
+        evaluatorRun.terminalCompletionSignature
+          ? JSON.stringify(evaluatorRun.terminalCompletionSignature)
+          : null,
+        evaluatorRun.jobCreatedAt ?? evaluatorRun.startedAt ?? null,
+        evaluatorRun.jobUpdatedAt ?? evaluatorRun.startedAt ?? null,
       );
     }
 
@@ -3676,6 +3734,33 @@ function mapOpenAnswerEvaluatorRunRecord(row) {
     failureReason: row.failureReason,
     priorFailureReason: row.priorFailureReason,
     priorFailedAt: row.priorFailedAt,
+  };
+}
+
+function mapOpenAnswerEvaluatorRunBackupRecord(row) {
+  const run = mapOpenAnswerEvaluatorRunRecord(row);
+  if (!row.jobStatus) {
+    return run;
+  }
+  return {
+    ...run,
+    jobStatus: row.jobStatus,
+    attemptNumber: row.attemptNumber,
+    retryPolicy: JSON.parse(row.retryPolicyJson),
+    budgetPolicy: row.budgetPolicyJson ? JSON.parse(row.budgetPolicyJson) : null,
+    leaseId: row.leaseId,
+    workerId: row.workerId,
+    leaseClaimedAt: row.leaseClaimedAt,
+    leaseExpiresAt: row.leaseExpiresAt,
+    nextRetryAt: row.nextRetryAt,
+    cancellationReason: row.cancellationReason,
+    timeoutReason: row.timeoutReason,
+    jobFailureReason: row.jobFailureReason,
+    ...(row.terminalCompletionSignatureJson
+      ? { terminalCompletionSignature: JSON.parse(row.terminalCompletionSignatureJson) }
+      : {}),
+    jobCreatedAt: row.jobCreatedAt,
+    jobUpdatedAt: row.jobUpdatedAt,
   };
 }
 
@@ -4084,6 +4169,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
 
     assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt);
     assertEvaluatorRunAttributionBackup(evaluatorRun, identitiesById);
+    assertEvaluatorJobOrchestrationBackup(evaluatorRun, attempt);
     assertEvaluatorRunLifecycleMatchesAttemptBackup({
       attempt,
       evaluatorRun,
@@ -4101,6 +4187,84 @@ function assertValidStudentAttemptGraphInBackup(backup) {
       throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
     }
     assertEvaluatorEvidenceBackup(evidence);
+  }
+}
+
+function assertEvaluatorJobOrchestrationBackup(evaluatorRun, attempt) {
+  const jobFields = [
+    evaluatorRun.jobStatus,
+    evaluatorRun.attemptNumber,
+    evaluatorRun.retryPolicy,
+    evaluatorRun.budgetPolicy,
+    evaluatorRun.leaseId,
+    evaluatorRun.workerId,
+    evaluatorRun.leaseClaimedAt,
+    evaluatorRun.leaseExpiresAt,
+    evaluatorRun.nextRetryAt,
+    evaluatorRun.cancellationReason,
+    evaluatorRun.timeoutReason,
+    evaluatorRun.jobFailureReason,
+    evaluatorRun.terminalCompletionSignature,
+    evaluatorRun.jobCreatedAt,
+    evaluatorRun.jobUpdatedAt,
+  ];
+  if (jobFields.every($0 => $0 === undefined || $0 === null)) {
+    return;
+  }
+
+  const retryPolicy = evaluatorRun.retryPolicy ?? null;
+  const budgetPolicy = evaluatorRun.budgetPolicy ?? null;
+  const leaseId = evaluatorRun.leaseId ?? null;
+  const workerId = evaluatorRun.workerId ?? null;
+  const leaseClaimedAt = evaluatorRun.leaseClaimedAt ?? null;
+  const leaseExpiresAt = evaluatorRun.leaseExpiresAt ?? null;
+
+  assertOpenAnswerEvaluatorJobState({
+    jobStatus: evaluatorRun.jobStatus ?? null,
+    attemptNumber: evaluatorRun.attemptNumber ?? null,
+    retryPolicy,
+    budgetPolicy,
+    leaseId,
+    workerId,
+    leaseClaimedAt,
+    leaseExpiresAt,
+  });
+  if (!isValidTerminalCompletionSignature(evaluatorRun.terminalCompletionSignature ?? null)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (!isNonEmptyString(evaluatorRun.jobCreatedAt) || !isNonEmptyString(evaluatorRun.jobUpdatedAt)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (attempt.status === "submitted" && evaluatorRun.jobStatus !== "cancelled") {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (attempt.status === "evaluated" && evaluatorRun.jobStatus !== "succeeded") {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (
+    attempt.status === "evaluation_failed" &&
+    !["failed", "cancelled", "timed_out"].includes(evaluatorRun.jobStatus)
+  ) {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (
+    attempt.status === "evaluating" &&
+    !["waiting", "leased", "retry_waiting"].includes(evaluatorRun.jobStatus)
+  ) {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (
+    ["retry_waiting", "failed", "timed_out", "cancelled"].includes(evaluatorRun.jobStatus) &&
+    !isValidOpenAnswerEvaluatorRecoveryState({
+      runStatus: evaluatorRun.status,
+      jobStatus: evaluatorRun.jobStatus,
+      nextRetryAt: evaluatorRun.nextRetryAt ?? null,
+      cancellationReason: evaluatorRun.cancellationReason ?? null,
+      timeoutReason: evaluatorRun.timeoutReason ?? null,
+      jobFailureReason: evaluatorRun.jobFailureReason ?? null,
+    })
+  ) {
+    throw new StorageInvariantError("validation_failed");
   }
 }
 

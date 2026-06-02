@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer evaluat
 
 Deliver the Agonara v0.0.1 Student Workspace domain contract for scheduling, claiming, renewing, retrying, cancelling, timing out, and completing open-answer evaluator work.
 
-This plan implements [Student Workspace Open-Answer Evaluator Orchestration](../specs/student-workspace-open-answer-evaluator-orchestration.md) and [ADR-014](../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md). It preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring HTTP mutation routes, provider calls, queues, UI, and deployment topology.
+This plan implements [Student Workspace Open-Answer Evaluator Orchestration](../../specs/student-workspace-open-answer-evaluator-orchestration.md) and [ADR-014](../../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring HTTP mutation routes, provider calls, queues, UI, and deployment topology.
 
 ## Execution mode
 
@@ -334,7 +334,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 7 — Backup, restore, executable acceptance, and closeout
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: preserve evaluator orchestration state through backup/restore, prove the executable acceptance flow, update traceability, and archive the completed plan.
 
@@ -375,7 +375,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 ## Done criteria
 
 - All phases are complete.
-- Every command and query in [Student Workspace Open-Answer Evaluator Orchestration](../specs/student-workspace-open-answer-evaluator-orchestration.md) is implemented and covered by tests.
+- Every command and query in [Student Workspace Open-Answer Evaluator Orchestration](../../specs/student-workspace-open-answer-evaluator-orchestration.md) is implemented and covered by tests.
 - Evaluator jobs extend evaluator-run records with separate orchestration job state and preserve one job/run identity per scheduled evaluation.
 - Scheduling, claiming, renewing, leased evidence, completion, failure, retry, cancellation, timeout, job reads, and claimable listing behavior matches the spec.
 - Lease validation prevents stale workers from recording evidence, completion, failure, or renewal.
