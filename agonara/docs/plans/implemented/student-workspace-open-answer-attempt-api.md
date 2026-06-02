@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer attempt
 
 Deliver the Agonara v0.0.1 HTTP API for Student Workspace-owned open-answer attempt submission and owner-only attempt reads through the existing session, CSRF, envelope, pagination, idempotency, and redaction conventions.
 
-This plan implements [Student Workspace Open-Answer Attempt API](../specs/student-workspace-open-answer-attempt-api.md), [Student Workspace Open-Answer Attempt First Slice](../specs/student-workspace-open-answer-attempt-first-slice.md), and [ADR-012](../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md). It preserves STU-12, STU-13, and INT-05 from [Product Intent](../intent_learning_program_app.md) by exposing submitted open-answer attempts and student-facing feedback reads without moving personal Student Workspace state into accepted Program corpus.
+This plan implements [Student Workspace Open-Answer Attempt API](../../specs/student-workspace-open-answer-attempt-api.md), [Student Workspace Open-Answer Attempt First Slice](../../specs/student-workspace-open-answer-attempt-first-slice.md), and [ADR-012](../../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md). It preserves STU-12, STU-13, and INT-05 from [Product Intent](../../intent_learning_program_app.md) by exposing submitted open-answer attempts and student-facing feedback reads without moving personal Student Workspace state into accepted Program corpus.
 
 ## Execution mode
 
@@ -30,7 +30,7 @@ Preflight check: [x] done
 
 ### In scope
 
-- HTTP route adapters for every endpoint listed in [Student Workspace Open-Answer Attempt API](../specs/student-workspace-open-answer-attempt-api.md).
+- HTTP route adapters for every endpoint listed in [Student Workspace Open-Answer Attempt API](../../specs/student-workspace-open-answer-attempt-api.md).
 - Reuse of the existing `agonara_session` cookie, `X-Agonara-CSRF` header, accepted/rejected/fault envelopes, bounded pagination, opaque cursors, JSON body classification, and redaction conventions.
 - The `X-Agonara-Idempotency-Key` header contract for attempt submission.
 - HTTP status mapping for Student Workspace attempt, session, CSRF, identity, Program, participation, accepted check revision, and idempotency rejection reasons.
@@ -251,7 +251,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 5 — Executable acceptance and closeout
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: prove the full Student Workspace attempt HTTP flow and harden out-of-scope boundaries before archiving the plan.
 
@@ -293,7 +293,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Done criteria
 
-- All HTTP endpoints in [Student Workspace Open-Answer Attempt API](../specs/student-workspace-open-answer-attempt-api.md) are implemented with the specified accepted/rejected/fault envelope shapes.
+- All HTTP endpoints in [Student Workspace Open-Answer Attempt API](../../specs/student-workspace-open-answer-attempt-api.md) are implemented with the specified accepted/rejected/fault envelope shapes.
 - The API uses the existing Identity session and CSRF transport contract.
 - Submission requires and validates `X-Agonara-Idempotency-Key`, returns equivalent retries idempotently, and rejects conflicting retries.
 - Submission stores attempts against accepted check revisions and snapshotted criterion revision ids without mutating accepted corpus or curator candidates.
