@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Student Workspace evaluation status/evidence spec after adversarial review by separating internal evaluator path kind from final evaluation summary kind and removing an undefined queued state.
 - Add the Student Workspace open-answer evaluation status and evidence spec, defining internal evaluator runs, redacted evidence metadata, owner-only status reads, and no public evaluation mutation surface.
 - Harden ADR-013 after adversarial review by making automated evaluator and human reviewer attribution explicit for future auditability.
 - Accept ADR-013 for Student Workspace open-answer evaluation governance: evaluator paths remain governed Student Workspace behavior, LLM/human evidence is bounded, and long-running evaluation must be explicit.

@@ -45,14 +45,13 @@ type OpenAnswerAttemptStatus =
   | "evaluated"
   | "evaluation_failed";
 
-type OpenAnswerEvaluatorKind =
+type OpenAnswerEvaluatorPathKind =
   | "student_workspace"
   | "deterministic"
   | "llm_assisted"
   | "human_reviewed";
 
 type OpenAnswerEvaluatorRunStatus =
-  | "queued"
   | "running"
   | "succeeded"
   | "failed"
@@ -67,7 +66,7 @@ type OpenAnswerEvaluatorRun = {
   studentIdentityId: string;
   checkRevisionId: string;
   criterionRevisionIds: string[];
-  evaluatorKind: OpenAnswerEvaluatorKind;
+  evaluatorPathKind: OpenAnswerEvaluatorPathKind;
   evaluatorPolicyId: string;
   status: OpenAnswerEvaluatorRunStatus;
   requestedByIdentityId?: string;
@@ -110,7 +109,7 @@ Evaluator evidence is internal Student Workspace evidence. The first evaluator e
 ```ts
 beginOpenAnswerEvaluatorRun(input: {
   attemptId: string;
-  evaluatorKind: OpenAnswerEvaluatorKind;
+  evaluatorPathKind: OpenAnswerEvaluatorPathKind;
   evaluatorPolicyId: string;
   requestedByIdentityId?: string;
   reviewerIdentityId?: string;
@@ -180,20 +179,20 @@ Status and evidence queries require the owning Student Identity. Program Curator
 2. `beginOpenAnswerEvaluatorRun` rejects already `evaluating` attempts with `attempt_already_evaluating`.
 3. `beginOpenAnswerEvaluatorRun` rejects already `evaluated` attempts with `attempt_already_evaluated`.
 4. `beginOpenAnswerEvaluatorRun` accepts `submitted` and `evaluation_failed` attempts.
-5. `beginOpenAnswerEvaluatorRun` requires a supported `evaluatorKind`.
+5. `beginOpenAnswerEvaluatorRun` requires a supported `evaluatorPathKind`.
 6. `beginOpenAnswerEvaluatorRun` rejects missing, empty, whitespace-only, or non-string `evaluatorPolicyId` with `validation_failed`.
 7. `beginOpenAnswerEvaluatorRun` changes the attempt status to `evaluating`.
 8. `beginOpenAnswerEvaluatorRun` records an evaluator run in `running` status by default.
 9. `beginOpenAnswerEvaluatorRun` snapshots the attempt's Program, Student Identity, accepted check revision id, and accepted criterion revision ids onto the evaluator run.
 10. `beginOpenAnswerEvaluatorRun` records `requestedByIdentityId` only when provided as an active internal Identity.
 11. `beginOpenAnswerEvaluatorRun` rejects inactive or unknown `requestedByIdentityId` with `identity_not_active`.
-12. `beginOpenAnswerEvaluatorRun` requires `reviewerIdentityId` and `reviewerCapability` when `evaluatorKind` is `human_reviewed`.
+12. `beginOpenAnswerEvaluatorRun` requires `reviewerIdentityId` and `reviewerCapability` when `evaluatorPathKind` is `human_reviewed`.
 13. `beginOpenAnswerEvaluatorRun` rejects `human_reviewed` runs with inactive or unknown `reviewerIdentityId` using `identity_not_active`.
 14. `beginOpenAnswerEvaluatorRun` rejects `human_reviewed` runs with missing, empty, whitespace-only, or non-string `reviewerCapability` using `validation_failed`.
-15. Non-human evaluator runs must not set `reviewerIdentityId` or `reviewerCapability`.
+15. Non-human evaluator runs reject `reviewerIdentityId` or `reviewerCapability` with `validation_failed`.
 16. `recordOpenAnswerEvaluatorEvidence` rejects unknown evaluator runs with `evaluator_run_not_found`.
 17. `recordOpenAnswerEvaluatorEvidence` accepts evidence only for evaluator runs in `running` status.
-18. `recordOpenAnswerEvaluatorEvidence` rejects evidence for `queued`, `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
+18. `recordOpenAnswerEvaluatorEvidence` rejects evidence for `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
 19. `recordOpenAnswerEvaluatorEvidence` rejects missing, empty, whitespace-only, or non-string `evidenceKind` with `validation_failed`.
 20. `recordOpenAnswerEvaluatorEvidence` stores evidence with `visibility: "internal"`.
 21. `recordOpenAnswerEvaluatorEvidence` accepts an omitted `redactedSummary`.
@@ -201,16 +200,16 @@ Status and evidence queries require the owning Student Identity. Program Curator
 23. `recordOpenAnswerEvaluatorEvidence` must not persist or return raw prompts, raw model responses, hidden policy instructions, model metadata payloads, evaluator diagnostics, reviewer notes, secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
 24. `completeOpenAnswerEvaluatorRun` rejects unknown evaluator runs with `evaluator_run_not_found`.
 25. `completeOpenAnswerEvaluatorRun` accepts only evaluator runs in `running` status.
-26. `completeOpenAnswerEvaluatorRun` rejects `queued`, `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
+26. `completeOpenAnswerEvaluatorRun` rejects `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
 27. `completeOpenAnswerEvaluatorRun` applies the same summary feedback, criterion feedback, supported outcome, duplicate criterion, missing criterion, extra criterion, and accepted criterion revision validation rules as `recordOpenAnswerEvaluation`.
-28. `completeOpenAnswerEvaluatorRun` records the final evaluation outcome with `evaluatorKind` from the evaluator run.
+28. `completeOpenAnswerEvaluatorRun` records the final evaluation outcome with `evaluatorKind: "student_workspace"` and preserves the run's `evaluatorPathKind` on the evaluator run.
 29. `completeOpenAnswerEvaluatorRun` changes the evaluator run to `succeeded`.
 30. `completeOpenAnswerEvaluatorRun` changes the attempt status to `evaluated`.
 31. `completeOpenAnswerEvaluatorRun` clears any active evaluation failure for the attempt.
 32. `completeOpenAnswerEvaluatorRun` must not mutate the submitted answer or accepted revision references.
 33. `failOpenAnswerEvaluatorRun` rejects unknown evaluator runs with `evaluator_run_not_found`.
 34. `failOpenAnswerEvaluatorRun` accepts only evaluator runs in `running` status.
-35. `failOpenAnswerEvaluatorRun` rejects `queued`, `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
+35. `failOpenAnswerEvaluatorRun` rejects `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
 36. `failOpenAnswerEvaluatorRun` rejects missing, empty, whitespace-only, or non-string reasons with `validation_failed`.
 37. `failOpenAnswerEvaluatorRun` changes the evaluator run to `failed`.
 38. `failOpenAnswerEvaluatorRun` changes the attempt status to `evaluation_failed`.
@@ -218,7 +217,7 @@ Status and evidence queries require the owning Student Identity. Program Curator
 40. `failOpenAnswerEvaluatorRun` preserves the submitted answer and accepted revision references.
 41. `cancelOpenAnswerEvaluatorRun` rejects unknown evaluator runs with `evaluator_run_not_found`.
 42. `cancelOpenAnswerEvaluatorRun` accepts only evaluator runs in `running` status.
-43. `cancelOpenAnswerEvaluatorRun` rejects `queued`, `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
+43. `cancelOpenAnswerEvaluatorRun` rejects `succeeded`, `failed`, or `cancelled` runs with `evaluator_run_conflict`.
 44. `cancelOpenAnswerEvaluatorRun` rejects missing, empty, whitespace-only, or non-string reasons with `validation_failed`.
 45. `cancelOpenAnswerEvaluatorRun` changes the evaluator run to `cancelled`.
 46. `cancelOpenAnswerEvaluatorRun` returns the attempt to `submitted` when no active evaluation failure existed before the run began.
@@ -251,7 +250,7 @@ Status lifecycle:
 1. `beginOpenAnswerEvaluatorRun` accepts a submitted attempt, changes the attempt to `evaluating`, and records a running evaluator run with accepted revision references.
 2. `beginOpenAnswerEvaluatorRun` accepts an `evaluation_failed` attempt and preserves the previous failure for cancellation restoration.
 3. `beginOpenAnswerEvaluatorRun` rejects unknown, evaluating, and evaluated attempts with the specified reasons.
-4. `beginOpenAnswerEvaluatorRun` rejects malformed evaluator kinds, malformed evaluator policy ids, inactive requested identities, and malformed reviewer attribution with the specified reasons.
+4. `beginOpenAnswerEvaluatorRun` rejects malformed evaluator path kinds, malformed evaluator policy ids, inactive requested identities, and malformed reviewer attribution with the specified reasons.
 5. `beginOpenAnswerEvaluatorRun` requires reviewer Identity and reviewer capability for `human_reviewed` runs.
 6. `beginOpenAnswerEvaluatorRun` rejects reviewer attribution on non-human evaluator runs.
 
