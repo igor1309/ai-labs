@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Student Workspace evaluator orchestration plan after adversarial review by separating orchestration job status from the existing evaluator-run lifecycle and treating traceability/archive checks as docs gates.
 - Add the Student Workspace open-answer evaluator orchestration implementation plan, sequencing job storage, scheduling, leases, leased evidence, idempotent completion, recovery paths, backup/restore, and executable closeout through strict TDD commits.
 - Harden the Student Workspace evaluator orchestration spec after adversarial review by resolving exhausted-retry behavior and making LLM output validation an explicit completion gate.
 - Add the Student Workspace open-answer evaluator orchestration spec, defining job scheduling, leases, retries, cancellation, timeout recovery, completion idempotency, budget gates, and redaction boundaries.

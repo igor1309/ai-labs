@@ -30,7 +30,7 @@ Preflight check: [x] done
 
 ### In scope
 
-- Student Workspace storage support for evaluator orchestration fields by extending evaluator-run records with job status, attempt number, retry policy, budget policy, lease, retry timing, and terminal reasons.
+- Student Workspace storage support for evaluator orchestration fields by extending evaluator-run records with a distinct orchestration job status, attempt number, retry policy, budget policy, lease, retry timing, and terminal reasons.
 - Student Workspace domain commands for scheduling evaluator jobs, claiming jobs, renewing leases, recording leased evidence, completing leased jobs, failing jobs with retry behavior, cancelling jobs, timing out expired leases, and reading claimable jobs.
 - Domain, storage, backup/restore, and executable acceptance tests for the orchestration contract.
 - Redaction, idempotent completion, accepted-revision preservation, and absence-of-out-of-scope-surface tests.
@@ -93,34 +93,35 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 **Status**: [ ] pending
 
-**Objective**: extend the existing evaluator-run persistence shape to support orchestration job state without introducing scheduling behavior yet.
+**Objective**: extend the existing evaluator-run persistence shape to support separate orchestration job state without changing the existing evaluator-run lifecycle contract.
 
 **Key work items**:
 
-- Extend evaluator-run storage with job status values `waiting`, `leased`, `retry_waiting`, `succeeded`, `failed`, `cancelled`, and `timed_out`.
+- Extend evaluator-run storage with a separate orchestration `jobStatus` field whose values are `waiting`, `leased`, `retry_waiting`, `succeeded`, `failed`, `cancelled`, and `timed_out`.
 - Persist attempt number, retry policy, optional budget policy, lease id, worker id, lease timestamps, next retry timestamp, cancellation reason, timeout reason, and failure reason.
 - Keep `evaluatorJobId` equivalent to the existing `evaluatorRunId` for this implementation.
 - Add storage helpers to create, read, list claimable, update job state, and clear lease fields.
-- Preserve existing evaluator-run status/evidence behavior until scheduling commands replace the internal begin-run path for orchestration callers.
+- Preserve the existing evaluator-run lifecycle status values `running`, `succeeded`, `failed`, and `cancelled`; orchestration job state is additive and MUST NOT reinterpret existing status/evidence behavior.
 - Keep raw prompt, raw model response, provider diagnostic, reviewer note, secret, session, CSRF, SQL, stack trace, filesystem path, database URL, and infrastructure fields absent from the storage shape.
 
 **TDD sequence**:
 
-1. RED/GREEN storage records a waiting evaluator job with retry and optional budget policy.
-2. RED/GREEN storage rejects malformed job statuses and malformed retry/budget policy records.
-3. RED/GREEN storage preserves attempt, Program, Student Identity, accepted check revision, and accepted criterion revision snapshots.
-4. RED/GREEN storage records, renews, and clears lease fields without changing accepted revision snapshots.
-5. RED/GREEN storage lists only waiting and due retry-waiting jobs as claimable.
-6. RED/GREEN storage rejects raw evaluator artifact fields.
-7. RED/GREEN existing evaluator-run/evidence tests remain green.
+1. RED/GREEN storage records a waiting orchestration job on an evaluator run with retry and optional budget policy.
+2. RED/GREEN storage rejects malformed orchestration job statuses and malformed retry/budget policy records.
+3. RED/GREEN storage preserves existing evaluator-run lifecycle status separately from orchestration job status.
+4. RED/GREEN storage preserves attempt, Program, Student Identity, accepted check revision, and accepted criterion revision snapshots.
+5. RED/GREEN storage records, renews, and clears lease fields without changing accepted revision snapshots.
+6. RED/GREEN storage lists only waiting and due retry-waiting jobs as claimable.
+7. RED/GREEN storage rejects raw evaluator artifact fields.
+8. RED/GREEN existing evaluator-run/evidence tests remain green.
 
 **Dependencies**: implemented evaluator-run and evidence storage from the status/evidence slice.
 
-**Risks**: extending evaluator-run records can accidentally break existing status/evidence reads. Keep compatibility tests in the targeted gate and preserve existing response shapes unless the orchestration spec explicitly adds fields.
+**Risks**: extending evaluator-run records can accidentally break existing status/evidence reads or conflate run lifecycle with orchestration job lifecycle. Keep compatibility tests in the targeted gate and preserve existing response shapes unless the orchestration spec explicitly adds fields.
 
 **Validation**:
 
-- Targeted storage tests for orchestration fields, claimable listing, lease updates, policy validation, snapshot preservation, and raw-artifact absence.
+- Targeted storage tests for orchestration fields, separate run/job status preservation, claimable listing, lease updates, policy validation, snapshot preservation, and raw-artifact absence.
 - `./scripts/run_silent.sh "agonara tests" env PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" npm test --workspace agonara`
 - `./scripts/run_silent.sh "tests" env PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" npm test`
 - `./scripts/run_silent.sh "build" env PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" npx tsc --noEmit`
@@ -139,14 +140,14 @@ Use Node commands through the repo wrapper and explicit Node path:
 - Accept `submitted` and `evaluation_failed` attempts while rejecting unknown, evaluating, and evaluated attempts with spec reasons.
 - Reuse evaluator path, evaluator policy, requester attribution, and human-review attribution validation from `beginOpenAnswerEvaluatorRun`.
 - Validate retry policy and optional budget policy.
-- Create a waiting evaluator job linked to one evaluator run and snapshot attempt references.
+- Create an evaluator run with existing lifecycle status `running`, create waiting orchestration job state on that run, and snapshot attempt references.
 - Move the attempt to `evaluating`.
 - Preserve prior active-failure state before clearing it so cancellation can restore the previous failed status.
 - Prove scheduling does not create duplicate attempts or mutate accepted corpus, Program Membership, Identity, session, or CSRF state.
 
 **TDD sequence**:
 
-1. RED/GREEN schedule accepts a submitted attempt and creates a waiting job with accepted revision snapshots.
+1. RED/GREEN schedule accepts a submitted attempt and creates an evaluator run with `running` lifecycle status plus waiting job state with accepted revision snapshots.
 2. RED/GREEN schedule accepts an evaluation-failed attempt and preserves prior failure restoration state.
 3. RED/GREEN schedule rejects unknown, evaluating, and evaluated attempts.
 4. RED/GREEN schedule rejects malformed evaluator path, policy, requester, reviewer, retry policy, and budget policy inputs.
@@ -156,7 +157,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 **Dependencies**: Phase 1.
 
-**Risks**: scheduling overlaps with existing `beginOpenAnswerEvaluatorRun` behavior. Keep orchestration scheduling as an additive command and avoid removing or reinterpreting the existing status/evidence commands during this phase.
+**Risks**: scheduling overlaps with existing `beginOpenAnswerEvaluatorRun` behavior. Keep orchestration scheduling as an additive command and avoid removing or reinterpreting the existing status/evidence commands or run lifecycle statuses during this phase.
 
 **Validation**:
 
@@ -353,8 +354,8 @@ Use Node commands through the repo wrapper and explicit Node path:
 2. RED/GREEN restore preserves valid evaluator orchestration jobs and lease/retry metadata.
 3. RED/GREEN restore rejects orphaned jobs, impossible job/run/attempt state combinations, duplicate active evaluating slots, malformed policies, unsafe leases, and unsafe summaries.
 4. RED/GREEN executable acceptance covers schedule, claim, evidence, renew, complete, idempotent repeated complete, terminal non-claimability, redaction, and no out-of-scope surfaces.
-5. RED/GREEN traceability and log updates reflect the implemented slice.
-6. RED/GREEN plan archive move preserves relative links from `plans/implemented/`.
+5. Docs gate verifies traceability and log updates reflect the implemented slice.
+6. Docs gate verifies the plan archive move preserves relative links from `plans/implemented/`.
 
 **Dependencies**: Phase 6.
 
@@ -375,7 +376,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 - All phases are complete.
 - Every command and query in [Student Workspace Open-Answer Evaluator Orchestration](../specs/student-workspace-open-answer-evaluator-orchestration.md) is implemented and covered by tests.
-- Evaluator jobs extend evaluator-run records and preserve one job/run identity per scheduled evaluation.
+- Evaluator jobs extend evaluator-run records with separate orchestration job state and preserve one job/run identity per scheduled evaluation.
 - Scheduling, claiming, renewing, leased evidence, completion, failure, retry, cancellation, timeout, job reads, and claimable listing behavior matches the spec.
 - Lease validation prevents stale workers from recording evidence, completion, failure, or renewal.
 - Completion is idempotent for equivalent repeated completion and does not duplicate final evaluations.
