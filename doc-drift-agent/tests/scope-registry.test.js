@@ -48,6 +48,16 @@ test('every project scope points at an existing dir with a non-empty doc set', (
       existsSync(`${repoRoot}${scope.docs[0]}`),
       `scope '${id}' README missing: ${scope.docs[0]}`,
     );
+    // A project that has a docs/ tree must have it in its scope's doc set.
+    if (
+      existsSync(`${repoRoot}${id}/docs`) &&
+      statSync(`${repoRoot}${id}/docs`).isDirectory()
+    ) {
+      assert.ok(
+        scope.docs.some((d) => d.startsWith(`${id}/docs/`)),
+        `scope '${id}' has a docs/ tree but its doc set omits it`,
+      );
+    }
   }
 });
 

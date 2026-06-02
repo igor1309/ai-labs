@@ -62,56 +62,56 @@
       "label": "agonara",
       "docs": [
         "agonara/README.md",
-        "agonara/docs/**"
+        "agonara/docs/**/*.md"
       ]
     },
     "claude-insights": {
       "label": "claude-insights",
       "docs": [
         "claude-insights/README.md",
-        "claude-insights/docs/**"
+        "claude-insights/docs/**/*.md"
       ]
     },
     "clipdeck": {
       "label": "clipdeck",
       "docs": [
         "clipdeck/README.md",
-        "clipdeck/docs/**"
+        "clipdeck/docs/**/*.md"
       ]
     },
     "corpus-scout": {
       "label": "corpus-scout",
       "docs": [
         "corpus-scout/README.md",
-        "corpus-scout/docs/**"
+        "corpus-scout/docs/**/*.md"
       ]
     },
     "dashboard-sync-agent": {
       "label": "dashboard-sync-agent",
       "docs": [
         "dashboard-sync-agent/README.md",
-        "dashboard-sync-agent/docs/**"
+        "dashboard-sync-agent/docs/**/*.md"
       ]
     },
     "dev-skills": {
       "label": "dev-skills",
       "docs": [
         "dev-skills/README.md",
-        "dev-skills/docs/**"
+        "dev-skills/docs/**/*.md"
       ]
     },
     "doc-drift-agent": {
       "label": "doc-drift-agent",
       "docs": [
         "doc-drift-agent/README.md",
-        "doc-drift-agent/docs/**"
+        "doc-drift-agent/docs/**/*.md"
       ]
     },
     "dragoman": {
       "label": "dragoman",
       "docs": [
         "dragoman/README.md",
-        "dragoman/docs/**"
+        "dragoman/docs/**/*.md"
       ]
     },
     "gemini": {
@@ -124,56 +124,56 @@
       "label": "loki",
       "docs": [
         "loki/README.md",
-        "loki/docs/**"
+        "loki/docs/**/*.md"
       ]
     },
     "neris": {
       "label": "neris",
       "docs": [
         "neris/README.md",
-        "neris/docs/**"
+        "neris/docs/**/*.md"
       ]
     },
     "nexum": {
       "label": "nexum",
       "docs": [
         "nexum/README.md",
-        "nexum/docs/**"
+        "nexum/docs/**/*.md"
       ]
     },
     "niora": {
       "label": "niora",
       "docs": [
         "niora/README.md",
-        "niora/docs/**"
+        "niora/docs/**/*.md"
       ]
     },
     "nomos": {
       "label": "nomos",
       "docs": [
         "nomos/README.md",
-        "nomos/docs/**"
+        "nomos/docs/**/*.md"
       ]
     },
     "notio": {
       "label": "notio",
       "docs": [
         "notio/README.md",
-        "notio/docs/**"
+        "notio/docs/**/*.md"
       ]
     },
     "oracle": {
       "label": "oracle",
       "docs": [
         "oracle/README.md",
-        "oracle/docs/**"
+        "oracle/docs/**/*.md"
       ]
     },
     "reinix": {
       "label": "reinix",
       "docs": [
         "reinix/README.md",
-        "reinix/docs/**"
+        "reinix/docs/**/*.md"
       ]
     },
     "sandbox": {
@@ -186,7 +186,7 @@
       "label": "session-digest",
       "docs": [
         "session-digest/README.md",
-        "session-digest/docs/**"
+        "session-digest/docs/**/*.md"
       ]
     },
     "tools": {
@@ -199,7 +199,7 @@
       "label": "web-scout",
       "docs": [
         "web-scout/README.md",
-        "web-scout/docs/**"
+        "web-scout/docs/**/*.md"
       ]
     }
   }
