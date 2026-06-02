@@ -24,7 +24,7 @@ already-relocated `maestro-flow-review-agent`.
 Mode: auto-continue
 Human review between tasks: no — the plan itself is human-reviewed before execution; phases then auto-continue after green gates + local commit.
 Stop conditions: failed gates, unclear scope, missing credentials/tooling, destructive operations, explicit user interruption, any unmet precondition.
-Push policy: push at closeout (single PR).
+Push policy: no PR; local merge into `scoped-orchestrator-gateway` at closeout.
 ```
 
 Each phase ends with its own commit; gates green before advancing; phases are
@@ -163,5 +163,5 @@ Out of scope for this plan:
 Final gates: ./scripts/run_silent.sh "tests" node --test agents/doc-drift-agent/tests/*.test.js ; ./scripts/run_silent.sh "build" npx tsc --noEmit ; ./scripts/loc-dashboard.sh --sort=name (no drift; matches HTML). CI's doc-drift-agent-core job is the end-to-end gate for the workflow/path-filter changes.
 Archive plan: git mv docs/plans/relocate-doc-drift-agent-under-agents.md docs/plans/implemented/ in the SAME PR as the implementation.
 Commit archive move: yes
-Push/PR: push at closeout; one PR titled for the relocation, based on `scoped-orchestrator-gateway` (merge `relocate-doc-drift-agent` → `scoped-orchestrator-gateway`, not `trunk`); merge --merge --auto --delete-branch.
+Merge: no PR; locally merge `relocate-doc-drift-agent` → `scoped-orchestrator-gateway` (not `trunk`) with a merge commit (`git merge --no-ff`), then delete the `relocate-doc-drift-agent` branch.
 ```
