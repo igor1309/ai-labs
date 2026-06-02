@@ -1437,6 +1437,334 @@ test("recordOpenAnswerEvaluatorEvidence_shouldRevalidateRunStatus_insideTransact
   }
 });
 
+test("getOpenAnswerEvaluationStatus_shouldReturnOwnerStatusWithActiveRunEvidence", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Matched accepted criterion.",
+    });
+
+    const result = commands.getOpenAnswerEvaluationStatus?.({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(result, {
+      status: "accepted",
+      value: {
+        attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+        evaluatorRun: makeEvaluatorRunSummary(),
+        evidence: [
+          makeEvaluatorEvidenceSummary({ redactedSummary: "Matched accepted criterion." }),
+        ],
+      },
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("listOpenAnswerEvaluatorEvidence_shouldReturnOwnerEvidenceMetadata", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Matched accepted criterion.",
+    });
+
+    const result = commands.listOpenAnswerEvaluatorEvidence?.({
+      actingIdentityId: "identity-student",
+      evaluatorRunId: "evaluator-run-1",
+    });
+
+    assert.deepEqual(result, {
+      status: "accepted",
+      value: {
+        evidence: [
+          makeEvaluatorEvidenceSummary({ redactedSummary: "Matched accepted criterion." }),
+        ],
+      },
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("getOpenAnswerEvaluationStatus_shouldOmitTerminalRunsAndReturnFinalEvaluation", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Matched accepted criterion.",
+    });
+    commands.completeOpenAnswerEvaluatorRun({
+      evaluatorRunId: "evaluator-run-1",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    const result = commands.getOpenAnswerEvaluationStatus({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(result, {
+      status: "accepted",
+      value: {
+        attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluated" }),
+        evidence: [],
+        evaluation: makeEvaluationSummary({
+          evaluationId: "evaluation-1",
+          attemptId: "attempt-1",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+      },
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("getOpenAnswerEvaluationStatus_shouldReturnActiveFailure", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.failOpenAnswerEvaluatorRun({
+      evaluatorRunId: "evaluator-run-1",
+      reason: "temporary evaluator outage",
+    });
+
+    const result = commands.getOpenAnswerEvaluationStatus({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(result, {
+      status: "accepted",
+      value: {
+        attempt: makeAttemptSummary({
+          attemptId: "attempt-1",
+          status: "evaluation_failed",
+        }),
+        evidence: [],
+        evaluationFailure: makeEvaluationFailureSummary({ reason: "temporary evaluator outage" }),
+      },
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("evaluationStatusAndEvidenceReads_shouldRejectInactiveUnknownAndMissingTargets", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    assert.deepEqual(
+      {
+        statusUnknownIdentity: commands.getOpenAnswerEvaluationStatus({
+          actingIdentityId: "identity-unknown",
+          attemptId: "attempt-1",
+        }),
+        statusInactiveIdentity: commands.getOpenAnswerEvaluationStatus({
+          actingIdentityId: "identity-disabled",
+          attemptId: "attempt-1",
+        }),
+        statusUnknownAttempt: commands.getOpenAnswerEvaluationStatus({
+          actingIdentityId: "identity-student",
+          attemptId: "attempt-unknown",
+        }),
+        evidenceUnknownIdentity: commands.listOpenAnswerEvaluatorEvidence({
+          actingIdentityId: "identity-unknown",
+          evaluatorRunId: "evaluator-run-1",
+        }),
+        evidenceInactiveIdentity: commands.listOpenAnswerEvaluatorEvidence({
+          actingIdentityId: "identity-disabled",
+          evaluatorRunId: "evaluator-run-1",
+        }),
+        evidenceUnknownRun: commands.listOpenAnswerEvaluatorEvidence({
+          actingIdentityId: "identity-student",
+          evaluatorRunId: "evaluator-run-unknown",
+        }),
+      },
+      {
+        statusUnknownIdentity: { status: "rejected", reason: "identity_not_active" },
+        statusInactiveIdentity: { status: "rejected", reason: "identity_not_active" },
+        statusUnknownAttempt: { status: "rejected", reason: "attempt_not_found" },
+        evidenceUnknownIdentity: { status: "rejected", reason: "identity_not_active" },
+        evidenceInactiveIdentity: { status: "rejected", reason: "identity_not_active" },
+        evidenceUnknownRun: { status: "rejected", reason: "evaluator_run_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("evaluationStatusAndEvidenceReads_shouldHideAttemptsFromNonOwners", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-06-02T09:00:00.000Z",
+    });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    assert.deepEqual(
+      {
+        statusOtherStudent: commands.getOpenAnswerEvaluationStatus({
+          actingIdentityId: "identity-active-other",
+          attemptId: "attempt-1",
+        }),
+        statusCurator: commands.getOpenAnswerEvaluationStatus({
+          actingIdentityId: "identity-curator",
+          attemptId: "attempt-1",
+        }),
+        statusAdmin: commands.getOpenAnswerEvaluationStatus({
+          actingIdentityId: "identity-admin",
+          attemptId: "attempt-1",
+        }),
+        evidenceOtherStudent: commands.listOpenAnswerEvaluatorEvidence({
+          actingIdentityId: "identity-active-other",
+          evaluatorRunId: "evaluator-run-1",
+        }),
+        evidenceCurator: commands.listOpenAnswerEvaluatorEvidence({
+          actingIdentityId: "identity-curator",
+          evaluatorRunId: "evaluator-run-1",
+        }),
+        evidenceAdmin: commands.listOpenAnswerEvaluatorEvidence({
+          actingIdentityId: "identity-admin",
+          evaluatorRunId: "evaluator-run-1",
+        }),
+      },
+      {
+        statusOtherStudent: { status: "rejected", reason: "attempt_not_found" },
+        statusCurator: { status: "rejected", reason: "attempt_not_found" },
+        statusAdmin: { status: "rejected", reason: "attempt_not_found" },
+        evidenceOtherStudent: { status: "rejected", reason: "attempt_not_found" },
+        evidenceCurator: { status: "rejected", reason: "attempt_not_found" },
+        evidenceAdmin: { status: "rejected", reason: "attempt_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("evaluationStatusAndEvidenceReads_shouldNotExposeSecretsOrDiagnostics", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "sensitive-idempotency-key" });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Allowed bounded summary.",
+      rawPrompt: "raw prompt with correct horse battery staple",
+      rawModelResponse: "raw model response with operator-secret",
+      modelMetadata: { endpoint: "127.0.0.1", authorization: "Bearer token" },
+      evaluatorDiagnostics: "select * from internal_table",
+      stackTrace: "/tmp/stack trace",
+      databaseUrl: "postgres://database-url",
+    });
+
+    const status = commands.getOpenAnswerEvaluationStatus({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+    const evidence = commands.listOpenAnswerEvaluatorEvidence({
+      actingIdentityId: "identity-student",
+      evaluatorRunId: "evaluator-run-1",
+    });
+    const rejected = commands.listOpenAnswerEvaluatorEvidence({
+      actingIdentityId: "identity-active-other",
+      evaluatorRunId: "evaluator-run-1",
+    });
+
+    assert.deepEqual(containsForbiddenDetail([status, evidence, rejected]), false);
+  } finally {
+    database.close();
+  }
+});
+
 test("completeOpenAnswerEvaluatorRun_shouldRecordEvaluationAndMarkRunSucceeded", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "evaluator-run-1", "evaluation-1"],
@@ -2880,7 +3208,9 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "completeOpenAnswerEvaluatorRun",
       "failOpenAnswerEvaluatorRun",
       "getOpenAnswerAttempt",
+      "getOpenAnswerEvaluationStatus",
       "listOpenAnswerAttempts",
+      "listOpenAnswerEvaluatorEvidence",
       "markOpenAnswerAttemptEvaluating",
       "recordOpenAnswerEvaluation",
       "recordOpenAnswerEvaluationFailure",
@@ -3117,7 +3447,9 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "completeOpenAnswerEvaluatorRun",
           "failOpenAnswerEvaluatorRun",
           "getOpenAnswerAttempt",
+          "getOpenAnswerEvaluationStatus",
           "listOpenAnswerAttempts",
+          "listOpenAnswerEvaluatorEvidence",
           "markOpenAnswerAttemptEvaluating",
           "recordOpenAnswerEvaluation",
           "recordOpenAnswerEvaluationFailure",

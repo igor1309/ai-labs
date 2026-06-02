@@ -15,6 +15,8 @@ import {
   getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
   listOpenAnswerAttemptRecords,
+  listOpenAnswerEvaluatorEvidenceRecords,
+  listOpenAnswerEvaluatorRunRecords,
   updateOpenAnswerAttemptStatus,
   updateOpenAnswerEvaluatorRunStatus,
 } from "./storage.js";
@@ -45,8 +47,12 @@ export function createStudentWorkspaceCommands({
       failOpenAnswerEvaluatorRun({ database, input, now }),
     getOpenAnswerAttempt: input =>
       getOpenAnswerAttempt({ database, input }),
+    getOpenAnswerEvaluationStatus: input =>
+      getOpenAnswerEvaluationStatus({ database, input }),
     listOpenAnswerAttempts: input =>
       listOpenAnswerAttempts({ database, getEffectiveParticipation, input }),
+    listOpenAnswerEvaluatorEvidence: input =>
+      listOpenAnswerEvaluatorEvidence({ database, input }),
     markOpenAnswerAttemptEvaluating: input =>
       markOpenAnswerAttemptEvaluating({ database, input, now }),
     recordOpenAnswerEvaluation: input =>
@@ -377,6 +383,41 @@ function getOpenAnswerAttempt({ database, input }) {
   return accepted(summarizeAttemptDetail(database, attempt));
 }
 
+function getOpenAnswerEvaluationStatus({ database, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  if (!attempt || attempt.studentIdentityId !== identity.id) {
+    return rejected("attempt_not_found");
+  }
+
+  return accepted(summarizeEvaluationStatus(database, attempt));
+}
+
+function listOpenAnswerEvaluatorEvidence({ database, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
+  if (!evaluatorRun) {
+    return rejected("evaluator_run_not_found");
+  }
+  if (evaluatorRun.studentIdentityId !== identity.id) {
+    return rejected("attempt_not_found");
+  }
+
+  return accepted({
+    evidence: listOpenAnswerEvaluatorEvidenceRecords(database, {
+      evaluatorRunId: evaluatorRun.id,
+    }).map(summarizeEvaluatorEvidence),
+  });
+}
+
 function listOpenAnswerAttempts({ database, getEffectiveParticipation, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -673,6 +714,32 @@ function summarizeEvaluationFailure(failure) {
 
 function summarizeAttemptDetail(database, attempt) {
   const detail = { attempt: summarizeAttempt(attempt) };
+  const evaluation = getOpenAnswerEvaluationRecordByAttemptId(database, attempt.id);
+  if (evaluation) {
+    detail.evaluation = summarizeEvaluation(evaluation);
+  }
+  const failure = getOpenAnswerEvaluationFailureRecord(database, attempt.id);
+  if (failure) {
+    detail.evaluationFailure = summarizeEvaluationFailure(failure);
+  }
+  return detail;
+}
+
+function summarizeEvaluationStatus(database, attempt) {
+  const detail = {
+    attempt: summarizeAttempt(attempt),
+    evidence: [],
+  };
+  const evaluatorRun = listOpenAnswerEvaluatorRunRecords(database, {
+    attemptId: attempt.id,
+    status: "running",
+  })[0];
+  if (evaluatorRun) {
+    detail.evaluatorRun = summarizeEvaluatorRun(evaluatorRun);
+    detail.evidence = listOpenAnswerEvaluatorEvidenceRecords(database, {
+      evaluatorRunId: evaluatorRun.id,
+    }).map(summarizeEvaluatorEvidence);
+  }
   const evaluation = getOpenAnswerEvaluationRecordByAttemptId(database, attempt.id);
   if (evaluation) {
     detail.evaluation = summarizeEvaluation(evaluation);

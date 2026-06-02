@@ -253,7 +253,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 5 — Owner-only status and evidence queries
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: expose owner-only domain reads for explicit evaluation status and bounded evidence metadata without leaking private attempt existence or raw artifacts.
 

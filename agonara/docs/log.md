@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement owner-only Student Workspace evaluation status and evaluator evidence reads with private non-owner errors, terminal-run omission, redacted evidence metadata, and final evaluation/failure detail coverage.
 - Harden evaluator-run terminal transitions after adversarial review with transaction-boundary run-status regression coverage for completion, failure, and cancellation.
 - Implement evaluator-run terminal transitions for completion, failure, and cancellation with final-evaluation compatibility, active-failure recording, prior-failure restoration, and terminal conflict coverage.
 - Harden evaluator evidence recording after adversarial review by revalidating running-run state inside the evidence-write transaction.
