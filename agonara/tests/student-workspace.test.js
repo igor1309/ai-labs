@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createProgramCommands } from "../src/program.js";
 import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
@@ -1482,12 +1483,18 @@ test("listOpenAnswerAttempts_shouldRejectInactiveUnknownProgramNonStudentAndUnsu
           programId: "program-a",
           status: "archived",
         }),
+        checkRevisionId: commands.listOpenAnswerAttempts({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          checkRevisionId: "",
+        }),
       },
       {
         inactive: { status: "rejected", reason: "identity_not_active" },
         unknownProgram: { status: "rejected", reason: "program_not_found" },
         nonStudent: { status: "rejected", reason: "participation_required" },
         status: { status: "rejected", reason: "validation_failed" },
+        checkRevisionId: { status: "rejected", reason: "validation_failed" },
       },
     );
   } finally {
@@ -1539,6 +1546,20 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "recordOpenAnswerEvaluationFailure",
       "submitOpenAnswerAttempt",
     ]);
+    assert.deepEqual(
+      containsAnyStudentWorkspaceAdapterSurface([
+        readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+        readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+        readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+      ]),
+      false,
+    );
+    assert.deepEqual(
+      containsAnyOutOfScopeStudentWorkspaceBehavior(
+        readFileSync(new URL("../src/student-workspace.js", import.meta.url), "utf8"),
+      ),
+      false,
+    );
   } finally {
     database.close();
   }
@@ -1839,6 +1860,35 @@ function containsForbiddenDetail(values) {
     "stack",
     "127.0.0.1",
   ].some($0 => serialized.includes($0));
+}
+
+function containsAnyStudentWorkspaceAdapterSurface(sources) {
+  return sources.some(source => [
+    "createStudentWorkspaceCommands",
+    "getOpenAnswerAttempt",
+    "listOpenAnswerAttempts",
+    "/student-workspace",
+    "student-workspace",
+  ].some($0 => source.includes($0)));
+}
+
+function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
+  const normalized = source.toLowerCase();
+  return [
+    "llm",
+    "provider",
+    "raw_prompt",
+    "raw_model",
+    "human_review",
+    "reviewer",
+    "mastery",
+    "weak_area",
+    "progress",
+    "quick_check",
+    "topic_attempt",
+    "period_attempt",
+    "grading",
+  ].some($0 => normalized.includes($0));
 }
 
 function makeIdentity({ id, state = "active" }) {

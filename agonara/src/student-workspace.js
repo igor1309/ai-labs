@@ -77,6 +77,9 @@ function listOpenAnswerAttempts({ database, getEffectiveParticipation, input }) 
   if (input?.status !== undefined && !supportedAttemptStatuses.has(input.status)) {
     return rejected("validation_failed");
   }
+  if (input?.checkRevisionId !== undefined && !isNonEmptyText(input.checkRevisionId)) {
+    return rejected("validation_failed");
+  }
 
   return accepted({
     attempts: listOpenAnswerAttemptRecords(database, {
