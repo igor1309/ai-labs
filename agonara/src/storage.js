@@ -240,6 +240,45 @@ export function initializeIdentityStorage(database) {
       failed_at text not null
     );
 
+    create table if not exists open_answer_evaluator_runs (
+      id text primary key,
+      attempt_id text not null references open_answer_attempts(id),
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      check_revision_id text not null references accepted_open_answer_check_revisions(id),
+      criterion_revision_ids_json text not null,
+      evaluator_path_kind text not null check (
+        evaluator_path_kind in ('student_workspace', 'deterministic', 'llm_assisted', 'human_reviewed')
+      ),
+      evaluator_policy_id text not null,
+      status text not null check (status in ('running', 'succeeded', 'failed', 'cancelled')),
+      requested_by_identity_id text references identities(id),
+      reviewer_identity_id text references identities(id),
+      reviewer_capability text,
+      started_at text,
+      completed_at text,
+      failed_at text,
+      failure_reason text,
+      prior_failure_reason text,
+      prior_failed_at text,
+      unique (id, attempt_id)
+    );
+
+    create unique index if not exists one_running_open_answer_evaluator_run_per_attempt
+      on open_answer_evaluator_runs (attempt_id)
+      where status = 'running';
+
+    create table if not exists open_answer_evaluator_evidence (
+      id text primary key,
+      evaluator_run_id text not null references open_answer_evaluator_runs(id),
+      attempt_id text not null references open_answer_attempts(id),
+      evidence_kind text not null,
+      visibility text not null check (visibility in ('internal')),
+      redacted_summary text,
+      recorded_at text not null,
+      foreign key (evaluator_run_id, attempt_id) references open_answer_evaluator_runs(id, attempt_id)
+    );
+
     create table if not exists accepted_corpus_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -1498,6 +1537,200 @@ export function deleteOpenAnswerEvaluationFailureRecord(database, attemptId) {
   database.prepare("delete from open_answer_evaluation_failures where attempt_id = ?").run(attemptId);
 }
 
+export function createOpenAnswerEvaluatorRunRecord(
+  database,
+  {
+    id,
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+    evaluatorPathKind,
+    evaluatorPolicyId,
+    status,
+    requestedByIdentityId = null,
+    reviewerIdentityId = null,
+    reviewerCapability = null,
+    startedAt = null,
+    completedAt = null,
+    failedAt = null,
+    failureReason = null,
+    priorFailureReason = null,
+    priorFailedAt = null,
+  },
+) {
+  assertOpenAnswerEvaluatorRunMatchesAttempt(database, {
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+  });
+  assertOpenAnswerEvaluatorRunScopeAvailable(database, { attemptId, status });
+
+  database
+    .prepare(
+      `insert into open_answer_evaluator_runs (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_path_kind,
+         evaluator_policy_id,
+         status,
+         requested_by_identity_id,
+         reviewer_identity_id,
+         reviewer_capability,
+         started_at,
+         completed_at,
+         failed_at,
+         failure_reason,
+         prior_failure_reason,
+         prior_failed_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      attemptId,
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+      JSON.stringify(criterionRevisionIds),
+      evaluatorPathKind,
+      evaluatorPolicyId,
+      status,
+      requestedByIdentityId,
+      reviewerIdentityId,
+      reviewerCapability,
+      startedAt,
+      completedAt,
+      failedAt,
+      failureReason,
+      priorFailureReason,
+      priorFailedAt,
+    );
+
+  return getOpenAnswerEvaluatorRunRecord(database, id);
+}
+
+export function getOpenAnswerEvaluatorRunRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status, requested_by_identity_id as requestedByIdentityId,
+              reviewer_identity_id as reviewerIdentityId, reviewer_capability as reviewerCapability,
+              started_at as startedAt, completed_at as completedAt, failed_at as failedAt,
+              failure_reason as failureReason, prior_failure_reason as priorFailureReason,
+              prior_failed_at as priorFailedAt
+       from open_answer_evaluator_runs
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapOpenAnswerEvaluatorRunRecord(row) : null;
+}
+
+export function listOpenAnswerEvaluatorRunRecords(database, { attemptId = null, status = null } = {}) {
+  const filters = [];
+  const values = [];
+
+  if (attemptId !== null) {
+    filters.push("attempt_id = ?");
+    values.push(attemptId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status, requested_by_identity_id as requestedByIdentityId,
+              reviewer_identity_id as reviewerIdentityId, reviewer_capability as reviewerCapability,
+              started_at as startedAt, completed_at as completedAt, failed_at as failedAt,
+              failure_reason as failureReason, prior_failure_reason as priorFailureReason,
+              prior_failed_at as priorFailedAt
+       from open_answer_evaluator_runs
+       ${whereClause}
+       order by started_at, id`,
+    )
+    .all(...values)
+    .map(mapOpenAnswerEvaluatorRunRecord);
+}
+
+export function updateOpenAnswerEvaluatorRunStatus(
+  database,
+  { evaluatorRunId, status, completedAt = null, failedAt = null, failureReason = null },
+) {
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set status = ?, completed_at = ?, failed_at = ?, failure_reason = ?
+       where id = ?`,
+    )
+    .run(status, completedAt, failedAt, failureReason, evaluatorRunId);
+
+  return getOpenAnswerEvaluatorRunRecord(database, evaluatorRunId);
+}
+
+export function createOpenAnswerEvaluatorEvidenceRecord(
+  database,
+  { id, evaluatorRunId, attemptId, evidenceKind, redactedSummary = null, recordedAt },
+) {
+  assertOpenAnswerEvaluatorEvidenceMatchesRun(database, { evaluatorRunId, attemptId });
+
+  database
+    .prepare(
+      `insert into open_answer_evaluator_evidence (
+         id, evaluator_run_id, attempt_id, evidence_kind, visibility, redacted_summary, recorded_at
+       ) values (?, ?, ?, ?, 'internal', ?, ?)`,
+    )
+    .run(id, evaluatorRunId, attemptId, evidenceKind, redactedSummary, recordedAt);
+
+  return getOpenAnswerEvaluatorEvidenceRecord(database, id);
+}
+
+export function getOpenAnswerEvaluatorEvidenceRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, evaluator_run_id as evaluatorRunId, attempt_id as attemptId,
+              evidence_kind as evidenceKind, visibility, redacted_summary as redactedSummary,
+              recorded_at as recordedAt
+       from open_answer_evaluator_evidence
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listOpenAnswerEvaluatorEvidenceRecords(database, { evaluatorRunId = null } = {}) {
+  const whereClause = evaluatorRunId === null ? "" : "where evaluator_run_id = ?";
+  const values = evaluatorRunId === null ? [] : [evaluatorRunId];
+
+  return database
+    .prepare(
+      `select id, evaluator_run_id as evaluatorRunId, attempt_id as attemptId,
+              evidence_kind as evidenceKind, visibility, redacted_summary as redactedSummary,
+              recorded_at as recordedAt
+       from open_answer_evaluator_evidence
+       ${whereClause}
+       order by recorded_at, id`,
+    )
+    .all(...values);
+}
+
 export function createAcceptedCorpusEntityRecord(
   database,
   { id, programId, acceptedKind, currentRevisionId },
@@ -2126,6 +2359,45 @@ function assertOpenAnswerEvaluationMatchesAttempt(
   }
   if (JSON.stringify(attempt.criterionRevisionIds) !== JSON.stringify(criterionRevisionIds)) {
     throw new StorageInvariantError("attempt_criterion_revisions_mismatch");
+  }
+}
+
+function assertOpenAnswerEvaluatorRunMatchesAttempt(
+  database,
+  { attemptId, programId, studentIdentityId, checkRevisionId, criterionRevisionIds },
+) {
+  const attempt = getOpenAnswerAttemptRecord(database, attemptId);
+  if (!attempt) {
+    throw new StorageInvariantError("attempt_not_found");
+  }
+
+  if (
+    attempt.programId !== programId ||
+    attempt.studentIdentityId !== studentIdentityId ||
+    attempt.checkRevisionId !== checkRevisionId ||
+    JSON.stringify(attempt.criterionRevisionIds) !== JSON.stringify(criterionRevisionIds)
+  ) {
+    throw new StorageInvariantError("evaluator_run_attempt_mismatch");
+  }
+}
+
+function assertOpenAnswerEvaluatorRunScopeAvailable(database, { attemptId, status }) {
+  if (
+    status === "running" &&
+    listOpenAnswerEvaluatorRunRecords(database, { attemptId, status: "running" }).length > 0
+  ) {
+    throw new StorageInvariantError("evaluator_run_conflict");
+  }
+}
+
+function assertOpenAnswerEvaluatorEvidenceMatchesRun(database, { evaluatorRunId, attemptId }) {
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, evaluatorRunId);
+  if (!evaluatorRun) {
+    throw new StorageInvariantError("evaluator_run_not_found");
+  }
+
+  if (evaluatorRun.attemptId !== attemptId) {
+    throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
   }
 }
 
@@ -2882,6 +3154,29 @@ function mapOpenAnswerEvaluationRecord(row) {
     summaryFeedback: row.summaryFeedback,
     criterionFeedback: JSON.parse(row.criterionFeedbackJson),
     evaluatedAt: row.evaluatedAt,
+  };
+}
+
+function mapOpenAnswerEvaluatorRunRecord(row) {
+  return {
+    id: row.id,
+    attemptId: row.attemptId,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    evaluatorPathKind: row.evaluatorPathKind,
+    evaluatorPolicyId: row.evaluatorPolicyId,
+    status: row.status,
+    requestedByIdentityId: row.requestedByIdentityId,
+    reviewerIdentityId: row.reviewerIdentityId,
+    reviewerCapability: row.reviewerCapability,
+    startedAt: row.startedAt,
+    completedAt: row.completedAt,
+    failedAt: row.failedAt,
+    failureReason: row.failureReason,
+    priorFailureReason: row.priorFailureReason,
+    priorFailedAt: row.priorFailedAt,
   };
 }
 

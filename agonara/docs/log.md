@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Start the Student Workspace evaluation status/evidence implementation with the Phase 1 persistence substrate: evaluator-run snapshots, lifecycle status updates, one-running-run enforcement, internal redacted evidence metadata, and structural storage guards.
 - Harden the Student Workspace evaluation status/evidence implementation plan after adversarial review by making transitions atomic, snapshotting prior failures before run start, enforcing one running run per attempt, preserving legacy evaluating-backup compatibility, clarifying raw-artifact omission, and covering terminal-run query omission.
 - Add the Student Workspace evaluation status/evidence implementation plan, sequencing evaluator-run persistence, domain transitions, redacted evidence, owner-only reads, backup/restore, and executable closeout through strict TDD commits.
 - Harden the Student Workspace evaluation status/evidence spec after adversarial review by separating internal evaluator path kind from final evaluation summary kind and removing an undefined queued state.

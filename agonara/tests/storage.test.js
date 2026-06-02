@@ -1361,6 +1361,766 @@ test("createOpenAnswerEvaluationFailureRecord_shouldPersistFailureWithoutChangin
   }
 });
 
+test("createOpenAnswerEvaluatorRunRecord_shouldPersistRunReferences_onExistingAttempt", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      storage.createOpenAnswerEvaluatorRunRecord?.(
+        database,
+        makeOpenAnswerEvaluatorRun({
+          id: "evaluator-run-a",
+          attemptId: "attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+        }),
+      ),
+      {
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        evaluatorPathKind: "deterministic",
+        evaluatorPolicyId: "policy-a",
+        status: "running",
+        requestedByIdentityId: "identity-a",
+        reviewerIdentityId: null,
+        reviewerCapability: null,
+        startedAt: "2026-06-02T10:20:00.000Z",
+        completedAt: null,
+        failedAt: null,
+        failureReason: null,
+        priorFailureReason: null,
+        priorFailedAt: null,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createOpenAnswerEvaluatorRunRecord_shouldRejectMismatchedAttemptReferences_onGraphMismatch", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-b" }));
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      [
+        makeOpenAnswerEvaluatorRun({
+          id: "evaluator-run-a",
+          attemptId: "attempt-a",
+          programId: "program-b",
+          studentIdentityId: "identity-a",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+        }),
+        makeOpenAnswerEvaluatorRun({
+          id: "evaluator-run-b",
+          attemptId: "attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-b",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+        }),
+        makeOpenAnswerEvaluatorRun({
+          id: "evaluator-run-c",
+          attemptId: "attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          checkRevisionId: "unknown-check-revision",
+          criterionRevisionIds: ["criterion-revision-a"],
+        }),
+        makeOpenAnswerEvaluatorRun({
+          id: "evaluator-run-d",
+          attemptId: "attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["unknown-criterion-revision"],
+        }),
+      ].map(input =>
+        captureStorageInvariantReason(() => storage.createOpenAnswerEvaluatorRunRecord(database, input)),
+      ),
+      [
+        "evaluator_run_attempt_mismatch",
+        "evaluator_run_attempt_mismatch",
+        "evaluator_run_attempt_mismatch",
+        "evaluator_run_attempt_mismatch",
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateOpenAnswerEvaluatorRunStatus_shouldPreserveRunReferences_onExistingRun", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      storage.updateOpenAnswerEvaluatorRunStatus?.(database, {
+        evaluatorRunId: "evaluator-run-a",
+        status: "failed",
+        failedAt: "2026-06-02T10:25:00.000Z",
+        failureReason: "temporary evaluator outage",
+      }),
+      {
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        evaluatorPathKind: "deterministic",
+        evaluatorPolicyId: "policy-a",
+        status: "failed",
+        requestedByIdentityId: "identity-a",
+        reviewerIdentityId: null,
+        reviewerCapability: null,
+        startedAt: "2026-06-02T10:20:00.000Z",
+        completedAt: null,
+        failedAt: "2026-06-02T10:25:00.000Z",
+        failureReason: "temporary evaluator outage",
+        priorFailureReason: null,
+        priorFailedAt: null,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listOpenAnswerEvaluatorRunRecords_shouldFilterByAttemptAndStatus", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-b",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-b",
+        attemptId: "attempt-b",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        status: "failed",
+      }),
+    );
+
+    assert.deepEqual(
+      storage.listOpenAnswerEvaluatorRunRecords?.(database, {
+        attemptId: "attempt-a",
+        status: "running",
+      }).map($0 => $0.id),
+      ["evaluator-run-a"],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createOpenAnswerEvaluatorRunRecord_shouldRejectSecondRunningRun_onExistingRunningRun", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.equal(
+      captureStorageInvariantReason(() =>
+        storage.createOpenAnswerEvaluatorRunRecord(
+          database,
+          makeOpenAnswerEvaluatorRun({
+            id: "evaluator-run-b",
+            attemptId: "attempt-a",
+            programId: "program-a",
+            studentIdentityId: "identity-a",
+            checkRevisionId: "check-revision-a",
+            criterionRevisionIds: ["criterion-revision-a"],
+          }),
+        ),
+      ),
+      "evaluator_run_conflict",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("openAnswerEvaluatorRunStorage_shouldRejectRawSecondRunningRun_onDatabaseConstraint", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.throws(
+      () =>
+        database
+          .prepare(
+            `insert into open_answer_evaluator_runs (
+               id, attempt_id, program_id, student_identity_id, check_revision_id,
+               criterion_revision_ids_json, evaluator_path_kind, evaluator_policy_id, status
+             ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            "evaluator-run-b",
+            "attempt-a",
+            "program-a",
+            "identity-a",
+            "check-revision-a",
+            JSON.stringify(["criterion-revision-a"]),
+            "deterministic",
+            "policy-b",
+            "running",
+          ),
+      error => error.code === "SQLITE_CONSTRAINT_UNIQUE",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createOpenAnswerEvaluatorEvidenceRecord_shouldPersistInternalMetadata_onExistingRun", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      storage.createOpenAnswerEvaluatorEvidenceRecord?.(
+        database,
+        makeOpenAnswerEvaluatorEvidence({
+          id: "evidence-a",
+          evaluatorRunId: "evaluator-run-a",
+          attemptId: "attempt-a",
+        }),
+      ),
+      {
+        id: "evidence-a",
+        evaluatorRunId: "evaluator-run-a",
+        attemptId: "attempt-a",
+        evidenceKind: "criterion_match",
+        visibility: "internal",
+        redactedSummary: "Redacted evidence evidence-a",
+        recordedAt: "2026-06-02T10:22:00.000Z",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createOpenAnswerEvaluatorEvidenceRecord_shouldRejectAttemptRunMismatch_onGraphMismatch", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-b",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.equal(
+      captureStorageInvariantReason(() =>
+        storage.createOpenAnswerEvaluatorEvidenceRecord(
+          database,
+          makeOpenAnswerEvaluatorEvidence({
+            id: "evidence-a",
+            evaluatorRunId: "evaluator-run-a",
+            attemptId: "attempt-b",
+          }),
+        ),
+      ),
+      "evaluator_evidence_attempt_mismatch",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listOpenAnswerEvaluatorEvidenceRecords_shouldFilterByEvaluatorRun", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-b",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-b",
+        attemptId: "attempt-b",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorEvidenceRecord(
+      database,
+      makeOpenAnswerEvaluatorEvidence({
+        id: "evidence-a",
+        evaluatorRunId: "evaluator-run-a",
+        attemptId: "attempt-a",
+      }),
+    );
+    storage.createOpenAnswerEvaluatorEvidenceRecord(
+      database,
+      makeOpenAnswerEvaluatorEvidence({
+        id: "evidence-b",
+        evaluatorRunId: "evaluator-run-b",
+        attemptId: "attempt-b",
+      }),
+    );
+
+    assert.deepEqual(
+      storage
+        .listOpenAnswerEvaluatorEvidenceRecords?.(database, { evaluatorRunId: "evaluator-run-a" })
+        .map($0 => $0.id),
+      ["evidence-a"],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("openAnswerEvaluatorEvidenceStorage_shouldRejectRawAttemptRunMismatch_onDatabaseConstraint", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-b",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.throws(
+      () =>
+        database
+          .prepare(
+            `insert into open_answer_evaluator_evidence (
+               id, evaluator_run_id, attempt_id, evidence_kind, visibility, recorded_at
+             ) values (?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            "evidence-a",
+            "evaluator-run-a",
+            "attempt-b",
+            "criterion_match",
+            "internal",
+            "2026-06-02T10:22:00.000Z",
+          ),
+      error => error.code === "SQLITE_CONSTRAINT_FOREIGNKEY",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createOpenAnswerEvaluatorEvidenceRecord_shouldPersistNullSummary_onOmittedRedactedSummary", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.equal(
+      storage.createOpenAnswerEvaluatorEvidenceRecord(database, {
+        id: "evidence-a",
+        evaluatorRunId: "evaluator-run-a",
+        attemptId: "attempt-a",
+        evidenceKind: "criterion_match",
+        recordedAt: "2026-06-02T10:22:00.000Z",
+      }).redactedSummary,
+      null,
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("openAnswerEvaluatorStorage_shouldNotExposeRawArtifactFields", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    const evaluatorRun = storage.createOpenAnswerEvaluatorRunRecord(database, {
+      ...makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+      hiddenPolicyInstructions: "secret policy instructions",
+      modelMetadataPayload: "secret model metadata",
+      rawPrompt: "secret prompt",
+      rawModelResponse: "secret response",
+    });
+    const evidence = storage.createOpenAnswerEvaluatorEvidenceRecord(database, {
+      ...makeOpenAnswerEvaluatorEvidence({
+        id: "evidence-a",
+        evaluatorRunId: "evaluator-run-a",
+        attemptId: "attempt-a",
+      }),
+      evaluatorDiagnostics: "secret diagnostics",
+      reviewerNotes: "secret reviewer notes",
+    });
+
+    const forbiddenFields = new Set([
+      "evaluatorDiagnostics",
+      "evaluator_diagnostics",
+      "hiddenPolicyInstructions",
+      "hidden_policy_instructions",
+      "modelMetadataPayload",
+      "model_metadata_payload",
+      "rawModelResponse",
+      "rawPrompt",
+      "raw_model_response",
+      "raw_prompt",
+      "reviewerNotes",
+      "reviewer_notes",
+    ]);
+    assert.deepEqual(
+      {
+        evidenceColumns: database
+          .prepare("pragma table_info(open_answer_evaluator_evidence)")
+          .all()
+          .map($0 => $0.name)
+          .filter($0 => forbiddenFields.has($0)),
+        evidenceKeys: Object.keys(evidence).filter($0 => forbiddenFields.has($0)),
+        evaluatorRunColumns: database
+          .prepare("pragma table_info(open_answer_evaluator_runs)")
+          .all()
+          .map($0 => $0.name)
+          .filter($0 => forbiddenFields.has($0)),
+        evaluatorRunKeys: Object.keys(evaluatorRun).filter($0 => forbiddenFields.has($0)),
+      },
+      {
+        evidenceColumns: [],
+        evidenceKeys: [],
+        evaluatorRunColumns: [],
+        evaluatorRunKeys: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateOpenAnswerEvaluatorRunStatus_shouldAcceptOnlySupportedStatuses", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        accepted: ["succeeded", "failed", "cancelled", "running"].map(
+          status =>
+            storage.updateOpenAnswerEvaluatorRunStatus(database, {
+              evaluatorRunId: "evaluator-run-a",
+              status,
+            }).status,
+        ),
+        rejected: captureSqliteConstraintCode(() =>
+          storage.updateOpenAnswerEvaluatorRunStatus(database, {
+            evaluatorRunId: "evaluator-run-a",
+            status: "queued",
+          }),
+        ),
+      },
+      {
+        accepted: ["succeeded", "failed", "cancelled", "running"],
+        rejected: "SQLITE_CONSTRAINT_CHECK",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createOpenAnswerAttemptRecord_shouldRejectCriterionRevisionOutsideAcceptedCheck_onGraphMismatch", () => {
   const database = makeInitializedDatabase();
 
@@ -1920,6 +2680,66 @@ function makeOpenAnswerEvaluation({
   };
 }
 
+function makeOpenAnswerEvaluatorRun({
+  id,
+  attemptId,
+  programId,
+  studentIdentityId,
+  checkRevisionId,
+  criterionRevisionIds,
+  evaluatorPathKind = "deterministic",
+  evaluatorPolicyId = "policy-a",
+  status = "running",
+  requestedByIdentityId = "identity-a",
+  reviewerIdentityId = null,
+  reviewerCapability = null,
+  startedAt = "2026-06-02T10:20:00.000Z",
+  completedAt = null,
+  failedAt = null,
+  failureReason = null,
+  priorFailureReason = null,
+  priorFailedAt = null,
+}) {
+  return {
+    id,
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+    evaluatorPathKind,
+    evaluatorPolicyId,
+    status,
+    requestedByIdentityId,
+    reviewerIdentityId,
+    reviewerCapability,
+    startedAt,
+    completedAt,
+    failedAt,
+    failureReason,
+    priorFailureReason,
+    priorFailedAt,
+  };
+}
+
+function makeOpenAnswerEvaluatorEvidence({
+  id,
+  evaluatorRunId,
+  attemptId,
+  evidenceKind = "criterion_match",
+  redactedSummary = `Redacted evidence ${id}`,
+  recordedAt = "2026-06-02T10:22:00.000Z",
+}) {
+  return {
+    id,
+    evaluatorRunId,
+    attemptId,
+    evidenceKind,
+    redactedSummary,
+    recordedAt,
+  };
+}
+
 function makeCorpusEvent({ id, programId, targetId }) {
   return {
     id,
@@ -1930,6 +2750,27 @@ function makeCorpusEvent({ id, programId, targetId }) {
     occurredAt: "2026-05-28T10:30:00.000Z",
     outcome: "accepted",
   };
+}
+
+function captureStorageInvariantReason(operation) {
+  try {
+    operation();
+    return null;
+  } catch (error) {
+    if (error instanceof StorageInvariantError) {
+      return error.reason;
+    }
+    throw error;
+  }
+}
+
+function captureSqliteConstraintCode(operation) {
+  try {
+    operation();
+    return null;
+  } catch (error) {
+    return error.code;
+  }
 }
 
 function seedAcceptedAssessmentCriterion(

@@ -88,7 +88,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 1 — Evaluator run and evidence persistence substrate
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: establish Student Workspace-owned evaluator-run and evidence metadata records with structural invariants, without adding successful domain transitions yet.
 
