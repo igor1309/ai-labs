@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
@@ -1890,15 +1891,22 @@ test("studentWorkspaceOpenAnswerAttemptHttpAcceptance_shouldKeepOutOfScopeRoutes
         statusCode: response.status,
       });
     }
+    const serverSource = readFileSync(new URL("../src/server.js", import.meta.url), "utf8");
 
     assert.deepEqual(
-      responses,
-      absentRoutes.map(([method, route]) => ({
-        body: { status: "rejected", reason: "not_found" },
-        method,
-        route,
-        statusCode: 404,
-      })),
+      {
+        responses,
+        serverUsesEvaluationMutationCommands: containsAnyStudentWorkspaceEvaluationMutationCommand(serverSource),
+      },
+      {
+        responses: absentRoutes.map(([method, route]) => ({
+          body: { status: "rejected", reason: "not_found" },
+          method,
+          route,
+          statusCode: 404,
+        })),
+        serverUsesEvaluationMutationCommands: false,
+      },
     );
   } finally {
     await close();
@@ -7866,6 +7874,14 @@ function hasAttemptDetailLeak(body) {
     "/tmp/db.sqlite",
     "postgres://db",
   ].some($0 => serialized.includes($0));
+}
+
+function containsAnyStudentWorkspaceEvaluationMutationCommand(source) {
+  return [
+    "markOpenAnswerAttemptEvaluating",
+    "recordOpenAnswerEvaluation",
+    "recordOpenAnswerEvaluationFailure",
+  ].some($0 => source.includes($0));
 }
 
 function cursorDoesNotExposeAttemptListState(cursor) {
