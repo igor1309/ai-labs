@@ -37,8 +37,9 @@ The agent will:
 The agent must support:
 
 - manual initiation
-- scheduled sync at `0 18 * * *` UTC (daily)
+- scheduled sync at `30 1 * * *` UTC (01:30 UTC, daily)
 - automated notifications when sync changes are proposed
+- a configurable LOC drift threshold (`--loc-threshold=<N>`, default 300) that holds the `docs/loc-dashboard.html` surface `clean` when its numeric-only drift sums to fewer than `N` lines, while structural drift (a project row added or removed) always surfaces
 
 The agent must never merge PRs automatically.
 
@@ -69,3 +70,11 @@ The maintainer registers a new project by adding a row to `## Components` (or `#
 - Tracking sub-projects below top-level — explicitly out of scope.
 - Merging or approving PRs.
 - Formatting, style, or structural rewrites on any surface.
+
+## Amendments
+
+### 2026-06-01 (model: claude-opus-4-8)
+
+- **Scheduled cadence moved from `0 18 * * *` to `30 1 * * *` (01:30 UTC).** Operational change to run the sync overnight; no decision-level rationale beyond maintainer preference. Reflected in `agent.md`, `intent.md`, `suppression-policy.md` (worked examples recomputed), the project `README.md`, and the live `/etc/cron.d/openclaw-dashboard-sync` entry.
+- **Added a configurable LOC drift threshold** (`--loc-threshold=<N>`, default 300). Small daily numeric LOC churn on `docs/loc-dashboard.html` is noise the maintainer would rather skip than review; the threshold suppresses numeric-only drift below `N` while always surfacing structural change. Specified in `synthesis-spec.md` ("Surface (3) drift tolerance") and `agent.md`.
+- **Notification rendering clarified.** The runtime must post a compact, plain-text Telegram message parsed from the report, never the raw Markdown report. Channel updated to the shared `@igor1309_ai_labs_bot` supergroup topic `#dashboard-sync`. Specified in `notification-spec.md`.

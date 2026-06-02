@@ -1,6 +1,6 @@
 #!/bin/bash
 # codex-mgr - Standalone Codex CLI profile manager
-# Usage: codex-mgr [save|load|list|switch] [email]
+# Usage: codex-mgr [save|load|list|switch|limits|delete] [email]
 
 set -euo pipefail
 
@@ -25,6 +25,7 @@ USAGE:
     codex-mgr load <email>         # Load profile (switches active auth)
     codex-mgr list                 # List profiles with active (*) indicator
     codex-mgr switch               # Switch to next profile in list
+    codex-mgr limits               # Show usage limits per profile
     codex-mgr delete <email>       # Delete a saved profile
     codex-mgr help                # Show this help
 
@@ -34,6 +35,7 @@ EXAMPLES:
     codex-mgr list
     codex-mgr load work@example.com
     codex-mgr switch
+    codex-mgr limits
     codex-mgr delete personal@example.com
 
 CONFIG:
@@ -127,6 +129,78 @@ sync_active_profile_from_live() {
     fi
 
     cp -p "$AUTH_FILE" "$active_dir/auth.json"
+}
+
+# Usage/limits reporting (mirrors tools/ccswitch-limits for Codex profiles).
+# Endpoint and field paths are sourced from the Codex CLI internals and were
+# verified against the live endpoint on 2026-05-30; see
+# docs/research-codex-usage-api.md. Re-verify if Codex changes the contract.
+USAGE_URL="https://chatgpt.com/backend-api/wham/usage"
+USAGE_USER_AGENT="codex-cli"
+
+get_profile_access_token() {
+    local profile_dir="$1"
+    get_auth_field "$profile_dir/auth.json" '.tokens.access_token // .access_token // empty'
+}
+
+resolve_display_timezone() {
+    local localtime_path display_timezone
+    localtime_path="$(readlink /etc/localtime 2>/dev/null || true)"
+    display_timezone="$(printf '%s' "$localtime_path" | sed -n 's#^.*/zoneinfo/##p')"
+    if [[ -n "$display_timezone" ]]; then
+        printf '%s' "$display_timezone"
+        return 0
+    fi
+    printf 'UTC'
+}
+
+query_codex_usage() {
+    local access_token="$1"
+    local account_id="$2"
+    local headers=(-H "Authorization: Bearer $access_token")
+    if [[ -n "$account_id" ]]; then
+        headers+=(-H "ChatGPT-Account-Id: $account_id")
+    fi
+    headers+=(-H "User-Agent: $USAGE_USER_AGENT")
+    curl -fsS "$USAGE_URL" "${headers[@]}" 2>/dev/null
+}
+
+format_reset_timestamp() {
+    local reset_epoch="$1"
+    if [[ -z "$reset_epoch" || "$reset_epoch" == "null" ]]; then
+        printf 'unknown'
+        return 0
+    fi
+    local formatted
+    formatted="$(TZ="$DISPLAY_TIMEZONE" date -r "$reset_epoch" '+%H:%M %d.%m' 2>/dev/null || true)"
+    if [[ -n "$formatted" ]]; then
+        printf '%s' "$formatted"
+    else
+        printf '%s' "$reset_epoch"
+    fi
+}
+
+format_usage_window() {
+    local payload="$1"
+    local label="$2"
+    local window_path="$3"
+    local window
+    window="$(printf '%s' "$payload" | jq -c "$window_path")"
+    if [[ -z "$window" || "$window" == "null" ]]; then
+        printf '  %-8s %s\n' "$label" "unknown"
+        return 0
+    fi
+    local percent reset_epoch
+    percent="$(printf '%s' "$payload" | jq -r "$window_path.used_percent // \"unknown\"")"
+    reset_epoch="$(printf '%s' "$payload" | jq -r "$window_path.reset_at // empty")"
+    printf '  %-8s%3s%% used, resets %s\n' "$label" "$percent" "$(format_reset_timestamp "$reset_epoch")"
+}
+
+format_usage_limits() {
+    local payload="$1"
+    printf '%s' "$payload" | jq -e '.rate_limit' >/dev/null 2>&1 || return 1
+    format_usage_window "$payload" "5h:" '.rate_limit.primary_window'
+    format_usage_window "$payload" "weekly:" '.rate_limit.secondary_window'
 }
 
 # Main logic
@@ -295,6 +369,56 @@ case "${1:-}" in
         echo "✓ Switched to: $next_profile"
         ;;
     
+    "limits")
+        if [[ ! -d "$PROFILES_DIR" ]]; then
+            echo "No profiles found."
+            exit 1
+        fi
+        dirs=()
+        while IFS= read -r line; do dirs+=("$line"); done < <(get_profile_dirs)
+        if [[ ${#dirs[@]} -eq 0 ]]; then
+            echo "No profiles saved yet."
+            exit 1
+        fi
+        DISPLAY_TIMEZONE="$(resolve_display_timezone)"
+        active_dir="$(get_active_profile_dir)"
+        printed_block=no
+        for dir in "${dirs[@]}"; do
+            if [[ "$printed_block" == "yes" ]]; then
+                echo ""
+            fi
+            printed_block=yes
+
+            profile="$(basename "$dir")"
+            if [[ "$dir" == "$active_dir" ]]; then
+                echo "$profile (active)"
+            else
+                echo "$profile"
+            fi
+
+            access_token="$(get_profile_access_token "$dir")"
+            if [[ -z "$access_token" ]]; then
+                echo "  unavailable: OAuth token not found"
+                continue
+            fi
+            account_id="$(get_profile_account_id "$dir")"
+
+            usage_payload="$(query_codex_usage "$access_token" "$account_id")" || {
+                echo "  unavailable: usage request failed"
+                continue
+            }
+            if [[ -z "$usage_payload" ]]; then
+                echo "  unavailable: usage request failed"
+                continue
+            fi
+            formatted_usage="$(format_usage_limits "$usage_payload")" || {
+                echo "  unavailable: usage response was invalid"
+                continue
+            }
+            printf '%s\n' "$formatted_usage"
+        done
+        ;;
+
     "delete")
         if [[ $# -lt 2 ]]; then
             echo "Error: email required. Usage: codex-mgr delete <email>" >&2

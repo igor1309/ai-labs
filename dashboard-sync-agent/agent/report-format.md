@@ -1,6 +1,6 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
+date: 2026-06-01
+model: claude-opus-4-8
 description: "Sync-report shape returned by dashboard-sync-agent. Consumed by the runtime for the Telegram notification path; structurally mirrored in the fix PR body."
 ---
 
@@ -64,7 +64,7 @@ The agent returns exactly one report per run. The runtime parses it to drive `no
   - `opened #<N>` when the agent opened a new PR this run.
   - `updated #<N>` when the agent force-updated the existing stable-branch PR.
   - `none` when all surfaces were clean (no PR action taken).
-- **Surface notes** is one line per surface — for `drift` rows, a phrase like "added <name>; removed <name>"; for `error` rows, the failure reason; for `clean` rows, `"unchanged"`.
+- **Surface notes** is one line per surface — for `drift` rows, a phrase like "added <name>; removed <name>"; for `error` rows, the failure reason; for `clean` rows, `"unchanged"`. When `docs/loc-dashboard.html` is held `clean` by the LOC drift threshold (per `synthesis-spec.md` "Surface (3) drift tolerance"), the note is `"clean (below LOC threshold: <delta> < <N>)"` instead of `"unchanged"`, so the suppressed numeric drift is visible in the report.
 
 ## Worked example (current trunk@HEAD, dry run)
 
