@@ -229,6 +229,72 @@ export function initializeIdentityStorage(database) {
       updated_at text not null
     );
 
+    create table if not exists quick_check_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      check_kind text not null check (check_kind in ('single_select_quick_check')),
+      title text not null,
+      prompt text not null,
+      answer_key_option_id text not null,
+      source_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists quick_check_candidate_options (
+      id text primary key,
+      candidate_id text not null references quick_check_candidates(id),
+      option_order integer not null,
+      text text not null,
+      unique (candidate_id, option_order),
+      unique (candidate_id, id)
+    );
+
+    create table if not exists accepted_quick_check_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_quick_check_revisions (
+      id text primary key,
+      entity_id text not null references accepted_quick_check_entities(id),
+      program_id text not null references program_shells(id),
+      check_kind text not null check (check_kind in ('single_select_quick_check')),
+      title text not null,
+      prompt text not null,
+      answer_key_option_id text not null,
+      accepted_from_candidate_id text not null references quick_check_candidates(id),
+      source_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists accepted_quick_check_revision_options (
+      id text primary key,
+      revision_id text not null references accepted_quick_check_revisions(id),
+      option_order integer not null,
+      text text not null,
+      unique (revision_id, option_order),
+      unique (revision_id, id)
+    );
+
+    create table if not exists quick_check_attempts (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      check_revision_id text not null references accepted_quick_check_revisions(id),
+      selected_option_id text not null,
+      matched integer not null check (matched in (0, 1)),
+      idempotency_key text not null,
+      submitted_at text not null,
+      unique (program_id, student_identity_id, check_revision_id, idempotency_key)
+    );
+
     create table if not exists accepted_open_answer_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -1174,6 +1240,383 @@ export function updateOpenAnswerCheckCandidateStatus(database, { candidateId, st
     .run(status, updatedAt, candidateId);
 
   return getOpenAnswerCheckCandidateRecord(database, candidateId);
+}
+
+export function createQuickCheckCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    checkKind,
+    title,
+    prompt,
+    options,
+    answerKeyOptionId,
+    sourceIds = [],
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertQuickCheckOptionCollection({ options, answerKeyOptionId });
+
+  database
+    .prepare(
+      `insert into quick_check_candidates (
+         id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      checkKind,
+      title,
+      prompt,
+      answerKeyOptionId,
+      JSON.stringify(sourceIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  for (const [optionIndex, option] of options.entries()) {
+    database
+      .prepare(
+        `insert into quick_check_candidate_options (id, candidate_id, option_order, text)
+         values (?, ?, ?, ?)`,
+      )
+      .run(option.id, id, optionIndex, option.text);
+  }
+
+  return getQuickCheckCandidateRecord(database, id);
+}
+
+export function getQuickCheckCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, check_kind as checkKind, title, prompt,
+              answer_key_option_id as answerKeyOptionId,
+              source_ids_json as sourceIdsJson,
+              rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from quick_check_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapQuickCheckCandidateRecord(database, row) : null;
+}
+
+export function listQuickCheckCandidateRecords(database, { programId = null, status = null } = {}) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, check_kind as checkKind, title, prompt,
+              answer_key_option_id as answerKeyOptionId,
+              source_ids_json as sourceIdsJson,
+              rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from quick_check_candidates
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values)
+    .map(row => mapQuickCheckCandidateRecord(database, row));
+}
+
+export function updateQuickCheckCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update quick_check_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getQuickCheckCandidateRecord(database, candidateId);
+}
+
+export function createAcceptedQuickCheckEntityRecord(database, { id, programId, currentRevisionId }) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_quick_check_entities (id, program_id, current_revision_id)
+       values (?, ?, ?)`,
+    )
+    .run(id, programId, currentRevisionId);
+
+  return getAcceptedQuickCheckEntityRecord(database, id);
+}
+
+export function getAcceptedQuickCheckEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_quick_check_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function updateAcceptedQuickCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("accepted_quick_check_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("accepted_quick_check_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_quick_check_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedQuickCheckEntityRecord(database, entityId);
+}
+
+export function createAcceptedQuickCheckRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    checkKind,
+    title,
+    prompt,
+    options,
+    answerKeyOptionId,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertQuickCheckCandidateBelongsToProgram(database, { programId, candidateId: acceptedFromCandidateId });
+  assertAcceptedQuickCheckEntityBelongsToProgram(database, { programId, entityId });
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertQuickCheckOptionCollection({ options, answerKeyOptionId });
+
+  database
+    .prepare(
+      `insert into accepted_quick_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      checkKind,
+      title,
+      prompt,
+      answerKeyOptionId,
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  for (const [optionIndex, option] of options.entries()) {
+    database
+      .prepare(
+        `insert into accepted_quick_check_revision_options (id, revision_id, option_order, text)
+         values (?, ?, ?, ?)`,
+      )
+      .run(option.id, id, optionIndex, option.text);
+  }
+
+  return getAcceptedQuickCheckRevisionRecord(database, id);
+}
+
+export function getAcceptedQuickCheckRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, check_kind as checkKind,
+              title, prompt, answer_key_option_id as answerKeyOptionId,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson,
+              rationale, accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_quick_check_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedQuickCheckRevisionRecord(database, row) : null;
+}
+
+export function listAcceptedQuickCheckRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, check_kind as checkKind,
+              title, prompt, answer_key_option_id as answerKeyOptionId,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson,
+              rationale, accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_quick_check_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(row => mapAcceptedQuickCheckRevisionRecord(database, row));
+}
+
+export function createQuickCheckAttemptRecord(
+  database,
+  {
+    id,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    selectedOptionId,
+    matched,
+    idempotencyKey,
+    submittedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, studentIdentityId);
+  assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId, revisionId: checkRevisionId });
+  assertQuickCheckSelectedOptionBelongsToRevision(database, { revisionId: checkRevisionId, selectedOptionId });
+  const existingAttempt = getQuickCheckAttemptRecordByIdempotencyScope(database, {
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    idempotencyKey,
+  });
+  if (existingAttempt) {
+    if (existingAttempt.selectedOptionId === selectedOptionId && existingAttempt.matched === matched) {
+      return existingAttempt;
+    }
+    throw new StorageInvariantError("quick_check_attempt_idempotency_conflict");
+  }
+
+  database
+    .prepare(
+      `insert into quick_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         selected_option_id,
+         matched,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+      selectedOptionId,
+      matched ? 1 : 0,
+      idempotencyKey,
+      submittedAt,
+    );
+
+  return getQuickCheckAttemptRecord(database, id);
+}
+
+export function getQuickCheckAttemptRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              check_revision_id as checkRevisionId, selected_option_id as selectedOptionId,
+              matched, idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from quick_check_attempts
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapQuickCheckAttemptRecord(row) : null;
+}
+
+export function listQuickCheckAttemptRecords(
+  database,
+  { programId = null, studentIdentityId = null, checkRevisionId = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (studentIdentityId !== null) {
+    filters.push("student_identity_id = ?");
+    values.push(studentIdentityId);
+  }
+  if (checkRevisionId !== null) {
+    filters.push("check_revision_id = ?");
+    values.push(checkRevisionId);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              check_revision_id as checkRevisionId, selected_option_id as selectedOptionId,
+              matched, idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from quick_check_attempts
+       ${whereClause}
+       order by submitted_at, id`,
+    )
+    .all(...values)
+    .map(mapQuickCheckAttemptRecord);
 }
 
 export function createAcceptedOpenAnswerCheckEntityRecord(database, { id, programId, currentRevisionId }) {
@@ -2663,6 +3106,28 @@ function assertOpenAnswerCheckCandidateBelongsToProgram(database, { programId, c
   }
 }
 
+function assertQuickCheckCandidateBelongsToProgram(database, { programId, candidateId }) {
+  const candidate = getQuickCheckCandidateRecord(database, candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("quick_check_candidate_not_found");
+  }
+
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("quick_check_candidate_program_mismatch");
+  }
+}
+
+function assertAcceptedQuickCheckEntityBelongsToProgram(database, { programId, entityId }) {
+  const entity = getAcceptedQuickCheckEntityRecord(database, entityId);
+  if (!entity) {
+    throw new StorageInvariantError("quick_check_entity_not_found");
+  }
+
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("quick_check_entity_program_mismatch");
+  }
+}
+
 function assertAcceptedOpenAnswerCheckEntityBelongsToProgram(database, { programId, entityId }) {
   const entity = getAcceptedOpenAnswerCheckEntityRecord(database, entityId);
   if (!entity) {
@@ -2683,6 +3148,76 @@ function assertAcceptedOpenAnswerCheckRevisionBelongsToProgram(database, { progr
   if (revision.programId !== programId) {
     throw new StorageInvariantError("check_revision_program_mismatch");
   }
+}
+
+function assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId, revisionId }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, revisionId);
+  if (!revision) {
+    throw new StorageInvariantError("quick_check_revision_not_found");
+  }
+
+  if (revision.programId !== programId) {
+    throw new StorageInvariantError("quick_check_revision_program_mismatch");
+  }
+}
+
+function assertQuickCheckOptionCollection({ options, answerKeyOptionId }) {
+  if (!Array.isArray(options) || options.length < 2) {
+    throw new StorageInvariantError("quick_check_option_collection_invalid");
+  }
+
+  const optionIds = new Set();
+  const optionTexts = new Set();
+  for (const option of options) {
+    if (!option || typeof option.id !== "string" || typeof option.text !== "string") {
+      throw new StorageInvariantError("quick_check_option_collection_invalid");
+    }
+    const trimmedText = option.text.trim();
+    if (option.id.length === 0 || trimmedText.length === 0) {
+      throw new StorageInvariantError("quick_check_option_collection_invalid");
+    }
+    if (optionIds.has(option.id) || optionTexts.has(trimmedText)) {
+      throw new StorageInvariantError("quick_check_option_collection_invalid");
+    }
+    optionIds.add(option.id);
+    optionTexts.add(trimmedText);
+  }
+
+  if (!optionIds.has(answerKeyOptionId)) {
+    throw new StorageInvariantError("quick_check_answer_key_option_mismatch");
+  }
+}
+
+function assertQuickCheckSelectedOptionBelongsToRevision(database, { revisionId, selectedOptionId }) {
+  const row = database
+    .prepare(
+      `select 1
+       from accepted_quick_check_revision_options
+       where revision_id = ? and id = ?`,
+    )
+    .get(revisionId, selectedOptionId);
+
+  if (!row) {
+    throw new StorageInvariantError("quick_check_selected_option_mismatch");
+  }
+}
+
+function getQuickCheckAttemptRecordByIdempotencyScope(
+  database,
+  { programId, studentIdentityId, checkRevisionId, idempotencyKey },
+) {
+  const attempt = database
+    .prepare(
+      `select id
+       from quick_check_attempts
+       where program_id = ?
+         and student_identity_id = ?
+         and check_revision_id = ?
+         and idempotency_key = ?`,
+    )
+    .get(programId, studentIdentityId, checkRevisionId, idempotencyKey);
+
+  return attempt ? getQuickCheckAttemptRecord(database, attempt.id) : null;
 }
 
 function assertOpenAnswerAttemptIdempotencyScopeAvailable(
@@ -3693,6 +4228,77 @@ function mapOpenAnswerCheckCandidateRecord(row) {
     createdByIdentityId: row.createdByIdentityId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function mapQuickCheckCandidateRecord(database, row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    checkKind: row.checkKind,
+    title: row.title,
+    prompt: row.prompt,
+    options: listQuickCheckCandidateOptionRecords(database, row.id),
+    answerKeyOptionId: row.answerKeyOptionId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function listQuickCheckCandidateOptionRecords(database, candidateId) {
+  return database
+    .prepare(
+      `select id, text
+       from quick_check_candidate_options
+       where candidate_id = ?
+       order by option_order`,
+    )
+    .all(candidateId);
+}
+
+function mapAcceptedQuickCheckRevisionRecord(database, row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    checkKind: row.checkKind,
+    title: row.title,
+    prompt: row.prompt,
+    options: listAcceptedQuickCheckRevisionOptionRecords(database, row.id),
+    answerKeyOptionId: row.answerKeyOptionId,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+}
+
+function listAcceptedQuickCheckRevisionOptionRecords(database, revisionId) {
+  return database
+    .prepare(
+      `select id, text
+       from accepted_quick_check_revision_options
+       where revision_id = ?
+       order by option_order`,
+    )
+    .all(revisionId);
+}
+
+function mapQuickCheckAttemptRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    selectedOptionId: row.selectedOptionId,
+    matched: Boolean(row.matched),
+    idempotencyKey: row.idempotencyKey,
+    submittedAt: row.submittedAt,
   };
 }
 

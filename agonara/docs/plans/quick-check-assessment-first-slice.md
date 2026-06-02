@@ -24,7 +24,7 @@ Push policy: no push
 Worktree mode: reuse existing
 Expected worktree: `worktrees/agonara-student-attempt-api`
 Expected branch: `codex/agonara-student-attempt-api`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
@@ -96,7 +96,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 1 — Quick-check storage substrate
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: add persistence for quick-check candidates, accepted entities, accepted revisions, revision options, and attempts without exposing product behavior before storage invariants hold.
 

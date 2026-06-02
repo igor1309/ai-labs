@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 1 of the Quick Check first-slice plan with storage substrate for candidates, accepted entities, accepted revisions, options, immutable attempts, option graph validation, selected-option validation, and scoped idempotency.
 - Harden the Quick Check first-slice implementation plan after adversarial review by making internal answer-key resolver coverage explicit, correcting Curator/Corpus validation ownership, and separating docs closeout checks from RED/GREEN test steps.
 - Add the Quick Check first-slice implementation plan, sequencing storage, curator lifecycle, accepted revision delivery, Student Workspace attempts, boundary isolation, backup/restore, executable acceptance, and archive closeout through strict TDD commits.
 - Harden the quick-check first-slice spec after adversarial review with an explicit internal answer-key resolution boundary, deterministic query rejections, fault/log/transport redaction, and restore-time graph and matched-result validation.
