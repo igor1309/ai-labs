@@ -156,6 +156,5 @@ The v0.0.1 minimum operational contract is specified in [Operational Cross-Cutti
 
 ## Open questions
 
-- Which accepted quick-check option and result schema is the smallest useful first slice under ADR-016?
 - Which accepted revision retention and cleanup policy is needed after students already have attempts and progress evidence?
 - Which cross-cutting concerns require their own ADR beyond the v0.0.1 operational contract: logging, backup/restore, observability, or analytics?
