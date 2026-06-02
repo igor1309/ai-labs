@@ -602,6 +602,25 @@ test("markOpenAnswerAttemptEvaluating_shouldRejectUnknownEvaluatingAndEvaluatedA
   }
 });
 
+test("markOpenAnswerAttemptEvaluating_shouldClearPreviousFailure_onFailedAttempt", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" });
+
+    assert.deepEqual(getOpenAnswerEvaluationFailureRecord(database, "attempt-1"), null);
+  } finally {
+    database.close();
+  }
+});
+
 test("recordOpenAnswerEvaluation_shouldAcceptSubmittedEvaluatingAndFailedAttempts", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "attempt-3", "evaluation-1", "evaluation-2", "evaluation-3"],
@@ -791,6 +810,56 @@ test("recordOpenAnswerEvaluation_shouldRejectMalformedEvaluationInput", () => {
         unknown: { status: "rejected", reason: "validation_failed" },
         outcome: { status: "rejected", reason: "validation_failed" },
         feedback: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluation_shouldRejectDuplicateMissingAndExtraFeedback_onMultiCriterionAttempt", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, {
+      programId: "program-a",
+      secondCriterionCandidateId: "criterion-candidate-b",
+      secondCriterionEntityId: "criterion-entity-b",
+      secondCriterionRevisionId: "criterion-revision-b",
+    });
+    submitAttempt(commands);
+
+    assert.deepEqual(
+      {
+        missing: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        duplicate: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [
+            makeCriterionFeedback(),
+            makeCriterionFeedback(),
+          ],
+        }),
+        extra: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [
+            makeCriterionFeedback(),
+            makeCriterionFeedback({ criterionRevisionId: "criterion-revision-extra" }),
+          ],
+        }),
+      },
+      {
+        missing: { status: "rejected", reason: "validation_failed" },
+        duplicate: { status: "rejected", reason: "validation_failed" },
+        extra: { status: "rejected", reason: "validation_failed" },
       },
     );
   } finally {
@@ -1012,6 +1081,31 @@ test("recordOpenAnswerEvaluationFailure_shouldStoreFailureAndPreserveAttemptRefe
   }
 });
 
+test("evaluationLifecycleCommands_shouldNotExposeSecretsOrEvaluationDiagnostics", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "sensitive-idempotency-key" });
+
+    const evaluating = commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" });
+    const evaluated = commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "  Good explanation.  ",
+      criterionFeedback: [makeCriterionFeedback({ feedback: "  Criterion feedback  " })],
+    });
+    const alreadyEvaluatedFailure = commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(containsForbiddenDetail([evaluating, evaluated, alreadyEvaluatedFailure]), false);
+  } finally {
+    database.close();
+  }
+});
+
 test("evaluationLifecycleCommands_shouldNotMutateAcceptedCorpusOrCuratorCandidates", () => {
   const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2", "evaluation-1"] });
 
@@ -1152,6 +1246,9 @@ function seedStudentProgramWithAcceptedCheck(
     criterionEntityId = "criterion-entity-a",
     criterionRevisionId = "criterion-revision-a",
     membershipId = "membership-student-a",
+    secondCriterionCandidateId = null,
+    secondCriterionEntityId = null,
+    secondCriterionRevisionId = null,
     sourceId = "source-a",
     studentMembershipStatus = "active",
   },
@@ -1196,13 +1293,42 @@ function seedStudentProgramWithAcceptedCheck(
       sourceIds: [sourceId],
     }),
   );
+  if (secondCriterionCandidateId && secondCriterionEntityId && secondCriterionRevisionId) {
+    createAssessmentCriterionCandidateRecord(
+      database,
+      makeAssessmentCriterionCandidate({
+        id: secondCriterionCandidateId,
+        programId,
+        sourceIds: [sourceId],
+        status: "accepted",
+      }),
+    );
+    createAcceptedAssessmentCriterionEntityRecord(
+      database,
+      makeAcceptedAssessmentCriterionEntity({
+        id: secondCriterionEntityId,
+        programId,
+        currentRevisionId: secondCriterionRevisionId,
+      }),
+    );
+    createAcceptedAssessmentCriterionRevisionRecord(
+      database,
+      makeAcceptedAssessmentCriterionRevision({
+        id: secondCriterionRevisionId,
+        entityId: secondCriterionEntityId,
+        programId,
+        acceptedFromCandidateId: secondCriterionCandidateId,
+        sourceIds: [sourceId],
+      }),
+    );
+  }
   createOpenAnswerCheckCandidateRecord(
     database,
     makeOpenAnswerCheckCandidate({
       id: `check-candidate-${checkRevisionId}`,
       programId,
       sourceIds: [sourceId],
-      criterionEntityIds: [criterionEntityId],
+      criterionEntityIds: [criterionEntityId, secondCriterionEntityId].filter(Boolean),
       status: "accepted",
     }),
   );
@@ -1222,7 +1348,7 @@ function seedStudentProgramWithAcceptedCheck(
       programId,
       acceptedFromCandidateId: `check-candidate-${checkRevisionId}`,
       sourceIds: [sourceId],
-      criterionRevisionIds: [criterionRevisionId],
+      criterionRevisionIds: [criterionRevisionId, secondCriterionRevisionId].filter(Boolean),
     }),
   );
 }
@@ -1259,6 +1385,9 @@ function containsForbiddenDetail(values) {
     "csrf",
     "cookie",
     "authorization",
+    "diagnostic",
+    "raw model",
+    "raw prompt",
     "select ",
     "stack",
     "127.0.0.1",

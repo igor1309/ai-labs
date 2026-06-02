@@ -45,11 +45,16 @@ function markOpenAnswerAttemptEvaluating({ database, input, now }) {
     return rejected("attempt_already_evaluated");
   }
 
-  const updated = updateOpenAnswerAttemptStatus(database, {
-    attemptId: attempt.id,
-    status: "evaluating",
-    updatedAt: now().toISOString(),
-  });
+  const updatedAt = now().toISOString();
+  const updated = database.transaction(() => {
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: attempt.id,
+      status: "evaluating",
+      updatedAt,
+    });
+    deleteOpenAnswerEvaluationFailureRecord(database, attempt.id);
+    return updatedAttempt;
+  })();
 
   return accepted({ attempt: summarizeAttempt(updated) });
 }
