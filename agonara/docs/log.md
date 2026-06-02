@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Add the Student Workspace evaluation status/evidence implementation plan, sequencing evaluator-run persistence, domain transitions, redacted evidence, owner-only reads, backup/restore, and executable closeout through strict TDD commits.
 - Harden the Student Workspace evaluation status/evidence spec after adversarial review by separating internal evaluator path kind from final evaluation summary kind and removing an undefined queued state.
 - Add the Student Workspace open-answer evaluation status and evidence spec, defining internal evaluator runs, redacted evidence metadata, owner-only status reads, and no public evaluation mutation surface.
 - Harden ADR-013 after adversarial review by making automated evaluator and human reviewer attribution explicit for future auditability.
