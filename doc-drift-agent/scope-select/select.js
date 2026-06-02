@@ -3,21 +3,23 @@
 /// ties are broken by registry order. Returns null when there are no scopes.
 export function selectScope({ scopeIds, state }) {
   let chosen = null;
-  let chosenAt = null;
+  let chosenTime = Infinity;
   for (const id of scopeIds) {
-    const auditedAt = state[id]?.lastAuditedAt ?? null;
-    if (chosen === null || isOlder(auditedAt, chosenAt)) {
+    const time = auditTime(state[id]?.lastAuditedAt);
+    if (chosen === null || time < chosenTime) {
       chosen = id;
-      chosenAt = auditedAt;
+      chosenTime = time;
     }
   }
   return chosen;
 }
 
-/// True when `a` represents an older (or never) audit than `b`. A null audit
-/// time is the oldest possible value.
-function isOlder(a, b) {
-  if (a === null) return b !== null;
-  if (b === null) return false;
-  return a < b;
+/// The audit instant for ordering, in epoch milliseconds. A missing or
+/// unparseable timestamp is the oldest possible value, so it sorts first.
+/// Comparing parsed instants (not raw strings) keeps ordering correct across
+/// valid ISO 8601 forms such as `…Z` and `…+09:00`.
+function auditTime(at) {
+  if (at == null) return -Infinity;
+  const time = Date.parse(at);
+  return Number.isNaN(time) ? -Infinity : time;
 }

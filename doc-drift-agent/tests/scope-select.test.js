@@ -22,6 +22,17 @@ test('selectScope picks the least-recently-audited scope when all are audited', 
   assert.equal(selectScope({ scopeIds, state }), 'oracle');
 });
 
+test('selectScope orders by instant, not raw string, across timestamp formats', () => {
+  const scopeIds = ['readmes', 'oracle'];
+  const state = {
+    // readmes was audited at an earlier instant (Jun 1 20:00Z) but its string
+    // sorts after oracle's, so a lexicographic compare would wrongly pick oracle.
+    readmes: { lastAuditedAt: '2026-06-02T05:00:00+09:00' },
+    oracle: { lastAuditedAt: '2026-06-02T00:00:00Z' },
+  };
+  assert.equal(selectScope({ scopeIds, state }), 'readmes');
+});
+
 test('selectScope returns null when there are no scopes', () => {
   assert.equal(selectScope({ scopeIds: [], state: {} }), null);
 });
