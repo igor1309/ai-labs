@@ -23,7 +23,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Path | Purpose |
 |------|---------|
-| `agents/` | OpenClaw agent-fleet operational docs (runbook, gotchas, shared README/TODO) and the nested `maestro-flow-review-agent/` definition |
+| `agents/` | OpenClaw agent-fleet operational docs (runbook, gotchas, shared README/TODO) and the nested `maestro-flow-review-agent/` and `doc-drift-agent/` definitions |
 | `migrate-to-skills/guides/` | Foundational methodologies and style guides for AI-assisted work |
 | `prompts/` | Focused one-shot task instructions |
 | `dev-skills/` | Development workspace for Claude Code skills; published to `igor1309/skills` |
@@ -61,7 +61,6 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 | dragoman | Editorial channel | "The Dragoman" Telegram channel |
 | clipdeck | Product | iPhone copy library for private prompts and skills |
-| doc-drift-agent | Agent definition | README drift reviewer |
 | dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
 | neris | Framework | Agentic execution layer in Swift |
 | niora | Concept | Contextual field of emergence |
