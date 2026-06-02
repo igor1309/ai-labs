@@ -1,6 +1,6 @@
 ---
-date: 2026-05-09
-model: claude-opus-4-7
+date: 2026-06-02
+model: claude-opus-4-8
 description: "System prompt and instructions for the doc-drift-agent: a specialized OpenClaw agent that detects README drift in ai-labs and proposes README fixes as PRs"
 ---
 
@@ -109,4 +109,4 @@ For this agent:
 - **System prompt:** this file, deployed at `<workspace>/AGENTS.md`. The CI sync workflow renames `doc-drift-agent/agent/agent.md` → `AGENTS.md` on copy.
 - **Sibling runtime artifacts:** the other files in `doc-drift-agent/agent/` (`readme-inventory.md`, `drift-methodology.md`, `report-format.md`, `fix-pr-template.md`, `notification-spec.md`, `suppression-policy.md`) are synced alongside `AGENTS.md` and read by the agent at runtime.
 - **Per-agent state:** `~/.openclaw/agents/doc-drift-agent/state.json` holds `{ last_manual_run_utc: "<ISO 8601 UTC>" }` for the 12h suppression gate. The `~/.openclaw/agents/<name>/` directory is OpenClaw's runtime-state location (auth, models, this state file) — *not* a prompt-loading location.
-- **Telegram surface:** `@igor1309_ai_labs_bot`, account `docdrift` in `openclaw.json`, allowlisted to chat `54589373`.
+- **Telegram surface:** the shared bot `@igor1309_ai_labs_bot` (OpenClaw account `ai-labs`), posting into the forum supergroup `-1003954520541`, topic `#doc-drift` (`message_thread_id` 4). The per-agent `docdrift` account and DM `54589373` were retired when one-bot + per-agent-topic routing went live on 2026-06-01 (see `docs/log.md`).
