@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Phase 7 Quick Check boundary tests after adversarial review with positive controls for public quick-check transport surfaces, internal answer-key resolver leaks, candidate-id leakage, and provider, queue, and human-review expansions.
 - Implement Phase 7 of the Quick Check first-slice plan with integrated boundary isolation coverage across curator candidate, acceptance, delivery, Student submission, and owner-read flows plus deferred learner-state and public-surface absence guards.
 - Harden Phase 6 Quick Check attempt reads after adversarial review by adding positive redaction controls for answer keys, per-option correctness metadata, curator metadata, and idempotency keys.
 - Implement Phase 6 of the Quick Check first-slice plan with owner-only quick-check attempt detail and list reads, Student participation checks, accepted revision filter validation, and student-safe redacted attempt summaries.

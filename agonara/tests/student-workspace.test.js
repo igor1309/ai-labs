@@ -1379,7 +1379,9 @@ test("containsForbiddenDetail_shouldDetectQuickCheckReadForbiddenDetails", () =>
       correctness: "per-option correctness metadata",
       isCorrect: true,
       rationale: "curator rationale",
+      acceptedFromCandidateId: "quick-check-candidate-a",
       acceptedByIdentityId: "identity-curator",
+      candidateId: "quick-check-candidate-a",
       createdByIdentityId: "identity-curator",
       idempotencyKey: "sensitive-quick-idempotency-key",
     }]),
@@ -1524,8 +1526,74 @@ test("containsAnyOutOfScopeStudentWorkspaceBehavior_shouldDetectDeferredQuickChe
       "grading",
       "analytics",
       "reporting",
+      "provider_sdk",
+      "durable_queue",
+      "human_review_queue",
     ].map(containsAnyOutOfScopeStudentWorkspaceBehavior),
-    Array.from({ length: 10 }, () => true),
+    Array.from({ length: 13 }, () => true),
+  );
+});
+
+test("quickCheckBoundarySurfaceDetectors_shouldDetectPublicAndResolverLeaks", () => {
+  const { commands, corpusCommands, database } = makeSUT();
+
+  try {
+    assert.deepEqual(
+      {
+        publicSurfaces: [
+          { serverSource: "POST /quick-check/attempts" },
+          { cliSource: "submitQuickCheckAttempt" },
+          { adminUiSource: "quick_check_dashboard" },
+        ].map(source =>
+          containsAnyQuickCheckPublicSurface({
+            adminUiSource: "",
+            cliSource: "",
+            serverSource: "",
+            ...source,
+          }),
+        ),
+        resolverSurfaces: [
+          { serverSource: "resolveAcceptedQuickCheckRevisionForEvaluation" },
+          { cliSource: "resolveAcceptedQuickCheckRevisionForEvaluation" },
+          {
+            commands: {
+              ...commands,
+              resolveAcceptedQuickCheckRevisionForEvaluation: () => undefined,
+            },
+          },
+        ].map(surface =>
+          containsInternalQuickCheckResolverSurface({
+            adminUiSource: "",
+            cliSource: "",
+            commands,
+            corpusCommands,
+            serverSource: "",
+            ...surface,
+          }),
+        ),
+      },
+      {
+        publicSurfaces: [true, true, true],
+        resolverSurfaces: [true, true, true],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("containsAnyOutOfScopeStudentWorkspaceBehavior_shouldDetectProviderQueueAndHumanReviewSurfaces", () => {
+  assert.deepEqual(
+    [
+      "provider_sdk",
+      "external_provider",
+      "durable_queue",
+      "queue_state",
+      "human_review_queue",
+      "reviewer_queue",
+      "review_assignment",
+    ].map(containsAnyOutOfScopeStudentWorkspaceBehavior),
+    Array.from({ length: 7 }, () => true),
   );
 });
 
@@ -9339,6 +9407,8 @@ function containsForbiddenDetail(values) {
   return [
     "answerkey",
     "acceptedby",
+    "acceptedfromcandidate",
+    "candidateid",
     "correctness",
     "correctoption",
     "createdby",
@@ -9410,6 +9480,13 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
     "grading",
     "analytics",
     "reporting",
+    "provider_sdk",
+    "external_provider",
+    "durable_queue",
+    "queue_state",
+    "human_review_queue",
+    "reviewer_queue",
+    "review_assignment",
   ].some($0 => normalized.includes($0));
 }
 
