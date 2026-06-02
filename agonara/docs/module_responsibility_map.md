@@ -159,4 +159,4 @@ The v0.0.1 minimum operational contract is specified in [Operational Cross-Cutti
 - Which accepted check type should follow the open-answer first slice: quick checks, topic-level checks, or period-level checks?
 - Which accepted revision retention and cleanup policy is needed after students already have attempts and progress evidence?
 - Which cross-cutting concerns require their own ADR beyond the v0.0.1 operational contract: logging, backup/restore, observability, or analytics?
-- Which evaluator implementation slice should follow open-answer attempt APIs: internal asynchronous evaluation status, LLM-assisted evaluation evidence, or human-review evaluator workflow?
+- Which implementation slice should follow the evaluation status/evidence spec: persistence substrate, owner-only HTTP status reads, or asynchronous worker orchestration?
