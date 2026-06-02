@@ -214,7 +214,7 @@ type OpenAnswerAttemptListQuery = {
 | Story | Behavior covered |
 |---|---|
 | STU-12 - Submit open answer | `POST /programs/{programId}/open-answer-attempts` records the session Student's open-answer attempt against an accepted check revision. |
-| STU-13 - Receive open-answer feedback | Attempt detail and list routes return Student Workspace evaluation or failure state when it exists for the owning Student. |
+| STU-13 - Receive open-answer feedback | The attempt detail route returns Student Workspace evaluation or failure state when it exists for the owning Student. |
 | INT-05 - Submit an open answer and receive feedback tied to accepted criteria | Submission snapshots accepted criterion revision ids, owner-only reads return feedback tied to those revision ids, and the API keeps accepted corpus separate from personal Student Workspace state. |
 
 ## Tests (required)

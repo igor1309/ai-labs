@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Student Workspace open-answer attempt HTTP API spec after adversarial review by correcting feedback traceability so only the detail route promises evaluation or failure detail.
 - Add the Student Workspace open-answer attempt HTTP API spec, carrying the implemented domain contract into session-backed Student submission and owner-only read routes with CSRF, idempotency, pagination, redaction, and no UI or evaluation mutation surface.
 - Harden the Student Workspace plan archive after adversarial review by completing INT-05 code and test traceability for the delivered domain and backup/restore slice.
 - Archive the completed Student Workspace open-answer attempt implementation plan and update INT-05 traceability to include the delivered plan.
