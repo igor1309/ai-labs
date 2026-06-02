@@ -57,11 +57,11 @@ Known constraints:
 
 Option A, the five-module split, is the current best candidate.
 
-It most directly preserves the Product Intent boundary between shared program corpus and personal student state, while giving Program Membership a clear place to own participation lifecycle and giving Identity & Role Management a clear place to own identity and operational authority primitives. Program Membership ownership is accepted by [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), first membership state/admission policy is accepted by [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md), Program Membership Manager is accepted as a narrative policy actor by [ADR-006](adr/adr-006-program-membership-policy-actor.md), the effective participation authorization contract is accepted by [ADR-007](adr/adr-007-effective-participation-authorization-contract.md), and Program shell ownership plus initial curator participation are accepted by [ADR-009](adr/adr-009-program-shell-and-initial-curator-participation.md). The remaining map is provisional: the detailed Corpus Storage / Curator Workspace acceptance workflow and assessment ownership boundary need further pressure before ADR acceptance.
+It most directly preserves the Product Intent boundary between shared program corpus and personal student state, while giving Program Membership a clear place to own participation lifecycle and giving Identity & Role Management a clear place to own identity and operational authority primitives. Program Membership ownership is accepted by [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), first membership state/admission policy is accepted by [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md), Program Membership Manager is accepted as a narrative policy actor by [ADR-006](adr/adr-006-program-membership-policy-actor.md), the effective participation authorization contract is accepted by [ADR-007](adr/adr-007-effective-participation-authorization-contract.md), Program shell ownership plus initial curator participation are accepted by [ADR-009](adr/adr-009-program-shell-and-initial-curator-participation.md), the Corpus Storage / Curator Workspace acceptance boundary is accepted by [ADR-010](adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), accepted checks / Student assessment boundaries are accepted by [ADR-011](adr/adr-011-accepted-checks-and-student-assessment-boundary.md), and the Student Workspace open-answer attempt lifecycle is accepted by [ADR-012](adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md). The remaining map is provisional where future specs have not yet chosen concrete schemas, APIs, or implementation slices.
 
 ## Provisional boundaries
 
-The following responsibility map is provisional. It is intended to make ownership questions explicit before storage, schema, or implementation planning.
+The following responsibility map includes accepted boundaries from ADRs and remaining provisional boundaries. It is intended to make ownership questions explicit before storage, schema, or implementation planning.
 
 | Module | Responsibility | Owns | Does Not Own | Key Boundary |
 |---|---|---|---|---|
@@ -108,7 +108,7 @@ Some behaviors are important but should not be modeled as top-level modules in t
 
 | Behavior | Lives In | Reason |
 |---|---|---|
-| Assessment | Student Workspace | It evaluates student answers and attempts as part of the learning loop. |
+| Assessment execution | Student Workspace | It evaluates student attempts against accepted check and criterion revisions as part of the learning loop. |
 | Progress Interpretation | Student Workspace | It turns assessment evidence and learning activity into student-facing learning state. |
 | LLM-assisted curation | Curator Workspace | It proposes structure, concepts, materials, checks, criteria, and coverage gaps for curator review. |
 | LLM-assisted learning | Student Workspace | It may support open-answer evaluation, feedback, explanation, and study assistance. |
@@ -122,8 +122,10 @@ LLM output does not become accepted corpus content or final student progress sta
 | Area | Owner |
 |---|---|
 | Accepted Program Corpus | Corpus Storage |
+| Accepted Checks and Assessment Criteria | Corpus Storage |
 | Source Materials Used by Programs | Corpus Storage |
 | Research Material and Candidate Content | Curator Workspace |
+| Draft Checks and Proposed Criteria | Curator Workspace |
 | Curator Decisions | Identity acting as Program Curator within a Program |
 | Learner State | Identity acting as Student within a Program |
 | Program Membership Lifecycle | Program Membership |
@@ -154,8 +156,7 @@ The v0.0.1 minimum operational contract is specified in [Operational Cross-Cutti
 
 ## Open questions
 
-- Is Corpus Storage distinct from Curator Workspace in the first slice, or should accepted and candidate corpus behavior start behind one module boundary?
-- Should Assessment remain embedded in Student Workspace, or does open-answer evaluation need an explicit assessment module later?
-- Which module owns versioning when accepted program corpus changes after students already have attempts and progress evidence?
+- Which accepted check type should follow the open-answer first slice: quick checks, topic-level checks, or period-level checks?
+- Which accepted revision retention and cleanup policy is needed after students already have attempts and progress evidence?
 - Which cross-cutting concerns require their own ADR beyond the v0.0.1 operational contract: logging, backup/restore, observability, or analytics?
-- How should LLM-assisted learning be bounded so that feedback helps the student without becoming the owner of final progress state?
+- Which LLM-assisted learning governance thresholds require human review, evaluator diagnostics, or a standalone Assessment module after open-answer attempts exist?

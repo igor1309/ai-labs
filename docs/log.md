@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-02
+
+- Process: refreshed the repo LOC dashboard before the Student Workspace open-answer attempt PR so the summary cards, table totals, data array, and update date match the current branch.
+
 ## 2026-06-01
 
 - loc-dashboard: fixed `scripts/loc-dashboard.sh` `count_text` to exclude `.claude/.DS_Store` (a macOS binary `wc -l` was counting as 3 lines, inflating `repo-text` to 5080 on macOS vs 5077 on CI — the cause of dashboard-sync PR #451's flapping); local and CI counts now agree. Refreshed `docs/loc-dashboard.html` to current state (`repo-text` 5080→5077, `dashboard-sync-agent` 1155→1217 docs, total 137,512→137,571).

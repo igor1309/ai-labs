@@ -1,7 +1,76 @@
 # Log
 
+## 2026-06-02
+
+- Harden the Student Workspace plan archive after adversarial review by completing INT-05 code and test traceability for the delivered domain and backup/restore slice.
+- Archive the completed Student Workspace open-answer attempt implementation plan and update INT-05 traceability to include the delivered plan.
+- Complete Student Workspace open-answer attempt backup/restore and executable acceptance coverage with restored idempotency keys, evaluation/failure state, and orphan accepted-revision graph rejection.
+- Implement Student Workspace owner-only open-answer attempt reads with detail/list queries, scoped filters, response redaction, and first-slice surface absence coverage.
+- Harden Student Workspace open-answer evaluation lifecycle after adversarial review by clearing stale failure state on evaluation retry transitions and expanding validation/redaction coverage.
+- Implement Student Workspace open-answer evaluation lifecycle commands with internal evaluating, evaluated, and failure transitions plus criterion-snapshot feedback validation.
+- Harden Student Workspace open-answer submission after adversarial review with explicit curator-denial, per-student idempotency scope, and idempotency-key redaction coverage.
+- Implement Student Workspace open-answer attempt submission with effective Student authorization, accepted revision snapshots, immutable trimmed answers, and scoped idempotency handling.
+
+## 2026-06-01
+
+- Harden the Student Workspace open-answer attempt storage substrate after adversarial review with database-enforced scoped idempotency and restore cleanup for attempt child records.
+- Start the Student Workspace open-answer attempt implementation with the Phase 1 persistence substrate: attempt, evaluation, failure, status, idempotency, and accepted-revision graph storage helpers.
+- Harden the Student Workspace open-answer attempt implementation plan after adversarial review by adding explicit phase status gates and clarifying docs-only closeout behavior.
+- Add the Student Workspace open-answer attempt implementation plan, sequencing storage, idempotent submission, evaluation lifecycle, owner-only reads, backup/restore, and executable acceptance through strict TDD phase commits.
+- Harden the Student Workspace open-answer attempt spec after adversarial review by narrowing first-slice evaluator kinds, using `attempt_already_evaluating`, and avoiding private attempt existence leaks for non-owners.
+- Add the Student Workspace open-answer attempt first-slice spec, defining submitted answer attempts, evaluation outcomes, idempotent submission, accepted revision references, owner-only reads, backup/restore rules, and out-of-scope boundaries.
+- Harden ADR-012 after adversarial review by making submission idempotency consistently client-keyed and rejecting conflicting idempotency-key reuse.
+- Accept ADR-012 for the Student Workspace open-answer attempt lifecycle: attempts, submitted answers, evaluation outcomes, and feedback stay personal student state while referencing accepted check and criterion revisions.
+- Harden the accepted checks and assessment criteria HTTP API after adversarial review with explicit mutation CSRF, malformed-body, pagination, cursor-scope, authorization, and fault-redaction adapter coverage.
+- Complete the accepted checks and assessment criteria HTTP API with session-backed criterion and open-answer check curation, accepted revision reads, strict transport validation, snapshot preservation, executable HTTP acceptance, and archived-plan closeout.
+- Add the accepted checks and assessment criteria HTTP API implementation plan, sequencing strict-TDD route delivery over the existing Corpus adapter through criterion and open-answer check curation, accepted revision reads, redaction, boundary guards, and executable closeout.
+
+## 2026-05-30
+
+- Add the accepted checks and assessment criteria HTTP API spec, carrying the implemented domain contract into session-backed routes with CSRF, pagination, redaction, authorization, and Student Workspace exclusion requirements.
+
 ## 2026-05-28
 
+- Complete the accepted checks and assessment criteria first slice with assessment backup/restore preservation, restore graph validation, an executable criterion-to-check lifecycle, and archived plan closeout.
+- Add executable boundary hardening for accepted assessment criteria and open-answer checks, proving draft/rejected candidates stay out of accepted reads while Student Workspace, scoring, feedback, LLM, and review surfaces remain absent.
+- Harden the accepted open-answer check lifecycle after adversarial review by rejecting malformed source/criterion reference arrays and proving Admin-without-curator cannot accept or reject check candidates.
+- Implement the accepted open-answer check lifecycle over Corpus Storage: curator-owned check candidates, required criterion references, acceptance into current/historical check revisions, criterion revision snapshotting, rejection, accepted check reads, and redacted response coverage.
+- Harden the accepted assessment criterion lifecycle after adversarial review by authorizing acceptance before candidate state disclosure and rejecting malformed `sourceIds` input.
+- Implement the accepted assessment criterion lifecycle over Corpus Storage: curator-owned draft candidates, acceptance into stable current/historical revisions, rejection, accepted criterion reads for Student/Curator/Admin callers, and redacted response coverage.
+- Harden the accepted checks storage substrate after adversarial review by clearing assessment tables during pre-Phase-5 restores and adding criterion/check candidate status update helpers.
+- Start the accepted checks and assessment criteria implementation with the Phase 1 storage substrate: criterion/check candidate records, accepted entity/revision records, current-revision updates, criterion revision references, and structural Program scoping checks.
+- Harden the accepted checks and assessment criteria implementation plan after adversarial review by clarifying Corpus Storage ownership and marking student feedback traceability as prerequisite-only.
+- Add the accepted checks and assessment criteria implementation plan, sequencing storage, criterion lifecycle, open-answer check lifecycle, Student Workspace exclusion, backup/restore, and executable acceptance through strict TDD phases.
+- Harden the accepted checks and assessment criteria spec after adversarial review by requiring criterion references on open-answer checks, tightening read-surface wording, and adding explicit status-filter rejection coverage.
+- Add the accepted checks and assessment criteria first-slice spec, choosing open-answer checks as the narrow first check shape while preserving accepted criterion revisions and excluding Student Workspace attempts and feedback.
+- Harden ADR-011 after adversarial review by clarifying future Assessment module evolution and requiring traceability plus verification for checks, criteria, attempts, feedback, and progress evidence.
+- Accept ADR-011 for the accepted checks and Student assessment boundary: accepted checks and criteria belong to versioned Program corpus, while attempts, answers, feedback, mastery, weak areas, and progress evidence belong to Student Workspace.
+- Harden the Corpus HTTP API closeout after adversarial review by asserting transport status codes across the executable Corpus flow and CSRF rejection checks.
+- Complete the Corpus HTTP API implementation closeout with an executable HTTP acceptance flow, Product Intent traceability to the implemented route adapter/tests, and the implementation plan archived under implemented plans.
+- Harden the Corpus event HTTP API after adversarial review by adding fault-response redaction coverage for session, credential, SQL, filesystem path, and database URL leak sentinels.
+- Complete the Corpus HTTP API event route phase with curator-only Program-scoped event reads, route-specific Corpus event response shape, bounded pagination, cursor redaction coverage, domain-only reasons, and out-of-scope surface guards.
+- Harden the accepted corpus HTTP API after adversarial review by covering disabled sessions, unknown Programs, filter-scoped cursors, and Student/Curator/Admin historical revision reads.
+- Complete the Corpus HTTP API accepted corpus read phase with Student/Curator/Admin authorization, accepted-kind filtering, bounded pagination, current-revision listing, historical revision lookup, and draft/rejected candidate exclusion coverage.
+- Harden the Corpus acceptance/rejection HTTP API after adversarial review by rejecting unknown acceptance body fields and covering rejected Corpus events for resolved acceptance/rejection failures.
+- Complete the Corpus HTTP API acceptance/rejection route phase with explicit curator-only state transitions, CSRF-before-mutation checks, target validation, current-revision replacement, historical revision preservation, and Corpus event coverage.
+- Harden the Corpus candidate HTTP API after adversarial review by adding route-specific default pagination coverage and rejecting non-string source identifiers as malformed request input.
+- Complete the Corpus HTTP API candidate route phase with curator-only candidate listing/creation, status-filtered pagination, CSRF-before-mutation coverage, source ownership rejection mapping, and draft isolation from accepted corpus.
+- Complete the Corpus HTTP API Program source route phase with HTTP coverage for Program-scoped source listing, curator-only access, unknown Program rejection, CSRF-before-mutation behavior, accepted source creation events, and source validation failures.
+- Start the Corpus Storage and Curator Acceptance HTTP API implementation with the Phase 1 transport substrate: dedicated worktree preflight, Corpus command composition, session-backed source route dispatch, Corpus status mapping, shared list pagination, and strict Corpus JSON body classification.
+- Add the Corpus Storage and Curator Acceptance HTTP API implementation plan, sequencing the route adapter work through strict TDD phases for shared transport helpers, source routes, candidate routes, acceptance/rejection, accepted corpus reads, Corpus events, and executable closeout.
+- Harden the Corpus Storage and Curator Acceptance HTTP API spec after adversarial review by removing backup-only rejection reasons from the HTTP contract, making rejection request-body handling explicit, and bounding all Corpus list routes with opaque cursors.
+- Add the Corpus Storage and Curator Acceptance HTTP API spec, carrying the implemented domain contract into session-backed routes, CSRF enforcement, response envelopes, redaction, scoped event and candidate pagination, and executable acceptance scenarios.
+- Harden the Corpus acceptance implementation after adversarial review by adding rejected Corpus events for resolved state/target failures and rejecting restore graphs where accepted revisions point to missing entities or unaccepted candidates.
+- Complete the Corpus Storage and Curator Acceptance first slice with executable domain acceptance coverage, draft/rejected isolation and out-of-scope surface guards, and archived implementation-plan closeout.
+- Harden Corpus event queries and response redaction: Program Curator access is required, events remain Program-scoped read-only records, rejected acceptance/rejection commands are recorded when actor and Program resolve, and Corpus responses stay free of secret/session/infra details.
+- Extend Agonara backup/restore to preserve Program sources, Corpus candidates, accepted corpus entities/revisions, and Corpus events, while rejecting invalid accepted-corpus graphs before restore.
+- Implement explicit Corpus candidate acceptance into stable accepted entities and revisions, including current-revision replacement, historical revision reads, and accepted-corpus read authorization.
+- Implement Curator Workspace candidate creation, listing, and rejection over the Corpus boundary, preserving draft/rejected candidate separation and candidate Corpus events.
+- Implement the first Corpus command/query boundary for Program source recording and listing, including effective curator authorization, validation, source persistence, and Corpus source events.
+- Implement the Corpus Storage persistence substrate for Program sources, Corpus candidates, accepted corpus entities/revisions, and Corpus events, with storage-level Program scoping and current-revision integrity checks.
+- Add the Corpus Storage and Curator Acceptance first-slice implementation plan, sequencing storage, source, candidate, acceptance, backup/restore, event, and executable acceptance work through strict TDD phases with per-phase green-gate commits.
+- Add the Corpus Storage and Curator Acceptance first-slice spec, defining source records, curator topic/concept candidates, explicit acceptance into stable accepted revisions, accepted corpus reads, and required tests.
+- Accept ADR-010 for the Corpus Storage / Curator Workspace boundary: accepted Program corpus and stable accepted revisions belong to Corpus Storage, while drafts, candidates, LLM suggestions, and review state remain in Curator Workspace until explicit curator acceptance.
 - Implement the Program Shell and Membership HTTP API, covering session-backed Program shell routes, Student membership join/leave/rejoin, effective participation checks, scoped event pagination, and executable acceptance coverage.
 - Harden the Program Shell and Membership HTTP API implementation plan after adversarial review by fixing mandatory heading order and making early status/session coverage explicit.
 - Add the Program Shell and Membership HTTP API implementation plan, sequencing the route adapter work through strict TDD phases with per-phase green-gate commits and explicit done criteria.
