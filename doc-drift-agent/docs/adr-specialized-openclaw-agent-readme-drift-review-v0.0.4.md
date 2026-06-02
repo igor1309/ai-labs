@@ -1,58 +1,122 @@
 ---
-date: 2026-05-09
+date: 2026-06-02
 author: Igor Malyarov
-version: 0.0.5
+version: 0.0.6
 status: proposed
-source_intent: Automated Doc Drift Review and Fix Suggestions. Intent v0.0.3
+source_intent: Automated Doc Drift Review and Fix Suggestions. Intent v0.0.4
+description: "Use a specialized OpenClaw agent for SCOPED documentation drift review (cross-project READMEs + per-project docs); fixes are doc-edit PRs within a scope; never auto-merge. Amends the README-only scope of v0.0.5."
 ---
 
-# ADR: Use a Specialized OpenClaw Agent for README Drift Review
+# ADR: Specialized OpenClaw Agent for Scoped Documentation Drift Review
 
-## Context
+> **Amendment note.** This revision (v0.0.6) generalises the agent's scope from
+> **READMEs only** (v0.0.5 and earlier) to a **set of documentation scopes**, and
+> expands the edit surface from README-only to a project's `docs/`. The original
+> core — *use a dedicated agent; never auto-merge* — is unchanged. The filename
+> still reads `…readme-drift-review-v0.0.4`; the rename / version reconciliation is
+> a deferred mechanical follow-up. Restructured to the 6-section ADR template.
 
-`ai-labs` is a mono-repo with multiple projects.
+## 1. Executive Summary
 
-Each project has its own README. The repo also has a root README.
+Use a dedicated OpenClaw agent to detect **documentation drift** across `ai-labs`
+and propose fixes as PRs. Documentation is reviewed in **scopes**: scope 0 = all
+READMEs (cross-project consistency); scopes 1..N = one per top-level project,
+covering that project's `README.md` and `docs/`. Within a scope the agent may
+PR-edit that scope's documentation — never code/config. The doc-drift discipline
+(factual mismatch only, minimum edit, no style/restructure) and the
+never-auto-merge rule are unchanged. Orchestration and observability of scoped
+runs are owned by a separate ADR (`docs/adr/agents/ADR-001-scoped-agent-orchestration-and-observability.md`),
+which is predicated on this decision.
 
-READMEs can drift from each other or from the actual repo state.
+## 2. Context
 
-An OpenClaw instance is already running.
+`ai-labs` is a mono-repo of many projects; each has documentation (a README and,
+mostly, a `docs/` tree) plus a root README. Docs drift from one another and from
+repo state. A dedicated OpenClaw agent already exists; READMEs were its original,
+deliberately-bounded scope — the biggest surface pain. That single scope proved
+too narrow: the agent surfaces valuable observations about project docs it may not
+act on, and one undifferentiated pass produces unfocused, ignorable output.
 
-## Decision
+Constraints:
 
-Use a new specialized OpenClaw agent for README drift review and fix suggestions.
+- Reuse the existing OpenClaw instance.
+- The maintainer reviews and merges; the agent never merges or approves.
+- Reviews must stay focused — bounded per scope.
 
-Reuse the existing running OpenClaw instance.
+Rejected alternatives:
 
-The agent will:
+- README-only forever — leaves project-doc drift homeless.
+- Edit anything, anywhere in one pass — wrong blast radius.
+- A single-file allowlist that grows file-by-file — an endless race.
 
-- inspect the root README and project READMEs
-- compare README claims against each other
-- compare README claims against the actual repo state
-- report detected drift with evidence
-- suggest README changes
-- propose README fixes as PRs
+## 3. Decision
 
-The agent must support:
+Use a specialized OpenClaw agent for **scoped documentation drift review**:
 
-- manual initiation
-- scheduled drift checks
-- automated notifications when drift is found
+- Documentation is partitioned into **scopes**: scope 0 = all READMEs across the
+  repo; scopes 1..N = one per top-level project, covering that project's
+  `README.md` and `docs/`.
+- A project's README is reviewed in **both** scope 0 (cross-project consistency —
+  README vs README) and its own project scope (against that project's docs and
+  state) — overlapping by design, with different lenses. The **precise document
+  set per scope** (paths/globs/depth) is defined by the scope registry, not
+  enumerated in this ADR.
+- The agent reviews **one scope at a time**, comparing that scope's docs against
+  one another and against repo state (including the project's code/config as
+  ground truth), reports drift with evidence, and proposes the **minimum doc edit**
+  as a PR.
+- Within a scope, the agent may PR-edit **that scope's documentation** (`README.md`
+  + `docs/`). It never edits code, config, or scripts.
+- The **scope set** is derived from the repo's top-level projects; its own
+  consistency is auditable (a project with no scope, or a scope for a removed
+  project, is drift). The scope registry is the agent's own doc and is therefore
+  PR-fixable.
+- The doc-drift discipline is unchanged: factual mismatches only; no
+  style/restructure/additions; evidence mandatory.
 
-Scheduled checks must not run if a manual drift analysis was invoked less than 12 hours earlier.
+## 4. Rules / Invariants
 
-The agent must never merge PRs automatically.
+- The agent **MUST** review one scope per run and confine edits to that scope's
+  documentation (`README.md` + `docs/`).
+- The agent **MUST NOT** edit code, config, scripts, or CI. If the real fix is
+  code-side, it proposes the doc change and the maintainer decides on the PR.
+- Every finding **MUST** carry both the doc-side claim and the contradicting
+  evidence; an evidence-less finding is discarded.
+- Every fix **MUST** be the minimum edit — no style, restructure, or additions.
+- The agent **MUST NOT** merge or approve PRs.
+- The agent **MUST NOT** open issues or any non-PR work item; findings are
+  doc-edit PRs.
+- The scope registry **MUST** be maintained as the agent's own doc; scope-set
+  drift is itself a (PR-fixable) finding.
 
-## Boundary
+## 5. Consequences
 
-The agent proposes evidence-backed README fixes as PRs.
+- Coverage broadens from READMEs to all project docs, partitioned into scopes —
+  closing the "homeless project-doc observation" gap.
+- The places that pinned "README-only" — this ADR's boundary, the source intent,
+  `drift-methodology.md`, `agent.md`, `fix-pr-template.md` — **MUST** be cascaded
+  to the scoped model in the **same change set as acceptance**; the downstream
+  artifacts follow the intent and this ADR, they do not lead.
+- `readme-inventory.md` generalises into the scope registry.
+- **Orchestration & observability** of scoped runs (how/when scopes run, run
+  outcomes) are **out of scope here** and owned by `ADR-001`, which is predicated
+  on this decision being accepted first.
+- Tradeoff accepted: a larger audited surface and edit surface, bounded by
+  one-scope-per-run and the unchanged minimum-edit discipline.
 
-The maintainer reviews proposed README fixes through the normal repo flow.
+## 6. Non-Goals
 
-## Consequences
+- Not editing code, config, or scripts — ever.
+- Not auto-merging or auto-approving.
+- Not introducing issues / queue machinery.
+- Not changing the doc-drift discipline (factual mismatch, minimum edit).
+- Not defining orchestration, scheduling, or observability (owned by `ADR-001`).
+- Not defining notification rendering (Shape 3).
 
-README drift review is handled by a dedicated agent inside the existing OpenClaw instance.
+## Revision history
 
-README fixes enter the same review path as normal repo changes.
-
-The maintainer can notice README drift without manually comparing READMEs and repo state.
+- **v0.0.6 (2026-06-02):** generalised scope (READMEs → scope set incl.
+  per-project `docs/`) and edit surface (README-only → a scope's docs);
+  restructured to the 6-section ADR template; cross-referenced `ADR-001`.
+  Supersedes the README-only scope of v0.0.5. Filename / version rename deferred.
+- v0.0.5 and earlier: README-only drift review (see git history).
