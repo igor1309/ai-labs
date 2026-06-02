@@ -26,11 +26,8 @@ Use the `spec-writing` skill. See `dev-skills/public/spec-writing/SKILL.md`.
 
 ## README Components Table
 
-The `## Components` table in `README.md` lists every component with its type and one-line description. Keep it current:
-
-- Add a row when a new component (product, service, MCP tool, observability) is introduced.
-- Update the Type or Description when a component's role changes.
-- Remove the row when a component is deleted from the repo.
+Keep the `## Components` table in `README.md` current — see
+[`.agents/doc-maintenance.md`](.agents/doc-maintenance.md) when adding, changing, or removing a component.
 
 ## New Project Checklist
 
@@ -39,12 +36,8 @@ When a top-level project directory is added, renamed, or removed, follow the che
 
 ## Log
 
-- Log entries are in reverse chronological order (newest first).
-- Update the relevant log for each meaningful change set before pushing:
-  - repo-level changes: `docs/log.md`
-  - project-level changes: `<project>/docs/log.md` (for example, `oracle/docs/log.md`)
-  - if both scopes are changed, update both logs
-- Keep log entries concise and outcome-focused; don’t copy commit messages verbatim.
+Update the relevant log for each meaningful change set before pushing — see
+[`.agents/doc-maintenance.md`](.agents/doc-maintenance.md) for log locations and conventions.
 
 ## Strict TDD Mode
 
