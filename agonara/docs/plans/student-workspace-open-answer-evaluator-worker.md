@@ -215,7 +215,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 4 — Provider output validation and budget failure
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: validate provider output and budget before completion, routing invalid post-claim provider results through Student Workspace retry/failure behavior.
 

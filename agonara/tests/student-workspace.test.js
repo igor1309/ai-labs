@@ -1741,22 +1741,41 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRetryProviderOutputRejection_onInva
   assert.deepEqual(
     [
       makeProviderResult({ outputValidation: null }),
+      makeProviderResult({ outputValidation: "validator-a" }),
       makeProviderResult({ outputValidation: { validatorPolicyId: "validator-a", passed: false } }),
       makeProviderResult({ outputValidation: { validatorPolicyId: "validator-b", passed: true } }),
       makeProviderResult({ criterionFeedback: [] }),
+      makeProviderResult({ criterionFeedback: [makeCriterionFeedback(), makeCriterionFeedback()] }),
+      makeProviderResult({ criterionFeedback: [makeCriterionFeedback({ criterionRevisionId: "criterion-unknown" })] }),
+      makeProviderResult({ summaryFeedback: " " }),
       makeProviderResult({ summaryFeedback: "raw prompt leaked" }),
       makeProviderResult({ criterionFeedback: [makeCriterionFeedback({ feedback: "stack trace leaked" })] }),
+      makeProviderResult({ redactedEvidenceSummary: " " }),
       makeProviderResult({ redactedEvidenceSummary: "authorization leaked" }),
     ].map(providerResult =>
       runProviderOutputWorker({
         evaluate: () => providerResult,
       }),
     ),
-    Array.from({ length: 7 }, () =>
+    Array.from({ length: 12 }, () =>
       makeProviderWorkerFailureResult({
         failureReason: "provider_output_rejected",
       }),
     ),
+  );
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRetryProviderOutputRejection_onInvalidLlmOutputValidation", () => {
+  assert.deepEqual(
+    runProviderOutputWorker({
+      evaluatorPathKind: "llm_assisted",
+      evaluate: () =>
+        makeProviderResult({ outputValidation: { validatorPolicyId: "validator-b", passed: true } }),
+    }),
+    makeProviderWorkerFailureResult({
+      evaluatorPathKind: "llm_assisted",
+      failureReason: "provider_output_rejected",
+    }),
   );
 });
 
@@ -6981,19 +7000,20 @@ function makeProviderResult({
     criterionFeedback,
     ...(providerUsage ? { providerUsage } : {}),
     outputValidation,
-    ...(redactedEvidenceSummary ? { redactedEvidenceSummary } : {}),
+    ...(redactedEvidenceSummary !== undefined ? { redactedEvidenceSummary } : {}),
   };
 }
 
 function runProviderOutputWorker({
   budgetPolicy,
+  evaluatorPathKind = "deterministic",
   evaluate,
   retryPolicy = { maxAttempts: 2, backoffSeconds: [60] },
 }) {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "evaluator-run-1", "lease-1"],
-    evaluatorPolicies: [makeEvaluatorPolicy({ retryPolicy })],
-    providerAdapters: [makeProviderAdapter({ evaluate })],
+    evaluatorPolicies: [makeEvaluatorPolicy({ evaluatorPathKind, retryPolicy })],
+    providerAdapters: [makeProviderAdapter({ evaluate, evaluatorPathKind })],
   });
 
   try {
@@ -7001,7 +7021,7 @@ function runProviderOutputWorker({
     submitAttempt(commands);
     commands.scheduleOpenAnswerEvaluatorJob({
       attemptId: "attempt-1",
-      evaluatorPathKind: "deterministic",
+      evaluatorPathKind,
       evaluatorPolicyId: "policy-a",
       retryPolicy,
       ...(budgetPolicy ? { budgetPolicy } : {}),
@@ -7023,6 +7043,7 @@ function runProviderOutputWorker({
 
 function makeProviderWorkerFailureResult({
   budgetPolicy,
+  evaluatorPathKind = "deterministic",
   failureReason,
   retryPolicy = { maxAttempts: 2, backoffSeconds: [60] },
   terminal = false,
@@ -7040,6 +7061,7 @@ function makeProviderWorkerFailureResult({
           failureReason,
         }),
         evaluatorJob: makeEvaluatorJobSummary({
+          evaluatorPathKind,
           status: terminal ? "failed" : "retry_waiting",
           attemptNumber: terminal ? 1 : 2,
           retryPolicy,
