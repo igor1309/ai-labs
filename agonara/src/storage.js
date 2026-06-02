@@ -1427,6 +1427,22 @@ export function getOpenAnswerEvaluationRecord(database, id) {
   return row ? mapOpenAnswerEvaluationRecord(row) : null;
 }
 
+export function getOpenAnswerEvaluationRecordByAttemptId(database, attemptId) {
+  const row = database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_kind as evaluatorKind, summary_feedback as summaryFeedback,
+              criterion_feedback_json as criterionFeedbackJson, evaluated_at as evaluatedAt
+       from open_answer_evaluations
+       where attempt_id = ?`,
+    )
+    .get(attemptId);
+
+  return row ? mapOpenAnswerEvaluationRecord(row) : null;
+}
+
 export function createOpenAnswerEvaluationFailureRecord(database, { attemptId, reason, failedAt }) {
   assertOpenAnswerAttemptExists(database, attemptId);
 

@@ -8,12 +8,15 @@ import {
   getAcceptedOpenAnswerCheckRevisionRecord,
   getIdentity,
   getOpenAnswerAttemptRecord,
+  getOpenAnswerEvaluationFailureRecord,
+  getOpenAnswerEvaluationRecordByAttemptId,
   getProgramShellRecord,
   listOpenAnswerAttemptRecords,
   updateOpenAnswerAttemptStatus,
 } from "./storage.js";
 
 const supportedEvaluationOutcomes = new Set(["met", "partially_met", "missing", "unclear"]);
+const supportedAttemptStatuses = new Set(["submitted", "evaluating", "evaluated", "evaluation_failed"]);
 
 export function createStudentWorkspaceCommands({
   database,
@@ -22,6 +25,10 @@ export function createStudentWorkspaceCommands({
   now = () => new Date(),
 } = {}) {
   return {
+    getOpenAnswerAttempt: input =>
+      getOpenAnswerAttempt({ database, input }),
+    listOpenAnswerAttempts: input =>
+      listOpenAnswerAttempts({ database, getEffectiveParticipation, input }),
     markOpenAnswerAttemptEvaluating: input =>
       markOpenAnswerAttemptEvaluating({ database, input, now }),
     recordOpenAnswerEvaluation: input =>
@@ -31,6 +38,54 @@ export function createStudentWorkspaceCommands({
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
   };
+}
+
+function getOpenAnswerAttempt({ database, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  if (!attempt || attempt.studentIdentityId !== identity.id) {
+    return rejected("attempt_not_found");
+  }
+
+  return accepted(summarizeAttemptDetail(database, attempt));
+}
+
+function listOpenAnswerAttempts({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return rejected("program_not_found");
+  }
+
+  const participation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  if (!participation.allowed) {
+    return rejected("participation_required");
+  }
+
+  if (input?.status !== undefined && !supportedAttemptStatuses.has(input.status)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    attempts: listOpenAnswerAttemptRecords(database, {
+      programId: program.id,
+      studentIdentityId: identity.id,
+      status: input?.status ?? null,
+      checkRevisionId: input?.checkRevisionId ?? null,
+    }).map(summarizeAttempt),
+  });
 }
 
 function markOpenAnswerAttemptEvaluating({ database, input, now }) {
@@ -249,6 +304,19 @@ function summarizeEvaluationFailure(failure) {
     reason: failure.reason,
     failedAt: failure.failedAt,
   };
+}
+
+function summarizeAttemptDetail(database, attempt) {
+  const detail = { attempt: summarizeAttempt(attempt) };
+  const evaluation = getOpenAnswerEvaluationRecordByAttemptId(database, attempt.id);
+  if (evaluation) {
+    detail.evaluation = summarizeEvaluation(evaluation);
+  }
+  const failure = getOpenAnswerEvaluationFailureRecord(database, attempt.id);
+  if (failure) {
+    detail.evaluationFailure = summarizeEvaluationFailure(failure);
+  }
+  return detail;
 }
 
 function isValidEvaluationInput(input, attempt) {

@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Student Workspace owner-only open-answer attempt reads with detail/list queries, scoped filters, response redaction, and first-slice surface absence coverage.
 - Harden Student Workspace open-answer evaluation lifecycle after adversarial review by clearing stale failure state on evaluation retry transitions and expanding validation/redaction coverage.
 - Implement Student Workspace open-answer evaluation lifecycle commands with internal evaluating, evaluated, and failure transitions plus criterion-snapshot feedback validation.
 - Harden Student Workspace open-answer submission after adversarial review with explicit curator-denial, per-student idempotency scope, and idempotency-key redaction coverage.

@@ -222,7 +222,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 4 — Owner-only reads and boundary hardening
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement `getOpenAnswerAttempt` and `listOpenAnswerAttempts` with owner-only access, redacted summaries, filters, and first-slice absence checks.
 
