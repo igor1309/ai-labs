@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-02
+
+- Fixed the unreadable Telegram notification. The cron wrapper used to post `head -c 4000 "$output_file"` — the agent's raw Markdown report plus the `openclaw agent` stderr (the `[plugins] plugins.allow is empty …` warning and `⚠️ 🛠️ run … failed` tool traces), which Telegram renders as a wall of `#`/`|` noise. Rewrote the wrapper to parse the report header (`Findings`, `Fix PRs opened`, `Already tracked`, `READMEs inspected`, `Repo commit`) and the Fix PRs table URLs and emit a compact plain-text message — mirroring the maestro-flow-review wrapper. Added a fail-closed branch: a non-zero exit or missing report header now posts a bounded "run FAILED" alert instead of being silently misread as a clean scheduled run. Also brought the wrapper's routing in line with the live state it had drifted from (account `docdrift`→`ai-labs`, DM `54589373`→`#doc-drift` topic thread 4 of supergroup `-1003954520541`). Updated `agent/notification-spec.md` (new mandatory "Rendering" section, header-derived compact format, "Run-failed alert", current channel), `runtime/README.md`, `README.md`, and `agent/agent.md` to match.
+
 ## 2026-05-10
 
 - Added PR-idempotence step to the agent prompt. Before the previous-step "open a PR per finding" instruction, the agent now lists open `[doc-drift]` PRs via `gh pr list ... --search '[doc-drift] in:title'` and skips findings already covered by an existing open PR. Step renumbering: the open-PRs step is now 8 (was 7), the runtime hand-off is 9 (was 8), the manual-run timestamp write is 10 (was 9). `agent/report-format.md` and `agent/notification-spec.md` updated to carry per-finding `new`/`existing` status; report header now includes `Already tracked: <count>`. Without this, daily scheduled runs against a still-unmerged set of fix PRs would have produced duplicate PRs (or `git push`/`gh pr create` failures) every cycle.

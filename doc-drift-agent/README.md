@@ -1,6 +1,6 @@
 ---
-date: 2026-05-09
-model: claude-opus-4-7
+date: 2026-06-02
+model: claude-opus-4-8
 description: "doc-drift-agent project README — README drift review agent definition owned by ai-labs, runtime hosted in OpenClaw"
 ---
 
@@ -12,7 +12,7 @@ This directory owns the source of truth for what the agent inspects, how it repo
 
 ## Status
 
-Live on OpenClaw as of 2026-05-09. Account `docdrift`, agent `doc-drift-agent`, bound to `@igor1309_ai_labs_bot` (DM allowlisted to chat `54589373`). Daily cron at 01:00 UTC via `/etc/cron.d/openclaw-doc-drift`. Source tree mirrored at `/home/openclaw/ai-labs` and refreshed before every scheduled run. CI sync workflow at `.github/workflows/doc-drift-agent-sync.yml` ships `agent/**` to the VPS workspace on `trunk` merge.
+Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1309_ai_labs_bot` (account `ai-labs`) into the `#doc-drift` topic (`message_thread_id` 4) of the ai-labs agents supergroup `-1003954520541` — the per-agent `docdrift` account and DM `54589373` were retired when one-bot + per-agent-topic routing went live on 2026-06-01. Daily cron at 01:00 UTC via `/etc/cron.d/openclaw-doc-drift`. Source tree mirrored at `/home/openclaw/ai-labs` and refreshed before every scheduled run. CI sync workflow at `.github/workflows/doc-drift-agent-sync.yml` ships `agent/**` to the VPS workspace on `trunk` merge.
 
 ## Source
 

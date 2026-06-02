@@ -1,6 +1,6 @@
 ---
-date: 2026-05-09
-model: claude-opus-4-7
+date: 2026-06-02
+model: claude-opus-4-8
 description: "Runtime infrastructure for doc-drift-agent on the OpenClaw VPS: cron wrapper, cron entry, deployment notes"
 ---
 
@@ -17,15 +17,16 @@ Files in this directory describe the VPS-side wiring needed to run the doc-drift
 
 ## Bot token
 
-The bot token is stored only in `~/.openclaw/openclaw.json` under `channels.telegram.accounts.docdrift.botToken` (file mode 600). The cron wrapper reads it at runtime via `jq`; the token is never inlined into the script or any version-controlled file. Rotate by replacing the value in `openclaw.json` and restarting the gateway.
+The bot token is stored only in `~/.openclaw/openclaw.json` under `channels.telegram.accounts["ai-labs"].botToken` (file mode 600). The cron wrapper reads it at runtime via `jq`; the token is never inlined into the script or any version-controlled file. Rotate by replacing the value in `openclaw.json` and restarting the gateway.
 
 ## Telegram notification behavior
 
-The wrapper posts a `notification-spec.md`-shaped Telegram message based on the agent's stdout:
+The wrapper posts into the `#doc-drift` topic (`message_thread_id` 4) of the ai-labs agents supergroup `-1003954520541` via the shared `@igor1309_ai_labs_bot` (account `ai-labs`). It builds a `notification-spec.md`-shaped **compact** message by parsing the report header — it never forwards the agent's raw stdout (which carries Markdown, plugin warnings, and tool-call traces):
 
-- **Findings > 0:** posts the agent's full drift report (truncated at ~4000 chars; remainder in the cron log on the VPS).
+- **Findings > 0:** posts the compact "Drift found" summary (count, commit, READMEs inspected, PRs opened / already tracked, PR URLs) per `notification-spec.md` "Drift-found message".
 - **Scheduled run + 0 findings:** silent. No Telegram message — only a syslog line.
-- **Manual run + 0 findings (when invoked through this wrapper):** would emit a short ack; the current wrapper only fires from cron, so in practice manual runs go through Telegram-DM directly and the response goes back to the originating chat naturally.
+- **Run failed (non-zero exit or no parseable report):** posts the fail-closed "run FAILED" alert with a bounded tail of the output, so a failed run is never misread as clean. See `notification-spec.md` "Run-failed alert".
+- **Manual run + 0 findings (when invoked through this wrapper):** would emit a short ack; the current wrapper only fires from cron, so in practice manual runs go through the Telegram listener directly and the response goes back to the originating topic naturally.
 
 ## Manual-run timestamp persistence
 
