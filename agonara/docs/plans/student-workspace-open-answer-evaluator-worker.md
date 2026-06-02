@@ -88,7 +88,7 @@ Every implementation phase must use strict TDD:
 - Run the phase validation gates.
 - Commit only files tied to the phase after GREEN gates pass.
 - Self-review the phase against this plan, the spec, and ADR invariants immediately after the phase commit. Fix every fail/warning finding, rerun the phase gates, and commit the fix before advancing.
-- Mark phase status complete only after the phase commit and self-review hardening, then commit the plan status update if the implementation branch is tracking phase completion inside this plan.
+- Mark phase status complete only after the phase commit and self-review hardening, then commit the plan status update before advancing.
 
 Each phase has its own local commit. Do not bundle unrelated phase work into one commit.
 
@@ -117,6 +117,15 @@ Use Node commands through the repo wrapper and explicit Node path:
 **Dependencies**: implemented evaluator orchestration commands and claimable-job reads.
 
 **Risks**: worker code can accidentally duplicate claim ordering or bypass Student Workspace lease behavior. Keep claiming entirely behind existing Student Workspace commands and test that rejected claims do not call adapters.
+
+**TDD sequence**:
+
+1. RED/GREEN malformed worker inputs reject with `validation_failed`.
+2. RED/GREEN `single_job` claims only the requested waiting job.
+3. RED/GREEN `claim_next` claims the first job returned by `listClaimableOpenAnswerEvaluatorJobs({ now, limit: 1 })`.
+4. RED/GREEN `claim_next` returns an accepted no-op summary when nothing is claimable.
+5. RED/GREEN unknown, leased, terminal, and not-yet-due retry jobs reject before provider adapter calls.
+6. RED/GREEN worker result summaries expose claim/completion/retry/failure booleans without raw artifacts.
 
 **Validation**:
 
@@ -150,6 +159,16 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 **Risks**: policy resolution could become hidden defaults. Require explicit policy and adapter dependencies in tests; no fallback provider or default policy is allowed.
 
+**TDD sequence**:
+
+1. RED/GREEN missing evaluator policy rejects with `evaluator_policy_not_found`.
+2. RED/GREEN mismatched evaluator path kind rejects with `validation_failed`.
+3. RED/GREEN non-`none` raw artifact policy rejects with `validation_failed`.
+4. RED/GREEN malformed prompt input policy, provider adapter id, output validator policy id, redaction policy id, and retry policy mismatch reject with `validation_failed`.
+5. RED/GREEN missing provider adapter rejects with `provider_adapter_not_found`.
+6. RED/GREEN mismatched provider adapter path kind rejects with `validation_failed`.
+7. RED/GREEN rejected policy/adapter resolution leaves adjacent ownership domains unchanged.
+
 **Validation**:
 
 - Targeted worker tests for policy resolution, missing/malformed/mismatched policies, adapter resolution, missing/mismatched adapters, and non-mutation boundaries.
@@ -176,6 +195,14 @@ Use Node commands through the repo wrapper and explicit Node path:
 **Dependencies**: Phase 2.
 
 **Risks**: provider request construction can drift into prompt-template implementation or raw artifact storage. Keep this phase to structured request fields and redaction checks; prompt template text remains out of scope.
+
+**TDD sequence**:
+
+1. RED/GREEN provider request is built only after successful claim and policy/adapter resolution.
+2. RED/GREEN provider request includes job, attempt, Program, Student Identity, accepted check revision, accepted criterion revision, submitted answer, evaluator policy, and output validator policy identifiers.
+3. RED/GREEN provider request omits credentials, authorization headers, cookies, CSRF tokens, session identifiers, raw prompt transcripts, raw model responses, SQL text, stack traces, filesystem paths, database URLs, hidden policy instructions, and infrastructure details.
+4. RED/GREEN provider request uses snapshotted accepted revision ids after current accepted revisions change.
+5. RED/GREEN provider request construction does not read draft curator state as accepted corpus.
 
 **Validation**:
 
@@ -207,6 +234,16 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 **Risks**: post-claim provider failures can be modeled as ordinary envelope rejections and leave leased jobs stuck. Every post-claim provider failure must call Student Workspace failure behavior and produce either retry-waiting or terminal failed job state.
 
+**TDD sequence**:
+
+1. RED/GREEN thrown adapter failures fail the claimed job with `failureReason: "provider_execution_failed"`.
+2. RED/GREEN malformed adapter results fail the claimed job with `failureReason: "provider_execution_failed"`.
+3. RED/GREEN over-budget provider usage fails the claimed job with `failureReason: "provider_budget_exceeded"` before completion.
+4. RED/GREEN missing, failed, mismatched, or malformed output validation fails the claimed job with `failureReason: "provider_output_rejected"`.
+5. RED/GREEN missing, duplicate, unknown, or extra criterion feedback fails the claimed job with `failureReason: "provider_output_rejected"`.
+6. RED/GREEN unsafe summary, criterion feedback, or redacted evidence summary fails the claimed job with `failureReason: "provider_output_rejected"`.
+7. RED/GREEN retryable provider failure produces retry-waiting state and exhausted provider failure records active evaluation failure.
+
 **Validation**:
 
 - Targeted worker tests for thrown/malformed adapter results, budget failure, output validation failure, criterion feedback mismatch, unsafe feedback, unsafe evidence summary, failure reason summaries, retry-waiting state, exhausted failure state, and absence of final evaluation on provider failure.
@@ -235,6 +272,15 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 **Risks**: worker success can bypass the existing idempotency and lease checks if it writes directly. Keep completion and evidence exclusively behind existing Student Workspace commands.
 
+**TDD sequence**:
+
+1. RED/GREEN worker records redacted evidence through `recordOpenAnswerEvaluatorJobEvidence` using the active lease.
+2. RED/GREEN worker completes valid provider output through `completeOpenAnswerEvaluatorJob` using the active lease.
+3. RED/GREEN successful worker execution records exactly one final evaluation.
+4. RED/GREEN repeated worker execution against succeeded jobs rejects and does not create duplicate final evaluations.
+5. RED/GREEN stale lease, mismatched lease, cancelled job, timed-out job, and terminal job cases reject through Student Workspace commands.
+6. RED/GREEN worker evidence and completion tests prove no direct storage mutation path is used.
+
 **Validation**:
 
 - Targeted worker tests for evidence recording, successful completion, final evaluation uniqueness, repeated execution, lease mismatch, stale lease, cancelled/timed-out/terminal job conflicts, and direct-storage-write absence.
@@ -260,6 +306,14 @@ Use Node commands through the repo wrapper and explicit Node path:
 **Dependencies**: Phase 5.
 
 **Risks**: boundary tests can become brittle string scans. Prefer domain-state snapshots and narrow surface guards; use string scans only for explicit out-of-scope public surfaces.
+
+**TDD sequence**:
+
+1. RED/GREEN provider adapter test doubles cannot mutate adjacent ownership domains through the worker contract.
+2. RED/GREEN worker execution preserves accepted checks, accepted criteria, accepted revisions, source records, and curator candidates.
+3. RED/GREEN worker execution preserves Program Membership, Identity, session, credential, Admin authority, and CSRF state.
+4. RED/GREEN worker execution does not create public HTTP evaluator mutation routes, CLI commands, durable queue state, external provider calls, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, reporting, deployment target, infrastructure port, or worker topology surfaces.
+5. RED/GREEN Agonara log reflects the implementation slice without leaking raw artifacts or credentials.
 
 **Validation**:
 
@@ -288,6 +342,14 @@ Use Node commands through the repo wrapper and explicit Node path:
 **Dependencies**: Phase 6.
 
 **Risks**: executable acceptance can accidentally hide missing edge-case coverage behind a happy path. Keep edge cases in prior targeted tests and use acceptance to prove the full worker contract and boundary in one flow.
+
+**TDD sequence**:
+
+1. RED/GREEN backup export after worker execution excludes raw evaluator artifacts.
+2. RED/GREEN restore rejects forged worker/evaluator records carrying raw evaluator artifacts or unsafe summaries.
+3. RED/GREEN executable acceptance covers submit, schedule, worker claim, provider request, deterministic adapter output, redacted evidence, completion, duplicate-safe completion, redaction, and backup/restore exclusion.
+4. RED/GREEN executable acceptance proves no public HTTP mutation route, durable queue, external provider call, UI, mastery, weak-area, progress, next-step, grading, analytics, reporting, deployment target, or infrastructure port behavior is introduced.
+5. GREEN archive move updates Product Intent traceability and archive-relative links.
 
 **Validation**:
 
