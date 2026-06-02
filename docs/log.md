@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- doc-drift-agent: landed the scoped-worker registry (Shape 1). Added `doc-drift-agent/agent/scope-registry.json` (scope 0 + 22 project scopes) with a coverage check in the test suite, and a dedicated `doc-drift-agent-core.yml` CI workflow (per-project isolation) wired into `ci.yml` path-filter dispatch so the registry coverage check runs on doc-drift changes only.
 - doc-drift-agent: fixed the unreadable Telegram drift notification. The cron wrapper was dumping the agent's raw Markdown report plus `openclaw agent` stderr (plugin warning + tool-call traces) into the message; rewrote it to parse the report header + Fix PRs URLs into a compact plain-text message (mirroring the maestro-flow-review wrapper fixed 2026-06-01), added a fail-closed "run FAILED" alert, and corrected the stale routing (`docdrift`→`ai-labs` account, DM→`#doc-drift` topic thread 4). `notification-spec.md` gained a mandatory "Rendering" section; the project's README/runtime-README/agent.md were realigned.
 - Process: refreshed the repo LOC dashboard before the Student Workspace open-answer attempt PR so the summary cards, table totals, data array, and update date match the current branch.
 
