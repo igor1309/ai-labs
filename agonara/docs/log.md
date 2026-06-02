@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 3 evaluator orchestration leases so Student Workspace can claim waiting or due retry jobs, renew active leases, read redacted job state, and list bounded claimable jobs.
 - Implement Phase 2 evaluator orchestration scheduling so Student Workspace can turn submitted or failed open-answer attempts into waiting evaluator jobs with retry/budget policy validation and prior-failure preservation.
 - Harden Phase 1 evaluator orchestration storage after adversarial review by rejecting leased jobs without leases and validating lease update/clear helper inputs before SQLite writes.
 - Start the Student Workspace evaluator orchestration implementation with Phase 1 storage substrate: separate job status on evaluator runs, retry/budget policies, lease fields, claimable reads, and raw-artifact exclusion.

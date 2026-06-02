@@ -170,7 +170,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 3 — Claim, renew, and claimable job reads
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement worker lease acquisition, lease renewal, and claimable job reads without adding evidence or terminal transitions yet.
 

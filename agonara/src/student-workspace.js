@@ -15,10 +15,12 @@ import {
   getOpenAnswerEvaluatorJobRecord,
   getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
+  listClaimableOpenAnswerEvaluatorJobRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
   updateOpenAnswerAttemptStatus,
+  updateOpenAnswerEvaluatorJobLease,
   updateOpenAnswerEvaluatorRunStatus,
 } from "./storage.js";
 
@@ -55,16 +57,22 @@ export function createStudentWorkspaceCommands({
       beginOpenAnswerEvaluatorRun({ database, generateId, input, now }),
     cancelOpenAnswerEvaluatorRun: input =>
       cancelOpenAnswerEvaluatorRun({ database, input, now }),
+    claimOpenAnswerEvaluatorJob: input =>
+      claimOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     completeOpenAnswerEvaluatorRun: input =>
       completeOpenAnswerEvaluatorRun({ database, generateId, input, now }),
     failOpenAnswerEvaluatorRun: input =>
       failOpenAnswerEvaluatorRun({ database, input, now }),
+    getOpenAnswerEvaluatorJob: input =>
+      getOpenAnswerEvaluatorJob({ database, input }),
     getOpenAnswerAttempt: input =>
       getOpenAnswerAttempt({ database, input }),
     getOpenAnswerEvaluationStatus: input =>
       getOpenAnswerEvaluationStatus({ database, input }),
     listOpenAnswerAttempts: input =>
       listOpenAnswerAttempts({ database, getEffectiveParticipation, input }),
+    listClaimableOpenAnswerEvaluatorJobs: input =>
+      listClaimableOpenAnswerEvaluatorJobs({ database, input, now }),
     listOpenAnswerEvaluatorEvidence: input =>
       listOpenAnswerEvaluatorEvidence({ database, input }),
     markOpenAnswerAttemptEvaluating: input =>
@@ -75,6 +83,8 @@ export function createStudentWorkspaceCommands({
       recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }),
     recordOpenAnswerEvaluationFailure: input =>
       recordOpenAnswerEvaluationFailure({ database, input, now }),
+    renewOpenAnswerEvaluatorJobLease: input =>
+      renewOpenAnswerEvaluatorJobLease({ database, input, now }),
     scheduleOpenAnswerEvaluatorJob: input =>
       scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     submitOpenAnswerAttempt: input =>
@@ -281,6 +291,156 @@ function scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
     attempt: summarizeAttempt(transition.updated),
     evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
   });
+}
+
+function claimOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
+  if (!isNonEmptyText(input?.workerId) || !isValidLeaseDurationSeconds(input?.leaseDurationSeconds)) {
+    return rejected("validation_failed");
+  }
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const jobRejection = getClaimableEvaluatorJobRejection(evaluatorJob, now().toISOString());
+  if (jobRejection) {
+    return jobRejection;
+  }
+
+  const claimedAt = now().toISOString();
+  const lease = {
+    leaseId: generateId(),
+    workerId: input.workerId.trim(),
+    claimedAt,
+    expiresAt: addSecondsIso(claimedAt, input.leaseDurationSeconds),
+  };
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentJobRejection = getClaimableEvaluatorJobRejection(currentJob, claimedAt);
+    if (currentJobRejection) {
+      return { rejection: currentJobRejection };
+    }
+    return {
+      evaluatorJob: updateOpenAnswerEvaluatorJobLease(database, {
+        evaluatorJobId: currentJob.evaluatorJobId,
+        leaseId: lease.leaseId,
+        workerId: lease.workerId,
+        claimedAt: lease.claimedAt,
+        expiresAt: lease.expiresAt,
+      }),
+    };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+    lease: summarizeEvaluatorLease(transition.evaluatorJob.lease),
+  });
+}
+
+function getClaimableEvaluatorJobRejection(evaluatorJob, at) {
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+  if (evaluatorJob.jobStatus === "waiting") {
+    return null;
+  }
+  if (evaluatorJob.jobStatus === "retry_waiting" && evaluatorJob.nextRetryAt <= at) {
+    return null;
+  }
+  return rejected("evaluator_job_conflict");
+}
+
+function renewOpenAnswerEvaluatorJobLease({ database, input, now }) {
+  if (
+    !isNonEmptyText(input?.leaseId) ||
+    !isNonEmptyText(input?.workerId) ||
+    !isValidLeaseDurationSeconds(input?.leaseDurationSeconds)
+  ) {
+    return rejected("validation_failed");
+  }
+  const renewedAt = now().toISOString();
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const leaseRejection = getRenewEvaluatorJobLeaseRejection(evaluatorJob, input, renewedAt);
+  if (leaseRejection) {
+    return leaseRejection;
+  }
+
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentLeaseRejection = getRenewEvaluatorJobLeaseRejection(currentJob, input, renewedAt);
+    if (currentLeaseRejection) {
+      return { rejection: currentLeaseRejection };
+    }
+    return {
+      evaluatorJob: updateOpenAnswerEvaluatorJobLease(database, {
+        evaluatorJobId: currentJob.evaluatorJobId,
+        leaseId: currentJob.lease.leaseId,
+        workerId: currentJob.lease.workerId,
+        claimedAt: currentJob.lease.claimedAt,
+        expiresAt: addSecondsIso(renewedAt, input.leaseDurationSeconds),
+        updatedAt: renewedAt,
+      }),
+    };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+    lease: summarizeEvaluatorLease(transition.evaluatorJob.lease),
+  });
+}
+
+function getRenewEvaluatorJobLeaseRejection(evaluatorJob, input, at) {
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+  if (evaluatorJob.jobStatus !== "leased" || !evaluatorJob.lease) {
+    return rejected("evaluator_job_not_claimed");
+  }
+  if (evaluatorJob.lease.leaseId !== input.leaseId || evaluatorJob.lease.workerId !== input.workerId) {
+    return rejected("evaluator_job_lease_mismatch");
+  }
+  if (evaluatorJob.lease.expiresAt <= at) {
+    return rejected("evaluator_job_lease_expired");
+  }
+  return null;
+}
+
+function getOpenAnswerEvaluatorJob({ database, input }) {
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+
+  return accepted({ evaluatorJob: summarizeEvaluatorJob(evaluatorJob) });
+}
+
+function listClaimableOpenAnswerEvaluatorJobs({ database, input, now }) {
+  return accepted({
+    evaluatorJobs: listClaimableOpenAnswerEvaluatorJobRecords(database, {
+      now: now().toISOString(),
+      limit: normalizeEvaluatorJobListLimit(input?.limit),
+    }).map(summarizeEvaluatorJob),
+  });
+}
+
+function normalizeEvaluatorJobListLimit(limit) {
+  if (limit === undefined) {
+    return 50;
+  }
+  if (!Number.isInteger(limit) || limit < 1) {
+    return 50;
+  }
+  return Math.min(limit, 100);
+}
+
+function isValidLeaseDurationSeconds(value) {
+  return Number.isInteger(value) && value > 0;
+}
+
+function addSecondsIso(iso, seconds) {
+  return new Date(Date.parse(iso) + seconds * 1000).toISOString();
 }
 
 function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }) {
@@ -836,6 +996,15 @@ function summarizeEvaluatorJob(evaluatorJob) {
     ...(evaluatorJob.jobFailureReason ? { failureReason: evaluatorJob.jobFailureReason } : {}),
     createdAt: evaluatorJob.createdAt,
     updatedAt: evaluatorJob.updatedAt,
+  };
+}
+
+function summarizeEvaluatorLease(lease) {
+  return {
+    leaseId: lease.leaseId,
+    workerId: lease.workerId,
+    claimedAt: lease.claimedAt,
+    expiresAt: lease.expiresAt,
   };
 }
 

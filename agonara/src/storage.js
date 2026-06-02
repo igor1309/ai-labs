@@ -1818,7 +1818,7 @@ export function updateOpenAnswerEvaluatorRunStatus(
 
 export function updateOpenAnswerEvaluatorJobLease(
   database,
-  { evaluatorJobId, leaseId, workerId, claimedAt, expiresAt },
+  { evaluatorJobId, leaseId, workerId, claimedAt, expiresAt, updatedAt = claimedAt },
 ) {
   assertOpenAnswerEvaluatorLeaseFields({ leaseId, workerId, claimedAt, expiresAt });
 
@@ -1833,7 +1833,7 @@ export function updateOpenAnswerEvaluatorJobLease(
            job_updated_at = ?
        where id = ?`,
     )
-    .run(leaseId, workerId, claimedAt, expiresAt, claimedAt, evaluatorJobId);
+    .run(leaseId, workerId, claimedAt, expiresAt, updatedAt, evaluatorJobId);
 
   return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
 }
