@@ -12,9 +12,8 @@ description: "Use a specialized OpenClaw agent for SCOPED documentation drift re
 > **Amendment note.** This revision (v0.0.6) generalises the agent's scope from
 > **READMEs only** (v0.0.5 and earlier) to a **set of documentation scopes**, and
 > expands the edit surface from README-only to a project's `docs/`. The original
-> core — *use a dedicated agent; never auto-merge* — is unchanged. The filename
-> still reads `…readme-drift-review-v0.0.4`; the rename / version reconciliation is
-> a deferred mechanical follow-up. Restructured to the 6-section ADR template.
+> core — *use a dedicated agent; never auto-merge* — is unchanged. Restructured to
+> the 6-section ADR template; the filename's version suffix has been dropped.
 
 ## 1. Executive Summary
 
@@ -93,11 +92,16 @@ Use a specialized OpenClaw agent for **scoped documentation drift review**:
 
 - Coverage broadens from READMEs to all project docs, partitioned into scopes —
   closing the "homeless project-doc observation" gap.
-- The places that pinned "README-only" — this ADR's boundary, the source intent,
-  `drift-methodology.md`, `agent.md`, `fix-pr-template.md` — **MUST** be cascaded
-  to the scoped model in the **same change set as acceptance**; the downstream
-  artifacts follow the intent and this ADR, they do not lead.
-- `readme-inventory.md` generalises into the scope registry.
+- The places that pinned "README-only" follow this ADR (they do not lead) and
+  cascade in **two waves**, by timing:
+  - **At acceptance:** the **source intent** (the lead artifact) and this ADR.
+  - **With the Shape-1 worker implementation, not before:** the live runtime specs
+    `agent.md`, `drift-methodology.md`, `fix-pr-template.md`, `report-format.md`,
+    `notification-spec.md`, and `readme-inventory.md` → the scope registry. These
+    are CI-synced runtime inputs; the scoped behavior they describe needs the
+    worker, registry, and orchestrator to exist. Merging scoped runtime specs ahead
+    of that machinery would make the live agent act scoped without it, and the
+    concrete scope contract they must reflect is a Shape-1 deliverable.
 - **Orchestration & observability** of scoped runs (how/when scopes run, run
   outcomes) are **out of scope here** and owned by `ADR-001`, which is predicated
   on this decision being accepted first.
@@ -118,5 +122,5 @@ Use a specialized OpenClaw agent for **scoped documentation drift review**:
 - **v0.0.6 (2026-06-02):** generalised scope (READMEs → scope set incl.
   per-project `docs/`) and edit surface (README-only → a scope's docs);
   restructured to the 6-section ADR template; cross-referenced `ADR-001`.
-  Supersedes the README-only scope of v0.0.5. Filename / version rename deferred.
+  Supersedes the README-only scope of v0.0.5. Filename version suffix dropped.
 - v0.0.5 and earlier: README-only drift review (see git history).

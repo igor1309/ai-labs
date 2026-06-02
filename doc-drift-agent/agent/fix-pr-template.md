@@ -62,7 +62,7 @@ Minimum edit. The diff in this PR is limited to the lines named above; no surrou
 
 ## Do not auto-merge
 
-This PR is opened by the doc-drift-agent. **Do not enable auto-merge.** The agent never merges or approves PRs (per `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md`). The maintainer reviews and merges manually.
+This PR is opened by the doc-drift-agent. **Do not enable auto-merge.** The agent never merges or approves PRs (per `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md`). The maintainer reviews and merges manually.
 
 ## Provenance
 

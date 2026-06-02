@@ -17,7 +17,7 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 ## Source
 
 - Intent: `doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`
-- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` (status: proposed)
+- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md` (status: proposed)
 
 ## Layout
 
@@ -33,7 +33,7 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 | `agent/notification-spec.md` | Telegram notification format |
 | `agent/suppression-policy.md` | 12-hour scheduled-run suppression rule |
 | `docs/automated-doc-drift-review-and-fix-suggestions-intent.md` | Source intent |
-| `docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` | Source ADR |
+| `docs/adr-specialized-openclaw-agent-readme-drift-review.md` | Source ADR |
 | `docs/plans/implemented/doc-drift-agent.md` | Implementation plan (closed) |
 | `docs/log.md` | Project log |
 | `runtime/cron/doc-drift-cron.sh` | VPS cron wrapper (suppression gate + compact Telegram notification) |

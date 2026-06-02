@@ -83,7 +83,7 @@ If a candidate finding does not carry both halves of the evidence shape required
 
 ## ADR coverage
 
-This definition implements every "The agent will:" bullet from `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md`:
+This definition implements every "The agent will:" bullet from `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md`:
 
 | ADR bullet | Where it lives in this definition |
 |------------|-----------------------------------|
