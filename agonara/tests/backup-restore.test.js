@@ -465,13 +465,13 @@ test("exportBackup_shouldIncludeStudentAttemptRecords_onBackup", async () => {
         failureAttemptIds: backup.openAnswerEvaluationFailures?.map($0 => $0.attemptId),
       },
       {
-        attemptIds: ["attempt-existing"],
-        attemptIdempotencyKeys: ["idempotency-existing"],
-        attemptCheckRevisionIds: ["check-revision-existing"],
-        attemptCriterionRevisionIds: ["criterion-revision-existing"],
+        attemptIds: ["attempt-existing", "attempt-failed"],
+        attemptIdempotencyKeys: ["idempotency-existing", "idempotency-failed"],
+        attemptCheckRevisionIds: ["check-revision-existing", "check-revision-existing"],
+        attemptCriterionRevisionIds: ["criterion-revision-existing", "criterion-revision-existing"],
         evaluationIds: ["evaluation-existing"],
         evaluationCriterionRevisionIds: ["criterion-revision-existing"],
-        failureAttemptIds: ["attempt-existing"],
+        failureAttemptIds: ["attempt-failed"],
       },
     );
   } finally {
@@ -715,6 +715,15 @@ test("restoreBackup_shouldRestoreStudentAttemptRecords_onAcceptedBackup", async 
             idempotencyKey: "idempotency-existing",
             status: "evaluated",
           },
+          {
+            id: "attempt-failed",
+            programId: "program-1",
+            studentIdentityId: "identity-1",
+            checkRevisionId: "check-revision-existing",
+            criterionRevisionIds: ["criterion-revision-existing"],
+            idempotencyKey: "idempotency-failed",
+            status: "evaluation_failed",
+          },
         ],
         evaluations: [
           {
@@ -729,7 +738,7 @@ test("restoreBackup_shouldRestoreStudentAttemptRecords_onAcceptedBackup", async 
         ],
         failures: [
           {
-            attemptId: "attempt-existing",
+            attemptId: "attempt-failed",
             reason: "temporary evaluator outage",
             failedAt: "2026-05-27T10:16:00.000Z",
           },
@@ -1111,6 +1120,48 @@ test("restoreBackup_shouldRejectOpenAnswerAttemptWithMissingCriterionRevision_on
   }
 });
 
+test("restoreBackup_shouldRejectOpenAnswerEvaluationForNonEvaluatedAttempt_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluations[0] = {
+      ...backup.openAnswerEvaluations[0],
+      attemptId: "attempt-failed",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "attempt_status_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluationFailureForNonFailedAttempt_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluationFailures[0] = {
+      ...backup.openAnswerEvaluationFailures[0],
+      attemptId: "attempt-existing",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "attempt_status_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectAcceptedCorpusEntityWithoutCurrentRevision_onBackup", async () => {
   const backup = await makeExportedCorpusBackup();
   const target = makeSUT();
@@ -1480,6 +1531,33 @@ function seedStudentAttemptStorageRecords(database, { identityId, programId }) {
     );
   database
     .prepare(
+      `insert into open_answer_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         submitted_answer,
+         idempotency_key,
+         status,
+         submitted_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "attempt-failed",
+      programId,
+      identityId,
+      "check-revision-existing",
+      JSON.stringify(["criterion-revision-existing"]),
+      "Failed answer",
+      "idempotency-failed",
+      "evaluation_failed",
+      "2026-05-27T10:13:30.000Z",
+      "2026-05-27T10:16:00.000Z",
+    );
+  database
+    .prepare(
       `insert into open_answer_evaluations (
          id,
          attempt_id,
@@ -1516,7 +1594,7 @@ function seedStudentAttemptStorageRecords(database, { identityId, programId }) {
       `insert into open_answer_evaluation_failures (attempt_id, reason, failed_at)
        values (?, ?, ?)`,
     )
-    .run("attempt-existing", "temporary evaluator outage", "2026-05-27T10:16:00.000Z");
+    .run("attempt-failed", "temporary evaluator outage", "2026-05-27T10:16:00.000Z");
 }
 
 function countStudentAttemptStorageRows(database) {

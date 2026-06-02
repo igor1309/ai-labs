@@ -3221,13 +3221,20 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     if (!attempt) {
       throw new StorageInvariantError("attempt_not_found");
     }
+    if (attempt.status !== "evaluated") {
+      throw new StorageInvariantError("attempt_status_mismatch");
+    }
 
     assertEvaluationMatchesAttemptBackup(evaluation, attempt);
   }
 
   for (const failure of backup.openAnswerEvaluationFailures ?? []) {
-    if (!attemptsById.has(failure.attemptId)) {
+    const attempt = attemptsById.get(failure.attemptId);
+    if (!attempt) {
       throw new StorageInvariantError("attempt_not_found");
+    }
+    if (attempt.status !== "evaluation_failed") {
+      throw new StorageInvariantError("attempt_status_mismatch");
     }
   }
 }
