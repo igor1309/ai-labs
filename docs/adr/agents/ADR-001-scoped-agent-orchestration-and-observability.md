@@ -1,7 +1,7 @@
 ---
 date: 2026-06-02
 author: Igor Malyarov
-version: 0.0.1
+version: 0.0.2
 status: proposed
 description: "Orchestrate scoped agent runs via OpenClaw Lobster/TaskFlow; scope selection as tested TS step CLIs; observability via the TaskFlow/tasks ledger. First adopter: doc-drift scoped audit."
 ---
@@ -60,6 +60,16 @@ a scope and how it ended, including failure and crash, not just success.
 - Round-robin cursor *as the model* — blind to changed vs unchanged; retained
   only as a Stage-1 bootstrap selector.
 
+**Dependency.** This ADR presupposes the **scope model** — cross-project READMEs
+plus one scope per top-level project's docs, with the worker's edit surface
+expanded from README-only to a project's `docs/`. That model exists today only in
+the pre-ADR shapes (`doc-drift-agent/docs/scoped-audit-pre-adr-shapes.md`), **not**
+in an accepted ADR; the governing doc-drift ADR
+(`adr-specialized-openclaw-agent-readme-drift-review`) is still README-only.
+ADR-001 is therefore **predicated on** that scope-model decision (an amendment to
+the doc-drift intent/ADR, or a dedicated scope-model ADR) being accepted first,
+and MUST NOT be implemented before it.
+
 ## 3. Decision
 
 Scoped agent runs are orchestrated by an OpenClaw **Lobster** pipeline (a
@@ -77,22 +87,25 @@ per-night budget, with `changed` prioritised over `stale`.
 ## 4. Rules / Invariants
 
 - A nightly pipeline run **MUST** audit at most one scope (budget default `1`).
-- Eligibility **MUST** be computed from per-scope `lastAuditedCommit` /
-  `lastAuditedAt` state plus `git diff <lastAuditedCommit>..HEAD -- <scope-globs>`
-  (changed) and a staleness window (stale). It **MUST NOT** depend on CI or
-  webhooks.
+- Eligibility **MUST** be computed from per-scope last-audited state (commit +
+  timestamp): *changed* = the scope's paths differ from its last-audited commit
+  (a local git-history diff), *stale* = not audited within the staleness window.
+  It **MUST NOT** depend on CI or webhooks. (Exact commands/flags are an
+  implementation-plan concern.)
 - The selection / state-read / state-commit logic **MUST** live in
-  version-controlled TS CLIs (e.g. `doc-drift-orchestrator select|commit`) with
-  unit tests. It **MUST NOT** live in the cron wrapper (bash) or be produced by
-  the LLM.
+  version-controlled, unit-tested TS CLIs (e.g. a `select` step and a `commit`
+  step). It **MUST NOT** live in the cron wrapper (bash) or be produced by the
+  LLM.
 - The pipeline **MUST** be a version-controlled `.lobster` file and **MUST** be
   inspectable via `lobster graph`.
 - The pipeline **MUST** run gateway-side (the bundled Lobster tool invoked from an
   agent turn) so the run is registered in the TaskFlow / tasks ledger.
 - Each run **MUST** resolve to a terminal ledger status
-  (`succeeded|failed|timed_out|cancelled|lost`). The notification layer **MUST**
-  surface non-`succeeded` outcomes (and `succeeded`-with-no-PR), not only the
-  happy path.
+  (`succeeded|failed|timed_out|cancelled|lost`) recorded in the TaskFlow / tasks
+  ledger, so every run's outcome is **available** for alerting. This ADR places a
+  constraint on the rendering concern (Shape 3, owned elsewhere): the notification
+  surface **MUST** report non-`succeeded` and `succeeded`-with-no-PR outcomes, not
+  only the happy path. The *how* of rendering is out of scope here.
 - The schedule **SHOULD** live in external `/etc/cron.d` (invoking an agent turn)
   to avoid the `openclaw cron` RPC fragility (gotcha #13). If native `openclaw
   cron` is used instead, the gotcha-#13 mitigation **MUST** be confirmed on the
@@ -113,8 +126,9 @@ per-night budget, with `changed` prioritised over `stale`.
   pipeline plus the orchestrator TS CLIs deployed.
 - Observability becomes native: `openclaw tasks list --status failed`,
   `openclaw tasks audit`, and TaskFlow mirrored views give per-run, per-scope
-  outcome visibility — closing the happy-path-only gap and able to **subsume the
-  fleet's hand-built heartbeat / dead-man's-switch**.
+  outcome visibility — closing the happy-path-only gap. Whether this later
+  *replaces* the fleet's existing hand-built heartbeat / dead-man's-switch is a
+  separate future decision, not made here.
 - Deployment: the orchestrator CLIs and `.lobster` file inherit the `runtime/**`
   hand-deploy gap (no CI sync) and must be deployed deliberately (tracked under
   the `openclaw-agent-ops` / `vps-deploy` TODO items).
@@ -132,6 +146,15 @@ per-night budget, with `changed` prioritised over `stale`.
 - Add Lobster approval gates for higher-risk actions.
 - Staged delivery: Stage-1 trivial selector → Stage-2 change-eligibility →
   Stage-3 staleness + budget.
+
+**Decision stability.** The eligible-set selection logic is **substrate-independent**
+(tested TS CLIs). Lobster/TaskFlow is the chosen substrate; if the in-gateway path
+proves unviable (e.g. the nested-call constraint below cannot be worked around),
+the same CLIs wire into an external-cron fallback. The core decision — *scope
+selection as tested code, one scope per run, every run recorded for
+observability* — survives that swap, so the decision is not fragile to the
+substrate. What *would* warrant a new ADR: abandoning per-scope auditing, or
+moving change-detection onto CI/webhooks.
 
 **Known risk to spike (implementation phase 1).** Embedded (in-process) Lobster
 "does not reliably support `openclaw.invoke` for nested calls"; a step that calls
@@ -151,3 +174,5 @@ relying on the in-gateway path.
 - Not auto-merge or auto-approve.
 - Not multi-scope-per-run parallelism.
 - Not building a bespoke scheduler/queue when the platform provides one.
+- Not retiring the fleet's existing heartbeat / dead-man's-switch — any
+  consolidation onto the ledger is a separate future decision.
