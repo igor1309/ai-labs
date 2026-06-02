@@ -51,9 +51,11 @@ const forbiddenResponseDetailPatterns = [
 
 export function createStudentWorkspaceCommands({
   database,
+  evaluatorPolicies = [],
   generateId = randomUUID,
   getEffectiveParticipation,
   now = () => new Date(),
+  providerAdapters = [],
 } = {}) {
   return {
     beginOpenAnswerEvaluatorRun: input =>
@@ -97,7 +99,14 @@ export function createStudentWorkspaceCommands({
     renewOpenAnswerEvaluatorJobLease: input =>
       renewOpenAnswerEvaluatorJobLease({ database, input, now }),
     runOpenAnswerEvaluatorWorkerOnce: input =>
-      runOpenAnswerEvaluatorWorkerOnce({ database, generateId, input, now }),
+      runOpenAnswerEvaluatorWorkerOnce({
+        database,
+        evaluatorPolicies,
+        generateId,
+        input,
+        now,
+        providerAdapters,
+      }),
     scheduleOpenAnswerEvaluatorJob: input =>
       scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     submitOpenAnswerAttempt: input =>
@@ -351,7 +360,14 @@ function claimOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
   });
 }
 
-function runOpenAnswerEvaluatorWorkerOnce({ database, generateId, input, now }) {
+function runOpenAnswerEvaluatorWorkerOnce({
+  database,
+  evaluatorPolicies,
+  generateId,
+  input,
+  now,
+  providerAdapters,
+}) {
   const validationRejection = getEvaluatorWorkerInputRejection(input);
   if (validationRejection) {
     return validationRejection;
@@ -390,6 +406,14 @@ function runOpenAnswerEvaluatorWorkerOnce({ database, generateId, input, now }) 
   if (claim.status === "rejected") {
     return claim;
   }
+  const policy = resolveOpenAnswerEvaluatorPolicy(evaluatorPolicies, claim.value.evaluatorJob);
+  if (policy.status === "rejected") {
+    return policy;
+  }
+  const adapter = resolveOpenAnswerEvaluatorProviderAdapter(providerAdapters, policy.value.policy);
+  if (adapter.status === "rejected") {
+    return adapter;
+  }
 
   return accepted({
     summary: summarizeEvaluatorWorkerRun({
@@ -414,6 +438,59 @@ function getEvaluatorWorkerInputRejection(input) {
     return rejected("validation_failed");
   }
   return null;
+}
+
+function resolveOpenAnswerEvaluatorPolicy(evaluatorPolicies, evaluatorJob) {
+  const policy = evaluatorPolicies.find($0 => $0?.evaluatorPolicyId === evaluatorJob.evaluatorPolicyId);
+  if (!policy) {
+    return rejected("evaluator_policy_not_found");
+  }
+  if (!isValidOpenAnswerEvaluatorPolicy(policy, evaluatorJob)) {
+    return rejected("validation_failed");
+  }
+  return accepted({ policy });
+}
+
+function isValidOpenAnswerEvaluatorPolicy(policy, evaluatorJob) {
+  return (
+    policy.evaluatorPathKind === evaluatorJob.evaluatorPathKind &&
+    policy.rawArtifactPolicy === "none" &&
+    isValidEvaluatorPromptInputPolicy(policy.promptInputPolicy) &&
+    isNonEmptyText(policy.providerAdapterId) &&
+    isNonEmptyText(policy.outputValidatorPolicyId) &&
+    isNonEmptyText(policy.redactionPolicyId) &&
+    isEquivalentEvaluatorRetryPolicy(policy.retryPolicy, evaluatorJob.retryPolicy)
+  );
+}
+
+function isEquivalentEvaluatorRetryPolicy(policyRetryPolicy, jobRetryPolicy) {
+  return (
+    Number.isInteger(policyRetryPolicy?.maxAttempts) &&
+    policyRetryPolicy.maxAttempts === jobRetryPolicy?.maxAttempts &&
+    Array.isArray(policyRetryPolicy.backoffSeconds) &&
+    Array.isArray(jobRetryPolicy?.backoffSeconds) &&
+    policyRetryPolicy.backoffSeconds.length === jobRetryPolicy.backoffSeconds.length &&
+    policyRetryPolicy.backoffSeconds.every((seconds, index) => seconds === jobRetryPolicy.backoffSeconds[index])
+  );
+}
+
+function isValidEvaluatorPromptInputPolicy(promptInputPolicy) {
+  return (
+    promptInputPolicy?.includeSubmittedAnswer === true &&
+    promptInputPolicy.includeAcceptedCheckRevision === true &&
+    promptInputPolicy.includeAcceptedCriterionRevisions === true
+  );
+}
+
+function resolveOpenAnswerEvaluatorProviderAdapter(providerAdapters, policy) {
+  const adapter = providerAdapters.find($0 => $0?.providerAdapterId === policy.providerAdapterId);
+  if (!adapter) {
+    return rejected("provider_adapter_not_found");
+  }
+  if (adapter.evaluatorPathKind !== policy.evaluatorPathKind) {
+    return rejected("validation_failed");
+  }
+  return accepted({ adapter });
 }
 
 function getClaimableEvaluatorJobRejection(evaluatorJob, at) {

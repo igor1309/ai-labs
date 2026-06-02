@@ -15,6 +15,7 @@ import {
   createProgramMembershipRecord,
   createProgramShellRecord,
   createProgramSourceRecord,
+  getIdentity,
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
   getOpenAnswerEvaluationRecord,
@@ -31,6 +32,7 @@ import {
   listOpenAnswerCheckCandidateRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
+  listProgramMembershipRecords,
   openIdentityDatabase,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
@@ -1043,6 +1045,8 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMalformedClaimInputs", () => 
 test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [makeProviderAdapter()],
   });
 
   try {
@@ -1120,6 +1124,8 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () =>
 test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimFirstClaimableJob", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [makeProviderAdapter()],
   });
 
   try {
@@ -1182,6 +1188,289 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldReturnNoOpSummary_whenNoJobIsClaima
         value: {
           summary: makeEvaluatorWorkerSummary({ mode: "claim_next" }),
         },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMissingEvaluatorPolicy_afterClaim", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    assert.deepEqual(
+      commands.runOpenAnswerEvaluatorWorkerOnce({
+        workerId: "worker-a",
+        mode: "single_job",
+        evaluatorJobId: "evaluator-run-1",
+        leaseDurationSeconds: 300,
+      }),
+      { status: "rejected", reason: "evaluator_policy_not_found" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMalformedEvaluatorPolicies_afterClaim", () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "attempt-1",
+      "attempt-2",
+      "attempt-3",
+      "attempt-4",
+      "evaluator-run-1",
+      "evaluator-run-2",
+      "evaluator-run-3",
+      "evaluator-run-4",
+      "lease-1",
+      "lease-2",
+      "lease-3",
+      "lease-4",
+    ],
+    evaluatorPolicies: [
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-path", evaluatorPathKind: "llm_assisted" }),
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-raw", rawArtifactPolicy: "persist" }),
+      makeEvaluatorPolicy({
+        evaluatorPolicyId: "policy-prompt",
+        promptInputPolicy: {
+          includeSubmittedAnswer: true,
+          includeAcceptedCheckRevision: true,
+        },
+      }),
+      makeEvaluatorPolicy({
+        evaluatorPolicyId: "policy-retry",
+        retryPolicy: { maxAttempts: 3, backoffSeconds: [60, 300] },
+      }),
+    ],
+    providerAdapters: [makeProviderAdapter()],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    for (let index = 1; index <= 4; index += 1) {
+      submitAttempt(commands, { idempotencyKey: `submit-${index}` });
+    }
+    for (let index = 1; index <= 4; index += 1) {
+      commands.scheduleOpenAnswerEvaluatorJob({
+        attemptId: `attempt-${index}`,
+        evaluatorPathKind: "deterministic",
+        evaluatorPolicyId: ["policy-path", "policy-raw", "policy-prompt", "policy-retry"][index - 1],
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      });
+    }
+
+    assert.deepEqual(
+      {
+        path: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        raw: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-2",
+          leaseDurationSeconds: 300,
+        }),
+        prompt: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-3",
+          leaseDurationSeconds: 300,
+        }),
+        retry: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-4",
+          leaseDurationSeconds: 300,
+        }),
+      },
+      {
+        path: { status: "rejected", reason: "validation_failed" },
+        raw: { status: "rejected", reason: "validation_failed" },
+        prompt: { status: "rejected", reason: "validation_failed" },
+        retry: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMalformedProviderPolicyIdentifiers_afterClaim", () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "attempt-1",
+      "attempt-2",
+      "attempt-3",
+      "evaluator-run-1",
+      "evaluator-run-2",
+      "evaluator-run-3",
+      "lease-1",
+      "lease-2",
+      "lease-3",
+    ],
+    evaluatorPolicies: [
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-adapter", providerAdapterId: " " }),
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-validator", outputValidatorPolicyId: " " }),
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-redaction", redactionPolicyId: " " }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    for (let index = 1; index <= 3; index += 1) {
+      submitAttempt(commands, { idempotencyKey: `submit-${index}` });
+    }
+    for (let index = 1; index <= 3; index += 1) {
+      commands.scheduleOpenAnswerEvaluatorJob({
+        attemptId: `attempt-${index}`,
+        evaluatorPathKind: "deterministic",
+        evaluatorPolicyId: ["policy-adapter", "policy-validator", "policy-redaction"][index - 1],
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      });
+    }
+
+    assert.deepEqual(
+      {
+        providerAdapterId: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        outputValidatorPolicyId: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-2",
+          leaseDurationSeconds: 300,
+        }),
+        redactionPolicyId: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-3",
+          leaseDurationSeconds: 300,
+        }),
+      },
+      {
+        providerAdapterId: { status: "rejected", reason: "validation_failed" },
+        outputValidatorPolicyId: { status: "rejected", reason: "validation_failed" },
+        redactionPolicyId: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMissingAndMismatchedProviderAdapters_afterClaim", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1", "lease-2"],
+    evaluatorPolicies: [
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-missing", providerAdapterId: "adapter-missing" }),
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-mismatch", providerAdapterId: "adapter-mismatch" }),
+    ],
+    providerAdapters: [
+      makeProviderAdapter({ providerAdapterId: "adapter-mismatch", evaluatorPathKind: "llm_assisted" }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-missing",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-2",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-mismatch",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    assert.deepEqual(
+      {
+        missing: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        mismatch: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-2",
+          leaseDurationSeconds: 300,
+        }),
+      },
+      {
+        missing: { status: "rejected", reason: "provider_adapter_not_found" },
+        mismatch: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAdapterFailure", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+    evaluatorPolicies: [
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-missing", providerAdapterId: "adapter-missing" }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-missing",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    const acceptedBefore = projectAcceptedAssessmentState(database);
+    const membershipBefore = listProgramMembershipRecords(database);
+    const identityBefore = getIdentity(database, "identity-student");
+
+    assert.deepEqual(
+      {
+        result: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        acceptedAfter: projectAcceptedAssessmentState(database),
+        membershipAfter: listProgramMembershipRecords(database),
+        identityAfter: getIdentity(database, "identity-student"),
+        evaluations: listOpenAnswerEvaluationRecords(database),
+      },
+      {
+        result: { status: "rejected", reason: "provider_adapter_not_found" },
+        acceptedAfter: acceptedBefore,
+        membershipAfter: membershipBefore,
+        identityAfter: identityBefore,
+        evaluations: [],
       },
     );
   } finally {
@@ -1310,6 +1599,8 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProvider
 test("runOpenAnswerEvaluatorWorkerOnce_shouldSkipNotYetDueRetryJob_onClaimNext", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluator-run-1", "lease-1", "evaluator-run-2", "lease-2"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [makeProviderAdapter()],
   });
 
   try {
@@ -6332,6 +6623,47 @@ function makeEvaluatorWorkerSummary({
   };
 }
 
+function makeEvaluatorPolicy({
+  evaluatorPolicyId = "policy-a",
+  evaluatorPathKind = "deterministic",
+  providerAdapterId = "adapter-a",
+  outputValidatorPolicyId = "validator-a",
+  promptInputPolicy = {
+    includeSubmittedAnswer: true,
+    includeAcceptedCheckRevision: true,
+    includeAcceptedCriterionRevisions: true,
+  },
+  redactionPolicyId = "redaction-a",
+  retryPolicy = { maxAttempts: 2, backoffSeconds: [60] },
+  budgetPolicy,
+  rawArtifactPolicy = "none",
+} = {}) {
+  return {
+    evaluatorPolicyId,
+    evaluatorPathKind,
+    providerAdapterId,
+    outputValidatorPolicyId,
+    promptInputPolicy,
+    redactionPolicyId,
+    retryPolicy,
+    ...(budgetPolicy ? { budgetPolicy } : {}),
+    rawArtifactPolicy,
+  };
+}
+
+function makeProviderAdapter({
+  providerAdapterId = "adapter-a",
+  evaluatorPathKind = "deterministic",
+} = {}) {
+  return {
+    providerAdapterId,
+    evaluatorPathKind,
+    evaluate: () => {
+      throw new Error("provider adapter must not be called during policy resolution");
+    },
+  };
+}
+
 function projectEvaluatorJob(job) {
   return job
     ? {
@@ -6427,7 +6759,9 @@ function makeMembership({ id, identityId, participationKind, programId, status =
 
 function makeSUT({
   ids = ["attempt-1", "attempt-2", "attempt-3"],
+  evaluatorPolicies,
   now = () => new Date("2026-06-02T10:00:00.000Z"),
+  providerAdapters,
 } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -6435,9 +6769,11 @@ function makeSUT({
   createIdentity(database, makeIdentity({ id: "identity-active-other" }));
   const commands = createStudentWorkspaceCommands({
     database,
+    evaluatorPolicies,
     generateId: makeIdGenerator(ids),
     getEffectiveParticipation: input => programCommands.getEffectiveParticipation(input),
     now,
+    providerAdapters,
   });
   return { commands, database };
 }
