@@ -1768,6 +1768,71 @@ test("completeOpenAnswerEvaluatorJob_shouldBeIdempotentForEquivalentRepeatedComp
   }
 });
 
+test("completeOpenAnswerEvaluatorJob_shouldRejectRepeatedCompletion_onChangedCompletionSignature", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "llm_assisted",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      budgetPolicy: { maxProviderCalls: 3 },
+    });
+    commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 300,
+    });
+    const input = {
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+      providerUsage: { providerCalls: 1 },
+      outputValidation: { validatorPolicyId: "validator-a", passed: true },
+    };
+    commands.completeOpenAnswerEvaluatorJob(input);
+
+    assert.deepEqual(
+      {
+        changedWorker: commands.completeOpenAnswerEvaluatorJob({ ...input, workerId: "worker-b" }),
+        changedLease: commands.completeOpenAnswerEvaluatorJob({ ...input, leaseId: "lease-2" }),
+        changedProviderUsage: commands.completeOpenAnswerEvaluatorJob({
+          ...input,
+          providerUsage: { providerCalls: 2 },
+        }),
+        changedOutputValidation: commands.completeOpenAnswerEvaluatorJob({
+          ...input,
+          outputValidation: { validatorPolicyId: "validator-b", passed: true },
+        }),
+        evaluations: listOpenAnswerEvaluationRecords(database),
+      },
+      {
+        changedWorker: { status: "rejected", reason: "evaluator_job_conflict" },
+        changedLease: { status: "rejected", reason: "evaluator_job_conflict" },
+        changedProviderUsage: { status: "rejected", reason: "evaluator_job_conflict" },
+        changedOutputValidation: { status: "rejected", reason: "evaluator_job_conflict" },
+        evaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("completeOpenAnswerEvaluatorJob_shouldRejectBudgetExceededAndInvalidLlmOutputValidation", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1", "lease-2"],

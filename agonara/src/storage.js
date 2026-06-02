@@ -290,6 +290,7 @@ export function initializeIdentityStorage(database) {
       cancellation_reason text,
       timeout_reason text,
       job_failure_reason text,
+      terminal_completion_signature_json text,
       job_created_at text,
       job_updated_at text,
       unique (id, attempt_id),
@@ -1733,7 +1734,9 @@ export function getOpenAnswerEvaluatorJobRecord(database, id) {
               lease_id as leaseId, worker_id as workerId, lease_claimed_at as leaseClaimedAt,
               lease_expires_at as leaseExpiresAt, next_retry_at as nextRetryAt,
               cancellation_reason as cancellationReason, timeout_reason as timeoutReason,
-              job_failure_reason as jobFailureReason, job_created_at as jobCreatedAt,
+              job_failure_reason as jobFailureReason,
+              terminal_completion_signature_json as terminalCompletionSignatureJson,
+              job_created_at as jobCreatedAt,
               job_updated_at as jobUpdatedAt
        from open_answer_evaluator_runs
        where id = ?`,
@@ -1789,7 +1792,9 @@ export function listClaimableOpenAnswerEvaluatorJobRecords(database, { now, limi
               lease_id as leaseId, worker_id as workerId, lease_claimed_at as leaseClaimedAt,
               lease_expires_at as leaseExpiresAt, next_retry_at as nextRetryAt,
               cancellation_reason as cancellationReason, timeout_reason as timeoutReason,
-              job_failure_reason as jobFailureReason, job_created_at as jobCreatedAt,
+              job_failure_reason as jobFailureReason,
+              terminal_completion_signature_json as terminalCompletionSignatureJson,
+              job_created_at as jobCreatedAt,
               job_updated_at as jobUpdatedAt
        from open_answer_evaluator_runs
        where job_status = 'waiting'
@@ -1838,8 +1843,15 @@ export function updateOpenAnswerEvaluatorJobLease(
   return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
 }
 
-export function clearOpenAnswerEvaluatorJobLease(database, { evaluatorJobId, jobStatus, updatedAt }) {
-  if (!isOpenAnswerEvaluatorJobStatus(jobStatus) || !isNonEmptyString(updatedAt)) {
+export function clearOpenAnswerEvaluatorJobLease(
+  database,
+  { evaluatorJobId, jobStatus, updatedAt, terminalCompletionSignature = null },
+) {
+  if (
+    !isOpenAnswerEvaluatorJobStatus(jobStatus) ||
+    !isNonEmptyString(updatedAt) ||
+    !isValidTerminalCompletionSignature(terminalCompletionSignature)
+  ) {
     throw new StorageInvariantError("validation_failed");
   }
 
@@ -1851,10 +1863,16 @@ export function clearOpenAnswerEvaluatorJobLease(database, { evaluatorJobId, job
            worker_id = null,
            lease_claimed_at = null,
            lease_expires_at = null,
+           terminal_completion_signature_json = ?,
            job_updated_at = ?
        where id = ?`,
     )
-    .run(jobStatus, updatedAt, evaluatorJobId);
+    .run(
+      jobStatus,
+      terminalCompletionSignature === null ? null : JSON.stringify(terminalCompletionSignature),
+      updatedAt,
+      evaluatorJobId,
+    );
 
   return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
 }
@@ -2624,6 +2642,16 @@ function assertOpenAnswerEvaluatorLeaseFields({ leaseId, workerId, claimedAt, ex
   ) {
     throw new StorageInvariantError("validation_failed");
   }
+}
+
+function isValidTerminalCompletionSignature(value) {
+  return (
+    value === null ||
+    (isNonEmptyString(value.leaseId) &&
+      isNonEmptyString(value.workerId) &&
+      (value.providerUsage === null || typeof value.providerUsage === "object") &&
+      (value.outputValidation === null || typeof value.outputValidation === "object"))
+  );
 }
 
 function assertOpenAnswerEvaluatorRetryPolicy(retryPolicy) {
@@ -3555,6 +3583,9 @@ function mapOpenAnswerEvaluatorJobRecord(row) {
     cancellationReason: row.cancellationReason,
     timeoutReason: row.timeoutReason,
     jobFailureReason: row.jobFailureReason,
+    ...(row.terminalCompletionSignatureJson
+      ? { terminalCompletionSignature: JSON.parse(row.terminalCompletionSignatureJson) }
+      : {}),
     createdAt: row.jobCreatedAt,
     updatedAt: row.jobUpdatedAt,
   };

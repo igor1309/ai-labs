@@ -454,9 +454,9 @@ function completeOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
   }
   const completedAt = now().toISOString();
   const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
-  const completedRejection = getCompletedEvaluatorJobRejection(database, evaluatorJob, input);
-  if (completedRejection) {
-    return completedRejection;
+  const completedResult = getCompletedEvaluatorJobResult(database, evaluatorJob, input);
+  if (completedResult) {
+    return completedResult;
   }
   const leaseRejection = getLeasedEvidenceJobRejection(evaluatorJob, input, completedAt);
   if (leaseRejection) {
@@ -469,9 +469,9 @@ function completeOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
 
   const transition = database.transaction(() => {
     const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
-    const currentCompletedRejection = getCompletedEvaluatorJobRejection(database, currentJob, input);
-    if (currentCompletedRejection) {
-      return { rejection: currentCompletedRejection };
+    const currentCompletedResult = getCompletedEvaluatorJobResult(database, currentJob, input);
+    if (currentCompletedResult) {
+      return { result: currentCompletedResult };
     }
     const currentLeaseRejection = getLeasedEvidenceJobRejection(currentJob, input, completedAt);
     if (currentLeaseRejection) {
@@ -508,6 +508,7 @@ function completeOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
     clearOpenAnswerEvaluatorJobLease(database, {
       evaluatorJobId: currentJob.evaluatorJobId,
       jobStatus: "succeeded",
+      terminalCompletionSignature: makeEvaluatorJobCompletionSignature(input),
       updatedAt: completedAt,
     });
     return {
@@ -517,6 +518,9 @@ function completeOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
       updated: updatedAttempt,
     };
   })();
+  if (transition.result) {
+    return transition.result;
+  }
   if (transition.rejection) {
     return transition.rejection;
   }
@@ -528,7 +532,7 @@ function completeOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
   });
 }
 
-function getCompletedEvaluatorJobRejection(database, evaluatorJob, input) {
+function getCompletedEvaluatorJobResult(database, evaluatorJob, input) {
   if (!evaluatorJob) {
     return rejected("evaluator_job_not_found");
   }
@@ -567,8 +571,43 @@ function isEquivalentCompletionInput(input, evaluatorJob, evaluation) {
     isValidEvaluationInput(makeEvaluatorRunEvaluationInput(input), evaluatorJob) &&
     input.summaryFeedback.trim() === evaluation.summaryFeedback &&
     JSON.stringify(normalizeCriterionFeedback(input.criterionFeedback)) ===
-      JSON.stringify(evaluation.criterionFeedback)
+      JSON.stringify(evaluation.criterionFeedback) &&
+    JSON.stringify(makeEvaluatorJobCompletionSignature(input)) ===
+      JSON.stringify(evaluatorJob.terminalCompletionSignature)
   );
+}
+
+function makeEvaluatorJobCompletionSignature(input) {
+  return {
+    leaseId: input.leaseId,
+    workerId: input.workerId,
+    providerUsage: normalizeProviderUsage(input.providerUsage),
+    outputValidation: normalizeOutputValidation(input.outputValidation),
+  };
+}
+
+function normalizeProviderUsage(providerUsage) {
+  if (providerUsage === undefined) {
+    return null;
+  }
+  return {
+    ...(providerUsage.providerCalls !== undefined ? { providerCalls: providerUsage.providerCalls } : {}),
+    ...(providerUsage.inputTokens !== undefined ? { inputTokens: providerUsage.inputTokens } : {}),
+    ...(providerUsage.outputTokens !== undefined ? { outputTokens: providerUsage.outputTokens } : {}),
+    ...(providerUsage.estimatedCostMinorUnits !== undefined
+      ? { estimatedCostMinorUnits: providerUsage.estimatedCostMinorUnits }
+      : {}),
+  };
+}
+
+function normalizeOutputValidation(outputValidation) {
+  if (outputValidation === undefined) {
+    return null;
+  }
+  return {
+    validatorPolicyId: outputValidation.validatorPolicyId,
+    passed: outputValidation.passed,
+  };
 }
 
 function exceedsEvaluatorBudget(providerUsage, budgetPolicy) {

@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Phase 5 evaluator orchestration completion after adversarial review by retaining an internal terminal completion signature so idempotent replays reject changed lease, worker, provider usage, or output validation.
 - Implement Phase 5 evaluator orchestration completion so leased jobs atomically become final Student Workspace feedback with budget checks, LLM output validation, lease clearing, and duplicate-safe idempotency.
 - Implement Phase 4 evaluator orchestration evidence so worker evidence writes require an active matching unexpired lease while reusing redaction and validation rules.
 - Implement Phase 3 evaluator orchestration leases so Student Workspace can claim waiting or due retry jobs, renew active leases, read redacted job state, and list bounded claimable jobs.
