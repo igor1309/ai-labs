@@ -133,7 +133,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 2 — Attempt submission and idempotency
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement `submitOpenAnswerAttempt` with effective Student authorization, accepted revision resolution, immutable submitted answers, and scoped idempotency.
 

@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-02
+
+- Implement Student Workspace open-answer attempt submission with effective Student authorization, accepted revision snapshots, immutable trimmed answers, and scoped idempotency handling.
+
 ## 2026-06-01
 
 - Harden the Student Workspace open-answer attempt storage substrate after adversarial review with database-enforced scoped idempotency and restore cleanup for attempt child records.
