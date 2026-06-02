@@ -163,5 +163,5 @@ Out of scope for this plan:
 Final gates: ./scripts/run_silent.sh "tests" node --test agents/doc-drift-agent/tests/*.test.js ; ./scripts/run_silent.sh "build" npx tsc --noEmit ; ./scripts/loc-dashboard.sh --sort=name (no drift; matches HTML). CI's doc-drift-agent-core job is the end-to-end gate for the workflow/path-filter changes.
 Archive plan: git mv docs/plans/relocate-doc-drift-agent-under-agents.md docs/plans/implemented/ in the SAME PR as the implementation.
 Commit archive move: yes
-Push/PR: push at closeout; one PR titled for the relocation; merge --merge --auto --delete-branch.
+Push/PR: push at closeout; one PR titled for the relocation, based on `scoped-orchestrator-gateway` (merge `relocate-doc-drift-agent` → `scoped-orchestrator-gateway`, not `trunk`); merge --merge --auto --delete-branch.
 ```
