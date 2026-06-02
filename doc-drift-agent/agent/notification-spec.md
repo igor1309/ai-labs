@@ -36,8 +36,9 @@ The `·` separators are literal plain-text characters, not Markdown. The whole b
 [doc-drift] Drift found — <count> finding(s)
 
 Run: <manual | scheduled> · <YYYY-MM-DD HH:MM UTC>
+Scope: <scope id>
 Commit: <short SHA> on trunk
-READMEs inspected: <count>
+Documents inspected: <count>
 
 PRs opened: <new> · already tracked: <tracked>
 - <PR URL>
@@ -49,8 +50,8 @@ Do not auto-merge. Review each PR manually.
 Rules:
 
 - The `[doc-drift]` prefix matches the PR title prefix in `fix-pr-template.md`. Same string, byte-identical.
-- Every value is parsed from the report header (`report-format.md` "Top-level structure"): `<count>` from `Findings`, `<new>` from `Fix PRs opened`, `<tracked>` from `Already tracked`, `READMEs inspected` and `Commit` from their header lines. The wrapper does not recompute them.
-- The PR list is the `https://…/pull/<n>` URLs from the report's Fix PRs table, in table order, deduplicated. When a finding produced no PR (e.g. the fix would touch a non-README file the agent may not edit), the list line is `- (no PR opened — see report … on VPS)` so the maintainer knows to read the full report.
+- Every value is parsed from the report header (`report-format.md` "Top-level structure"): `<count>` from `Findings`, `<new>` from `Fix PRs opened`, `<tracked>` from `Already tracked`, `Scope`, `Documents inspected`, and `Commit` from their header lines. The wrapper does not recompute them. (The cron wrapper's parser is updated to the new field names as part of the scoped rendering work.)
+- The PR list is the `https://…/pull/<n>` URLs from the report's Fix PRs table, in table order, deduplicated. When a finding produced no PR (e.g. the fix would touch a file outside the active scope's documentation, which the agent may not edit), the list line is `- (no PR opened — see report … on VPS)` so the maintainer knows to read the full report.
 - The closing "Do not auto-merge" line is mandatory. It mirrors the social safety net in `fix-pr-template.md`.
 - No Markdown rendering tricks (no inline images, no buttons, no tables) — Telegram clients vary too much. Plain text + URLs is the entire surface.
 
@@ -79,15 +80,16 @@ Rules:
 [doc-drift] No drift found
 
 Run: manual · <YYYY-MM-DD HH:MM UTC>
+Scope: <scope id>
 Commit: <short SHA> on trunk
-READMEs inspected: <count>
+Documents inspected: <count>
 ```
 
 Rules:
 
 - Posted only for manual runs. Scheduled runs with zero findings are silent.
 - One line per field; no extra commentary.
-- The `READMEs inspected:` count must match the report header's count.
+- The `Documents inspected:` count must match the report header's count.
 
 ## Telegram channel
 

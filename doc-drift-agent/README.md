@@ -1,12 +1,12 @@
 ---
 date: 2026-06-02
 model: claude-opus-4-8
-description: "doc-drift-agent project README — README drift review agent definition owned by ai-labs, runtime hosted in OpenClaw"
+description: "doc-drift-agent project README — scoped documentation drift review agent definition owned by ai-labs, runtime hosted in OpenClaw"
 ---
 
 # doc-drift-agent
 
-Definition for a specialized OpenClaw agent that detects README drift across `ai-labs` and proposes README fixes as PRs.
+Definition for a specialized OpenClaw agent that detects documentation drift within a scope of `ai-labs` — the cross-project README set, or a single project's docs — and proposes doc fixes as PRs.
 
 This directory owns the source of truth for what the agent inspects, how it reports findings, and the shape of its fix PRs and notifications. The runtime — schedule, Telegram listener, GitHub credentials for opening PRs — lives in OpenClaw and is out of scope here.
 
@@ -17,7 +17,7 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 ## Source
 
 - Intent: `doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`
-- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` (status: proposed)
+- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md` (status: proposed)
 
 ## Layout
 
@@ -26,14 +26,14 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 | Path | Purpose |
 |------|---------|
 | `agent/agent.md` | Agent system prompt |
-| `agent/readme-inventory.md` | Every README the agent must inspect |
+| `agent/readme-inventory.md` | Scope registry — the audit scopes and the documents each covers |
 | `agent/drift-methodology.md` | Drift categories, detection signals, evidence shape |
 | `agent/report-format.md` | Drift report shape returned by the agent |
 | `agent/fix-pr-template.md` | Fix PR title and body template |
 | `agent/notification-spec.md` | Telegram notification format |
 | `agent/suppression-policy.md` | 12-hour scheduled-run suppression rule |
 | `docs/automated-doc-drift-review-and-fix-suggestions-intent.md` | Source intent |
-| `docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` | Source ADR |
+| `docs/adr-specialized-openclaw-agent-readme-drift-review.md` | Source ADR |
 | `docs/plans/implemented/doc-drift-agent.md` | Implementation plan (closed) |
 | `docs/log.md` | Project log |
 | `runtime/cron/doc-drift-cron.sh` | VPS cron wrapper (suppression gate + compact Telegram notification) |
@@ -42,13 +42,13 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 
 ## Boundaries
 
-- The agent edits READMEs only.
+- The agent edits only the active scope's documentation (a project's `README.md` + `docs/`, or the cross-project README set) — never code/config.
 - The agent never merges or approves PRs.
 - Style, format, and restructure passes are out of scope (mirrors the `doc-drift-audit` skill).
 
 ## Description
 
-Specialized OpenClaw agent that compares the root and per-project READMEs against each other and against actual repo state, then proposes README fixes as PRs with evidence. *ai-labs owns the definition; OpenClaw owns the runtime*. Auto-merge is never used.
+Specialized OpenClaw agent that, one scope at a time, compares that scope's documentation against itself and against actual repo state, then proposes doc fixes as PRs with evidence. *ai-labs owns the definition; OpenClaw owns the runtime*. Auto-merge is never used.
 
 ## Stack
 
