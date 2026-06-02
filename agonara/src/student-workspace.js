@@ -22,6 +22,7 @@ import {
   listOpenAnswerEvaluatorRunRecords,
   updateOpenAnswerAttemptStatus,
   updateOpenAnswerEvaluatorJobLease,
+  updateOpenAnswerEvaluatorJobRecovery,
   updateOpenAnswerEvaluatorRunStatus,
 } from "./storage.js";
 
@@ -58,12 +59,16 @@ export function createStudentWorkspaceCommands({
       beginOpenAnswerEvaluatorRun({ database, generateId, input, now }),
     cancelOpenAnswerEvaluatorRun: input =>
       cancelOpenAnswerEvaluatorRun({ database, input, now }),
+    cancelOpenAnswerEvaluatorJob: input =>
+      cancelOpenAnswerEvaluatorJob({ database, input, now }),
     claimOpenAnswerEvaluatorJob: input =>
       claimOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     completeOpenAnswerEvaluatorJob: input =>
       completeOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     completeOpenAnswerEvaluatorRun: input =>
       completeOpenAnswerEvaluatorRun({ database, generateId, input, now }),
+    failOpenAnswerEvaluatorJob: input =>
+      failOpenAnswerEvaluatorJob({ database, input, now }),
     failOpenAnswerEvaluatorRun: input =>
       failOpenAnswerEvaluatorRun({ database, input, now }),
     getOpenAnswerEvaluatorJob: input =>
@@ -94,6 +99,8 @@ export function createStudentWorkspaceCommands({
       scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
+    timeOutOpenAnswerEvaluatorJob: input =>
+      timeOutOpenAnswerEvaluatorJob({ database, input, now }),
   };
 }
 
@@ -628,6 +635,218 @@ function exceedsBudgetField(value, limit) {
 
 function isPassedOutputValidation(outputValidation) {
   return isNonEmptyText(outputValidation?.validatorPolicyId) && outputValidation.passed === true;
+}
+
+function failOpenAnswerEvaluatorJob({ database, input, now }) {
+  if (!isNonEmptyText(input?.reason) || typeof input?.retry !== "boolean") {
+    return rejected("validation_failed");
+  }
+  const failedAt = now().toISOString();
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const leaseRejection = getLeasedEvidenceJobRejection(evaluatorJob, input, failedAt);
+  if (leaseRejection) {
+    return leaseRejection;
+  }
+
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentLeaseRejection = getLeasedEvidenceJobRejection(currentJob, input, failedAt);
+    if (currentLeaseRejection) {
+      return { rejection: currentLeaseRejection };
+    }
+    const currentRun = getOpenAnswerEvaluatorRunRecord(database, currentJob.evaluatorRunId);
+    const reason = input.reason.trim();
+    const retryRemaining = input.retry && currentJob.attemptNumber < currentJob.retryPolicy.maxAttempts;
+    if (retryRemaining) {
+      const nextAttemptNumber = currentJob.attemptNumber + 1;
+      const backoffSeconds = currentJob.retryPolicy.backoffSeconds[currentJob.attemptNumber - 1] ?? 0;
+      const updatedJob = updateOpenAnswerEvaluatorJobRecovery(database, {
+        evaluatorJobId: currentJob.evaluatorJobId,
+        runStatus: "failed",
+        jobStatus: "retry_waiting",
+        failedAt,
+        failureReason: reason,
+        attemptNumber: nextAttemptNumber,
+        nextRetryAt: addSecondsIso(failedAt, backoffSeconds),
+        jobFailureReason: reason,
+      });
+      return {
+        evaluatorJob: updatedJob,
+        updated: updateOpenAnswerAttemptStatus(database, {
+          attemptId: currentJob.attemptId,
+          status: "evaluating",
+          updatedAt: failedAt,
+        }),
+      };
+    }
+
+    const updatedJob = updateOpenAnswerEvaluatorJobRecovery(database, {
+      evaluatorJobId: currentJob.evaluatorJobId,
+      runStatus: "failed",
+      jobStatus: "failed",
+      failedAt,
+      failureReason: reason,
+      attemptNumber: currentJob.attemptNumber,
+      jobFailureReason: reason,
+    });
+    const updated = updateOpenAnswerAttemptStatus(database, {
+      attemptId: currentJob.attemptId,
+      status: "evaluation_failed",
+      updatedAt: failedAt,
+    });
+    const failure = createOpenAnswerEvaluationFailureRecord(database, {
+      attemptId: currentRun.attemptId,
+      reason,
+      failedAt,
+    });
+    return { evaluatorJob: updatedJob, evaluationFailure: failure, updated };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+    ...(transition.evaluationFailure
+      ? { evaluationFailure: summarizeEvaluationFailure(transition.evaluationFailure) }
+      : {}),
+  });
+}
+
+function cancelOpenAnswerEvaluatorJob({ database, input, now }) {
+  if (!isNonEmptyText(input?.reason)) {
+    return rejected("validation_failed");
+  }
+  const cancelledAt = now().toISOString();
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const jobRejection = getCancellableEvaluatorJobRejection(evaluatorJob);
+  if (jobRejection) {
+    return jobRejection;
+  }
+
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentJobRejection = getCancellableEvaluatorJobRejection(currentJob);
+    if (currentJobRejection) {
+      return { rejection: currentJobRejection };
+    }
+    const currentRun = getOpenAnswerEvaluatorRunRecord(database, currentJob.evaluatorRunId);
+    const reason = input.reason.trim();
+    const updatedJob = updateOpenAnswerEvaluatorJobRecovery(database, {
+      evaluatorJobId: currentJob.evaluatorJobId,
+      runStatus: "cancelled",
+      jobStatus: "cancelled",
+      failedAt: cancelledAt,
+      failureReason: reason,
+      attemptNumber: currentJob.attemptNumber,
+      cancellationReason: reason,
+    });
+    const restored = restoreAttemptAfterEvaluatorCancellation(database, currentRun, cancelledAt);
+    return { evaluatorJob: updatedJob, updated: restored };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+  });
+}
+
+function getCancellableEvaluatorJobRejection(evaluatorJob) {
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+  if (["succeeded", "failed", "cancelled", "timed_out"].includes(evaluatorJob.jobStatus)) {
+    return rejected("evaluator_job_conflict");
+  }
+  return null;
+}
+
+function restoreAttemptAfterEvaluatorCancellation(database, evaluatorRun, cancelledAt) {
+  const restoredStatus = evaluatorRun.priorFailureReason ? "evaluation_failed" : "submitted";
+  const updated = updateOpenAnswerAttemptStatus(database, {
+    attemptId: evaluatorRun.attemptId,
+    status: restoredStatus,
+    updatedAt: cancelledAt,
+  });
+  deleteOpenAnswerEvaluationFailureRecord(database, evaluatorRun.attemptId);
+  if (evaluatorRun.priorFailureReason) {
+    createOpenAnswerEvaluationFailureRecord(database, {
+      attemptId: evaluatorRun.attemptId,
+      reason: evaluatorRun.priorFailureReason,
+      failedAt: evaluatorRun.priorFailedAt,
+    });
+  }
+  return updated;
+}
+
+function timeOutOpenAnswerEvaluatorJob({ database, input, now }) {
+  if (!isNonEmptyText(input?.reason)) {
+    return rejected("validation_failed");
+  }
+  const timedOutAt = now().toISOString();
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const timeoutRejection = getTimeoutEvaluatorJobRejection(evaluatorJob, timedOutAt);
+  if (timeoutRejection) {
+    return timeoutRejection;
+  }
+
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentTimeoutRejection = getTimeoutEvaluatorJobRejection(currentJob, timedOutAt);
+    if (currentTimeoutRejection) {
+      return { rejection: currentTimeoutRejection };
+    }
+    const reason = input.reason.trim();
+    const updatedJob = updateOpenAnswerEvaluatorJobRecovery(database, {
+      evaluatorJobId: currentJob.evaluatorJobId,
+      runStatus: "failed",
+      jobStatus: "timed_out",
+      failedAt: timedOutAt,
+      failureReason: reason,
+      attemptNumber: currentJob.attemptNumber,
+      timeoutReason: reason,
+    });
+    const updated = updateOpenAnswerAttemptStatus(database, {
+      attemptId: currentJob.attemptId,
+      status: "evaluation_failed",
+      updatedAt: timedOutAt,
+    });
+    const failure = createOpenAnswerEvaluationFailureRecord(database, {
+      attemptId: currentJob.attemptId,
+      reason,
+      failedAt: timedOutAt,
+    });
+    return { evaluatorJob: updatedJob, evaluationFailure: failure, updated };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+    evaluationFailure: summarizeEvaluationFailure(transition.evaluationFailure),
+  });
+}
+
+function getTimeoutEvaluatorJobRejection(evaluatorJob, at) {
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+  if (["succeeded", "failed", "cancelled", "timed_out"].includes(evaluatorJob.jobStatus)) {
+    return rejected("evaluator_job_conflict");
+  }
+  if (evaluatorJob.jobStatus !== "leased" || !evaluatorJob.lease) {
+    return rejected("evaluator_job_not_claimed");
+  }
+  if (evaluatorJob.lease.expiresAt > at) {
+    return rejected("evaluator_job_lease_active");
+  }
+  return null;
 }
 
 function recordOpenAnswerEvaluatorJobEvidence({ database, generateId, input, now }) {

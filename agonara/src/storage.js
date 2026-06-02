@@ -1835,10 +1835,80 @@ export function updateOpenAnswerEvaluatorJobLease(
            worker_id = ?,
            lease_claimed_at = ?,
            lease_expires_at = ?,
+           next_retry_at = null,
+           cancellation_reason = null,
+           timeout_reason = null,
+           job_failure_reason = null,
            job_updated_at = ?
        where id = ?`,
     )
     .run(leaseId, workerId, claimedAt, expiresAt, updatedAt, evaluatorJobId);
+
+  return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
+}
+
+export function updateOpenAnswerEvaluatorJobRecovery(
+  database,
+  {
+    evaluatorJobId,
+    runStatus,
+    jobStatus,
+    failedAt,
+    failureReason,
+    attemptNumber,
+    nextRetryAt = null,
+    cancellationReason = null,
+    timeoutReason = null,
+    jobFailureReason = null,
+    updatedAt = failedAt,
+  },
+) {
+  if (
+    !["failed", "cancelled"].includes(runStatus) ||
+    !isOpenAnswerEvaluatorJobStatus(jobStatus) ||
+    !isNonEmptyString(failedAt) ||
+    !isNonEmptyString(failureReason) ||
+    !Number.isInteger(attemptNumber) ||
+    attemptNumber < 1 ||
+    !isNonEmptyString(updatedAt)
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set status = ?,
+           completed_at = null,
+           failed_at = ?,
+           failure_reason = ?,
+           job_status = ?,
+           attempt_number = ?,
+           lease_id = null,
+           worker_id = null,
+           lease_claimed_at = null,
+           lease_expires_at = null,
+           terminal_completion_signature_json = null,
+           next_retry_at = ?,
+           cancellation_reason = ?,
+           timeout_reason = ?,
+           job_failure_reason = ?,
+           job_updated_at = ?
+       where id = ?`,
+    )
+    .run(
+      runStatus,
+      failedAt,
+      failureReason,
+      jobStatus,
+      attemptNumber,
+      nextRetryAt,
+      cancellationReason,
+      timeoutReason,
+      jobFailureReason,
+      updatedAt,
+      evaluatorJobId,
+    );
 
   return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
 }

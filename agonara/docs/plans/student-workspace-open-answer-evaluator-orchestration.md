@@ -290,7 +290,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 6 — Failure, retry, cancellation, and timeout recovery
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement terminal and recovery paths for failed worker attempts, retries, cancellation, and expired leases.
 
