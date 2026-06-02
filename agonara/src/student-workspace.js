@@ -471,6 +471,40 @@ function runOpenAnswerEvaluatorWorkerOnce({
       workerId: workerInput.workerId,
     });
   }
+  if (providerResult.redactedEvidenceSummary !== undefined) {
+    const evidence = recordOpenAnswerEvaluatorJobEvidence({
+      database,
+      generateId,
+      input: {
+        evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
+        leaseId: claim.value.lease.leaseId,
+        workerId: workerInput.workerId,
+        evidenceKind: "criterion_match",
+        redactedSummary: providerResult.redactedEvidenceSummary,
+      },
+      now,
+    });
+    if (evidence.status === "rejected") {
+      return evidence;
+    }
+  }
+  const completion = completeOpenAnswerEvaluatorJob({
+    database,
+    generateId,
+    input: {
+      evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
+      leaseId: claim.value.lease.leaseId,
+      workerId: workerInput.workerId,
+      summaryFeedback: providerResult.summaryFeedback,
+      criterionFeedback: providerResult.criterionFeedback,
+      providerUsage: providerResult.providerUsage,
+      outputValidation: providerResult.outputValidation,
+    },
+    now,
+  });
+  if (completion.status === "rejected") {
+    return completion;
+  }
 
   return accepted({
     summary: summarizeEvaluatorWorkerRun({
@@ -478,8 +512,10 @@ function runOpenAnswerEvaluatorWorkerOnce({
       workerId: workerInput.workerId,
       evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
       claimed: true,
+      completed: true,
     }),
-    evaluatorJob: claim.value.evaluatorJob,
+    evaluatorJob: completion.value.evaluatorJob,
+    evaluation: completion.value.evaluation,
   });
 }
 

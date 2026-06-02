@@ -45,6 +45,7 @@ import {
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
   updateOpenAnswerAttemptStatus,
+  updateOpenAnswerEvaluatorJobLease,
   updateOpenAnswerEvaluatorRunStatus,
 } from "../src/storage.js";
 
@@ -1052,7 +1053,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMalformedClaimInputs", () => 
 
 test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () => {
   const { commands, database } = makeSUT({
-    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1"],
+    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1", "evaluation-1"],
     evaluatorPolicies: [makeEvaluatorPolicy()],
     providerAdapters: [makeProviderAdapter()],
   });
@@ -1095,6 +1096,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () =>
               mode: "single_job",
               evaluatorJobId: "evaluator-run-2",
               claimed: true,
+              completed: true,
             }),
             evaluatorJob: makeEvaluatorJobSummary({
               evaluatorJobId: "evaluator-run-2",
@@ -1102,8 +1104,13 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () =>
               attemptId: "attempt-2",
               retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
               budgetPolicy: null,
-              status: "leased",
-              lease: makeEvaluatorLease(),
+              status: "succeeded",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-2",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
             }),
           },
         },
@@ -1118,8 +1125,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () =>
             attemptId: "attempt-2",
             retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
             budgetPolicy: null,
-            status: "leased",
-            lease: makeEvaluatorLease(),
+            status: "succeeded",
           }),
         ],
       },
@@ -1131,7 +1137,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimOnlyRequestedSingleJob", () =>
 
 test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimFirstClaimableJob", () => {
   const { commands, database } = makeSUT({
-    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1"],
+    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1", "evaluation-1"],
     evaluatorPolicies: [makeEvaluatorPolicy()],
     providerAdapters: [makeProviderAdapter()],
   });
@@ -1166,12 +1172,18 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldClaimFirstClaimableJob", () => {
             mode: "claim_next",
             evaluatorJobId: "evaluator-run-1",
             claimed: true,
+            completed: true,
           }),
           evaluatorJob: makeEvaluatorJobSummary({
             retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
             budgetPolicy: null,
-            status: "leased",
-            lease: makeEvaluatorLease(),
+            status: "succeeded",
+          }),
+          evaluation: makeEvaluationSummary({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
           }),
         },
       },
@@ -1532,7 +1544,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAda
 test("runOpenAnswerEvaluatorWorkerOnce_shouldBuildRedactedProviderRequest_fromClaimedSnapshot", () => {
   const providerRequests = [];
   const { commands, database } = makeSUT({
-    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
     evaluatorPolicies: [
       makeEvaluatorPolicy({
         hiddenInstructions:
@@ -1616,6 +1628,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldBuildRedactedProviderRequest_fromCl
           mode: "single_job",
           evaluatorJobId: "evaluator-run-1",
           claimed: true,
+          completed: true,
         }),
         providerRequests: [
           {
@@ -1795,6 +1808,211 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordTerminalFailure_onExhaustedPr
   );
 });
 
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordEvidenceAndCompleteEvaluation_onValidProviderOutput", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [
+      makeProviderAdapter({
+        evaluate: () =>
+          makeProviderResult({
+            summaryFeedback: " Good explanation. ",
+            criterionFeedback: [makeCriterionFeedback({ feedback: " Criterion feedback " })],
+            providerUsage: { providerCalls: 1 },
+            redactedEvidenceSummary: " Matched accepted criterion. ",
+          }),
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      budgetPolicy: { maxProviderCalls: 2 },
+    });
+
+    assert.deepEqual(
+      {
+        result: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+        evaluations: listOpenAnswerEvaluationRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            summary: makeEvaluatorWorkerSummary({
+              mode: "single_job",
+              evaluatorJobId: "evaluator-run-1",
+              claimed: true,
+              completed: true,
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "succeeded",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        evidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Matched accepted criterion.",
+          }),
+        ],
+        evaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectTerminalRerunWithoutDuplicateEvaluation_onSucceededJob", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [makeProviderAdapter()],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    assert.deepEqual(
+      {
+        first: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        second: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+        evaluations: listOpenAnswerEvaluationRecords(database),
+      },
+      {
+        first: {
+          status: "accepted",
+          value: {
+            summary: makeEvaluatorWorkerSummary({
+              mode: "single_job",
+              evaluatorJobId: "evaluator-run-1",
+              claimed: true,
+              completed: true,
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "succeeded",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+              budgetPolicy: null,
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        second: { status: "rejected", reason: "evaluator_job_conflict" },
+        evidence: [],
+        evaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectConcurrentLeaseAndTerminalChanges_throughStudentWorkspaceCommands", () => {
+  assert.deepEqual(
+    [
+      runWorkerAfterProviderMutation({
+        mutate: ({ setNow }) => setNow("2026-06-02T10:05:00.000Z"),
+        providerResult: makeProviderResult({ redactedEvidenceSummary: "Matched accepted criterion." }),
+      }),
+      runWorkerAfterProviderMutation({
+        mutate: ({ setNow }) => setNow("2026-06-02T10:05:00.000Z"),
+      }),
+      runWorkerAfterProviderMutation({
+        mutate: ({ database }) => {
+          const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, "evaluator-run-1");
+          updateOpenAnswerEvaluatorJobLease(database, {
+            evaluatorJobId: "evaluator-run-1",
+            leaseId: "lease-concurrent",
+            workerId: "worker-concurrent",
+            claimedAt: evaluatorJob.lease.claimedAt,
+            expiresAt: evaluatorJob.lease.expiresAt,
+            updatedAt: evaluatorJob.updatedAt,
+          });
+        },
+      }),
+      runWorkerAfterProviderMutation({
+        mutate: ({ commands }) =>
+          commands.cancelOpenAnswerEvaluatorJob({
+            evaluatorJobId: "evaluator-run-1",
+            reason: "cancelled concurrently",
+          }),
+      }),
+      runWorkerAfterProviderMutation({
+        mutate: ({ commands, setNow }) => {
+          setNow("2026-06-02T10:05:00.000Z");
+          commands.timeOutOpenAnswerEvaluatorJob({
+            evaluatorJobId: "evaluator-run-1",
+            reason: "timed out concurrently",
+          });
+        },
+      }),
+    ],
+    [
+      makeProviderWorkerRejectionResult("evaluator_job_lease_expired"),
+      makeProviderWorkerRejectionResult("evaluator_job_lease_expired"),
+      makeProviderWorkerRejectionResult("evaluator_job_lease_mismatch"),
+      makeProviderWorkerRejectionResult("evaluator_job_conflict"),
+      makeProviderWorkerRejectionResult("evaluator_job_conflict"),
+    ],
+  );
+});
+
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProviderAdapterCall", () => {
   const providerAdapter = {
     providerAdapterId: "adapter-a",
@@ -1915,7 +2133,15 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProvider
 
 test("runOpenAnswerEvaluatorWorkerOnce_shouldSkipNotYetDueRetryJob_onClaimNext", () => {
   const { commands, database } = makeSUT({
-    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "lease-1", "evaluator-run-2", "lease-2"],
+    ids: [
+      "attempt-1",
+      "attempt-2",
+      "evaluator-run-1",
+      "lease-1",
+      "evaluator-run-2",
+      "lease-2",
+      "evaluation-1",
+    ],
     evaluatorPolicies: [makeEvaluatorPolicy()],
     providerAdapters: [makeProviderAdapter()],
   });
@@ -1962,6 +2188,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldSkipNotYetDueRetryJob_onClaimNext",
             mode: "claim_next",
             evaluatorJobId: "evaluator-run-2",
             claimed: true,
+            completed: true,
           }),
           evaluatorJob: makeEvaluatorJobSummary({
             evaluatorJobId: "evaluator-run-2",
@@ -1969,8 +2196,13 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldSkipNotYetDueRetryJob_onClaimNext",
             attemptId: "attempt-2",
             retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
             budgetPolicy: null,
-            status: "leased",
-            lease: makeEvaluatorLease({ leaseId: "lease-2" }),
+            status: "succeeded",
+          }),
+          evaluation: makeEvaluationSummary({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-2",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
           }),
         },
       },
@@ -7079,6 +7311,62 @@ function makeProviderWorkerFailureResult({
           failedAt: "2026-06-02T10:00:00.000Z",
         }
       : null,
+  };
+}
+
+function runWorkerAfterProviderMutation({ mutate, providerResult = makeProviderResult() }) {
+  let commands;
+  let currentNow = new Date("2026-06-02T10:00:00.000Z");
+  const sut = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    now: () => currentNow,
+    providerAdapters: [
+      makeProviderAdapter({
+        evaluate: () => {
+          mutate({
+            commands,
+            database: sut.database,
+            setNow: iso => {
+              currentNow = new Date(iso);
+            },
+          });
+          return providerResult;
+        },
+      }),
+    ],
+  });
+  commands = sut.commands;
+
+  try {
+    seedStudentProgramWithAcceptedCheck(sut.database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    return {
+      result: commands.runOpenAnswerEvaluatorWorkerOnce({
+        workerId: "worker-a",
+        mode: "single_job",
+        evaluatorJobId: "evaluator-run-1",
+        leaseDurationSeconds: 300,
+      }),
+      evidence: listOpenAnswerEvaluatorEvidenceRecords(sut.database),
+      evaluations: listOpenAnswerEvaluationRecords(sut.database),
+    };
+  } finally {
+    sut.database.close();
+  }
+}
+
+function makeProviderWorkerRejectionResult(reason) {
+  return {
+    result: { status: "rejected", reason },
+    evidence: [],
+    evaluations: [],
   };
 }
 
