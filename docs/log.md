@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- doc-drift-agent: landed the Shape-2 scope-select selection layer (ADR-001 Phases 1–3) — tested `select`/`commit` step CLIs plus a per-scope last-audited state store under `doc-drift-agent/scope-select/`, covered by the existing `doc-drift-agent-core` CI glob. Refreshed `docs/loc-dashboard.html` to match `scripts/loc-dashboard.sh --sort=name` (doc-drift-agent code 138→395, tests 67→404; total 161,299→161,893).
 - Process: refreshed `docs/loc-dashboard.html` for the scoped-worker branch — `doc-drift-agent` (tests 0→67, docs 1108→1480) and `agents` (docs 603→1066, the orchestration research notes), so the cards, table footer, and `data` array match `scripts/loc-dashboard.sh --sort=name` (total 160,397→161,299).
 - agents/research: recorded the `@openclaw/lobster` plugin install/activation on the VPS (`agents/research/openclaw-lobster.md`) — orchestration ADR-001 substrate evidence; the live recovery steps live in the inventory repo's `vps/OpenClaw/migration.md`.
 - doc-drift-agent: landed the scoped-worker registry (Shape 1). Added `doc-drift-agent/agent/scope-registry.json` (scope 0 + 22 project scopes) with a coverage check in the test suite, and a dedicated `doc-drift-agent-core.yml` CI workflow (per-project isolation) wired into `ci.yml` path-filter dispatch so the registry coverage check runs on doc-drift changes only.
