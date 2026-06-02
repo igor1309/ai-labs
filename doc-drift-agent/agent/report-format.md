@@ -14,9 +14,10 @@ The agent emits exactly one report per run, in Markdown. The shape is fixed so t
 # Doc Drift Report
 
 - Run mode: <manual | scheduled>
+- Scope: <scope id> (per `doc-drift-agent/agent/readme-inventory.md`)
 - Run timestamp (UTC): <YYYY-MM-DD HH:MM>
 - Repo commit: <short SHA> (<branch>)
-- READMEs inspected: <count> (per `doc-drift-agent/agent/readme-inventory.md`)
+- Documents inspected: <count> (in the active scope)
 - Findings: <count>
 - Fix PRs opened: <count of new PRs>
 - Already tracked: <count of findings already covered by an open [doc-drift] PR>
@@ -45,15 +46,15 @@ Each finding is one `##` block:
 ```markdown
 ## Finding <N> — <category>
 
-- **Category:** <README ↔ README | README ↔ repo state | Internal consistency>
-- **READMEs touched:** <relative path(s)>
+- **Category:** <Doc ↔ Doc | Doc ↔ repo state | Internal consistency>
+- **Docs touched:** <relative path(s)>
 - **Severity:** <factual | gap>
 
 ### Doc-side claim
 
-> <verbatim quote of the README claim>
+> <verbatim quote of the document claim>
 
-`<readme path>:<line>`
+`<doc path>:<line>`
 
 ### Contradicting evidence
 
@@ -63,7 +64,7 @@ Each finding is one `##` block:
 
 ### Suggested change
 
-`<readme path>:<line>` — replace `<old>` with `<new>`. Minimum edit.
+`<doc path>:<line>` — replace `<old>` with `<new>`. Minimum edit.
 
 ### Proposed PR
 

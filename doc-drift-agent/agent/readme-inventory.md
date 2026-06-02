@@ -1,14 +1,21 @@
 ---
 date: 2026-05-09
 model: claude-opus-4-7
-description: "READMEs the doc-drift-agent must inspect: root and one-level-below project READMEs, with cross-references and gaps relative to the root Components table"
+description: "Scope registry for the doc-drift-agent: the audit scopes (cross-project READMEs + one per top-level project's docs) and the documents each covers. Generalised from the original README inventory."
 ---
 
-# README Inventory
+# Scope Registry
 
-Enumerates every README the agent inspects on each run. Scope is fixed by `doc-drift-agent/docs/plans/doc-drift-agent.md` Task A2: the root `README.md` plus per-project READMEs found one level below the repo root. Deeper READMEs (e.g. `dragoman/docs/README.md`, `tools/wt/README.md`, `neris/packages/swift-neris/README.md`) are out of scope for the agent.
+The registry of audit **scopes** and the documents each one covers. The agent audits one scope per run (the runtime provides the active scope). Generalised from the original README inventory.
 
-## Inventory
+## Scopes
+
+- **Scope `readmes` (cross-project READMEs)** — the root `README.md` plus the per-project READMEs one level below the repo root (enumerated in `## Scope 0 — README membership` below). Lens: README ↔ README consistency.
+- **Scope `<project>` (one per top-level project)** — that project's `README.md` and its `docs/` tree. Lens: the project's docs ↔ its repo state and own code.
+
+Documents below a project's top level that are not in that project's `docs/` are out of scope. The precise paths/globs per scope are pinned here as the registry is built out during implementation.
+
+## Scope 0 — README membership
 
 | Path | Owning component | Role | Cross-references into other READMEs |
 |------|------------------|------|-------------------------------------|
