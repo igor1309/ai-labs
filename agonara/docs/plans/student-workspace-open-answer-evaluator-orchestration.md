@@ -130,7 +130,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 2 — Schedule evaluator jobs
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement `scheduleOpenAnswerEvaluatorJob` as the governed transition from submitted or failed attempts into waiting evaluator jobs.
 

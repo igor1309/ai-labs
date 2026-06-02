@@ -18,6 +18,7 @@ import {
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
   getOpenAnswerEvaluationRecord,
+  getOpenAnswerEvaluatorJobRecord,
   grantAdminAuthority,
   initializeIdentityStorage,
   listAcceptedAssessmentCriterionEntityRecords,
@@ -646,6 +647,271 @@ test("beginOpenAnswerEvaluatorRun_shouldSnapshotAndClearPreviousFailure_onFailed
           makeEvaluatorRunRecord({
             priorFailureReason: "temporary evaluator outage",
             priorFailedAt: "2026-06-02T10:00:00.000Z",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("scheduleOpenAnswerEvaluatorJob_shouldCreateWaitingJobAndMoveSubmittedAttemptToEvaluating", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    const result = commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: " policy-a ",
+      retryPolicy: { maxAttempts: 3, backoffSeconds: [60, 300] },
+      budgetPolicy: { maxProviderCalls: 2 },
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        run: listOpenAnswerEvaluatorRunRecords(database)[0],
+        job: projectEvaluatorJob(getOpenAnswerEvaluatorJobRecord(database, "evaluator-run-1")),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorJob: makeEvaluatorJobSummary(),
+          },
+        },
+        run: makeEvaluatorRunRecord(),
+        job: makeEvaluatorJobSummary(),
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("scheduleOpenAnswerEvaluatorJob_shouldSnapshotAndClearPreviousFailure_onFailedAttempt", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    const result = commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        run: listOpenAnswerEvaluatorRunRecords(database)[0],
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+              budgetPolicy: null,
+            }),
+          },
+        },
+        failure: null,
+        run: makeEvaluatorRunRecord({
+          priorFailureReason: "temporary evaluator outage",
+          priorFailedAt: "2026-06-02T10:00:00.000Z",
+        }),
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("scheduleOpenAnswerEvaluatorJob_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "attempt-3", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-2" });
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-3",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-unknown",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        evaluating: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        evaluated: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-3",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        jobs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        unknown: { status: "rejected", reason: "attempt_not_found" },
+        evaluating: { status: "rejected", reason: "attempt_already_evaluating" },
+        evaluated: { status: "rejected", reason: "attempt_already_evaluated" },
+        jobs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("scheduleOpenAnswerEvaluatorJob_shouldRejectMalformedPolicyInputsWithoutMutation", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1", "evaluator-run-2"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(
+      {
+        retryPolicy: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          retryPolicy: { maxAttempts: 3, backoffSeconds: [60] },
+        }),
+        budgetPolicy: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+          budgetPolicy: { maxProviderCalls: -1 },
+        }),
+        attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        attempts: listOpenAnswerAttemptRecords(database, { programId: "program-a" }).map($0 => $0.id),
+        jobs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        retryPolicy: { status: "rejected", reason: "validation_failed" },
+        budgetPolicy: { status: "rejected", reason: "validation_failed" },
+        attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "evaluation_failed" }),
+        failure: {
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+          failedAt: "2026-06-02T10:00:00.000Z",
+        },
+        attempts: ["attempt-1"],
+        jobs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("scheduleOpenAnswerEvaluatorJob_shouldValidateRequesterAndReviewerAttribution", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+
+    assert.deepEqual(
+      {
+        accepted: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+          reviewerCapability: " assessment-reviewer ",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        unknownRequester: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          requestedByIdentityId: "identity-unknown",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        inactiveReviewer: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-disabled",
+          reviewerCapability: "assessment-reviewer",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        nonHumanReviewer: commands.scheduleOpenAnswerEvaluatorJob({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+          retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+        }),
+        attempt: getOpenAnswerAttemptRecord(database, "attempt-2"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        accepted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              evaluatorPathKind: "human_reviewed",
+              retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+              budgetPolicy: null,
+            }),
+          },
+        },
+        unknownRequester: { status: "rejected", reason: "identity_not_active" },
+        inactiveReviewer: { status: "rejected", reason: "identity_not_active" },
+        nonHumanReviewer: { status: "rejected", reason: "validation_failed" },
+        attempt: {
+          ...makeAttemptRecord({ attemptId: "attempt-2", status: "submitted" }),
+          idempotencyKey: "submit-b",
+        },
+        runs: [
+          makeEvaluatorRunRecord({
+            evaluatorPathKind: "human_reviewed",
+            reviewerIdentityId: "identity-active-other",
+            reviewerCapability: "assessment-reviewer",
           }),
         ],
       },
@@ -3249,6 +3515,7 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "recordOpenAnswerEvaluation",
       "recordOpenAnswerEvaluationFailure",
       "recordOpenAnswerEvaluatorEvidence",
+      "scheduleOpenAnswerEvaluatorJob",
       "submitOpenAnswerAttempt",
     ]);
     assert.deepEqual(
@@ -3661,6 +3928,7 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "recordOpenAnswerEvaluation",
           "recordOpenAnswerEvaluationFailure",
           "recordOpenAnswerEvaluatorEvidence",
+          "scheduleOpenAnswerEvaluatorJob",
           "submitOpenAnswerAttempt",
         ],
       },
@@ -3791,6 +4059,71 @@ function makeEvaluatorRunRecord(input) {
     priorFailureReason: input?.priorFailureReason ?? null,
     priorFailedAt: input?.priorFailedAt ?? null,
   };
+}
+
+function makeEvaluatorJobSummary({
+  evaluatorJobId = "evaluator-run-1",
+  evaluatorRunId = "evaluator-run-1",
+  attemptId = "attempt-1",
+  evaluatorPathKind = "deterministic",
+  evaluatorPolicyId = "policy-a",
+  runStatus = "running",
+  jobStatus = "waiting",
+  attemptNumber = 1,
+  retryPolicy = { maxAttempts: 3, backoffSeconds: [60, 300] },
+  budgetPolicy = { maxProviderCalls: 2 },
+} = {}) {
+  return {
+    evaluatorJobId,
+    evaluatorRunId,
+    attemptId,
+    programId: "program-a",
+    studentIdentityId: "identity-student",
+    checkRevisionId: "check-revision-a",
+    criterionRevisionIds: ["criterion-revision-a"],
+    evaluatorPathKind,
+    evaluatorPolicyId,
+    runStatus,
+    jobStatus,
+    attemptNumber,
+    retryPolicy,
+    budgetPolicy,
+    lease: null,
+    nextRetryAt: null,
+    cancellationReason: null,
+    timeoutReason: null,
+    jobFailureReason: null,
+    createdAt: "2026-06-02T10:00:00.000Z",
+    updatedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function projectEvaluatorJob(job) {
+  return job
+    ? {
+        evaluatorJobId: job.evaluatorJobId,
+        evaluatorRunId: job.evaluatorRunId,
+        attemptId: job.attemptId,
+        programId: job.programId,
+        studentIdentityId: job.studentIdentityId,
+        checkRevisionId: job.checkRevisionId,
+        criterionRevisionIds: job.criterionRevisionIds,
+        evaluatorPathKind: job.evaluatorPathKind,
+        evaluatorPolicyId: job.evaluatorPolicyId,
+        runStatus: job.runStatus,
+        jobStatus: job.jobStatus,
+        attemptNumber: job.attemptNumber,
+        retryPolicy: job.retryPolicy,
+        budgetPolicy: job.budgetPolicy,
+        lease: job.lease,
+        nextRetryAt: job.nextRetryAt,
+        cancellationReason: job.cancellationReason,
+        timeoutReason: job.timeoutReason,
+        jobFailureReason: job.jobFailureReason,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+      }
+    : null;
 }
 
 function makeEvaluatorEvidenceSummary({
@@ -4075,6 +4408,7 @@ function containsAnyOutOfScopeStudentWorkspaceHttpMutation(source) {
     "markOpenAnswerAttemptEvaluating",
     "recordOpenAnswerEvaluation",
     "recordOpenAnswerEvaluationFailure",
+    "scheduleOpenAnswerEvaluatorJob",
   ].some($0 => source.includes($0));
 }
 

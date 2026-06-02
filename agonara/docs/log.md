@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 2 evaluator orchestration scheduling so Student Workspace can turn submitted or failed open-answer attempts into waiting evaluator jobs with retry/budget policy validation and prior-failure preservation.
 - Harden Phase 1 evaluator orchestration storage after adversarial review by rejecting leased jobs without leases and validating lease update/clear helper inputs before SQLite writes.
 - Start the Student Workspace evaluator orchestration implementation with Phase 1 storage substrate: separate job status on evaluator runs, retry/budget policies, lease fields, claimable reads, and raw-artifact exclusion.
 - Harden the Student Workspace evaluator orchestration plan after adversarial review by separating orchestration job status from the existing evaluator-run lifecycle and treating traceability/archive checks as docs gates.

@@ -12,6 +12,7 @@ import {
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
   getOpenAnswerEvaluationRecordByAttemptId,
+  getOpenAnswerEvaluatorJobRecord,
   getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
   listOpenAnswerAttemptRecords,
@@ -74,6 +75,8 @@ export function createStudentWorkspaceCommands({
       recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }),
     recordOpenAnswerEvaluationFailure: input =>
       recordOpenAnswerEvaluationFailure({ database, input, now }),
+    scheduleOpenAnswerEvaluatorJob: input =>
+      scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
   };
@@ -177,6 +180,107 @@ function getBeginEvaluatorRunAttemptRejection(attempt) {
     return rejected("attempt_already_evaluated");
   }
   return null;
+}
+
+function scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  const attemptRejection = getBeginEvaluatorRunAttemptRejection(attempt);
+  if (attemptRejection) {
+    return attemptRejection;
+  }
+  if (
+    !supportedEvaluatorPathKinds.has(input?.evaluatorPathKind) ||
+    !isNonEmptyText(input?.evaluatorPolicyId)
+  ) {
+    return rejected("validation_failed");
+  }
+  const requestedByIdentityId = input?.requestedByIdentityId;
+  const reviewerIdentityId = input?.reviewerIdentityId;
+  let reviewerCapability = input?.reviewerCapability;
+  if (input.evaluatorPathKind === "human_reviewed") {
+    if (!isNonEmptyText(reviewerIdentityId) || !isNonEmptyText(reviewerCapability)) {
+      return rejected("validation_failed");
+    }
+    reviewerCapability = reviewerCapability.trim();
+  } else if (reviewerIdentityId !== undefined || reviewerCapability !== undefined) {
+    return rejected("validation_failed");
+  }
+
+  const startedAt = now().toISOString();
+  let transition;
+  try {
+    transition = database.transaction(() => {
+      const currentAttempt = getOpenAnswerAttemptRecord(database, attempt.id);
+      const currentAttemptRejection = getBeginEvaluatorRunAttemptRejection(currentAttempt);
+      if (currentAttemptRejection) {
+        return { rejection: currentAttemptRejection };
+      }
+      if (requestedByIdentityId !== undefined) {
+        const requester = getIdentity(database, requestedByIdentityId);
+        if (!requester || requester.state !== "active") {
+          return { rejection: rejected("identity_not_active") };
+        }
+      }
+      if (reviewerIdentityId !== undefined) {
+        const reviewer = getIdentity(database, reviewerIdentityId);
+        if (!reviewer || reviewer.state !== "active") {
+          return { rejection: rejected("identity_not_active") };
+        }
+      }
+      const evaluatorRunId = generateId();
+      const previousFailure = getOpenAnswerEvaluationFailureRecord(database, currentAttempt.id);
+      const run = createOpenAnswerEvaluatorRunRecord(database, {
+        id: evaluatorRunId,
+        attemptId: currentAttempt.id,
+        programId: currentAttempt.programId,
+        studentIdentityId: currentAttempt.studentIdentityId,
+        checkRevisionId: currentAttempt.checkRevisionId,
+        criterionRevisionIds: currentAttempt.criterionRevisionIds,
+        evaluatorPathKind: input.evaluatorPathKind,
+        evaluatorPolicyId: input.evaluatorPolicyId.trim(),
+        requestedByIdentityId,
+        reviewerIdentityId,
+        reviewerCapability,
+        status: "running",
+        startedAt,
+        priorFailureReason: previousFailure?.reason ?? null,
+        priorFailedAt: previousFailure?.failedAt ?? null,
+        jobStatus: "waiting",
+        attemptNumber: 1,
+        retryPolicy: input.retryPolicy,
+        budgetPolicy: input.budgetPolicy ?? null,
+        jobCreatedAt: startedAt,
+        jobUpdatedAt: startedAt,
+      });
+      deleteOpenAnswerEvaluationFailureRecord(database, currentAttempt.id);
+      const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+        attemptId: currentAttempt.id,
+        status: "evaluating",
+        updatedAt: startedAt,
+      });
+      return {
+        evaluatorJob: getOpenAnswerEvaluatorJobRecord(database, evaluatorRunId),
+        evaluatorRun: run,
+        updated: updatedAttempt,
+      };
+    })();
+  } catch (error) {
+    if (
+      error instanceof StorageInvariantError &&
+      ["evaluator_run_conflict", "validation_failed"].includes(error.reason)
+    ) {
+      return rejected(error.reason);
+    }
+    throw error;
+  }
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
+  });
 }
 
 function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }) {
@@ -705,6 +809,32 @@ function summarizeEvaluatorRun(evaluatorRun) {
     ...(evaluatorRun.completedAt ? { completedAt: evaluatorRun.completedAt } : {}),
     ...(evaluatorRun.failedAt ? { failedAt: evaluatorRun.failedAt } : {}),
     ...(evaluatorRun.failureReason ? { failureReason: evaluatorRun.failureReason } : {}),
+  };
+}
+
+function summarizeEvaluatorJob(evaluatorJob) {
+  return {
+    evaluatorJobId: evaluatorJob.evaluatorJobId,
+    evaluatorRunId: evaluatorJob.evaluatorRunId,
+    attemptId: evaluatorJob.attemptId,
+    programId: evaluatorJob.programId,
+    studentIdentityId: evaluatorJob.studentIdentityId,
+    checkRevisionId: evaluatorJob.checkRevisionId,
+    criterionRevisionIds: evaluatorJob.criterionRevisionIds,
+    evaluatorPathKind: evaluatorJob.evaluatorPathKind,
+    evaluatorPolicyId: evaluatorJob.evaluatorPolicyId,
+    runStatus: evaluatorJob.runStatus,
+    jobStatus: evaluatorJob.jobStatus,
+    attemptNumber: evaluatorJob.attemptNumber,
+    retryPolicy: evaluatorJob.retryPolicy,
+    budgetPolicy: evaluatorJob.budgetPolicy,
+    lease: evaluatorJob.lease,
+    nextRetryAt: evaluatorJob.nextRetryAt,
+    cancellationReason: evaluatorJob.cancellationReason,
+    timeoutReason: evaluatorJob.timeoutReason,
+    jobFailureReason: evaluatorJob.jobFailureReason,
+    createdAt: evaluatorJob.createdAt,
+    updatedAt: evaluatorJob.updatedAt,
   };
 }
 
