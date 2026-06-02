@@ -208,7 +208,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 4 — Owner-only attempt listing route
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: implement Program-scoped owner-only attempt listing with supported filters, bounded pagination, opaque cursors, and cursor-scope rejection.
 

@@ -83,7 +83,9 @@ export function createServer({
       if (identityCommands && studentWorkspaceCommands) {
         const handled = await handleStudentWorkspaceApi({
           csrfTokens,
+          generateToken,
           identityCommands,
+          listCursors,
           pathname,
           request,
           response,
@@ -556,7 +558,9 @@ async function handleProgramApi({
 
 async function handleStudentWorkspaceApi({
   csrfTokens,
+  generateToken,
   identityCommands,
+  listCursors,
   pathname,
   request,
   response,
@@ -576,6 +580,50 @@ async function handleStudentWorkspaceApi({
       attemptId: decodeURIComponent(attemptDetailMatch[1]),
     });
     sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && attemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseOpenAnswerAttemptListFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const programId = decodeURIComponent(attemptsMatch[1]);
+    const routeKey = [
+      "student-open-answer-attempts",
+      session.value.identity.id,
+      programId,
+      filters.value.status ?? "all",
+      filters.value.checkRevisionId ?? "all",
+    ].join(":");
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listOpenAnswerAttempts({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: filters.value.checkRevisionId,
+      programId,
+      status: filters.value.status,
+    });
+    const mappedResult = mapOpenAnswerAttemptListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
     return true;
   }
 
@@ -1802,6 +1850,30 @@ function parseAttemptIdempotencyKey(request) {
   return accepted(idempotencyKey);
 }
 
+function parseOpenAnswerAttemptListFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const status = url.searchParams.get("status");
+  if (
+    status !== null &&
+    status !== "submitted" &&
+    status !== "evaluating" &&
+    status !== "evaluated" &&
+    status !== "evaluation_failed"
+  ) {
+    return rejected("validation_failed");
+  }
+
+  const checkRevisionId = url.searchParams.get("checkRevisionId");
+  if (checkRevisionId !== null && !isNonEmptyRequestText(checkRevisionId)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    checkRevisionId: checkRevisionId ?? undefined,
+    status: status ?? undefined,
+  });
+}
+
 function parseSubmitOpenAnswerAttemptBody(body) {
   if (
     Object.keys(body).length !== 2 ||
@@ -2037,6 +2109,29 @@ function mapAcceptedOpenAnswerCheckListResult({ generateToken, listCursors, quer
 
   return accepted({
     acceptedOpenAnswerChecks: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapOpenAnswerAttemptListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.attempts,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    attempts: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }

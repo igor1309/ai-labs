@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Student Workspace open-answer attempt HTTP listing with owner/program scoping, Student participation enforcement, status and check filters, bounded pagination, cursor-scope rejection, and cursor/fault redaction coverage.
 - Harden Student Workspace open-answer attempt HTTP detail reads after adversarial review by extending redaction coverage across evaluated and evaluation-failed detail responses plus evaluator diagnostics and database URL fault probes.
 - Implement Student Workspace open-answer attempt HTTP detail reads with owner-only access, evaluation/failure detail coverage, private non-owner `404` behavior, and redaction coverage.
 - Harden Student Workspace open-answer attempt HTTP submission after adversarial review by proving accepted responses hide idempotency keys and non-mutation coverage only passes after a real accepted attempt.
