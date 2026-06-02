@@ -34,6 +34,7 @@ const supportedEvaluatorPathKinds = new Set([
   "llm_assisted",
   "human_reviewed",
 ]);
+const supportedEvaluatorWorkerModes = new Set(["single_job", "claim_next"]);
 const forbiddenResponseDetailPatterns = [
   /\bsession\b/i,
   /\bcsrf\b/i,
@@ -95,6 +96,8 @@ export function createStudentWorkspaceCommands({
       recordOpenAnswerEvaluationFailure({ database, input, now }),
     renewOpenAnswerEvaluatorJobLease: input =>
       renewOpenAnswerEvaluatorJobLease({ database, input, now }),
+    runOpenAnswerEvaluatorWorkerOnce: input =>
+      runOpenAnswerEvaluatorWorkerOnce({ database, generateId, input, now }),
     scheduleOpenAnswerEvaluatorJob: input =>
       scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     submitOpenAnswerAttempt: input =>
@@ -346,6 +349,71 @@ function claimOpenAnswerEvaluatorJob({ database, generateId, input, now }) {
     evaluatorJob: summarizeEvaluatorJob(transition.evaluatorJob),
     lease: summarizeEvaluatorLease(transition.evaluatorJob.lease),
   });
+}
+
+function runOpenAnswerEvaluatorWorkerOnce({ database, generateId, input, now }) {
+  const validationRejection = getEvaluatorWorkerInputRejection(input);
+  if (validationRejection) {
+    return validationRejection;
+  }
+
+  const workerInput = {
+    workerId: input.workerId.trim(),
+    mode: input.mode,
+    evaluatorJobId: input.evaluatorJobId?.trim(),
+    leaseDurationSeconds: input.leaseDurationSeconds,
+  };
+  const claimable =
+    workerInput.mode === "claim_next"
+      ? listClaimableOpenAnswerEvaluatorJobs({ database, input: { limit: 1 }, now }).value.evaluatorJobs[0]
+      : { evaluatorJobId: workerInput.evaluatorJobId };
+  if (!claimable) {
+    return accepted({
+      summary: summarizeEvaluatorWorkerRun({
+        mode: workerInput.mode,
+        workerId: workerInput.workerId,
+        claimed: false,
+      }),
+    });
+  }
+
+  const claim = claimOpenAnswerEvaluatorJob({
+    database,
+    generateId,
+    input: {
+      evaluatorJobId: claimable.evaluatorJobId,
+      workerId: workerInput.workerId,
+      leaseDurationSeconds: workerInput.leaseDurationSeconds,
+    },
+    now,
+  });
+  if (claim.status === "rejected") {
+    return claim;
+  }
+
+  return accepted({
+    summary: summarizeEvaluatorWorkerRun({
+      mode: workerInput.mode,
+      workerId: workerInput.workerId,
+      evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
+      claimed: true,
+    }),
+    evaluatorJob: claim.value.evaluatorJob,
+  });
+}
+
+function getEvaluatorWorkerInputRejection(input) {
+  if (
+    !isNonEmptyText(input?.workerId) ||
+    !isValidLeaseDurationSeconds(input?.leaseDurationSeconds) ||
+    !supportedEvaluatorWorkerModes.has(input?.mode)
+  ) {
+    return rejected("validation_failed");
+  }
+  if (input.mode === "single_job" && !isNonEmptyText(input?.evaluatorJobId)) {
+    return rejected("validation_failed");
+  }
+  return null;
 }
 
 function getClaimableEvaluatorJobRejection(evaluatorJob, at) {
@@ -1462,6 +1530,30 @@ function summarizeEvaluatorJob(evaluatorJob) {
     ...(evaluatorJob.jobFailureReason ? { failureReason: evaluatorJob.jobFailureReason } : {}),
     createdAt: evaluatorJob.createdAt,
     updatedAt: evaluatorJob.updatedAt,
+  };
+}
+
+function summarizeEvaluatorWorkerRun({
+  mode,
+  workerId,
+  evaluatorJobId,
+  claimed,
+  completed = false,
+  retried = false,
+  failed = false,
+  rejectionReason,
+  failureReason,
+}) {
+  return {
+    mode,
+    workerId,
+    ...(evaluatorJobId ? { evaluatorJobId } : {}),
+    claimed,
+    completed,
+    retried,
+    failed,
+    ...(rejectionReason ? { rejectionReason } : {}),
+    ...(failureReason ? { failureReason } : {}),
   };
 }
 

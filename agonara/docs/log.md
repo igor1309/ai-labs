@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement the first Student Workspace evaluator worker slice, adding the in-process worker command boundary for validated `single_job` and `claim_next` job claiming without provider execution.
 - Harden the evaluator worker implementation plan after adversarial review by making phase-status commits mandatory and adding explicit RED/GREEN sequences to every phase.
 - Add the Student Workspace open-answer evaluator worker implementation plan, sequencing the in-process worker through strict TDD phases for claiming, policy resolution, provider request redaction, output and budget gates, completion, boundary isolation, backup/restore, executable acceptance, and closeout.
 - Harden the evaluator worker spec after adversarial review by making post-claim provider failures flow through Student Workspace retry/failure behavior, pinning claim-next ordering to the existing claimable-job query, and requiring evaluator policy retry policy to match the claimed job.
