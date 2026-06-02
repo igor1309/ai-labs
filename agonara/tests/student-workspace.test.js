@@ -949,6 +949,7 @@ test("claimOpenAnswerEvaluatorJob_shouldLeaseWaitingJobAndPreserveAttemptState",
       evaluatorPolicyId: "policy-a",
       retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
     });
+    const acceptedBefore = projectAcceptedAssessmentState(database);
 
     const result = commands.claimOpenAnswerEvaluatorJob({
       evaluatorJobId: "evaluator-run-1",
@@ -960,6 +961,7 @@ test("claimOpenAnswerEvaluatorJob_shouldLeaseWaitingJobAndPreserveAttemptState",
       {
         result,
         attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
+        acceptedAfter: projectAcceptedAssessmentState(database),
         job: projectEvaluatorJob(getOpenAnswerEvaluatorJobRecord(database, "evaluator-run-1")),
       },
       {
@@ -977,6 +979,7 @@ test("claimOpenAnswerEvaluatorJob_shouldLeaseWaitingJobAndPreserveAttemptState",
           },
         },
         attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "evaluating" }),
+        acceptedAfter: acceptedBefore,
         job: makeEvaluatorJobSummary({
           retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
           budgetPolicy: null,
@@ -1013,6 +1016,7 @@ test("renewOpenAnswerEvaluatorJobLease_shouldExtendValidLeaseAndRejectLeaseConfl
       leaseDurationSeconds: 300,
     });
     currentNow = new Date("2026-06-02T10:02:00.000Z");
+    const acceptedBefore = projectAcceptedAssessmentState(database);
 
     const result = commands.renewOpenAnswerEvaluatorJobLease({
       evaluatorJobId: "evaluator-run-1",
@@ -1024,6 +1028,7 @@ test("renewOpenAnswerEvaluatorJobLease_shouldExtendValidLeaseAndRejectLeaseConfl
     assert.deepEqual(
       {
         result,
+        acceptedAfter: projectAcceptedAssessmentState(database),
         mismatch: commands.renewOpenAnswerEvaluatorJobLease({
           evaluatorJobId: "evaluator-run-1",
           leaseId: "lease-wrong",
@@ -1045,6 +1050,7 @@ test("renewOpenAnswerEvaluatorJobLease_shouldExtendValidLeaseAndRejectLeaseConfl
             lease: makeEvaluatorLease({ expiresAt: "2026-06-02T10:12:00.000Z" }),
           },
         },
+        acceptedAfter: acceptedBefore,
         mismatch: { status: "rejected", reason: "evaluator_job_lease_mismatch" },
       },
     );
@@ -1117,6 +1123,41 @@ test("openAnswerEvaluatorJobReads_shouldReturnRedactedJobStateAndBoundedClaimabl
             ],
           },
         },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listClaimableOpenAnswerEvaluatorJobs_shouldApplyDefaultAndMaximumBounds", () => {
+  const ids = Array.from({ length: 210 }, (_, index) =>
+    index % 2 === 0 ? `attempt-${index / 2 + 1}` : `evaluator-run-${(index + 1) / 2}`,
+  );
+  const { commands, database } = makeSUT({ ids });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    for (let index = 1; index <= 105; index += 1) {
+      submitAttempt(commands, { idempotencyKey: `submit-${index}` });
+      commands.scheduleOpenAnswerEvaluatorJob({
+        attemptId: `attempt-${index}`,
+        evaluatorPathKind: "deterministic",
+        evaluatorPolicyId: "policy-a",
+        retryPolicy: { maxAttempts: 1, backoffSeconds: [] },
+      });
+    }
+
+    assert.deepEqual(
+      {
+        defaultCount: commands.listClaimableOpenAnswerEvaluatorJobs({}).value.evaluatorJobs.length,
+        invalidCount: commands.listClaimableOpenAnswerEvaluatorJobs({ limit: -1 }).value.evaluatorJobs.length,
+        cappedCount: commands.listClaimableOpenAnswerEvaluatorJobs({ limit: 500 }).value.evaluatorJobs.length,
+      },
+      {
+        defaultCount: 50,
+        invalidCount: 50,
+        cappedCount: 100,
       },
     );
   } finally {
