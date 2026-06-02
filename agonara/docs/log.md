@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Student Workspace open-answer attempt HTTP detail reads with owner-only access, evaluation/failure detail coverage, private non-owner `404` behavior, and redaction coverage.
 - Harden Student Workspace open-answer attempt HTTP submission after adversarial review by proving accepted responses hide idempotency keys and non-mutation coverage only passes after a real accepted attempt.
 - Implement Student Workspace open-answer attempt HTTP submission with strict body validation, effective Student authorization, accepted revision snapshots, idempotent retries, conflict handling, and adjacent-state non-mutation coverage.
 - Harden the Student Workspace open-answer attempt HTTP API route substrate after adversarial review with JSON body classification and complete first-slice rejection status mapping.

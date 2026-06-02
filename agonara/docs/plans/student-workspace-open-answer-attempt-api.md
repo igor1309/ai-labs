@@ -169,7 +169,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 3 — Owner-only attempt detail route
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: implement owner-only attempt detail reads, including evaluation and active failure detail, without leaking private attempt existence to non-owners.
 
