@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Add the Student Workspace open-answer evaluator orchestration spec, defining job scheduling, leases, retries, cancellation, timeout recovery, completion idempotency, budget gates, and redaction boundaries.
 - Harden ADR-014 after adversarial review by clarifying how orchestration jobs relate to the implemented evaluator-run records and when leases become mandatory.
 - Accept ADR-014 for Student Workspace evaluator orchestration: evaluator jobs own leases, retries, cancellation, timeout recovery, and provider/human handoff boundaries before worker implementation.
 - Harden Student Workspace evaluator backup restore after adversarial review by validating restored reviewer attribution, attribution Identity references, evidence visibility, and unsafe redacted summaries before import.
