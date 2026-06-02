@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Student Workspace open-answer submission after adversarial review with explicit curator-denial, per-student idempotency scope, and idempotency-key redaction coverage.
 - Implement Student Workspace open-answer attempt submission with effective Student authorization, accepted revision snapshots, immutable trimmed answers, and scoped idempotency handling.
 
 ## 2026-06-01

@@ -141,6 +141,36 @@ test("submitOpenAnswerAttempt_shouldRejectCallerWithoutEffectiveStudentParticipa
   }
 });
 
+test("submitOpenAnswerAttempt_shouldRejectProgramCuratorWithoutStudentParticipation", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, {
+      id: "membership-curator-a",
+      programId: "program-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    });
+
+    assert.deepEqual(
+      commands.submitOpenAnswerAttempt({
+        actingIdentityId: "identity-curator",
+        programId: "program-a",
+        checkRevisionId: "check-revision-a",
+        submittedAnswer: "Answer",
+        idempotencyKey: "submit-a",
+      }),
+      { status: "rejected", reason: "participation_required" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("submitOpenAnswerAttempt_shouldRejectUnknownAcceptedCheckRevision", () => {
   const { commands, database } = makeSUT();
 
@@ -282,6 +312,73 @@ test("submitOpenAnswerAttempt_shouldReturnOriginalAttempt_onEquivalentRetry", ()
   }
 });
 
+test("submitOpenAnswerAttempt_shouldScopeIdempotencyKeyToActingStudent", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-student-2" }));
+    createProgramMembershipRecord(database, {
+      id: "membership-student-2-a",
+      programId: "program-a",
+      identityId: "identity-student-2",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    });
+
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "First student answer",
+      idempotencyKey: "shared-key",
+    });
+    const second = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student-2",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Second student answer",
+      idempotencyKey: "shared-key",
+    });
+
+    assert.deepEqual(
+      {
+        second,
+        attempts: listOpenAnswerAttemptRecords(database).map($0 => ({
+          id: $0.id,
+          studentIdentityId: $0.studentIdentityId,
+        })),
+      },
+      {
+        second: {
+          status: "accepted",
+          value: {
+            attempt: {
+              attemptId: "attempt-2",
+              programId: "program-a",
+              studentIdentityId: "identity-student-2",
+              checkRevisionId: "check-revision-a",
+              criterionRevisionIds: ["criterion-revision-a"],
+              submittedAnswer: "Second student answer",
+              status: "submitted",
+              submittedAt: "2026-06-02T10:00:00.000Z",
+              updatedAt: "2026-06-02T10:00:00.000Z",
+            },
+          },
+        },
+        attempts: [
+          { id: "attempt-1", studentIdentityId: "identity-student" },
+          { id: "attempt-2", studentIdentityId: "identity-student-2" },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("submitOpenAnswerAttempt_shouldRejectConflictingIdempotencyKeyReuseWithoutChangingOriginalAttempt", () => {
   const { commands, database } = makeSUT();
 
@@ -315,6 +412,33 @@ test("submitOpenAnswerAttempt_shouldRejectConflictingIdempotencyKeyReuseWithoutC
         attempts: [{ id: "attempt-1", submittedAnswer: "Original answer" }],
       },
     );
+  } finally {
+    database.close();
+  }
+});
+
+test("submitOpenAnswerAttempt_shouldNotExposeIdempotencyKey_onAcceptedOrRejectedResults", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+
+    const acceptedResult = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Answer",
+      idempotencyKey: "sensitive-idempotency-key",
+    });
+    const rejectedResult = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Different answer",
+      idempotencyKey: "sensitive-idempotency-key",
+    });
+
+    assert.deepEqual(containsForbiddenDetail([acceptedResult, rejectedResult]), false);
   } finally {
     database.close();
   }
@@ -524,6 +648,23 @@ function projectAcceptedAssessmentState(database) {
     criterionCandidates: listAssessmentCriterionCandidateRecords(database),
     checkCandidates: listOpenAnswerCheckCandidateRecords(database),
   };
+}
+
+function containsForbiddenDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "sensitive-idempotency-key",
+    "passwordhash",
+    "correct horse battery staple",
+    "operator-secret",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "select ",
+    "stack",
+    "127.0.0.1",
+  ].some($0 => serialized.includes($0));
 }
 
 function makeIdentity({ id, state = "active" }) {
