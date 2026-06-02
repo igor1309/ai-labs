@@ -20,9 +20,23 @@ re-running earlier steps. It is the "deterministic steps" layer that
 Docs: https://docs.openclaw.ai/tools/lobster and
 https://docs.openclaw.ai/plugins/reference/lobster
 
-## Is It Installed on the VPS? No
+## Is It Installed on the VPS? Yes (since 2026-06-02)
 
-On the live install (`2026.5.28`, RackNerd `107.172.143.196`):
+**Installed and activated on 2026-06-02** on the RackNerd VPS
+(`107.172.143.196`, OpenClaw `2026.5.28`):
+
+- Plugin `lobster` v2026.5.28 installed from `clawhub:@openclaw/lobster`
+  (official, integrity-verified) → `~/.openclaw/extensions/lobster`. Status:
+  **loaded**.
+- Plugin **enabled**; tool gate `tools.alsoAllow: ["lobster"]` written to
+  `~/.openclaw/openclaw.json` (config valid).
+- Gateway restarted; event loop back to `ok`.
+- Recovery is documented in `inventory` repo `vps/OpenClaw/migration.md`
+  Phase 2 step 5.
+
+### Original "not installed" finding (pre-2026-06-02, historical)
+
+Before the install, on the live `2026.5.28` host:
 
 - **No `lobster` stock extension** — absent from
   `~/.npm-global/lib/node_modules/openclaw/dist/extensions/` (which holds 93
@@ -40,14 +54,14 @@ Per the plugin reference, Lobster is the optional plugin **`@openclaw/lobster`**
 distributed via **npm / ClawHub**. It is **not stock and not enabled by
 default**. Two layers:
 
-1. **The plugin** (`@openclaw/lobster`) — must be installed and enabled. This is
-   what is missing on the VPS.
+1. **The plugin** (`@openclaw/lobster`) — must be installed and enabled. (Done
+   on the VPS 2026-06-02 — see status section above.)
 2. **The tool gate** — even once the plugin is present, the `lobster` tool is
    opt-in. Enable it additively in config:
    ```json
    { "tools": { "alsoAllow": ["lobster"] } }
    ```
-   The live config currently has no `tools.alsoAllow` key at all.
+   (Now set on the VPS.)
 
 The **standalone `lobster` CLI binary** (from the GitHub repo, on PATH) is only
 needed for *local dev* of workflows. For in-agent use, the plugin's embedded
@@ -61,17 +75,21 @@ Lobster plugin," which can read as "built-in." That is misleading for this
 install: the runner ships *with the plugin*, and the plugin itself is a separate
 `@openclaw/lobster` package that is not part of the stock set here.
 
-## If Installing Later
+## Install/activate sequence (as actually run, 2026-06-02)
 
-Adding the plugin changes bootstrap state, so any install MUST be reflected in
-`vps/OpenClaw/migration.md` in the same commit (per the inventory repo's
-OpenClaw maintenance rule). Rough sequence to confirm before running:
+The commands used, verified against the live `2026.5.28` CLI:
 
 ```bash
-openclaw plugins install @openclaw/lobster
-openclaw plugins enable lobster        # exact id to confirm post-install
-openclaw config set tools.alsoAllow '["lobster"]'
+openclaw plugins install clawhub:@openclaw/lobster
+openclaw plugins enable lobster
+openclaw config set tools.alsoAllow '["lobster"]' --strict-json
+sudo systemctl restart openclaw        # gateway restart to load the plugin
+openclaw plugins inspect lobster       # verify Status: loaded
 ```
+
+Adding the plugin changes bootstrap state, so it is reflected in
+`vps/OpenClaw/migration.md` (Phase 2 step 5) per the inventory repo's OpenClaw
+maintenance rule.
 
 ## `.lobster` file format
 
