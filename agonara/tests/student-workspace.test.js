@@ -1503,6 +1503,117 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAda
   }
 });
 
+test("runOpenAnswerEvaluatorWorkerOnce_shouldBuildRedactedProviderRequest_fromClaimedSnapshot", () => {
+  const providerRequests = [];
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+    evaluatorPolicies: [
+      makeEvaluatorPolicy({
+        hiddenInstructions:
+          "session-1 csrf-token-1 cookie authorization raw prompt raw model select stack /tmp/db.sqlite postgres://db hidden policy instructions",
+      }),
+    ],
+    providerAdapters: [
+      makeProviderAdapter({
+        providerCredential: "authorization bearer provider-secret",
+        providerRequests,
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, {
+      submittedAnswer: "Student answer explaining the accepted theorem with no operational artifacts.",
+    });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    createAcceptedAssessmentCriterionRevisionRecord(
+      database,
+      makeAcceptedAssessmentCriterionRevision({
+        id: "criterion-revision-current",
+        entityId: "criterion-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "criterion-candidate-a",
+        sourceIds: ["source-a"],
+      }),
+    );
+    updateAcceptedAssessmentCriterionEntityCurrentRevision(database, {
+      entityId: "criterion-entity-a",
+      currentRevisionId: "criterion-revision-current",
+    });
+    createAcceptedOpenAnswerCheckRevisionRecord(
+      database,
+      makeAcceptedOpenAnswerCheckRevision({
+        id: "check-revision-current",
+        entityId: "check-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "check-candidate-check-revision-a",
+        criterionRevisionIds: ["criterion-revision-current"],
+        sourceIds: ["source-a"],
+      }),
+    );
+    updateAcceptedOpenAnswerCheckEntityCurrentRevision(database, {
+      entityId: "check-entity-a",
+      currentRevisionId: "check-revision-current",
+    });
+    createAssessmentCriterionCandidateRecord(
+      database,
+      makeAssessmentCriterionCandidate({
+        id: "criterion-candidate-draft",
+        programId: "program-a",
+        rationale: "hidden policy instructions from mutable draft curator state",
+        sourceIds: ["source-a"],
+        status: "draft",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        resultSummary: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }).value.summary,
+        providerRequests,
+        leaksForbiddenDetails: containsForbiddenProviderRequestDetail(providerRequests),
+        leaksCurrentRevision: JSON.stringify(providerRequests).includes("revision-current"),
+        leaksDraftState: JSON.stringify(providerRequests).includes("hidden policy instructions"),
+      },
+      {
+        resultSummary: makeEvaluatorWorkerSummary({
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          claimed: true,
+        }),
+        providerRequests: [
+          {
+            evaluatorJobId: "evaluator-run-1",
+            attemptId: "attempt-1",
+            programId: "program-a",
+            studentIdentityId: "identity-student",
+            checkRevisionId: "check-revision-a",
+            criterionRevisionIds: ["criterion-revision-a"],
+            submittedAnswer: "Student answer explaining the accepted theorem with no operational artifacts.",
+            evaluatorPolicyId: "policy-a",
+            outputValidatorPolicyId: "validator-a",
+          },
+        ],
+        leaksForbiddenDetails: false,
+        leaksCurrentRevision: false,
+        leaksDraftState: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProviderAdapterCall", () => {
   const providerAdapter = {
     providerAdapterId: "adapter-a",
@@ -6661,6 +6772,7 @@ function makeEvaluatorPolicy({
   redactionPolicyId = "redaction-a",
   retryPolicy = { maxAttempts: 2, backoffSeconds: [60] },
   budgetPolicy,
+  hiddenInstructions,
   rawArtifactPolicy = "none",
 } = {}) {
   return {
@@ -6672,6 +6784,7 @@ function makeEvaluatorPolicy({
     redactionPolicyId,
     retryPolicy,
     ...(budgetPolicy ? { budgetPolicy } : {}),
+    ...(hiddenInstructions ? { hiddenInstructions } : {}),
     rawArtifactPolicy,
   };
 }
@@ -6679,12 +6792,15 @@ function makeEvaluatorPolicy({
 function makeProviderAdapter({
   providerAdapterId = "adapter-a",
   evaluatorPathKind = "deterministic",
+  providerCredential,
+  providerRequests,
 } = {}) {
   return {
     providerAdapterId,
     evaluatorPathKind,
-    evaluate: () => {
-      throw new Error("provider adapter must not be called during policy resolution");
+    ...(providerCredential ? { providerCredential } : {}),
+    evaluate: providerRequest => {
+      providerRequests?.push(providerRequest);
     },
   };
 }
@@ -7002,6 +7118,25 @@ function projectProtectedBackupState(backup) {
     acceptedOpenAnswerCheckRevisions: backup.acceptedOpenAnswerCheckRevisions,
     openAnswerEvaluations: backup.openAnswerEvaluations,
   };
+}
+
+function containsForbiddenProviderRequestDetail(providerRequests) {
+  const serialized = JSON.stringify(providerRequests).toLowerCase();
+  return [
+    "authorization",
+    "cookie",
+    "csrf",
+    "database-url",
+    "hidden policy instructions",
+    "postgres://",
+    "provider-secret",
+    "raw model",
+    "raw prompt",
+    "select ",
+    "session",
+    "stack",
+    "/tmp",
+  ].some($0 => serialized.includes($0));
 }
 
 function containsForbiddenDetail(values) {

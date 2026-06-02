@@ -414,6 +414,17 @@ function runOpenAnswerEvaluatorWorkerOnce({
   if (adapter.status === "rejected") {
     return adapter;
   }
+  const attempt = getOpenAnswerAttemptRecord(database, claim.value.evaluatorJob.attemptId);
+  if (!attempt) {
+    return rejected("attempt_not_found");
+  }
+  adapter.value.adapter.evaluate(
+    buildOpenAnswerEvaluatorProviderRequest({
+      attempt,
+      evaluatorJob: claim.value.evaluatorJob,
+      policy: policy.value.policy,
+    }),
+  );
 
   return accepted({
     summary: summarizeEvaluatorWorkerRun({
@@ -490,7 +501,24 @@ function resolveOpenAnswerEvaluatorProviderAdapter(providerAdapters, policy) {
   if (adapter.evaluatorPathKind !== policy.evaluatorPathKind) {
     return rejected("validation_failed");
   }
+  if (typeof adapter.evaluate !== "function") {
+    return rejected("validation_failed");
+  }
   return accepted({ adapter });
+}
+
+function buildOpenAnswerEvaluatorProviderRequest({ attempt, evaluatorJob, policy }) {
+  return {
+    evaluatorJobId: evaluatorJob.evaluatorJobId,
+    attemptId: evaluatorJob.attemptId,
+    programId: evaluatorJob.programId,
+    studentIdentityId: evaluatorJob.studentIdentityId,
+    checkRevisionId: evaluatorJob.checkRevisionId,
+    criterionRevisionIds: [...evaluatorJob.criterionRevisionIds],
+    submittedAnswer: attempt.submittedAnswer,
+    evaluatorPolicyId: evaluatorJob.evaluatorPolicyId,
+    outputValidatorPolicyId: policy.outputValidatorPolicyId,
+  };
 }
 
 function getClaimableEvaluatorJobRejection(evaluatorJob, at) {
