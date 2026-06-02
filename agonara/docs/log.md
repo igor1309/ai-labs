@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Accept ADR-015 for the open-answer evaluator worker/provider boundary: workers and provider adapters execute behind Student Workspace jobs, while prompt construction, output validation, raw-artifact handling, provider credentials, budget policy, and final feedback acceptance stay governed by explicit Student Workspace rules.
 - Complete the Student Workspace evaluator orchestration plan with backup/restore preservation, malformed restore rejection, executable job acceptance coverage, Product Intent traceability, and archived-plan closeout.
 - Harden Phase 6 evaluator orchestration recovery after adversarial review by explicitly covering retry-waiting cancellation and rejecting impossible storage recovery state combinations.
 - Implement Phase 6 evaluator orchestration recovery so worker failures, retries, cancellations, and expired leases clear active leases, preserve attempt snapshots, and keep stale workers from mutating terminal jobs.
