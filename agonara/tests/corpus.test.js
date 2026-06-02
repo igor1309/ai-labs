@@ -4514,7 +4514,21 @@ function snapshotQuickCheckDeliveryReadDomains(database) {
          order by id`,
       )
       .all(),
+    acceptedQuickCheckRevisionOptions: database
+      .prepare(
+        `select id, revision_id as revisionId, option_order as optionOrder, text
+         from accepted_quick_check_revision_options
+         order by revision_id, option_order, id`,
+      )
+      .all(),
     quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    quickCheckCandidateOptions: database
+      .prepare(
+        `select id, candidate_id as candidateId, option_order as optionOrder, text
+         from quick_check_candidate_options
+         order by candidate_id, option_order, id`,
+      )
+      .all(),
     quickCheckCandidates: database
       .prepare(
         `select id, program_id as programId, check_kind as checkKind, title, prompt,
