@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the first evaluator worker implementation slice after adversarial review by adding explicit not-yet-due retry rejection coverage and marking Phase 1 complete in the implementation plan.
 - Implement the first Student Workspace evaluator worker slice, adding the in-process worker command boundary for validated `single_job` and `claim_next` job claiming without provider execution.
 - Harden the evaluator worker implementation plan after adversarial review by making phase-status commits mandatory and adding explicit RED/GREEN sequences to every phase.
 - Add the Student Workspace open-answer evaluator worker implementation plan, sequencing the in-process worker through strict TDD phases for claiming, policy resolution, provider request redaction, output and budget gates, completion, boundary isolation, backup/restore, executable acceptance, and closeout.

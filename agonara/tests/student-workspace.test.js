@@ -1198,13 +1198,24 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProvider
     },
   };
   const { commands, database } = makeSUT({
-    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1", "lease-2"],
+    ids: [
+      "attempt-1",
+      "attempt-2",
+      "attempt-3",
+      "evaluator-run-1",
+      "evaluator-run-2",
+      "evaluator-run-3",
+      "lease-1",
+      "lease-2",
+      "lease-3",
+    ],
   });
 
   try {
     seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
     submitAttempt(commands, { idempotencyKey: "submit-a" });
     submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
     commands.scheduleOpenAnswerEvaluatorJob({
       attemptId: "attempt-1",
       evaluatorPathKind: "deterministic",
@@ -1213,6 +1224,12 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProvider
     });
     commands.scheduleOpenAnswerEvaluatorJob({
       attemptId: "attempt-2",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-3",
       evaluatorPathKind: "deterministic",
       evaluatorPolicyId: "policy-a",
       retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
@@ -1227,12 +1244,24 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProvider
       workerId: "worker-b",
       leaseDurationSeconds: 300,
     });
+    commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-3",
+      workerId: "worker-b",
+      leaseDurationSeconds: 300,
+    });
     commands.failOpenAnswerEvaluatorJob({
       evaluatorJobId: "evaluator-run-2",
       leaseId: "lease-2",
       workerId: "worker-b",
       reason: "provider execution failed",
       retry: false,
+    });
+    commands.failOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-3",
+      leaseId: "lease-3",
+      workerId: "worker-b",
+      reason: "provider execution failed",
+      retry: true,
     });
 
     assert.deepEqual(
@@ -1258,11 +1287,19 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectUnclaimableJobsBeforeProvider
           leaseDurationSeconds: 300,
           providerAdapter,
         }),
+        retryWaiting: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-3",
+          leaseDurationSeconds: 300,
+          providerAdapter,
+        }),
       },
       {
         unknown: { status: "rejected", reason: "evaluator_job_not_found" },
         leased: { status: "rejected", reason: "evaluator_job_conflict" },
         terminal: { status: "rejected", reason: "evaluator_job_conflict" },
+        retryWaiting: { status: "rejected", reason: "evaluator_job_conflict" },
       },
     );
   } finally {

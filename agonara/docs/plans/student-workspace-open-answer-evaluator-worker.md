@@ -24,7 +24,7 @@ Push policy: no push
 Worktree mode: reuse existing
 Expected worktree: `worktrees/agonara-student-attempt-api`
 Expected branch: `codex/agonara-student-attempt-api`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
@@ -100,7 +100,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 1 — Worker command substrate and job claiming
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: add the in-process worker command boundary and make it claim jobs without reading prompt inputs or calling provider adapters on rejected claims.
 
