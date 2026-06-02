@@ -1,15 +1,15 @@
 ---
 date: 2026-06-02
 model: claude-opus-4-8
-description: "Short-lived TODO: four skill additions/tweaks surfaced by the doc-drift Telegram-rendering session (2026-06-02)"
+description: "Short-lived TODO: skill and agent ideas surfaced by the doc-drift Telegram-rendering session (2026-06-02)"
 ---
 
-# Skills TODO
+# TODO
 
-Short-lived scratch list. Four skill ideas surfaced while fixing the doc-drift
-Telegram notification (PR #454). Each names the gap, the concrete shape, and the
-session failure that motivates it. Promote into `docs/TODO.md` / RFCs / actual
-skills as decided, then delete this file.
+Short-lived scratch list — skill and agent ideas surfaced while fixing the
+doc-drift Telegram notification (PR #454). Each names the gap, the concrete shape,
+and (where relevant) the session failure that motivates it. Promote into
+`docs/TODO.md` / RFCs / actual skills as decided, then delete this file.
 
 ## 1. `openclaw-agent-ops` skill — operating the specialized OpenClaw agents
 
@@ -68,4 +68,8 @@ one. Capture the ritual used this session as a reusable skill: timestamped backu
 → transfer → permissions/owner → verify byte-identical to source → syntax check →
 log in the relevant `log.md`(s). Reversible and verifiable at each step.
 
-## 5. add agent that takes issues from gh
+## 5. Agent that takes work from GitHub issues
+
+A *separate* agent that picks up `gh` issues as work items. Distinct from
+doc-drift — which by design has **no** issue machinery (every doc-drift finding is
+a doc-edit PR); captured here so the two are not conflated.

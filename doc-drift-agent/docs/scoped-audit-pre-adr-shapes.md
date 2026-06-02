@@ -28,8 +28,13 @@ stays blind to scheduling, persisted state, and every other scope:
 - **the truth-sources to check against** — sibling docs, repo state, the
   project's own code/config.
 
-The worker audits that document set per the doc-drift discipline and exits. It is
-the stable contract the orchestrator (Shape 2) sits behind.
+The worker audits that document set per the doc-drift discipline and, to resolve
+drift, **PR-edits the docs within its scope** — a project's `README.md` and its
+`docs/`, not just the README. It **never** edits code, config, or scripts; when
+the doc is right and the code looks wrong, that stays the maintainer's call on the
+PR. This expanded edit surface (vs today's README-only) is the substantive change
+Shape 1 introduces. The worker then exits — it is the stable contract the
+orchestrator (Shape 2) sits behind.
 
 ## Shape 2 — Orchestrator
 
@@ -83,8 +88,8 @@ code-side branch and no issue machinery.
 - **Scheduling fixes the bloated message** — it does not; that is Shape 3
   (rendering), orthogonal to scheduling.
 - **Cloning the agent per scope** — N workspaces/syncs for zero gain.
-- **CI/push as the audit trigger** — push enqueues eligibility at most; it never
-  executes. Git history is the change source.
+- **CI/push as the audit trigger** — push triggers nothing; commits are detected
+  by the nightly `git diff`. Git history is the change source.
 - **Widening the edit surface in one big pass** (edit anything, anywhere) — wrong
   blast radius.
 - **Single-file allowlist expansion** — an endless per-file race.
@@ -100,11 +105,18 @@ code-side branch and no issue machinery.
   audited every night).
 - Where the scope registry lives + the meta-scope that audits it
   (`readme-inventory.md` generalizes into it).
+- **Orchestrator deployment/sync to the VPS** — `runtime/**` is *not* CI-synced
+  (hand-deployed today), so even tested, version-controlled orchestrator code
+  still needs a deploy/sync path. Unresolved; ties to `TODO.md` items 1 & 4
+  (`openclaw-agent-ops` / `vps-deploy`).
 
 ## Governance
 
 Intent and ADR are amended **first** (`adr-governance`-gated); methodology,
 `agent.md`, templates, `report-format.md`, and `notification-spec.md` follow. The
-README-only boundary is pinned in five places. The current ADR is `proposed`
-(v0.0.5). This change may warrant splitting into per-shape ADRs given the three
-concerns are independently deliverable.
+README-only boundary is pinned in five places (intent, ADR boundary,
+`drift-methodology.md:105`, `agent.md:68`, `fix-pr-template.md:59`). The current
+ADR is `proposed` (front-matter `version: 0.0.5`, though the file is still named
+`…-v0.0.4.md` — reconcile the name and version when amending). This change may
+warrant splitting into per-shape ADRs given the three concerns are independently
+deliverable.

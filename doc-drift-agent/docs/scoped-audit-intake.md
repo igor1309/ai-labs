@@ -9,8 +9,8 @@ description: "Intake brief: introduce a scope model to doc-drift-agent (cross-pr
 ## Status
 
 The scope **model** is agreed (below). The **orchestration machinery** — how
-scopes are sequenced over time — is an open, ADR-level design decision still
-under discussion. See "Open design decision".
+scopes are sequenced over time — has since been shaped into three separable
+concerns; see `scoped-audit-pre-adr-shapes.md`.
 
 ## Problem
 
@@ -44,21 +44,20 @@ scopes**, audited **one at a time**.
   subsumes the old dead-end (a stale `readme-inventory.md` the agent couldn't
   fix): the registry is doc-drift's own doc, so it is now fixable via PR.
 
-## Doc-drift invariant (from the `doc-drift-audit` skill)
+## Doc-drift invariant
 
-Drift = "the doc says X; reality (code / other docs / repo state) is Y." The fix
-is always a **minimal edit to the document**. Code/other-docs/repo-state are the
-truth checked against, never edited. No restructuring, style, or additions. So
-**every finding is a doc edit** — there is no code-side output, and no
-"non-doc-fixable" branch.
+The doc-drift discipline (from the `doc-drift-audit` skill) is unchanged: fixes
+are minimal edits to the **document**; code / other docs / repo state are checked
+against, never edited; every finding is doc-fixable; no issue machinery. Stated
+authoritatively in `scoped-audit-pre-adr-shapes.md` → "Doc-drift invariant".
 
-## Touches / governance
+## Touches
 
-The README-only boundary is pinned in five places (intent, ADR boundary,
-`drift-methodology.md`, `agent.md` hard constraints, `fix-pr-template.md`
-checklist). Both **intent and ADR are amended first** (`adr-governance`-gated);
-the methodology, agent prompt, templates, `report-format.md`, and
-`notification-spec.md` follow. The ADR is currently `proposed` (v0.0.5).
+The change ripples through the doc-drift document stack — intent, ADR,
+`drift-methodology.md`, `agent.md`, the fix-PR template, `report-format.md`,
+`notification-spec.md`. Governance and amend-order (`adr-governance`-gated; intent
+and ADR amended first; the README-only boundary pinned in five places) are
+detailed in `scoped-audit-pre-adr-shapes.md` → "Governance".
 
 ## Design decision (shaped → see pre-ADR shapes)
 
