@@ -180,7 +180,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 3 — Provider request construction and redaction
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: build provider requests from claimed job state, accepted revision snapshots, and submitted answers while excluding credentials, raw artifacts, and operational details.
 

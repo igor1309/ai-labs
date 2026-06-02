@@ -1387,13 +1387,25 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMalformedProviderPolicyIdenti
 
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMissingAndMismatchedProviderAdapters_afterClaim", () => {
   const { commands, database } = makeSUT({
-    ids: ["attempt-1", "attempt-2", "evaluator-run-1", "evaluator-run-2", "lease-1", "lease-2"],
+    ids: [
+      "attempt-1",
+      "attempt-2",
+      "attempt-3",
+      "evaluator-run-1",
+      "evaluator-run-2",
+      "evaluator-run-3",
+      "lease-1",
+      "lease-2",
+      "lease-3",
+    ],
     evaluatorPolicies: [
       makeEvaluatorPolicy({ evaluatorPolicyId: "policy-missing", providerAdapterId: "adapter-missing" }),
       makeEvaluatorPolicy({ evaluatorPolicyId: "policy-mismatch", providerAdapterId: "adapter-mismatch" }),
+      makeEvaluatorPolicy({ evaluatorPolicyId: "policy-malformed", providerAdapterId: "adapter-malformed" }),
     ],
     providerAdapters: [
       makeProviderAdapter({ providerAdapterId: "adapter-mismatch", evaluatorPathKind: "llm_assisted" }),
+      { providerAdapterId: "adapter-malformed", evaluatorPathKind: "deterministic" },
     ],
   });
 
@@ -1401,6 +1413,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMissingAndMismatchedProviderA
     seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
     submitAttempt(commands, { idempotencyKey: "submit-a" });
     submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
     commands.scheduleOpenAnswerEvaluatorJob({
       attemptId: "attempt-1",
       evaluatorPathKind: "deterministic",
@@ -1411,6 +1424,12 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMissingAndMismatchedProviderA
       attemptId: "attempt-2",
       evaluatorPathKind: "deterministic",
       evaluatorPolicyId: "policy-mismatch",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-3",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-malformed",
       retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
     });
 
@@ -1428,10 +1447,17 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectMissingAndMismatchedProviderA
           evaluatorJobId: "evaluator-run-2",
           leaseDurationSeconds: 300,
         }),
+        malformed: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-3",
+          leaseDurationSeconds: 300,
+        }),
       },
       {
         missing: { status: "rejected", reason: "provider_adapter_not_found" },
         mismatch: { status: "rejected", reason: "validation_failed" },
+        malformed: { status: "rejected", reason: "validation_failed" },
       },
     );
   } finally {
