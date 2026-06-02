@@ -138,7 +138,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 2 — Evaluator policy and provider adapter resolution
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: require a governed evaluator policy and matching provider adapter before worker execution can build provider requests.
 

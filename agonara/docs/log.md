@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Complete Phase 2 of the Student Workspace evaluator worker plan after adversarial review widened policy/adapter failure coverage across protected adjacent domains.
 - Implement evaluator policy and provider adapter resolution for the Student Workspace evaluator worker, making post-claim execution fail closed on missing or malformed policy/adapter dependencies without provider calls.
 - Harden the first evaluator worker implementation slice after adversarial review by adding explicit not-yet-due retry rejection coverage and marking Phase 1 complete in the implementation plan.
 - Implement the first Student Workspace evaluator worker slice, adding the in-process worker command boundary for validated `single_job` and `claim_next` job claiming without provider execution.

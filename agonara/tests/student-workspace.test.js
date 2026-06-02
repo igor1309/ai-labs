@@ -10,23 +10,31 @@ import {
   createAcceptedOpenAnswerCheckRevisionRecord,
   createAssessmentCriterionCandidateRecord,
   createIdentity,
+  createLocalPasswordCredential,
   createOpenAnswerCheckCandidateRecord,
   createOpenAnswerEvaluatorRunRecord,
   createProgramMembershipRecord,
   createProgramShellRecord,
   createProgramSourceRecord,
+  createSession,
+  exportIdentityBackup,
   getIdentity,
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
   getOpenAnswerEvaluationRecord,
   getOpenAnswerEvaluatorJobRecord,
+  getSession,
   grantAdminAuthority,
   initializeIdentityStorage,
+  listAdminAuthorities,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedAssessmentCriterionRevisionRecords,
+  listAcceptedCorpusEntityRecords,
+  listAcceptedCorpusRevisionRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedOpenAnswerCheckRevisionRecords,
   listAssessmentCriterionCandidateRecords,
+  listLocalPasswordCredentials,
   listOpenAnswerEvaluationRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerCheckCandidateRecords,
@@ -1441,6 +1449,7 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAda
 
   try {
     seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    seedProtectedIdentityState(database);
     submitAttempt(commands);
     commands.scheduleOpenAnswerEvaluatorJob({
       attemptId: "attempt-1",
@@ -1451,6 +1460,12 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAda
     const acceptedBefore = projectAcceptedAssessmentState(database);
     const membershipBefore = listProgramMembershipRecords(database);
     const identityBefore = getIdentity(database, "identity-student");
+    const sessionBefore = getSession(database, "session-protected");
+    const credentialBefore = listLocalPasswordCredentials(database);
+    const authorityBefore = listAdminAuthorities(database);
+    const csrfTokens = new Map([["session-protected", "csrf-token-protected"]]);
+    const csrfBefore = [...csrfTokens.entries()];
+    const backupBefore = projectProtectedBackupState(exportIdentityBackup(database));
 
     assert.deepEqual(
       {
@@ -1463,6 +1478,11 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAda
         acceptedAfter: projectAcceptedAssessmentState(database),
         membershipAfter: listProgramMembershipRecords(database),
         identityAfter: getIdentity(database, "identity-student"),
+        sessionAfter: getSession(database, "session-protected"),
+        credentialAfter: listLocalPasswordCredentials(database),
+        authorityAfter: listAdminAuthorities(database),
+        csrfAfter: [...csrfTokens.entries()],
+        backupAfter: projectProtectedBackupState(exportIdentityBackup(database)),
         evaluations: listOpenAnswerEvaluationRecords(database),
       },
       {
@@ -1470,6 +1490,11 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomains_onPolicyAda
         acceptedAfter: acceptedBefore,
         membershipAfter: membershipBefore,
         identityAfter: identityBefore,
+        sessionAfter: sessionBefore,
+        credentialAfter: credentialBefore,
+        authorityAfter: authorityBefore,
+        csrfAfter: csrfBefore,
+        backupAfter: backupBefore,
         evaluations: [],
       },
     );
@@ -6930,14 +6955,52 @@ function createProgramMembershipIfMissing(database, membership) {
   }
 }
 
+function seedProtectedIdentityState(database) {
+  createLocalPasswordCredential(database, {
+    id: "credential-protected",
+    identityId: "identity-active-other",
+    login: "protected@example.test",
+    passwordHash: "hash-protected",
+    createdAt: "2026-06-02T09:05:00.000Z",
+  });
+  grantAdminAuthority(database, {
+    identityId: "identity-active-other",
+    grantedAt: "2026-06-02T09:06:00.000Z",
+  });
+  createSession(database, {
+    id: "session-protected",
+    identityId: "identity-active-other",
+    createdAt: "2026-06-02T09:07:00.000Z",
+    expiresAt: "2026-06-03T09:07:00.000Z",
+  });
+}
+
 function projectAcceptedAssessmentState(database) {
   return {
+    acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
+    acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
     acceptedCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
     acceptedCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
     criterionCandidates: listAssessmentCriterionCandidateRecords(database),
     checkCandidates: listOpenAnswerCheckCandidateRecords(database),
+  };
+}
+
+function projectProtectedBackupState(backup) {
+  return {
+    identities: backup.identities,
+    localPasswordCredentials: backup.localPasswordCredentials,
+    adminAuthorities: backup.adminAuthorities,
+    programMemberships: backup.programMemberships,
+    acceptedCorpusEntities: backup.acceptedCorpusEntities,
+    acceptedCorpusRevisions: backup.acceptedCorpusRevisions,
+    acceptedAssessmentCriterionEntities: backup.acceptedAssessmentCriterionEntities,
+    acceptedAssessmentCriterionRevisions: backup.acceptedAssessmentCriterionRevisions,
+    acceptedOpenAnswerCheckEntities: backup.acceptedOpenAnswerCheckEntities,
+    acceptedOpenAnswerCheckRevisions: backup.acceptedOpenAnswerCheckRevisions,
+    openAnswerEvaluations: backup.openAnswerEvaluations,
   };
 }
 
