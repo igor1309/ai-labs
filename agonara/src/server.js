@@ -597,13 +597,13 @@ async function handleStudentWorkspaceApi({
     }
 
     const programId = decodeURIComponent(attemptsMatch[1]);
-    const routeKey = [
+    const routeKey = JSON.stringify([
       "student-open-answer-attempts",
       session.value.identity.id,
       programId,
       filters.value.status ?? "all",
       filters.value.checkRevisionId ?? "all",
-    ].join(":");
+    ]);
     const query = parseListQuery({ listCursors, request, routeKey });
     if (query.status === "rejected") {
       sendJson(response, 400, query);

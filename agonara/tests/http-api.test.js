@@ -1554,6 +1554,69 @@ test("openAnswerAttemptsList_shouldReturnOpaqueCursorAndRejectCursorScopeMismatc
   }
 });
 
+test("openAnswerAttemptsList_shouldRejectCursorRouteKeyDelimiterCollisions", async () => {
+  const generateToken = makeIdGenerator(["cursor-1", "cursor-2"]);
+  const server = createServer({
+    generateToken,
+    identityCommands: {
+      resolveSession: ({ sessionId }) => ({
+        status: "accepted",
+        value: {
+          identity: {
+            id: sessionId === "session-a" ? "id:a" : "id",
+            state: "active",
+          },
+          session: { id: sessionId },
+        },
+      }),
+    },
+    log: () => {},
+    studentWorkspaceCommands: {
+      listOpenAnswerAttempts: ({ actingIdentityId, programId }) => ({
+        status: "accepted",
+        value: {
+          attempts: [
+            makeOpenAnswerAttemptSummary({
+              attemptId: `${actingIdentityId}:${programId}:1`,
+              programId,
+              studentIdentityId: actingIdentityId,
+            }),
+            makeOpenAnswerAttemptSummary({
+              attemptId: `${actingIdentityId}:${programId}:2`,
+              programId,
+              studentIdentityId: actingIdentityId,
+            }),
+          ],
+        },
+      }),
+    },
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const first = await fetch(`${baseUrl}/programs/b/open-answer-attempts?limit=1`, {
+      headers: { cookie: "agonara_session=session-a" },
+    });
+    const cursor = (await first.json()).value.nextCursor;
+    const collision = await fetch(`${baseUrl}/programs/a:b/open-answer-attempts?cursor=${cursor}`, {
+      headers: { cookie: "agonara_session=session-b" },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: collision.status,
+        body: await collision.json(),
+      },
+      {
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
 test("openAnswerAttemptsList_shouldRedactCursorsAndFaultResponses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     ids: manyIds(100),
@@ -7603,6 +7666,28 @@ function cursorDoesNotExposeAttemptListState(cursor) {
 
 function cursorExposesAny(cursor, fragments) {
   return fragments.some($0 => cursor.includes($0));
+}
+
+function makeOpenAnswerAttemptSummary({
+  attemptId,
+  checkRevisionId = "check-revision-1",
+  criterionRevisionIds = ["criterion-revision-1"],
+  programId,
+  status = "submitted",
+  studentIdentityId,
+  submittedAnswer = "Answer.",
+}) {
+  return {
+    attemptId,
+    checkRevisionId,
+    criterionRevisionIds,
+    programId,
+    status,
+    studentIdentityId,
+    submittedAnswer,
+    submittedAt: "2026-05-27T10:00:00.000Z",
+    updatedAt: "2026-05-27T10:00:00.000Z",
+  };
 }
 
 function adjacentAttemptSubmissionState(database) {
