@@ -1437,6 +1437,397 @@ test("recordOpenAnswerEvaluatorEvidence_shouldRevalidateRunStatus_insideTransact
   }
 });
 
+test("completeOpenAnswerEvaluatorRun_shouldRecordEvaluationAndMarkRunSucceeded", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    const result = commands.completeOpenAnswerEvaluatorRun?.({
+      evaluatorRunId: "evaluator-run-1",
+      summaryFeedback: " Good explanation. ",
+      criterionFeedback: [makeCriterionFeedback({ feedback: " Criterion feedback. " })],
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        evaluation: getOpenAnswerEvaluationRecord(database, "evaluation-1"),
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluated" }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              status: "succeeded",
+              completedAt: "2026-06-02T10:00:00.000Z",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback({ feedback: "Criterion feedback." })],
+            }),
+          },
+        },
+        evaluation: makeEvaluationRecord({
+          evaluationId: "evaluation-1",
+          attemptId: "attempt-1",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback({ feedback: "Criterion feedback." })],
+        }),
+        failure: null,
+        runs: [
+          makeEvaluatorRunRecord({
+            status: "succeeded",
+            completedAt: "2026-06-02T10:00:00.000Z",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("failOpenAnswerEvaluatorRun_shouldRecordFailureAndMarkRunFailed", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    const result = commands.failOpenAnswerEvaluatorRun?.({
+      evaluatorRunId: "evaluator-run-1",
+      reason: " temporary evaluator outage ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluation_failed" }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              status: "failed",
+              failedAt: "2026-06-02T10:00:00.000Z",
+              failureReason: "temporary evaluator outage",
+            }),
+            evaluationFailure: makeEvaluationFailureSummary({
+              reason: "temporary evaluator outage",
+            }),
+          },
+        },
+        failure: {
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+          failedAt: "2026-06-02T10:00:00.000Z",
+        },
+        runs: [
+          makeEvaluatorRunRecord({
+            status: "failed",
+            failedAt: "2026-06-02T10:00:00.000Z",
+            failureReason: "temporary evaluator outage",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("cancelOpenAnswerEvaluatorRun_shouldRestoreSubmitted_whenNoPriorFailure", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    const result = commands.cancelOpenAnswerEvaluatorRun?.({
+      evaluatorRunId: "evaluator-run-1",
+      reason: " evaluator cancelled by requester ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "submitted" }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              status: "cancelled",
+              failedAt: "2026-06-02T10:00:00.000Z",
+              failureReason: "evaluator cancelled by requester",
+            }),
+          },
+        },
+        failure: null,
+        runs: [
+          makeEvaluatorRunRecord({
+            status: "cancelled",
+            failedAt: "2026-06-02T10:00:00.000Z",
+            failureReason: "evaluator cancelled by requester",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("cancelOpenAnswerEvaluatorRun_shouldRestorePreviousFailure_whenPriorFailureExisted", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    const result = commands.cancelOpenAnswerEvaluatorRun({
+      evaluatorRunId: "evaluator-run-1",
+      reason: "evaluator cancelled by requester",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluation_failed" }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              status: "cancelled",
+              failedAt: "2026-06-02T10:00:00.000Z",
+              failureReason: "evaluator cancelled by requester",
+            }),
+          },
+        },
+        failure: {
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+          failedAt: "2026-06-02T10:00:00.000Z",
+        },
+        runs: [
+          makeEvaluatorRunRecord({
+            status: "cancelled",
+            failedAt: "2026-06-02T10:00:00.000Z",
+            failureReason: "evaluator cancelled by requester",
+            priorFailureReason: "temporary evaluator outage",
+            priorFailedAt: "2026-06-02T10:00:00.000Z",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("evaluatorRunTerminalCommands_shouldRejectUnknownAndTerminalRuns", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "attempt-3", "evaluator-run-1", "evaluator-run-2", "evaluator-run-3"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-2",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-3",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: "evaluator-run-1",
+      status: "succeeded",
+      completedAt: "2026-06-02T10:01:00.000Z",
+    });
+    updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: "evaluator-run-2",
+      status: "failed",
+      failedAt: "2026-06-02T10:01:00.000Z",
+      failureReason: "temporary evaluator outage",
+    });
+    updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: "evaluator-run-3",
+      status: "cancelled",
+      failedAt: "2026-06-02T10:01:00.000Z",
+      failureReason: "evaluator cancelled by requester",
+    });
+
+    assert.deepEqual(
+      {
+        completeUnknown: commands.completeOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-unknown",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        failUnknown: commands.failOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-unknown",
+          reason: "temporary evaluator outage",
+        }),
+        cancelUnknown: commands.cancelOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-unknown",
+          reason: "evaluator cancelled by requester",
+        }),
+        completeTerminal: commands.completeOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-1",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        failTerminal: commands.failOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-2",
+          reason: "temporary evaluator outage",
+        }),
+        cancelTerminal: commands.cancelOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-3",
+          reason: "evaluator cancelled by requester",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        completeUnknown: { status: "rejected", reason: "evaluator_run_not_found" },
+        failUnknown: { status: "rejected", reason: "evaluator_run_not_found" },
+        cancelUnknown: { status: "rejected", reason: "evaluator_run_not_found" },
+        completeTerminal: { status: "rejected", reason: "evaluator_run_conflict" },
+        failTerminal: { status: "rejected", reason: "evaluator_run_conflict" },
+        cancelTerminal: { status: "rejected", reason: "evaluator_run_conflict" },
+        runs: [
+          makeEvaluatorRunRecord({
+            status: "succeeded",
+            completedAt: "2026-06-02T10:01:00.000Z",
+          }),
+          makeEvaluatorRunRecord({
+            evaluatorRunId: "evaluator-run-2",
+            attemptId: "attempt-2",
+            status: "failed",
+            failedAt: "2026-06-02T10:01:00.000Z",
+            failureReason: "temporary evaluator outage",
+          }),
+          makeEvaluatorRunRecord({
+            evaluatorRunId: "evaluator-run-3",
+            attemptId: "attempt-3",
+            status: "cancelled",
+            failedAt: "2026-06-02T10:01:00.000Z",
+            failureReason: "evaluator cancelled by requester",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("evaluatorRunTerminalCommands_shouldRejectMalformedInputWithoutMutation", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    assert.deepEqual(
+      {
+        complete: commands.completeOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-1",
+          summaryFeedback: "",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        fail: commands.failOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-1",
+          reason: " ",
+        }),
+        cancel: commands.cancelOpenAnswerEvaluatorRun({
+          evaluatorRunId: "evaluator-run-1",
+          reason: 42,
+        }),
+        evaluation: getOpenAnswerEvaluationRecord(database, "evaluation-1"),
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        complete: { status: "rejected", reason: "validation_failed" },
+        fail: { status: "rejected", reason: "validation_failed" },
+        cancel: { status: "rejected", reason: "validation_failed" },
+        evaluation: null,
+        failure: null,
+        runs: [makeEvaluatorRunRecord()],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("markOpenAnswerAttemptEvaluating_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
   const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
 
@@ -2406,6 +2797,9 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
   try {
     assert.deepEqual(Object.keys(commands).sort(), [
       "beginOpenAnswerEvaluatorRun",
+      "cancelOpenAnswerEvaluatorRun",
+      "completeOpenAnswerEvaluatorRun",
+      "failOpenAnswerEvaluatorRun",
       "getOpenAnswerAttempt",
       "listOpenAnswerAttempts",
       "markOpenAnswerAttemptEvaluating",
@@ -2640,6 +3034,9 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
         redacted: false,
         commandSurface: [
           "beginOpenAnswerEvaluatorRun",
+          "cancelOpenAnswerEvaluatorRun",
+          "completeOpenAnswerEvaluatorRun",
+          "failOpenAnswerEvaluatorRun",
           "getOpenAnswerAttempt",
           "listOpenAnswerAttempts",
           "markOpenAnswerAttemptEvaluating",
@@ -2721,18 +3118,30 @@ function makeEvaluationSummary({
   };
 }
 
+function makeEvaluationRecord(input) {
+  const { evaluationId: id, ...summary } = makeEvaluationSummary(input);
+  return {
+    id,
+    ...summary,
+  };
+}
+
 function makeEvaluatorRunSummary({
   evaluatorRunId = "evaluator-run-1",
+  attemptId = "attempt-1",
   evaluatorPathKind = "deterministic",
   evaluatorPolicyId = "policy-a",
   requestedByIdentityId,
   reviewerIdentityId,
   reviewerCapability,
   status = "running",
+  completedAt,
+  failedAt,
+  failureReason,
 } = {}) {
   return {
     evaluatorRunId,
-    attemptId: "attempt-1",
+    attemptId,
     programId: "program-a",
     studentIdentityId: "identity-student",
     checkRevisionId: "check-revision-a",
@@ -2744,6 +3153,9 @@ function makeEvaluatorRunSummary({
     ...(reviewerIdentityId ? { reviewerIdentityId } : {}),
     ...(reviewerCapability ? { reviewerCapability } : {}),
     startedAt: "2026-06-02T10:00:00.000Z",
+    ...(completedAt ? { completedAt } : {}),
+    ...(failedAt ? { failedAt } : {}),
+    ...(failureReason ? { failureReason } : {}),
   };
 }
 
@@ -2755,9 +3167,9 @@ function makeEvaluatorRunRecord(input) {
     requestedByIdentityId: input?.requestedByIdentityId ?? null,
     reviewerIdentityId: input?.reviewerIdentityId ?? null,
     reviewerCapability: input?.reviewerCapability ?? null,
-    completedAt: null,
-    failedAt: null,
-    failureReason: null,
+    completedAt: input?.completedAt ?? null,
+    failedAt: input?.failedAt ?? null,
+    failureReason: input?.failureReason ?? null,
     priorFailureReason: input?.priorFailureReason ?? null,
     priorFailedAt: input?.priorFailedAt ?? null,
   };

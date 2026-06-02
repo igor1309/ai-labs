@@ -209,7 +209,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 4 — Evaluator run terminal transitions
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: implement completion, failure, and cancellation while preserving the existing final evaluation contract and attempt references.
 

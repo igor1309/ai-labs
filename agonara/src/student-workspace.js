@@ -16,6 +16,7 @@ import {
   getProgramShellRecord,
   listOpenAnswerAttemptRecords,
   updateOpenAnswerAttemptStatus,
+  updateOpenAnswerEvaluatorRunStatus,
 } from "./storage.js";
 
 const supportedEvaluationOutcomes = new Set(["met", "partially_met", "missing", "unclear"]);
@@ -36,6 +37,12 @@ export function createStudentWorkspaceCommands({
   return {
     beginOpenAnswerEvaluatorRun: input =>
       beginOpenAnswerEvaluatorRun({ database, generateId, input, now }),
+    cancelOpenAnswerEvaluatorRun: input =>
+      cancelOpenAnswerEvaluatorRun({ database, input, now }),
+    completeOpenAnswerEvaluatorRun: input =>
+      completeOpenAnswerEvaluatorRun({ database, generateId, input, now }),
+    failOpenAnswerEvaluatorRun: input =>
+      failOpenAnswerEvaluatorRun({ database, input, now }),
     getOpenAnswerAttempt: input =>
       getOpenAnswerAttempt({ database, input }),
     listOpenAnswerAttempts: input =>
@@ -197,6 +204,163 @@ function getRunningEvaluatorRunRejection(evaluatorRun) {
     return rejected("evaluator_run_conflict");
   }
   return null;
+}
+
+function completeOpenAnswerEvaluatorRun({ database, generateId, input, now }) {
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
+  const evaluatorRunRejection = getRunningEvaluatorRunRejection(evaluatorRun);
+  if (evaluatorRunRejection) {
+    return evaluatorRunRejection;
+  }
+  if (!isValidEvaluationInput(makeEvaluatorRunEvaluationInput(input), evaluatorRun)) {
+    return rejected("validation_failed");
+  }
+
+  const completedAt = now().toISOString();
+  const transition = database.transaction(() => {
+    const currentRun = getOpenAnswerEvaluatorRunRecord(database, evaluatorRun.id);
+    const currentRunRejection = getRunningEvaluatorRunRejection(currentRun);
+    if (currentRunRejection) {
+      return { rejection: currentRunRejection };
+    }
+    const updatedRun = updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: currentRun.id,
+      status: "succeeded",
+      completedAt,
+    });
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: currentRun.attemptId,
+      status: "evaluated",
+      updatedAt: completedAt,
+    });
+    const evaluation = createOpenAnswerEvaluationRecord(database, {
+      id: generateId(),
+      attemptId: currentRun.attemptId,
+      programId: currentRun.programId,
+      studentIdentityId: currentRun.studentIdentityId,
+      checkRevisionId: currentRun.checkRevisionId,
+      criterionRevisionIds: currentRun.criterionRevisionIds,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: input.summaryFeedback.trim(),
+      criterionFeedback: normalizeCriterionFeedback(input.criterionFeedback),
+      evaluatedAt: completedAt,
+    });
+    deleteOpenAnswerEvaluationFailureRecord(database, currentRun.attemptId);
+    return { evaluatorRun: updatedRun, evaluation, updated: updatedAttempt };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorRun: summarizeEvaluatorRun(transition.evaluatorRun),
+    evaluation: summarizeEvaluation(transition.evaluation),
+  });
+}
+
+function makeEvaluatorRunEvaluationInput(input) {
+  return {
+    evaluatorKind: "student_workspace",
+    summaryFeedback: input?.summaryFeedback,
+    criterionFeedback: input?.criterionFeedback,
+  };
+}
+
+function failOpenAnswerEvaluatorRun({ database, input, now }) {
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
+  const evaluatorRunRejection = getRunningEvaluatorRunRejection(evaluatorRun);
+  if (evaluatorRunRejection) {
+    return evaluatorRunRejection;
+  }
+  if (!isNonEmptyText(input?.reason)) {
+    return rejected("validation_failed");
+  }
+
+  const failedAt = now().toISOString();
+  const transition = database.transaction(() => {
+    const currentRun = getOpenAnswerEvaluatorRunRecord(database, evaluatorRun.id);
+    const currentRunRejection = getRunningEvaluatorRunRejection(currentRun);
+    if (currentRunRejection) {
+      return { rejection: currentRunRejection };
+    }
+    const reason = input.reason.trim();
+    const updatedRun = updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: currentRun.id,
+      status: "failed",
+      failedAt,
+      failureReason: reason,
+    });
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: currentRun.attemptId,
+      status: "evaluation_failed",
+      updatedAt: failedAt,
+    });
+    const failure = createOpenAnswerEvaluationFailureRecord(database, {
+      attemptId: currentRun.attemptId,
+      reason,
+      failedAt,
+    });
+    return { evaluatorRun: updatedRun, evaluationFailure: failure, updated: updatedAttempt };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorRun: summarizeEvaluatorRun(transition.evaluatorRun),
+    evaluationFailure: summarizeEvaluationFailure(transition.evaluationFailure),
+  });
+}
+
+function cancelOpenAnswerEvaluatorRun({ database, input, now }) {
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
+  const evaluatorRunRejection = getRunningEvaluatorRunRejection(evaluatorRun);
+  if (evaluatorRunRejection) {
+    return evaluatorRunRejection;
+  }
+  if (!isNonEmptyText(input?.reason)) {
+    return rejected("validation_failed");
+  }
+
+  const cancelledAt = now().toISOString();
+  const transition = database.transaction(() => {
+    const currentRun = getOpenAnswerEvaluatorRunRecord(database, evaluatorRun.id);
+    const currentRunRejection = getRunningEvaluatorRunRejection(currentRun);
+    if (currentRunRejection) {
+      return { rejection: currentRunRejection };
+    }
+    const updatedRun = updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: currentRun.id,
+      status: "cancelled",
+      failedAt: cancelledAt,
+      failureReason: input.reason.trim(),
+    });
+    const restoredStatus = currentRun.priorFailureReason ? "evaluation_failed" : "submitted";
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: currentRun.attemptId,
+      status: restoredStatus,
+      updatedAt: cancelledAt,
+    });
+    deleteOpenAnswerEvaluationFailureRecord(database, currentRun.attemptId);
+    if (currentRun.priorFailureReason) {
+      createOpenAnswerEvaluationFailureRecord(database, {
+        attemptId: currentRun.attemptId,
+        reason: currentRun.priorFailureReason,
+        failedAt: currentRun.priorFailedAt,
+      });
+    }
+    return { evaluatorRun: updatedRun, updated: updatedAttempt };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorRun: summarizeEvaluatorRun(transition.evaluatorRun),
+  });
 }
 
 function getOpenAnswerAttempt({ database, input }) {
@@ -482,6 +646,9 @@ function summarizeEvaluatorRun(evaluatorRun) {
       ? { reviewerCapability: evaluatorRun.reviewerCapability }
       : {}),
     startedAt: evaluatorRun.startedAt,
+    ...(evaluatorRun.completedAt ? { completedAt: evaluatorRun.completedAt } : {}),
+    ...(evaluatorRun.failedAt ? { failedAt: evaluatorRun.failedAt } : {}),
+    ...(evaluatorRun.failureReason ? { failureReason: evaluatorRun.failureReason } : {}),
   };
 }
 
