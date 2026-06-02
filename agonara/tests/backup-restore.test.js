@@ -957,6 +957,71 @@ test("restoreBackup_shouldRestoreQuickCheckGraphAndKeepStudentReadsRedacted_onAc
   }
 });
 
+test("restoreBackup_shouldPreserveHistoricalQuickCheckAttemptAndIdempotency_onReplacementRevision", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckReplacementRevision(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const corpusCommands = makeCorpusCommands(target.database);
+    const studentWorkspaceCommands = makeStudentWorkspaceCommands(target.database);
+    const retryResult = studentWorkspaceCommands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-1",
+      checkRevisionId: "quick-check-revision-existing",
+      selectedOptionId: "quick-check-revision-existing-option-a",
+      idempotencyKey: "idempotency-quick-check-existing",
+    });
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        currentDeliveryRevisionIds: corpusCommands.listQuickCheckDeliveries({
+          actingIdentityId: "identity-student",
+          programId: "program-1",
+        }).value.quickCheckDeliveries.map($0 => $0.revisionId),
+        historicalAttemptRevisionIds: studentWorkspaceCommands.listQuickCheckAttempts({
+          actingIdentityId: "identity-student",
+          programId: "program-1",
+        }).value.quickCheckAttempts.map($0 => $0.checkRevisionId),
+        idempotentRetry: projectQuickCheckAttemptSummary(retryResult.value.quickCheckAttempt),
+      },
+      {
+        restoreStatus: "accepted",
+        currentDeliveryRevisionIds: ["quick-check-revision-replacement"],
+        historicalAttemptRevisionIds: ["quick-check-revision-existing"],
+        idempotentRetry: {
+          attemptId: "quick-check-attempt-existing",
+          checkRevisionId: "quick-check-revision-existing",
+          selectedOptionId: "quick-check-revision-existing-option-a",
+          matched: true,
+        },
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRestoreOpenAnswerEvaluatorRunsAndEvidence_onAcceptedBackup", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -1890,6 +1955,15 @@ test("restoreBackup_shouldRejectMalformedQuickCheckGraphs_onBackup", async () =>
       },
       expectedReason: "quick_check_attempt_matched_mismatch",
     },
+    {
+      mutate: value => {
+        value.quickCheckAttempts.push({
+          ...value.quickCheckAttempts[0],
+          id: "quick-check-attempt-duplicate",
+        });
+      },
+      expectedReason: "quick_check_attempt_idempotency_conflict",
+    },
   ];
 
   const reasons = invalidBackups.map(({ mutate }) => {
@@ -2162,6 +2236,82 @@ function seedQuickCheckStorageRecords(database, { identityId, programId }) {
       "idempotency-quick-check-existing",
       "2026-05-27T10:10:00.000Z",
     );
+}
+
+function seedQuickCheckReplacementRevision(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into quick_check_candidates (
+         id, program_id, check_kind, title, prompt, answer_key_option_id, source_ids_json,
+         rationale, status, created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "quick-check-candidate-replacement",
+      programId,
+      "single_select_quick_check",
+      "Replacement quick check",
+      "Replacement quick prompt",
+      "quick-check-candidate-replacement-option-b",
+      JSON.stringify(["source-1"]),
+      "Replacement quick rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:11:00.000Z",
+      "2026-05-27T10:12:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into quick_check_candidate_options (candidate_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-candidate-replacement", "quick-check-candidate-replacement-option-a", 0, "Candidate replacement option A");
+  database
+    .prepare(
+      `insert into quick_check_candidate_options (candidate_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-candidate-replacement", "quick-check-candidate-replacement-option-b", 1, "Candidate replacement option B");
+  database
+    .prepare(
+      `insert into accepted_quick_check_revisions (
+         id, entity_id, program_id, check_kind, title, prompt, answer_key_option_id,
+         accepted_from_candidate_id, source_ids_json, rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "quick-check-revision-replacement",
+      "quick-check-entity-existing",
+      programId,
+      "single_select_quick_check",
+      "Replacement accepted quick check",
+      "Replacement accepted quick prompt",
+      "quick-check-revision-replacement-option-b",
+      "quick-check-candidate-replacement",
+      JSON.stringify(["source-1"]),
+      "Replacement accepted quick rationale",
+      identityId,
+      "2026-05-27T10:13:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_quick_check_revision_options (revision_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-revision-replacement", "quick-check-revision-replacement-option-a", 0, "Revision replacement option A");
+  database
+    .prepare(
+      `insert into accepted_quick_check_revision_options (revision_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    )
+    .run("quick-check-revision-replacement", "quick-check-revision-replacement-option-b", 1, "Revision replacement option B");
+  database
+    .prepare(
+      `update accepted_quick_check_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run("quick-check-revision-replacement", "quick-check-entity-existing");
 }
 
 function seedAssessmentStorageRecords(database, { identityId, programId }) {
@@ -2514,6 +2664,15 @@ function projectQuickCheckAttemptBackupRecord(attempt) {
     selectedOptionId: attempt.selectedOptionId,
     matched: attempt.matched,
     idempotencyKey: attempt.idempotencyKey,
+  };
+}
+
+function projectQuickCheckAttemptSummary(attempt) {
+  return {
+    attemptId: attempt.attemptId,
+    checkRevisionId: attempt.checkRevisionId,
+    selectedOptionId: attempt.selectedOptionId,
+    matched: attempt.matched,
   };
 }
 

@@ -4907,6 +4907,7 @@ function assertValidQuickCheckGraphInBackup(backup) {
   const candidatesById = new Map((backup.quickCheckCandidates ?? []).map($0 => [$0.id, $0]));
   const entitiesById = new Map((backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]));
   const revisionsById = new Map((backup.acceptedQuickCheckRevisions ?? []).map($0 => [$0.id, $0]));
+  const attemptIdempotencyScopes = new Set();
 
   for (const candidate of backup.quickCheckCandidates ?? []) {
     if (!programShellsById.has(candidate.programId)) {
@@ -5019,6 +5020,17 @@ function assertValidQuickCheckGraphInBackup(backup) {
     if ((attempt.selectedOptionId === revision.answerKeyOptionId) !== attempt.matched) {
       throw new StorageInvariantError("quick_check_attempt_matched_mismatch");
     }
+
+    const idempotencyScope = [
+      attempt.programId,
+      attempt.studentIdentityId,
+      attempt.checkRevisionId,
+      attempt.idempotencyKey,
+    ].join("\u0000");
+    if (attemptIdempotencyScopes.has(idempotencyScope)) {
+      throw new StorageInvariantError("quick_check_attempt_idempotency_conflict");
+    }
+    attemptIdempotencyScopes.add(idempotencyScope);
   }
 }
 
