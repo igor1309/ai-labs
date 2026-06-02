@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Student Workspace open-answer attempt HTTP submission after adversarial review by proving accepted responses hide idempotency keys and non-mutation coverage only passes after a real accepted attempt.
 - Implement Student Workspace open-answer attempt HTTP submission with strict body validation, effective Student authorization, accepted revision snapshots, idempotent retries, conflict handling, and adjacent-state non-mutation coverage.
 - Harden the Student Workspace open-answer attempt HTTP API route substrate after adversarial review with JSON body classification and complete first-slice rejection status mapping.
 - Start the Student Workspace open-answer attempt HTTP API implementation with the Phase 1 route substrate: guarded attempt route recognition, session/CSRF checks, idempotency-header validation, rejection status mapping, and fault redaction coverage.

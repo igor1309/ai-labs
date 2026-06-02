@@ -532,11 +532,14 @@ test("openAnswerAttemptsCreate_shouldReturnSubmittedAttempt_onEffectiveStudent",
       },
       "attempt-key-1",
     );
+    const body = await response.json();
 
     assert.deepEqual(
       {
         statusCode: response.status,
-        body: openAnswerAttemptResponseProjection(await response.json()),
+        body: openAnswerAttemptResponseProjection(body),
+        hasIdempotencyLeak: JSON.stringify(body).includes("attempt-key-1") ||
+          JSON.stringify(body).includes("idempotency"),
       },
       {
         statusCode: 200,
@@ -552,6 +555,7 @@ test("openAnswerAttemptsCreate_shouldReturnSubmittedAttempt_onEffectiveStudent",
           submittedAt: "2026-05-27T10:00:00.000Z",
           updatedAt: "2026-05-27T10:00:00.000Z",
         },
+        hasIdempotencyLeak: false,
       },
     );
   } finally {
@@ -781,7 +785,7 @@ test("openAnswerAttemptsCreate_shouldLeaveAdjacentStateUnchanged_onAcceptedSubmi
   try {
     const scenario = await createStudentAttemptApiScenario(baseUrl);
     const before = adjacentAttemptSubmissionState(database);
-    await submitOpenAnswerAttempt(
+    const response = await submitOpenAnswerAttempt(
       baseUrl,
       scenario.student,
       scenario.programId,
@@ -791,8 +795,24 @@ test("openAnswerAttemptsCreate_shouldLeaveAdjacentStateUnchanged_onAcceptedSubmi
       },
       "attempt-key-1",
     );
+    const body = await response.json();
 
-    assert.deepEqual(adjacentAttemptSubmissionState(database), before);
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        bodyStatus: body.status,
+        hasAttemptId: typeof body.value?.attempt?.attemptId === "string",
+        attemptCount: listOpenAnswerAttemptRecords(database).length,
+        adjacentState: adjacentAttemptSubmissionState(database),
+      },
+      {
+        statusCode: 200,
+        bodyStatus: "accepted",
+        hasAttemptId: true,
+        attemptCount: 1,
+        adjacentState: before,
+      },
+    );
   } finally {
     await close();
   }
