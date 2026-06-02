@@ -49,6 +49,10 @@ A final evaluation outcome MUST be recorded as Student Workspace state linked to
 
 Evaluator outputs MUST be attributable to an evaluator path before they can become final student-facing feedback.
 
+Human-reviewed final evaluation outcomes MUST preserve the reviewing internal `Identity` and reviewer capability that accepted the outcome.
+
+Automated final evaluation outcomes MUST preserve the evaluator path and policy identity needed to audit which governed evaluator accepted the outcome.
+
 LLM outputs, raw model responses, prompt transcripts, evaluator diagnostics, reviewer notes, and model metadata MAY be stored as internal evaluation evidence when a future spec allows it, but they MUST NOT become final feedback or progress evidence until Student Workspace records a final evaluation outcome under its rules.
 
 Human review MAY be introduced later as an evaluator path, but reviewer authority MUST be scoped separately from Admin and Program Curator authority.
@@ -74,6 +78,9 @@ Evaluation outcomes MAY feed mastery, weak-area, progress, review scheduling, or
 - Final evaluation outcomes MUST reference the accepted criterion revision identifiers used by the attempt.
 - Final evaluation outcomes MUST preserve attribution to the evaluator path that produced or accepted the outcome.
 - Evaluator path attribution MUST be specific enough for audit and debugging without exposing raw diagnostics to students.
+- Human-reviewed final evaluation outcomes MUST preserve the reviewing internal `Identity`.
+- Human-reviewed final evaluation outcomes MUST preserve the reviewer capability or evaluator workflow under which the reviewer acted.
+- Automated final evaluation outcomes MUST preserve the governed evaluator path and policy identity that accepted the outcome.
 - Deterministic evaluator output MUST be recorded under Student Workspace evaluation rules before it becomes final feedback.
 - LLM-assisted evaluator output MUST be recorded under Student Workspace evaluation rules before it becomes final feedback.
 - Human-reviewed evaluator output MUST be recorded under Student Workspace evaluation rules before it becomes final feedback.
@@ -101,6 +108,8 @@ Evaluation outcomes MAY feed mastery, weak-area, progress, review scheduling, or
 Student Workspace can evolve from the current internal evaluator commands toward deterministic, LLM-assisted, asynchronous, or human-reviewed evaluation without losing ownership of final learner state.
 
 Evaluator path attribution adds contract and storage pressure, but it gives future audit, support, and debugging work a stable basis.
+
+Human review now carries an explicit attribution requirement. That keeps reviewer work auditable without making Admin or Program Curator authority sufficient for ordinary feedback authoring.
 
 LLM support remains possible while acknowledging prompt-injection and sensitive-disclosure risks early. Future specs must define redaction, evidence retention, and output-constraining rules before model evidence is persisted or surfaced.
 
