@@ -218,7 +218,8 @@ export function initializeIdentityStorage(database) {
       status text not null check (status in ('submitted', 'evaluating', 'evaluated', 'evaluation_failed')),
       submitted_at text not null,
       updated_at text not null,
-      unique (program_id, student_identity_id, check_revision_id, idempotency_key)
+      unique (program_id, student_identity_id, check_revision_id, idempotency_key),
+      unique (id, program_id, student_identity_id, check_revision_id)
     );
 
     create table if not exists open_answer_evaluations (
@@ -261,7 +262,9 @@ export function initializeIdentityStorage(database) {
       failure_reason text,
       prior_failure_reason text,
       prior_failed_at text,
-      unique (id, attempt_id)
+      unique (id, attempt_id),
+      foreign key (attempt_id, program_id, student_identity_id, check_revision_id)
+        references open_answer_attempts(id, program_id, student_identity_id, check_revision_id)
     );
 
     create unique index if not exists one_running_open_answer_evaluator_run_per_attempt
@@ -2455,6 +2458,8 @@ export function restoreIdentityBackup(database, backup) {
   database.transaction(() => {
     database.prepare("delete from sessions").run();
     database.prepare("delete from corpus_events").run();
+    database.prepare("delete from open_answer_evaluator_evidence").run();
+    database.prepare("delete from open_answer_evaluator_runs").run();
     database.prepare("delete from open_answer_evaluation_failures").run();
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
