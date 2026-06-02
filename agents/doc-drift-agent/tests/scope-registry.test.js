@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Repo root is two levels up from doc-drift-agent/tests/.
-const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+// Repo root is three levels up from agents/doc-drift-agent/tests/.
+const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const registry = JSON.parse(
   readFileSync(new URL('../agent/scope-registry.json', import.meta.url)),
 );

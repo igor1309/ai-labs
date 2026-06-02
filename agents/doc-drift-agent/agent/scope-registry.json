@@ -1,5 +1,5 @@
 {
-  "description": "doc-drift-agent scope registry. Generated from top-level projects with README/docs; kept honest by doc-drift-agent/tests/scope-registry.test.js.",
+  "description": "doc-drift-agent scope registry. Generated from top-level projects with README/docs; kept honest by agents/doc-drift-agent/tests/scope-registry.test.js.",
   "excludedTopLevel": [
     ".git",
     ".github",
@@ -35,7 +35,6 @@
         "corpus-scout/README.md",
         "dashboard-sync-agent/README.md",
         "dev-skills/README.md",
-        "doc-drift-agent/README.md",
         "dragoman/README.md",
         "gemini/README.md",
         "loki/README.md",
@@ -98,13 +97,6 @@
       "docs": [
         "dev-skills/README.md",
         "dev-skills/docs/**/*.md"
-      ]
-    },
-    "doc-drift-agent": {
-      "label": "doc-drift-agent",
-      "docs": [
-        "doc-drift-agent/README.md",
-        "doc-drift-agent/docs/**/*.md"
       ]
     },
     "dragoman": {

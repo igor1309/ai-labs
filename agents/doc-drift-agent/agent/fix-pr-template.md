@@ -23,7 +23,7 @@ Rules:
 
 ## Branch
 
-`doc-drift/<slug>` per `doc-drift-agent/agent/agent.md`. The slug is short kebab-case derived from the finding (e.g. `doc-drift/components-table-missing-row`).
+`doc-drift/<slug>` per `agents/doc-drift-agent/agent/agent.md`. The slug is short kebab-case derived from the finding (e.g. `doc-drift/components-table-missing-row`).
 
 ## Body
 
@@ -62,7 +62,7 @@ Minimum edit. The diff in this PR is limited to the lines named above; no surrou
 
 ## Do not auto-merge
 
-This PR is opened by the doc-drift-agent. **Do not enable auto-merge.** The agent never merges or approves PRs (per `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md`). The maintainer reviews and merges manually.
+This PR is opened by the doc-drift-agent. **Do not enable auto-merge.** The agent never merges or approves PRs (per `agents/doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md`). The maintainer reviews and merges manually.
 
 ## Provenance
 

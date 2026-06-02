@@ -104,7 +104,7 @@ jobs:
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
             doc-drift-agent:
-              - "doc-drift-agent/**"
+              - "agents/doc-drift-agent/**"
               - "*/README.md"
               - ".github/workflows/doc-drift-agent-core.yml"
 

@@ -29,4 +29,4 @@ jobs:
       # The scope-registry coverage check uses only Node built-ins (node:test,
       # node:fs); no install is needed.
       - name: Scope-registry coverage check
-        run: ./scripts/run_silent.sh "tests" node --test doc-drift-agent/tests/*.test.js
+        run: ./scripts/run_silent.sh "tests" node --test agents/doc-drift-agent/tests/*.test.js
