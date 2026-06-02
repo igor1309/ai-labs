@@ -132,7 +132,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 2 — Curator candidate lifecycle
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: expose Program Curator-owned quick-check candidate commands and queries while keeping candidates separate from accepted corpus until acceptance.
 
