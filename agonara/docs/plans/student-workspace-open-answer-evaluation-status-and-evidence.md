@@ -172,7 +172,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 3 — Redacted evaluator evidence recording
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: record bounded internal evidence metadata for running evaluator runs without admitting raw evaluator artifacts.
 

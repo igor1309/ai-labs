@@ -27,11 +27,13 @@ import {
   listAssessmentCriterionCandidateRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerCheckCandidateRecords,
+  listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
   openIdentityDatabase,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
   updateOpenAnswerAttemptStatus,
+  updateOpenAnswerEvaluatorRunStatus,
 } from "../src/storage.js";
 
 test("submitOpenAnswerAttempt_shouldAcceptEffectiveStudent_onAcceptedCheckRevision", () => {
@@ -1115,6 +1117,283 @@ test("beginOpenAnswerEvaluatorRun_shouldRevalidateReviewerIdentity_insideTransac
   }
 });
 
+test("recordOpenAnswerEvaluatorEvidence_shouldRecordInternalMetadata_onRunningRun", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    const result = commands.recordOpenAnswerEvaluatorEvidence?.({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: " criterion_match ",
+      redactedSummary: " Matched accepted criterion without raw evaluator output. ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary({
+              redactedSummary: "Matched accepted criterion without raw evaluator output.",
+            }),
+          },
+        },
+        evidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Matched accepted criterion without raw evaluator output.",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluatorEvidence_shouldAcceptOmittedRedactedSummary", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    assert.deepEqual(
+      {
+        result: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "criterion_match",
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary(),
+          },
+        },
+        evidence: [makeEvaluatorEvidenceRecord()],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluatorEvidence_shouldRejectMalformedEvidenceInput", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    assert.deepEqual(
+      {
+        missingKind: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+        }),
+        emptyKind: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "",
+        }),
+        whitespaceKind: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: " ",
+        }),
+        nonStringKind: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: 42,
+        }),
+        emptySummary: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "criterion_match",
+          redactedSummary: "",
+        }),
+        whitespaceSummary: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "criterion_match",
+          redactedSummary: " ",
+        }),
+        nonStringSummary: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "criterion_match",
+          redactedSummary: 42,
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+      },
+      {
+        missingKind: { status: "rejected", reason: "validation_failed" },
+        emptyKind: { status: "rejected", reason: "validation_failed" },
+        whitespaceKind: { status: "rejected", reason: "validation_failed" },
+        nonStringKind: { status: "rejected", reason: "validation_failed" },
+        emptySummary: { status: "rejected", reason: "validation_failed" },
+        whitespaceSummary: { status: "rejected", reason: "validation_failed" },
+        nonStringSummary: { status: "rejected", reason: "validation_failed" },
+        evidence: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluatorEvidence_shouldRejectUnknownAndTerminalRuns", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "attempt-3", "evaluator-run-1", "evaluator-run-2", "evaluator-run-3"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-2",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-3",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: "evaluator-run-1",
+      status: "succeeded",
+      completedAt: "2026-06-02T10:01:00.000Z",
+    });
+    updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: "evaluator-run-2",
+      status: "failed",
+      failedAt: "2026-06-02T10:01:00.000Z",
+      failureReason: "temporary evaluator outage",
+    });
+    updateOpenAnswerEvaluatorRunStatus(database, {
+      evaluatorRunId: "evaluator-run-3",
+      status: "cancelled",
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-unknown",
+          evidenceKind: "criterion_match",
+        }),
+        succeeded: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "criterion_match",
+        }),
+        failed: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-2",
+          evidenceKind: "criterion_match",
+        }),
+        cancelled: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-3",
+          evidenceKind: "criterion_match",
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+      },
+      {
+        unknown: { status: "rejected", reason: "evaluator_run_not_found" },
+        succeeded: { status: "rejected", reason: "evaluator_run_conflict" },
+        failed: { status: "rejected", reason: "evaluator_run_conflict" },
+        cancelled: { status: "rejected", reason: "evaluator_run_conflict" },
+        evidence: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluatorEvidence_shouldNotPersistOrReturnRawEvaluatorArtifacts", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    const result = commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Allowed bounded summary.",
+      rawPrompt: "raw prompt with correct horse battery staple",
+      rawModelResponse: "raw model response with operator-secret",
+      modelMetadata: { endpoint: "127.0.0.1", authorization: "Bearer token" },
+      hiddenPolicyInstructions: "hidden policy instructions",
+      reviewerNotes: "reviewer notes",
+      evaluatorDiagnostics: "select * from internal_table",
+      stackTrace: "/tmp/stack trace",
+      databaseUrl: "postgres://database-url",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+        redacted: containsForbiddenDetail([result, listOpenAnswerEvaluatorEvidenceRecords(database)]),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary({
+              redactedSummary: "Allowed bounded summary.",
+            }),
+          },
+        },
+        evidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Allowed bounded summary.",
+          }),
+        ],
+        redacted: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("markOpenAnswerAttemptEvaluating_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
   const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
 
@@ -2089,6 +2368,7 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "markOpenAnswerAttemptEvaluating",
       "recordOpenAnswerEvaluation",
       "recordOpenAnswerEvaluationFailure",
+      "recordOpenAnswerEvaluatorEvidence",
       "submitOpenAnswerAttempt",
     ]);
     assert.deepEqual(
@@ -2322,6 +2602,7 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "markOpenAnswerAttemptEvaluating",
           "recordOpenAnswerEvaluation",
           "recordOpenAnswerEvaluationFailure",
+          "recordOpenAnswerEvaluatorEvidence",
           "submitOpenAnswerAttempt",
         ],
       },
@@ -2436,6 +2717,31 @@ function makeEvaluatorRunRecord(input) {
     failureReason: null,
     priorFailureReason: input?.priorFailureReason ?? null,
     priorFailedAt: input?.priorFailedAt ?? null,
+  };
+}
+
+function makeEvaluatorEvidenceSummary({
+  evidenceId = "evidence-1",
+  evidenceKind = "criterion_match",
+  redactedSummary,
+} = {}) {
+  return {
+    evidenceId,
+    evaluatorRunId: "evaluator-run-1",
+    attemptId: "attempt-1",
+    evidenceKind,
+    visibility: "internal",
+    ...(redactedSummary ? { redactedSummary } : {}),
+    recordedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function makeEvaluatorEvidenceRecord(input) {
+  const { evidenceId: id, ...summary } = makeEvaluatorEvidenceSummary(input);
+  return {
+    id,
+    ...summary,
+    redactedSummary: input?.redactedSummary ?? null,
   };
 }
 

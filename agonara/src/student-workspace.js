@@ -4,6 +4,7 @@ import {
   createOpenAnswerAttemptRecord,
   createOpenAnswerEvaluationFailureRecord,
   createOpenAnswerEvaluationRecord,
+  createOpenAnswerEvaluatorEvidenceRecord,
   createOpenAnswerEvaluatorRunRecord,
   deleteOpenAnswerEvaluationFailureRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
@@ -11,6 +12,7 @@ import {
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
   getOpenAnswerEvaluationRecordByAttemptId,
+  getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
   listOpenAnswerAttemptRecords,
   updateOpenAnswerAttemptStatus,
@@ -42,6 +44,8 @@ export function createStudentWorkspaceCommands({
       markOpenAnswerAttemptEvaluating({ database, input, now }),
     recordOpenAnswerEvaluation: input =>
       recordOpenAnswerEvaluation({ database, generateId, input, now }),
+    recordOpenAnswerEvaluatorEvidence: input =>
+      recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }),
     recordOpenAnswerEvaluationFailure: input =>
       recordOpenAnswerEvaluationFailure({ database, input, now }),
     submitOpenAnswerAttempt: input =>
@@ -147,6 +151,33 @@ function getBeginEvaluatorRunAttemptRejection(attempt) {
     return rejected("attempt_already_evaluated");
   }
   return null;
+}
+
+function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }) {
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
+  if (!evaluatorRun) {
+    return rejected("evaluator_run_not_found");
+  }
+  if (evaluatorRun.status !== "running") {
+    return rejected("evaluator_run_conflict");
+  }
+  if (
+    !isNonEmptyText(input?.evidenceKind) ||
+    (input?.redactedSummary !== undefined && !isNonEmptyText(input.redactedSummary))
+  ) {
+    return rejected("validation_failed");
+  }
+  const recordedAt = now().toISOString();
+  const evidence = createOpenAnswerEvaluatorEvidenceRecord(database, {
+    id: generateId(),
+    evaluatorRunId: evaluatorRun.id,
+    attemptId: evaluatorRun.attemptId,
+    evidenceKind: input.evidenceKind.trim(),
+    redactedSummary: input.redactedSummary?.trim() ?? null,
+    recordedAt,
+  });
+
+  return accepted({ evidence: summarizeEvaluatorEvidence(evidence) });
 }
 
 function getOpenAnswerAttempt({ database, input }) {
@@ -432,6 +463,18 @@ function summarizeEvaluatorRun(evaluatorRun) {
       ? { reviewerCapability: evaluatorRun.reviewerCapability }
       : {}),
     startedAt: evaluatorRun.startedAt,
+  };
+}
+
+function summarizeEvaluatorEvidence(evidence) {
+  return {
+    evidenceId: evidence.id,
+    evaluatorRunId: evidence.evaluatorRunId,
+    attemptId: evidence.attemptId,
+    evidenceKind: evidence.evidenceKind,
+    visibility: evidence.visibility,
+    ...(evidence.redactedSummary ? { redactedSummary: evidence.redactedSummary } : {}),
+    recordedAt: evidence.recordedAt,
   };
 }
 

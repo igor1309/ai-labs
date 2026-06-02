@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement redacted evaluator evidence recording for running open-answer evaluator runs with internal-only metadata, malformed-input rejection, terminal-run conflicts, and raw-artifact exclusion coverage.
 - Harden evaluator-run starts after adversarial review by mapping persisted running-run conflicts to domain rejections and revalidating mutable attempt and Identity preconditions inside the transaction.
 - Implement governed evaluator-run starts for submitted and retryable failed open-answer attempts with attribution validation, accepted-revision snapshots, and atomic prior-failure preservation.
 - Harden the evaluator-run storage substrate after adversarial review with database-enforced scalar attempt snapshots and restore cleanup that removes evaluator evidence and runs before attempts.
