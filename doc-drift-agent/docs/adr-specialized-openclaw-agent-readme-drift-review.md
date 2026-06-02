@@ -92,16 +92,15 @@ Use a specialized OpenClaw agent for **scoped documentation drift review**:
 
 - Coverage broadens from READMEs to all project docs, partitioned into scopes —
   closing the "homeless project-doc observation" gap.
-- The places that pinned "README-only" follow this ADR (they do not lead) and
-  cascade in **two waves**, by timing:
-  - **At acceptance:** the **source intent** (the lead artifact) and this ADR.
-  - **With the Shape-1 worker implementation, not before:** the live runtime specs
-    `agent.md`, `drift-methodology.md`, `fix-pr-template.md`, `report-format.md`,
-    `notification-spec.md`, and `readme-inventory.md` → the scope registry. These
-    are CI-synced runtime inputs; the scoped behavior they describe needs the
-    worker, registry, and orchestrator to exist. Merging scoped runtime specs ahead
-    of that machinery would make the live agent act scoped without it, and the
-    concrete scope contract they must reflect is a Shape-1 deliverable.
+- The places that pinned "README-only" follow this ADR (they do not lead): the
+  **source intent** leads, then the runtime specs (`agent.md`,
+  `drift-methodology.md`, `fix-pr-template.md`, `report-format.md`,
+  `notification-spec.md`) and `readme-inventory.md` → the scope registry. Because
+  those runtime specs are CI-synced **live** inputs, the one hard rule is that they
+  **reach the live agent only together with the worker, scope registry, and
+  orchestrator — never ahead of them.** The clean way to satisfy that is to land
+  the whole scoped model — specs + worker + orchestrator, with Lobster enabled and
+  verified — as **one coherent change**, rather than staging the specs separately.
 - **Orchestration & observability** of scoped runs (how/when scopes run, run
   outcomes) are **out of scope here** and owned by `ADR-001`, which is predicated
   on this decision being accepted first.
