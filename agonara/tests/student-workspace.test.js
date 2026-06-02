@@ -1370,6 +1370,22 @@ test("quickCheckAttemptReadCommands_shouldNotExposeSensitiveOrOperationalDetails
   }
 });
 
+test("containsForbiddenDetail_shouldDetectQuickCheckReadForbiddenDetails", () => {
+  assert.deepEqual(
+    containsForbiddenDetail([{
+      answerKeyOptionId: "option-a",
+      correctOptionId: "option-a",
+      correctness: "per-option correctness metadata",
+      isCorrect: true,
+      rationale: "curator rationale",
+      acceptedByIdentityId: "identity-curator",
+      createdByIdentityId: "identity-curator",
+      idempotencyKey: "sensitive-quick-idempotency-key",
+    }]),
+    true,
+  );
+});
+
 test("markOpenAnswerAttemptEvaluating_shouldChangeSubmittedAndFailedAttemptsToEvaluating", () => {
   const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2"] });
 
@@ -9136,6 +9152,13 @@ function containsForbiddenDetail(values) {
   const serialized = JSON.stringify(values).toLowerCase();
   return [
     "answerkey",
+    "acceptedby",
+    "correctness",
+    "correctoption",
+    "createdby",
+    "idempotencykey",
+    "iscorrect",
+    "rationale",
     "sensitive-idempotency-key",
     "sensitive-quick-idempotency-key",
     "passwordhash",
