@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-03
+
+- CLAUDE.md: began the gradual AGENTS.md→progressive-disclosure split. Added a one-sentence progressive-disclosure note at the top and a new `.agents/` folder of on-demand topic docs (README + skill-conversion TODO), then moved six sections out of the root verbatim: Collaboration preferences (read-at-session-start pointer), New Project Checklist, the Process Gates plan/PR procedures (always-on verification commands kept inline), Release Process details, doc-maintenance (README Components table + Log), and Per-Project CI Isolation. Root CLAUDE.md shrank 172→124 lines. Taught `scripts/loc-dashboard.sh` to count `.agents/` (mirroring `.claude/`) and refreshed `docs/loc-dashboard.html` to match `loc-dashboard.sh --sort=name` (repo-text 5077→5161, repo-scripts code 1176→1179, doc-drift-agent docs 1480→1481 drift; total 161,893→161,981).
+
 ## 2026-06-02
 
 - ADR-001 orchestrator: ran the Phase 4 substrate spike live (OpenClaw `2026.5.28`, VPS `107.172.143.196`) and **dropped Lobster from the production path**. Two independent blockers: a `.lobster` step that invokes a nested `openclaw agent` turn deadlocks under the embedded runner, and the tasks/TaskFlow ledger records nothing on this unit for any run type (foreground agent, lobster tool, or cron-dispatched isolated turn) — `runs.sqlite` ~9 h stale while a 10-min cron succeeded, `tasks maintenance` all-zeros, `doctor` clean, no config gate. Observability instead comes from cron run history (`openclaw cron runs --id`), which works. Captured the evidence in `agents/research/phase4-substrate-spike-findings.md`, amended ADR-001 to v0.0.3 §7 (substrate swap to a native-cron agent turn — exactly the §5 *Decision stability* fallback), put the ledger gap on watch (`agents/TODO.md` §4, recheck 2026-06-16), and refreshed the handoff + the lobster/taskflow research notes.

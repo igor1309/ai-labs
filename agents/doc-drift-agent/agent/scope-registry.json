@@ -3,6 +3,7 @@
   "excludedTopLevel": [
     ".git",
     ".github",
+    ".agents",
     ".claude",
     ".codex",
     ".lazyweb",
