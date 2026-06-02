@@ -1,64 +1,61 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { selectScope } from '../scope-select/select.js';
+import { selectScopes } from '../scope-select/select.js';
 
-test('selectScope returns the first scope when none audited yet', () => {
-  const scopeIds = ['readmes', 'oracle', 'nomos'];
-  assert.equal(selectScope({ scopeIds, state: {} }), 'readmes');
-});
-
-test('selectScope prefers a never-audited scope over an audited one', () => {
-  const scopeIds = ['readmes', 'oracle', 'nomos'];
-  const state = { readmes: { lastAuditedAt: '2026-06-02T00:00:00Z' } };
-  assert.equal(selectScope({ scopeIds, state }), 'oracle');
-});
-
-test('selectScope picks the least-recently-audited scope when all are audited', () => {
-  const scopeIds = ['readmes', 'oracle'];
-  const state = {
-    readmes: { lastAuditedAt: '2026-06-02T10:00:00Z' },
-    oracle: { lastAuditedAt: '2026-06-01T10:00:00Z' },
-  };
-  assert.equal(selectScope({ scopeIds, state }), 'oracle');
-});
-
-test('selectScope orders by instant, not raw string, across timestamp formats', () => {
-  const scopeIds = ['readmes', 'oracle'];
-  const state = {
-    // readmes was audited at an earlier instant (Jun 1 20:00Z) but its string
-    // sorts after oracle's, so a lexicographic compare would wrongly pick oracle.
-    readmes: { lastAuditedAt: '2026-06-02T05:00:00+09:00' },
-    oracle: { lastAuditedAt: '2026-06-02T00:00:00Z' },
-  };
-  assert.equal(selectScope({ scopeIds, state }), 'readmes');
-});
-
-test('selectScope returns null when there are no scopes', () => {
-  assert.equal(selectScope({ scopeIds: [], state: {} }), null);
-});
-
-test('selectScope returns the only scope when one is registered', () => {
-  assert.equal(selectScope({ scopeIds: ['oracle'], state: {} }), 'oracle');
-});
-
-test('selectScope skips scopes that are not in the eligible set', () => {
-  const scopeIds = ['readmes', 'oracle'];
-  assert.equal(
-    selectScope({ scopeIds, state: {}, eligible: new Set(['oracle']) }),
-    'oracle',
+test('selectScopes returns changed scopes before stale ones', () => {
+  const scopeIds = ['a', 'b'];
+  const changed = new Set(['b']);
+  const stale = new Set(['a']);
+  assert.deepEqual(
+    selectScopes({ scopeIds, state: {}, changed, stale, budget: 2 }),
+    ['b', 'a'],
   );
 });
 
-test('selectScope returns null when no scope is eligible', () => {
-  const scopeIds = ['readmes', 'oracle'];
-  assert.equal(selectScope({ scopeIds, state: {}, eligible: new Set() }), null);
+test('selectScopes caps the result at the budget', () => {
+  const scopeIds = ['a', 'b', 'c'];
+  const changed = new Set(['a', 'b', 'c']);
+  assert.deepEqual(
+    selectScopes({ scopeIds, state: {}, changed, stale: new Set(), budget: 2 }),
+    ['a', 'b'],
+  );
 });
 
-test('selectScope ignores state for scopes no longer in the registry', () => {
-  const scopeIds = ['oracle'];
+test('selectScopes orders least-recently-audited first within a class', () => {
+  const scopeIds = ['a', 'b'];
   const state = {
-    removed: { lastAuditedAt: '2099-01-01T00:00:00Z' },
-    oracle: { lastAuditedAt: '2026-06-01T10:00:00Z' },
+    a: { lastAuditedAt: '2026-06-02T00:00:00Z' },
+    b: { lastAuditedAt: '2026-06-01T00:00:00Z' },
   };
-  assert.equal(selectScope({ scopeIds, state }), 'oracle');
+  const changed = new Set(['a', 'b']);
+  assert.deepEqual(
+    selectScopes({ scopeIds, state, changed, stale: new Set(), budget: 2 }),
+    ['b', 'a'],
+  );
+});
+
+test('selectScopes returns an empty array when nothing is eligible', () => {
+  assert.deepEqual(
+    selectScopes({ scopeIds: ['a'], state: {}, changed: new Set(), stale: new Set(), budget: 1 }),
+    [],
+  );
+});
+
+test('selectScopes is idempotent and leaves overflow eligible for the next run', () => {
+  const scopeIds = ['a', 'b'];
+  const changed = new Set(['a', 'b']);
+  const args = { scopeIds, state: {}, changed, stale: new Set(), budget: 1 };
+  assert.deepEqual(selectScopes(args), selectScopes(args));
+});
+
+test('selectScopes orders by instant, not raw string', () => {
+  const scopeIds = ['a', 'b'];
+  const state = {
+    a: { lastAuditedAt: '2026-06-02T05:00:00+09:00' }, // earlier instant
+    b: { lastAuditedAt: '2026-06-02T00:00:00Z' },
+  };
+  assert.deepEqual(
+    selectScopes({ scopeIds, state, changed: new Set(['a', 'b']), stale: new Set(), budget: 1 }),
+    ['a'],
+  );
 });

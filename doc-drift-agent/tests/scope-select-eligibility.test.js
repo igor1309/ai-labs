@@ -4,7 +4,12 @@ import {
   changedPathsSince,
   eligibleScopes,
   isChangedEligible,
+  isStaleEligible,
+  staleScopes,
 } from '../scope-select/eligibility.js';
+
+const DAY = 86400000;
+const NOW = Date.parse('2026-06-30T00:00:00Z');
 
 test('isChangedEligible is true when the scope has changed paths', () => {
   assert.equal(
@@ -96,4 +101,35 @@ test('eligibleScopes includes changed, first-audit and unreachable scopes; exclu
     runGit,
   });
   assert.deepEqual([...eligible].sort(), ['changed', 'fresh', 'gone']);
+});
+
+test('isStaleEligible is true when never audited', () => {
+  assert.equal(isStaleEligible({ lastAuditedAt: null, now: NOW, windowMs: 7 * DAY }), true);
+});
+
+test('isStaleEligible is true at the window boundary (audited exactly window ago)', () => {
+  const lastAuditedAt = new Date(NOW - 7 * DAY).toISOString();
+  assert.equal(isStaleEligible({ lastAuditedAt, now: NOW, windowMs: 7 * DAY }), true);
+});
+
+test('isStaleEligible is false when audited within the window', () => {
+  const lastAuditedAt = new Date(NOW - 7 * DAY + 1).toISOString();
+  assert.equal(isStaleEligible({ lastAuditedAt, now: NOW, windowMs: 7 * DAY }), false);
+});
+
+test('staleScopes uses the default window when there is no per-scope override', () => {
+  const registry = { scopes: { a: {}, b: {} } };
+  const state = {
+    a: { lastAuditedAt: new Date(NOW - 10 * DAY).toISOString() },
+    b: { lastAuditedAt: new Date(NOW - 1 * DAY).toISOString() },
+  };
+  const stale = staleScopes({ scopeIds: ['a', 'b'], state, now: NOW, windowMs: 7 * DAY, registry });
+  assert.deepEqual([...stale], ['a']);
+});
+
+test('staleScopes honors a per-scope staleness window override', () => {
+  const registry = { scopes: { a: { stalenessDays: 1 } } };
+  const state = { a: { lastAuditedAt: new Date(NOW - 2 * DAY).toISOString() } };
+  const stale = staleScopes({ scopeIds: ['a'], state, now: NOW, windowMs: 7 * DAY, registry });
+  assert.deepEqual([...stale], ['a']);
 });

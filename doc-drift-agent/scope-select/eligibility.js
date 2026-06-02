@@ -10,6 +10,39 @@
 /// paths from its last-audited commit via the injected `runGit` and applies
 /// `isChangedEligible`. Scope paths are passed as git `:(glob)` pathspecs so the
 /// registry's `**` globs match.
+/// Whether a scope is stale-eligible: never audited, an unparseable audit time,
+/// or last audited at least `windowMs` ago (boundary inclusive). `now` is epoch
+/// milliseconds, injected so the clock is testable.
+export function isStaleEligible({ lastAuditedAt, now, windowMs }) {
+  if (lastAuditedAt == null) return true;
+  const at = Date.parse(lastAuditedAt);
+  if (Number.isNaN(at)) return true;
+  return now - at >= windowMs;
+}
+
+const DAY_MS = 86400000;
+
+/// The set of stale-eligible scope ids. Each scope uses its registry
+/// `stalenessDays` override (converted to ms) when present, otherwise the
+/// default `windowMs`.
+export function staleScopes({ scopeIds, state, now, windowMs, registry }) {
+  const stale = new Set();
+  for (const id of scopeIds) {
+    const override = registry?.scopes?.[id]?.stalenessDays;
+    const scopeWindowMs = override == null ? windowMs : override * DAY_MS;
+    if (
+      isStaleEligible({
+        lastAuditedAt: state[id]?.lastAuditedAt ?? null,
+        now,
+        windowMs: scopeWindowMs,
+      })
+    ) {
+      stale.add(id);
+    }
+  }
+  return stale;
+}
+
 export function eligibleScopes({ scopeIds, registry, state, runGit }) {
   const eligible = new Set();
   for (const id of scopeIds) {
