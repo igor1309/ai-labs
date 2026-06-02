@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-03
+
+- CLAUDE.md: began the gradual AGENTS.md→progressive-disclosure split. Added a one-sentence progressive-disclosure note at the top and a new `.agents/` folder of on-demand topic docs (README + skill-conversion TODO), then moved six sections out of the root verbatim: Collaboration preferences (read-at-session-start pointer), New Project Checklist, the Process Gates plan/PR procedures (always-on verification commands kept inline), Release Process details, doc-maintenance (README Components table + Log), and Per-Project CI Isolation. Root CLAUDE.md shrank 172→124 lines. Taught `scripts/loc-dashboard.sh` to count `.agents/` (mirroring `.claude/`) and refreshed `docs/loc-dashboard.html` to match `loc-dashboard.sh --sort=name` (repo-text 5077→5161, repo-scripts code 1176→1179, doc-drift-agent docs 1480→1481 drift; total 161,893→161,981).
+
 ## 2026-06-02
 
 - doc-drift-agent: landed the Shape-2 scope-select selection layer (ADR-001 Phases 1–3) — tested `select`/`commit` step CLIs plus a per-scope last-audited state store under `doc-drift-agent/scope-select/`, covered by the existing `doc-drift-agent-core` CI glob. Refreshed `docs/loc-dashboard.html` to match `scripts/loc-dashboard.sh --sort=name` (doc-drift-agent code 138→395, tests 67→404; total 161,299→161,893).
