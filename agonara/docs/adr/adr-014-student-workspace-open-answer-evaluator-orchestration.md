@@ -31,6 +31,8 @@ This ADR decides orchestration ownership and invariants. It does not choose queu
 
 The implemented Student Workspace slices now record submitted attempts, internal evaluation outcomes, active failures, evaluator runs, redacted internal evidence metadata, owner-only status reads, and backup/restore validation. The remaining architectural tension is orchestration. Once evaluation can involve LLM calls, deterministic rubric execution, cancellation, retries, timeout recovery, or human review, Agonara needs a stable owner for work identity and lifecycle control before implementing provider integration.
 
+This ADR uses `evaluator job` for the orchestrated unit of work that a worker can claim, retry, cancel, time out, or complete. A future spec MAY implement that job by extending the existing evaluator-run record or by adding a distinct worker-claim record linked to an evaluator run. This ADR does not retroactively require the already implemented evaluator-run status/evidence slice to store lease fields before executable worker orchestration exists.
+
 If orchestration is hidden inside an HTTP request, clients cannot reliably observe status or recover from timeouts. If provider workers directly mutate feedback, Student Workspace loses control over final learner state. If retries are provider-level rather than job-level, duplicate final evaluations and duplicate cost can occur. If leases and cancellation are implicit, stuck work can leave attempts permanently `evaluating`. If human review is treated as an Admin or Curator operation, operational or curation authority leaks into personal student assessment.
 
 The rejected alternatives are synchronous provider execution as the ordinary evaluation model, provider-owned final feedback writes, an Admin-owned operational recovery queue, a Program Curator-owned review queue, and selecting a queue or worker technology before the orchestration boundary is decided. Those alternatives either violate existing ownership ADRs or decide deployment mechanics before the architectural contract is stable.
@@ -53,6 +55,8 @@ Every long-running evaluator job MUST have an explicit observable status and fai
 
 Every running evaluator job MUST have a lease or equivalent ownership claim before work that can outlive the initiating request begins.
 
+When a future spec introduces executable worker orchestration, it MUST define how existing evaluator-run state maps to the job or worker-claim state governed by this ADR.
+
 Every evaluator job retry MUST be idempotent at the Student Workspace job boundary.
 
 Retry, cancellation, timeout recovery, and human-review handoff MUST preserve the original submitted answer and accepted revision references.
@@ -71,6 +75,7 @@ Queue technology, worker process topology, deployment target, provider choice, a
 - Student Workspace owns evaluator job cancellation state.
 - Student Workspace owns evaluator job timeout recovery state.
 - Student Workspace owns final acceptance of evaluator results into student-facing feedback.
+- An evaluator job MUST either be the existing evaluator-run record extended with orchestration fields or be explicitly linked to one evaluator-run record.
 - An evaluator job MUST reference exactly one open-answer attempt.
 - An evaluator job MUST snapshot the attempt's Program identifier, Student Identity identifier, accepted check revision identifier, and accepted criterion revision identifiers.
 - An evaluator job MUST NOT change its snapshotted attempt, Program, Student Identity, accepted check revision, or accepted criterion revision identifiers after creation.
@@ -124,6 +129,7 @@ A later ADR MAY introduce a standalone Assessment module or external orchestrati
 This ADR does not decide:
 
 - concrete database tables, columns, migrations, indexes, or storage layout;
+- whether orchestration is stored by extending evaluator-run records or by adding separate worker-claim records;
 - HTTP route names, request payloads, response payloads, status codes, or polling contract;
 - queue technology, queue schema, broker configuration, worker library, scheduler library, or lock implementation;
 - whether the first implementation uses an in-process worker, a durable queue, a cron-like scheduler, or an external runner;
