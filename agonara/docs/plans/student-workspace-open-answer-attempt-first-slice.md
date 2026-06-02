@@ -178,7 +178,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 3 — Evaluation lifecycle
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement the internal Student Workspace evaluation commands and state transitions while preserving submitted answers and accepted revision references.
 

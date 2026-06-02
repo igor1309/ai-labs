@@ -2,11 +2,18 @@ import { randomUUID } from "node:crypto";
 import {
   StorageInvariantError,
   createOpenAnswerAttemptRecord,
+  createOpenAnswerEvaluationFailureRecord,
+  createOpenAnswerEvaluationRecord,
+  deleteOpenAnswerEvaluationFailureRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
   getIdentity,
+  getOpenAnswerAttemptRecord,
   getProgramShellRecord,
   listOpenAnswerAttemptRecords,
+  updateOpenAnswerAttemptStatus,
 } from "./storage.js";
+
+const supportedEvaluationOutcomes = new Set(["met", "partially_met", "missing", "unclear"]);
 
 export function createStudentWorkspaceCommands({
   database,
@@ -15,9 +22,110 @@ export function createStudentWorkspaceCommands({
   now = () => new Date(),
 } = {}) {
   return {
+    markOpenAnswerAttemptEvaluating: input =>
+      markOpenAnswerAttemptEvaluating({ database, input, now }),
+    recordOpenAnswerEvaluation: input =>
+      recordOpenAnswerEvaluation({ database, generateId, input, now }),
+    recordOpenAnswerEvaluationFailure: input =>
+      recordOpenAnswerEvaluationFailure({ database, input, now }),
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
   };
+}
+
+function markOpenAnswerAttemptEvaluating({ database, input, now }) {
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  if (!attempt) {
+    return rejected("attempt_not_found");
+  }
+  if (attempt.status === "evaluating") {
+    return rejected("attempt_already_evaluating");
+  }
+  if (attempt.status === "evaluated") {
+    return rejected("attempt_already_evaluated");
+  }
+
+  const updated = updateOpenAnswerAttemptStatus(database, {
+    attemptId: attempt.id,
+    status: "evaluating",
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({ attempt: summarizeAttempt(updated) });
+}
+
+function recordOpenAnswerEvaluation({ database, generateId, input, now }) {
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  if (!attempt) {
+    return rejected("attempt_not_found");
+  }
+  if (attempt.status === "evaluated") {
+    return rejected("attempt_already_evaluated");
+  }
+  if (!isValidEvaluationInput(input, attempt)) {
+    return rejected("validation_failed");
+  }
+
+  const evaluatedAt = now().toISOString();
+  const { updated, evaluation } = database.transaction(() => {
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: attempt.id,
+      status: "evaluated",
+      updatedAt: evaluatedAt,
+    });
+    const evaluationRecord = createOpenAnswerEvaluationRecord(database, {
+      id: generateId(),
+      attemptId: attempt.id,
+      programId: attempt.programId,
+      studentIdentityId: attempt.studentIdentityId,
+      checkRevisionId: attempt.checkRevisionId,
+      criterionRevisionIds: attempt.criterionRevisionIds,
+      evaluatorKind: input.evaluatorKind,
+      summaryFeedback: input.summaryFeedback.trim(),
+      criterionFeedback: normalizeCriterionFeedback(input.criterionFeedback),
+      evaluatedAt,
+    });
+    deleteOpenAnswerEvaluationFailureRecord(database, attempt.id);
+    return { updated: updatedAttempt, evaluation: evaluationRecord };
+  })();
+
+  return accepted({
+    attempt: summarizeAttempt(updated),
+    evaluation: summarizeEvaluation(evaluation),
+  });
+}
+
+function recordOpenAnswerEvaluationFailure({ database, input, now }) {
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  if (!attempt) {
+    return rejected("attempt_not_found");
+  }
+  if (!isNonEmptyText(input?.reason)) {
+    return rejected("validation_failed");
+  }
+  if (attempt.status === "evaluated") {
+    return rejected("attempt_already_evaluated");
+  }
+
+  const failedAt = now().toISOString();
+  const { updated, failure } = database.transaction(() => {
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: attempt.id,
+      status: "evaluation_failed",
+      updatedAt: failedAt,
+    });
+    const failureRecord = createOpenAnswerEvaluationFailureRecord(database, {
+      attemptId: attempt.id,
+      reason: input.reason.trim(),
+      failedAt,
+    });
+    return { updated: updatedAttempt, failure: failureRecord };
+  })();
+
+  return accepted({
+    attempt: summarizeAttempt(updated),
+    evaluationFailure: summarizeEvaluationFailure(failure),
+  });
 }
 
 function submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }) {
@@ -114,6 +222,66 @@ function summarizeAttempt(attempt) {
     submittedAt: attempt.submittedAt,
     updatedAt: attempt.updatedAt,
   };
+}
+
+function summarizeEvaluation(evaluation) {
+  return {
+    evaluationId: evaluation.id,
+    attemptId: evaluation.attemptId,
+    programId: evaluation.programId,
+    studentIdentityId: evaluation.studentIdentityId,
+    checkRevisionId: evaluation.checkRevisionId,
+    criterionRevisionIds: evaluation.criterionRevisionIds,
+    evaluatorKind: evaluation.evaluatorKind,
+    summaryFeedback: evaluation.summaryFeedback,
+    criterionFeedback: evaluation.criterionFeedback,
+    evaluatedAt: evaluation.evaluatedAt,
+  };
+}
+
+function summarizeEvaluationFailure(failure) {
+  return {
+    reason: failure.reason,
+    failedAt: failure.failedAt,
+  };
+}
+
+function isValidEvaluationInput(input, attempt) {
+  return (
+    input?.evaluatorKind === "student_workspace" &&
+    isNonEmptyText(input?.summaryFeedback) &&
+    isValidCriterionFeedback(input?.criterionFeedback, attempt.criterionRevisionIds)
+  );
+}
+
+function isValidCriterionFeedback(criterionFeedback, criterionRevisionIds) {
+  if (!Array.isArray(criterionFeedback) || criterionFeedback.length !== criterionRevisionIds.length) {
+    return false;
+  }
+
+  const expected = new Set(criterionRevisionIds);
+  const actual = new Set();
+  for (const item of criterionFeedback) {
+    if (
+      !expected.has(item?.criterionRevisionId) ||
+      actual.has(item.criterionRevisionId) ||
+      !supportedEvaluationOutcomes.has(item?.outcome) ||
+      !isNonEmptyText(item?.feedback)
+    ) {
+      return false;
+    }
+    actual.add(item.criterionRevisionId);
+  }
+
+  return actual.size === expected.size;
+}
+
+function normalizeCriterionFeedback(criterionFeedback) {
+  return criterionFeedback.map($0 => ({
+    criterionRevisionId: $0.criterionRevisionId,
+    outcome: $0.outcome,
+    feedback: $0.feedback.trim(),
+  }));
 }
 
 function isNonEmptyText(value) {

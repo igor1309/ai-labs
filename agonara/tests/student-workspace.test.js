@@ -14,6 +14,8 @@ import {
   createProgramShellRecord,
   createProgramSourceRecord,
   getOpenAnswerAttemptRecord,
+  getOpenAnswerEvaluationFailureRecord,
+  getOpenAnswerEvaluationRecord,
   initializeIdentityStorage,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedAssessmentCriterionRevisionRecords,
@@ -522,6 +524,602 @@ test("submitOpenAnswerAttempt_shouldNotMutateAcceptedCorpusOrCuratorCandidates",
     database.close();
   }
 });
+
+test("markOpenAnswerAttemptEvaluating_shouldChangeSubmittedAndFailedAttemptsToEvaluating", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, {
+      idempotencyKey: "submit-b",
+      submittedAnswer: "Second answer",
+    });
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-2",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(
+      {
+        submitted: commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" }),
+        failed: commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-2" }),
+      },
+      {
+        submitted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+          },
+        },
+        failed: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-2",
+              status: "evaluating",
+              submittedAnswer: "Second answer",
+            }),
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("markOpenAnswerAttemptEvaluating_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" });
+
+    const alreadyEvaluating = commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" });
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-unknown" }),
+        alreadyEvaluating,
+        evaluated: commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" }),
+      },
+      {
+        unknown: { status: "rejected", reason: "attempt_not_found" },
+        alreadyEvaluating: { status: "rejected", reason: "attempt_already_evaluating" },
+        evaluated: { status: "rejected", reason: "attempt_already_evaluated" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluation_shouldAcceptSubmittedEvaluatingAndFailedAttempts", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "attempt-3", "evaluation-1", "evaluation-2", "evaluation-3"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b", submittedAnswer: "Second answer" });
+    submitAttempt(commands, { idempotencyKey: "submit-c", submittedAnswer: "Third answer" });
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-2" });
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-3",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(
+      {
+        submitted: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        evaluating: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-2",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good second explanation.",
+          criterionFeedback: [makeCriterionFeedback({ feedback: "Second criterion feedback" })],
+        }),
+        failed: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-3",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good retry explanation.",
+          criterionFeedback: [makeCriterionFeedback({ feedback: "Retry criterion feedback" })],
+        }),
+      },
+      {
+        submitted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluated" }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        evaluating: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-2",
+              status: "evaluated",
+              submittedAnswer: "Second answer",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-2",
+              attemptId: "attempt-2",
+              submittedAnswer: "Second answer",
+              summaryFeedback: "Good second explanation.",
+              criterionFeedback: [makeCriterionFeedback({ feedback: "Second criterion feedback" })],
+            }),
+          },
+        },
+        failed: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-3",
+              status: "evaluated",
+              submittedAnswer: "Third answer",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-3",
+              attemptId: "attempt-3",
+              submittedAnswer: "Third answer",
+              summaryFeedback: "Good retry explanation.",
+              criterionFeedback: [makeCriterionFeedback({ feedback: "Retry criterion feedback" })],
+            }),
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluation_shouldRejectUnknownAndAlreadyEvaluatedAttempts", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-unknown",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        evaluated: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Another explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+      },
+      {
+        unknown: { status: "rejected", reason: "attempt_not_found" },
+        evaluated: { status: "rejected", reason: "attempt_already_evaluated" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluation_shouldRejectMalformedEvaluationInput", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    assert.deepEqual(
+      {
+        evaluator: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "llm_provider",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        summary: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: " ",
+          criterionFeedback: [makeCriterionFeedback()],
+        }),
+        missing: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [],
+        }),
+        duplicate: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback(), makeCriterionFeedback()],
+        }),
+        unknown: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback({ criterionRevisionId: "criterion-revision-unknown" })],
+        }),
+        outcome: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback({ outcome: "excellent" })],
+        }),
+        feedback: commands.recordOpenAnswerEvaluation({
+          attemptId: "attempt-1",
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback({ feedback: " " })],
+        }),
+      },
+      {
+        evaluator: { status: "rejected", reason: "validation_failed" },
+        summary: { status: "rejected", reason: "validation_failed" },
+        missing: { status: "rejected", reason: "validation_failed" },
+        duplicate: { status: "rejected", reason: "validation_failed" },
+        unknown: { status: "rejected", reason: "validation_failed" },
+        outcome: { status: "rejected", reason: "validation_failed" },
+        feedback: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluation_shouldStoreEvaluationAndPreserveAttemptReferences", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    assert.deepEqual(
+      {
+        attempt: projectAttemptPreservation(getOpenAnswerAttemptRecord(database, "attempt-1")),
+        evaluation: getOpenAnswerEvaluationRecord(database, "evaluation-1"),
+      },
+      {
+        attempt: {
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+          status: "evaluated",
+          submittedAnswer: "Answer",
+        },
+        evaluation: {
+          id: "evaluation-1",
+          attemptId: "attempt-1",
+          programId: "program-a",
+          studentIdentityId: "identity-student",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "Good explanation.",
+          criterionFeedback: [makeCriterionFeedback()],
+          evaluatedAt: "2026-06-02T10:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluation_shouldClearPreviousFailure_onFailedAttempt", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    assert.deepEqual(getOpenAnswerEvaluationFailureRecord(database, "attempt-1"), null);
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluationFailure_shouldChangeSubmittedEvaluatingAndFailedAttemptsToFailed", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2", "attempt-3"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b", submittedAnswer: "Second answer" });
+    submitAttempt(commands, { idempotencyKey: "submit-c", submittedAnswer: "Third answer" });
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-2" });
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-3",
+      reason: "previous evaluator outage",
+    });
+
+    assert.deepEqual(
+      {
+        submitted: commands.recordOpenAnswerEvaluationFailure({
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+        }),
+        evaluating: commands.recordOpenAnswerEvaluationFailure({
+          attemptId: "attempt-2",
+          reason: "temporary evaluator outage",
+        }),
+        failed: commands.recordOpenAnswerEvaluationFailure({
+          attemptId: "attempt-3",
+          reason: "temporary evaluator outage",
+        }),
+      },
+      {
+        submitted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluation_failed" }),
+            evaluationFailure: makeEvaluationFailureSummary({ reason: "temporary evaluator outage" }),
+          },
+        },
+        evaluating: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-2",
+              status: "evaluation_failed",
+              submittedAnswer: "Second answer",
+            }),
+            evaluationFailure: makeEvaluationFailureSummary({ reason: "temporary evaluator outage" }),
+          },
+        },
+        failed: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-3",
+              status: "evaluation_failed",
+              submittedAnswer: "Third answer",
+            }),
+            evaluationFailure: makeEvaluationFailureSummary({ reason: "temporary evaluator outage" }),
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluationFailure_shouldRejectUnknownEvaluatedAndMalformedFailureCases", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1", "attempt-2"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+    submitAttempt(commands, {
+      idempotencyKey: "submit-b",
+      submittedAnswer: "Second answer",
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.recordOpenAnswerEvaluationFailure({
+          attemptId: "attempt-unknown",
+          reason: "temporary evaluator outage",
+        }),
+        evaluated: commands.recordOpenAnswerEvaluationFailure({
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+        }),
+        malformed: commands.recordOpenAnswerEvaluationFailure({
+          attemptId: "attempt-2",
+          reason: " ",
+        }),
+      },
+      {
+        unknown: { status: "rejected", reason: "attempt_not_found" },
+        evaluated: { status: "rejected", reason: "attempt_already_evaluated" },
+        malformed: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluationFailure_shouldStoreFailureAndPreserveAttemptReferences", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(
+      {
+        attempt: projectAttemptPreservation(getOpenAnswerAttemptRecord(database, "attempt-1")),
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+      },
+      {
+        attempt: {
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+          status: "evaluation_failed",
+          submittedAnswer: "Answer",
+        },
+        failure: {
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+          failedAt: "2026-06-02T10:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("evaluationLifecycleCommands_shouldNotMutateAcceptedCorpusOrCuratorCandidates", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2", "evaluation-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b", submittedAnswer: "Second answer" });
+    const before = projectAcceptedAssessmentState(database);
+
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-1" });
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-2",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(projectAcceptedAssessmentState(database), before);
+  } finally {
+    database.close();
+  }
+});
+
+function submitAttempt(
+  commands,
+  {
+    idempotencyKey = "submit-a",
+    submittedAnswer = "Answer",
+  } = {},
+) {
+  return commands.submitOpenAnswerAttempt({
+    actingIdentityId: "identity-student",
+    programId: "program-a",
+    checkRevisionId: "check-revision-a",
+    submittedAnswer,
+    idempotencyKey,
+  });
+}
+
+function makeAttemptSummary({
+  attemptId,
+  status,
+  submittedAnswer = "Answer",
+}) {
+  return {
+    attemptId,
+    programId: "program-a",
+    studentIdentityId: "identity-student",
+    checkRevisionId: "check-revision-a",
+    criterionRevisionIds: ["criterion-revision-a"],
+    submittedAnswer,
+    status,
+    submittedAt: "2026-06-02T10:00:00.000Z",
+    updatedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function makeEvaluationSummary({
+  evaluationId,
+  attemptId,
+  summaryFeedback,
+  criterionFeedback,
+}) {
+  return {
+    evaluationId,
+    attemptId,
+    programId: "program-a",
+    studentIdentityId: "identity-student",
+    checkRevisionId: "check-revision-a",
+    criterionRevisionIds: ["criterion-revision-a"],
+    evaluatorKind: "student_workspace",
+    summaryFeedback,
+    criterionFeedback,
+    evaluatedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function makeCriterionFeedback({
+  criterionRevisionId = "criterion-revision-a",
+  outcome = "met",
+  feedback = "Criterion feedback",
+} = {}) {
+  return {
+    criterionRevisionId,
+    outcome,
+    feedback,
+  };
+}
+
+function makeEvaluationFailureSummary({ reason }) {
+  return {
+    reason,
+    failedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function projectAttemptPreservation(attempt) {
+  return {
+    checkRevisionId: attempt.checkRevisionId,
+    criterionRevisionIds: attempt.criterionRevisionIds,
+    status: attempt.status,
+    submittedAnswer: attempt.submittedAnswer,
+  };
+}
 
 function makeSUT({
   ids = ["attempt-1", "attempt-2", "attempt-3"],

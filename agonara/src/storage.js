@@ -1453,6 +1453,10 @@ export function getOpenAnswerEvaluationFailureRecord(database, attemptId) {
   return row ?? null;
 }
 
+export function deleteOpenAnswerEvaluationFailureRecord(database, attemptId) {
+  database.prepare("delete from open_answer_evaluation_failures where attempt_id = ?").run(attemptId);
+}
+
 export function createAcceptedCorpusEntityRecord(
   database,
   { id, programId, acceptedKind, currentRevisionId },
