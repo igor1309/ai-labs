@@ -282,7 +282,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 6 — Owner-only attempt reads
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: expose quick-check attempts as owning-Student personal evidence without answer keys, per-option correctness metadata, or idempotency keys.
 

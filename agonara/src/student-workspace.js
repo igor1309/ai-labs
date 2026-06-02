@@ -18,6 +18,7 @@ import {
   getOpenAnswerEvaluatorJobRecord,
   getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
+  getQuickCheckAttemptRecord,
   listClaimableOpenAnswerEvaluatorJobRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
@@ -83,12 +84,16 @@ export function createStudentWorkspaceCommands({
       getOpenAnswerAttempt({ database, input }),
     getOpenAnswerEvaluationStatus: input =>
       getOpenAnswerEvaluationStatus({ database, input }),
+    getQuickCheckAttempt: input =>
+      getQuickCheckAttempt({ database, getEffectiveParticipation, input }),
     listOpenAnswerAttempts: input =>
       listOpenAnswerAttempts({ database, getEffectiveParticipation, input }),
     listClaimableOpenAnswerEvaluatorJobs: input =>
       listClaimableOpenAnswerEvaluatorJobs({ database, input, now }),
     listOpenAnswerEvaluatorEvidence: input =>
       listOpenAnswerEvaluatorEvidence({ database, input }),
+    listQuickCheckAttempts: input =>
+      listQuickCheckAttempts({ database, getEffectiveParticipation, input }),
     markOpenAnswerAttemptEvaluating: input =>
       markOpenAnswerAttemptEvaluating({ database, input, now }),
     recordOpenAnswerEvaluation: input =>
@@ -1474,6 +1479,25 @@ function getOpenAnswerAttempt({ database, input }) {
   return accepted(summarizeAttemptDetail(database, attempt));
 }
 
+function getQuickCheckAttempt({ database, getEffectiveParticipation, input }) {
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
+  }
+
+  const { identity, program } = authorization;
+  const attempt = getQuickCheckAttemptRecord(database, input?.attemptId);
+  if (!attempt || attempt.programId !== program.id || attempt.studentIdentityId !== identity.id) {
+    return rejected("attempt_not_found");
+  }
+
+  return accepted({ quickCheckAttempt: summarizeQuickCheckAttempt(attempt) });
+}
+
 function getOpenAnswerEvaluationStatus({ database, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -1543,6 +1567,42 @@ function listOpenAnswerAttempts({ database, getEffectiveParticipation, input }) 
       status: input?.status ?? null,
       checkRevisionId: input?.checkRevisionId ?? null,
     }).map(summarizeAttempt),
+  });
+}
+
+function listQuickCheckAttempts({ database, getEffectiveParticipation, input }) {
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
+  }
+
+  const { identity, program } = authorization;
+  let checkRevisionId = null;
+  if (input?.checkRevisionId !== undefined) {
+    if (!isNonEmptyText(input.checkRevisionId)) {
+      return rejected("validation_failed");
+    }
+    const resolution = resolveAcceptedQuickCheckRevisionForEvaluation({
+      database,
+      programId: program.id,
+      revisionId: input.checkRevisionId,
+    });
+    if (resolution.status === "rejected") {
+      return rejected(resolution.reason);
+    }
+    checkRevisionId = resolution.value.acceptedQuickCheck.revisionId;
+  }
+
+  return accepted({
+    quickCheckAttempts: listQuickCheckAttemptRecords(database, {
+      programId: program.id,
+      studentIdentityId: identity.id,
+      checkRevisionId,
+    }).map(summarizeQuickCheckAttempt),
   });
 }
 
@@ -2066,6 +2126,29 @@ function isValidCriterionFeedback(criterionFeedback, criterionRevisionIds) {
   }
 
   return actual.size === expected.size;
+}
+
+function authorizeStudentProgram({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return { rejection: rejected("identity_not_active") };
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return { rejection: rejected("program_not_found") };
+  }
+
+  const participation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  if (!participation.allowed) {
+    return { rejection: rejected("participation_required") };
+  }
+
+  return { identity, program };
 }
 
 function normalizeCriterionFeedback(criterionFeedback) {

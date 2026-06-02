@@ -1005,6 +1005,371 @@ test("submitQuickCheckAttempt_shouldOnlyMutateQuickCheckAttempts_onSubmission", 
   }
 });
 
+test("getQuickCheckAttempt_shouldReturnOwnerAttemptWithoutSensitiveDetails", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "sensitive-quick-idempotency-key",
+    });
+
+    const result = commands.getQuickCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        redacted: containsForbiddenDetail([result]),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            quickCheckAttempt: makeQuickCheckAttemptSummary({
+              attemptId: "attempt-1",
+              selectedOptionId: "quick-check-revision-a-option-a",
+              matched: true,
+            }),
+          },
+        },
+        redacted: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("getQuickCheckAttempt_shouldRejectInactiveUnknownProgramNonStudentUnknownAndNonOwnerAttempts", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-submit-a",
+    });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createIdentity(database, makeIdentity({ id: "identity-student-2" }));
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-student-2-a",
+      identityId: "identity-student-2",
+      participationKind: "student",
+      programId: "program-a",
+    }));
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-06-02T09:00:00.000Z",
+    });
+
+    assert.deepEqual(
+      {
+        inactive: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+          attemptId: "attempt-1",
+        }),
+        unknownProgram: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-student",
+          programId: "program-missing",
+          attemptId: "attempt-1",
+        }),
+        nonStudent: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          attemptId: "attempt-1",
+        }),
+        admin: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+          attemptId: "attempt-1",
+        }),
+        otherActiveIdentity: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-active-other",
+          programId: "program-a",
+          attemptId: "attempt-1",
+        }),
+        unknownAttempt: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          attemptId: "attempt-missing",
+        }),
+        nonOwner: commands.getQuickCheckAttempt?.({
+          actingIdentityId: "identity-student-2",
+          programId: "program-a",
+          attemptId: "attempt-1",
+        }),
+      },
+      {
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        nonStudent: { status: "rejected", reason: "participation_required" },
+        admin: { status: "rejected", reason: "participation_required" },
+        otherActiveIdentity: { status: "rejected", reason: "participation_required" },
+        unknownAttempt: { status: "rejected", reason: "attempt_not_found" },
+        nonOwner: { status: "rejected", reason: "attempt_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listQuickCheckAttempts_shouldReturnOnlyActingStudentAttemptsInProgram", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2", "attempt-3"] });
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-submit-a",
+    });
+    createIdentity(database, makeIdentity({ id: "identity-student-2" }));
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-student-2-a",
+      identityId: "identity-student-2",
+      participationKind: "student",
+      programId: "program-a",
+    }));
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student-2",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-b",
+      idempotencyKey: "quick-submit-b",
+    });
+    seedStudentProgramWithAcceptedQuickCheck(database, {
+      programId: "program-b",
+      quickCheckCandidateId: "quick-check-candidate-b",
+      quickCheckEntityId: "quick-check-entity-b",
+      quickCheckRevisionId: "quick-check-revision-b",
+      sourceId: "quick-check-source-b",
+      membershipId: "membership-student-b",
+    });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-b",
+      checkRevisionId: "quick-check-revision-b",
+      selectedOptionId: "quick-check-revision-b-option-a",
+      idempotencyKey: "quick-submit-c",
+    });
+
+    assert.deepEqual(
+      commands.listQuickCheckAttempts?.({
+        actingIdentityId: "identity-student",
+        programId: "program-a",
+      }),
+      {
+        status: "accepted",
+        value: {
+          quickCheckAttempts: [
+            makeQuickCheckAttemptSummary({
+              attemptId: "attempt-1",
+              selectedOptionId: "quick-check-revision-a-option-a",
+              matched: true,
+            }),
+          ],
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listQuickCheckAttempts_shouldApplyAcceptedRevisionFilterAfterOwnerScope", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2", "attempt-3"] });
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-submit-a",
+    });
+    seedStudentProgramWithAcceptedQuickCheck(database, {
+      programId: "program-a",
+      quickCheckCandidateId: "quick-check-candidate-b",
+      quickCheckEntityId: "quick-check-entity-b",
+      quickCheckRevisionId: "quick-check-revision-b",
+      sourceId: "quick-check-source-b",
+      membershipId: "membership-student-a-b",
+    });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-b",
+      selectedOptionId: "quick-check-revision-b-option-b",
+      idempotencyKey: "quick-submit-b",
+    });
+    createIdentity(database, makeIdentity({ id: "identity-student-2" }));
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-student-2-a",
+      identityId: "identity-student-2",
+      participationKind: "student",
+      programId: "program-a",
+    }));
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student-2",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-b",
+      selectedOptionId: "quick-check-revision-b-option-a",
+      idempotencyKey: "quick-submit-c",
+    });
+
+    assert.deepEqual(
+      commands.listQuickCheckAttempts?.({
+        actingIdentityId: "identity-student",
+        programId: "program-a",
+        checkRevisionId: "quick-check-revision-b",
+      }),
+      {
+        status: "accepted",
+        value: {
+          quickCheckAttempts: [
+            makeQuickCheckAttemptSummary({
+              attemptId: "attempt-2",
+              checkRevisionId: "quick-check-revision-b",
+              selectedOptionId: "quick-check-revision-b-option-b",
+              matched: false,
+            }),
+          ],
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listQuickCheckAttempts_shouldRejectInvalidRevisionFiltersAndNonStudentCalls", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedStudentProgramWithAcceptedQuickCheck(database, {
+      programId: "program-b",
+      quickCheckCandidateId: "quick-check-candidate-b",
+      quickCheckEntityId: "quick-check-entity-b",
+      quickCheckRevisionId: "quick-check-revision-b",
+      sourceId: "quick-check-source-b",
+      membershipId: "membership-student-b",
+    });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+
+    assert.deepEqual(
+      {
+        inactive: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+        }),
+        unknownProgram: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-missing",
+        }),
+        nonStudent: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        blankRevision: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          checkRevisionId: " ",
+        }),
+        unknownRevision: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          checkRevisionId: "quick-check-revision-missing",
+        }),
+        candidateId: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          checkRevisionId: "quick-check-candidate-a",
+        }),
+        crossProgramRevision: commands.listQuickCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          checkRevisionId: "quick-check-revision-b",
+        }),
+      },
+      {
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        nonStudent: { status: "rejected", reason: "participation_required" },
+        blankRevision: { status: "rejected", reason: "validation_failed" },
+        unknownRevision: { status: "rejected", reason: "quick_check_revision_not_found" },
+        candidateId: { status: "rejected", reason: "quick_check_revision_not_found" },
+        crossProgramRevision: { status: "rejected", reason: "quick_check_revision_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("quickCheckAttemptReadCommands_shouldNotExposeSensitiveOrOperationalDetails", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "sensitive-quick-idempotency-key",
+    });
+
+    const detail = commands.getQuickCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      attemptId: "attempt-1",
+    });
+    const list = commands.listQuickCheckAttempts?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const rejected = commands.getQuickCheckAttempt?.({
+      actingIdentityId: "identity-active-other",
+      programId: "program-a",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(containsForbiddenDetail([detail, list, rejected]), false);
+  } finally {
+    database.close();
+  }
+});
+
 test("markOpenAnswerAttemptEvaluating_shouldChangeSubmittedAndFailedAttemptsToEvaluating", () => {
   const { commands, database } = makeSUT({ ids: ["attempt-1", "attempt-2"] });
 
@@ -7014,9 +7379,11 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "getOpenAnswerAttempt",
       "getOpenAnswerEvaluationStatus",
       "getOpenAnswerEvaluatorJob",
+      "getQuickCheckAttempt",
       "listClaimableOpenAnswerEvaluatorJobs",
       "listOpenAnswerAttempts",
       "listOpenAnswerEvaluatorEvidence",
+      "listQuickCheckAttempts",
       "markOpenAnswerAttemptEvaluating",
       "recordOpenAnswerEvaluation",
       "recordOpenAnswerEvaluationFailure",
@@ -7802,9 +8169,11 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "getOpenAnswerAttempt",
           "getOpenAnswerEvaluationStatus",
           "getOpenAnswerEvaluatorJob",
+          "getQuickCheckAttempt",
           "listClaimableOpenAnswerEvaluatorJobs",
           "listOpenAnswerAttempts",
           "listOpenAnswerEvaluatorEvidence",
+          "listQuickCheckAttempts",
           "markOpenAnswerAttemptEvaluating",
           "recordOpenAnswerEvaluation",
           "recordOpenAnswerEvaluationFailure",
@@ -8789,7 +9158,9 @@ function containsAnyStudentWorkspaceAdapterSurface(sources) {
   return sources.some(source => [
     "createStudentWorkspaceCommands",
     "getOpenAnswerAttempt",
+    "getQuickCheckAttempt",
     "listOpenAnswerAttempts",
+    "listQuickCheckAttempts",
     "/student-workspace",
     "student-workspace",
   ].some($0 => source.includes($0)));
