@@ -474,6 +474,14 @@ function recordOpenAnswerEvaluatorJobEvidence({ database, generateId, input, now
       redactedSummary: input.redactedSummary?.trim() ?? null,
       recordedAt,
     });
+    updateOpenAnswerEvaluatorJobLease(database, {
+      evaluatorJobId: currentJob.evaluatorJobId,
+      leaseId: currentJob.lease.leaseId,
+      workerId: currentJob.lease.workerId,
+      claimedAt: currentJob.lease.claimedAt,
+      expiresAt: currentJob.lease.expiresAt,
+      updatedAt: recordedAt,
+    });
     return { evidence };
   })();
   if (transition.rejection) {

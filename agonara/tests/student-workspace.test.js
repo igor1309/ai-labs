@@ -1369,8 +1369,10 @@ test("renewOpenAnswerEvaluatorJobLease_shouldRejectUnknownUnclaimedExpiredAndMal
 });
 
 test("recordOpenAnswerEvaluatorJobEvidence_shouldRecordInternalMetadata_onValidLease", () => {
+  let currentNow = new Date("2026-06-02T10:00:00.000Z");
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1"],
+    now: () => currentNow,
   });
 
   try {
@@ -1388,6 +1390,7 @@ test("recordOpenAnswerEvaluatorJobEvidence_shouldRecordInternalMetadata_onValidL
       leaseDurationSeconds: 300,
     });
     const acceptedBefore = projectAcceptedAssessmentState(database);
+    currentNow = new Date("2026-06-02T10:02:00.000Z");
 
     const result = commands.recordOpenAnswerEvaluatorJobEvidence({
       evaluatorJobId: "evaluator-run-1",
@@ -1405,6 +1408,7 @@ test("recordOpenAnswerEvaluatorJobEvidence_shouldRecordInternalMetadata_onValidL
         }),
         attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
         acceptedAfter: projectAcceptedAssessmentState(database),
+        job: projectEvaluatorJob(getOpenAnswerEvaluatorJobRecord(database, "evaluator-run-1")),
       },
       {
         result: {
@@ -1412,16 +1416,25 @@ test("recordOpenAnswerEvaluatorJobEvidence_shouldRecordInternalMetadata_onValidL
           value: {
             evidence: makeEvaluatorEvidenceSummary({
               redactedSummary: "Matched accepted criterion.",
+              recordedAt: "2026-06-02T10:02:00.000Z",
             }),
           },
         },
         evidence: [
           makeEvaluatorEvidenceRecord({
             redactedSummary: "Matched accepted criterion.",
+            recordedAt: "2026-06-02T10:02:00.000Z",
           }),
         ],
         attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "evaluating" }),
         acceptedAfter: acceptedBefore,
+        job: makeEvaluatorJobSummary({
+          retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+          budgetPolicy: null,
+          status: "leased",
+          lease: makeEvaluatorLease(),
+          updatedAt: "2026-06-02T10:02:00.000Z",
+        }),
       },
     );
   } finally {
@@ -4825,6 +4838,7 @@ function makeEvaluatorEvidenceSummary({
   evidenceId = "evidence-1",
   evidenceKind = "criterion_match",
   redactedSummary,
+  recordedAt = "2026-06-02T10:00:00.000Z",
 } = {}) {
   return {
     evidenceId,
@@ -4833,7 +4847,7 @@ function makeEvaluatorEvidenceSummary({
     evidenceKind,
     visibility: "internal",
     ...(redactedSummary ? { redactedSummary } : {}),
-    recordedAt: "2026-06-02T10:00:00.000Z",
+    recordedAt,
   };
 }
 
