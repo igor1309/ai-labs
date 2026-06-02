@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Student Workspace open-answer attempt HTTP API implementation plan after adversarial review by requiring archive-relative link repair and implemented-plan traceability during closeout.
 - Add the Student Workspace open-answer attempt HTTP API implementation plan, sequencing route substrate, submission, owner-only detail, owner-only listing, executable acceptance, and archive closeout through strict TDD phase commits.
 - Harden the Student Workspace open-answer attempt HTTP API spec after adversarial review by correcting feedback traceability so only the detail route promises evaluation or failure detail.
 - Add the Student Workspace open-answer attempt HTTP API spec, carrying the implemented domain contract into session-backed Student submission and owner-only read routes with CSRF, idempotency, pagination, redaction, and no UI or evaluation mutation surface.

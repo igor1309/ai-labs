@@ -90,6 +90,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 1 — Student attempt HTTP substrate
 
+**Status**: [ ] planned
+
 **Objective**: establish route dispatch and shared transport behavior for the Student Workspace attempt API without applying successful attempt mutations yet.
 
 **Key work items**:
@@ -124,6 +126,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **Completion signal**: Phase 1 tests pass, full Node gates pass, and local commit `wire agonara student attempt api substrate` is created.
 
 ## Phase 2 — Attempt submission route
+
+**Status**: [ ] planned
 
 **Objective**: implement student-owned open-answer attempt submission over HTTP with strict request validation, effective Student authorization, accepted revision references, and scoped idempotency.
 
@@ -165,6 +169,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 3 — Owner-only attempt detail route
 
+**Status**: [ ] planned
+
 **Objective**: implement owner-only attempt detail reads, including evaluation and active failure detail, without leaking private attempt existence to non-owners.
 
 **Key work items**:
@@ -201,6 +207,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 **Completion signal**: Phase 3 tests pass, full Node gates pass, and local commit `implement agonara student attempt detail api` is created.
 
 ## Phase 4 — Owner-only attempt listing route
+
+**Status**: [ ] planned
 
 **Objective**: implement Program-scoped owner-only attempt listing with supported filters, bounded pagination, opaque cursors, and cursor-scope rejection.
 
@@ -243,6 +251,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 5 — Executable acceptance and closeout
 
+**Status**: [ ] planned
+
 **Objective**: prove the full Student Workspace attempt HTTP flow and harden out-of-scope boundaries before archiving the plan.
 
 **Key work items**:
@@ -255,6 +265,8 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Update the Agonara project log.
 - Run final gates.
 - Move this plan to `agonara/docs/plans/implemented/student-workspace-open-answer-attempt-api.md`.
+- Update this plan's relative links for the `plans/implemented/` location before committing the archive move.
+- Update Product Intent traceability to point at the implemented plan path after the archive move.
 
 **TDD sequence**:
 
@@ -262,7 +274,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 2. RED/GREEN absence checks prove evaluation mutation, UI, CLI, curator read, admin read, LLM, human-review, mastery, weak-area, progress, quick-check, topic-level, period-level, and grading routes remain absent.
 3. RED/GREEN final redaction sentinels cover attempt API accepted, rejected, cursor, and fault shapes.
 4. GREEN documentation closeout updates Product Intent traceability and the Agonara log.
-5. GREEN archive move places this plan under `agonara/docs/plans/implemented/`.
+5. GREEN archive move places this plan under `agonara/docs/plans/implemented/`, updates archive-relative links, and updates Product Intent traceability to the implemented plan path.
 
 **Dependencies**: Phase 4.
 
@@ -293,10 +305,11 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Each implementation phase has a local commit created only after its validation gates pass.
 - The final branch state passes Agonara workspace tests, repo-wide Node tests, and TypeScript build.
 - This plan is moved to `agonara/docs/plans/implemented/` in the same change set as implementation closeout.
+- The archived plan's relative links resolve from `agonara/docs/plans/implemented/`, and Product Intent traceability points to the implemented plan path after archive closeout.
 
 ## Final closeout
 
-Final gates: `git diff --check`; Markdown structure and link checks for changed docs; `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`; `./scripts/run_silent.sh "tests" npm test`; `./scripts/run_silent.sh "build" npx tsc --noEmit`
+Final gates: `git diff --check`; Markdown structure and link checks for changed docs, including archived-plan relative links after the move; `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`; `./scripts/run_silent.sh "tests" npm test`; `./scripts/run_silent.sh "build" npx tsc --noEmit`
 Archive plan: move to `agonara/docs/plans/implemented/student-workspace-open-answer-attempt-api.md`
 Commit archive move: yes
 Push/PR: follow push policy (`no push`)
