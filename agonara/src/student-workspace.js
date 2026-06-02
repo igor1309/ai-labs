@@ -4,6 +4,7 @@ import {
   createOpenAnswerAttemptRecord,
   createOpenAnswerEvaluationFailureRecord,
   createOpenAnswerEvaluationRecord,
+  createOpenAnswerEvaluatorRunRecord,
   deleteOpenAnswerEvaluationFailureRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
   getIdentity,
@@ -17,6 +18,12 @@ import {
 
 const supportedEvaluationOutcomes = new Set(["met", "partially_met", "missing", "unclear"]);
 const supportedAttemptStatuses = new Set(["submitted", "evaluating", "evaluated", "evaluation_failed"]);
+const supportedEvaluatorPathKinds = new Set([
+  "student_workspace",
+  "deterministic",
+  "llm_assisted",
+  "human_reviewed",
+]);
 
 export function createStudentWorkspaceCommands({
   database,
@@ -25,6 +32,8 @@ export function createStudentWorkspaceCommands({
   now = () => new Date(),
 } = {}) {
   return {
+    beginOpenAnswerEvaluatorRun: input =>
+      beginOpenAnswerEvaluatorRun({ database, generateId, input, now }),
     getOpenAnswerAttempt: input =>
       getOpenAnswerAttempt({ database, input }),
     listOpenAnswerAttempts: input =>
@@ -38,6 +47,80 @@ export function createStudentWorkspaceCommands({
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
   };
+}
+
+function beginOpenAnswerEvaluatorRun({ database, generateId, input, now }) {
+  const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  if (!attempt) {
+    return rejected("attempt_not_found");
+  }
+  if (attempt.status === "evaluating") {
+    return rejected("attempt_already_evaluating");
+  }
+  if (attempt.status === "evaluated") {
+    return rejected("attempt_already_evaluated");
+  }
+  if (
+    !supportedEvaluatorPathKinds.has(input?.evaluatorPathKind) ||
+    !isNonEmptyText(input?.evaluatorPolicyId)
+  ) {
+    return rejected("validation_failed");
+  }
+  const requestedByIdentityId = input?.requestedByIdentityId;
+  if (requestedByIdentityId !== undefined) {
+    const requester = getIdentity(database, requestedByIdentityId);
+    if (!requester || requester.state !== "active") {
+      return rejected("identity_not_active");
+    }
+  }
+  const reviewerIdentityId = input?.reviewerIdentityId;
+  let reviewerCapability = input?.reviewerCapability;
+  if (input.evaluatorPathKind === "human_reviewed") {
+    if (!isNonEmptyText(reviewerIdentityId) || !isNonEmptyText(reviewerCapability)) {
+      return rejected("validation_failed");
+    }
+    const reviewer = getIdentity(database, reviewerIdentityId);
+    if (!reviewer || reviewer.state !== "active") {
+      return rejected("identity_not_active");
+    }
+    reviewerCapability = reviewerCapability.trim();
+  } else if (reviewerIdentityId !== undefined || reviewerCapability !== undefined) {
+    return rejected("validation_failed");
+  }
+
+  const startedAt = now().toISOString();
+  const { evaluatorRun, updated } = database.transaction(() => {
+    const previousFailure = getOpenAnswerEvaluationFailureRecord(database, attempt.id);
+    const run = createOpenAnswerEvaluatorRunRecord(database, {
+      id: generateId(),
+      attemptId: attempt.id,
+      programId: attempt.programId,
+      studentIdentityId: attempt.studentIdentityId,
+      checkRevisionId: attempt.checkRevisionId,
+      criterionRevisionIds: attempt.criterionRevisionIds,
+      evaluatorPathKind: input.evaluatorPathKind,
+      evaluatorPolicyId: input.evaluatorPolicyId.trim(),
+      requestedByIdentityId,
+      reviewerIdentityId,
+      reviewerCapability,
+      status: "running",
+      startedAt,
+      priorFailureReason: previousFailure?.reason ?? null,
+      priorFailedAt: previousFailure?.failedAt ?? null,
+    });
+    deleteOpenAnswerEvaluationFailureRecord(database, attempt.id);
+    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+      attemptId: attempt.id,
+      status: "evaluating",
+      updatedAt: startedAt,
+    });
+    return { evaluatorRun: run, updated: updatedAttempt };
+  })();
+
+  return accepted({
+    attempt: summarizeAttempt(updated),
+    evaluatorRun: summarizeEvaluatorRun(evaluatorRun),
+  });
 }
 
 function getOpenAnswerAttempt({ database, input }) {
@@ -299,6 +382,30 @@ function summarizeEvaluation(evaluation) {
     summaryFeedback: evaluation.summaryFeedback,
     criterionFeedback: evaluation.criterionFeedback,
     evaluatedAt: evaluation.evaluatedAt,
+  };
+}
+
+function summarizeEvaluatorRun(evaluatorRun) {
+  return {
+    evaluatorRunId: evaluatorRun.id,
+    attemptId: evaluatorRun.attemptId,
+    programId: evaluatorRun.programId,
+    studentIdentityId: evaluatorRun.studentIdentityId,
+    checkRevisionId: evaluatorRun.checkRevisionId,
+    criterionRevisionIds: evaluatorRun.criterionRevisionIds,
+    evaluatorPathKind: evaluatorRun.evaluatorPathKind,
+    evaluatorPolicyId: evaluatorRun.evaluatorPolicyId,
+    status: evaluatorRun.status,
+    ...(evaluatorRun.requestedByIdentityId
+      ? { requestedByIdentityId: evaluatorRun.requestedByIdentityId }
+      : {}),
+    ...(evaluatorRun.reviewerIdentityId
+      ? { reviewerIdentityId: evaluatorRun.reviewerIdentityId }
+      : {}),
+    ...(evaluatorRun.reviewerCapability
+      ? { reviewerCapability: evaluatorRun.reviewerCapability }
+      : {}),
+    startedAt: evaluatorRun.startedAt,
   };
 }
 

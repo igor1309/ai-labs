@@ -26,6 +26,7 @@ import {
   listAssessmentCriterionCandidateRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerCheckCandidateRecords,
+  listOpenAnswerEvaluatorRunRecords,
   openIdentityDatabase,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
@@ -564,6 +565,408 @@ test("markOpenAnswerAttemptEvaluating_shouldChangeSubmittedAndFailedAttemptsToEv
             }),
           },
         },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRecordRunningRunAndMoveSubmittedAttemptToEvaluating", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    const result = commands.beginOpenAnswerEvaluatorRun?.({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: " policy-a ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorRun: makeEvaluatorRunSummary(),
+          },
+        },
+        runs: [makeEvaluatorRunRecord()],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldSnapshotAndClearPreviousFailure_onFailedAttempt", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    const result = commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorRun: makeEvaluatorRunSummary(),
+          },
+        },
+        failure: null,
+        runs: [
+          makeEvaluatorRunRecord({
+            priorFailureReason: "temporary evaluator outage",
+            priorFailedAt: "2026-06-02T10:00:00.000Z",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "attempt-3", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
+    commands.markOpenAnswerAttemptEvaluating({ attemptId: "attempt-2" });
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-3",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-unknown",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+        }),
+        evaluating: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+        }),
+        evaluated: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-3",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        unknown: { status: "rejected", reason: "attempt_not_found" },
+        evaluating: { status: "rejected", reason: "attempt_already_evaluating" },
+        evaluated: { status: "rejected", reason: "attempt_already_evaluated" },
+        runs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRejectMalformedPathAndPolicyInput", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    assert.deepEqual(
+      {
+        path: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "unsupported",
+          evaluatorPolicyId: "policy-a",
+        }),
+        missingPolicy: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+        }),
+        emptyPolicy: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "",
+        }),
+        whitespacePolicy: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: " ",
+        }),
+        nonStringPolicy: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: 42,
+        }),
+        attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        path: { status: "rejected", reason: "validation_failed" },
+        missingPolicy: { status: "rejected", reason: "validation_failed" },
+        emptyPolicy: { status: "rejected", reason: "validation_failed" },
+        whitespacePolicy: { status: "rejected", reason: "validation_failed" },
+        nonStringPolicy: { status: "rejected", reason: "validation_failed" },
+        attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "submitted" }),
+        runs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRecordOnlyActiveRequestedByIdentity", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+
+    assert.deepEqual(
+      {
+        accepted: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          requestedByIdentityId: "identity-active-other",
+        }),
+        unknown: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          requestedByIdentityId: "identity-unknown",
+        }),
+        inactive: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          requestedByIdentityId: "identity-disabled",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        accepted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              requestedByIdentityId: "identity-active-other",
+            }),
+          },
+        },
+        unknown: { status: "rejected", reason: "identity_not_active" },
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        runs: [
+          makeEvaluatorRunRecord({
+            requestedByIdentityId: "identity-active-other",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRequireActiveReviewerAttribution_forHumanReviewedRun", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "evaluator-run-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+
+    assert.deepEqual(
+      {
+        accepted: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+          reviewerCapability: " assessment-reviewer ",
+        }),
+        missingReviewer: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerCapability: "assessment-reviewer",
+        }),
+        missingCapability: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+        }),
+        whitespaceCapability: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+          reviewerCapability: " ",
+        }),
+        nonStringCapability: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+          reviewerCapability: 42,
+        }),
+        unknownReviewer: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-unknown",
+          reviewerCapability: "assessment-reviewer",
+        }),
+        inactiveReviewer: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-2",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-disabled",
+          reviewerCapability: "assessment-reviewer",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        accepted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluating" }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              evaluatorPathKind: "human_reviewed",
+              reviewerIdentityId: "identity-active-other",
+              reviewerCapability: "assessment-reviewer",
+            }),
+          },
+        },
+        missingReviewer: { status: "rejected", reason: "validation_failed" },
+        missingCapability: { status: "rejected", reason: "validation_failed" },
+        whitespaceCapability: { status: "rejected", reason: "validation_failed" },
+        nonStringCapability: { status: "rejected", reason: "validation_failed" },
+        unknownReviewer: { status: "rejected", reason: "identity_not_active" },
+        inactiveReviewer: { status: "rejected", reason: "identity_not_active" },
+        runs: [
+          makeEvaluatorRunRecord({
+            evaluatorPathKind: "human_reviewed",
+            reviewerIdentityId: "identity-active-other",
+            reviewerCapability: "assessment-reviewer",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRejectReviewerAttribution_forNonHumanRun", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+
+    assert.deepEqual(
+      {
+        reviewer: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+        }),
+        capability: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          reviewerCapability: "assessment-reviewer",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        reviewer: { status: "rejected", reason: "validation_failed" },
+        capability: { status: "rejected", reason: "validation_failed" },
+        runs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldPreservePreviousFailure_onRejectedRetry", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-1",
+      reason: "temporary evaluator outage",
+    });
+
+    assert.deepEqual(
+      {
+        result: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "unsupported",
+          evaluatorPolicyId: "policy-a",
+        }),
+        attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: { status: "rejected", reason: "validation_failed" },
+        attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "evaluation_failed" }),
+        failure: {
+          attemptId: "attempt-1",
+          reason: "temporary evaluator outage",
+          failedAt: "2026-06-02T10:00:00.000Z",
+        },
+        runs: [],
       },
     );
   } finally {
@@ -1539,6 +1942,7 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
 
   try {
     assert.deepEqual(Object.keys(commands).sort(), [
+      "beginOpenAnswerEvaluatorRun",
       "getOpenAnswerAttempt",
       "listOpenAnswerAttempts",
       "markOpenAnswerAttemptEvaluating",
@@ -1771,6 +2175,7 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
         nonOwnerDetail: { status: "rejected", reason: "attempt_not_found" },
         redacted: false,
         commandSurface: [
+          "beginOpenAnswerEvaluatorRun",
           "getOpenAnswerAttempt",
           "listOpenAnswerAttempts",
           "markOpenAnswerAttemptEvaluating",
@@ -1822,6 +2227,15 @@ function makeAttemptSummary({
   };
 }
 
+function makeAttemptRecord(input) {
+  const { attemptId: id, ...summary } = makeAttemptSummary(input);
+  return {
+    id,
+    ...summary,
+    idempotencyKey: "submit-a",
+  };
+}
+
 function makeEvaluationSummary({
   evaluationId,
   attemptId,
@@ -1839,6 +2253,48 @@ function makeEvaluationSummary({
     summaryFeedback,
     criterionFeedback,
     evaluatedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function makeEvaluatorRunSummary({
+  evaluatorRunId = "evaluator-run-1",
+  evaluatorPathKind = "deterministic",
+  evaluatorPolicyId = "policy-a",
+  requestedByIdentityId,
+  reviewerIdentityId,
+  reviewerCapability,
+  status = "running",
+} = {}) {
+  return {
+    evaluatorRunId,
+    attemptId: "attempt-1",
+    programId: "program-a",
+    studentIdentityId: "identity-student",
+    checkRevisionId: "check-revision-a",
+    criterionRevisionIds: ["criterion-revision-a"],
+    evaluatorPathKind,
+    evaluatorPolicyId,
+    status,
+    ...(requestedByIdentityId ? { requestedByIdentityId } : {}),
+    ...(reviewerIdentityId ? { reviewerIdentityId } : {}),
+    ...(reviewerCapability ? { reviewerCapability } : {}),
+    startedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function makeEvaluatorRunRecord(input) {
+  const { evaluatorRunId: id, ...summary } = makeEvaluatorRunSummary(input);
+  return {
+    id,
+    ...summary,
+    requestedByIdentityId: input?.requestedByIdentityId ?? null,
+    reviewerIdentityId: input?.reviewerIdentityId ?? null,
+    reviewerCapability: input?.reviewerCapability ?? null,
+    completedAt: null,
+    failedAt: null,
+    failureReason: null,
+    priorFailureReason: input?.priorFailureReason ?? null,
+    priorFailedAt: input?.priorFailedAt ?? null,
   };
 }
 
@@ -2103,12 +2559,9 @@ function containsAnyOutOfScopeStudentWorkspaceHttpMutation(source) {
 function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
   const normalized = source.toLowerCase();
   return [
-    "llm",
     "provider",
     "raw_prompt",
     "raw_model",
-    "human_review",
-    "reviewer",
     "mastery",
     "weak_area",
     "progress",

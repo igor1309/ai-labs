@@ -129,7 +129,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 2 — Begin evaluator run transition
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: implement the governed transition from a submitted or previously failed attempt into an explicit running evaluator run.
 

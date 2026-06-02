@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement governed evaluator-run starts for submitted and retryable failed open-answer attempts with attribution validation, accepted-revision snapshots, and atomic prior-failure preservation.
 - Harden the evaluator-run storage substrate after adversarial review with database-enforced scalar attempt snapshots and restore cleanup that removes evaluator evidence and runs before attempts.
 - Start the Student Workspace evaluation status/evidence implementation with the Phase 1 persistence substrate: evaluator-run snapshots, lifecycle status updates, one-running-run enforcement, internal redacted evidence metadata, and structural storage guards.
 - Harden the Student Workspace evaluation status/evidence implementation plan after adversarial review by making transitions atomic, snapshotting prior failures before run start, enforcing one running run per attempt, preserving legacy evaluating-backup compatibility, clarifying raw-artifact omission, and covering terminal-run query omission.
