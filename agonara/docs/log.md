@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Accept ADR-016 for deterministic single-select quick checks: Corpus Storage owns versioned accepted questions and answer keys, Student Workspace owns immutable idempotent attempts and evidence, and learner-state interpretation remains deferred.
 - Harden evaluator worker closeout after adversarial review with explicit final-evaluation restore rejection and positive controls for backup artifact detection.
 - Complete the Student Workspace evaluator worker plan with restore-time unsafe-summary rejection, executable worker acceptance, Product Intent traceability, and archived-plan closeout.
 - Complete Phase 6 of the Student Workspace evaluator worker plan after adversarial review expanded the out-of-scope surface guard with positive controls for queue, provider, raw-artifact, UI, learner-model, and topology expansions.
