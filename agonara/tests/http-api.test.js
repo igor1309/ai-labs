@@ -7,10 +7,19 @@ import { createServer } from "../src/server.js";
 import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
 import {
   initializeIdentityStorage,
+  listAcceptedAssessmentCriterionEntityRecords,
+  listAcceptedAssessmentCriterionRevisionRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedCorpusRevisionRecords,
+  listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedOpenAnswerCheckRevisionRecords,
+  listAssessmentCriterionCandidateRecords,
   listCorpusEventRecords,
+  listOpenAnswerAttemptRecords,
+  listOpenAnswerCheckCandidateRecords,
   listProgramMembershipEventRecords,
+  listProgramMembershipRecords,
+  listProgramSourceRecords,
   openIdentityDatabase,
   updateProgramMembershipStatus,
 } from "../src/storage.js";
@@ -501,6 +510,289 @@ test("openAnswerAttemptRoutes_shouldRedactFaultResponses", async () => {
         hasLeaks: false,
       },
     );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldReturnSubmittedAttempt_onEffectiveStudent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const response = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "  Explain the invariant.  ",
+      },
+      "attempt-key-1",
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: openAnswerAttemptResponseProjection(await response.json()),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          hasAttemptId: true,
+          programId: scenario.programId,
+          studentIdentityId: scenario.student.identityId,
+          checkRevisionId: scenario.acceptedCheck.revisionId,
+          criterionRevisionIds: scenario.acceptedCheck.criterionRevisionIds,
+          submittedAnswer: "Explain the invariant.",
+          attemptStatus: "submitted",
+          submittedAt: "2026-05-27T10:00:00.000Z",
+          updatedAt: "2026-05-27T10:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectInvalidSubmissionBodies_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: () => {
+        throw new Error("submission command should not be called for invalid submission bodies");
+      },
+    },
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const cases = [
+      { submittedAnswer: "Answer" },
+      { checkRevisionId: scenario.acceptedCheck.revisionId },
+      { checkRevisionId: "", submittedAnswer: "Answer" },
+      { checkRevisionId: "   ", submittedAnswer: "Answer" },
+      { checkRevisionId: 42, submittedAnswer: "Answer" },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: "" },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: "   " },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: 42 },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: "Answer", extra: true },
+    ];
+    const results = [];
+    for (const body of cases) {
+      const response = await submitOpenAnswerAttempt(
+        baseUrl,
+        scenario.student,
+        scenario.programId,
+        body,
+        "attempt-key-1",
+      );
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldMapDomainRejections_withSpecStatuses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(140),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const otherProgram = await createProgram(baseUrl, scenario.bootstrap, { title: "Topology" });
+    const otherProgramId = (await otherProgram.json()).value.program.programId;
+    const otherAcceptedCheck = await createAcceptedOpenAnswerCheck(baseUrl, scenario.bootstrap, otherProgramId, {
+      checkTitle: "Topology check",
+      criterionTitle: "Topology criterion",
+    });
+    const cases = [
+      {
+        programId: "program-unknown",
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        reason: "program_not_found",
+        statusCode: 404,
+      },
+      {
+        programId: otherProgramId,
+        checkRevisionId: otherAcceptedCheck.revisionId,
+        reason: "participation_required",
+        statusCode: 403,
+      },
+      {
+        programId: scenario.programId,
+        checkRevisionId: "check-revision-unknown",
+        reason: "check_revision_not_found",
+        statusCode: 404,
+      },
+      {
+        programId: scenario.programId,
+        checkRevisionId: otherAcceptedCheck.revisionId,
+        reason: "check_revision_program_mismatch",
+        statusCode: 409,
+      },
+    ];
+    const results = [];
+    for (const item of cases) {
+      const response = await submitOpenAnswerAttempt(
+        baseUrl,
+        scenario.student,
+        item.programId,
+        {
+          checkRevisionId: item.checkRevisionId,
+          submittedAnswer: "Explain the invariant.",
+        },
+        "attempt-key-1",
+      );
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map($0 => ({
+        statusCode: $0.statusCode,
+        body: { status: "rejected", reason: $0.reason },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldReturnOriginalAttempt_onEquivalentRetry", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const first = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const retried = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const firstBody = await first.json();
+    const retriedBody = await retried.json();
+
+    assert.deepEqual(
+      {
+        firstStatusCode: first.status,
+        retriedStatusCode: retried.status,
+        sameAttemptId:
+          firstBody.value?.attempt?.attemptId === retriedBody.value?.attempt?.attemptId,
+        attemptCount: listOpenAnswerAttemptRecords(database).length,
+      },
+      {
+        firstStatusCode: 200,
+        retriedStatusCode: 200,
+        sameAttemptId: true,
+        attemptCount: 1,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectConflictingIdempotencyReuse_withoutChangingAttempt", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Original answer.",
+      },
+      "attempt-key-1",
+    );
+    const conflict = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Changed answer.",
+      },
+      "attempt-key-1",
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: conflict.status,
+        body: await conflict.json(),
+        attempts: listOpenAnswerAttemptRecords(database).map($0 => $0.submittedAnswer),
+      },
+      {
+        statusCode: 409,
+        body: { status: "rejected", reason: "idempotency_conflict" },
+        attempts: ["Original answer."],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldLeaveAdjacentStateUnchanged_onAcceptedSubmission", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const before = adjacentAttemptSubmissionState(database);
+    await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+
+    assert.deepEqual(adjacentAttemptSubmissionState(database), before);
   } finally {
     await close();
   }
@@ -6274,6 +6566,156 @@ async function joinStudentProgram(baseUrl, session, programId) {
     },
     method: "POST",
   });
+}
+
+async function createStudentAttemptApiScenario(baseUrl) {
+  const bootstrap = await bootstrapAdmin(baseUrl);
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Student",
+    login: "student@example.test",
+  });
+  const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+  const programId = (await createdProgram.json()).value.program.programId;
+  await joinStudentProgram(baseUrl, student, programId);
+  const acceptedCheck = await createAcceptedOpenAnswerCheck(baseUrl, bootstrap, programId, {
+    checkTitle: "Closure check",
+    criterionTitles: ["Vector-space closure", "Scalar distribution"],
+  });
+
+  return { acceptedCheck, bootstrap, programId, student };
+}
+
+async function createAcceptedOpenAnswerCheck(
+  baseUrl,
+  session,
+  programId,
+  { checkTitle = "Closure check", criterionTitle = null, criterionTitles = null } = {},
+) {
+  const titles = criterionTitles ?? [criterionTitle ?? "Vector-space closure"];
+  const criterionEntityIds = [];
+  for (const title of titles) {
+    const criterionCandidate = await createAssessmentCriterionCandidate(baseUrl, session, programId, {
+      body: `Explain ${title}.`,
+      title,
+    });
+    const criterionCandidateId = (await criterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const acceptedCriterion = await acceptAssessmentCriterionCandidate(
+      baseUrl,
+      session,
+      criterionCandidateId,
+      {},
+    );
+    criterionEntityIds.push((await acceptedCriterion.json()).value.acceptedAssessmentCriterion.entityId);
+  }
+
+  const checkCandidate = await createOpenAnswerCheckCandidate(baseUrl, session, programId, {
+    checkKind: "open_answer",
+    criterionEntityIds,
+    prompt: `Why does ${checkTitle} matter?`,
+    title: checkTitle,
+  });
+  const checkCandidateId = (await checkCandidate.json()).value.openAnswerCheckCandidate.candidateId;
+  const acceptedCheck = await acceptOpenAnswerCheckCandidate(baseUrl, session, checkCandidateId, {});
+  return (await acceptedCheck.json()).value.acceptedOpenAnswerCheck;
+}
+
+async function submitOpenAnswerAttempt(baseUrl, session, programId, body, idempotencyKey) {
+  return fetch(`${baseUrl}/programs/${programId}/open-answer-attempts`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+      "x-agonara-idempotency-key": idempotencyKey,
+    },
+    method: "POST",
+  });
+}
+
+function openAnswerAttemptResponseProjection(body) {
+  const attempt = body.value?.attempt;
+  return {
+    status: body.status,
+    hasAttemptId: typeof attempt?.attemptId === "string",
+    programId: attempt?.programId,
+    studentIdentityId: attempt?.studentIdentityId,
+    checkRevisionId: attempt?.checkRevisionId,
+    criterionRevisionIds: attempt?.criterionRevisionIds,
+    submittedAnswer: attempt?.submittedAnswer,
+    attemptStatus: attempt?.status,
+    submittedAt: attempt?.submittedAt,
+    updatedAt: attempt?.updatedAt,
+  };
+}
+
+function adjacentAttemptSubmissionState(database) {
+  return {
+    programSources: listProgramSourceRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      title: $0.title,
+    })),
+    assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      status: $0.status,
+    })),
+    acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      currentRevisionId: $0.currentRevisionId,
+    })),
+    acceptedAssessmentCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database).map($0 => ({
+      id: $0.id,
+      entityId: $0.entityId,
+      programId: $0.programId,
+    })),
+    openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      status: $0.status,
+    })),
+    acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      currentRevisionId: $0.currentRevisionId,
+    })),
+    acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database).map($0 => ({
+      id: $0.id,
+      entityId: $0.entityId,
+      programId: $0.programId,
+      criterionRevisionIds: $0.criterionRevisionIds,
+    })),
+    acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      currentRevisionId: $0.currentRevisionId,
+    })),
+    acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database).map($0 => ({
+      id: $0.id,
+      entityId: $0.entityId,
+      programId: $0.programId,
+    })),
+    corpusEvents: listCorpusEventRecords(database).map($0 => ({
+      eventType: $0.eventType,
+      outcome: $0.outcome,
+      targetId: $0.targetId,
+    })),
+    programMemberships: listProgramMembershipRecords(database).map($0 => ({
+      id: $0.id,
+      identityId: $0.identityId,
+      participationKind: $0.participationKind,
+      status: $0.status,
+    })),
+    programMembershipEvents: listProgramMembershipEventRecords(database).map($0 => ({
+      eventType: $0.eventType,
+      identityId: $0.identityId,
+      participationKind: $0.participationKind,
+    })),
+    sessions: database
+      .prepare("select id, identity_id as identityId, revoked_at as revokedAt from sessions order by id")
+      .all(),
+  };
 }
 
 async function listenWithIdentity({ ids = defaultIds() } = {}) {

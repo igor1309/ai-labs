@@ -604,10 +604,18 @@ async function handleStudentWorkspaceApi({
       return true;
     }
 
+    const submission = parseSubmitOpenAnswerAttemptBody(body.value);
+    if (submission.status === "rejected") {
+      sendJson(response, 400, submission);
+      return true;
+    }
+
     const result = studentWorkspaceCommands.submitOpenAnswerAttempt({
       actingIdentityId: session.value.identity.id,
+      checkRevisionId: submission.value.checkRevisionId,
       idempotencyKey: idempotencyKey.value,
       programId: decodeURIComponent(attemptsMatch[1]),
+      submittedAnswer: submission.value.submittedAnswer,
     });
     sendJson(response, statusForResult(result), result);
     return true;
@@ -1792,6 +1800,26 @@ function parseAttemptIdempotencyKey(request) {
   }
 
   return accepted(idempotencyKey);
+}
+
+function parseSubmitOpenAnswerAttemptBody(body) {
+  if (
+    Object.keys(body).length !== 2 ||
+    !hasOnlyKeys(body, ["checkRevisionId", "submittedAnswer"]) ||
+    !isNonEmptyRequestText(body.checkRevisionId) ||
+    !isNonEmptyRequestText(body.submittedAnswer)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    checkRevisionId: body.checkRevisionId,
+    submittedAnswer: body.submittedAnswer,
+  });
+}
+
+function isNonEmptyRequestText(value) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function isValidCandidateSourceIds(sourceIds) {

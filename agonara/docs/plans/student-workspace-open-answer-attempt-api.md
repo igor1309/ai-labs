@@ -127,7 +127,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 2 — Attempt submission route
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: implement student-owned open-answer attempt submission over HTTP with strict request validation, effective Student authorization, accepted revision references, and scoped idempotency.
 
