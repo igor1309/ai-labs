@@ -51,6 +51,92 @@ export function createStudentWorkspaceCommands({
 
 function beginOpenAnswerEvaluatorRun({ database, generateId, input, now }) {
   const attempt = getOpenAnswerAttemptRecord(database, input?.attemptId);
+  const attemptRejection = getBeginEvaluatorRunAttemptRejection(attempt);
+  if (attemptRejection) {
+    return attemptRejection;
+  }
+  if (
+    !supportedEvaluatorPathKinds.has(input?.evaluatorPathKind) ||
+    !isNonEmptyText(input?.evaluatorPolicyId)
+  ) {
+    return rejected("validation_failed");
+  }
+  const requestedByIdentityId = input?.requestedByIdentityId;
+  const reviewerIdentityId = input?.reviewerIdentityId;
+  let reviewerCapability = input?.reviewerCapability;
+  if (input.evaluatorPathKind === "human_reviewed") {
+    if (!isNonEmptyText(reviewerIdentityId) || !isNonEmptyText(reviewerCapability)) {
+      return rejected("validation_failed");
+    }
+    reviewerCapability = reviewerCapability.trim();
+  } else if (reviewerIdentityId !== undefined || reviewerCapability !== undefined) {
+    return rejected("validation_failed");
+  }
+
+  const startedAt = now().toISOString();
+  let transition;
+  try {
+    transition = database.transaction(() => {
+      const currentAttempt = getOpenAnswerAttemptRecord(database, attempt.id);
+      const currentAttemptRejection = getBeginEvaluatorRunAttemptRejection(currentAttempt);
+      if (currentAttemptRejection) {
+        return { rejection: currentAttemptRejection };
+      }
+      if (requestedByIdentityId !== undefined) {
+        const requester = getIdentity(database, requestedByIdentityId);
+        if (!requester || requester.state !== "active") {
+          return { rejection: rejected("identity_not_active") };
+        }
+      }
+      if (reviewerIdentityId !== undefined) {
+        const reviewer = getIdentity(database, reviewerIdentityId);
+        if (!reviewer || reviewer.state !== "active") {
+          return { rejection: rejected("identity_not_active") };
+        }
+      }
+      const previousFailure = getOpenAnswerEvaluationFailureRecord(database, currentAttempt.id);
+      const run = createOpenAnswerEvaluatorRunRecord(database, {
+        id: generateId(),
+        attemptId: currentAttempt.id,
+        programId: currentAttempt.programId,
+        studentIdentityId: currentAttempt.studentIdentityId,
+        checkRevisionId: currentAttempt.checkRevisionId,
+        criterionRevisionIds: currentAttempt.criterionRevisionIds,
+        evaluatorPathKind: input.evaluatorPathKind,
+        evaluatorPolicyId: input.evaluatorPolicyId.trim(),
+        requestedByIdentityId,
+        reviewerIdentityId,
+        reviewerCapability,
+        status: "running",
+        startedAt,
+        priorFailureReason: previousFailure?.reason ?? null,
+        priorFailedAt: previousFailure?.failedAt ?? null,
+      });
+      deleteOpenAnswerEvaluationFailureRecord(database, currentAttempt.id);
+      const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
+        attemptId: currentAttempt.id,
+        status: "evaluating",
+        updatedAt: startedAt,
+      });
+      return { evaluatorRun: run, updated: updatedAttempt };
+    })();
+  } catch (error) {
+    if (error instanceof StorageInvariantError && error.reason === "evaluator_run_conflict") {
+      return rejected("evaluator_run_conflict");
+    }
+    throw error;
+  }
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({
+    attempt: summarizeAttempt(transition.updated),
+    evaluatorRun: summarizeEvaluatorRun(transition.evaluatorRun),
+  });
+}
+
+function getBeginEvaluatorRunAttemptRejection(attempt) {
   if (!attempt) {
     return rejected("attempt_not_found");
   }
@@ -60,67 +146,7 @@ function beginOpenAnswerEvaluatorRun({ database, generateId, input, now }) {
   if (attempt.status === "evaluated") {
     return rejected("attempt_already_evaluated");
   }
-  if (
-    !supportedEvaluatorPathKinds.has(input?.evaluatorPathKind) ||
-    !isNonEmptyText(input?.evaluatorPolicyId)
-  ) {
-    return rejected("validation_failed");
-  }
-  const requestedByIdentityId = input?.requestedByIdentityId;
-  if (requestedByIdentityId !== undefined) {
-    const requester = getIdentity(database, requestedByIdentityId);
-    if (!requester || requester.state !== "active") {
-      return rejected("identity_not_active");
-    }
-  }
-  const reviewerIdentityId = input?.reviewerIdentityId;
-  let reviewerCapability = input?.reviewerCapability;
-  if (input.evaluatorPathKind === "human_reviewed") {
-    if (!isNonEmptyText(reviewerIdentityId) || !isNonEmptyText(reviewerCapability)) {
-      return rejected("validation_failed");
-    }
-    const reviewer = getIdentity(database, reviewerIdentityId);
-    if (!reviewer || reviewer.state !== "active") {
-      return rejected("identity_not_active");
-    }
-    reviewerCapability = reviewerCapability.trim();
-  } else if (reviewerIdentityId !== undefined || reviewerCapability !== undefined) {
-    return rejected("validation_failed");
-  }
-
-  const startedAt = now().toISOString();
-  const { evaluatorRun, updated } = database.transaction(() => {
-    const previousFailure = getOpenAnswerEvaluationFailureRecord(database, attempt.id);
-    const run = createOpenAnswerEvaluatorRunRecord(database, {
-      id: generateId(),
-      attemptId: attempt.id,
-      programId: attempt.programId,
-      studentIdentityId: attempt.studentIdentityId,
-      checkRevisionId: attempt.checkRevisionId,
-      criterionRevisionIds: attempt.criterionRevisionIds,
-      evaluatorPathKind: input.evaluatorPathKind,
-      evaluatorPolicyId: input.evaluatorPolicyId.trim(),
-      requestedByIdentityId,
-      reviewerIdentityId,
-      reviewerCapability,
-      status: "running",
-      startedAt,
-      priorFailureReason: previousFailure?.reason ?? null,
-      priorFailedAt: previousFailure?.failedAt ?? null,
-    });
-    deleteOpenAnswerEvaluationFailureRecord(database, attempt.id);
-    const updatedAttempt = updateOpenAnswerAttemptStatus(database, {
-      attemptId: attempt.id,
-      status: "evaluating",
-      updatedAt: startedAt,
-    });
-    return { evaluatorRun: run, updated: updatedAttempt };
-  })();
-
-  return accepted({
-    attempt: summarizeAttempt(updated),
-    evaluatorRun: summarizeEvaluatorRun(evaluatorRun),
-  });
+  return null;
 }
 
 function getOpenAnswerAttempt({ database, input }) {

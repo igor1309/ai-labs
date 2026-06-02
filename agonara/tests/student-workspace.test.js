@@ -11,6 +11,7 @@ import {
   createAssessmentCriterionCandidateRecord,
   createIdentity,
   createOpenAnswerCheckCandidateRecord,
+  createOpenAnswerEvaluatorRunRecord,
   createProgramMembershipRecord,
   createProgramShellRecord,
   createProgramSourceRecord,
@@ -30,6 +31,7 @@ import {
   openIdentityDatabase,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
+  updateOpenAnswerAttemptStatus,
 } from "../src/storage.js";
 
 test("submitOpenAnswerAttempt_shouldAcceptEffectiveStudent_onAcceptedCheckRevision", () => {
@@ -966,6 +968,145 @@ test("beginOpenAnswerEvaluatorRun_shouldPreservePreviousFailure_onRejectedRetry"
           reason: "temporary evaluator outage",
           failedAt: "2026-06-02T10:00:00.000Z",
         },
+        runs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRejectExistingRunningRun", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-2"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    createOpenAnswerEvaluatorRunRecord(database, {
+      id: "evaluator-run-1",
+      attemptId: "attempt-1",
+      programId: "program-a",
+      studentIdentityId: "identity-student",
+      checkRevisionId: "check-revision-a",
+      criterionRevisionIds: ["criterion-revision-a"],
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      status: "running",
+      startedAt: "2026-06-02T10:00:00.000Z",
+    });
+
+    assert.deepEqual(
+      commands.beginOpenAnswerEvaluatorRun({
+        attemptId: "attempt-1",
+        evaluatorPathKind: "deterministic",
+        evaluatorPolicyId: "policy-b",
+      }),
+      { status: "rejected", reason: "evaluator_run_conflict" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRevalidateAttemptStatus_insideTransaction", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    const transaction = database.transaction.bind(database);
+    database.transaction = callback =>
+      transaction(() => {
+        updateOpenAnswerAttemptStatus(database, {
+          attemptId: "attempt-1",
+          status: "evaluating",
+          updatedAt: "2026-06-02T10:01:00.000Z",
+        });
+        return callback();
+      });
+
+    assert.deepEqual(
+      {
+        result: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: { status: "rejected", reason: "attempt_already_evaluating" },
+        runs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRevalidateRequestedByIdentity_insideTransaction", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    const transaction = database.transaction.bind(database);
+    database.transaction = callback =>
+      transaction(() => {
+        database
+          .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+          .run("2026-06-02T10:01:00.000Z", "identity-active-other");
+        return callback();
+      });
+
+    assert.deepEqual(
+      {
+        result: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "deterministic",
+          evaluatorPolicyId: "policy-a",
+          requestedByIdentityId: "identity-active-other",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: { status: "rejected", reason: "identity_not_active" },
+        runs: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("beginOpenAnswerEvaluatorRun_shouldRevalidateReviewerIdentity_insideTransaction", () => {
+  const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluator-run-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    const transaction = database.transaction.bind(database);
+    database.transaction = callback =>
+      transaction(() => {
+        database
+          .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+          .run("2026-06-02T10:01:00.000Z", "identity-active-other");
+        return callback();
+      });
+
+    assert.deepEqual(
+      {
+        result: commands.beginOpenAnswerEvaluatorRun({
+          attemptId: "attempt-1",
+          evaluatorPathKind: "human_reviewed",
+          evaluatorPolicyId: "policy-a",
+          reviewerIdentityId: "identity-active-other",
+          reviewerCapability: "assessment-reviewer",
+        }),
+        runs: listOpenAnswerEvaluatorRunRecords(database),
+      },
+      {
+        result: { status: "rejected", reason: "identity_not_active" },
         runs: [],
       },
     );
