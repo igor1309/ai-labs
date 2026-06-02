@@ -1547,10 +1547,27 @@ test("createOpenAnswerEvaluatorRunRecord_shouldRejectMalformedJobState_onInvalid
           retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
           budgetPolicy: { maxProviderCalls: -1 },
         }),
+        makeOpenAnswerEvaluatorRun({
+          id: "evaluator-run-e",
+          attemptId: "attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          checkRevisionId: "check-revision-a",
+          criterionRevisionIds: ["criterion-revision-a"],
+          jobStatus: "leased",
+          attemptNumber: 1,
+          retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+        }),
       ].map(input =>
         captureStorageInvariantReason(() => storage.createOpenAnswerEvaluatorRunRecord(database, input)),
       ),
-      ["validation_failed", "validation_failed", "validation_failed", "validation_failed"],
+      [
+        "validation_failed",
+        "validation_failed",
+        "validation_failed",
+        "validation_failed",
+        "validation_failed",
+      ],
     );
   } finally {
     database.close();
@@ -1787,6 +1804,109 @@ test("clearOpenAnswerEvaluatorJobLease_shouldRemoveLeaseWithoutChangingSnapshots
         createdAt: "2026-06-02T10:20:00.000Z",
         updatedAt: "2026-06-02T10:31:00.000Z",
       },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateOpenAnswerEvaluatorJobLease_shouldRejectMalformedLease_onExistingJob", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        jobStatus: "waiting",
+        attemptNumber: 1,
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      }),
+    );
+
+    assert.deepEqual(
+      [
+        { evaluatorJobId: "evaluator-run-a", leaseId: "", workerId: "worker-a" },
+        { evaluatorJobId: "evaluator-run-a", leaseId: "lease-a", workerId: " " },
+        { evaluatorJobId: "evaluator-run-a", leaseId: "lease-a", workerId: "worker-a", claimedAt: "" },
+        {
+          evaluatorJobId: "evaluator-run-a",
+          leaseId: "lease-a",
+          workerId: "worker-a",
+          claimedAt: "2026-06-02T10:30:00.000Z",
+          expiresAt: "",
+        },
+      ].map(input =>
+        captureStorageInvariantReason(() =>
+          storage.updateOpenAnswerEvaluatorJobLease(database, {
+            claimedAt: "2026-06-02T10:30:00.000Z",
+            expiresAt: "2026-06-02T10:35:00.000Z",
+            ...input,
+          }),
+        ),
+      ),
+      ["validation_failed", "validation_failed", "validation_failed", "validation_failed"],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("clearOpenAnswerEvaluatorJobLease_shouldRejectMalformedJobStatus_onExistingJob", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        jobStatus: "waiting",
+        attemptNumber: 1,
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      }),
+    );
+
+    assert.equal(
+      captureStorageInvariantReason(() =>
+        storage.clearOpenAnswerEvaluatorJobLease(database, {
+          evaluatorJobId: "evaluator-run-a",
+          jobStatus: "unknown",
+          updatedAt: "2026-06-02T10:31:00.000Z",
+        }),
+      ),
+      "validation_failed",
     );
   } finally {
     database.close();

@@ -1820,6 +1820,8 @@ export function updateOpenAnswerEvaluatorJobLease(
   database,
   { evaluatorJobId, leaseId, workerId, claimedAt, expiresAt },
 ) {
+  assertOpenAnswerEvaluatorLeaseFields({ leaseId, workerId, claimedAt, expiresAt });
+
   database
     .prepare(
       `update open_answer_evaluator_runs
@@ -1837,6 +1839,10 @@ export function updateOpenAnswerEvaluatorJobLease(
 }
 
 export function clearOpenAnswerEvaluatorJobLease(database, { evaluatorJobId, jobStatus, updatedAt }) {
+  if (!isOpenAnswerEvaluatorJobStatus(jobStatus) || !isNonEmptyString(updatedAt)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+
   database
     .prepare(
       `update open_answer_evaluator_runs
@@ -2573,16 +2579,7 @@ function assertOpenAnswerEvaluatorJobState({
     return;
   }
 
-  const validJobStatuses = new Set([
-    "waiting",
-    "leased",
-    "retry_waiting",
-    "succeeded",
-    "failed",
-    "cancelled",
-    "timed_out",
-  ]);
-  if (!validJobStatuses.has(jobStatus)) {
+  if (!isOpenAnswerEvaluatorJobStatus(jobStatus)) {
     throw new StorageInvariantError("validation_failed");
   }
   if (!Number.isInteger(attemptNumber) || attemptNumber < 1) {
@@ -2592,12 +2589,38 @@ function assertOpenAnswerEvaluatorJobState({
   assertOpenAnswerEvaluatorBudgetPolicy(budgetPolicy);
 
   const hasLease = leaseId !== null || workerId !== null || leaseClaimedAt !== null || leaseExpiresAt !== null;
+  if (jobStatus === "leased" && !hasLease) {
+    throw new StorageInvariantError("validation_failed");
+  }
   if (
     hasLease &&
     (!isNonEmptyString(leaseId) ||
       !isNonEmptyString(workerId) ||
       !isNonEmptyString(leaseClaimedAt) ||
       !isNonEmptyString(leaseExpiresAt))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function isOpenAnswerEvaluatorJobStatus(value) {
+  return [
+    "waiting",
+    "leased",
+    "retry_waiting",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "timed_out",
+  ].includes(value);
+}
+
+function assertOpenAnswerEvaluatorLeaseFields({ leaseId, workerId, claimedAt, expiresAt }) {
+  if (
+    !isNonEmptyString(leaseId) ||
+    !isNonEmptyString(workerId) ||
+    !isNonEmptyString(claimedAt) ||
+    !isNonEmptyString(expiresAt)
   ) {
     throw new StorageInvariantError("validation_failed");
   }
