@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Start the Student Workspace evaluator orchestration implementation with Phase 1 storage substrate: separate job status on evaluator runs, retry/budget policies, lease fields, claimable reads, and raw-artifact exclusion.
 - Harden the Student Workspace evaluator orchestration plan after adversarial review by separating orchestration job status from the existing evaluator-run lifecycle and treating traceability/archive checks as docs gates.
 - Add the Student Workspace open-answer evaluator orchestration implementation plan, sequencing job storage, scheduling, leases, leased evidence, idempotent completion, recovery paths, backup/restore, and executable closeout through strict TDD commits.
 - Harden the Student Workspace evaluator orchestration spec after adversarial review by resolving exhausted-retry behavior and making LLM output validation an explicit completion gate.

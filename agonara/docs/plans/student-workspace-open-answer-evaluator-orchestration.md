@@ -91,7 +91,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 1 — Orchestration persistence substrate
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: extend the existing evaluator-run persistence shape to support separate orchestration job state without changing the existing evaluator-run lifecycle contract.
 

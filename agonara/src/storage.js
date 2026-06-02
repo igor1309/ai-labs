@@ -276,6 +276,22 @@ export function initializeIdentityStorage(database) {
       failure_reason text,
       prior_failure_reason text,
       prior_failed_at text,
+      job_status text check (
+        job_status in ('waiting', 'leased', 'retry_waiting', 'succeeded', 'failed', 'cancelled', 'timed_out')
+      ),
+      attempt_number integer,
+      retry_policy_json text,
+      budget_policy_json text,
+      lease_id text,
+      worker_id text,
+      lease_claimed_at text,
+      lease_expires_at text,
+      next_retry_at text,
+      cancellation_reason text,
+      timeout_reason text,
+      job_failure_reason text,
+      job_created_at text,
+      job_updated_at text,
       unique (id, attempt_id),
       foreign key (attempt_id, program_id, student_identity_id, check_revision_id)
         references open_answer_attempts(id, program_id, student_identity_id, check_revision_id)
@@ -1575,6 +1591,20 @@ export function createOpenAnswerEvaluatorRunRecord(
     failureReason = null,
     priorFailureReason = null,
     priorFailedAt = null,
+    jobStatus = null,
+    attemptNumber = null,
+    retryPolicy = null,
+    budgetPolicy = null,
+    leaseId = null,
+    workerId = null,
+    leaseClaimedAt = null,
+    leaseExpiresAt = null,
+    nextRetryAt = null,
+    cancellationReason = null,
+    timeoutReason = null,
+    jobFailureReason = null,
+    jobCreatedAt = startedAt,
+    jobUpdatedAt = startedAt,
   },
 ) {
   assertOpenAnswerEvaluatorRunMatchesAttempt(database, {
@@ -1583,6 +1613,16 @@ export function createOpenAnswerEvaluatorRunRecord(
     studentIdentityId,
     checkRevisionId,
     criterionRevisionIds,
+  });
+  assertOpenAnswerEvaluatorJobState({
+    jobStatus,
+    attemptNumber,
+    retryPolicy,
+    budgetPolicy,
+    leaseId,
+    workerId,
+    leaseClaimedAt,
+    leaseExpiresAt,
   });
   assertOpenAnswerEvaluatorRunScopeAvailable(database, { attemptId, status });
 
@@ -1606,8 +1646,22 @@ export function createOpenAnswerEvaluatorRunRecord(
          failed_at,
          failure_reason,
          prior_failure_reason,
-         prior_failed_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         prior_failed_at,
+         job_status,
+         attempt_number,
+         retry_policy_json,
+         budget_policy_json,
+         lease_id,
+         worker_id,
+         lease_claimed_at,
+         lease_expires_at,
+         next_retry_at,
+         cancellation_reason,
+         timeout_reason,
+         job_failure_reason,
+         job_created_at,
+         job_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -1628,6 +1682,20 @@ export function createOpenAnswerEvaluatorRunRecord(
       failureReason,
       priorFailureReason,
       priorFailedAt,
+      jobStatus,
+      attemptNumber,
+      retryPolicy === null ? null : JSON.stringify(retryPolicy),
+      budgetPolicy === null ? null : JSON.stringify(budgetPolicy),
+      leaseId,
+      workerId,
+      leaseClaimedAt,
+      leaseExpiresAt,
+      nextRetryAt,
+      cancellationReason,
+      timeoutReason,
+      jobFailureReason,
+      jobCreatedAt,
+      jobUpdatedAt,
     );
 
   return getOpenAnswerEvaluatorRunRecord(database, id);
@@ -1651,6 +1719,28 @@ export function getOpenAnswerEvaluatorRunRecord(database, id) {
     .get(id);
 
   return row ? mapOpenAnswerEvaluatorRunRecord(row) : null;
+}
+
+export function getOpenAnswerEvaluatorJobRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status as runStatus, job_status as jobStatus, attempt_number as attemptNumber,
+              retry_policy_json as retryPolicyJson, budget_policy_json as budgetPolicyJson,
+              lease_id as leaseId, worker_id as workerId, lease_claimed_at as leaseClaimedAt,
+              lease_expires_at as leaseExpiresAt, next_retry_at as nextRetryAt,
+              cancellation_reason as cancellationReason, timeout_reason as timeoutReason,
+              job_failure_reason as jobFailureReason, job_created_at as jobCreatedAt,
+              job_updated_at as jobUpdatedAt
+       from open_answer_evaluator_runs
+       where id = ?`,
+    )
+    .get(id);
+
+  return row && row.jobStatus ? mapOpenAnswerEvaluatorJobRecord(row) : null;
 }
 
 export function listOpenAnswerEvaluatorRunRecords(database, { attemptId = null, status = null } = {}) {
@@ -1686,6 +1776,31 @@ export function listOpenAnswerEvaluatorRunRecords(database, { attemptId = null, 
     .map(mapOpenAnswerEvaluatorRunRecord);
 }
 
+export function listClaimableOpenAnswerEvaluatorJobRecords(database, { now, limit = 50 } = {}) {
+  const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 50;
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status as runStatus, job_status as jobStatus, attempt_number as attemptNumber,
+              retry_policy_json as retryPolicyJson, budget_policy_json as budgetPolicyJson,
+              lease_id as leaseId, worker_id as workerId, lease_claimed_at as leaseClaimedAt,
+              lease_expires_at as leaseExpiresAt, next_retry_at as nextRetryAt,
+              cancellation_reason as cancellationReason, timeout_reason as timeoutReason,
+              job_failure_reason as jobFailureReason, job_created_at as jobCreatedAt,
+              job_updated_at as jobUpdatedAt
+       from open_answer_evaluator_runs
+       where job_status = 'waiting'
+          or (job_status = 'retry_waiting' and next_retry_at <= ?)
+       order by case job_status when 'waiting' then 0 else 1 end, job_created_at, id
+       limit ?`,
+    )
+    .all(now, safeLimit)
+    .map(mapOpenAnswerEvaluatorJobRecord);
+}
+
 export function updateOpenAnswerEvaluatorRunStatus(
   database,
   { evaluatorRunId, status, completedAt = null, failedAt = null, failureReason = null },
@@ -1699,6 +1814,43 @@ export function updateOpenAnswerEvaluatorRunStatus(
     .run(status, completedAt, failedAt, failureReason, evaluatorRunId);
 
   return getOpenAnswerEvaluatorRunRecord(database, evaluatorRunId);
+}
+
+export function updateOpenAnswerEvaluatorJobLease(
+  database,
+  { evaluatorJobId, leaseId, workerId, claimedAt, expiresAt },
+) {
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set job_status = 'leased',
+           lease_id = ?,
+           worker_id = ?,
+           lease_claimed_at = ?,
+           lease_expires_at = ?,
+           job_updated_at = ?
+       where id = ?`,
+    )
+    .run(leaseId, workerId, claimedAt, expiresAt, claimedAt, evaluatorJobId);
+
+  return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
+}
+
+export function clearOpenAnswerEvaluatorJobLease(database, { evaluatorJobId, jobStatus, updatedAt }) {
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set job_status = ?,
+           lease_id = null,
+           worker_id = null,
+           lease_claimed_at = null,
+           lease_expires_at = null,
+           job_updated_at = ?
+       where id = ?`,
+    )
+    .run(jobStatus, updatedAt, evaluatorJobId);
+
+  return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
 }
 
 export function createOpenAnswerEvaluatorEvidenceRecord(
@@ -2396,6 +2548,94 @@ function assertOpenAnswerEvaluatorRunMatchesAttempt(
   ) {
     throw new StorageInvariantError("evaluator_run_attempt_mismatch");
   }
+}
+
+function assertOpenAnswerEvaluatorJobState({
+  jobStatus,
+  attemptNumber,
+  retryPolicy,
+  budgetPolicy,
+  leaseId,
+  workerId,
+  leaseClaimedAt,
+  leaseExpiresAt,
+}) {
+  if (
+    jobStatus === null &&
+    attemptNumber === null &&
+    retryPolicy === null &&
+    budgetPolicy === null &&
+    leaseId === null &&
+    workerId === null &&
+    leaseClaimedAt === null &&
+    leaseExpiresAt === null
+  ) {
+    return;
+  }
+
+  const validJobStatuses = new Set([
+    "waiting",
+    "leased",
+    "retry_waiting",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "timed_out",
+  ]);
+  if (!validJobStatuses.has(jobStatus)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (!Number.isInteger(attemptNumber) || attemptNumber < 1) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  assertOpenAnswerEvaluatorRetryPolicy(retryPolicy);
+  assertOpenAnswerEvaluatorBudgetPolicy(budgetPolicy);
+
+  const hasLease = leaseId !== null || workerId !== null || leaseClaimedAt !== null || leaseExpiresAt !== null;
+  if (
+    hasLease &&
+    (!isNonEmptyString(leaseId) ||
+      !isNonEmptyString(workerId) ||
+      !isNonEmptyString(leaseClaimedAt) ||
+      !isNonEmptyString(leaseExpiresAt))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function assertOpenAnswerEvaluatorRetryPolicy(retryPolicy) {
+  if (
+    !retryPolicy ||
+    !Number.isInteger(retryPolicy.maxAttempts) ||
+    retryPolicy.maxAttempts < 1 ||
+    !Array.isArray(retryPolicy.backoffSeconds) ||
+    retryPolicy.backoffSeconds.length < retryPolicy.maxAttempts - 1 ||
+    retryPolicy.backoffSeconds.some($0 => !Number.isInteger($0) || $0 < 0)
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function assertOpenAnswerEvaluatorBudgetPolicy(budgetPolicy) {
+  if (budgetPolicy === null) {
+    return;
+  }
+  if (typeof budgetPolicy !== "object" || Array.isArray(budgetPolicy)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  const numericFields = [
+    budgetPolicy.maxProviderCalls,
+    budgetPolicy.maxInputTokens,
+    budgetPolicy.maxOutputTokens,
+    budgetPolicy.maxEstimatedCostMinorUnits,
+  ].filter($0 => $0 !== undefined);
+  if (numericFields.some($0 => !Number.isInteger($0) || $0 < 0)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function assertOpenAnswerEvaluatorRunScopeAvailable(database, { attemptId, status }) {
@@ -3260,6 +3500,40 @@ function mapOpenAnswerEvaluatorRunRecord(row) {
     failureReason: row.failureReason,
     priorFailureReason: row.priorFailureReason,
     priorFailedAt: row.priorFailedAt,
+  };
+}
+
+function mapOpenAnswerEvaluatorJobRecord(row) {
+  return {
+    evaluatorJobId: row.id,
+    evaluatorRunId: row.id,
+    attemptId: row.attemptId,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    evaluatorPathKind: row.evaluatorPathKind,
+    evaluatorPolicyId: row.evaluatorPolicyId,
+    runStatus: row.runStatus,
+    jobStatus: row.jobStatus,
+    attemptNumber: row.attemptNumber,
+    retryPolicy: JSON.parse(row.retryPolicyJson),
+    budgetPolicy: row.budgetPolicyJson ? JSON.parse(row.budgetPolicyJson) : null,
+    lease:
+      row.leaseId === null
+        ? null
+        : {
+            leaseId: row.leaseId,
+            workerId: row.workerId,
+            claimedAt: row.leaseClaimedAt,
+            expiresAt: row.leaseExpiresAt,
+          },
+    nextRetryAt: row.nextRetryAt,
+    cancellationReason: row.cancellationReason,
+    timeoutReason: row.timeoutReason,
+    jobFailureReason: row.jobFailureReason,
+    createdAt: row.jobCreatedAt,
+    updatedAt: row.jobUpdatedAt,
   };
 }
 
