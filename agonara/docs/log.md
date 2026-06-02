@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 3 of the Quick Check first-slice plan with accepted quick-check entity creation, replacement revisions, historical curation reads, answer-key-inclusive curator summaries, and invalid state/target rejection coverage.
 - Harden Phase 2 Quick Check curator lifecycle after adversarial review by making duplicate option-text normalization deterministic.
 - Implement Phase 2 of the Quick Check first-slice plan with Program Curator candidate creation, validation, listing, rejection, answer-key-inclusive curator summaries, and Student/Admin-without-curator rejection coverage.
 - Harden Phase 1 Quick Check storage after adversarial review by scoping option identifiers to owning candidates and revisions, enforcing selected-option graph integrity in SQLite, and rejecting malformed matched results.

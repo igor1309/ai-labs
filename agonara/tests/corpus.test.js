@@ -9,6 +9,8 @@ import {
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
+  getAcceptedQuickCheckEntityRecord,
+  getAcceptedQuickCheckRevisionRecord,
   getAssessmentCriterionCandidateRecord,
   getCorpusCandidateRecord,
   getOpenAnswerCheckCandidateRecord,
@@ -3094,6 +3096,388 @@ test("quickCheckCandidateResponses_shouldUseCuratorBoundedShapes", async () => {
   }
 });
 
+test("acceptQuickCheckCandidate_shouldCreateAcceptedEntityRevisionAndMarkCandidateAccepted", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Accepted quick check",
+      prompt: "Accepted prompt",
+      options: ["Option A", "Option B"],
+      answerKeyIndex: 1,
+      sourceIds: ["source-1"],
+      rationale: "Accepted rationale",
+    });
+
+    const result = commands.acceptQuickCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-2",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidateStatus: getQuickCheckCandidateRecord(database, "source-2")?.status,
+        entity: getAcceptedQuickCheckEntityRecord(database, "corpus-event-3"),
+        revision: getAcceptedQuickCheckRevisionRecord(database, "source-4"),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            acceptedQuickCheck: {
+              entityId: "corpus-event-3",
+              revisionId: "source-4",
+              programId: "program-a",
+              checkKind: "single_select_quick_check",
+              title: "Accepted quick check",
+              prompt: "Accepted prompt",
+              options: [
+                { optionId: "corpus-event-4", text: "Option A" },
+                { optionId: "source-5", text: "Option B" },
+              ],
+              answerKeyOptionId: "source-5",
+              acceptedFromCandidateId: "source-2",
+              sourceIds: ["source-1"],
+              rationale: "Accepted rationale",
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+        candidateStatus: "accepted",
+        entity: {
+          id: "corpus-event-3",
+          programId: "program-a",
+          currentRevisionId: "source-4",
+        },
+        revision: {
+          id: "source-4",
+          entityId: "corpus-event-3",
+          programId: "program-a",
+          checkKind: "single_select_quick_check",
+          title: "Accepted quick check",
+          prompt: "Accepted prompt",
+          options: [
+            { id: "corpus-event-4", text: "Option A" },
+            { id: "source-5", text: "Option B" },
+          ],
+          answerKeyOptionId: "source-5",
+          acceptedFromCandidateId: "source-2",
+          sourceIds: ["source-1"],
+          rationale: "Accepted rationale",
+          acceptedByIdentityId: "identity-curator",
+          acceptedAt: "2026-05-28T11:00:00.003Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptQuickCheckCandidate_shouldReplaceCurrentRevisionAndKeepHistoricalRevision", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "First quick check",
+      prompt: "First prompt",
+      options: ["First A", "First B"],
+      answerKeyIndex: 0,
+    });
+    commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Second quick check",
+      prompt: "Second prompt",
+      options: ["Second A", "Second B"],
+      answerKeyIndex: 1,
+    });
+
+    const replacement = commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-4",
+      targetEntityId: "corpus-event-2",
+    });
+
+    assert.deepEqual(
+      {
+        replacement,
+        currentEntity: getAcceptedQuickCheckEntityRecord(database, "corpus-event-2"),
+        historical: getAcceptedQuickCheckRevisionRecord(database, "source-3"),
+      },
+      {
+        replacement: {
+          status: "accepted",
+          value: {
+            acceptedQuickCheck: {
+              entityId: "corpus-event-2",
+              revisionId: "source-6",
+              programId: "program-a",
+              checkKind: "single_select_quick_check",
+              title: "Second quick check",
+              prompt: "Second prompt",
+              options: [
+                { optionId: "corpus-event-6", text: "Second A" },
+                { optionId: "source-7", text: "Second B" },
+              ],
+              answerKeyOptionId: "source-7",
+              acceptedFromCandidateId: "corpus-event-4",
+              sourceIds: [],
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+        currentEntity: {
+          id: "corpus-event-2",
+          programId: "program-a",
+          currentRevisionId: "source-6",
+        },
+        historical: {
+          id: "source-3",
+          entityId: "corpus-event-2",
+          programId: "program-a",
+          checkKind: "single_select_quick_check",
+          title: "First quick check",
+          prompt: "First prompt",
+          options: [
+            { id: "corpus-event-3", text: "First A" },
+            { id: "source-4", text: "First B" },
+          ],
+          answerKeyOptionId: "corpus-event-3",
+          acceptedFromCandidateId: "source-1",
+          sourceIds: [],
+          rationale: null,
+          acceptedByIdentityId: "identity-curator",
+          acceptedAt: "2026-05-28T11:00:00.001Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptQuickCheckCandidate_shouldRejectInvalidCandidateStatesAndTargets", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Accepted quick check",
+      prompt: "Accepted prompt",
+      options: ["A", "B"],
+      answerKeyIndex: 0,
+    });
+    commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Rejected quick check",
+      prompt: "Rejected prompt",
+      options: ["C", "D"],
+      answerKeyIndex: 1,
+    });
+    commands.rejectQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-4",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      checkKind: "single_select_quick_check",
+      title: "Other quick check",
+      prompt: "Other prompt",
+      options: ["E", "F"],
+      answerKeyIndex: 0,
+    });
+    commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-6",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Target quick check",
+      prompt: "Target prompt",
+      options: ["G", "H"],
+      answerKeyIndex: 0,
+    });
+
+    assert.deepEqual(
+      {
+        unknown: commands.acceptQuickCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "quick-check-candidate-missing",
+        }),
+        alreadyAccepted: commands.acceptQuickCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-1",
+        }),
+        rejectAlreadyAccepted: commands.rejectQuickCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "source-1",
+        }),
+        unauthorizedAccepted: commands.acceptQuickCheckCandidate({
+          actingIdentityId: "identity-other",
+          candidateId: "source-1",
+        }),
+        alreadyRejected: commands.acceptQuickCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-4",
+        }),
+        missingTarget: commands.acceptQuickCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-9",
+          targetEntityId: "quick-check-entity-missing",
+        }),
+        targetProgramMismatch: commands.acceptQuickCheckCandidate({
+          actingIdentityId: "identity-curator",
+          candidateId: "corpus-event-9",
+          targetEntityId: "corpus-event-7",
+        }),
+      },
+      {
+        unknown: { status: "rejected", reason: "quick_check_candidate_not_found" },
+        alreadyAccepted: { status: "rejected", reason: "quick_check_candidate_already_accepted" },
+        rejectAlreadyAccepted: {
+          status: "rejected",
+          reason: "quick_check_candidate_already_accepted",
+        },
+        unauthorizedAccepted: { status: "rejected", reason: "admin_or_curator_required" },
+        alreadyRejected: { status: "rejected", reason: "quick_check_candidate_already_rejected" },
+        missingTarget: { status: "rejected", reason: "quick_check_entity_not_found" },
+        targetProgramMismatch: { status: "rejected", reason: "quick_check_entity_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("getAcceptedQuickCheckRevisionForCuration_shouldReturnHistoricalAnswerKeyOnlyForCurator", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-05-28T10:47:00.000Z",
+      updatedAt: "2026-05-28T10:47:00.000Z",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Curation quick check",
+      prompt: "Curation prompt",
+      options: ["A", "B"],
+      answerKeyIndex: 1,
+    });
+    commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        curator: commands.getAcceptedQuickCheckRevisionForCuration?.({
+          actingIdentityId: "identity-curator",
+          revisionId: "source-3",
+        }),
+        student: commands.getAcceptedQuickCheckRevisionForCuration?.({
+          actingIdentityId: "identity-student",
+          revisionId: "source-3",
+        }),
+        adminWithoutCurator: commands.getAcceptedQuickCheckRevisionForCuration?.({
+          actingIdentityId: "identity-admin",
+          revisionId: "source-3",
+        }),
+        inactive: commands.getAcceptedQuickCheckRevisionForCuration?.({
+          actingIdentityId: "identity-disabled",
+          revisionId: "source-3",
+        }),
+        unknown: commands.getAcceptedQuickCheckRevisionForCuration?.({
+          actingIdentityId: "identity-curator",
+          revisionId: "quick-check-revision-missing",
+        }),
+      },
+      {
+        curator: {
+          status: "accepted",
+          value: {
+            acceptedQuickCheck: {
+              entityId: "corpus-event-2",
+              revisionId: "source-3",
+              programId: "program-a",
+              checkKind: "single_select_quick_check",
+              title: "Curation quick check",
+              prompt: "Curation prompt",
+              options: [
+                { optionId: "corpus-event-3", text: "A" },
+                { optionId: "source-4", text: "B" },
+              ],
+              answerKeyOptionId: "source-4",
+              acceptedFromCandidateId: "source-1",
+              sourceIds: [],
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.001Z",
+            },
+          },
+        },
+        student: { status: "rejected", reason: "admin_or_curator_required" },
+        adminWithoutCurator: { status: "rejected", reason: "admin_or_curator_required" },
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknown: { status: "rejected", reason: "quick_check_revision_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listCorpusEvents_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 
@@ -3452,6 +3836,14 @@ function sequentialIds() {
     "corpus-event-7",
     "source-8",
     "corpus-event-8",
+    "source-9",
+    "corpus-event-9",
+    "source-10",
+    "corpus-event-10",
+    "source-11",
+    "corpus-event-11",
+    "source-12",
+    "corpus-event-12",
   ];
 }
 

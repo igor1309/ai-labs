@@ -168,7 +168,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 3 — Candidate acceptance and curation revision reads
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: move draft quick-check candidates into versioned accepted quick-check revisions and expose answer-key reads only to effective Program Curators.
 
