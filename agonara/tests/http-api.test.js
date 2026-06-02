@@ -4,6 +4,7 @@ import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
 import { createServer } from "../src/server.js";
+import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
 import {
   initializeIdentityStorage,
   listAcceptedCorpusEntityRecords,
@@ -189,6 +190,267 @@ test("openAnswerChecksList_shouldRejectDisabledSessionIdentity_withIdentityDisab
       {
         statusCode: 403,
         body: { status: "rejected", reason: "identity_disabled" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: JSON.stringify({
+        checkRevisionId: "check-revision-1",
+        submittedAnswer: "Explain the invariant.",
+      }),
+      headers: {
+        "content-type": "application/json",
+        "x-agonara-idempotency-key": "attempt-key-1",
+      },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldRejectDisabledSessionIdentity_withIdentityDisabled", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    database
+      .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+      .run("2026-05-27T10:00:00.000Z", bootstrap.body.value.identity.id);
+    const response = await fetch(`${baseUrl}/open-answer-attempts/attempt-1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 403,
+        body: { status: "rejected", reason: "identity_disabled" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectMissingAndInvalidCsrf_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const requestBody = JSON.stringify({
+      checkRevisionId: "check-revision-1",
+      submittedAnswer: "Explain the invariant.",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: requestBody,
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-idempotency-key": "attempt-key-1",
+      },
+      method: "POST",
+    });
+    const invalidCsrf = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: requestBody,
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": "wrong-token",
+        "x-agonara-idempotency-key": "attempt-key-1",
+      },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: {
+          statusCode: missingCsrf.status,
+          body: await missingCsrf.json(),
+        },
+        invalidCsrf: {
+          statusCode: invalidCsrf.status,
+          body: await invalidCsrf.json(),
+        },
+      },
+      {
+        missingCsrf: {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_required" },
+        },
+        invalidCsrf: {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_invalid" },
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectMalformedIdempotencyHeader_withValidationFailed", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const body = JSON.stringify({
+      checkRevisionId: "check-revision-1",
+      submittedAnswer: "Explain the invariant.",
+    });
+    const cases = [
+      {},
+      { "x-agonara-idempotency-key": "" },
+      { "x-agonara-idempotency-key": "   " },
+      { "x-agonara-idempotency-key": "a".repeat(256) },
+    ];
+    const results = [];
+    for (const headers of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+        body,
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          ...headers,
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptRoutes_shouldMapStudentWorkspaceRejections_toHttpStatuses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: ({ programId }) => ({ status: "rejected", reason: programId }),
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      ["identity_not_active", 403],
+      ["check_revision_not_found", 404],
+      ["idempotency_conflict", 409],
+    ];
+    const results = [];
+    for (const [reason] of cases) {
+      const response = await fetch(`${baseUrl}/programs/${reason}/open-answer-attempts`, {
+        body: JSON.stringify({
+          checkRevisionId: "check-revision-1",
+          submittedAnswer: "Explain the invariant.",
+        }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          "x-agonara-idempotency-key": "attempt-key-1",
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(([reason, statusCode]) => ({
+        statusCode,
+        body: { status: "rejected", reason },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptRoutes_shouldRedactFaultResponses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: () => {
+        throw new Error(
+          "session-1 csrf-token-1 attempt-key-secret cookie authorization sql stack /tmp/db.sqlite",
+        );
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: JSON.stringify({
+        checkRevisionId: "check-revision-1",
+        submittedAnswer: "Explain the invariant.",
+      }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-agonara-idempotency-key": "attempt-key-secret",
+      },
+      method: "POST",
+    });
+    const body = await response.json();
+    const serialized = JSON.stringify(body);
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body,
+        hasLeaks: [
+          "session-1",
+          "csrf-token-1",
+          "attempt-key-secret",
+          "cookie",
+          "authorization",
+          "sql",
+          "stack",
+          "/tmp/db.sqlite",
+        ].some($0 => serialized.includes($0)),
+      },
+      {
+        statusCode: 500,
+        body: { status: "fault", reason: "internal_error" },
+        hasLeaks: false,
       },
     );
   } finally {
@@ -6040,6 +6302,52 @@ async function listenWithIdentityProgramAndCorpus({
     }),
     programCommands,
     corpusCommands: corpusCommandsOverride ?? createCorpusCommands({
+      database,
+      generateId,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+      now,
+    }),
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    database,
+  };
+}
+
+async function listenWithIdentityProgramCorpusAndStudentWorkspace({
+  ids = defaultIds(),
+  studentWorkspaceCommandsOverride = null,
+} = {}) {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-05-27T10:00:00.000Z");
+  const generateId = makeIdGenerator(ids);
+  const programCommands = createProgramCommands({
+    database,
+    generateId,
+    now,
+  });
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands,
+    corpusCommands: createCorpusCommands({
+      database,
+      generateId,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+      now,
+    }),
+    studentWorkspaceCommands: studentWorkspaceCommandsOverride ?? createStudentWorkspaceCommands({
       database,
       generateId,
       getEffectiveParticipation: programCommands.getEffectiveParticipation,

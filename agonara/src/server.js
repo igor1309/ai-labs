@@ -15,6 +15,7 @@ export function createServer({
   log = logToStdout,
   now = () => new Date(),
   programCommands = null,
+  studentWorkspaceCommands = null,
 } = {}) {
   const csrfTokens = new Map();
   const eventCursors = new Map();
@@ -73,6 +74,20 @@ export function createServer({
           pathname,
           request,
           response,
+        });
+        if (handled) {
+          return;
+        }
+      }
+
+      if (identityCommands && studentWorkspaceCommands) {
+        const handled = await handleStudentWorkspaceApi({
+          csrfTokens,
+          identityCommands,
+          pathname,
+          request,
+          response,
+          studentWorkspaceCommands,
         });
         if (handled) {
           return;
@@ -533,6 +548,62 @@ async function handleProgramApi({
       programId: decodeURIComponent(programMatch[1]),
     });
     sendJson(response, statusForResult(result), mapProgramShellResult(result));
+    return true;
+  }
+
+  return false;
+}
+
+async function handleStudentWorkspaceApi({
+  csrfTokens,
+  identityCommands,
+  pathname,
+  request,
+  response,
+  studentWorkspaceCommands,
+}) {
+  const attemptsMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-attempts$/);
+  const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
+  if (request.method === "GET" && attemptDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getOpenAnswerAttempt({
+      actingIdentityId: session.value.identity.id,
+      attemptId: decodeURIComponent(attemptDetailMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "POST" && attemptsMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const idempotencyKey = parseAttemptIdempotencyKey(request);
+    if (idempotencyKey.status === "rejected") {
+      sendJson(response, 400, idempotencyKey);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.submitOpenAnswerAttempt({
+      actingIdentityId: session.value.identity.id,
+      idempotencyKey: idempotencyKey.value,
+      programId: decodeURIComponent(attemptsMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
@@ -1703,6 +1774,20 @@ function parseAcceptedKind(request) {
   return rejected("validation_failed");
 }
 
+function parseAttemptIdempotencyKey(request) {
+  const header = request.headers["x-agonara-idempotency-key"];
+  if (typeof header !== "string") {
+    return rejected("validation_failed");
+  }
+
+  const idempotencyKey = header.trim();
+  if (!idempotencyKey || idempotencyKey.length > 255) {
+    return rejected("validation_failed");
+  }
+
+  return accepted(idempotencyKey);
+}
+
 function isValidCandidateSourceIds(sourceIds) {
   return sourceIds === undefined ||
     (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
@@ -2015,6 +2100,7 @@ function httpStatusFor(reason) {
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
+    case "idempotency_conflict":
     case "identity_already_has_credential":
     case "last_admin_removal":
     case "login_already_bound":

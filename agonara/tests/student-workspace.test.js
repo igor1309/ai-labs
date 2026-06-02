@@ -1550,8 +1550,13 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       containsAnyStudentWorkspaceAdapterSurface([
         readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
         readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
-        readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
       ]),
+      false,
+    );
+    assert.deepEqual(
+      containsAnyOutOfScopeStudentWorkspaceHttpMutation(
+        readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+      ),
       false,
     );
     assert.deepEqual(
@@ -2085,6 +2090,14 @@ function containsAnyStudentWorkspaceAdapterSurface(sources) {
     "/student-workspace",
     "student-workspace",
   ].some($0 => source.includes($0)));
+}
+
+function containsAnyOutOfScopeStudentWorkspaceHttpMutation(source) {
+  return [
+    "markOpenAnswerAttemptEvaluating",
+    "recordOpenAnswerEvaluation",
+    "recordOpenAnswerEvaluationFailure",
+  ].some($0 => source.includes($0));
 }
 
 function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {

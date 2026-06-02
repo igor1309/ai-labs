@@ -24,7 +24,7 @@ Push policy: no push
 Worktree mode: create new
 Expected worktree: `worktrees/agonara-student-attempt-api`
 Expected branch: `codex/agonara-student-attempt-api`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
@@ -90,7 +90,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 1 — Student attempt HTTP substrate
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: establish route dispatch and shared transport behavior for the Student Workspace attempt API without applying successful attempt mutations yet.
 
