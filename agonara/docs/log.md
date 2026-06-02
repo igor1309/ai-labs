@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Quick Check first-slice implementation plan after adversarial review by making internal answer-key resolver coverage explicit, correcting Curator/Corpus validation ownership, and separating docs closeout checks from RED/GREEN test steps.
 - Add the Quick Check first-slice implementation plan, sequencing storage, curator lifecycle, accepted revision delivery, Student Workspace attempts, boundary isolation, backup/restore, executable acceptance, and archive closeout through strict TDD commits.
 - Harden the quick-check first-slice spec after adversarial review with an explicit internal answer-key resolution boundary, deterministic query rejections, fault/log/transport redaction, and restore-time graph and matched-result validation.
 - Specify the deterministic single-select quick-check first slice: Corpus Storage owns accepted options and protected answer keys, Student Workspace owns immutable idempotent attempts and matched evidence, and student-safe delivery projections exclude curator-only metadata.

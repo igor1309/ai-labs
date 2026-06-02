@@ -159,7 +159,7 @@ Use Node commands through the repo wrapper:
 
 **Validation**:
 
-- Targeted Student Workspace or Corpus command tests for candidate creation, listing, rejection, authorization, validation, and accepted-corpus non-mutation.
+- Targeted Corpus Storage and Curator boundary tests for candidate creation, listing, rejection, authorization, validation, and accepted-corpus non-mutation.
 - `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
@@ -249,6 +249,8 @@ Use Node commands through the repo wrapper:
 - Add `submitQuickCheckAttempt` to the Student Workspace command surface.
 - Enforce active Identity, Program existence, effective Student participation, accepted revision resolution, revision Program scope, selected option membership, and idempotency-key validation.
 - Resolve the accepted revision and answer key through an internal boundary only after authorization checks pass.
+- Add direct internal-boundary coverage that `resolveAcceptedQuickCheckRevisionForEvaluation` returns answer-key-inclusive accepted revisions only for accepted revision ids in the requested Program.
+- Add direct internal-boundary coverage that unknown revisions, candidate ids, and cross-Program revisions reject with the specified reasons.
 - Compare selected option id to answer-key option id server-side and persist the matched result.
 - Return the original attempt for equivalent scoped idempotency-key reuse and reject conflicting reuse.
 - Prove corrective answers create new attempts with new idempotency keys and do not mutate previous attempts.
@@ -263,14 +265,15 @@ Use Node commands through the repo wrapper:
 1. RED/GREEN effective Students submit accepted quick-check attempts and receive immutable selected-option and matched-result summaries.
 2. RED/GREEN inactive Identities, unknown Programs, non-Students, unknown revisions, candidate ids, cross-Program revisions, invalid selected option ids, and invalid idempotency keys reject with specified reasons.
 3. RED/GREEN accepted revision answer keys are resolved only after active Identity, Program, and effective Student checks pass.
-4. RED/GREEN equivalent idempotency-key retry returns the original attempt without duplicate creation.
-5. RED/GREEN conflicting selected-option reuse of the same scoped idempotency key rejects with `idempotency_conflict`.
-6. RED/GREEN corrective answers create new attempts without mutating prior attempts or results.
-7. RED/GREEN later accepted revisions do not rewrite historical attempts or matched results.
+4. RED/GREEN `resolveAcceptedQuickCheckRevisionForEvaluation` returns answer-key-inclusive accepted revisions for matching Program scope and rejects unknown revisions, candidate ids, and cross-Program revisions with specified reasons.
+5. RED/GREEN equivalent idempotency-key retry returns the original attempt without duplicate creation.
+6. RED/GREEN conflicting selected-option reuse of the same scoped idempotency key rejects with `idempotency_conflict`.
+7. RED/GREEN corrective answers create new attempts without mutating prior attempts or results.
+8. RED/GREEN later accepted revisions do not rewrite historical attempts or matched results.
 
 **Validation**:
 
-- Targeted Student Workspace tests for submission, authorization, internal resolution ordering, selected-option validation, idempotency, immutability, corrective answers, and historical revision stability.
+- Targeted Student Workspace tests for submission, authorization, internal resolution ordering, internal resolver behavior, selected-option validation, idempotency, immutability, corrective answers, and historical revision stability.
 - `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `./scripts/run_silent.sh "tests" npm test`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
@@ -408,9 +411,9 @@ Use Node commands through the repo wrapper:
 **TDD sequence**:
 
 1. RED/GREEN executable acceptance flow covers curator candidate creation, acceptance, student delivery, authorized submission, idempotent retry, corrective answer, later revision, owner reads, backup/restore, and redaction.
-2. RED/GREEN Product Intent traceability and Agonara log entries reflect the implemented Quick Check first slice.
-3. RED/GREEN final archive-relative links remain valid after moving the plan to `implemented/`.
-4. RED/GREEN final out-of-scope surface checks remain green after the full flow exists.
+2. RED/GREEN final out-of-scope surface checks remain green after the full flow exists.
+3. Review Product Intent traceability and Agonara log entries so they reflect the implemented Quick Check first slice.
+4. Review final archive-relative links after moving the plan to `implemented/`.
 
 **Validation**:
 
@@ -443,6 +446,6 @@ Use Node commands through the repo wrapper:
 ## Final closeout
 
 Final gates: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`, `./scripts/run_silent.sh "tests" npm test`, `./scripts/run_silent.sh "build" npx tsc --noEmit`, documentation structure review, implementation-plan checklist review, archive-relative link review, and `git status --short`
-Archive plan: move to `agonara/docs/plans/implemented/quick-check-assessment-first-slice.md`
+Archive plan: move to `agonara/docs/plans/implemented/quick-check-assessment-first-slice.md` and repair archive-relative links
 Commit archive move: yes
 Push/PR: follow push policy
