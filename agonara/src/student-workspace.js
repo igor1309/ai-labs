@@ -29,6 +29,19 @@ const supportedEvaluatorPathKinds = new Set([
   "llm_assisted",
   "human_reviewed",
 ]);
+const forbiddenResponseDetailPatterns = [
+  /\bsession\b/i,
+  /\bcsrf\b/i,
+  /\bcookie\b/i,
+  /\bauthorization\b/i,
+  /\braw\s+model\b/i,
+  /\braw\s+prompt\b/i,
+  /\bselect\s+\*/i,
+  /\bstack\s+trace\b/i,
+  /\/tmp\b/i,
+  /\bpostgres:\/\//i,
+  /\bdatabase-url\b/i,
+];
 
 export function createStudentWorkspaceCommands({
   database,
@@ -174,7 +187,9 @@ function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now })
   }
   if (
     !isNonEmptyText(input?.evidenceKind) ||
-    (input?.redactedSummary !== undefined && !isNonEmptyText(input.redactedSummary))
+    (input?.redactedSummary !== undefined &&
+      (!isNonEmptyText(input.redactedSummary) ||
+        containsForbiddenResponseDetail(input.redactedSummary)))
   ) {
     return rejected("validation_failed");
   }
@@ -791,6 +806,10 @@ function normalizeCriterionFeedback(criterionFeedback) {
 
 function isNonEmptyText(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function containsForbiddenResponseDetail(value) {
+  return forbiddenResponseDetailPatterns.some($0 => $0.test(value));
 }
 
 function accepted(value) {

@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Student Workspace evaluation status/evidence reads after adversarial review by rejecting unsafe redacted evaluator summaries before they can be persisted and later exposed.
 - Implement owner-only Student Workspace evaluation status and evaluator evidence reads with private non-owner errors, terminal-run omission, redacted evidence metadata, and final evaluation/failure detail coverage.
 - Harden evaluator-run terminal transitions after adversarial review with transaction-boundary run-status regression coverage for completion, failure, and cancellation.
 - Implement evaluator-run terminal transitions for completion, failure, and cancellation with final-evaluation compatibility, active-failure recording, prior-failure restoration, and terminal conflict coverage.
