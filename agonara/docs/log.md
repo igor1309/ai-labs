@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Complete Phase 6 of the Student Workspace evaluator worker plan after adversarial review expanded the out-of-scope surface guard with positive controls for queue, provider, raw-artifact, UI, learner-model, and topology expansions.
 - Prove evaluator worker ownership boundaries with a successful adapter execution test that snapshots adjacent domains, checks the bounded request-only adapter contract, and guards against out-of-scope worker surfaces.
 - Complete Phase 5 of the Student Workspace evaluator worker plan after adversarial review added explicit LLM-assisted completion-signature replay coverage.
 - Implement redacted evidence and successful completion for the Student Workspace evaluator worker, keeping writes behind leased Student Workspace commands with duplicate-safe terminal rerun rejection and concurrent lease-state coverage.

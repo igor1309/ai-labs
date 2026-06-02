@@ -292,7 +292,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 6 — Ownership boundaries and side-effect isolation
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: prove provider adapters and worker execution cannot mutate adjacent Agonara ownership domains or introduce out-of-scope surfaces.
 
