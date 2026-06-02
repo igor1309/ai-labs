@@ -1,7 +1,7 @@
 ---
 date: 2026-06-02
 model: claude-opus-4-8
-description: "Session handoff: scoped-agent orchestrator (ADR-001) Phases 1–3 merged, Phase 4 spike paused, doc-drift-agent relocation plan awaiting execution; gateway is the integration branch."
+description: "Session handoff: scoped-agent orchestrator (ADR-001) Phases 1–3 merged; doc-drift-agent relocation executed AND merged into gateway (5b4c6e31c); next is the Phase 4 Lobster substrate spike (human-review-gated, live gateway/VPS)."
 ---
 
 # Session Handoff — Scoped Doc-Drift Orchestrator + Relocation
@@ -57,21 +57,32 @@ Merged to trunk:
 
 ## Worktrees / branches (live now)
 
-- `worktrees/relocate-doc-drift-agent` (`relocate-doc-drift-agent`, @5f7896f4):
-  +1 commit over trunk = the plan `docs/plans/relocate-doc-drift-agent-under-agents.md`.
-  **Awaiting execution** (user reviews/launches new session).
+- `worktrees/relocate-doc-drift-agent` (`relocate-doc-drift-agent`): relocation plan
+  **executed (all 3 phases) and fully merged into `scoped-orchestrator-gateway`** — 0
+  commits ahead of gateway. Worktree is **cleanup-ready** (`git worktree remove`).
 - `worktrees/scoped-orchestrator-gateway` (`scoped-orchestrator-gateway`): integration
-  branch. Holds this handoff. The earlier WIP `smoke.lobster` was **removed** (it used
-  the disproven `openclaw.invoke` mechanism — recreate in Phase 4 with the subprocess
-  mechanism + correct post-relocation path).
+  branch, at `5b4c6e31c`. Carries relocation + this handoff. Gates green: 31/31
+  `agents/doc-drift-agent/tests/*` pass, `tsc --noEmit` ok. `doc-drift-agent/` now lives
+  at `agents/doc-drift-agent/` with `scope-select/` (Phases 1–3) intact. The earlier WIP
+  `smoke.lobster` was **removed** (used the disproven `openclaw.invoke` mechanism) — to be
+  recreated in Phase 4 with the subprocess mechanism at `agents/doc-drift-agent/runtime/smoke.lobster`.
 
-## NEXT ACTIONS
+## NEXT ACTIONS — Phase 4 (Lobster substrate spike), human-review-gated
 
-1. Execute `docs/plans/relocate-doc-drift-agent-under-agents.md` on
-   `relocate-doc-drift-agent` (3 phases). Gates: `node --test
-   agents/doc-drift-agent/tests/*.test.js` + `npx tsc --noEmit` + `loc-dashboard.sh`.
-2. Merge `relocate-doc-drift-agent` → `scoped-orchestrator-gateway`; ff/cleanup the relocate worktree.
-3. Resume Phase 4–6 on `scoped-orchestrator-gateway` against `agents/doc-drift-agent/` paths.
+The plan (`docs/plans/scoped-agent-orchestration-and-observability.md`) is
+`human-review-gated`; Phases 4–6 each require human review before starting because they
+touch the live gateway/VPS. **Phase 4 also needs explicit per-session SSH authorization
+naming the VPS host.** Do not proceed into live/destructive ops without it.
+
+1. Recreate the smoke `.lobster` at `agents/doc-drift-agent/runtime/smoke.lobster` using the
+   subprocess mechanism (`openclaw agent`, NOT `openclaw.invoke`). Validate locally with the
+   bundled runner: `graph --file --format ascii` + `run --dry-run` (non-destructive, file-based).
+2. Run it gateway-side and **assert the ledger from `openclaw tasks … --json`** (parsed status):
+   a clean run registers a terminal status; an induced-failure run shows `failed`. (This is the
+   one OPEN Phase-4 item.)
+3. Commit the smoke `.lobster` + record the audit-step mechanism decision. Then gate to Phase 5.
+
+Relocation cleanup (housekeeping, any time): `git worktree remove worktrees/relocate-doc-drift-agent`.
 
 ## Relocation plan — key decisions baked in
 
