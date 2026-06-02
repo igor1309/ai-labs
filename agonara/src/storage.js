@@ -22,6 +22,33 @@ const forbiddenResponseDetailPatterns = [
   /\bdatabase-url\b/i,
 ];
 
+const forbiddenEvaluatorArtifactKeys = new Set([
+  "authorizationheader",
+  "cookieheader",
+  "csrftoken",
+  "databaseurl",
+  "evaluatordiagnostics",
+  "filesystempath",
+  "hiddenpolicyinstructions",
+  "modelmetadatapayload",
+  "providerdiagnostics",
+  "rawmodelresponse",
+  "rawprompt",
+  "reviewernotes",
+  "sessionid",
+  "sqltext",
+  "stacktrace",
+]);
+
+const evaluatorArtifactTextKeys = new Set([
+  "cancellationreason",
+  "failurereason",
+  "jobfailurereason",
+  "priorfailurereason",
+  "redactedsummary",
+  "timeoutreason",
+]);
+
 export function openIdentityDatabase(path = ":memory:") {
   const database = new Database(path);
   database.pragma("foreign_keys = ON");
@@ -4167,6 +4194,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
       throw new StorageInvariantError("attempt_not_found");
     }
 
+    assertNoForbiddenEvaluatorArtifactBackup(evaluatorRun);
     assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt);
     assertEvaluatorRunAttributionBackup(evaluatorRun, identitiesById);
     assertEvaluatorJobOrchestrationBackup(evaluatorRun, attempt);
@@ -4186,6 +4214,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     if (evidence.attemptId !== evaluatorRun.attemptId) {
       throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
     }
+    assertNoForbiddenEvaluatorArtifactBackup(evidence);
     assertEvaluatorEvidenceBackup(evidence);
   }
 }
@@ -4372,6 +4401,40 @@ function assertEvaluatorEvidenceBackup(evidence) {
   ) {
     throw new StorageInvariantError("validation_failed");
   }
+}
+
+function assertNoForbiddenEvaluatorArtifactBackup(record) {
+  if (containsForbiddenEvaluatorArtifactBackup(record)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function containsForbiddenEvaluatorArtifactBackup(value, key = null) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return (
+      evaluatorArtifactTextKeys.has(normalizeEvaluatorArtifactKey(key ?? "")) &&
+      containsForbiddenResponseDetail(value)
+    );
+  }
+  if (Array.isArray(value)) {
+    return value.some(entry => containsForbiddenEvaluatorArtifactBackup(entry, key));
+  }
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  return Object.entries(value).some(
+    ([key, entryValue]) =>
+      forbiddenEvaluatorArtifactKeys.has(normalizeEvaluatorArtifactKey(key)) ||
+      containsForbiddenEvaluatorArtifactBackup(entryValue, key),
+  );
+}
+
+function normalizeEvaluatorArtifactKey(key) {
+  return key.toLowerCase().replace(/[^a-z]/g, "");
 }
 
 function isNonEmptyText(value) {

@@ -2976,6 +2976,101 @@ test("restoreIdentityBackup_shouldRejectMalformedOpenAnswerEvaluatorJobOrchestra
   }
 });
 
+test("restoreIdentityBackup_shouldRejectRawOpenAnswerEvaluatorArtifacts", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedOpenAnswerCheck(database, { programId: "program-a" });
+    storage.updateAssessmentCriterionCandidateStatus(database, {
+      candidateId: "criterion-candidate-a",
+      status: "accepted",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.updateOpenAnswerCheckCandidateStatus(database, {
+      candidateId: "check-candidate-a",
+      status: "accepted",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-02T10:00:00.000Z",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+    });
+    storage.createOpenAnswerAttemptRecord(
+      database,
+      makeOpenAnswerAttempt({
+        id: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        status: "evaluating",
+      }),
+    );
+    storage.createOpenAnswerEvaluatorRunRecord(
+      database,
+      makeOpenAnswerEvaluatorRun({
+        id: "evaluator-run-a",
+        attemptId: "attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        checkRevisionId: "check-revision-a",
+        criterionRevisionIds: ["criterion-revision-a"],
+        jobStatus: "waiting",
+        attemptNumber: 1,
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      }),
+    );
+    storage.createOpenAnswerEvaluatorEvidenceRecord(
+      database,
+      makeOpenAnswerEvaluatorEvidence({
+        id: "evidence-a",
+        evaluatorRunId: "evaluator-run-a",
+        attemptId: "attempt-a",
+      }),
+    );
+    const backup = storage.exportIdentityBackup(database);
+
+    assert.deepEqual(
+      [
+        {
+          ...backup,
+          openAnswerEvaluatorRuns: [
+            {
+              ...backup.openAnswerEvaluatorRuns[0],
+              rawPrompt: "authorization header leaked",
+            },
+          ],
+        },
+        {
+          ...backup,
+          openAnswerEvaluatorEvidence: [
+            {
+              ...backup.openAnswerEvaluatorEvidence[0],
+              reviewerNotes: "hidden reviewer note",
+            },
+          ],
+        },
+      ].map(candidateBackup =>
+        captureStorageInvariantReason(() => storage.restoreIdentityBackup(restored, candidateBackup)),
+      ),
+      ["validation_failed", "validation_failed"],
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
 test("createOpenAnswerAttemptRecord_shouldRejectCriterionRevisionOutsideAcceptedCheck_onGraphMismatch", () => {
   const database = makeInitializedDatabase();
 
