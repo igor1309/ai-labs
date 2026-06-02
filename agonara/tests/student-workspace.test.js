@@ -50,6 +50,7 @@ import {
   listProgramMembershipRecords,
   listProgramSourceRecords,
   listQuickCheckAttemptRecords,
+  listQuickCheckCandidateRecords,
   openIdentityDatabase,
   restoreIdentityBackup,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
@@ -952,6 +953,53 @@ test("submitQuickCheckAttempt_shouldNotExposeAnswerKeyOrIdempotencyKey_onAccepte
     });
 
     assert.deepEqual(containsForbiddenDetail([acceptedResult, rejectedResult]), false);
+  } finally {
+    database.close();
+  }
+});
+
+test("submitQuickCheckAttempt_shouldOnlyMutateQuickCheckAttempts_onSubmission", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedStudentProgramWithAcceptedCheck(database, {
+      programId: "program-a",
+      sourceId: "open-answer-source-a",
+    });
+    seedProtectedIdentityState(database);
+    const csrfTokens = new Map([["session-protected", "csrf-token-protected"]]);
+    const boundaryBefore = projectQuickCheckAttemptBoundaryState(database, csrfTokens);
+
+    const result = commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-submit-a",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        boundaryAfter: projectQuickCheckAttemptBoundaryState(database, csrfTokens),
+        attemptIds: listQuickCheckAttemptRecords(database).map($0 => $0.id),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            quickCheckAttempt: makeQuickCheckAttemptSummary({
+              attemptId: "attempt-1",
+              matched: true,
+              selectedOptionId: "quick-check-revision-a-option-a",
+            }),
+          },
+        },
+        boundaryAfter: boundaryBefore,
+        attemptIds: ["attempt-1"],
+      },
+    );
   } finally {
     database.close();
   }
@@ -8618,6 +8666,23 @@ function projectAdjacentCorpusState(database) {
     ...projectAcceptedAssessmentState(database),
     sources: listProgramSourceRecords(database),
     corpusCandidates: listCorpusCandidateRecords(database),
+  };
+}
+
+function projectQuickCheckAttemptBoundaryState(database, csrfTokens) {
+  return {
+    corpus: projectAdjacentCorpusState(database),
+    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
+    acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
+    quickCheckCandidates: listQuickCheckCandidateRecords(database),
+    openAnswerAttempts: listOpenAnswerAttemptRecords(database),
+    memberships: listProgramMembershipRecords(database),
+    studentIdentity: getIdentity(database, "identity-student"),
+    protectedIdentity: getIdentity(database, "identity-active-other"),
+    protectedSession: getSession(database, "session-protected"),
+    credentials: listLocalPasswordCredentials(database),
+    authorities: listAdminAuthorities(database),
+    csrfTokens: [...csrfTokens.entries()],
   };
 }
 
