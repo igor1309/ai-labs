@@ -1,0 +1,206 @@
+{
+  "description": "doc-drift-agent scope registry. Generated from top-level projects with README/docs; kept honest by doc-drift-agent/tests/scope-registry.test.js.",
+  "excludedTopLevel": [
+    ".git",
+    ".github",
+    ".claude",
+    ".codex",
+    ".lazyweb",
+    ".wrangler",
+    "node_modules",
+    "worktrees",
+    "vendor",
+    "img",
+    "_inbox",
+    "docs",
+    "scripts",
+    "tests",
+    "prompts",
+    "reading",
+    "research",
+    "debates",
+    "insights",
+    "migrate-to-skills",
+    "docker"
+  ],
+  "scopes": {
+    "readmes": {
+      "label": "cross-project READMEs",
+      "docs": [
+        "README.md",
+        "agents/README.md",
+        "agonara/README.md",
+        "claude-insights/README.md",
+        "clipdeck/README.md",
+        "corpus-scout/README.md",
+        "dashboard-sync-agent/README.md",
+        "dev-skills/README.md",
+        "doc-drift-agent/README.md",
+        "dragoman/README.md",
+        "gemini/README.md",
+        "loki/README.md",
+        "neris/README.md",
+        "nexum/README.md",
+        "niora/README.md",
+        "nomos/README.md",
+        "notio/README.md",
+        "oracle/README.md",
+        "reinix/README.md",
+        "sandbox/README.md",
+        "session-digest/README.md",
+        "tools/README.md",
+        "web-scout/README.md"
+      ]
+    },
+    "agents": {
+      "label": "agents",
+      "docs": [
+        "agents/README.md"
+      ]
+    },
+    "agonara": {
+      "label": "agonara",
+      "docs": [
+        "agonara/README.md",
+        "agonara/docs/**"
+      ]
+    },
+    "claude-insights": {
+      "label": "claude-insights",
+      "docs": [
+        "claude-insights/README.md",
+        "claude-insights/docs/**"
+      ]
+    },
+    "clipdeck": {
+      "label": "clipdeck",
+      "docs": [
+        "clipdeck/README.md",
+        "clipdeck/docs/**"
+      ]
+    },
+    "corpus-scout": {
+      "label": "corpus-scout",
+      "docs": [
+        "corpus-scout/README.md",
+        "corpus-scout/docs/**"
+      ]
+    },
+    "dashboard-sync-agent": {
+      "label": "dashboard-sync-agent",
+      "docs": [
+        "dashboard-sync-agent/README.md",
+        "dashboard-sync-agent/docs/**"
+      ]
+    },
+    "dev-skills": {
+      "label": "dev-skills",
+      "docs": [
+        "dev-skills/README.md",
+        "dev-skills/docs/**"
+      ]
+    },
+    "doc-drift-agent": {
+      "label": "doc-drift-agent",
+      "docs": [
+        "doc-drift-agent/README.md",
+        "doc-drift-agent/docs/**"
+      ]
+    },
+    "dragoman": {
+      "label": "dragoman",
+      "docs": [
+        "dragoman/README.md",
+        "dragoman/docs/**"
+      ]
+    },
+    "gemini": {
+      "label": "gemini",
+      "docs": [
+        "gemini/README.md"
+      ]
+    },
+    "loki": {
+      "label": "loki",
+      "docs": [
+        "loki/README.md",
+        "loki/docs/**"
+      ]
+    },
+    "neris": {
+      "label": "neris",
+      "docs": [
+        "neris/README.md",
+        "neris/docs/**"
+      ]
+    },
+    "nexum": {
+      "label": "nexum",
+      "docs": [
+        "nexum/README.md",
+        "nexum/docs/**"
+      ]
+    },
+    "niora": {
+      "label": "niora",
+      "docs": [
+        "niora/README.md",
+        "niora/docs/**"
+      ]
+    },
+    "nomos": {
+      "label": "nomos",
+      "docs": [
+        "nomos/README.md",
+        "nomos/docs/**"
+      ]
+    },
+    "notio": {
+      "label": "notio",
+      "docs": [
+        "notio/README.md",
+        "notio/docs/**"
+      ]
+    },
+    "oracle": {
+      "label": "oracle",
+      "docs": [
+        "oracle/README.md",
+        "oracle/docs/**"
+      ]
+    },
+    "reinix": {
+      "label": "reinix",
+      "docs": [
+        "reinix/README.md",
+        "reinix/docs/**"
+      ]
+    },
+    "sandbox": {
+      "label": "sandbox",
+      "docs": [
+        "sandbox/README.md"
+      ]
+    },
+    "session-digest": {
+      "label": "session-digest",
+      "docs": [
+        "session-digest/README.md",
+        "session-digest/docs/**"
+      ]
+    },
+    "tools": {
+      "label": "tools",
+      "docs": [
+        "tools/README.md"
+      ]
+    },
+    "web-scout": {
+      "label": "web-scout",
+      "docs": [
+        "web-scout/README.md",
+        "web-scout/docs/**"
+      ]
+    }
+  }
+}

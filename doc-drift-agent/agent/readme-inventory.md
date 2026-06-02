@@ -13,7 +13,13 @@ The registry of audit **scopes** and the documents each one covers. The agent au
 - **Scope `readmes` (cross-project READMEs)** — the root `README.md` plus the per-project READMEs one level below the repo root (enumerated in `## Scope 0 — README membership` below). Lens: README ↔ README consistency.
 - **Scope `<project>` (one per top-level project)** — that project's `README.md` and its `docs/` tree. Lens: the project's docs ↔ its repo state and own code.
 
-Documents below a project's top level that are not in that project's `docs/` are out of scope. The precise paths/globs per scope are pinned here as the registry is built out during implementation.
+Documents below a project's top level that are not in that project's `docs/` are out of scope.
+
+## Machine-readable registry
+
+The authoritative scope list lives in **`doc-drift-agent/agent/scope-registry.json`** — `scopes.readmes` (the cross-project README set) plus one entry per top-level project (`docs`: `README.md` + `docs/**`), and `excludedTopLevel` (repo infra that is not an audited project). It currently holds **scope 0 + 22 project scopes**. The worker resolves the active scope's document set from this file; the orchestrator selects among these scopes.
+
+`doc-drift-agent/tests/scope-registry.test.js` keeps it honest: a coverage check derives the top-level projects-with-docs from the working tree and fails if a project has no scope (or a scope points at a removed project) — the meta-scope made enforceable. The prose tables below remain as scope-0 detail and the known-absence record.
 
 ## Scope 0 — README membership
 
