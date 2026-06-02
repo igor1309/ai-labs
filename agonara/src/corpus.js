@@ -1523,7 +1523,7 @@ function isValidQuickCheckOptionTexts(value) {
     return false;
   }
 
-  const trimmedOptionTexts = value.map($0 => $0.trim().toLocaleLowerCase());
+  const trimmedOptionTexts = value.map($0 => $0.trim().toLowerCase());
   return new Set(trimmedOptionTexts).size === trimmedOptionTexts.length;
 }
 
