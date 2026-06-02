@@ -81,6 +81,8 @@ export function createStudentWorkspaceCommands({
       recordOpenAnswerEvaluation({ database, generateId, input, now }),
     recordOpenAnswerEvaluatorEvidence: input =>
       recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }),
+    recordOpenAnswerEvaluatorJobEvidence: input =>
+      recordOpenAnswerEvaluatorJobEvidence({ database, generateId, input, now }),
     recordOpenAnswerEvaluationFailure: input =>
       recordOpenAnswerEvaluationFailure({ database, input, now }),
     renewOpenAnswerEvaluatorJobLease: input =>
@@ -443,18 +445,61 @@ function addSecondsIso(iso, seconds) {
   return new Date(Date.parse(iso) + seconds * 1000).toISOString();
 }
 
+function recordOpenAnswerEvaluatorJobEvidence({ database, generateId, input, now }) {
+  if (
+    !isNonEmptyText(input?.leaseId) ||
+    !isNonEmptyText(input?.workerId) ||
+    !isValidEvaluatorEvidenceInput(input)
+  ) {
+    return rejected("validation_failed");
+  }
+  const recordedAt = now().toISOString();
+  const evaluatorJob = getOpenAnswerEvaluatorJobRecord(database, input?.evaluatorJobId);
+  const leaseRejection = getLeasedEvidenceJobRejection(evaluatorJob, input, recordedAt);
+  if (leaseRejection) {
+    return leaseRejection;
+  }
+
+  const transition = database.transaction(() => {
+    const currentJob = getOpenAnswerEvaluatorJobRecord(database, evaluatorJob.evaluatorJobId);
+    const currentLeaseRejection = getLeasedEvidenceJobRejection(currentJob, input, recordedAt);
+    if (currentLeaseRejection) {
+      return { rejection: currentLeaseRejection };
+    }
+    const evidence = createOpenAnswerEvaluatorEvidenceRecord(database, {
+      id: generateId(),
+      evaluatorRunId: currentJob.evaluatorRunId,
+      attemptId: currentJob.attemptId,
+      evidenceKind: input.evidenceKind.trim(),
+      redactedSummary: input.redactedSummary?.trim() ?? null,
+      recordedAt,
+    });
+    return { evidence };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
+
+  return accepted({ evidence: summarizeEvaluatorEvidence(transition.evidence) });
+}
+
+function getLeasedEvidenceJobRejection(evaluatorJob, input, at) {
+  if (!evaluatorJob) {
+    return rejected("evaluator_job_not_found");
+  }
+  if (["succeeded", "failed", "cancelled", "timed_out"].includes(evaluatorJob.jobStatus)) {
+    return rejected("evaluator_job_conflict");
+  }
+  return getRenewEvaluatorJobLeaseRejection(evaluatorJob, input, at);
+}
+
 function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }) {
   const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
   const evaluatorRunRejection = getRunningEvaluatorRunRejection(evaluatorRun);
   if (evaluatorRunRejection) {
     return evaluatorRunRejection;
   }
-  if (
-    !isNonEmptyText(input?.evidenceKind) ||
-    (input?.redactedSummary !== undefined &&
-      (!isNonEmptyText(input.redactedSummary) ||
-        containsForbiddenResponseDetail(input.redactedSummary)))
-  ) {
+  if (!isValidEvaluatorEvidenceInput(input)) {
     return rejected("validation_failed");
   }
   const recordedAt = now().toISOString();
@@ -479,6 +524,15 @@ function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now })
   }
 
   return accepted({ evidence: summarizeEvaluatorEvidence(transition.evidence) });
+}
+
+function isValidEvaluatorEvidenceInput(input) {
+  return (
+    isNonEmptyText(input?.evidenceKind) &&
+    (input?.redactedSummary === undefined ||
+      (isNonEmptyText(input.redactedSummary) &&
+        !containsForbiddenResponseDetail(input.redactedSummary)))
+  );
 }
 
 function getRunningEvaluatorRunRejection(evaluatorRun) {

@@ -1368,6 +1368,226 @@ test("renewOpenAnswerEvaluatorJobLease_shouldRejectUnknownUnclaimedExpiredAndMal
   }
 });
 
+test("recordOpenAnswerEvaluatorJobEvidence_shouldRecordInternalMetadata_onValidLease", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 300,
+    });
+    const acceptedBefore = projectAcceptedAssessmentState(database);
+
+    const result = commands.recordOpenAnswerEvaluatorJobEvidence({
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      evidenceKind: " criterion_match ",
+      redactedSummary: " Matched accepted criterion. ",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database, {
+          evaluatorRunId: "evaluator-run-1",
+        }),
+        attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
+        acceptedAfter: projectAcceptedAssessmentState(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary({
+              redactedSummary: "Matched accepted criterion.",
+            }),
+          },
+        },
+        evidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Matched accepted criterion.",
+          }),
+        ],
+        attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "evaluating" }),
+        acceptedAfter: acceptedBefore,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluatorJobEvidence_shouldRejectUnknownUnclaimedMismatchedExpiredAndTerminalJobs", () => {
+  let currentNow = new Date("2026-06-02T10:00:00.000Z");
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "attempt-3", "evaluator-run-1", "evaluator-run-2", "lease-1"],
+    now: () => currentNow,
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-a" });
+    submitAttempt(commands, { idempotencyKey: "submit-b" });
+    submitAttempt(commands, { idempotencyKey: "submit-c" });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-2",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    createOpenAnswerEvaluatorRunRecord(database, {
+      ...makeEvaluatorRunRecord({
+        evaluatorRunId: "evaluator-run-terminal",
+        attemptId: "attempt-3",
+        status: "failed",
+        priorFailureReason: null,
+        priorFailedAt: null,
+      }),
+      id: "evaluator-run-terminal",
+      jobStatus: "failed",
+      attemptNumber: 1,
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 60,
+    });
+    currentNow = new Date("2026-06-02T10:02:00.000Z");
+
+    assert.deepEqual(
+      {
+        unknown: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-unknown",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+        }),
+        unclaimed: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-2",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+        }),
+        mismatched: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-1",
+          leaseId: "lease-wrong",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+        }),
+        expired: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-1",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+        }),
+        terminal: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-terminal",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database, {}),
+      },
+      {
+        unknown: { status: "rejected", reason: "evaluator_job_not_found" },
+        unclaimed: { status: "rejected", reason: "evaluator_job_not_claimed" },
+        mismatched: { status: "rejected", reason: "evaluator_job_lease_mismatch" },
+        expired: { status: "rejected", reason: "evaluator_job_lease_expired" },
+        terminal: { status: "rejected", reason: "evaluator_job_conflict" },
+        evidence: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recordOpenAnswerEvaluatorJobEvidence_shouldApplyEvidenceValidationAndRedactionRules", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 300,
+    });
+
+    assert.deepEqual(
+      {
+        missingKind: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-1",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+        }),
+        unsafeSummary: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-1",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+          redactedSummary: "raw prompt leaked",
+        }),
+        rawArtifacts: commands.recordOpenAnswerEvaluatorJobEvidence({
+          evaluatorJobId: "evaluator-run-1",
+          leaseId: "lease-1",
+          workerId: "worker-a",
+          evidenceKind: "criterion_match",
+          redactedSummary: "Matched accepted criterion.",
+          rawModelResponse: "select * from hidden_table",
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database, {}),
+      },
+      {
+        missingKind: { status: "rejected", reason: "validation_failed" },
+        unsafeSummary: { status: "rejected", reason: "validation_failed" },
+        rawArtifacts: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary({
+              redactedSummary: "Matched accepted criterion.",
+            }),
+          },
+        },
+        evidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Matched accepted criterion.",
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("beginOpenAnswerEvaluatorRun_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "attempt-3", "evaluation-1"],
@@ -3965,6 +4185,7 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "recordOpenAnswerEvaluation",
       "recordOpenAnswerEvaluationFailure",
       "recordOpenAnswerEvaluatorEvidence",
+      "recordOpenAnswerEvaluatorJobEvidence",
       "renewOpenAnswerEvaluatorJobLease",
       "scheduleOpenAnswerEvaluatorJob",
       "submitOpenAnswerAttempt",
@@ -4382,6 +4603,7 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "recordOpenAnswerEvaluation",
           "recordOpenAnswerEvaluationFailure",
           "recordOpenAnswerEvaluatorEvidence",
+          "recordOpenAnswerEvaluatorJobEvidence",
           "renewOpenAnswerEvaluatorJobLease",
           "scheduleOpenAnswerEvaluatorJob",
           "submitOpenAnswerAttempt",
@@ -4882,6 +5104,7 @@ function containsAnyOutOfScopeStudentWorkspaceHttpMutation(source) {
     "markOpenAnswerAttemptEvaluating",
     "recordOpenAnswerEvaluation",
     "recordOpenAnswerEvaluationFailure",
+    "recordOpenAnswerEvaluatorJobEvidence",
     "renewOpenAnswerEvaluatorJobLease",
     "scheduleOpenAnswerEvaluatorJob",
   ].some($0 => source.includes($0));

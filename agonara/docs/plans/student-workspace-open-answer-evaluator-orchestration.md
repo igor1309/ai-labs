@@ -212,7 +212,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 4 — Leased evidence recording
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: implement `recordOpenAnswerEvaluatorJobEvidence` so evidence writes require an active matching lease.
 

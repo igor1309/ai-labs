@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 4 evaluator orchestration evidence so worker evidence writes require an active matching unexpired lease while reusing redaction and validation rules.
 - Implement Phase 3 evaluator orchestration leases so Student Workspace can claim waiting or due retry jobs, renew active leases, read redacted job state, and list bounded claimable jobs.
 - Implement Phase 2 evaluator orchestration scheduling so Student Workspace can turn submitted or failed open-answer attempts into waiting evaluator jobs with retry/budget policy validation and prior-failure preservation.
 - Harden Phase 1 evaluator orchestration storage after adversarial review by rejecting leased jobs without leases and validating lease update/clear helper inputs before SQLite writes.
