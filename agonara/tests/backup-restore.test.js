@@ -1453,6 +1453,50 @@ test("restoreBackup_shouldRejectIncompleteCancelledOpenAnswerEvaluatorPriorFailu
   }
 });
 
+test("restoreBackup_shouldRejectHumanReviewedOpenAnswerEvaluatorRunWithoutReviewerAttribution_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorRuns[0] = {
+      ...backup.openAnswerEvaluatorRuns[0],
+      evaluatorPathKind: "human_reviewed",
+      reviewerIdentityId: null,
+      reviewerCapability: null,
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "validation_failed",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluatorRunWithMissingAttributionIdentity_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorRuns[0] = {
+      ...backup.openAnswerEvaluatorRuns[0],
+      requestedByIdentityId: "identity-missing",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "identity_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldPreserveHistoricalTerminalOpenAnswerEvaluatorRunsAfterRetry_onBackup", async () => {
   const backup = await makeExportedStudentAttemptEvaluatorBackup();
   const target = makeSUT();
@@ -1485,6 +1529,49 @@ test("restoreBackup_shouldPreserveHistoricalTerminalOpenAnswerEvaluatorRunsAfter
     assert.deepEqual(result, {
       status: "accepted",
       value: { restored: true },
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluatorEvidenceWithInvalidVisibility_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorEvidence[0] = {
+      ...backup.openAnswerEvaluatorEvidence[0],
+      visibility: "public",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "validation_failed",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluatorEvidenceWithForbiddenSummaryDetails_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorEvidence[0] = {
+      ...backup.openAnswerEvaluatorEvidence[0],
+      redactedSummary:
+        "authorization header, raw model response, select * from table, /tmp/stack trace, postgres://database-url",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "validation_failed",
     });
   } finally {
     target.database.close();

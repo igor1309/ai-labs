@@ -8,6 +8,20 @@ export class StorageInvariantError extends Error {
   }
 }
 
+const forbiddenResponseDetailPatterns = [
+  /\bsession\b/i,
+  /\bcsrf\b/i,
+  /\bcookie\b/i,
+  /\bauthorization\b/i,
+  /\braw\s+model\b/i,
+  /\braw\s+prompt\b/i,
+  /\bselect\s+\*/i,
+  /\bstack\s+trace\b/i,
+  /\/tmp\b/i,
+  /\bpostgres:\/\//i,
+  /\bdatabase-url\b/i,
+];
+
 export function openIdentityDatabase(path = ":memory:") {
   const database = new Database(path);
   database.pragma("foreign_keys = ON");
@@ -3616,6 +3630,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     }
 
     assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt);
+    assertEvaluatorRunAttributionBackup(evaluatorRun, identitiesById);
     assertEvaluatorRunLifecycleMatchesAttemptBackup({
       attempt,
       evaluatorRun,
@@ -3632,6 +3647,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     if (evidence.attemptId !== evaluatorRun.attemptId) {
       throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
     }
+    assertEvaluatorEvidenceBackup(evidence);
   }
 }
 
@@ -3683,6 +3699,24 @@ function assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt) {
   }
 }
 
+function assertEvaluatorRunAttributionBackup(evaluatorRun, identitiesById) {
+  if (evaluatorRun.requestedByIdentityId && !identitiesById.has(evaluatorRun.requestedByIdentityId)) {
+    throw new StorageInvariantError("identity_not_found");
+  }
+
+  if (evaluatorRun.reviewerIdentityId && !identitiesById.has(evaluatorRun.reviewerIdentityId)) {
+    throw new StorageInvariantError("identity_not_found");
+  }
+
+  if (
+    evaluatorRun.evaluatorPathKind === "human_reviewed" &&
+    (!isNonEmptyText(evaluatorRun.reviewerIdentityId) ||
+      !isNonEmptyText(evaluatorRun.reviewerCapability))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
 function assertEvaluatorRunLifecycleMatchesAttemptBackup({
   attempt,
   evaluatorRun,
@@ -3709,6 +3743,26 @@ function assertEvaluatorRunLifecycleMatchesAttemptBackup({
   ) {
     throw new StorageInvariantError("evaluation_failure_snapshot_mismatch");
   }
+}
+
+function assertEvaluatorEvidenceBackup(evidence) {
+  if (
+    evidence.visibility !== "internal" ||
+    (evidence.redactedSummary !== undefined &&
+      evidence.redactedSummary !== null &&
+      (!isNonEmptyText(evidence.redactedSummary) ||
+        containsForbiddenResponseDetail(evidence.redactedSummary)))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function isNonEmptyText(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function containsForbiddenResponseDetail(value) {
+  return forbiddenResponseDetailPatterns.some($0 => $0.test(value));
 }
 
 function assertCriterionEntityIdsBelongToProgram({

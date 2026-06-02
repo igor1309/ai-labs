@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Student Workspace evaluator backup restore after adversarial review by validating restored reviewer attribution, attribution Identity references, evidence visibility, and unsafe redacted summaries before import.
 - Complete the Student Workspace evaluation status/evidence plan with evaluator-run backup/restore preservation, restored-graph validation, executable domain acceptance, Product Intent traceability, and archived-plan closeout.
 - Harden Student Workspace evaluation status/evidence reads after adversarial review by rejecting unsafe redacted evaluator summaries before they can be persisted and later exposed.
 - Implement owner-only Student Workspace evaluation status and evaluator evidence reads with private non-owner errors, terminal-run omission, redacted evidence metadata, and final evaluation/failure detail coverage.
