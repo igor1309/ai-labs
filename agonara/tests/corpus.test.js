@@ -4,8 +4,10 @@ import { createProgramCommands } from "../src/program.js";
 import {
   createCorpusEventRecord,
   createIdentity,
+  createLocalPasswordCredential,
   createProgramMembershipRecord,
   createProgramShellRecord,
+  createSession,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
@@ -3186,6 +3188,78 @@ test("acceptQuickCheckCandidate_shouldCreateAcceptedEntityRevisionAndMarkCandida
   }
 });
 
+test("acceptQuickCheckCandidate_shouldNotMutateAdjacentDomains", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createProgramMembershipRecord(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-05-28T10:47:00.000Z",
+      updatedAt: "2026-05-28T10:47:00.000Z",
+    });
+    createLocalPasswordCredential(database, {
+      id: "credential-curator",
+      identityId: "identity-curator",
+      login: "curator@example.test",
+      passwordHash: "hashed-curator-password",
+      createdAt: "2026-05-28T10:48:00.000Z",
+    });
+    createSession(database, {
+      id: "session-curator",
+      identityId: "identity-curator",
+      createdAt: "2026-05-28T10:49:00.000Z",
+      expiresAt: "2026-05-29T10:49:00.000Z",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-curator",
+      grantedAt: "2026-05-28T10:50:00.000Z",
+    });
+    const csrfTokens = new Map([["session-curator", "csrf-token-curator"]]);
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Accepted quick check",
+      prompt: "Accepted prompt",
+      options: ["Option A", "Option B"],
+      answerKeyIndex: 1,
+    });
+    const before = {
+      csrfTokens: [...csrfTokens.entries()],
+      database: snapshotAdjacentDomains(database),
+    };
+
+    const result = commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        resultStatus: result.status,
+        before,
+        after: {
+          csrfTokens: [...csrfTokens.entries()],
+          database: snapshotAdjacentDomains(database),
+        },
+      },
+      {
+        resultStatus: "accepted",
+        before,
+        after: before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("acceptQuickCheckCandidate_shouldReplaceCurrentRevisionAndKeepHistoricalRevision", async () => {
   const { commands, database } = await makeSUT();
 
@@ -3225,6 +3299,14 @@ test("acceptQuickCheckCandidate_shouldReplaceCurrentRevisionAndKeepHistoricalRev
         replacement,
         currentEntity: getAcceptedQuickCheckEntityRecord(database, "corpus-event-2"),
         historical: getAcceptedQuickCheckRevisionRecord(database, "source-3"),
+        currentCurationRead: commands.getAcceptedQuickCheckRevisionForCuration({
+          actingIdentityId: "identity-curator",
+          revisionId: "source-6",
+        }),
+        historicalCurationRead: commands.getAcceptedQuickCheckRevisionForCuration({
+          actingIdentityId: "identity-curator",
+          revisionId: "source-3",
+        }),
       },
       {
         replacement: {
@@ -3271,6 +3353,50 @@ test("acceptQuickCheckCandidate_shouldReplaceCurrentRevisionAndKeepHistoricalRev
           rationale: null,
           acceptedByIdentityId: "identity-curator",
           acceptedAt: "2026-05-28T11:00:00.001Z",
+        },
+        currentCurationRead: {
+          status: "accepted",
+          value: {
+            acceptedQuickCheck: {
+              entityId: "corpus-event-2",
+              revisionId: "source-6",
+              programId: "program-a",
+              checkKind: "single_select_quick_check",
+              title: "Second quick check",
+              prompt: "Second prompt",
+              options: [
+                { optionId: "corpus-event-6", text: "Second A" },
+                { optionId: "source-7", text: "Second B" },
+              ],
+              answerKeyOptionId: "source-7",
+              acceptedFromCandidateId: "corpus-event-4",
+              sourceIds: [],
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+        historicalCurationRead: {
+          status: "accepted",
+          value: {
+            acceptedQuickCheck: {
+              entityId: "corpus-event-2",
+              revisionId: "source-3",
+              programId: "program-a",
+              checkKind: "single_select_quick_check",
+              title: "First quick check",
+              prompt: "First prompt",
+              options: [
+                { optionId: "corpus-event-3", text: "First A" },
+                { optionId: "source-4", text: "First B" },
+              ],
+              answerKeyOptionId: "corpus-event-3",
+              acceptedFromCandidateId: "source-1",
+              sourceIds: [],
+              acceptedByIdentityId: "identity-curator",
+              acceptedAt: "2026-05-28T11:00:00.001Z",
+            },
+          },
         },
       },
     );
@@ -3874,6 +4000,63 @@ function containsForbiddenDetail(values) {
     "stack",
     "127.0.0.1",
   ].some($0 => serialized.includes($0));
+}
+
+function snapshotAdjacentDomains(database) {
+  return {
+    acceptedAssessmentCriterionEntityCount: countRows(database, "accepted_assessment_criterion_entities"),
+    acceptedAssessmentCriterionRevisionCount: countRows(database, "accepted_assessment_criterion_revisions"),
+    acceptedCorpusEntityCount: countRows(database, "accepted_corpus_entities"),
+    acceptedCorpusRevisionCount: countRows(database, "accepted_corpus_revisions"),
+    acceptedOpenAnswerCheckEntityCount: countRows(database, "accepted_open_answer_check_entities"),
+    acceptedOpenAnswerCheckRevisionCount: countRows(database, "accepted_open_answer_check_revisions"),
+    adminAuthorities: database
+      .prepare(
+        `select identity_id as identityId, granted_at as grantedAt, revoked_at as revokedAt
+         from admin_authorities
+         order by identity_id`,
+      )
+      .all(),
+    assessmentCriterionCandidateCount: countRows(database, "assessment_criterion_candidates"),
+    corpusCandidateCount: countRows(database, "corpus_candidates"),
+    identities: database
+      .prepare(
+        `select id, display_name as displayName, state, created_at as createdAt, disabled_at as disabledAt
+         from identities
+         order by id`,
+      )
+      .all(),
+    localPasswordCredentials: database
+      .prepare(
+        `select id, identity_id as identityId, login, password_hash as passwordHash, created_at as createdAt
+         from local_password_credentials
+         order by id`,
+      )
+      .all(),
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerCheckCandidateCount: countRows(database, "open_answer_check_candidates"),
+    programMemberships: database
+      .prepare(
+        `select id, program_id as programId, identity_id as identityId,
+                participation_kind as participationKind, status, created_at as createdAt, updated_at as updatedAt
+         from program_memberships
+         order by id`,
+      )
+      .all(),
+    programSourceCount: countRows(database, "program_sources"),
+    sessions: database
+      .prepare(
+        `select id, identity_id as identityId, created_at as createdAt, expires_at as expiresAt,
+                revoked_at as revokedAt
+         from sessions
+         order by id`,
+      )
+      .all(),
+  };
+}
+
+function countRows(database, tableName) {
+  return database.prepare(`select count(*) as count from ${tableName}`).get().count;
 }
 
 function seedAcceptedAssessmentCriterion(
