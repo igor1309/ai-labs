@@ -1963,6 +1963,109 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectTerminalRerunWithoutDuplicate
   }
 });
 
+test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveLlmCompletionSignature_forEquivalentCompletionReplay", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy({ evaluatorPathKind: "llm_assisted" })],
+    providerAdapters: [
+      makeProviderAdapter({
+        evaluatorPathKind: "llm_assisted",
+        evaluate: () => makeProviderResult({ providerUsage: { providerCalls: 1 } }),
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "llm_assisted",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      budgetPolicy: { maxProviderCalls: 2 },
+    });
+    const completionInput = {
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+      providerUsage: { providerCalls: 1 },
+      outputValidation: { validatorPolicyId: "validator-a", passed: true },
+    };
+
+    assert.deepEqual(
+      {
+        worker: commands.runOpenAnswerEvaluatorWorkerOnce({
+          workerId: "worker-a",
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          leaseDurationSeconds: 300,
+        }),
+        equivalentReplay: commands.completeOpenAnswerEvaluatorJob(completionInput),
+        changedUsageReplay: commands.completeOpenAnswerEvaluatorJob({
+          ...completionInput,
+          providerUsage: { providerCalls: 2 },
+        }),
+        evaluations: listOpenAnswerEvaluationRecords(database),
+      },
+      {
+        worker: {
+          status: "accepted",
+          value: {
+            summary: makeEvaluatorWorkerSummary({
+              mode: "single_job",
+              evaluatorJobId: "evaluator-run-1",
+              claimed: true,
+              completed: true,
+            }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              evaluatorPathKind: "llm_assisted",
+              status: "succeeded",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        equivalentReplay: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "evaluated" }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              evaluatorPathKind: "llm_assisted",
+              status: "succeeded",
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        changedUsageReplay: { status: "rejected", reason: "evaluator_job_conflict" },
+        evaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectConcurrentLeaseAndTerminalChanges_throughStudentWorkspaceCommands", () => {
   assert.deepEqual(
     [
