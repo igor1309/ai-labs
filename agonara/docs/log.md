@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Phase 1 Quick Check storage after adversarial review by scoping option identifiers to owning candidates and revisions, enforcing selected-option graph integrity in SQLite, and rejecting malformed matched results.
 - Implement Phase 1 of the Quick Check first-slice plan with storage substrate for candidates, accepted entities, accepted revisions, options, immutable attempts, option graph validation, selected-option validation, and scoped idempotency.
 - Harden the Quick Check first-slice implementation plan after adversarial review by making internal answer-key resolver coverage explicit, correcting Curator/Corpus validation ownership, and separating docs closeout checks from RED/GREEN test steps.
 - Add the Quick Check first-slice implementation plan, sequencing storage, curator lifecycle, accepted revision delivery, Student Workspace attempts, boundary isolation, backup/restore, executable acceptance, and archive closeout through strict TDD commits.

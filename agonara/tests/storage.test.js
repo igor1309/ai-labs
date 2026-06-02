@@ -1661,6 +1661,190 @@ test("createQuickCheckAttemptRecord_shouldEnforceScopedIdempotency_onEquivalentA
   }
 });
 
+test("createQuickCheckAttemptRecord_shouldRejectMalformedMatchedResult_onNonBooleanMatched", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedQuickCheck(database, { programId: "program-a" });
+
+    assert.equal(
+      captureStorageInvariantReason(() =>
+        storage.createQuickCheckAttemptRecord(
+          database,
+          makeQuickCheckAttempt({
+            id: "quick-check-attempt-a",
+            programId: "program-a",
+            studentIdentityId: "identity-a",
+            checkRevisionId: "quick-check-revision-a",
+            selectedOptionId: "quick-check-revision-a-option-a",
+            matched: "true",
+          }),
+        ),
+      ),
+      "quick_check_attempt_matched_invalid",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("quickCheckStorage_shouldScopeOptionIdentifiersToCandidateAndRevision_onRepeatedOptionIds", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+
+    storage.createQuickCheckCandidateRecord(
+      database,
+      makeQuickCheckCandidate({
+        id: "quick-check-candidate-a",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+        options: [
+          { id: "option-a", text: "Candidate A option A" },
+          { id: "option-b", text: "Candidate A option B" },
+        ],
+        answerKeyOptionId: "option-a",
+      }),
+    );
+    storage.createQuickCheckCandidateRecord(
+      database,
+      makeQuickCheckCandidate({
+        id: "quick-check-candidate-b",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+        options: [
+          { id: "option-a", text: "Candidate B option A" },
+          { id: "option-b", text: "Candidate B option B" },
+        ],
+        answerKeyOptionId: "option-b",
+      }),
+    );
+    storage.createAcceptedQuickCheckEntityRecord(
+      database,
+      makeAcceptedQuickCheckEntity({
+        id: "quick-check-entity-a",
+        programId: "program-a",
+        currentRevisionId: "quick-check-revision-a",
+      }),
+    );
+    storage.createAcceptedQuickCheckRevisionRecord(
+      database,
+      makeAcceptedQuickCheckRevision({
+        id: "quick-check-revision-a",
+        entityId: "quick-check-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "quick-check-candidate-a",
+        sourceIds: ["source-a"],
+        options: [
+          { id: "option-a", text: "Revision A option A" },
+          { id: "option-b", text: "Revision A option B" },
+        ],
+        answerKeyOptionId: "option-a",
+      }),
+    );
+    storage.createAcceptedQuickCheckRevisionRecord(
+      database,
+      makeAcceptedQuickCheckRevision({
+        id: "quick-check-revision-b",
+        entityId: "quick-check-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "quick-check-candidate-b",
+        sourceIds: ["source-a"],
+        options: [
+          { id: "option-a", text: "Revision B option A" },
+          { id: "option-b", text: "Revision B option B" },
+        ],
+        answerKeyOptionId: "option-b",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        candidateOptionIds: storage.listQuickCheckCandidateRecords(database, {
+          programId: "program-a",
+        }).map($0 => $0.options.map($1 => $1.id)),
+        revisionOptionIds: storage
+          .listAcceptedQuickCheckRevisionRecords(database)
+          .map($0 => $0.options.map($1 => $1.id)),
+      },
+      {
+        candidateOptionIds: [
+          ["option-a", "option-b"],
+          ["option-a", "option-b"],
+        ],
+        revisionOptionIds: [
+          ["option-a", "option-b"],
+          ["option-a", "option-b"],
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("quickCheckAttemptStorage_shouldRejectRawSelectedOptionOutsideRevision_onDatabaseConstraint", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedQuickCheck(database, { programId: "program-a" });
+    storage.createQuickCheckCandidateRecord(
+      database,
+      makeQuickCheckCandidate({
+        id: "quick-check-candidate-b",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+      }),
+    );
+    storage.createAcceptedQuickCheckRevisionRecord(
+      database,
+      makeAcceptedQuickCheckRevision({
+        id: "quick-check-revision-b",
+        entityId: "quick-check-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "quick-check-candidate-b",
+        sourceIds: ["source-a"],
+      }),
+    );
+
+    assert.throws(
+      () =>
+        database
+          .prepare(
+            `insert into quick_check_attempts (
+               id,
+               program_id,
+               student_identity_id,
+               check_revision_id,
+               selected_option_id,
+               matched,
+               idempotency_key,
+               submitted_at
+             ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            "quick-check-attempt-raw",
+            "program-a",
+            "identity-a",
+            "quick-check-revision-a",
+            "quick-check-revision-b-option-a",
+            0,
+            "raw-key",
+            "2026-06-02T11:20:00.000Z",
+          ),
+      error => error.code === "SQLITE_CONSTRAINT_FOREIGNKEY",
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("updateOpenAnswerAttemptStatus_shouldPreserveSubmittedAnswerAndReferences_onExistingAttempt", () => {
   const database = makeInitializedDatabase();
 

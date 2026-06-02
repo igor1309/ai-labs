@@ -245,12 +245,12 @@ export function initializeIdentityStorage(database) {
     );
 
     create table if not exists quick_check_candidate_options (
-      id text primary key,
       candidate_id text not null references quick_check_candidates(id),
+      id text not null,
       option_order integer not null,
       text text not null,
-      unique (candidate_id, option_order),
-      unique (candidate_id, id)
+      primary key (candidate_id, id),
+      unique (candidate_id, option_order)
     );
 
     create table if not exists accepted_quick_check_entities (
@@ -275,12 +275,12 @@ export function initializeIdentityStorage(database) {
     );
 
     create table if not exists accepted_quick_check_revision_options (
-      id text primary key,
       revision_id text not null references accepted_quick_check_revisions(id),
+      id text not null,
       option_order integer not null,
       text text not null,
-      unique (revision_id, option_order),
-      unique (revision_id, id)
+      primary key (revision_id, id),
+      unique (revision_id, option_order)
     );
 
     create table if not exists quick_check_attempts (
@@ -292,7 +292,9 @@ export function initializeIdentityStorage(database) {
       matched integer not null check (matched in (0, 1)),
       idempotency_key text not null,
       submitted_at text not null,
-      unique (program_id, student_identity_id, check_revision_id, idempotency_key)
+      unique (program_id, student_identity_id, check_revision_id, idempotency_key),
+      foreign key (check_revision_id, selected_option_id)
+        references accepted_quick_check_revision_options(revision_id, id)
     );
 
     create table if not exists accepted_open_answer_check_entities (
@@ -1531,6 +1533,9 @@ export function createQuickCheckAttemptRecord(
   assertIdentityExists(database, studentIdentityId);
   assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId, revisionId: checkRevisionId });
   assertQuickCheckSelectedOptionBelongsToRevision(database, { revisionId: checkRevisionId, selectedOptionId });
+  if (typeof matched !== "boolean") {
+    throw new StorageInvariantError("quick_check_attempt_matched_invalid");
+  }
   const existingAttempt = getQuickCheckAttemptRecordByIdempotencyScope(database, {
     programId,
     studentIdentityId,
