@@ -1395,6 +1395,27 @@ export function getAcceptedQuickCheckEntityRecord(database, id) {
   return row ?? null;
 }
 
+export function listAcceptedQuickCheckEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, current_revision_id as currentRevisionId
+         from accepted_quick_check_entities
+         order by id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_quick_check_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
 export function updateAcceptedQuickCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
   const revision = getAcceptedQuickCheckRevisionRecord(database, currentRevisionId);
   if (!revision) {

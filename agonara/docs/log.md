@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 4 of the Quick Check first-slice plan with student-only delivery listing and historical revision reads that return answerable options while redacting answer keys, curator metadata, provenance, and operational details.
 - Harden Phase 3 Quick Check acceptance after adversarial review by covering replacement curation reads across current and historical revisions and proving adjacent domain counts stay unchanged during acceptance.
 - Implement Phase 3 of the Quick Check first-slice plan with accepted quick-check entity creation, replacement revisions, historical curation reads, answer-key-inclusive curator summaries, and invalid state/target rejection coverage.
 - Harden Phase 2 Quick Check curator lifecycle after adversarial review by making duplicate option-text normalization deterministic.

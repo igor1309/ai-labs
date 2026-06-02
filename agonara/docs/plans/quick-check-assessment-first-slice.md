@@ -205,7 +205,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 4 — Student-safe delivery projections
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: let effective Students list and read accepted quick-check deliveries without exposing answer keys or curator-only metadata.
 

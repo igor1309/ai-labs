@@ -33,6 +33,7 @@ import {
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedQuickCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
@@ -95,12 +96,16 @@ export function createCorpusCommands({
       getAcceptedOpenAnswerCheckRevision({ database, getEffectiveParticipation, input }),
     getAcceptedQuickCheckRevisionForCuration: input =>
       getAcceptedQuickCheckRevisionForCuration({ database, getEffectiveParticipation, input }),
+    getQuickCheckDelivery: input =>
+      getQuickCheckDelivery({ database, getEffectiveParticipation, input }),
     getAcceptedCorpusRevision: input =>
       getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }),
     listAcceptedAssessmentCriteria: input =>
       listAcceptedAssessmentCriteria({ database, getEffectiveParticipation, input }),
     listAcceptedOpenAnswerChecks: input =>
       listAcceptedOpenAnswerChecks({ database, getEffectiveParticipation, input }),
+    listQuickCheckDeliveries: input =>
+      listQuickCheckDeliveries({ database, getEffectiveParticipation, input }),
     listAcceptedCorpus: input =>
       listAcceptedCorpus({ database, getEffectiveParticipation, input }),
     listAssessmentCriterionCandidates: input =>
@@ -549,6 +554,27 @@ function listAcceptedOpenAnswerChecks({ database, getEffectiveParticipation, inp
   });
 }
 
+function listQuickCheckDeliveries({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveQuickCheckDeliveryAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const entities = listAcceptedQuickCheckEntityRecords(database, {
+    programId: authorization.program.id,
+  });
+
+  return accepted({
+    quickCheckDeliveries: entities.map($0 =>
+      summarizeQuickCheckDelivery(getAcceptedQuickCheckRevisionRecord(database, $0.currentRevisionId)),
+    ),
+  });
+}
+
 function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {
   const authorization = resolveAcceptedReadAuthorization({
     database,
@@ -622,6 +648,27 @@ function getAcceptedQuickCheckRevisionForCuration({ database, getEffectivePartic
   }
 
   return accepted({ acceptedQuickCheck: summarizeAcceptedQuickCheck(revision) });
+}
+
+function getQuickCheckDelivery({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveQuickCheckDeliveryAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const revision = getAcceptedQuickCheckRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("quick_check_revision_not_found");
+  }
+  if (revision.programId !== authorization.program.id) {
+    return rejected("quick_check_revision_program_mismatch");
+  }
+
+  return accepted({ quickCheckDelivery: summarizeQuickCheckDelivery(revision) });
 }
 
 function getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }) {
@@ -1259,6 +1306,29 @@ function resolveAssessmentAcceptedReadAuthorization({ database, getEffectivePart
   return { status: "rejected", reason: "participation_required" };
 }
 
+function resolveQuickCheckDeliveryAuthorization({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return { status: "rejected", reason: "identity_not_active" };
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return { status: "rejected", reason: "program_not_found" };
+  }
+
+  const studentParticipation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  if (studentParticipation.allowed) {
+    return { status: "accepted", identity, program };
+  }
+
+  return { status: "rejected", reason: "participation_required" };
+}
+
 function resolveCuratorAuthorization({ database, getEffectiveParticipation, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity) {
@@ -1568,6 +1638,18 @@ function summarizeAcceptedQuickCheck(revision) {
   }
 
   return summary;
+}
+
+function summarizeQuickCheckDelivery(revision) {
+  return {
+    entityId: revision.entityId,
+    revisionId: revision.id,
+    programId: revision.programId,
+    checkKind: revision.checkKind,
+    title: revision.title,
+    prompt: revision.prompt,
+    options: revision.options.map($0 => ({ optionId: $0.id, text: $0.text })),
+  };
 }
 
 function summarizeAcceptedCorpus(revision) {
