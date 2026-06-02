@@ -266,7 +266,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 5 — Backup/restore and executable acceptance closeout
 
-**Status**: [ ] pending
+**Status**: [x] completed
 
 **Objective**: preserve Student Workspace attempt state through backup/restore, reject orphan restored graphs, and prove the full first-slice flow end to end.
 

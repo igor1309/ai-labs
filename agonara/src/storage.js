@@ -1443,6 +1443,21 @@ export function getOpenAnswerEvaluationRecordByAttemptId(database, attemptId) {
   return row ? mapOpenAnswerEvaluationRecord(row) : null;
 }
 
+export function listOpenAnswerEvaluationRecords(database) {
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_kind as evaluatorKind, summary_feedback as summaryFeedback,
+              criterion_feedback_json as criterionFeedbackJson, evaluated_at as evaluatedAt
+       from open_answer_evaluations
+       order by evaluated_at, id`,
+    )
+    .all()
+    .map(mapOpenAnswerEvaluationRecord);
+}
+
 export function createOpenAnswerEvaluationFailureRecord(database, { attemptId, reason, failedAt }) {
   assertOpenAnswerAttemptExists(database, attemptId);
 
@@ -1467,6 +1482,16 @@ export function getOpenAnswerEvaluationFailureRecord(database, attemptId) {
     .get(attemptId);
 
   return row ?? null;
+}
+
+export function listOpenAnswerEvaluationFailureRecords(database) {
+  return database
+    .prepare(
+      `select attempt_id as attemptId, reason, failed_at as failedAt
+       from open_answer_evaluation_failures
+       order by failed_at, attempt_id`,
+    )
+    .all();
 }
 
 export function deleteOpenAnswerEvaluationFailureRecord(database, attemptId) {
@@ -2132,6 +2157,9 @@ export function exportIdentityBackup(database) {
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
+    openAnswerAttempts: listOpenAnswerAttemptRecords(database),
+    openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
+    openAnswerEvaluationFailures: listOpenAnswerEvaluationFailureRecords(database),
   };
 }
 
@@ -2150,6 +2178,7 @@ export function restoreIdentityBackup(database, backup) {
 
   assertValidCorpusGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
+  assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
     database.prepare("delete from sessions").run();
@@ -2376,6 +2405,38 @@ export function restoreIdentityBackup(database, backup) {
          accepted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertOpenAnswerAttempt = database.prepare(
+      `insert into open_answer_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         submitted_answer,
+         idempotency_key,
+         status,
+         submitted_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertOpenAnswerEvaluation = database.prepare(
+      `insert into open_answer_evaluations (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_kind,
+         summary_feedback,
+         criterion_feedback_json,
+         evaluated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertOpenAnswerEvaluationFailure = database.prepare(
+      `insert into open_answer_evaluation_failures (attempt_id, reason, failed_at)
+       values (?, ?, ?)`,
+    );
 
     for (const shell of backup.programShells ?? []) {
       insertProgramShell.run(
@@ -2571,6 +2632,44 @@ export function restoreIdentityBackup(database, backup) {
         revision.rationale ?? null,
         revision.acceptedByIdentityId,
         revision.acceptedAt,
+      );
+    }
+
+    for (const attempt of backup.openAnswerAttempts ?? []) {
+      insertOpenAnswerAttempt.run(
+        attempt.id,
+        attempt.programId,
+        attempt.studentIdentityId,
+        attempt.checkRevisionId,
+        JSON.stringify(attempt.criterionRevisionIds ?? []),
+        attempt.submittedAnswer,
+        attempt.idempotencyKey,
+        attempt.status,
+        attempt.submittedAt,
+        attempt.updatedAt,
+      );
+    }
+
+    for (const evaluation of backup.openAnswerEvaluations ?? []) {
+      insertOpenAnswerEvaluation.run(
+        evaluation.id,
+        evaluation.attemptId,
+        evaluation.programId,
+        evaluation.studentIdentityId,
+        evaluation.checkRevisionId,
+        JSON.stringify(evaluation.criterionRevisionIds ?? []),
+        evaluation.evaluatorKind,
+        evaluation.summaryFeedback,
+        JSON.stringify(evaluation.criterionFeedback ?? []),
+        evaluation.evaluatedAt,
+      );
+    }
+
+    for (const failure of backup.openAnswerEvaluationFailures ?? []) {
+      insertOpenAnswerEvaluationFailure.run(
+        failure.attemptId,
+        failure.reason,
+        failure.failedAt,
       );
     }
   })();
@@ -3085,6 +3184,54 @@ function assertValidAssessmentGraphInBackup(backup) {
   }
 }
 
+function assertValidStudentAttemptGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const checkRevisionsById = new Map(
+    (backup.acceptedOpenAnswerCheckRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+  const attemptsById = new Map((backup.openAnswerAttempts ?? []).map($0 => [$0.id, $0]));
+
+  for (const attempt of backup.openAnswerAttempts ?? []) {
+    if (!programShellsById.has(attempt.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(attempt.studentIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    const checkRevision = checkRevisionsById.get(attempt.checkRevisionId);
+    if (!checkRevision) {
+      throw new StorageInvariantError("check_revision_not_found");
+    }
+
+    if (checkRevision.programId !== attempt.programId) {
+      throw new StorageInvariantError("check_revision_program_mismatch");
+    }
+
+    assertCriterionRevisionIdsBelongToCheckRevision({
+      criterionRevisionIds: attempt.criterionRevisionIds,
+      checkRevision,
+    });
+  }
+
+  for (const evaluation of backup.openAnswerEvaluations ?? []) {
+    const attempt = attemptsById.get(evaluation.attemptId);
+    if (!attempt) {
+      throw new StorageInvariantError("attempt_not_found");
+    }
+
+    assertEvaluationMatchesAttemptBackup(evaluation, attempt);
+  }
+
+  for (const failure of backup.openAnswerEvaluationFailures ?? []) {
+    if (!attemptsById.has(failure.attemptId)) {
+      throw new StorageInvariantError("attempt_not_found");
+    }
+  }
+}
+
 function assertSourceIdsBelongToProgram({ programId, sourceIds, sourcesById }) {
   for (const sourceId of sourceIds) {
     const source = sourcesById.get(sourceId);
@@ -3095,6 +3242,30 @@ function assertSourceIdsBelongToProgram({ programId, sourceIds, sourcesById }) {
     if (source.programId !== programId) {
       throw new StorageInvariantError("source_program_mismatch");
     }
+  }
+}
+
+function assertCriterionRevisionIdsBelongToCheckRevision({ criterionRevisionIds, checkRevision }) {
+  if (!Array.isArray(criterionRevisionIds) || criterionRevisionIds.length === 0) {
+    throw new StorageInvariantError("criterion_revision_not_found");
+  }
+
+  const acceptedCriterionRevisionIds = new Set(checkRevision.criterionRevisionIds);
+  for (const criterionRevisionId of criterionRevisionIds) {
+    if (!acceptedCriterionRevisionIds.has(criterionRevisionId)) {
+      throw new StorageInvariantError("criterion_revision_not_found");
+    }
+  }
+}
+
+function assertEvaluationMatchesAttemptBackup(evaluation, attempt) {
+  if (
+    evaluation.programId !== attempt.programId ||
+    evaluation.studentIdentityId !== attempt.studentIdentityId ||
+    evaluation.checkRevisionId !== attempt.checkRevisionId ||
+    JSON.stringify(evaluation.criterionRevisionIds) !== JSON.stringify(attempt.criterionRevisionIds)
+  ) {
+    throw new StorageInvariantError("evaluation_attempt_mismatch");
   }
 }
 

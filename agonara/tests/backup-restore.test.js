@@ -424,6 +424,61 @@ test("exportBackup_shouldIncludeAssessmentRecords_onBackup", async () => {
   }
 });
 
+test("exportBackup_shouldIncludeStudentAttemptRecords_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedStudentAttemptStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        attemptIds: backup.openAnswerAttempts?.map($0 => $0.id),
+        attemptIdempotencyKeys: backup.openAnswerAttempts?.map($0 => $0.idempotencyKey),
+        attemptCheckRevisionIds: backup.openAnswerAttempts?.map($0 => $0.checkRevisionId),
+        attemptCriterionRevisionIds: backup.openAnswerAttempts?.flatMap($0 => $0.criterionRevisionIds),
+        evaluationIds: backup.openAnswerEvaluations?.map($0 => $0.id),
+        evaluationCriterionRevisionIds: backup.openAnswerEvaluations?.flatMap($0 => $0.criterionRevisionIds),
+        failureAttemptIds: backup.openAnswerEvaluationFailures?.map($0 => $0.attemptId),
+      },
+      {
+        attemptIds: ["attempt-existing"],
+        attemptIdempotencyKeys: ["idempotency-existing"],
+        attemptCheckRevisionIds: ["check-revision-existing"],
+        attemptCriterionRevisionIds: ["criterion-revision-existing"],
+        evaluationIds: ["evaluation-existing"],
+        evaluationCriterionRevisionIds: ["criterion-revision-existing"],
+        failureAttemptIds: ["attempt-existing"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectOrphanProgramShellWithoutActiveCuratorMembership", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -608,6 +663,77 @@ test("restoreBackup_shouldRestoreAssessmentRecordsAndRevisionGraph_onAcceptedBac
         checkRevisionIds: ["check-revision-existing"],
         acceptedCriterionTitles: ["Accepted criterion"],
         historicalCheckCriterionRevisionIds: ["criterion-revision-existing"],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreStudentAttemptRecords_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedStudentAttemptStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        attempts: restoredBackup.openAnswerAttempts.map(projectAttemptBackupRecord),
+        evaluations: restoredBackup.openAnswerEvaluations.map(projectEvaluationBackupRecord),
+        failures: restoredBackup.openAnswerEvaluationFailures,
+      },
+      {
+        restoreStatus: "accepted",
+        attempts: [
+          {
+            id: "attempt-existing",
+            programId: "program-1",
+            studentIdentityId: "identity-1",
+            checkRevisionId: "check-revision-existing",
+            criterionRevisionIds: ["criterion-revision-existing"],
+            idempotencyKey: "idempotency-existing",
+            status: "evaluated",
+          },
+        ],
+        evaluations: [
+          {
+            id: "evaluation-existing",
+            attemptId: "attempt-existing",
+            programId: "program-1",
+            studentIdentityId: "identity-1",
+            checkRevisionId: "check-revision-existing",
+            criterionRevisionIds: ["criterion-revision-existing"],
+            evaluatorKind: "student_workspace",
+          },
+        ],
+        failures: [
+          {
+            attemptId: "attempt-existing",
+            reason: "temporary evaluator outage",
+            failedAt: "2026-05-27T10:16:00.000Z",
+          },
+        ],
       },
     );
   } finally {
@@ -895,6 +1021,90 @@ test("restoreBackup_shouldRejectOpenAnswerCheckCandidateWithCrossProgramCriterio
     assert.deepEqual(result, {
       status: "rejected",
       reason: "criterion_entity_program_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerAttemptWithoutProgram_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerAttempts[0] = {
+      ...backup.openAnswerAttempts[0],
+      programId: "program-missing",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "program_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerAttemptWithoutStudentIdentity_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerAttempts[0] = {
+      ...backup.openAnswerAttempts[0],
+      studentIdentityId: "identity-missing",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "identity_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerAttemptWithoutAcceptedCheckRevision_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerAttempts[0] = {
+      ...backup.openAnswerAttempts[0],
+      checkRevisionId: "check-revision-missing",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "check_revision_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerAttemptWithMissingCriterionRevision_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerAttempts[0] = {
+      ...backup.openAnswerAttempts[0],
+      criterionRevisionIds: ["criterion-revision-missing"],
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "criterion_revision_not_found",
     });
   } finally {
     target.database.close();
@@ -1320,6 +1530,30 @@ function countStudentAttemptStorageRows(database) {
   }, 0);
 }
 
+function projectAttemptBackupRecord(attempt) {
+  return {
+    id: attempt.id,
+    programId: attempt.programId,
+    studentIdentityId: attempt.studentIdentityId,
+    checkRevisionId: attempt.checkRevisionId,
+    criterionRevisionIds: attempt.criterionRevisionIds,
+    idempotencyKey: attempt.idempotencyKey,
+    status: attempt.status,
+  };
+}
+
+function projectEvaluationBackupRecord(evaluation) {
+  return {
+    id: evaluation.id,
+    attemptId: evaluation.attemptId,
+    programId: evaluation.programId,
+    studentIdentityId: evaluation.studentIdentityId,
+    checkRevisionId: evaluation.checkRevisionId,
+    criterionRevisionIds: evaluation.criterionRevisionIds,
+    evaluatorKind: evaluation.evaluatorKind,
+  };
+}
+
 async function makeExportedCorpusBackup() {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
 
@@ -1364,6 +1598,33 @@ async function makeExportedAssessmentBackup() {
     });
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
     seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedStudentAttemptBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedStudentAttemptStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
 
     return source.commands.exportBackup().value.backup;
   } finally {

@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Complete Student Workspace open-answer attempt backup/restore and executable acceptance coverage with restored idempotency keys, evaluation/failure state, and orphan accepted-revision graph rejection.
 - Implement Student Workspace owner-only open-answer attempt reads with detail/list queries, scoped filters, response redaction, and first-slice surface absence coverage.
 - Harden Student Workspace open-answer evaluation lifecycle after adversarial review by clearing stale failure state on evaluation retry transitions and expanding validation/redaction coverage.
 - Implement Student Workspace open-answer evaluation lifecycle commands with internal evaluating, evaluated, and failure transitions plus criterion-snapshot feedback validation.

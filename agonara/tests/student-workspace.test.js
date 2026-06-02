@@ -1565,6 +1565,221 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
   }
 });
 
+test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "attempt-2", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+
+    const submitted = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Initial answer",
+      idempotencyKey: "sensitive-idempotency-key",
+    });
+    const retried = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Initial answer",
+      idempotencyKey: "sensitive-idempotency-key",
+    });
+    createAcceptedAssessmentCriterionRevisionRecord(
+      database,
+      makeAcceptedAssessmentCriterionRevision({
+        id: "criterion-revision-b",
+        entityId: "criterion-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "criterion-candidate-a",
+        sourceIds: ["source-a"],
+      }),
+    );
+    updateAcceptedAssessmentCriterionEntityCurrentRevision(database, {
+      entityId: "criterion-entity-a",
+      currentRevisionId: "criterion-revision-b",
+    });
+    createAcceptedOpenAnswerCheckRevisionRecord(
+      database,
+      makeAcceptedOpenAnswerCheckRevision({
+        id: "check-revision-b",
+        entityId: "check-entity-a",
+        programId: "program-a",
+        criterionRevisionIds: ["criterion-revision-b"],
+      }),
+    );
+    updateAcceptedOpenAnswerCheckEntityCurrentRevision(database, {
+      entityId: "check-entity-a",
+      currentRevisionId: "check-revision-b",
+    });
+    const failedAttempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-b",
+      submittedAnswer: "Second answer",
+      idempotencyKey: "submit-b",
+    });
+    const evaluated = commands.recordOpenAnswerEvaluation({
+      attemptId: "attempt-1",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+    const failure = commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "attempt-2",
+      reason: "temporary evaluator outage",
+    });
+    const ownerDetail = commands.getOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+    const ownerHistory = commands.listOpenAnswerAttempts({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const nonOwnerDetail = commands.getOpenAnswerAttempt({
+      actingIdentityId: "identity-active-other",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(
+      {
+        submitted,
+        retried,
+        failedAttempt,
+        evaluated,
+        failure,
+        ownerDetail,
+        ownerHistory,
+        nonOwnerDetail,
+        redacted: containsForbiddenDetail([
+          submitted,
+          retried,
+          failedAttempt,
+          evaluated,
+          failure,
+          ownerDetail,
+          ownerHistory,
+          nonOwnerDetail,
+        ]),
+        commandSurface: Object.keys(commands).sort(),
+      },
+      {
+        submitted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "submitted",
+              submittedAnswer: "Initial answer",
+            }),
+          },
+        },
+        retried: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "submitted",
+              submittedAnswer: "Initial answer",
+            }),
+          },
+        },
+        failedAttempt: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-2",
+              checkRevisionId: "check-revision-b",
+              criterionRevisionIds: ["criterion-revision-b"],
+              status: "submitted",
+              submittedAnswer: "Second answer",
+            }),
+          },
+        },
+        evaluated: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluated",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        failure: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-2",
+              checkRevisionId: "check-revision-b",
+              criterionRevisionIds: ["criterion-revision-b"],
+              status: "evaluation_failed",
+              submittedAnswer: "Second answer",
+            }),
+            evaluationFailure: makeEvaluationFailureSummary({ reason: "temporary evaluator outage" }),
+          },
+        },
+        ownerDetail: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluated",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        ownerHistory: {
+          status: "accepted",
+          value: {
+            attempts: [
+              makeAttemptSummary({
+                attemptId: "attempt-1",
+                status: "evaluated",
+                submittedAnswer: "Initial answer",
+              }),
+              makeAttemptSummary({
+                attemptId: "attempt-2",
+                checkRevisionId: "check-revision-b",
+                criterionRevisionIds: ["criterion-revision-b"],
+                status: "evaluation_failed",
+                submittedAnswer: "Second answer",
+              }),
+            ],
+          },
+        },
+        nonOwnerDetail: { status: "rejected", reason: "attempt_not_found" },
+        redacted: false,
+        commandSurface: [
+          "getOpenAnswerAttempt",
+          "listOpenAnswerAttempts",
+          "markOpenAnswerAttemptEvaluating",
+          "recordOpenAnswerEvaluation",
+          "recordOpenAnswerEvaluationFailure",
+          "submitOpenAnswerAttempt",
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 function submitAttempt(
   commands,
   {
