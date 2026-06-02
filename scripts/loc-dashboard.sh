@@ -111,6 +111,9 @@ count_text() {
   # .claude/ directory (skills, settings, memory — not JSON or OS junk)
   [[ -d ".claude" ]] && total=$((total + $(loc_find ".claude" -type f ! -name "*.json" ! -name ".DS_Store" ! -path "*/worktrees/*")))
 
+  # .agents/ directory (progressive-disclosure agent docs — not JSON or OS junk)
+  [[ -d ".agents" ]] && total=$((total + $(loc_find ".agents" -type f ! -name "*.json" ! -name ".DS_Store" ! -path "*/worktrees/*")))
+
   # docs/my-way/ methodology docs
   [[ -d "docs/my-way" ]] && total=$((total + $(loc_find "docs/my-way" -type f -name "*.md")))
 
@@ -145,7 +148,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known=".claude .codex .git .github .lazyweb .wrangler agents agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  local known=".agents .claude .codex .git .github .lazyweb .wrangler agents agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills doc-drift-agent docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
   # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
   # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
   local optional="node_modules vendor worktrees _inbox"
