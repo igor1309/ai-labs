@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Implement Phase 7 of the Quick Check first-slice plan with integrated boundary isolation coverage across curator candidate, acceptance, delivery, Student submission, and owner-read flows plus deferred learner-state and public-surface absence guards.
 - Harden Phase 6 Quick Check attempt reads after adversarial review by adding positive redaction controls for answer keys, per-option correctness metadata, curator metadata, and idempotency keys.
 - Implement Phase 6 of the Quick Check first-slice plan with owner-only quick-check attempt detail and list reads, Student participation checks, accepted revision filter validation, and student-safe redacted attempt summaries.
 - Implement Phase 5 of the Quick Check first-slice plan with Student Workspace quick-check submission, internal answer-key resolution after Student authorization, deterministic matched results, scoped idempotency, corrective attempts, and historical revision stability.

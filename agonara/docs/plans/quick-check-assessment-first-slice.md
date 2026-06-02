@@ -318,7 +318,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 7 — Boundary isolation and surface absence
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: prove quick-check behavior remains inside its decided boundaries and does not introduce hidden learner-state interpretation or public surfaces.
 

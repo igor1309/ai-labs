@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { createCorpusCommands } from "../src/corpus.js";
 import { createProgramCommands } from "../src/program.js";
 import * as studentWorkspace from "../src/student-workspace.js";
 import {
@@ -1383,6 +1384,148 @@ test("containsForbiddenDetail_shouldDetectQuickCheckReadForbiddenDetails", () =>
       idempotencyKey: "sensitive-quick-idempotency-key",
     }]),
     true,
+  );
+});
+
+test("quickCheckFlows_shouldPreserveAdjacentDomainsAndAvoidOutOfScopeSurfaces", () => {
+  const { commands, corpusCommands, database } = makeSUT({ ids: ["attempt-1"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, {
+      programId: "program-a",
+      sourceId: "open-answer-source-a",
+    });
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    seedProtectedIdentityState(database);
+    const csrfTokens = new Map([["session-protected", "csrf-token-protected"]]);
+    const adjacentBefore = projectQuickCheckBoundaryIsolationState(database, csrfTokens);
+    const deferredBefore = projectQuickCheckDeferredState(database);
+
+    const candidate = corpusCommands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Boundary quick check",
+      prompt: "Boundary prompt",
+      options: ["Boundary A", "Boundary B"],
+      answerKeyIndex: 0,
+      rationale: "Curator-only boundary rationale",
+    });
+    const acceptedRevision = corpusCommands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "quick-check-candidate-command-a",
+    });
+    const acceptedQuickCheck = acceptedRevision.value.acceptedQuickCheck;
+    const deliveries = corpusCommands.listQuickCheckDeliveries({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const delivery = corpusCommands.getQuickCheckDelivery({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      revisionId: acceptedQuickCheck.revisionId,
+    });
+    const submitted = commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: acceptedQuickCheck.revisionId,
+      selectedOptionId: acceptedQuickCheck.options[0].optionId,
+      idempotencyKey: "sensitive-quick-idempotency-key",
+    });
+    const read = commands.getQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      attemptId: "attempt-1",
+    });
+    const listed = commands.listQuickCheckAttempts({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: acceptedQuickCheck.revisionId,
+    });
+    const rejected = commands.getQuickCheckAttempt({
+      actingIdentityId: "identity-active-other",
+      programId: "program-a",
+      attemptId: "attempt-1",
+    });
+
+    assert.deepEqual(
+      {
+        statuses: [
+          candidate.status,
+          acceptedRevision.status,
+          deliveries.status,
+          delivery.status,
+          submitted.status,
+          read.status,
+          listed.status,
+          rejected.status,
+        ],
+        adjacentAfter: projectQuickCheckBoundaryIsolationState(database, csrfTokens),
+        deferredAfter: projectQuickCheckDeferredState(database),
+        forbiddenStudentDetails: containsForbiddenDetail([deliveries, delivery, submitted, read, listed, rejected]),
+        publicSurface: containsAnyQuickCheckPublicSurface({
+          adminUiSource: readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+          cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+          serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+        }),
+        outOfScopeBehavior: containsAnyOutOfScopeStudentWorkspaceBehavior(
+          [
+            readFileSync(new URL("../src/corpus.js", import.meta.url), "utf8"),
+            readFileSync(new URL("../src/student-workspace.js", import.meta.url), "utf8"),
+          ].join("\n"),
+        ),
+        resolverSurface: containsInternalQuickCheckResolverSurface({
+          commands,
+          corpusCommands,
+          adminUiSource: readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+          cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+          serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+        }),
+      },
+      {
+        statuses: [
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "rejected",
+        ],
+        adjacentAfter: adjacentBefore,
+        deferredAfter: deferredBefore,
+        forbiddenStudentDetails: false,
+        publicSurface: false,
+        outOfScopeBehavior: false,
+        resolverSurface: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("containsAnyOutOfScopeStudentWorkspaceBehavior_shouldDetectDeferredQuickCheckStateSurfaces", () => {
+  assert.deepEqual(
+    [
+      "mastery",
+      "weak_area",
+      "progress",
+      "review_scheduling",
+      "next_step",
+      "topic_readiness",
+      "period_readiness",
+      "grading",
+      "analytics",
+      "reporting",
+    ].map(containsAnyOutOfScopeStudentWorkspaceBehavior),
+    Array.from({ length: 10 }, () => true),
   );
 });
 
@@ -8787,6 +8930,15 @@ function makeMembership({ id, identityId, participationKind, programId, status =
 }
 
 function makeSUT({
+  corpusIds = [
+    "quick-check-candidate-command-a",
+    "quick-check-candidate-command-a-option-a",
+    "quick-check-candidate-command-a-option-b",
+    "quick-check-entity-command-a",
+    "quick-check-revision-command-a",
+    "quick-check-revision-command-a-option-a",
+    "quick-check-revision-command-a-option-b",
+  ],
   ids = ["attempt-1", "attempt-2", "attempt-3"],
   evaluatorPolicies,
   now = () => new Date("2026-06-02T10:00:00.000Z"),
@@ -8795,6 +8947,12 @@ function makeSUT({
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
   const programCommands = createProgramCommands({ database });
+  const corpusCommands = createCorpusCommands({
+    database,
+    generateId: makeIdGenerator(corpusIds),
+    getEffectiveParticipation: input => programCommands.getEffectiveParticipation(input),
+    now,
+  });
   createIdentity(database, makeIdentity({ id: "identity-active-other" }));
   const commands = createStudentWorkspaceCommands({
     database,
@@ -8804,7 +8962,7 @@ function makeSUT({
     now,
     providerAdapters,
   });
-  return { commands, database };
+  return { commands, corpusCommands, database };
 }
 
 function makeIdGenerator(ids) {
@@ -9071,6 +9229,34 @@ function projectQuickCheckAttemptBoundaryState(database, csrfTokens) {
   };
 }
 
+function projectQuickCheckBoundaryIsolationState(database, csrfTokens) {
+  return {
+    corpus: projectAdjacentCorpusState(database),
+    openAnswerAttempts: listOpenAnswerAttemptRecords(database),
+    openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
+    openAnswerEvaluatorEvidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunRecords(database),
+    memberships: listProgramMembershipRecords(database),
+    studentIdentity: getIdentity(database, "identity-student"),
+    protectedIdentity: getIdentity(database, "identity-active-other"),
+    protectedSession: getSession(database, "session-protected"),
+    credentials: listLocalPasswordCredentials(database),
+    authorities: listAdminAuthorities(database),
+    csrfTokens: [...csrfTokens.entries()],
+  };
+}
+
+function projectQuickCheckDeferredState(database) {
+  const backup = exportIdentityBackup(database);
+  return {
+    openAnswerAttempts: backup.openAnswerAttempts,
+    openAnswerEvaluations: backup.openAnswerEvaluations,
+    openAnswerEvaluationFailures: backup.openAnswerEvaluationFailures,
+    openAnswerEvaluatorRuns: backup.openAnswerEvaluatorRuns,
+    openAnswerEvaluatorEvidence: backup.openAnswerEvaluatorEvidence,
+  };
+}
+
 function projectProtectedBackupState(backup) {
   return {
     identities: backup.identities,
@@ -9215,10 +9401,43 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
     "mastery",
     "weak_area",
     "progress",
+    "review_scheduling",
+    "next_step",
+    "topic_readiness",
+    "period_readiness",
     "topic_attempt",
     "period_attempt",
     "grading",
+    "analytics",
+    "reporting",
   ].some($0 => normalized.includes($0));
+}
+
+function containsAnyQuickCheckPublicSurface({ adminUiSource, cliSource, serverSource }) {
+  const normalized = [adminUiSource, cliSource, serverSource].join("\n").toLowerCase();
+  return [
+    "quickcheck",
+    "quick-check",
+    "quick_check",
+    "quick check",
+    "getquickcheck",
+    "listquickcheck",
+    "submitquickcheck",
+    "createquickcheck",
+    "acceptquickcheck",
+  ].some($0 => normalized.includes($0));
+}
+
+function containsInternalQuickCheckResolverSurface({
+  adminUiSource,
+  cliSource,
+  commands,
+  corpusCommands,
+  serverSource,
+}) {
+  const commandNames = [...Object.keys(commands), ...Object.keys(corpusCommands)].join("\n");
+  const publicSources = [adminUiSource, cliSource, serverSource, commandNames].join("\n");
+  return publicSources.includes("resolveAcceptedQuickCheckRevisionForEvaluation");
 }
 
 function containsAnyOutOfScopeEvaluatorWorkerSurface({
