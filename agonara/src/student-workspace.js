@@ -155,11 +155,9 @@ function getBeginEvaluatorRunAttemptRejection(attempt) {
 
 function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now }) {
   const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, input?.evaluatorRunId);
-  if (!evaluatorRun) {
-    return rejected("evaluator_run_not_found");
-  }
-  if (evaluatorRun.status !== "running") {
-    return rejected("evaluator_run_conflict");
+  const evaluatorRunRejection = getRunningEvaluatorRunRejection(evaluatorRun);
+  if (evaluatorRunRejection) {
+    return evaluatorRunRejection;
   }
   if (
     !isNonEmptyText(input?.evidenceKind) ||
@@ -168,16 +166,37 @@ function recordOpenAnswerEvaluatorEvidence({ database, generateId, input, now })
     return rejected("validation_failed");
   }
   const recordedAt = now().toISOString();
-  const evidence = createOpenAnswerEvaluatorEvidenceRecord(database, {
-    id: generateId(),
-    evaluatorRunId: evaluatorRun.id,
-    attemptId: evaluatorRun.attemptId,
-    evidenceKind: input.evidenceKind.trim(),
-    redactedSummary: input.redactedSummary?.trim() ?? null,
-    recordedAt,
-  });
+  const transition = database.transaction(() => {
+    const currentRun = getOpenAnswerEvaluatorRunRecord(database, evaluatorRun.id);
+    const currentRunRejection = getRunningEvaluatorRunRejection(currentRun);
+    if (currentRunRejection) {
+      return { rejection: currentRunRejection };
+    }
+    const evidence = createOpenAnswerEvaluatorEvidenceRecord(database, {
+      id: generateId(),
+      evaluatorRunId: currentRun.id,
+      attemptId: currentRun.attemptId,
+      evidenceKind: input.evidenceKind.trim(),
+      redactedSummary: input.redactedSummary?.trim() ?? null,
+      recordedAt,
+    });
+    return { evidence };
+  })();
+  if (transition.rejection) {
+    return transition.rejection;
+  }
 
-  return accepted({ evidence: summarizeEvaluatorEvidence(evidence) });
+  return accepted({ evidence: summarizeEvaluatorEvidence(transition.evidence) });
+}
+
+function getRunningEvaluatorRunRejection(evaluatorRun) {
+  if (!evaluatorRun) {
+    return rejected("evaluator_run_not_found");
+  }
+  if (evaluatorRun.status !== "running") {
+    return rejected("evaluator_run_conflict");
+  }
+  return null;
 }
 
 function getOpenAnswerAttempt({ database, input }) {

@@ -1394,6 +1394,49 @@ test("recordOpenAnswerEvaluatorEvidence_shouldNotPersistOrReturnRawEvaluatorArti
   }
 });
 
+test("recordOpenAnswerEvaluatorEvidence_shouldRevalidateRunStatus_insideTransaction", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    const transaction = database.transaction.bind(database);
+    database.transaction = callback =>
+      transaction(() => {
+        updateOpenAnswerEvaluatorRunStatus(database, {
+          evaluatorRunId: "evaluator-run-1",
+          status: "failed",
+          failedAt: "2026-06-02T10:01:00.000Z",
+          failureReason: "temporary evaluator outage",
+        });
+        return callback();
+      });
+
+    assert.deepEqual(
+      {
+        result: commands.recordOpenAnswerEvaluatorEvidence({
+          evaluatorRunId: "evaluator-run-1",
+          evidenceKind: "criterion_match",
+        }),
+        evidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+      },
+      {
+        result: { status: "rejected", reason: "evaluator_run_conflict" },
+        evidence: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("markOpenAnswerAttemptEvaluating_shouldRejectUnknownEvaluatingAndEvaluatedAttempts", () => {
   const { commands, database } = makeSUT({ ids: ["attempt-1", "evaluation-1"] });
 
