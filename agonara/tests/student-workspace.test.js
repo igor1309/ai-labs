@@ -7109,6 +7109,29 @@ test("studentWorkspaceEvaluatorWorkerExecutableAcceptance_shouldCoverFullWorkerF
   }
 });
 
+test("containsForbiddenEvaluatorArtifactDetail_shouldDetectForbiddenDetail_onBackupArtifact", () => {
+  assert.deepEqual(
+    [
+      "authorization bearer provider-secret",
+      "cookie header",
+      "csrf token",
+      "database-url",
+      "diagnostic payload",
+      "filesystem path",
+      "hidden policy instructions",
+      "postgres://database",
+      "raw model response",
+      "raw prompt",
+      "reviewer note",
+      "select * from attempts",
+      "session identifier",
+      "stack trace",
+      "/tmp/provider-output",
+    ].map(detail => containsForbiddenEvaluatorArtifactDetail({ detail })),
+    Array.from({ length: 15 }, () => true),
+  );
+});
+
 test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluation-1"],
@@ -8112,13 +8135,19 @@ function containsForbiddenEvaluatorArtifactDetail(values) {
     "authorization",
     "cookie",
     "csrf",
+    "database-url",
     "diagnostic",
+    "filesystem",
     "hidden policy",
+    "postgres://",
     "provider-secret",
     "raw model",
     "raw prompt",
     "reviewer note",
+    "select ",
+    "session",
     "stack",
+    "/tmp",
   ].some($0 => serialized.includes($0));
 }
 

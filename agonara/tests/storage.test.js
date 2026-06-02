@@ -3082,10 +3082,66 @@ test("restoreIdentityBackup_shouldRejectRawOpenAnswerEvaluatorArtifactsAndUnsafe
           openAnswerEvaluatorRuns: [],
           openAnswerEvaluatorEvidence: [],
         },
+        {
+          ...backup,
+          openAnswerAttempts: backup.openAnswerAttempts.map(attempt => ({
+            ...attempt,
+            status: "evaluated",
+          })),
+          openAnswerEvaluations: [
+            {
+              ...makeOpenAnswerEvaluation({
+                id: "evaluation-a",
+                attemptId: "attempt-a",
+                programId: "program-a",
+                studentIdentityId: "identity-a",
+                checkRevisionId: "check-revision-a",
+                criterionRevisionIds: ["criterion-revision-a"],
+              }),
+              criterionFeedback: [
+                {
+                  criterionRevisionId: "criterion-revision-a",
+                  outcome: "met",
+                  feedback: "authorization bearer provider-secret",
+                },
+              ],
+            },
+          ],
+          openAnswerEvaluatorRuns: [],
+          openAnswerEvaluatorEvidence: [],
+        },
+        {
+          ...backup,
+          openAnswerAttempts: backup.openAnswerAttempts.map(attempt => ({
+            ...attempt,
+            status: "evaluated",
+          })),
+          openAnswerEvaluations: [
+            {
+              ...makeOpenAnswerEvaluation({
+                id: "evaluation-a",
+                attemptId: "attempt-a",
+                programId: "program-a",
+                studentIdentityId: "identity-a",
+                checkRevisionId: "check-revision-a",
+                criterionRevisionIds: ["criterion-revision-a"],
+              }),
+              rawModelResponse: "hidden response",
+            },
+          ],
+          openAnswerEvaluatorRuns: [],
+          openAnswerEvaluatorEvidence: [],
+        },
       ].map(candidateBackup =>
         captureStorageInvariantReason(() => storage.restoreIdentityBackup(restored, candidateBackup)),
       ),
-      ["validation_failed", "validation_failed", "validation_failed"],
+      [
+        "validation_failed",
+        "validation_failed",
+        "validation_failed",
+        "validation_failed",
+        "validation_failed",
+      ],
     );
   } finally {
     database.close();
