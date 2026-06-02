@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden Phase 6 evaluator orchestration recovery after adversarial review by explicitly covering retry-waiting cancellation and rejecting impossible storage recovery state combinations.
 - Implement Phase 6 evaluator orchestration recovery so worker failures, retries, cancellations, and expired leases clear active leases, preserve attempt snapshots, and keep stale workers from mutating terminal jobs.
 - Harden Phase 5 evaluator orchestration completion after adversarial review by retaining an internal terminal completion signature so idempotent replays reject changed lease, worker, provider usage, or output validation.
 - Implement Phase 5 evaluator orchestration completion so leased jobs atomically become final Student Workspace feedback with budget checks, LLM output validation, lease clearing, and duplicate-safe idempotency.

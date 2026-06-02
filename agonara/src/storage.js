@@ -1870,7 +1870,15 @@ export function updateOpenAnswerEvaluatorJobRecovery(
     !isNonEmptyString(failureReason) ||
     !Number.isInteger(attemptNumber) ||
     attemptNumber < 1 ||
-    !isNonEmptyString(updatedAt)
+    !isNonEmptyString(updatedAt) ||
+    !isValidOpenAnswerEvaluatorRecoveryState({
+      runStatus,
+      jobStatus,
+      nextRetryAt,
+      cancellationReason,
+      timeoutReason,
+      jobFailureReason,
+    })
   ) {
     throw new StorageInvariantError("validation_failed");
   }
@@ -1911,6 +1919,53 @@ export function updateOpenAnswerEvaluatorJobRecovery(
     );
 
   return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
+}
+
+function isValidOpenAnswerEvaluatorRecoveryState({
+  runStatus,
+  jobStatus,
+  nextRetryAt,
+  cancellationReason,
+  timeoutReason,
+  jobFailureReason,
+}) {
+  if (jobStatus === "retry_waiting") {
+    return (
+      runStatus === "failed" &&
+      isNonEmptyString(nextRetryAt) &&
+      isNonEmptyString(jobFailureReason) &&
+      cancellationReason === null &&
+      timeoutReason === null
+    );
+  }
+  if (jobStatus === "failed") {
+    return (
+      runStatus === "failed" &&
+      nextRetryAt === null &&
+      cancellationReason === null &&
+      timeoutReason === null &&
+      isNonEmptyString(jobFailureReason)
+    );
+  }
+  if (jobStatus === "timed_out") {
+    return (
+      runStatus === "failed" &&
+      nextRetryAt === null &&
+      cancellationReason === null &&
+      isNonEmptyString(timeoutReason) &&
+      jobFailureReason === null
+    );
+  }
+  if (jobStatus === "cancelled") {
+    return (
+      runStatus === "cancelled" &&
+      nextRetryAt === null &&
+      isNonEmptyString(cancellationReason) &&
+      timeoutReason === null &&
+      jobFailureReason === null
+    );
+  }
+  return false;
 }
 
 export function clearOpenAnswerEvaluatorJobLease(

@@ -2335,6 +2335,73 @@ test("cancelOpenAnswerEvaluatorJob_shouldRestoreAttemptAndBlockLaterWorkerOperat
   }
 });
 
+test("cancelOpenAnswerEvaluatorJob_shouldCancelRetryWaitingJobAndRestoreSubmittedAttempt", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+    commands.claimOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      workerId: "worker-a",
+      leaseDurationSeconds: 300,
+    });
+    commands.failOpenAnswerEvaluatorJob({
+      evaluatorJobId: "evaluator-run-1",
+      leaseId: "lease-1",
+      workerId: "worker-a",
+      reason: "provider outage",
+      retry: true,
+    });
+
+    assert.deepEqual(
+      {
+        cancelled: commands.cancelOpenAnswerEvaluatorJob({
+          evaluatorJobId: "evaluator-run-1",
+          reason: "request withdrawn",
+        }),
+        job: projectEvaluatorJob(getOpenAnswerEvaluatorJobRecord(database, "evaluator-run-1")),
+        attempt: getOpenAnswerAttemptRecord(database, "attempt-1"),
+        failure: getOpenAnswerEvaluationFailureRecord(database, "attempt-1"),
+      },
+      {
+        cancelled: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({ attemptId: "attempt-1", status: "submitted" }),
+            evaluatorJob: makeEvaluatorJobSummary({
+              status: "cancelled",
+              attemptNumber: 2,
+              retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+              budgetPolicy: null,
+              cancellationReason: "request withdrawn",
+            }),
+          },
+        },
+        job: makeEvaluatorJobSummary({
+          status: "cancelled",
+          attemptNumber: 2,
+          retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+          budgetPolicy: null,
+          cancellationReason: "request withdrawn",
+        }),
+        attempt: makeAttemptRecord({ attemptId: "attempt-1", status: "submitted" }),
+        failure: null,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("timeOutOpenAnswerEvaluatorJob_shouldFailExpiredLeaseAndRejectUnexpiredTerminalAndStaleWorkerCalls", () => {
   let currentNow = new Date("2026-06-02T10:00:00.000Z");
   const { commands, database } = makeSUT({
