@@ -356,6 +356,52 @@ test("openAnswerAttemptsCreate_shouldRejectMalformedIdempotencyHeader_withValida
   }
 });
 
+test("openAnswerAttemptsCreate_shouldRejectInvalidJsonBodies_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: () => {
+        throw new Error("submission command should not be called for invalid JSON bodies");
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      {},
+      { body: "{" },
+      { body: "[]" },
+    ];
+    const results = [];
+    for (const item of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+        body: item.body,
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          "x-agonara-idempotency-key": "attempt-key-1",
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("openAnswerAttemptRoutes_shouldMapStudentWorkspaceRejections_toHttpStatuses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     studentWorkspaceCommandsOverride: {
@@ -367,7 +413,9 @@ test("openAnswerAttemptRoutes_shouldMapStudentWorkspaceRejections_toHttpStatuses
     const bootstrap = await bootstrapAdmin(baseUrl);
     const cases = [
       ["identity_not_active", 403],
+      ["attempt_not_found", 404],
       ["check_revision_not_found", 404],
+      ["check_revision_program_mismatch", 409],
       ["idempotency_conflict", 409],
     ];
     const results = [];

@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Student Workspace open-answer attempt HTTP API route substrate after adversarial review with JSON body classification and complete first-slice rejection status mapping.
 - Start the Student Workspace open-answer attempt HTTP API implementation with the Phase 1 route substrate: guarded attempt route recognition, session/CSRF checks, idempotency-header validation, rejection status mapping, and fault redaction coverage.
 - Harden the Student Workspace open-answer attempt HTTP API implementation plan after adversarial review by requiring archive-relative link repair and implemented-plan traceability during closeout.
 - Add the Student Workspace open-answer attempt HTTP API implementation plan, sequencing route substrate, submission, owner-only detail, owner-only listing, executable acceptance, and archive closeout through strict TDD phase commits.

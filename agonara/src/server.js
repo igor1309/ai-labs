@@ -598,6 +598,12 @@ async function handleStudentWorkspaceApi({
       return true;
     }
 
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
     const result = studentWorkspaceCommands.submitOpenAnswerAttempt({
       actingIdentityId: session.value.identity.id,
       idempotencyKey: idempotencyKey.value,
@@ -2079,6 +2085,7 @@ function httpStatusFor(reason) {
       return 403;
     case "identity_not_found":
     case "accepted_entity_not_found":
+    case "attempt_not_found":
     case "candidate_not_found":
     case "check_candidate_not_found":
     case "check_entity_not_found":
@@ -2097,6 +2104,7 @@ function httpStatusFor(reason) {
     case "check_candidate_already_accepted":
     case "check_candidate_already_rejected":
     case "check_entity_program_mismatch":
+    case "check_revision_program_mismatch":
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
