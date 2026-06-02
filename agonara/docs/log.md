@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Accept ADR-014 for Student Workspace evaluator orchestration: evaluator jobs own leases, retries, cancellation, timeout recovery, and provider/human handoff boundaries before worker implementation.
 - Harden Student Workspace evaluator backup restore after adversarial review by validating restored reviewer attribution, attribution Identity references, evidence visibility, and unsafe redacted summaries before import.
 - Complete the Student Workspace evaluation status/evidence plan with evaluator-run backup/restore preservation, restored-graph validation, executable domain acceptance, Product Intent traceability, and archived-plan closeout.
 - Harden Student Workspace evaluation status/evidence reads after adversarial review by rejecting unsafe redacted evaluator summaries before they can be persisted and later exposed.
