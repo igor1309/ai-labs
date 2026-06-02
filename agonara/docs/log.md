@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Complete the Student Workspace evaluator worker plan with restore-time unsafe-summary rejection, executable worker acceptance, Product Intent traceability, and archived-plan closeout.
 - Complete Phase 6 of the Student Workspace evaluator worker plan after adversarial review expanded the out-of-scope surface guard with positive controls for queue, provider, raw-artifact, UI, learner-model, and topology expansions.
 - Prove evaluator worker ownership boundaries with a successful adapter execution test that snapshots adjacent domains, checks the bounded request-only adapter contract, and guards against out-of-scope worker surfaces.
 - Complete Phase 5 of the Student Workspace evaluator worker plan after adversarial review added explicit LLM-assisted completion-signature replay coverage.

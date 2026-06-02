@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer evaluat
 
 Deliver the Agonara v0.0.1 in-process Student Workspace open-answer evaluator worker that claims evaluator jobs, executes a governed evaluator policy through a side-effect-limited provider adapter, and submits candidate results back through Student Workspace commands.
 
-This plan implements [Student Workspace Open-Answer Evaluator Worker](../specs/student-workspace-open-answer-evaluator-worker.md) and [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md). It preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring public HTTP evaluator mutation routes, durable queues, external LLM calls, raw artifact persistence, UI, mastery, weak-area, progress, grading, analytics, and deployment topology.
+This plan implements [Student Workspace Open-Answer Evaluator Worker](../../specs/student-workspace-open-answer-evaluator-worker.md) and [ADR-015](../../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring public HTTP evaluator mutation routes, durable queues, external LLM calls, raw artifact persistence, UI, mastery, weak-area, progress, grading, analytics, and deployment topology.
 
 ## Execution mode
 
@@ -326,7 +326,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 ## Phase 7 — Backup, restore, executable acceptance, and closeout
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: prove worker execution remains backup/restore-safe, add executable acceptance, update traceability, and archive the completed plan.
 
@@ -334,8 +334,8 @@ Use Node commands through the repo wrapper and explicit Node path:
 
 - Extend or add backup/restore tests proving raw evaluator artifacts are not exported, restored, logged, or surfaced in summaries after worker execution.
 - Add executable acceptance covering submit, schedule, worker claim, provider request from accepted revisions/submitted answer, deterministic adapter output, redacted evidence, completion, duplicate-safe completion, redaction, backup/restore exclusion, and out-of-scope surface guards.
-- Update [Product Intent](../intent_learning_program_app.md) traceability to the implemented worker plan path after archive.
-- Update [Agonara log](../log.md) with implementation closeout.
+- Update [Product Intent](../../intent_learning_program_app.md) traceability to the implemented worker plan path after archive.
+- Update [Agonara log](../../log.md) with implementation closeout.
 - Move this plan to `agonara/docs/plans/implemented/student-workspace-open-answer-evaluator-worker.md` in the same change set as implementation closeout.
 - Rewrite this plan's relative links for the `plans/implemented/` location before committing the archive move.
 
@@ -365,7 +365,7 @@ Use Node commands through the repo wrapper and explicit Node path:
 ## Done criteria
 
 - All phases are complete.
-- The worker command contract in [Student Workspace Open-Answer Evaluator Worker](../specs/student-workspace-open-answer-evaluator-worker.md) is implemented and covered by tests.
+- The worker command contract in [Student Workspace Open-Answer Evaluator Worker](../../specs/student-workspace-open-answer-evaluator-worker.md) is implemented and covered by tests.
 - Worker execution consumes existing Student Workspace evaluator job commands for claim, evidence, completion, and failure.
 - Evaluator policies define prompt inputs, output validation, provider adapter, redaction, retry, budget, and raw-artifact handling before provider execution.
 - Provider adapters are side-effect-limited and cannot mutate Student Workspace, Corpus Storage, Program Membership, Identity, session, credential, Admin authority, CSRF, or backup state directly.

@@ -44,6 +44,7 @@ import {
   listProgramMembershipRecords,
   listProgramSourceRecords,
   openIdentityDatabase,
+  restoreIdentityBackup,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
   updateOpenAnswerAttemptStatus,
@@ -6969,6 +6970,145 @@ test("studentWorkspaceEvaluatorOrchestrationExecutableAcceptance_shouldCoverFull
   }
 });
 
+test("studentWorkspaceEvaluatorWorkerExecutableAcceptance_shouldCoverFullWorkerFlow", () => {
+  const providerRequests = [];
+  const restoredDatabase = openIdentityDatabase();
+  initializeIdentityStorage(restoredDatabase);
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evidence-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy()],
+    providerAdapters: [
+      makeProviderAdapter({
+        providerCredential: "authorization bearer provider-secret",
+        providerRequests,
+        evaluate: providerRequest => {
+          providerRequests.push(providerRequest);
+          return makeProviderResult({
+            providerUsage: { providerCalls: 1 },
+            redactedEvidenceSummary: "Matched accepted criterion.",
+          });
+        },
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    createProgramMembershipRecord(
+      database,
+      makeMembership({
+        id: "membership-curator-a",
+        programId: "program-a",
+        identityId: "identity-curator",
+        participationKind: "program_curator",
+      }),
+    );
+    seedProtectedIdentityState(database);
+    const submitted = submitAttempt(commands, { submittedAnswer: "Initial answer" });
+    const scheduled = commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+      budgetPolicy: { maxProviderCalls: 2 },
+    });
+    const worker = commands.runOpenAnswerEvaluatorWorkerOnce({
+      workerId: "worker-a",
+      mode: "single_job",
+      evaluatorJobId: "evaluator-run-1",
+      leaseDurationSeconds: 300,
+    });
+    const repeated = commands.runOpenAnswerEvaluatorWorkerOnce({
+      workerId: "worker-a",
+      mode: "single_job",
+      evaluatorJobId: "evaluator-run-1",
+      leaseDurationSeconds: 300,
+    });
+    const backup = exportIdentityBackup(database);
+    restoreIdentityBackup(restoredDatabase, backup);
+    const evidence = listOpenAnswerEvaluatorEvidenceRecords(database);
+    const evaluations = listOpenAnswerEvaluationRecords(database);
+
+    assert.deepEqual(
+      {
+        providerRequests,
+        submitted: submitted.status,
+        scheduled: scheduled.status,
+        worker: worker.value.summary,
+        repeated,
+        evidence,
+        evaluations,
+        backupContainsForbiddenEvaluatorArtifact: containsForbiddenEvaluatorArtifactDetail(backup),
+        restoredEvidence: listOpenAnswerEvaluatorEvidenceRecords(restoredDatabase),
+        restoredEvaluations: listOpenAnswerEvaluationRecords(restoredDatabase),
+        redacted: containsForbiddenDetail([worker, repeated, evidence, evaluations]),
+        exposesOutOfScopeSurfaces: containsAnyOutOfScopeEvaluatorWorkerSurface({
+          adminUiSource: readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+          cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+          serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+          workspaceSource: readFileSync(new URL("../src/student-workspace.js", import.meta.url), "utf8"),
+        }),
+      },
+      {
+        providerRequests: [
+          {
+            evaluatorJobId: "evaluator-run-1",
+            attemptId: "attempt-1",
+            programId: "program-a",
+            studentIdentityId: "identity-student",
+            checkRevisionId: "check-revision-a",
+            criterionRevisionIds: ["criterion-revision-a"],
+            submittedAnswer: "Initial answer",
+            evaluatorPolicyId: "policy-a",
+            outputValidatorPolicyId: "validator-a",
+          },
+        ],
+        submitted: "accepted",
+        scheduled: "accepted",
+        worker: makeEvaluatorWorkerSummary({
+          mode: "single_job",
+          evaluatorJobId: "evaluator-run-1",
+          claimed: true,
+          completed: true,
+        }),
+        repeated: { status: "rejected", reason: "evaluator_job_conflict" },
+        evidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Matched accepted criterion.",
+          }),
+        ],
+        evaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+        backupContainsForbiddenEvaluatorArtifact: false,
+        restoredEvidence: [
+          makeEvaluatorEvidenceRecord({
+            redactedSummary: "Matched accepted criterion.",
+          }),
+        ],
+        restoredEvaluations: [
+          makeEvaluationRecord({
+            evaluationId: "evaluation-1",
+            attemptId: "attempt-1",
+            summaryFeedback: "Good explanation.",
+            criterionFeedback: [makeCriterionFeedback()],
+          }),
+        ],
+        redacted: false,
+        exposesOutOfScopeSurfaces: false,
+      },
+    );
+  } finally {
+    database.close();
+    restoredDatabase.close();
+  }
+});
+
 test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluation-1"],
@@ -7963,6 +8103,22 @@ function containsForbiddenProviderRequestDetail(providerRequests) {
     "session",
     "stack",
     "/tmp",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsForbiddenEvaluatorArtifactDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "authorization",
+    "cookie",
+    "csrf",
+    "diagnostic",
+    "hidden policy",
+    "provider-secret",
+    "raw model",
+    "raw prompt",
+    "reviewer note",
+    "stack",
   ].some($0 => serialized.includes($0));
 }
 

@@ -2976,7 +2976,7 @@ test("restoreIdentityBackup_shouldRejectMalformedOpenAnswerEvaluatorJobOrchestra
   }
 });
 
-test("restoreIdentityBackup_shouldRejectRawOpenAnswerEvaluatorArtifacts", () => {
+test("restoreIdentityBackup_shouldRejectRawOpenAnswerEvaluatorArtifactsAndUnsafeSummaries", () => {
   const database = makeInitializedDatabase();
   const restored = makeInitializedDatabase();
 
@@ -3060,10 +3060,32 @@ test("restoreIdentityBackup_shouldRejectRawOpenAnswerEvaluatorArtifacts", () => 
             },
           ],
         },
+        {
+          ...backup,
+          openAnswerAttempts: backup.openAnswerAttempts.map(attempt => ({
+            ...attempt,
+            status: "evaluated",
+          })),
+          openAnswerEvaluations: [
+            {
+              ...makeOpenAnswerEvaluation({
+                id: "evaluation-a",
+                attemptId: "attempt-a",
+                programId: "program-a",
+                studentIdentityId: "identity-a",
+                checkRevisionId: "check-revision-a",
+                criterionRevisionIds: ["criterion-revision-a"],
+              }),
+              summaryFeedback: "authorization bearer provider-secret",
+            },
+          ],
+          openAnswerEvaluatorRuns: [],
+          openAnswerEvaluatorEvidence: [],
+        },
       ].map(candidateBackup =>
         captureStorageInvariantReason(() => storage.restoreIdentityBackup(restored, candidateBackup)),
       ),
-      ["validation_failed", "validation_failed"],
+      ["validation_failed", "validation_failed", "validation_failed"],
     );
   } finally {
     database.close();

@@ -43,9 +43,11 @@ const forbiddenEvaluatorArtifactKeys = new Set([
 const evaluatorArtifactTextKeys = new Set([
   "cancellationreason",
   "failurereason",
+  "feedback",
   "jobfailurereason",
   "priorfailurereason",
   "redactedsummary",
+  "summaryfeedback",
   "timeoutreason",
 ]);
 
@@ -4175,6 +4177,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
       throw new StorageInvariantError("attempt_status_mismatch");
     }
 
+    assertNoForbiddenEvaluatorArtifactBackup(evaluation);
     assertEvaluationMatchesAttemptBackup(evaluation, attempt);
   }
 
