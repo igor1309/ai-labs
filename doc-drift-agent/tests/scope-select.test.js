@@ -41,6 +41,19 @@ test('selectScope returns the only scope when one is registered', () => {
   assert.equal(selectScope({ scopeIds: ['oracle'], state: {} }), 'oracle');
 });
 
+test('selectScope skips scopes that are not in the eligible set', () => {
+  const scopeIds = ['readmes', 'oracle'];
+  assert.equal(
+    selectScope({ scopeIds, state: {}, eligible: new Set(['oracle']) }),
+    'oracle',
+  );
+});
+
+test('selectScope returns null when no scope is eligible', () => {
+  const scopeIds = ['readmes', 'oracle'];
+  assert.equal(selectScope({ scopeIds, state: {}, eligible: new Set() }), null);
+});
+
 test('selectScope ignores state for scopes no longer in the registry', () => {
   const scopeIds = ['oracle'];
   const state = {
