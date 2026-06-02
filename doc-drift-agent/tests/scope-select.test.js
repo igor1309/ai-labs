@@ -34,6 +34,16 @@ test('selectScopes orders least-recently-audited first within a class', () => {
   );
 });
 
+test('selectScopes counts a changed-and-stale scope once, in the changed class', () => {
+  const scopeIds = ['a', 'b'];
+  const changed = new Set(['a']);
+  const stale = new Set(['a', 'b']);
+  assert.deepEqual(
+    selectScopes({ scopeIds, state: {}, changed, stale, budget: 2 }),
+    ['a', 'b'],
+  );
+});
+
 test('selectScopes returns an empty array when nothing is eligible', () => {
   assert.deepEqual(
     selectScopes({ scopeIds: ['a'], state: {}, changed: new Set(), stale: new Set(), budget: 1 }),

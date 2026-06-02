@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { eligibleScopes, staleScopes } from './eligibility.js';
+import { DAY_MS, eligibleScopes, staleScopes } from './eligibility.js';
 import { loadScopeIds } from './scopes.js';
 import { selectScopes } from './select.js';
 import { readState } from './state.js';
@@ -19,7 +19,6 @@ import { readState } from './state.js';
 const defaultRegistry = fileURLToPath(
   new URL('../agent/scope-registry.json', import.meta.url),
 );
-const DAY_MS = 86400000;
 const DEFAULT_STALENESS_DAYS = 30;
 
 /// A git runner bound to `repo`, returning spawnSync's `{ status, stdout }`.
