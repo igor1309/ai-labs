@@ -1,22 +1,30 @@
 ---
 date: 2026-06-02
 model: claude-opus-4-8
-description: "Implementation plan: deliver the ADR-001 orchestration + observability substrate (OpenClaw Lobster/TaskFlow + tested eligible-set selector CLIs) for scoped agent runs; doc-drift is the first adopter."
+description: "Implementation plan: deliver the ADR-001 orchestration + observability substrate (native-cron agent turn + tested eligible-set selector CLIs; observability via cron run history, after the Phase 4 spike) for scoped agent runs; doc-drift is the first adopter."
 ---
 
 # Implementation Plan — Scoped Agent Orchestration & Observability (ADR-001)
 
 Implements `docs/adr/agents/ADR-001-scoped-agent-orchestration-and-observability.md`
-(v0.0.2, proposed). Design context: `doc-drift-agent/docs/scoped-audit-intake.md`,
-`…/scoped-audit-pre-adr-shapes.md`; evidence: `agents/research/{scoped-agent-orchestration,openclaw-taskflow,openclaw-lobster}.md`.
+(v0.0.3, proposed). Design context: `doc-drift-agent/docs/scoped-audit-intake.md`,
+`…/scoped-audit-pre-adr-shapes.md`; evidence: `agents/research/{scoped-agent-orchestration,openclaw-taskflow,openclaw-lobster,phase4-substrate-spike-findings}.md`.
+
+**Substrate amended (ADR-001 §7, 2026-06-02).** The Phase 4 spike found the in-gateway
+Lobster/TaskFlow path unviable on the live unit (nested-`openclaw agent` deadlock; the
+tasks/TaskFlow ledger does not populate). Phase 4 is closed by the spike. Phases 5–6
+below are revised to the **native-cron substrate**: a scheduled `openclaw cron` agent
+turn drives `select → openclaw agent worker → commit`, with observability from **cron
+run history** (`openclaw cron runs --id`), not the tasks ledger. No production `.lobster`.
+See `agents/research/phase4-substrate-spike-findings.md`.
 
 ## Goal
 
 Deliver the orchestration + observability substrate decided in ADR-001: scoped
 agent runs are selected by tested TypeScript CLIs (eligible-set: changed ∪ stale,
-budget), executed via a version-controlled `.lobster` pipeline gateway-side, with
-**every** run recorded in the TaskFlow / tasks ledger so failures and crashes are
-observable, not just the happy path. The plan preserves all ADR-001 invariants;
+budget), executed by a scheduled `openclaw cron` agent turn (ADR-001 §7, after the
+Phase 4 spike), with **every** run recorded in cron run history so failures are
+observable, not just the happy path. The plan preserves the ADR-001 core invariants;
 doc-drift's scoped audit is the first adopter.
 
 ## Execution mode
@@ -40,9 +48,9 @@ executor discipline, not the human-review gate above.
 
 ```
 Worktree mode: reuse existing
-Expected worktree: worktrees/agent-ops-skills-todo
-Expected branch: agent-ops-skills-todo
-Preflight check: [ ] done
+Expected worktree: worktrees/scoped-orchestrator-gateway
+Expected branch: scoped-orchestrator-gateway (integration branch; one PR to trunk at the end)
+Preflight check: [x] done — Phases 1–3 merged (PR #457), relocation merged, Phase 4 spike closed, trunk merged in
 ```
 
 Preconditions (block the **entire** plan; verify in preflight):
@@ -76,11 +84,10 @@ Out of scope for this plan (per ADR-001 Non-Goals + dependency):
 | ≤ 1 scope per run (budget default 1) | 1 (one-per-run), 3 (budget cap) |
 | Eligibility from per-scope last-audited state + local git-diff (changed) ∪ staleness (stale); not CI/webhooks | 2 (changed), 3 (stale) |
 | Selection / state logic in version-controlled, unit-tested TS CLIs; not bash/LLM | 1 |
-| Pipeline is a version-controlled `.lobster` file, `lobster graph`-inspectable | 5 |
-| Pipeline runs gateway-side → registered in TaskFlow / tasks ledger | 4 (proven), 5 (production) |
-| Each run resolves to a terminal ledger status; outcomes available for alerting | 5 |
-| Schedule via external `/etc/cron.d` (or native cron with gotcha-#13 mitigation) | 6 |
-| Lobster tool enabled (`tools.alsoAllow`) | 4 |
+| Run driven by a scheduled `openclaw cron` agent turn; orchestration is version-controlled glue (ADR §7) | 5 (wiring), 6 (schedule) |
+| Each run resolves to a terminal status in **cron run history** (`openclaw cron runs --id`), available for alerting (ADR §7, replaces tasks-ledger registration) | 5 (proven), 6 (scheduled) |
+| Schedule via native `openclaw cron` (gotcha #13 did not reproduce — Phase 4; external `/etc/cron.d` optional fallback) | 6 |
+| ~~Lobster tool / `.lobster` file / `lobster graph`~~ — dropped from prod path (ADR §7; Phase 4 spike) | n/a |
 | Per-scope state ≠ Lobster in-flight resume state | 1 |
 | Auto-merge/approve forbidden (inherited) | all (never enabled) |
 
@@ -142,6 +149,13 @@ Out of scope for this plan (per ADR-001 Non-Goals + dependency):
 
 ## Phase 4 — Lobster substrate spike & enablement (gateway)
 
+> **Status: CLOSED 2026-06-02 — substrate found unviable.** The spike disproved the
+> in-gateway Lobster path (nested-`openclaw agent` deadlock) and the tasks/TaskFlow
+> ledger does not populate on the live unit. Outcome + evidence:
+> `agents/research/phase4-substrate-spike-findings.md`; decision: ADR-001 §7. The
+> original objective below is retained for the record; Phases 5–6 are revised to the
+> native-cron substrate.
+
 - **Objective:** prove the in-gateway path and resolve ADR-001's known risk —
   enable the Lobster tool, and confirm a `.lobster` step can invoke the worker
   reliably and that the run registers in the TaskFlow / tasks ledger with a
@@ -165,61 +179,62 @@ Out of scope for this plan (per ADR-001 Non-Goals + dependency):
   audit-step mechanism; the smoke run observable in the ledger (success and
   induced-failure both).
 
-## Phase 5 — Production `.lobster` pipeline + observability
+## Phase 5 — Production orchestration wrapper + observability (native-cron substrate)
 
-- **Objective:** the real nightly flow wiring `select → audit(worker) → commit`,
-  running gateway-side so each run is recorded in the ledger with a terminal
-  status; outcomes (succeeded / produced-PR / failed / crashed / timed-out)
-  available for alerting.
-- **Key work items:** the production `.lobster` using the Phase-4 mechanism; the
-  audit step invokes the worker with the selected scope contract; `commit` runs
-  only on a successful audit; condition handling for "no scope selected".
-- **Dependencies:** Phases 3 (selector), 4 (substrate mechanism), and the
-  parameterized worker (precondition).
-- **Risks:** worker contract mismatch; partial-failure leaving stale state —
-  covered by the commit-only-on-success rule and ledger checks.
-- **Validation:** `lobster graph` static check on the production flow (CI-able on
-  the YAML); an integration run on the VPS audits exactly one scope and appears in
-  the ledger with the correct terminal status; an induced audit failure surfaces
-  as non-`succeeded` and leaves `lastAuditedCommit` unchanged for that scope;
-  "no eligible scope" produces a recorded no-op run. Ledger outcomes are asserted
-  from `openclaw tasks … --json`.
+- **Objective:** the real nightly flow wiring `select → openclaw agent worker → commit`,
+  driven by a scheduled `openclaw cron` agent turn (ADR-001 §7), so each run resolves to
+  a terminal status in **cron run history** (`openclaw cron runs --id`); outcomes
+  (succeeded / produced-PR / failed / timed-out) available for alerting.
+- **Key work items:** a version-controlled orchestrator wrapper under
+  `agents/doc-drift-agent/runtime/` that runs the tested `select` CLI, invokes the
+  parameterized worker (`openclaw agent` with the selected `--scope`) only when a scope
+  is selected, and runs `commit` only on a successful audit; the "no scope selected"
+  no-op path. The wrapper is plain glue — no decision logic (that stays in the CLIs).
+- **Dependencies:** Phases 3 (selector), 4 (substrate decision — closed), the
+  parameterized worker (precondition), the native-cron observability finding.
+- **Risks:** worker contract mismatch; partial-failure leaving stale state — covered by
+  the commit-only-on-success rule and a cron-run-history check.
+- **Validation:** an integration run on the VPS audits exactly one scope and appears in
+  `openclaw cron runs --id … --json` with the correct terminal status; an induced audit
+  failure surfaces as non-`ok` and leaves `lastAuditedCommit` unchanged for that scope;
+  "no eligible scope" produces a recorded no-op run. (The tasks/TaskFlow ledger is not
+  asserted while `agents/TODO.md` §4 stands.)
 - **Completion signal:** an end-to-end run for one scope, recorded with the correct
-  terminal status, including a forced-failure run shown as `failed` with state
-  untouched.
+  terminal status in cron run history, including a forced-failure run shown as failed
+  with per-scope state untouched.
 
 ## Phase 6 — Scheduling & deploy
 
 - **Objective:** schedule the nightly launch off-peak and deploy the CLIs +
   `.lobster` to the VPS.
-- **Key work items:** schedule via external `/etc/cron.d` invoking a single agent
-  turn (preferred — avoids gotcha #13); if native `openclaw cron` is used instead,
-  confirm the gotcha-#13 mitigation on the host first. Deploy the orchestrator
-  CLIs + `.lobster` (inherits the `runtime/**` hand-deploy gap); record all live
-  changes in inventory `migration.md` + the OpenClaw log.
+- **Key work items:** schedule via native `openclaw cron` (one scheduled agent turn;
+  gotcha #13 did not reproduce on this unit — Phase 4 finding; external `/etc/cron.d`
+  remains an acceptable fallback). Deploy the orchestrator wrapper + selection CLIs
+  (inherits the `runtime/**` hand-deploy gap); record all live changes in inventory
+  `migration.md` + the OpenClaw log.
 - **Dependencies:** Phase 5.
 - **Risks:** `runtime/**` not CI-synced (manual deploy drift) — mitigate with the
   byte-identical-after-deploy check from the `vps-deploy` discipline; night-window
   collision with the 04:00 OAuth refresh — budget=1 bounds it.
 - **Validation:** an unattended scheduled tick fires, audits one scope, and the run
-  appears in the ledger with a terminal status (asserted from
-  `openclaw tasks … --json`); across two consecutive nights the per-scope state
+  appears in cron run history with a terminal status (asserted from
+  `openclaw cron runs --id … --json`); across two consecutive nights the per-scope state
   advances with no duplicate audit (idempotent); a **manual** invocation updates
   per-scope state too (no repeat of the existing `last_manual_run_utc` write-gap);
   deploy recorded in inventory.
 - **Completion signal:** an observed unattended scheduled run completes end-to-end
-  and is visible in the ledger; the deploy is recorded in `migration.md`.
+  and is visible in cron run history; the deploy is recorded in `migration.md`.
 
 ## Done criteria
 
 - All phases complete; each landed as its own commit with CI green before the next.
 - The selector CLIs are unit-tested and the full TS suite + `tsc` build pass
   (`./scripts/run_silent.sh "tests" npm test`, `… "build" npx tsc --noEmit`).
-- The production `.lobster` flow runs **one scope per nightly tick** gateway-side
-  and every run is recorded in the TaskFlow / tasks ledger with a terminal status —
-  including failure/crash, not only the happy path (ADR-001 observability invariant).
+- The production orchestrator runs **one scope per nightly tick** via a scheduled
+  `openclaw cron` agent turn, and every run resolves to a terminal status in cron run
+  history — including failure, not only the happy path (ADR-001 §7 observability invariant).
 - All ADR-001 invariants are enforceable: selection/eligibility/budget by unit
-  tests; flow structure by `lobster graph`; run outcomes by the ledger.
+  tests; run outcomes by cron run history.
 - Idempotent operation and edge cases handled with defined behavior: reruns
   advance per-scope state without duplicate audits; absent state ⇒ "all stale";
   "no eligible scope" ⇒ recorded no-op; scope removed from the registry ⇒ state
@@ -233,7 +248,7 @@ Out of scope for this plan (per ADR-001 Non-Goals + dependency):
 
 ```
 Final gates: ./scripts/run_silent.sh "tests" npm test ; ./scripts/run_silent.sh "build" npx tsc --noEmit ;
-             lobster graph on the production .lobster ; one observed end-to-end scheduled run in the ledger.
+             one observed end-to-end scheduled run in cron run history (`openclaw cron runs --id`).
 Archive plan: git mv docs/plans/scoped-agent-orchestration-and-observability.md docs/plans/implemented/ in the SAME change set as the implementation (not a follow-up PR).
 Commit archive move: yes
 Push/PR: follow push policy (no push until the user says we are done).
