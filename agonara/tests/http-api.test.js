@@ -1053,14 +1053,18 @@ test("openAnswerAttemptsGet_shouldRejectNonOwners_withAttemptNotFound", async ()
 });
 
 test("openAnswerAttemptsGet_shouldRedactDetailRejectionAndFaultResponses", async () => {
-  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+  const {
+    baseUrl,
+    close,
+    studentWorkspaceCommands,
+  } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     ids: manyIds(90),
   });
   const faultHarness = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     studentWorkspaceCommandsOverride: {
       getOpenAnswerAttempt: () => {
         throw new Error(
-          "session-1 csrf-token-1 attempt-key-secret cookie authorization raw prompt raw model sql stack /tmp/db.sqlite",
+          "session-1 csrf-token-1 attempt-key-secret cookie authorization raw prompt raw model evaluator diagnostics sql stack /tmp/db.sqlite postgres://db",
         );
       },
     },
@@ -1079,7 +1083,37 @@ test("openAnswerAttemptsGet_shouldRedactDetailRejectionAndFaultResponses", async
       "attempt-key-secret",
     );
     const attemptId = (await submitted.json()).value.attempt.attemptId;
+    studentWorkspaceCommands.recordOpenAnswerEvaluation({
+      attemptId,
+      criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+        criterionRevisionId: $0,
+        feedback: `Feedback for ${$0}.`,
+        outcome: "met",
+      })),
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer satisfies the accepted criteria.",
+    });
+    const failed = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Second answer.",
+      },
+      "attempt-key-failure",
+    );
+    const failedAttemptId = (await failed.json()).value.attempt.attemptId;
+    studentWorkspaceCommands.recordOpenAnswerEvaluationFailure({
+      attemptId: failedAttemptId,
+      reason: "Evaluator timeout.",
+    });
     const accepted = await getHttpResponse(baseUrl, `/open-answer-attempts/${attemptId}`, scenario.student);
+    const failedDetail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${failedAttemptId}`,
+      scenario.student,
+    );
     const rejected = await getHttpResponse(baseUrl, "/open-answer-attempts/attempt-key-secret", scenario.student);
     const faultBootstrap = await bootstrapAdmin(faultHarness.baseUrl);
     const fault = await getHttpResponse(faultHarness.baseUrl, "/open-answer-attempts/attempt-1", faultBootstrap);
@@ -1088,6 +1122,8 @@ test("openAnswerAttemptsGet_shouldRedactDetailRejectionAndFaultResponses", async
       {
         acceptedStatusCode: accepted.statusCode,
         acceptedHasLeaks: hasAttemptDetailLeak(accepted.body),
+        failedStatusCode: failedDetail.statusCode,
+        failedHasLeaks: hasAttemptDetailLeak(failedDetail.body),
         rejected,
         fault,
         faultHasLeaks: hasAttemptDetailLeak(fault.body),
@@ -1095,6 +1131,8 @@ test("openAnswerAttemptsGet_shouldRedactDetailRejectionAndFaultResponses", async
       {
         acceptedStatusCode: 200,
         acceptedHasLeaks: false,
+        failedStatusCode: 200,
+        failedHasLeaks: false,
         rejected: {
           statusCode: 404,
           body: { status: "rejected", reason: "attempt_not_found" },
@@ -7015,9 +7053,11 @@ function hasAttemptDetailLeak(body) {
     "authorization",
     "raw prompt",
     "raw model",
+    "evaluator diagnostics",
     "sql",
     "stack",
     "/tmp/db.sqlite",
+    "postgres://db",
   ].some($0 => serialized.includes($0));
 }
 
