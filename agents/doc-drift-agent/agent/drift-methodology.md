@@ -6,7 +6,7 @@ description: "Drift categories the doc-drift-agent looks for, with detection sig
 
 # Drift Methodology
 
-Defines what drift the agent looks for, what evidence it must attach to a finding, and what to ignore. Faithful to the source intent (`doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`) and ADR (`doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md`). The discipline mirrors the existing `doc-drift-audit` skill (`dev-skills/public/doc-drift-audit/SKILL.md`): factual mismatches only, no rewriting, no restructuring, no style passes.
+Defines what drift the agent looks for, what evidence it must attach to a finding, and what to ignore. Faithful to the source intent (`agents/doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`) and ADR (`agents/doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md`). The discipline mirrors the existing `doc-drift-audit` skill (`dev-skills/public/doc-drift-audit/SKILL.md`): factual mismatches only, no rewriting, no restructuring, no style passes.
 
 ## Scope
 
@@ -29,7 +29,7 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 ### 1. Doc ↔ Doc
 
-**Definition.** A claim made in one in-scope document is contradicted by a claim in another document the scope covers (per the scope registry, `doc-drift-agent/agent/readme-inventory.md`). For the README scope this is cross-project README consistency.
+**Definition.** A claim made in one in-scope document is contradicted by a claim in another document the scope covers (per the scope registry, `agents/doc-drift-agent/agent/readme-inventory.md`). For the README scope this is cross-project README consistency.
 
 **Detection signals.**
 
@@ -69,7 +69,7 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 **False positives to skip.**
 
-- Drift candidates already recorded as *known absences* in the scope registry (`doc-drift-agent/agent/readme-inventory.md`) are not findings — unless the registry itself is stale.
+- Drift candidates already recorded as *known absences* in the scope registry (`agents/doc-drift-agent/agent/readme-inventory.md`) are not findings — unless the registry itself is stale.
 - Documents the scope registry does not assign to the active scope are out of scope for that run. A document referencing them is not drift in this scope.
 - Excluded directories (`node_modules/`, `vendor/`, `.build/`, `worktrees/`, `dist/`, `.wrangler/`) are not part of repo state for this purpose.
 
