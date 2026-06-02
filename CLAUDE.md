@@ -1,30 +1,15 @@
 # AGENTS
 
+> **Progressive disclosure.** This is a discovery doc — read each referenced `.agents/` file or skill when its topic is in scope, and any file marked "read at session start" up front.
+
 ## Disabled skills
 
 `pfw-*` skills (Point-Free) are not used in this repo. Never invoke any `pfw-*` skill.
 
 ## Collaboration preferences
 
-- Latest direct user instruction is the highest-priority source of truth for current scope.
-- If the user narrows scope or corrects direction, immediately stop the previous plan and follow the new scope.
-- Before making changes, restate the requested scope in one sentence and execute only that scope.
-- Follow the written plan/docs as the source of truth; do not invent steps or rename phases.
-- Make small, reviewable changes. Stop after each step for human review only when the active plan declares `human-review-gated`; otherwise auto-continue after green gates and local commit.
-- Add tests alongside changes, not later.
-- Always run tests on code changes.
-- Require scope-appropriate verification before declaring completion.
-- Full test/build gates are required for code, config, dependency, CI, release, or generated-artifact changes.
-- Docs-only changes do not require test/build runs unless the docs change executable examples, generated outputs, CI/release behavior, or package/tooling configuration.
-- For docs-only changes, verify Markdown structure, required front matter, required sections, links/references when relevant, and git diff scope.
-- Require scope-appropriate verification for each phase step before moving to the next step.
-- Commit only when tests are passing for the current branch state.
-- `trunk` is a protected branch. Never commit or push directly to `trunk`. All changes must go through a PR from a dedicated branch.
-- PR merge strategy: use merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
-- Protocols are owned by their client and MUST live in the same module. A protocol without its client is a violation.
-- Keep scope minimal and explicit; avoid scope creep.
-- Tests must cover reasonable edge cases for new or changed behavior.
-- Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
+Always-on behavioral rules — **read at session start**. See
+[`.agents/collaboration-preferences.md`](.agents/collaboration-preferences.md).
 
 ## PR CI Watch
 
