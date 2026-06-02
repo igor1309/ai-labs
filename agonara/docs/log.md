@@ -2,6 +2,7 @@
 
 ## 2026-06-02
 
+- Harden the Student Workspace plan archive after adversarial review by completing INT-05 code and test traceability for the delivered domain and backup/restore slice.
 - Archive the completed Student Workspace open-answer attempt implementation plan and update INT-05 traceability to include the delivered plan.
 - Complete Student Workspace open-answer attempt backup/restore and executable acceptance coverage with restored idempotency keys, evaluation/failure state, and orphan accepted-revision graph rejection.
 - Implement Student Workspace owner-only open-answer attempt reads with detail/list queries, scoped filters, response redaction, and first-slice surface absence coverage.
