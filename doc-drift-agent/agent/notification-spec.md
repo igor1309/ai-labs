@@ -95,9 +95,6 @@ Shared bot `@igor1309_ai_labs_bot` (OpenClaw account `ai-labs`), posting into th
 
 ## Failure modes
 
-If OpenClaw cannot post the Telegram message (network failure, rate limit, invalid token), the runtime must:
-
-1. Persist the message body locally so it can be replayed.
-2. Surface the failure via the standard OpenClaw alerting path on the VPS (out of scope for this spec).
+If the cron wrapper cannot post the Telegram message (network failure, rate limit, invalid token), the `curl` call fails and is swallowed (`|| true`) so a delivery failure never aborts the run. The full agent output for that run is already written to the cron log (`~/.openclaw/logs/doc-drift-cron.log` on the VPS), so the message can be reconstructed by hand from there.
 
 The agent's drift report and any PRs it opened are unaffected by Telegram failures — they remain valid artifacts on GitHub.

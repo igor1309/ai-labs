@@ -36,7 +36,7 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 | `docs/adr-specialized-openclaw-agent-readme-drift-review-v0.0.4.md` | Source ADR |
 | `docs/plans/implemented/doc-drift-agent.md` | Implementation plan (closed) |
 | `docs/log.md` | Project log |
-| `runtime/cron/doc-drift-cron.sh` | VPS cron wrapper (suppression gate + Telegram ack) |
+| `runtime/cron/doc-drift-cron.sh` | VPS cron wrapper (suppression gate + compact Telegram notification) |
 | `runtime/cron/openclaw-doc-drift.cron` | `/etc/cron.d/openclaw-doc-drift` daily 01:00 UTC entry |
 | `runtime/README.md` | Deployment notes for the VPS-side runtime |
 
