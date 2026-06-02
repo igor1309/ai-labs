@@ -3275,6 +3275,179 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
   }
 });
 
+test("studentWorkspaceEvaluationStatusEvidenceExecutableAcceptance_shouldCoverDomainFlow", () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "evidence-1", "evaluation-1"],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+
+    const submitted = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Initial answer",
+      idempotencyKey: "sensitive-idempotency-key",
+    });
+    const started = commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    const evidence = commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "criterion_match",
+      redactedSummary: "Matched accepted criterion.",
+    });
+    const activeStatus = commands.getOpenAnswerEvaluationStatus({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+    const completed = commands.completeOpenAnswerEvaluatorRun({
+      evaluatorRunId: "evaluator-run-1",
+      summaryFeedback: "Good explanation.",
+      criterionFeedback: [makeCriterionFeedback()],
+    });
+    const finalStatus = commands.getOpenAnswerEvaluationStatus({
+      actingIdentityId: "identity-student",
+      attemptId: "attempt-1",
+    });
+    const ownerEvidence = commands.listOpenAnswerEvaluatorEvidence({
+      actingIdentityId: "identity-student",
+      evaluatorRunId: "evaluator-run-1",
+    });
+    const nonOwnerStatus = commands.getOpenAnswerEvaluationStatus({
+      actingIdentityId: "identity-active-other",
+      attemptId: "attempt-1",
+    });
+    const nonOwnerEvidence = commands.listOpenAnswerEvaluatorEvidence({
+      actingIdentityId: "identity-active-other",
+      evaluatorRunId: "evaluator-run-1",
+    });
+
+    assert.deepEqual(
+      {
+        submitted,
+        started,
+        evidence,
+        activeStatus,
+        completed,
+        finalStatus,
+        ownerEvidence,
+        nonOwnerStatus,
+        nonOwnerEvidence,
+        redacted: containsForbiddenDetail([
+          submitted,
+          started,
+          evidence,
+          activeStatus,
+          completed,
+          finalStatus,
+          ownerEvidence,
+          nonOwnerStatus,
+          nonOwnerEvidence,
+        ]),
+      },
+      {
+        submitted: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "submitted",
+              submittedAnswer: "Initial answer",
+            }),
+          },
+        },
+        started: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluating",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluatorRun: makeEvaluatorRunSummary(),
+          },
+        },
+        evidence: {
+          status: "accepted",
+          value: {
+            evidence: makeEvaluatorEvidenceSummary({
+              redactedSummary: "Matched accepted criterion.",
+            }),
+          },
+        },
+        activeStatus: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluating",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluatorRun: makeEvaluatorRunSummary(),
+            evidence: [
+              makeEvaluatorEvidenceSummary({ redactedSummary: "Matched accepted criterion." }),
+            ],
+          },
+        },
+        completed: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluated",
+              submittedAnswer: "Initial answer",
+            }),
+            evaluatorRun: makeEvaluatorRunSummary({
+              status: "succeeded",
+              completedAt: "2026-06-02T10:00:00.000Z",
+            }),
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        finalStatus: {
+          status: "accepted",
+          value: {
+            attempt: makeAttemptSummary({
+              attemptId: "attempt-1",
+              status: "evaluated",
+              submittedAnswer: "Initial answer",
+            }),
+            evidence: [],
+            evaluation: makeEvaluationSummary({
+              evaluationId: "evaluation-1",
+              attemptId: "attempt-1",
+              summaryFeedback: "Good explanation.",
+              criterionFeedback: [makeCriterionFeedback()],
+            }),
+          },
+        },
+        ownerEvidence: {
+          status: "accepted",
+          value: {
+            evidence: [
+              makeEvaluatorEvidenceSummary({ redactedSummary: "Matched accepted criterion." }),
+            ],
+          },
+        },
+        nonOwnerStatus: { status: "rejected", reason: "attempt_not_found" },
+        nonOwnerEvidence: { status: "rejected", reason: "attempt_not_found" },
+        redacted: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "attempt-2", "evaluation-1"],
@@ -3897,6 +4070,8 @@ function containsAnyStudentWorkspaceAdapterSurface(sources) {
 
 function containsAnyOutOfScopeStudentWorkspaceHttpMutation(source) {
   return [
+    "getOpenAnswerEvaluationStatus",
+    "listOpenAnswerEvaluatorEvidence",
     "markOpenAnswerAttemptEvaluating",
     "recordOpenAnswerEvaluation",
     "recordOpenAnswerEvaluationFailure",

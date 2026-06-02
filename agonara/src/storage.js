@@ -2435,6 +2435,8 @@ export function exportIdentityBackup(database) {
     openAnswerAttempts: listOpenAnswerAttemptRecords(database),
     openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
     openAnswerEvaluationFailures: listOpenAnswerEvaluationFailureRecords(database),
+    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunRecords(database),
+    openAnswerEvaluatorEvidence: listOpenAnswerEvaluatorEvidenceRecords(database),
   };
 }
 
@@ -2714,6 +2716,33 @@ export function restoreIdentityBackup(database, backup) {
       `insert into open_answer_evaluation_failures (attempt_id, reason, failed_at)
        values (?, ?, ?)`,
     );
+    const insertOpenAnswerEvaluatorRun = database.prepare(
+      `insert into open_answer_evaluator_runs (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_path_kind,
+         evaluator_policy_id,
+         status,
+         requested_by_identity_id,
+         reviewer_identity_id,
+         reviewer_capability,
+         started_at,
+         completed_at,
+         failed_at,
+         failure_reason,
+         prior_failure_reason,
+         prior_failed_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertOpenAnswerEvaluatorEvidence = database.prepare(
+      `insert into open_answer_evaluator_evidence (
+         id, evaluator_run_id, attempt_id, evidence_kind, visibility, redacted_summary, recorded_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    );
 
     for (const shell of backup.programShells ?? []) {
       insertProgramShell.run(
@@ -2947,6 +2976,41 @@ export function restoreIdentityBackup(database, backup) {
         failure.attemptId,
         failure.reason,
         failure.failedAt,
+      );
+    }
+
+    for (const evaluatorRun of backup.openAnswerEvaluatorRuns ?? []) {
+      insertOpenAnswerEvaluatorRun.run(
+        evaluatorRun.id,
+        evaluatorRun.attemptId,
+        evaluatorRun.programId,
+        evaluatorRun.studentIdentityId,
+        evaluatorRun.checkRevisionId,
+        JSON.stringify(evaluatorRun.criterionRevisionIds ?? []),
+        evaluatorRun.evaluatorPathKind,
+        evaluatorRun.evaluatorPolicyId,
+        evaluatorRun.status,
+        evaluatorRun.requestedByIdentityId ?? null,
+        evaluatorRun.reviewerIdentityId ?? null,
+        evaluatorRun.reviewerCapability ?? null,
+        evaluatorRun.startedAt ?? null,
+        evaluatorRun.completedAt ?? null,
+        evaluatorRun.failedAt ?? null,
+        evaluatorRun.failureReason ?? null,
+        evaluatorRun.priorFailureReason ?? null,
+        evaluatorRun.priorFailedAt ?? null,
+      );
+    }
+
+    for (const evidence of backup.openAnswerEvaluatorEvidence ?? []) {
+      insertOpenAnswerEvaluatorEvidence.run(
+        evidence.id,
+        evidence.evaluatorRunId,
+        evidence.attemptId,
+        evidence.evidenceKind,
+        evidence.visibility,
+        evidence.redactedSummary ?? null,
+        evidence.recordedAt,
       );
     }
   })();
@@ -3491,6 +3555,13 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     (backup.acceptedOpenAnswerCheckRevisions ?? []).map($0 => [$0.id, $0]),
   );
   const attemptsById = new Map((backup.openAnswerAttempts ?? []).map($0 => [$0.id, $0]));
+  const evaluationsByAttemptId = new Map(
+    (backup.openAnswerEvaluations ?? []).map($0 => [$0.attemptId, $0]),
+  );
+  const evaluatorRunsById = new Map(
+    (backup.openAnswerEvaluatorRuns ?? []).map($0 => [$0.id, $0]),
+  );
+  const runningRunAttemptIds = new Set();
 
   for (const attempt of backup.openAnswerAttempts ?? []) {
     if (!programShellsById.has(attempt.programId)) {
@@ -3537,6 +3608,31 @@ function assertValidStudentAttemptGraphInBackup(backup) {
       throw new StorageInvariantError("attempt_status_mismatch");
     }
   }
+
+  for (const evaluatorRun of backup.openAnswerEvaluatorRuns ?? []) {
+    const attempt = attemptsById.get(evaluatorRun.attemptId);
+    if (!attempt) {
+      throw new StorageInvariantError("attempt_not_found");
+    }
+
+    assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt);
+    assertEvaluatorRunLifecycleMatchesAttemptBackup({
+      attempt,
+      evaluatorRun,
+      evaluationsByAttemptId,
+      runningRunAttemptIds,
+    });
+  }
+
+  for (const evidence of backup.openAnswerEvaluatorEvidence ?? []) {
+    const evaluatorRun = evaluatorRunsById.get(evidence.evaluatorRunId);
+    if (!evaluatorRun) {
+      throw new StorageInvariantError("evaluator_run_not_found");
+    }
+    if (evidence.attemptId !== evaluatorRun.attemptId) {
+      throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
+    }
+  }
 }
 
 function assertSourceIdsBelongToProgram({ programId, sourceIds, sourcesById }) {
@@ -3573,6 +3669,45 @@ function assertEvaluationMatchesAttemptBackup(evaluation, attempt) {
     JSON.stringify(evaluation.criterionRevisionIds) !== JSON.stringify(attempt.criterionRevisionIds)
   ) {
     throw new StorageInvariantError("evaluation_attempt_mismatch");
+  }
+}
+
+function assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt) {
+  if (
+    evaluatorRun.programId !== attempt.programId ||
+    evaluatorRun.studentIdentityId !== attempt.studentIdentityId ||
+    evaluatorRun.checkRevisionId !== attempt.checkRevisionId ||
+    JSON.stringify(evaluatorRun.criterionRevisionIds) !== JSON.stringify(attempt.criterionRevisionIds)
+  ) {
+    throw new StorageInvariantError("evaluator_run_attempt_mismatch");
+  }
+}
+
+function assertEvaluatorRunLifecycleMatchesAttemptBackup({
+  attempt,
+  evaluatorRun,
+  evaluationsByAttemptId,
+  runningRunAttemptIds,
+}) {
+  if (evaluatorRun.status === "running") {
+    if (runningRunAttemptIds.has(evaluatorRun.attemptId)) {
+      throw new StorageInvariantError("evaluator_run_conflict");
+    }
+    runningRunAttemptIds.add(evaluatorRun.attemptId);
+    if (attempt.status !== "evaluating") {
+      throw new StorageInvariantError("attempt_status_mismatch");
+    }
+  }
+
+  if (evaluatorRun.status === "succeeded" && !evaluationsByAttemptId.has(evaluatorRun.attemptId)) {
+    throw new StorageInvariantError("evaluation_not_found");
+  }
+
+  if (
+    evaluatorRun.status === "cancelled" &&
+    Boolean(evaluatorRun.priorFailureReason) !== Boolean(evaluatorRun.priorFailedAt)
+  ) {
+    throw new StorageInvariantError("evaluation_failure_snapshot_mismatch");
   }
 }
 

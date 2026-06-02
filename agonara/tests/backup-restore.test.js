@@ -479,6 +479,63 @@ test("exportBackup_shouldIncludeStudentAttemptRecords_onBackup", async () => {
   }
 });
 
+test("exportBackup_shouldIncludeOpenAnswerEvaluatorRunsAndEvidence_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedStudentAttemptStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedOpenAnswerEvaluatorRunAndEvidenceRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        runIds: backup.openAnswerEvaluatorRuns?.map($0 => $0.id),
+        runAttemptIds: backup.openAnswerEvaluatorRuns?.map($0 => $0.attemptId),
+        runCriterionRevisionIds: backup.openAnswerEvaluatorRuns?.flatMap($0 => $0.criterionRevisionIds),
+        evidenceIds: backup.openAnswerEvaluatorEvidence?.map($0 => $0.id),
+        evidenceRunIds: backup.openAnswerEvaluatorEvidence?.map($0 => $0.evaluatorRunId),
+        evidenceVisibility: backup.openAnswerEvaluatorEvidence?.map($0 => $0.visibility),
+      },
+      {
+        runIds: ["evaluator-run-existing"],
+        runAttemptIds: ["attempt-existing"],
+        runCriterionRevisionIds: ["criterion-revision-existing"],
+        evidenceIds: ["evidence-existing"],
+        evidenceRunIds: ["evaluator-run-existing"],
+        evidenceVisibility: ["internal"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreBackup_shouldRejectOrphanProgramShellWithoutActiveCuratorMembership", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -741,6 +798,75 @@ test("restoreBackup_shouldRestoreStudentAttemptRecords_onAcceptedBackup", async 
             attemptId: "attempt-failed",
             reason: "temporary evaluator outage",
             failedAt: "2026-05-27T10:16:00.000Z",
+          },
+        ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreOpenAnswerEvaluatorRunsAndEvidence_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedStudentAttemptStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedOpenAnswerEvaluatorRunAndEvidenceRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        runs: restoredBackup.openAnswerEvaluatorRuns.map(projectEvaluatorRunBackupRecord),
+        evidence: restoredBackup.openAnswerEvaluatorEvidence.map(projectEvaluatorEvidenceBackupRecord),
+      },
+      {
+        restoreStatus: "accepted",
+        runs: [
+          {
+            id: "evaluator-run-existing",
+            attemptId: "attempt-existing",
+            programId: "program-1",
+            studentIdentityId: "identity-1",
+            checkRevisionId: "check-revision-existing",
+            criterionRevisionIds: ["criterion-revision-existing"],
+            evaluatorPathKind: "deterministic",
+            evaluatorPolicyId: "policy-existing",
+            status: "succeeded",
+            requestedByIdentityId: "identity-1",
+          },
+        ],
+        evidence: [
+          {
+            id: "evidence-existing",
+            evaluatorRunId: "evaluator-run-existing",
+            attemptId: "attempt-existing",
+            evidenceKind: "criterion_match",
+            visibility: "internal",
+            redactedSummary: "Matched accepted criterion.",
           },
         ],
       },
@@ -1157,6 +1283,237 @@ test("restoreBackup_shouldRejectOpenAnswerEvaluationFailureForNonFailedAttempt_o
       status: "rejected",
       reason: "attempt_status_mismatch",
     });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluatorRunWithoutAttempt_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptBackup();
+  const target = makeSUT();
+
+  try {
+    seedOpenAnswerEvaluatorRunAndEvidenceBackupRecords(backup);
+    backup.openAnswerEvaluatorRuns[0] = {
+      ...backup.openAnswerEvaluatorRuns[0],
+      attemptId: "attempt-missing",
+    };
+    backup.openAnswerEvaluatorEvidence = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "attempt_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluatorEvidenceWithoutRun_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorRuns = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "evaluator_run_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectOpenAnswerEvaluatorEvidenceForDifferentAttempt_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorEvidence[0] = {
+      ...backup.openAnswerEvaluatorEvidence[0],
+      attemptId: "attempt-failed",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "evaluator_evidence_attempt_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMultipleRunningOpenAnswerEvaluatorRuns_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerAttempts[0] = {
+      ...backup.openAnswerAttempts[0],
+      status: "evaluating",
+    };
+    backup.openAnswerEvaluations = [];
+    backup.openAnswerEvaluatorRuns = [
+      {
+        ...backup.openAnswerEvaluatorRuns[0],
+        id: "evaluator-run-running-a",
+        status: "running",
+        completedAt: null,
+      },
+      {
+        ...backup.openAnswerEvaluatorRuns[0],
+        id: "evaluator-run-running-b",
+        status: "running",
+        completedAt: null,
+      },
+    ];
+    backup.openAnswerEvaluatorEvidence = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "evaluator_run_conflict",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectRunningOpenAnswerEvaluatorRunForNonEvaluatingAttempt_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorRuns[0] = {
+      ...backup.openAnswerEvaluatorRuns[0],
+      status: "running",
+      completedAt: null,
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "attempt_status_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectSucceededOpenAnswerEvaluatorRunWithoutFinalEvaluation_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluations = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "evaluation_not_found",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectIncompleteCancelledOpenAnswerEvaluatorPriorFailureSnapshot_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorRuns[0] = {
+      ...backup.openAnswerEvaluatorRuns[0],
+      status: "cancelled",
+      completedAt: null,
+      failedAt: "2026-05-27T10:14:55.000Z",
+      failureReason: "cancelled by retry",
+      priorFailureReason: "previous outage",
+      priorFailedAt: null,
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "evaluation_failure_snapshot_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldPreserveHistoricalTerminalOpenAnswerEvaluatorRunsAfterRetry_onBackup", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    backup.openAnswerEvaluatorRuns = [
+      {
+        ...backup.openAnswerEvaluatorRuns[0],
+        id: "evaluator-run-failed-history",
+        status: "failed",
+        completedAt: null,
+        failedAt: "2026-05-27T10:14:55.000Z",
+        failureReason: "temporary evaluator outage",
+      },
+      {
+        ...backup.openAnswerEvaluatorRuns[0],
+        id: "evaluator-run-cancelled-history",
+        status: "cancelled",
+        completedAt: null,
+        failedAt: "2026-05-27T10:14:59.000Z",
+        failureReason: "cancelled by retry",
+        priorFailureReason: "temporary evaluator outage",
+        priorFailedAt: "2026-05-27T10:14:55.000Z",
+      },
+    ];
+    backup.openAnswerEvaluatorEvidence = [];
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "accepted",
+      value: { restored: true },
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("backupRestore_shouldNotExposeRawOpenAnswerEvaluatorArtifacts", async () => {
+  const backup = await makeExportedStudentAttemptEvaluatorBackup();
+  const target = makeSUT();
+
+  try {
+    const restoreResult = target.commands.restoreBackup(backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        redacted: containsForbiddenBackupDetail([
+          backup.openAnswerEvaluatorRuns,
+          backup.openAnswerEvaluatorEvidence,
+          restoredBackup.openAnswerEvaluatorRuns,
+          restoredBackup.openAnswerEvaluatorEvidence,
+        ]),
+      },
+      {
+        restoreStatus: "accepted",
+        redacted: false,
+      },
+    );
   } finally {
     target.database.close();
   }
@@ -1597,8 +1954,107 @@ function seedStudentAttemptStorageRecords(database, { identityId, programId }) {
     .run("attempt-failed", "temporary evaluator outage", "2026-05-27T10:16:00.000Z");
 }
 
+function seedOpenAnswerEvaluatorRunAndEvidenceRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into open_answer_evaluator_runs (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_path_kind,
+         evaluator_policy_id,
+         status,
+         requested_by_identity_id,
+         reviewer_identity_id,
+         reviewer_capability,
+         started_at,
+         completed_at,
+         failed_at,
+         failure_reason,
+         prior_failure_reason,
+         prior_failed_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "evaluator-run-existing",
+      "attempt-existing",
+      programId,
+      identityId,
+      "check-revision-existing",
+      JSON.stringify(["criterion-revision-existing"]),
+      "deterministic",
+      "policy-existing",
+      "succeeded",
+      identityId,
+      null,
+      null,
+      "2026-05-27T10:14:30.000Z",
+      "2026-05-27T10:15:00.000Z",
+      null,
+      null,
+      null,
+      null,
+    );
+  database
+    .prepare(
+      `insert into open_answer_evaluator_evidence (
+         id, evaluator_run_id, attempt_id, evidence_kind, visibility, redacted_summary, recorded_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "evidence-existing",
+      "evaluator-run-existing",
+      "attempt-existing",
+      "criterion_match",
+      "internal",
+      "Matched accepted criterion.",
+      "2026-05-27T10:14:45.000Z",
+    );
+}
+
+function seedOpenAnswerEvaluatorRunAndEvidenceBackupRecords(backup) {
+  backup.openAnswerEvaluatorRuns = [
+    {
+      id: "evaluator-run-existing",
+      attemptId: "attempt-existing",
+      programId: "program-1",
+      studentIdentityId: "identity-1",
+      checkRevisionId: "check-revision-existing",
+      criterionRevisionIds: ["criterion-revision-existing"],
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-existing",
+      status: "succeeded",
+      requestedByIdentityId: "identity-1",
+      reviewerIdentityId: null,
+      reviewerCapability: null,
+      startedAt: "2026-05-27T10:14:30.000Z",
+      completedAt: "2026-05-27T10:15:00.000Z",
+      failedAt: null,
+      failureReason: null,
+      priorFailureReason: null,
+      priorFailedAt: null,
+    },
+  ];
+  backup.openAnswerEvaluatorEvidence = [
+    {
+      id: "evidence-existing",
+      evaluatorRunId: "evaluator-run-existing",
+      attemptId: "attempt-existing",
+      evidenceKind: "criterion_match",
+      visibility: "internal",
+      redactedSummary: "Matched accepted criterion.",
+      recordedAt: "2026-05-27T10:14:45.000Z",
+    },
+  ];
+}
+
 function countStudentAttemptStorageRows(database) {
   return [
+    "open_answer_evaluator_evidence",
+    "open_answer_evaluator_runs",
     "open_answer_evaluation_failures",
     "open_answer_evaluations",
     "open_answer_attempts",
@@ -1630,6 +2086,52 @@ function projectEvaluationBackupRecord(evaluation) {
     criterionRevisionIds: evaluation.criterionRevisionIds,
     evaluatorKind: evaluation.evaluatorKind,
   };
+}
+
+function projectEvaluatorRunBackupRecord(evaluatorRun) {
+  return {
+    id: evaluatorRun.id,
+    attemptId: evaluatorRun.attemptId,
+    programId: evaluatorRun.programId,
+    studentIdentityId: evaluatorRun.studentIdentityId,
+    checkRevisionId: evaluatorRun.checkRevisionId,
+    criterionRevisionIds: evaluatorRun.criterionRevisionIds,
+    evaluatorPathKind: evaluatorRun.evaluatorPathKind,
+    evaluatorPolicyId: evaluatorRun.evaluatorPolicyId,
+    status: evaluatorRun.status,
+    requestedByIdentityId: evaluatorRun.requestedByIdentityId,
+  };
+}
+
+function projectEvaluatorEvidenceBackupRecord(evidence) {
+  return {
+    id: evidence.id,
+    evaluatorRunId: evidence.evaluatorRunId,
+    attemptId: evidence.attemptId,
+    evidenceKind: evidence.evidenceKind,
+    visibility: evidence.visibility,
+    redactedSummary: evidence.redactedSummary,
+  };
+}
+
+function containsForbiddenBackupDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "correct horse battery staple",
+    "operator-secret",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "diagnostic",
+    "raw model",
+    "raw prompt",
+    "select ",
+    "stack",
+    "127.0.0.1",
+    "/tmp",
+    "postgres://",
+  ].some($0 => serialized.includes($0));
 }
 
 async function makeExportedCorpusBackup() {
@@ -1703,6 +2205,37 @@ async function makeExportedStudentAttemptBackup() {
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
     seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
     seedStudentAttemptStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedStudentAttemptEvaluatorBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedAssessmentStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedStudentAttemptStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedOpenAnswerEvaluatorRunAndEvidenceRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
 
     return source.commands.exportBackup().value.backup;
   } finally {

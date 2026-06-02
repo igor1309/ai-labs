@@ -2203,6 +2203,11 @@ test("restoreIdentityBackup_shouldClearEvaluatorRecords_beforeDeletingAttempts",
         criterionRevisionIds: ["criterion-revision-a"],
       }),
     );
+    storage.updateOpenAnswerAttemptStatus(database, {
+      attemptId: "attempt-a",
+      status: "evaluating",
+      updatedAt: "2026-06-02T10:01:00.000Z",
+    });
     storage.createOpenAnswerEvaluatorRunRecord(
       database,
       makeOpenAnswerEvaluatorRun({

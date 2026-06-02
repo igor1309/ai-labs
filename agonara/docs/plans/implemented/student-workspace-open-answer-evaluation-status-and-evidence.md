@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer evaluat
 
 Deliver the Agonara v0.0.1 Student Workspace domain contract for explicit open-answer evaluator runs, redacted internal evidence metadata, terminal evaluation transitions, and owner-only status reads.
 
-This plan implements [Student Workspace Open-Answer Evaluation Status and Evidence](../specs/student-workspace-open-answer-evaluation-status-and-evidence.md) and [ADR-013](../adr/adr-013-student-workspace-open-answer-evaluation-governance.md). It preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring transport and orchestration concerns.
+This plan implements [Student Workspace Open-Answer Evaluation Status and Evidence](../../specs/student-workspace-open-answer-evaluation-status-and-evidence.md) and [ADR-013](../../adr/adr-013-student-workspace-open-answer-evaluation-governance.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring transport and orchestration concerns.
 
 ## Execution mode
 
@@ -294,7 +294,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Phase 6 — Backup, restore, executable acceptance, and closeout
 
-**Status**: [ ] planned
+**Status**: [x] completed
 
 **Objective**: preserve evaluator-run/evidence state through backup/restore, reject malformed restored graphs, prove the full domain flow, and archive the completed plan.
 
@@ -348,7 +348,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 
 ## Done criteria
 
-- Every command and query in [Student Workspace Open-Answer Evaluation Status and Evidence](../specs/student-workspace-open-answer-evaluation-status-and-evidence.md) is implemented in the Student Workspace domain service.
+- Every command and query in [Student Workspace Open-Answer Evaluation Status and Evidence](../../specs/student-workspace-open-answer-evaluation-status-and-evidence.md) is implemented in the Student Workspace domain service.
 - Evaluator runs preserve attempt, Program, Student Identity, accepted check revision, and accepted criterion revision references.
 - Each attempt has at most one `running` evaluator run.
 - Automated evaluator runs preserve governed evaluator path and policy identity.
