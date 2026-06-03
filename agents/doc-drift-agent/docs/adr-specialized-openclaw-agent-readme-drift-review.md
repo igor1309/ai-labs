@@ -1,11 +1,11 @@
 ---
 date: 2026-06-02
 author: Igor Malyarov
-version: 0.0.6
+version: 0.0.7
 status: accepted
 accepted: 2026-06-03
 source_intent: Automated Doc Drift Review and Fix Suggestions. Intent v0.0.4
-description: "Use a specialized OpenClaw agent for SCOPED documentation drift review (cross-project READMEs + per-project docs); fixes are doc-edit PRs within a scope; never auto-merge. Amends the README-only scope of v0.0.5."
+description: "Use a specialized OpenClaw agent for SCOPED documentation drift review (cross-project READMEs + per-project docs); fixes are doc-edit PRs within a scope; never auto-merge. Amends the README-only scope of v0.0.5. v0.0.7: scopes 1..N are PARKED as a universal one-per-project glob and become per-project CUSTOM definitions, authored lazily along each project's own structure."
 ---
 
 # ADR: Specialized OpenClaw Agent for Scoped Documentation Drift Review
@@ -15,6 +15,17 @@ description: "Use a specialized OpenClaw agent for SCOPED documentation drift re
 > expands the edit surface from README-only to a project's `docs/`. The original
 > core — *use a dedicated agent; never auto-merge* — is unchanged. Restructured to
 > the 6-section ADR template; the filename's version suffix has been dropped.
+>
+> **Amendment note (v0.0.7, 2026-06-03).** Scopes 1..N are no longer a **universal
+> one-per-project** rule (`README + docs/**`). That abstraction is **parked**: it
+> assumed every project shares one shape, but projects differ structurally, not just
+> in size (agonara is admin/curator/student; oracle is backend/frontend), and the
+> universal glob produced oversized, unauditable doc sets (agonara ≈ 213 k tokens —
+> over the context budget on its own — and it swept in archived subtrees like
+> `docs/plans/implemented/` that are not a live drift surface). Scopes 1..N are now
+> **per-project custom definitions**, authored **lazily** (when a project enters the
+> rotation) along that project's own structure. See §3. The doc-drift discipline,
+> the edit surface (docs only), and *never auto-merge* are unchanged.
 
 ## 1. Executive Summary
 
@@ -54,10 +65,16 @@ Rejected alternatives:
 Use a specialized OpenClaw agent for **scoped documentation drift review**:
 
 - Documentation is partitioned into **scopes**: scope 0 = all READMEs across the
-  repo; scopes 1..N = one per top-level project, covering that project's
-  `README.md` and `docs/`.
+  repo; scopes 1..N are **per-project custom** definitions. A project is **not**
+  mechanically one scope of `README + docs/**`; instead each project's docs are
+  partitioned along **that project's own structure** (e.g. agonara →
+  admin/curator/student; oracle → backend/frontend), into one or more scopes that
+  each fit a single audit's context budget and exclude archived/historical subtrees
+  (e.g. `docs/plans/implemented/`, `docs/archive/`). These definitions are authored
+  **lazily** — when a project is brought into the audit rotation — not generated up
+  front for all projects (which would re-introduce the parked universal abstraction).
 - A project's README is reviewed in **both** scope 0 (cross-project consistency —
-  README vs README) and its own project scope (against that project's docs and
+  README vs README) and its own project scope(s) (against that project's docs and
   state) — overlapping by design, with different lenses. The **precise document
   set per scope** (paths/globs/depth) is defined by the scope registry, not
   enumerated in this ADR.
@@ -67,9 +84,11 @@ Use a specialized OpenClaw agent for **scoped documentation drift review**:
   as a PR.
 - Within a scope, the agent may PR-edit **that scope's documentation** (`README.md`
   + `docs/`). It never edits code, config, or scripts.
-- The **scope set** is derived from the repo's top-level projects; its own
-  consistency is auditable (a project with no scope, or a scope for a removed
-  project, is drift). The scope registry is the agent's own doc and is therefore
+- The **scope set** is **hand-curated** in the registry, not mechanically derived
+  from the top-level project list. Its internal consistency is still auditable (a
+  scope pointing at a removed project, or an empty scope, is drift), but "a project
+  with no scope yet" is **not** drift — scopes are added per project as that project
+  enters the rotation. The scope registry is the agent's own doc and is therefore
   PR-fixable.
 - The doc-drift discipline is unchanged: factual mismatches only; no
   style/restructure/additions; evidence mandatory.
@@ -86,8 +105,11 @@ Use a specialized OpenClaw agent for **scoped documentation drift review**:
 - The agent **MUST NOT** merge or approve PRs.
 - The agent **MUST NOT** open issues or any non-PR work item; findings are
   doc-edit PRs.
-- The scope registry **MUST** be maintained as the agent's own doc; scope-set
-  drift is itself a (PR-fixable) finding.
+- The scope registry **MUST** be maintained as the agent's own doc and is
+  **hand-curated** per project (not auto-derived from the project list). A scope
+  pointing at a removed project, or an empty scope, is (PR-fixable) drift; a project
+  not yet assigned any scope is **not** drift. Any coverage check **MUST NOT** assert
+  one-scope-per-project (that enforced the parked universal model).
 
 ## 5. Consequences
 
@@ -119,6 +141,14 @@ Use a specialized OpenClaw agent for **scoped documentation drift review**:
 
 ## Revision history
 
+- **v0.0.7 (2026-06-03):** parked the universal "one scope per top-level project
+  (`README + docs/**`)" model for scopes 1..N; replaced with **per-project custom
+  scope definitions** authored lazily along each project's own structure, excluding
+  archived subtrees. Registry is hand-curated (not auto-derived); coverage no longer
+  asserts one-scope-per-project. Motivated by structural (not just size) divergence
+  between projects and oversized universal doc sets (agonara ≈ 213 k tokens). Edit
+  surface, discipline, and never-auto-merge unchanged. Orchestration substrate
+  (`ADR-001`) is unaffected — it consumes whatever scope ids the registry declares.
 - **v0.0.6 (2026-06-02):** generalised scope (READMEs → scope set incl.
   per-project `docs/`) and edit surface (README-only → a scope's docs);
   restructured to the 6-section ADR template; cross-referenced `ADR-001`.
