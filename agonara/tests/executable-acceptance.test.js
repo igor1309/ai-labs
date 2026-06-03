@@ -777,6 +777,138 @@ test("acceptance_shouldExerciseNavigationApi_onHttpInstance", async () => {
   }
 });
 
+test("acceptance_shouldExerciseLearnerStateApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "learner-state-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        { candidateKind: "topic", title: "Vector spaces" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topicAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topic = topicAccepted.body.value.navigationChange.acceptedCorpus;
+      const quickCheckCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/quick-checks/candidates`,
+        {
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed under addition", "Only finite dimension"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const quickCheckAccepted = await postJson(
+        `${baseUrl}/quick-checks/candidates/${quickCheckCandidate.body.value.quickCheckCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const quickCheck = quickCheckAccepted.body.value.acceptedQuickCheck;
+      const link = await postJson(
+        `${baseUrl}/programs/${programId}/learner-state-target-links`,
+        {
+          evidenceOwnerEntityId: quickCheck.entityId,
+          evidenceOwnerKind: "accepted_quick_check",
+          targetId: topic.entityId,
+          targetKind: "topic",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJsonWithIdempotency(
+        `${baseUrl}/programs/${programId}/quick-check-attempts`,
+        {
+          checkRevisionId: quickCheck.revisionId,
+          selectedOptionId: quickCheck.answerKeyOptionId,
+        },
+        "learner-state-http-attempt",
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const summary = await getJson(`${baseUrl}/programs/${programId}/learner-state`, {
+        cookie: student.cookie,
+      });
+      const detail = await getJson(`${baseUrl}/learner-state/targets/topic/${topic.entityId}`, {
+        cookie: student.cookie,
+      });
+      const curatorDetail = await getJson(`${baseUrl}/learner-state/targets/topic/${topic.entityId}`, {
+        cookie: bootstrap.cookie,
+      });
+      const serialized = JSON.stringify([summary.body, detail.body]);
+
+      assert.deepEqual(
+        {
+          detailEvidenceKinds: detail.body.value?.learnerStateTarget.evidence.map($0 => $0.sourceKind),
+          detailLevel: detail.body.value?.learnerStateTarget.level,
+          httpStatusCodes: {
+            curatorDetail: curatorDetail.statusCode,
+            detail: detail.statusCode,
+            link: link.statusCode,
+            summary: summary.statusCode,
+          },
+          linkTargetKind: link.body.value?.learnerStateTargetLink.targetKind,
+          redaction: [
+            "answerKey",
+            "candidateId",
+            "acceptedFromCandidateId",
+            "createdByIdentityId",
+            "learner-state-http-attempt",
+            "csrf",
+            "session",
+            "raw prompt",
+            "raw model",
+          ].some($0 => serialized.includes($0)),
+          summaryLevel: summary.body.value?.learnerState.level,
+          topicLevels: summary.body.value?.learnerState.topics.map($0 => $0.level),
+          unauthorizedDetail: curatorDetail.body,
+        },
+        {
+          detailEvidenceKinds: ["quick_check_attempt"],
+          detailLevel: "on_track",
+          httpStatusCodes: {
+            curatorDetail: 404,
+            detail: 200,
+            link: 200,
+            summary: 200,
+          },
+          linkTargetKind: "topic",
+          redaction: false,
+          summaryLevel: "on_track",
+          topicLevels: ["on_track"],
+          unauthorizedDetail: { status: "rejected", reason: "learner_state_target_not_found" },
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 
@@ -1068,6 +1200,17 @@ async function postJson(url, body, { cookie = null, csrfToken = null } = {}) {
   return await fetchJson(url, {
     body: JSON.stringify(body),
     headers: jsonHeaders({ cookie, csrfToken }),
+    method: "POST",
+  });
+}
+
+async function postJsonWithIdempotency(url, body, idempotencyKey, { cookie = null, csrfToken = null } = {}) {
+  return await fetchJson(url, {
+    body: JSON.stringify(body),
+    headers: {
+      ...jsonHeaders({ cookie, csrfToken }),
+      "x-agonara-idempotency-key": idempotencyKey,
+    },
     method: "POST",
   });
 }

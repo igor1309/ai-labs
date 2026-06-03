@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 4 of the learner-state interpretation plan with HTTP target-link curation routes, owner-only learner-state summary/detail routes, CSRF mutation gates, status mapping, redaction coverage, and executable acceptance coverage.
 - Harden Phase 3 learner-state derivation after adversarial review with deleted-link, no-implicit-inference, pending-status, evaluator-evidence, and partial-outcome coverage.
 - Implement Phase 3 of the learner-state interpretation plan with owner-only read-time Student Workspace summaries, weak-area sorting, target detail evidence, explicit target-link contribution, latest-evidence levels, and read-only boundary coverage.
 - Harden Phase 2 learner-state target-link curation after adversarial review by marking the phase tracker complete and adding explicit concept and material-reference target coverage.

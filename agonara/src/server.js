@@ -552,6 +552,39 @@ async function handleStudentWorkspaceApi({
   const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
   const quickCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/quick-check-attempts$/);
   const quickCheckAttemptDetailMatch = pathname.match(/^\/quick-check-attempts\/([^/]+)$/);
+  const learnerStateProgramMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state$/);
+  const learnerStateTargetMatch = pathname.match(/^\/learner-state\/targets\/([^/]+)\/([^/]+)$/);
+  if (request.method === "GET" && learnerStateProgramMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getLearnerStateProgramSummary({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(learnerStateProgramMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateProgramResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && learnerStateTargetMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getLearnerStateTargetDetail({
+      actingIdentityId: session.value.identity.id,
+      targetKind: decodeURIComponent(learnerStateTargetMatch[1]),
+      targetId: decodeURIComponent(learnerStateTargetMatch[2]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && quickCheckAttemptDetailMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -819,6 +852,75 @@ async function handleCorpusApi({
   const acceptedQuickCheckCurationRevisionMatch = pathname.match(
     /^\/quick-checks\/revisions\/([^/]+)\/curation$/,
   );
+  const learnerStateTargetLinksMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state-target-links$/);
+  const learnerStateTargetLinkMatch = pathname.match(/^\/learner-state-target-links\/([^/]+)$/);
+  if (request.method === "GET" && learnerStateTargetLinksMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.listLearnerEvidenceTargetLinks({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(learnerStateTargetLinksMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetLinkListResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && learnerStateTargetLinksMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidLearnerStateTargetLinkBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createLearnerEvidenceTargetLink({
+      actingIdentityId: session.value.identity.id,
+      evidenceOwnerEntityId: body.value.evidenceOwnerEntityId,
+      evidenceOwnerKind: body.value.evidenceOwnerKind,
+      programId: decodeURIComponent(learnerStateTargetLinksMatch[1]),
+      targetId: body.value.targetId,
+      targetKind: body.value.targetKind,
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetLinkResult(result));
+    return true;
+  }
+
+  if (request.method === "DELETE" && learnerStateTargetLinkMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: session.value.identity.id,
+      linkId: decodeURIComponent(learnerStateTargetLinkMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetLinkResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && quickCheckDeliveriesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2227,6 +2329,38 @@ function mapAcceptedOpenAnswerCheckResult(result) {
   return accepted({ acceptedOpenAnswerCheck: result.value.acceptedOpenAnswerCheck });
 }
 
+function mapLearnerStateTargetLinkResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerStateTargetLink: result.value.learnerEvidenceTargetLink });
+}
+
+function mapLearnerStateTargetLinkListResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerStateTargetLinks: result.value.learnerEvidenceTargetLinks });
+}
+
+function mapLearnerStateProgramResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerState: result.value.learnerState });
+}
+
+function mapLearnerStateTargetResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerStateTarget: result.value.learnerStateTarget });
+}
+
 function mapCorpusEventListResult({ generateToken, listCursors, query, result, routeKey }) {
   if (result.status === "rejected") {
     return result;
@@ -2585,6 +2719,19 @@ function isValidQuickCheckCandidateBody(body) {
     Number.isInteger(body.answerKeyOptionIndex) &&
     body.answerKeyOptionIndex >= 0 &&
     body.answerKeyOptionIndex < body.options.length;
+}
+
+function isValidLearnerStateTargetLinkBody(body) {
+  return hasOnlyKeys(body, [
+    "evidenceOwnerEntityId",
+    "evidenceOwnerKind",
+    "targetId",
+    "targetKind",
+  ]) &&
+    isNonEmptyRequestText(body.evidenceOwnerEntityId) &&
+    isNonEmptyRequestText(body.evidenceOwnerKind) &&
+    isNonEmptyRequestText(body.targetId) &&
+    isNonEmptyRequestText(body.targetKind);
 }
 
 function hasOnlyKeys(body, allowedKeys) {
@@ -2982,6 +3129,9 @@ function httpStatusFor(reason) {
     case "quick_check_candidate_not_found":
     case "quick_check_entity_not_found":
     case "quick_check_revision_not_found":
+    case "learner_state_evidence_owner_not_found":
+    case "learner_state_target_link_not_found":
+    case "learner_state_target_not_found":
     case "revision_not_found":
     case "selected_option_not_found":
       return 404;
@@ -2999,6 +3149,8 @@ function httpStatusFor(reason) {
     case "criterion_entity_program_mismatch":
     case "idempotency_conflict":
     case "identity_already_has_credential":
+    case "learner_state_evidence_owner_program_mismatch":
+    case "learner_state_target_program_mismatch":
     case "last_admin_removal":
     case "login_already_bound":
     case "membership_left":
