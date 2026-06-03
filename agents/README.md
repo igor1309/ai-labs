@@ -14,6 +14,7 @@ Specialized OpenClaw agents whose definitions live here and whose runtime is the
 
 | Agent | Reviews |
 |-------|---------|
+| `doc-drift-agent` | `igor1309/ai-labs` documentation scopes (opens fix PRs) |
 | `maestro-flow-review-agent` | `igor1309/ios.config` Maestro flow YAML (opens fix PRs) |
 
 ## Conventions
