@@ -651,19 +651,20 @@ function getAcceptedQuickCheckRevisionForCuration({ database, getEffectivePartic
 }
 
 function getQuickCheckDelivery({ database, getEffectiveParticipation, input }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("quick_check_revision_not_found");
+  }
+
   const authorization = resolveQuickCheckDeliveryAuthorization({
     database,
     getEffectiveParticipation,
-    input,
+    input: { ...input, programId: input?.programId ?? revision.programId },
   });
   if (authorization.status === "rejected") {
     return rejected(authorization.reason);
   }
 
-  const revision = getAcceptedQuickCheckRevisionRecord(database, input?.revisionId);
-  if (!revision) {
-    return rejected("quick_check_revision_not_found");
-  }
   if (revision.programId !== authorization.program.id) {
     return rejected("quick_check_revision_program_mismatch");
   }

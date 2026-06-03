@@ -734,6 +734,8 @@ async function handleCorpusApi({
   const acceptedOpenAnswerCheckRevisionMatch = pathname.match(
     /^\/open-answer-checks\/revisions\/([^/]+)$/,
   );
+  const quickCheckDeliveriesMatch = pathname.match(/^\/programs\/([^/]+)\/quick-checks$/);
+  const quickCheckDeliveryRevisionMatch = pathname.match(/^\/quick-checks\/revisions\/([^/]+)$/);
   const quickCheckCandidatesMatch = pathname.match(
     /^\/programs\/([^/]+)\/quick-checks\/candidates$/,
   );
@@ -746,6 +748,51 @@ async function handleCorpusApi({
   const acceptedQuickCheckCurationRevisionMatch = pathname.match(
     /^\/quick-checks\/revisions\/([^/]+)\/curation$/,
   );
+  if (request.method === "GET" && quickCheckDeliveriesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(quickCheckDeliveriesMatch[1]);
+    const routeKey = `quick-check-deliveries:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listQuickCheckDeliveries({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapQuickCheckDeliveryListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckDeliveryRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getQuickCheckDelivery({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(quickCheckDeliveryRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckDeliveryResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && quickCheckCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1854,6 +1901,14 @@ function mapAcceptedQuickCheckResult(result) {
   return accepted({ acceptedQuickCheck: result.value.acceptedQuickCheck });
 }
 
+function mapQuickCheckDeliveryResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ quickCheckDelivery: result.value.quickCheckDelivery });
+}
+
 function mapAcceptedCorpusResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -2326,6 +2381,29 @@ function mapQuickCheckCandidateListResult({ generateToken, listCursors, query, r
 
   return accepted({
     quickCheckCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapQuickCheckDeliveryListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.quickCheckDeliveries,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    quickCheckDeliveries: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }

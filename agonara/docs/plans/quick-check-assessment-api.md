@@ -159,7 +159,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 3 - Student Delivery Routes
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: expose current and historical Quick Check deliveries to effective Students without answer-key or curator-only leakage.
 
