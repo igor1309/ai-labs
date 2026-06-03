@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Harden the learner-state interpretation spec after adversarial review by adding explicit target-link curation, deletion status, active-link derivation rules, and target-link validation tests so weak topic/concept summaries do not rely on implicit source or text inference.
 - Start Phase 3 of the Agonara product gap closure plan with a learner-state interpretation spec that keeps progress and weak-area labels owner-only, evidence-backed, read-time derived, and separate from Program corpus mutation.
 - Complete Phase 2 of the Agonara product gap closure plan by implementing topic, concept, and material navigation across storage, Corpus domain commands, HTTP routes, `/learn` UI traversal, backup/restore validation, Product Intent traceability, and dashboard closeout.
 - Implement Phase 4 of the topic, concept, and material navigation plan with `/learn` Curator navigation candidate management, Student topic/concept/material traversal, historical revision opening, material back links, protected-data redaction checks, Student Workspace non-mutation coverage, and desktop/mobile browser layout checks.
