@@ -2448,6 +2448,36 @@ test("readinessAttempts_shouldSupportInProgressIdempotencyConflictOwnerOnlyReads
   }
 });
 
+test("getReadinessCheckAttempt_shouldRequireActiveStudentParticipation_onOwnerDetailRead", () => {
+  const { commands, database } = makeSUT({
+    ids: ["readiness-attempt-1"],
+  });
+
+  try {
+    seedReadinessStudentProgram(database, { includeConceptReadiness: true, programId: "program-a" });
+    const acceptedAttempt = commands.submitReadinessCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      readinessCheckRevisionId: "readiness-revision-concept",
+      idempotencyKey: "readiness-key-a",
+    });
+
+    database
+      .prepare("update program_memberships set status = 'removed', updated_at = ? where id = ?")
+      .run("2026-06-02T11:45:00.000Z", "membership-student-a");
+
+    assert.deepEqual(
+      commands.getReadinessCheckAttempt?.({
+        actingIdentityId: "identity-student",
+        attemptId: acceptedAttempt.value.readinessCheckAttempt.attemptId,
+      }),
+      { status: "rejected", reason: "participation_required" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("readinessReadsAndLearnerStateReads_shouldNotImplicitlyCreateAttemptsOrMutateAdjacentState", () => {
   const { commands, database } = makeSUT({ ids: ["quick-attempt", "open-attempt"] });
 

@@ -117,7 +117,7 @@ export function createStudentWorkspaceCommands({
     getQuickCheckAttempt: input =>
       getQuickCheckAttempt({ database, getEffectiveParticipation, input }),
     getReadinessCheckAttempt: input =>
-      getReadinessCheckAttempt({ database, input }),
+      getReadinessCheckAttempt({ database, getEffectiveParticipation, input }),
     listOpenAnswerAttempts: input =>
       listOpenAnswerAttempts({ database, getEffectiveParticipation, input }),
     listClaimableOpenAnswerEvaluatorJobs: input =>
@@ -1540,7 +1540,7 @@ function getQuickCheckAttempt({ database, getEffectiveParticipation, input }) {
   return accepted({ quickCheckAttempt: summarizeQuickCheckAttempt(attempt) });
 }
 
-function getReadinessCheckAttempt({ database, input }) {
+function getReadinessCheckAttempt({ database, getEffectiveParticipation, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
     return rejected("identity_not_active");
@@ -1549,6 +1549,15 @@ function getReadinessCheckAttempt({ database, input }) {
   const attempt = getReadinessCheckAttemptRecord(database, input?.attemptId);
   if (!attempt || attempt.studentIdentityId !== identity.id) {
     return rejected("attempt_not_found");
+  }
+
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: attempt.programId },
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
   }
 
   return accepted({ readinessCheckAttempt: summarizeReadinessCheckAttempt(attempt) });
