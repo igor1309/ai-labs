@@ -35,7 +35,6 @@ jobs:
       dev-skills: ${{ steps.filter.outputs.dev-skills }}
       agonara: ${{ steps.filter.outputs.agonara }}
       agonara-ci: ${{ steps.filter.outputs.agonara-ci }}
-      doc-drift-agent: ${{ steps.filter.outputs.doc-drift-agent }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -103,10 +102,6 @@ jobs:
               - "agonara/**"
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
-            doc-drift-agent:
-              - "agents/doc-drift-agent/**"
-              - "*/README.md"
-              - ".github/workflows/doc-drift-agent-core.yml"
 
   notio-core:
     needs: [changes]
@@ -152,11 +147,6 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.agonara == 'true' || needs.changes.outputs.agonara-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/agonara-core.yml
-
-  doc-drift-agent-core:
-    needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.doc-drift-agent == 'true' || needs.changes.outputs.shared == 'true' }}
-    uses: ./.github/workflows/doc-drift-agent-core.yml
 
   release-validation:
     needs: [changes]
@@ -237,7 +227,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, agonara-core, doc-drift-agent-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, agonara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -248,8 +238,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.doc-drift-agent-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, agonara-core, doc-drift-agent-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, agonara-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -264,7 +254,6 @@ jobs:
         reinix-core=${{ needs.reinix-core.result }}
         clipdeck-core=${{ needs.clipdeck-core.result }}
         agonara-core=${{ needs.agonara-core.result }}
-        doc-drift-agent-core=${{ needs.doc-drift-agent-core.result }}
         notio-core=${{ needs.notio-core.result }}
         notio-frontend-core=${{ needs.notio-frontend-core.result }}
         release-validation=${{ needs.release-validation.result }}

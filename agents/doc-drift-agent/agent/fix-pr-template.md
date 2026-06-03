@@ -55,8 +55,8 @@ Minimum edit. The diff in this PR is limited to the lines named above; no surrou
 
 ## Scope-of-change checklist
 
-- [ ] Only the document(s) named under "Finding" (within the active scope) are modified.
-- [ ] No code, config, script, or CI workflow is modified — and nothing outside the active scope's documentation.
+- [ ] Only the README(s) named under "Finding" are modified.
+- [ ] No code, config, script, or CI workflow is modified — and no non-README document.
 - [ ] No formatting/style/restructure changes outside the minimum edit.
 - [ ] Front matter (if present) is unchanged.
 
