@@ -34,7 +34,7 @@ Required tests: Run Markdown/front-matter/link checks and `git diff --check`.
 
 ## Goal
 
-Implement [Quick Check Product UI](../specs/quick-check-product-ui.md) as the first Agonara product UI surface at `GET /learn`, while preserving the implemented Quick Check HTTP API's answer-key protection, Student ownership, CSRF, idempotency, and redaction boundaries.
+Implement [Quick Check Product UI](../../specs/quick-check-product-ui.md) as the first Agonara product UI surface at `GET /learn`, while preserving the implemented Quick Check HTTP API's answer-key protection, Student ownership, CSRF, idempotency, and redaction boundaries.
 
 ## Execution mode
 
@@ -70,7 +70,7 @@ Expected files:
 - `agonara/playwright.config.js` - new Agonara-specific Playwright config used by the targeted browser gate.
 - `agonara/docs/specs/quick-check-product-ui.md` - update status and implementation status during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
-- `agonara/docs/plans/quick-check-product-ui.md` - update phase tracker during implementation.
+- `agonara/docs/plans/implemented/quick-check-product-ui.md` - archived phase tracker and closeout record.
 - `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 1 only after this plan is fully complete.
 - `docs/loc-dashboard.html` - refresh during final closeout when the implementation changes repo LOC.
 
@@ -121,7 +121,7 @@ Targeted commands:
 - [x] Phase 2 - Session and Program Context UI
 - [x] Phase 3 - Curator Quick Check UI
 - [x] Phase 4 - Student Quick Check UI
-- [ ] Phase 5 - Layout, Accessibility, Traceability, and Closeout
+- [x] Phase 5 - Layout, Accessibility, Traceability, and Closeout
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
 

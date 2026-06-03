@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Complete and archive the Quick Check product UI plan with implemented spec traceability, INT-04 links, README/implementation-note status updates, browser layout/accessibility checks, and dashboard LOC closeout.
 - Implement Phase 4 of the Quick Check product UI plan with Playwright-covered Student delivery reads, option-index submission, idempotent retry, owned attempt detail, and non-owner unavailable handling.
 - Implement Phase 3 of the Quick Check product UI plan with Playwright-covered Curator candidate creation, draft/rejected listing, acceptance, rejection, and answer-key curation inspection confined to the Curator panel.
 - Implement Phase 2 of the Quick Check product UI plan with Playwright-covered sign-in, session refresh/logout, Program context, role tabs, and signed-out action guards.

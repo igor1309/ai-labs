@@ -3,7 +3,7 @@ date: 2026-06-03
 model: gpt-5
 description: "Spec: Agonara Quick Check product UI."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -103,3 +103,7 @@ type QuickCheckUiStatus =
 - Student UI surfaces never render protected answer keys or curator-only metadata.
 - Browser tests cover Curator and Student workflows, redaction, desktop/mobile layout, and accessibility expectations.
 - Agonara tests, root build, browser tests, and `git diff --check` pass.
+
+## Implementation status
+
+Implemented by [Quick Check Product UI Implementation Plan](../plans/implemented/quick-check-product-ui.md), with the `/learn` shell in `agonara/src/learn-ui.js`, route wiring in `agonara/src/server.js`, HTTP shell coverage in `agonara/tests/http-api.test.js`, and browser workflow coverage in `agonara/tests/quick-check-product-ui.playwright.js`.

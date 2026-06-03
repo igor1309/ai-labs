@@ -187,6 +187,29 @@ test("quickCheckProductUiStudent_shouldShowUnavailable_onNonOwnerAttemptLookup",
   }
 });
 
+test("quickCheckProductUiLayout_shouldKeepControlsNamedAndNonOverlapping_onDesktopAndMobile", async ({ page }) => {
+  const harness = await startLearnHarness();
+
+  try {
+    for (const viewport of [{ height: 900, width: 1280 }, { height: 900, width: 390 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${harness.baseUrl}/learn`);
+
+      await expect(page.getByLabel("Login")).toBeVisible();
+      await expect(page.getByLabel("Password")).toBeVisible();
+      await expect(page.getByLabel("Program id")).toBeVisible();
+      await expect(page.getByLabel("Status")).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "Option 1" })).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "Option 2" })).toBeVisible();
+      await expect(page.locator("#signin-status")).toHaveAttribute("aria-live", "polite");
+      await expect(page.locator("#quick-check-submit-status")).toHaveAttribute("aria-live", "polite");
+      expect(await visibleControlOverlaps(page)).toEqual([]);
+    }
+  } finally {
+    await harness.close();
+  }
+});
+
 async function signIn(page, baseUrl, login = "learner@example.test", password = "correct horse battery staple") {
   await page.goto(`${baseUrl}/learn`);
   await page.locator("#signin-form input[name='login']").fill(login);
@@ -204,6 +227,43 @@ async function createQuickCheckCandidateFromUi(page, { answerIndex, options, pro
   await page.locator("#quick-check-rationale-input").fill(rationale);
   await page.locator("#quick-check-candidate-form").getByRole("button", { name: "Create" }).click();
   await expect(page.locator("#quick-check-candidate-list")).toContainText(title);
+}
+
+async function visibleControlOverlaps(page) {
+  return page.evaluate(() => {
+    const controls = Array.from(document.querySelectorAll("button, input, select, textarea"))
+      .filter(element => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
+      })
+      .map((element, index) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          index,
+          label: element.id || element.getAttribute("name") || element.textContent.trim(),
+          rect: {
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+          },
+        };
+      });
+    const overlaps = [];
+    for (let firstIndex = 0; firstIndex < controls.length; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < controls.length; secondIndex += 1) {
+        const first = controls[firstIndex];
+        const second = controls[secondIndex];
+        const horizontal = Math.min(first.rect.right, second.rect.right) - Math.max(first.rect.left, second.rect.left);
+        const vertical = Math.min(first.rect.bottom, second.rect.bottom) - Math.max(first.rect.top, second.rect.top);
+        if (horizontal > 2 && vertical > 2) {
+          overlaps.push(first.label + " overlaps " + second.label);
+        }
+      }
+    }
+    return overlaps;
+  });
 }
 
 async function startLearnHarness() {
