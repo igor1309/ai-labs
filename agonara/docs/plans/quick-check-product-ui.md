@@ -118,7 +118,7 @@ Targeted commands:
 ## Phase tracker
 
 - [x] Phase 1 - Shell Route and Redaction
-- [ ] Phase 2 - Session and Program Context UI
+- [x] Phase 2 - Session and Program Context UI
 - [ ] Phase 3 - Curator Quick Check UI
 - [ ] Phase 4 - Student Quick Check UI
 - [ ] Phase 5 - Layout, Accessibility, Traceability, and Closeout

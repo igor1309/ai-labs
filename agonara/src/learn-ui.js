@@ -348,10 +348,10 @@ export const learnUiHtml = `<!doctype html>
               <textarea id="quick-check-rationale-input" name="rationale"></textarea>
             </label>
             <div class="actions">
-              <button type="submit">Create</button>
-              <button data-action="accept-quick-check" class="secondary" type="button">Accept</button>
-              <button data-action="reject-quick-check" class="danger" type="button">Reject</button>
-              <button data-action="read-quick-check-curation" class="secondary" type="button">Inspect</button>
+              <button type="submit" data-requires-session>Create</button>
+              <button data-action="accept-quick-check" data-requires-session class="secondary" type="button">Accept</button>
+              <button data-action="reject-quick-check" data-requires-session class="danger" type="button">Reject</button>
+              <button data-action="read-quick-check-curation" data-requires-session class="secondary" type="button">Inspect</button>
             </div>
           </form>
           <div id="quick-check-curation-detail" class="empty"></div>
@@ -362,23 +362,147 @@ export const learnUiHtml = `<!doctype html>
           <div id="quick-check-delivery-list" class="list">
             <p class="empty">No deliveries loaded.</p>
           </div>
-          <button data-action="open-quick-check-delivery" class="secondary" type="button">Open delivery</button>
+          <button data-action="open-quick-check-delivery" data-requires-session class="secondary" type="button">Open delivery</button>
           <div id="quick-check-delivery-detail" class="empty"></div>
           <form id="quick-check-answer-form" class="stack">
             <fieldset id="quick-check-answer-options" class="stack">
               <legend>Answer</legend>
             </fieldset>
-            <button type="submit">Submit</button>
+            <button type="submit" data-requires-session>Submit</button>
             <p id="quick-check-submit-status" class="status" aria-live="polite"></p>
           </form>
           <div id="quick-check-attempt-list" class="list">
             <p class="empty">No attempts loaded.</p>
           </div>
-          <button data-action="open-quick-check-attempt" class="secondary" type="button">Open attempt</button>
+          <button data-action="open-quick-check-attempt" data-requires-session class="secondary" type="button">Open attempt</button>
           <div id="quick-check-attempt-detail" class="empty"></div>
         </section>
       </div>
     </main>
   </div>
+  <script>
+    (() => {
+      const state = {
+        csrfToken: null,
+        identity: null,
+        mode: "curator",
+        programId: "",
+      };
+
+      const elements = {
+        curatorModeTab: document.querySelector("#curator-mode-tab"),
+        logoutButton: document.querySelector("#logout-button"),
+        programIdInput: document.querySelector("#program-id-input"),
+        quickCheckActions: Array.from(document.querySelectorAll("[data-requires-session]")),
+        refreshCandidatesButton: document.querySelector("#refresh-candidates-button"),
+        refreshSessionButton: document.querySelector("#refresh-session-button"),
+        sessionSummary: document.querySelector("#session-summary"),
+        signinForm: document.querySelector("#signin-form"),
+        signinStatus: document.querySelector("#signin-status"),
+        studentModeTab: document.querySelector("#student-mode-tab"),
+      };
+
+      elements.quickCheckActions.push(elements.refreshCandidatesButton);
+
+      elements.signinForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const formData = new FormData(elements.signinForm);
+        elements.signinStatus.textContent = "Signing in";
+        const result = await requestJson("/identity/sessions", {
+          body: {
+            login: String(formData.get("login") ?? ""),
+            password: String(formData.get("password") ?? ""),
+          },
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          acceptSession(result.value);
+          elements.signinStatus.textContent = "Signed in";
+          return;
+        }
+        clearSession();
+        elements.signinStatus.textContent = "Sign in failed";
+      });
+
+      elements.refreshSessionButton.addEventListener("click", async () => {
+        const result = await requestJson("/identity/session");
+        if (result.status === "accepted") {
+          acceptSession(result.value);
+          return;
+        }
+        clearSession();
+      });
+
+      elements.logoutButton.addEventListener("click", async () => {
+        if (!state.csrfToken) {
+          clearSession();
+          return;
+        }
+        await requestJson("/identity/session", {
+          csrf: true,
+          method: "DELETE",
+        });
+        clearSession();
+      });
+
+      elements.programIdInput.addEventListener("input", () => {
+        state.programId = elements.programIdInput.value.trim();
+      });
+
+      elements.curatorModeTab.addEventListener("click", () => {
+        setMode("curator");
+      });
+
+      elements.studentModeTab.addEventListener("click", () => {
+        setMode("student");
+      });
+
+      function acceptSession(value) {
+        state.csrfToken = value.csrfToken;
+        state.identity = value.identity;
+        renderSession();
+      }
+
+      function clearSession() {
+        state.csrfToken = null;
+        state.identity = null;
+        elements.signinStatus.textContent = "";
+        renderSession();
+      }
+
+      function renderSession() {
+        const signedIn = Boolean(state.identity);
+        elements.sessionSummary.textContent = signedIn
+          ? "Signed in as " + state.identity.displayName
+          : "Signed out";
+        for (const action of elements.quickCheckActions) {
+          action.disabled = !signedIn;
+        }
+      }
+
+      function setMode(mode) {
+        state.mode = mode;
+        elements.curatorModeTab.setAttribute("aria-selected", mode === "curator" ? "true" : "false");
+        elements.studentModeTab.setAttribute("aria-selected", mode === "student" ? "true" : "false");
+      }
+
+      async function requestJson(path, options = {}) {
+        const headers = { "content-type": "application/json" };
+        if (options.csrf) {
+          headers["x-agonara-csrf"] = state.csrfToken;
+        }
+        const response = await fetch(path, {
+          credentials: "same-origin",
+          headers,
+          method: options.method ?? "GET",
+          ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+        });
+        return response.json();
+      }
+
+      setMode(state.mode);
+      renderSession();
+    })();
+  </script>
 </body>
 </html>`;

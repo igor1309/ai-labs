@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 2 of the Quick Check product UI plan with Playwright-covered sign-in, session refresh/logout, Program context, role tabs, and signed-out action guards.
 - Implement Phase 1 of the Quick Check product UI plan with a secret-free `/learn` shell route, stable product UI anchors, and absent out-of-scope learner expansion routes.
 - Add the Quick Check product UI child implementation plan with exact files, routes, screens, Playwright tests, phase gates, DoD, dashboard LOC closeout, and archive closure.
 - Start Phase 1 of the Agonara product gap closure plan with a Quick Check product UI spec and implemented-status traceability for the Quick Check HTTP API spec.
