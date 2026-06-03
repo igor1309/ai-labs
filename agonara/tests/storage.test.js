@@ -2454,6 +2454,92 @@ test("createReadinessCheckAttemptRecord_shouldPersistRequirementSnapshotsAndIdem
   }
 });
 
+test("createReadinessCheckAttemptRecord_shouldRejectResultMismatches_onInconsistentSnapshots", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedReadinessCheck(database, { programId: "program-a" });
+
+    assert.deepEqual(
+      {
+        requirementResultMismatch: captureStorageInvariantReason(() =>
+          storage.createReadinessCheckAttemptRecord(
+            database,
+            makeReadinessCheckAttempt({
+              id: "readiness-attempt-mismatched-requirement",
+              programId: "program-a",
+              studentIdentityId: "identity-a",
+              readinessCheckRevisionId: "readiness-revision-a",
+              requirementResults: [
+                {
+                  requirementId: "requirement-a",
+                  targetKind: "topic",
+                  targetId: "entity-topic-a",
+                  title: "Topic A",
+                  requiredLevel: "on_track",
+                  observedLevel: "no_evidence",
+                  evidenceCount: 0,
+                  result: "ready",
+                },
+                {
+                  requirementId: "requirement-b",
+                  targetKind: "concept",
+                  targetId: "entity-concept-a",
+                  title: "Concept A",
+                  requiredLevel: "developing",
+                  observedLevel: "developing",
+                  evidenceCount: 1,
+                  result: "ready",
+                },
+              ],
+            }),
+          ),
+        ),
+        attemptResultMismatch: captureStorageInvariantReason(() =>
+          storage.createReadinessCheckAttemptRecord(
+            database,
+            makeReadinessCheckAttempt({
+              id: "readiness-attempt-mismatched-attempt",
+              programId: "program-a",
+              studentIdentityId: "identity-a",
+              readinessCheckRevisionId: "readiness-revision-a",
+              result: "in_progress",
+              requirementResults: [
+                {
+                  requirementId: "requirement-a",
+                  targetKind: "topic",
+                  targetId: "entity-topic-a",
+                  title: "Topic A",
+                  requiredLevel: "on_track",
+                  observedLevel: "needs_attention",
+                  evidenceCount: 1,
+                  result: "not_ready",
+                },
+                {
+                  requirementId: "requirement-b",
+                  targetKind: "concept",
+                  targetId: "entity-concept-a",
+                  title: "Concept A",
+                  requiredLevel: "developing",
+                  observedLevel: "in_progress",
+                  evidenceCount: 1,
+                  result: "in_progress",
+                },
+              ],
+            }),
+          ),
+        ),
+      },
+      {
+        requirementResultMismatch: "readiness_requirement_result_mismatch",
+        attemptResultMismatch: "readiness_attempt_result_mismatch",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createQuickCheckAttemptRecord_shouldEnforceScopedIdempotency_onEquivalentAndConflictingReuse", () => {
   const database = makeInitializedDatabase();
 

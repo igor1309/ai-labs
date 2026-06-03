@@ -4453,19 +4453,31 @@ function assertReadinessRequirementResults({ revision, requirementResults, resul
     if (!["no_evidence", "in_progress", "developing", "on_track", "needs_attention"].includes(requirementResult.observedLevel)) {
       throw new StorageInvariantError("readiness_observed_level_invalid");
     }
-    assertReadinessResult(requirementResult.result);
+    if (deriveReadinessRequirementResult(requirementResult) !== requirementResult.result) {
+      throw new StorageInvariantError("readiness_requirement_result_mismatch");
+    }
   }
   if (deriveReadinessAttemptResult(requirementResults) !== result) {
     throw new StorageInvariantError("readiness_attempt_result_mismatch");
   }
 }
 
-function deriveReadinessAttemptResult(requirementResults) {
-  if (requirementResults.some($0 => $0.result === "in_progress")) {
+function deriveReadinessRequirementResult(requirementResult) {
+  if (requirementResult.observedLevel === "in_progress") {
     return "in_progress";
   }
+  if (requirementResult.requiredLevel === "developing") {
+    return ["developing", "on_track"].includes(requirementResult.observedLevel) ? "ready" : "not_ready";
+  }
+  return requirementResult.observedLevel === "on_track" ? "ready" : "not_ready";
+}
+
+function deriveReadinessAttemptResult(requirementResults) {
   if (requirementResults.some($0 => $0.result === "not_ready")) {
     return "not_ready";
+  }
+  if (requirementResults.some($0 => $0.result === "in_progress")) {
+    return "in_progress";
   }
   return "ready";
 }
