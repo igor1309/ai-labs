@@ -1,0 +1,23 @@
+{
+  "skill_name": "traceability-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a traceability review of the agonara intent layer (intent×intent — cross-role and inside-role slices).",
+      "expected_output": "A single Markdown findings file under agonara/docs/traceability-reviews/ that reports the intent layer as clean (0 cross-role and 0 inside-role findings), backs that verdict with cited interlocking evidence, enumerates every story per file, and logs exactly the two known tensions as routed open questions rather than findings.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by the intent layer-pair (e.g. 2026-06-03T1007Z-intent.md).",
+        "The file front-matter includes skill: traceability-review, a skill_version, scope naming the intent×intent layer-pair and the agonara project, and slices [cross-role, inside-role].",
+        "The front-matter inputs list the four intent-layer files (intent_learning_program_app.md, admin_user_stories.md, curator_user_stories.md, student_user_stories.md) each with its document version read from that file's own front-matter.",
+        "The Summary reports 0 cross-role findings and 0 inside-role findings (a clean verdict).",
+        "The clean verdict is supported by positive evidence: the cross-role section cites the interlocking corpus/student-state and membership-authority boundary passages with file:line, rather than merely asserting cleanliness.",
+        "The Inspected section enumerates all story IDs per file: INT-01 through INT-07, ADM-01 through ADM-15, CUR-01 through CUR-18, and STU-01 through STU-23.",
+        "An open question records the curator membership operation-vs-policy tension (CUR-14/CUR-17 perform invite/remove while the curator boundary disclaims defining membership policy) and routes it to a downstream layer (intent→ADR, e.g. ADR-006) instead of reporting it as a finding.",
+        "An open question records the self-join vs invitation join-mode taxonomy ambiguity (STU-18 vs STU-22), noting the product intent itself already flags it as open, instead of reporting it as a finding.",
+        "The reviewer reads only the four intent-layer files and does not read ADRs, specs, implementation plans, code, or tests.",
+        "The reviewer makes no edits to any source document, opens no PR, and creates no file other than the single findings file.",
+        "No false-positive findings are manufactured — in particular the Russian/English language difference between the product intent and the story bodies is not reported as a contradiction."
+      ]
+    }
+  ]
+}
