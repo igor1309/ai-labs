@@ -8,6 +8,7 @@ import {
   createOpenAnswerEvaluatorEvidenceRecord,
   createOpenAnswerEvaluatorRunRecord,
   createQuickCheckAttemptRecord,
+  createReadinessCheckAttemptRecord,
   deleteOpenAnswerEvaluationFailureRecord,
   getAcceptedAssessmentCriterionEntityRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
@@ -17,6 +18,7 @@ import {
   getAcceptedOpenAnswerCheckRevisionRecord,
   getAcceptedQuickCheckEntityRecord,
   getAcceptedQuickCheckRevisionRecord,
+  getAcceptedReadinessCheckRevisionRecord,
   getIdentity,
   getOpenAnswerAttemptRecord,
   getOpenAnswerEvaluationFailureRecord,
@@ -25,17 +27,20 @@ import {
   getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
   getQuickCheckAttemptRecord,
+  getReadinessCheckAttemptRecord,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedNavigationRelationshipRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedQuickCheckEntityRecords,
+  listAcceptedReadinessCheckEntityRecords,
   listClaimableOpenAnswerEvaluatorJobRecords,
   listLearnerEvidenceTargetLinkRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
   listQuickCheckAttemptRecords,
+  listReadinessCheckAttemptRecords,
   updateOpenAnswerAttemptStatus,
   updateOpenAnswerEvaluatorJobLease,
   updateOpenAnswerEvaluatorJobRecovery,
@@ -111,6 +116,8 @@ export function createStudentWorkspaceCommands({
       getLearnerStateTargetDetail({ database, getEffectiveParticipation, input, now }),
     getQuickCheckAttempt: input =>
       getQuickCheckAttempt({ database, getEffectiveParticipation, input }),
+    getReadinessCheckAttempt: input =>
+      getReadinessCheckAttempt({ database, input }),
     listOpenAnswerAttempts: input =>
       listOpenAnswerAttempts({ database, getEffectiveParticipation, input }),
     listClaimableOpenAnswerEvaluatorJobs: input =>
@@ -119,6 +126,10 @@ export function createStudentWorkspaceCommands({
       listOpenAnswerEvaluatorEvidence({ database, input }),
     listQuickCheckAttempts: input =>
       listQuickCheckAttempts({ database, getEffectiveParticipation, input }),
+    listReadinessCheckAttempts: input =>
+      listReadinessCheckAttempts({ database, getEffectiveParticipation, input }),
+    listReadinessCheckDeliveries: input =>
+      listReadinessCheckDeliveries({ database, getEffectiveParticipation, input }),
     markOpenAnswerAttemptEvaluating: input =>
       markOpenAnswerAttemptEvaluating({ database, input, now }),
     recordOpenAnswerEvaluation: input =>
@@ -144,6 +155,8 @@ export function createStudentWorkspaceCommands({
       scheduleOpenAnswerEvaluatorJob({ database, generateId, input, now }),
     submitQuickCheckAttempt: input =>
       submitQuickCheckAttempt({ database, generateId, getEffectiveParticipation, input, now }),
+    submitReadinessCheckAttempt: input =>
+      submitReadinessCheckAttempt({ database, generateId, getEffectiveParticipation, input, now }),
     submitOpenAnswerAttempt: input =>
       submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }),
     timeOutOpenAnswerEvaluatorJob: input =>
@@ -1527,6 +1540,20 @@ function getQuickCheckAttempt({ database, getEffectiveParticipation, input }) {
   return accepted({ quickCheckAttempt: summarizeQuickCheckAttempt(attempt) });
 }
 
+function getReadinessCheckAttempt({ database, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const attempt = getReadinessCheckAttemptRecord(database, input?.attemptId);
+  if (!attempt || attempt.studentIdentityId !== identity.id) {
+    return rejected("attempt_not_found");
+  }
+
+  return accepted({ readinessCheckAttempt: summarizeReadinessCheckAttempt(attempt) });
+}
+
 function getOpenAnswerEvaluationStatus({ database, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -1629,6 +1656,26 @@ function getLearnerStateTargetDetail({ database, getEffectiveParticipation, inpu
   });
 }
 
+function listReadinessCheckDeliveries({ database, getEffectiveParticipation, input }) {
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
+  }
+
+  return accepted({
+    readinessChecks: listAcceptedReadinessCheckEntityRecords(database, {
+      programId: authorization.program.id,
+    })
+      .map($0 => getAcceptedReadinessCheckRevisionRecord(database, $0.currentRevisionId))
+      .filter($0 => $0 !== null)
+      .map(summarizeReadinessCheckDelivery),
+  });
+}
+
 function listOpenAnswerAttempts({ database, getEffectiveParticipation, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -1699,6 +1746,41 @@ function listQuickCheckAttempts({ database, getEffectiveParticipation, input }) 
       studentIdentityId: identity.id,
       checkRevisionId,
     }).map(summarizeQuickCheckAttempt),
+  });
+}
+
+function listReadinessCheckAttempts({ database, getEffectiveParticipation, input }) {
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
+  }
+
+  const { identity, program } = authorization;
+  let readinessCheckRevisionId = null;
+  if (input?.readinessCheckRevisionId !== undefined) {
+    if (!isNonEmptyText(input.readinessCheckRevisionId)) {
+      return rejected("validation_failed");
+    }
+    const revision = getAcceptedReadinessCheckRevisionRecord(database, input.readinessCheckRevisionId);
+    if (!revision) {
+      return rejected("readiness_revision_not_found");
+    }
+    if (revision.programId !== program.id) {
+      return rejected("readiness_revision_program_mismatch");
+    }
+    readinessCheckRevisionId = revision.id;
+  }
+
+  return accepted({
+    readinessCheckAttempts: listReadinessCheckAttemptRecords(database, {
+      programId: program.id,
+      studentIdentityId: identity.id,
+      readinessCheckRevisionId,
+    }).map(summarizeReadinessCheckAttempt),
   });
 }
 
@@ -1876,6 +1958,72 @@ function submitQuickCheckAttempt({ database, generateId, getEffectiveParticipati
   }
 }
 
+function submitReadinessCheckAttempt({ database, generateId, getEffectiveParticipation, input, now }) {
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
+  }
+
+  if (!isNonEmptyText(input?.readinessCheckRevisionId) || !isNonEmptyText(input?.idempotencyKey)) {
+    return rejected("validation_failed");
+  }
+
+  const revision = getAcceptedReadinessCheckRevisionRecord(database, input.readinessCheckRevisionId);
+  if (!revision) {
+    return rejected("readiness_revision_not_found");
+  }
+  if (revision.programId !== authorization.program.id) {
+    return rejected("readiness_revision_program_mismatch");
+  }
+
+  const model = buildLearnerStateModel({
+    database,
+    programId: authorization.program.id,
+    studentIdentityId: authorization.identity.id,
+  });
+  const requirementResults = revision.requirements.map($0 => makeReadinessRequirementResult(model, $0));
+  const result = deriveReadinessAttemptResult(requirementResults);
+  const existing = findIdempotentReadinessCheckAttempt(database, {
+    programId: authorization.program.id,
+    readinessCheckRevisionId: revision.id,
+    studentIdentityId: authorization.identity.id,
+    idempotencyKey: input.idempotencyKey,
+  });
+  if (existing) {
+    if (
+      existing.result === result
+      && JSON.stringify(existing.requirementResults) === JSON.stringify(requirementResults)
+    ) {
+      return accepted({ readinessCheckAttempt: summarizeReadinessCheckAttempt(existing) });
+    }
+    return rejected("idempotency_conflict");
+  }
+
+  try {
+    const attempt = createReadinessCheckAttemptRecord(database, {
+      id: generateId(),
+      programId: authorization.program.id,
+      studentIdentityId: authorization.identity.id,
+      readinessCheckRevisionId: revision.id,
+      result,
+      requirementResults,
+      idempotencyKey: input.idempotencyKey,
+      submittedAt: now().toISOString(),
+    });
+
+    return accepted({ readinessCheckAttempt: summarizeReadinessCheckAttempt(attempt) });
+  } catch (error) {
+    if (error instanceof StorageInvariantError) {
+      return rejected(mapReadinessAttemptStorageRejection(error.reason));
+    }
+    throw error;
+  }
+}
+
 function submitOpenAnswerAttempt({ database, generateId, getEffectiveParticipation, input, now }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -1967,6 +2115,19 @@ function findIdempotentQuickCheckAttempt(
       programId,
       studentIdentityId,
       checkRevisionId,
+    }).find($0 => $0.idempotencyKey === idempotencyKey) ?? null
+  );
+}
+
+function findIdempotentReadinessCheckAttempt(
+  database,
+  { programId, studentIdentityId, readinessCheckRevisionId, idempotencyKey },
+) {
+  return (
+    listReadinessCheckAttemptRecords(database, {
+      programId,
+      studentIdentityId,
+      readinessCheckRevisionId,
     }).find($0 => $0.idempotencyKey === idempotencyKey) ?? null
   );
 }
@@ -2412,6 +2573,43 @@ function getLearnerStateTargetEvidence(model, summary) {
     );
 }
 
+function makeReadinessRequirementResult(model, requirement) {
+  const observedLevel = model.summariesByKey.get(
+    learnerStateTargetKey(requirement.targetKind, requirement.targetId),
+  )?.level ?? "no_evidence";
+  return {
+    requirementId: requirement.requirementId,
+    targetKind: requirement.targetKind,
+    targetId: requirement.targetId,
+    requiredLevel: requirement.requiredLevel,
+    observedLevel,
+    result: deriveReadinessRequirementResult({
+      observedLevel,
+      requiredLevel: requirement.requiredLevel,
+    }),
+  };
+}
+
+function deriveReadinessRequirementResult(requirementResult) {
+  if (requirementResult.observedLevel === "in_progress") {
+    return "in_progress";
+  }
+  if (requirementResult.requiredLevel === "developing") {
+    return ["developing", "on_track"].includes(requirementResult.observedLevel) ? "ready" : "not_ready";
+  }
+  return requirementResult.observedLevel === "on_track" ? "ready" : "not_ready";
+}
+
+function deriveReadinessAttemptResult(requirementResults) {
+  if (requirementResults.some($0 => $0.result === "not_ready")) {
+    return "not_ready";
+  }
+  if (requirementResults.some($0 => $0.result === "in_progress")) {
+    return "in_progress";
+  }
+  return "ready";
+}
+
 function summarizeLearnerEvidence(evidence) {
   return {
     evidenceId: evidence.evidenceId,
@@ -2525,6 +2723,34 @@ function summarizeQuickCheckAttempt(attempt) {
     checkRevisionId: attempt.checkRevisionId,
     selectedOptionId: attempt.selectedOptionId,
     matched: attempt.matched,
+    submittedAt: attempt.submittedAt,
+  };
+}
+
+function summarizeReadinessCheckDelivery(revision) {
+  return {
+    entityId: revision.entityId,
+    revisionId: revision.id,
+    programId: revision.programId,
+    title: revision.title,
+    scope: revision.scope,
+    requirements: revision.requirements.map($0 => ({
+      requirementId: $0.requirementId,
+      targetKind: $0.targetKind,
+      targetId: $0.targetId,
+      requiredLevel: $0.requiredLevel,
+    })),
+  };
+}
+
+function summarizeReadinessCheckAttempt(attempt) {
+  return {
+    attemptId: attempt.id,
+    programId: attempt.programId,
+    studentIdentityId: attempt.studentIdentityId,
+    readinessCheckRevisionId: attempt.readinessCheckRevisionId,
+    result: attempt.result,
+    requirementResults: attempt.requirementResults,
     submittedAt: attempt.submittedAt,
   };
 }
@@ -2701,6 +2927,19 @@ function mapQuickCheckAttemptStorageRejection(reason) {
   }
   if (reason === "quick_check_revision_program_mismatch") {
     return "quick_check_revision_program_mismatch";
+  }
+  return "validation_failed";
+}
+
+function mapReadinessAttemptStorageRejection(reason) {
+  if (reason === "readiness_attempt_idempotency_conflict") {
+    return "idempotency_conflict";
+  }
+  if (reason === "readiness_revision_not_found") {
+    return "readiness_revision_not_found";
+  }
+  if (reason === "readiness_revision_program_mismatch") {
+    return "readiness_revision_program_mismatch";
   }
   return "validation_failed";
 }
