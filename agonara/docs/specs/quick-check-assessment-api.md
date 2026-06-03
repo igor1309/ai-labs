@@ -3,7 +3,7 @@ date: 2026-06-03
 model: gpt-5
 description: "Spec: Agonara Quick Check assessment HTTP API."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,10 @@ type: spec
 ## Goal
 
 Define the public HTTP API for Agonara deterministic single-select Quick Check curation, student-safe delivery, and Student Workspace-owned attempts.
+
+## Implementation status
+
+Implemented by [Quick Check Assessment HTTP API Implementation Plan](../plans/implemented/quick-check-assessment-api.md) and covered by [Quick-check HTTP API tests](../../tests/http-api.test.js).
 
 ## Public interface
 
