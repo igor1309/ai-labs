@@ -103,14 +103,15 @@ as ADR-001 §7 amendment (version 0.0.3).
   (foreground agent, lobster tool, OR cron-dispatched isolated turn) — `runs.sqlite`
   ~9 h stale while a 10-min cron succeeded; `tasks maintenance` all-zeros; `doctor`
   finds no fault; no config gate. Not a Lobster/design flaw — a `2026.5.x` ledger gap.
-- **Substrate now (ADR-001 §7):** native `openclaw cron` agent turn → tested
-  `scope-select/` CLIs → `openclaw agent` worker (plain subprocess, not nested) →
-  commit. **Observability = `openclaw cron runs --id`** (terminal status/duration/
-  usage — works today) + Telegram notification. **Lobster dropped** from the prod path.
+- **Substrate now (ADR-001 §7):** an `/etc/cron.d` entry runs an orchestrator
+  **wrapper** (bash) → tested `scope-select/` CLIs → `openclaw agent --scope` worker
+  (plain subprocess, not nested) → commit. **Observability = the wrapper's fail-closed
+  Telegram + `doc-drift-cron.log` + per-scope state** (native `openclaw cron` can't run
+  a multi-step wrapper; `cron runs` history + tasks ledger don't apply). **Lobster dropped.**
 - **Watch:** tasks/TaskFlow ledger emptiness → `agents/TODO.md` §4, recheck **2026-06-16**.
-- Confirmed working: native `openclaw cron add` (no gotcha-#13 timeout on this unit);
-  step `command:` runs via `/bin/sh`; `openclaw.invoke` is a Lobster pipeline stage,
-  not a shell binary. Mechanism finding stands; the substrate around it changed.
+- Confirmed working: step `command:` runs via `/bin/sh`; `openclaw.invoke` is a Lobster
+  pipeline stage, not a shell binary; native `openclaw cron add` had no gotcha-#13 timeout
+  (but schedules only agent turns, so it's not used for the multi-step wrapper).
 
 ## Environment / key facts
 

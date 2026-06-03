@@ -100,26 +100,38 @@ is available **today**, independent of the empty tasks/TaskFlow ledger.
   form is **rejected** at `dry-run` by runtime `2026.5.22`
   (`Unsupported condition`). A flow must avoid that form.
 
-## Substrate decision (feeds the ADR-001 amendment)
+## Substrate decision (feeds the ADR-001 amendment, §7)
 
-- **Trigger:** a native `openclaw cron` scheduled **agent turn** (no `.lobster`
-  pipeline, no embedded nested call).
-- **Selection/commit:** the existing tested TS CLIs (`scope-select/`), invoked
-  from that turn / its wrapper.
-- **Worker:** invoked as a plain `openclaw agent` subprocess from the wrapper /
-  turn — not nested inside an embedded Lobster tool.
-- **Observability:** `openclaw cron runs --id` (terminal status per run), plus the
-  existing Telegram notification for human glance-value. The TaskFlow / tasks
-  ledger is **not** depended upon while §4 stands.
+The orchestration is a **multi-step** sequence (`select → worker → commit`), so it
+needs a shell driver. Native `openclaw cron` schedules only *agent turns* (static
+message payloads) — it cannot run a multi-step wrapper — and `openclaw cron runs`
+history covers only those native single-turn jobs. So the substrate is the
+existing doc-drift **imperative-shell** pattern, not native cron:
+
+- **Trigger:** an external `/etc/cron.d` entry invoking the orchestrator **wrapper**
+  (bash) — the existing doc-drift scheduling mechanism; avoids gotcha #13.
+- **Selection/commit:** the tested TS CLIs (`scope-select/`), called by the wrapper.
+- **Worker:** invoked as a plain `openclaw agent --scope <id>` subprocess from the
+  wrapper — not nested inside an embedded Lobster tool.
+- **Observability:** the wrapper's **fail-closed** Telegram notification
+  (drift-found / failed / silent-on-clean) + `doc-drift-cron.log` + the **per-scope
+  state file** (which scope, at which commit/when). Absence is caught by the
+  cross-cutting dead-man's-switch (`agents/TODO.md` §1). Neither the tasks ledger
+  (broken — §4) nor `openclaw cron runs` history applies to a `/etc/cron.d` wrapper.
 - **Lobster:** dropped from the production path (it provided neither the nested
   invocation nor the ledger observability it was chosen for here).
+
+> The Phase-4 cron-run-history observation (§5 above) is real but applies to a
+> *single* native-cron agent turn — not the multi-step wrapper — so it is not the
+> orchestrator's observability mechanism.
 
 ## What survives unchanged (ADR-001 core)
 
 Scope selection as tested, version-controlled TS code; one scope per run; eligible
-set = changed ∪ stale under budget; every run resolves to an observable terminal
-status. Only the *substrate* (Lobster/ledger → native cron / cron run history)
-swaps — exactly the swap ADR-001's *Decision stability* section anticipated.
+set = changed ∪ stale under budget; every run's outcome observable (fail-closed).
+Only the *substrate* (Lobster + tasks ledger → `/etc/cron.d` wrapper + fail-closed
+notification/log/state) swaps — exactly the swap ADR-001's *Decision stability*
+section anticipated.
 
 ## Reproduction pointers
 

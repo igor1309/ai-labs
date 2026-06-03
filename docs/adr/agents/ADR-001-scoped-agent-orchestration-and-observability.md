@@ -4,7 +4,7 @@ author: Igor Malyarov
 version: 0.0.3
 status: accepted
 accepted: 2026-06-03
-description: "Orchestrate scoped agent runs; scope selection as tested TS step CLIs; one scope per run; every run resolves to an observable terminal status. Substrate amended (2026-06-02, §7): native-cron agent turn + cron run history, after the Phase 4 spike found the in-gateway Lobster/TaskFlow path unviable on the live unit. First adopter: doc-drift scoped audit."
+description: "Orchestrate scoped agent runs; scope selection as tested TS step CLIs; one scope per run; every run resolves to an observable terminal status. Substrate amended (2026-06-02, §7): an /etc/cron.d imperative-shell wrapper (select → openclaw agent worker → commit) with fail-closed Telegram + log + per-scope state for observability, after the Phase 4 spike found the in-gateway Lobster/TaskFlow path unviable on the live unit. First adopter: doc-drift scoped audit."
 ---
 
 # ADR: Scoped Agent Orchestration & Observability via OpenClaw Lobster/TaskFlow
@@ -178,7 +178,7 @@ relying on the in-gateway path.
 - Not retiring the fleet's existing heartbeat / dead-man's-switch — any
   consolidation onto the ledger is a separate future decision.
 
-## 7. Amendment 2026-06-02 — Phase 4 spike: substrate swap to native cron + cron run history
+## 7. Amendment 2026-06-02 — Phase 4 spike: substrate swap to an external-cron imperative-shell wrapper
 
 **Status:** accepted 2026-06-03. Supersedes the Lobster/TaskFlow substrate
 invariants below; the core decision (§3) is unchanged.
@@ -202,21 +202,28 @@ This is exactly the case §5 *Decision stability* anticipated, so it is handled
 
 ### Amended invariants
 
-- **Trigger / pipeline.** The run is launched by a native **`openclaw cron`**
-  scheduled **agent turn**. The §4 invariants requiring a version-controlled
-  `.lobster` file, `lobster graph` inspectability, the pipeline running as the
-  bundled Lobster tool, and `tools.alsoAllow: ["lobster"]` **no longer apply** to
-  the production path. (Native `openclaw cron` showed no gotcha-#13 RPC timeout on
-  this unit; the §4 external-`/etc/cron.d` preference is downgraded to optional.)
-- **Worker invocation.** The worker is invoked as a plain `openclaw agent`
-  subprocess from the scheduled turn / its wrapper — never nested inside an
-  embedded Lobster tool call.
+- **Trigger / schedule.** The run is launched by an external **`/etc/cron.d`**
+  entry invoking the **orchestrator wrapper** (a version-controlled bash script) —
+  the same scheduling mechanism the existing doc-drift wrapper already uses. The §4
+  invariants requiring a version-controlled `.lobster` file, `lobster graph`
+  inspectability, the pipeline running as the bundled Lobster tool, and
+  `tools.alsoAllow: ["lobster"]` **no longer apply** to the production path. Native
+  `openclaw cron` is **not** used: it schedules only agent turns (static message
+  payloads), so it cannot drive the multi-step `select → worker → commit` sequence;
+  `/etc/cron.d` also sidesteps gotcha #13 entirely.
+- **Orchestration & worker invocation.** The wrapper runs the tested `select` CLI,
+  invokes the worker as a plain `openclaw agent --scope <id>` subprocess only when a
+  scope is selected, and runs the `commit` CLI only on a successful audit — never
+  nested inside an embedded Lobster tool call, and no decision logic in bash.
 - **Observability.** "Recorded in the TaskFlow / tasks ledger with a terminal
-  status" is replaced by: each run's terminal status is durably recorded in
-  **cron run history** (`openclaw cron runs --id <jobId>` — status, duration,
-  model, token usage, delivery), with the existing Telegram notification for
-  human glance-value. The tasks/TaskFlow ledger is **not** depended upon while the
-  watch item (`agents/TODO.md` §4) stands; if it begins populating, reconsider
+  status" is replaced by the wrapper's existing **fail-closed mechanism**: a
+  Telegram notification (drift-found / failed / silent-on-clean), the
+  `doc-drift-cron.log`, and the **per-scope state file** (which scope was audited,
+  at which commit and when). Absence of a run is caught by the cross-cutting
+  dead-man's-switch (`agents/TODO.md` §1). Neither the tasks/TaskFlow ledger (broken
+  on this unit — `agents/TODO.md` §4) nor `openclaw cron runs` history applies:
+  cron run history covers only native single-turn `openclaw cron` jobs, not a
+  `/etc/cron.d` wrapper. If the tasks ledger begins populating, reconsider
   consolidating observability onto it.
 
 ### Unchanged (core decision, §3)

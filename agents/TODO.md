@@ -79,8 +79,9 @@ fault, but `runs.sqlite` stayed ~9 h stale while a 10-minute cron succeeded, and
 behavior/version gap. Not doctor-fixable, no config gate.
 
 This blocks consolidating run observability onto the ledger (ties to §1). Until it
-resolves, the orchestrator (ADR-001 §7 amendment) uses **cron run history**
-(`openclaw cron runs --id`) for observability instead.
+resolves, the orchestrator (ADR-001 §7 amendment) relies on the wrapper's
+**fail-closed Telegram notification + log + per-scope state** for observability
+instead (cron run history does not apply to the `/etc/cron.d` wrapper).
 
 ### Watch
 

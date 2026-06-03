@@ -161,7 +161,7 @@ nested `openclaw agent` step **deadlocks** under the embedded runner (`lobster
 runtime timed out`), and `llm-task` is disabled on the host (and is not a drop-in
 for a full agent turn). Combined with the tasks/TaskFlow ledger not populating on
 this unit (findings §4), the in-gateway Lobster path was dropped from the
-production substrate; ADR-001 §7 swaps to a native-cron agent turn.
+production substrate; ADR-001 §7 swaps to an `/etc/cron.d` imperative-shell wrapper.
 
 ## References
 

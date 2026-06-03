@@ -101,9 +101,9 @@ Recommended practice inside a flow:
 > (`task_runs` table, `recordTask`, cron files wired). `runs.sqlite` stayed ~9 h
 > stale while a 10-minute cron succeeded; `tasks maintenance` is all-zeros;
 > `doctor` finds no fault; no config gate. The orchestrator (ADR-001 §7) therefore
-> uses **cron run history** (`openclaw cron runs --id`) for observability, not this
-> ledger. Full diagnosis: `phase4-substrate-spike-findings.md` §4. Watch +
-> recheck 2026-06-16: `agents/TODO.md` §4.
+> relies on its `/etc/cron.d` wrapper's fail-closed Telegram + log + per-scope state
+> for observability, not this ledger. Full diagnosis:
+> `phase4-substrate-spike-findings.md` §4. Watch + recheck 2026-06-16: `agents/TODO.md` §4.
 
 ## Live State on the VPS (2026-06-02)
 
