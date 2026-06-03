@@ -1,13 +1,13 @@
 ---
 date: 2026-02-21
 model: gpt-5.2
-description: "Spec: OpenRouter adapter implementing profession-normalizer model client interface"
+description: "Spec: LLM adapter implementing profession-normalizer model client interface"
 ---
 
-# Spec: OpenRouter Normalizer Model Client Adapter (v1)
+# Spec: LLM Normalizer Model Client Adapter (v1)
 
 ## Goal
-Implement the `profession-normalizer` module-owned `NormalizerModelClient.normalize(...)` protocol by calling OpenRouter.
+Implement the `profession-normalizer` module-owned `NormalizerModelClient.normalize(...)` protocol by calling the configured LLM endpoint.
 
 This adapter is produced by the Worker assembler.
 
@@ -23,12 +23,12 @@ Output:
 
 ## Configuration (assembler-provided)
 Required:
-- `OPENROUTER_API_KEY` secret
+- `LLM_API_KEY` secret
 - `model` identifier (string)
 - timeout (ms)
 
 Optional:
-- base URL override (defaults to OpenRouter)
+- endpoint URL override (defaults to Nomos)
 
 ## Prompt contract (v1)
 The adapter must:
@@ -58,4 +58,3 @@ Using an HTTP client spy:
 
 ## Done criteria
 - Adapter implements the protocol and is covered by tests.
-

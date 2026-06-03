@@ -21,7 +21,7 @@ Required:
 - `env.NORMALIZER_CACHE`: KV namespace for normalizer cache
 - `env.OUTLOOK_CACHE`: KV namespace for outlook cache
 - `env.DB`: D1 database binding
-- `env.OPENROUTER_API_KEY`: secret (string)
+- `env.LLM_API_KEY`: secret (string)
 
 Prod-only required:
 - `env.TELEMETRY_DATASET`: Analytics Engine dataset binding used for best-effort per-request telemetry
@@ -30,8 +30,8 @@ Optional (v1 defaults may be provided by the assembler):
 - `env.PROMPT_VERSION`: string (default `"2"` in config)
 - `env.NORMALIZER_MODEL`: OpenRouter model id
 - `env.OUTLOOK_MODEL`: OpenRouter model id
-- `env.OPENROUTER_BASE_URL`: override base URL
-- `env.OPENROUTER_TIMEOUT_MS`: number as string
+- `env.LLM_ENDPOINT_URL`: override chat-completions endpoint URL
+- `env.LLM_TIMEOUT_MS`: number as string
 
 ### Cloudflare `ctx` capabilities
 Optional:
