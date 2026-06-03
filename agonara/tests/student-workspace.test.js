@@ -27,6 +27,7 @@ import {
   createProgramSourceRecord,
   createQuickCheckCandidateRecord,
   createSession,
+  deleteLearnerEvidenceTargetLinkRecord,
   exportIdentityBackup,
   getIdentity,
   getOpenAnswerAttemptRecord,
@@ -1823,6 +1824,21 @@ test("learnerStateSummary_shouldDeriveOwnerEvidenceWeakAreasAndTargetDetail", ()
       createdAt: "2026-06-02T09:36:00.000Z",
       updatedAt: "2026-06-02T09:36:00.000Z",
     });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-deleted-unused-concept",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-unused",
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: "quick-check-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:37:00.000Z",
+      updatedAt: "2026-06-02T09:37:00.000Z",
+    });
+    deleteLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-deleted-unused-concept",
+      updatedAt: "2026-06-02T09:38:00.000Z",
+    });
 
     commands.submitQuickCheckAttempt({
       actingIdentityId: "identity-student",
@@ -1912,8 +1928,8 @@ test("learnerStateSummary_shouldDeriveOwnerEvidenceWeakAreasAndTargetDetail", ()
           ],
           topics: [["topic-entity-a", "needs_attention", 1]],
           concepts: [
-            ["concept-entity-a", "needs_attention", 1],
             ["concept-entity-unused", "no_evidence", 0],
+            ["concept-entity-a", "needs_attention", 1],
           ],
           materialReferences: [["material-entity-a", "on_track", 2]],
           checks: [
@@ -1940,6 +1956,116 @@ test("learnerStateSummary_shouldDeriveOwnerEvidenceWeakAreasAndTargetDetail", ()
         forbiddenDetails: false,
       },
     );
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerStateTargetDetail_shouldMapPendingAttemptStatesAndEvaluatorEvidence", () => {
+  const { commands, database } = makeSUT({
+    ids: ["submitted-attempt", "evaluating-attempt", "evaluator-run-1", "evidence-1", "failed-attempt"],
+    now: makeAdvancingClock("2026-06-02T10:20:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Submitted answer",
+      idempotencyKey: "submitted-key",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Evaluating answer",
+      idempotencyKey: "evaluating-key",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "evaluating-attempt",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "retrieval_trace",
+      redactedSummary: "Relevant rubric sentence.",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Failed answer",
+      idempotencyKey: "failed-key",
+    });
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "failed-attempt",
+      reason: "temporary evaluator outage",
+    });
+
+    const detail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "open_answer_check",
+      targetId: "check-entity-a",
+    });
+
+    assert.deepEqual(projectLearnerStateTargetDetail(detail), {
+      status: "accepted",
+      target: ["open_answer_check", "check-entity-a", "in_progress", 4],
+      evidenceSignals: ["pending", "pending", "pending", "pending"],
+      evidenceKinds: [
+        "open_answer_attempt",
+        "open_answer_evaluator_evidence",
+        "open_answer_attempt",
+        "open_answer_attempt",
+      ],
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerStateTargetDetail_shouldMapPartiallyMetCriterionToDeveloping", () => {
+  const { commands, database } = makeSUT({
+    ids: ["partial-attempt", "partial-evaluation"],
+    now: makeAdvancingClock("2026-06-02T10:30:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    const attempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Partially complete answer",
+      idempotencyKey: "partial-key",
+    }).value.attempt;
+    commands.recordOpenAnswerEvaluation({
+      attemptId: attempt.attemptId,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer partially addresses the criterion.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          outcome: "partially_met",
+          feedback: "Names the idea but omits the consequence.",
+        }),
+      ],
+    });
+
+    const detail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "assessment_criterion",
+      targetId: "criterion-entity-a",
+    });
+
+    assert.deepEqual(projectLearnerStateTargetDetail(detail), {
+      status: "accepted",
+      target: ["assessment_criterion", "criterion-entity-a", "developing", 1],
+      evidenceSignals: ["partial"],
+      evidenceKinds: ["open_answer_criterion_feedback"],
+    });
   } finally {
     database.close();
   }
@@ -9624,7 +9750,8 @@ function seedLearnerStateNavigationGraph(database, { programId }) {
     entityId: "concept-entity-unused",
     revisionId: "concept-revision-unused",
     acceptedKind: "concept",
-    title: "Unused concept",
+    title: "Accepted quick check quick-check-revision-a",
+    sourceIds: ["quick-check-source-a"],
   });
   createAcceptedNavigationTarget(database, {
     programId,
@@ -9685,6 +9812,7 @@ function createAcceptedNavigationTarget(
     revisionId,
     acceptedKind,
     title,
+    sourceIds = [],
   },
 ) {
   const candidateId = `candidate-${entityId}`;
@@ -9698,7 +9826,7 @@ function createAcceptedNavigationTarget(
     locator: acceptedKind === "material_reference" ? `https://example.test/${entityId}` : null,
     citation: null,
     relationshipDrafts: [],
-    sourceIds: [],
+    sourceIds,
     rationale: null,
     status: "accepted",
     createdByIdentityId: "identity-curator",
@@ -9722,7 +9850,7 @@ function createAcceptedNavigationTarget(
     locator: acceptedKind === "material_reference" ? `https://example.test/${entityId}` : null,
     citation: null,
     acceptedFromCandidateId: candidateId,
-    sourceIds: [],
+    sourceIds,
     rationale: null,
     acceptedByIdentityId: "identity-curator",
     acceptedAt: "2026-06-02T09:31:00.000Z",

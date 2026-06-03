@@ -2182,16 +2182,20 @@ function getOpenAnswerLearnerEvidence(database, { programId, studentIdentityId }
     if (!revision) {
       return [];
     }
+    const evaluatorEvidence = getOpenAnswerEvaluatorLearnerEvidence(database, { attempt, revision });
     const evaluation = getOpenAnswerEvaluationRecordByAttemptId(database, attempt.id);
     if (!evaluation) {
-      return [makeOpenAnswerCheckLearnerEvidence({
-        attempt,
-        occurredAt: attempt.updatedAt,
-        revision,
-        signal: "pending",
-        sourceKind: "open_answer_attempt",
-        summary: `Submitted answer: ${attempt.submittedAnswer}`,
-      })];
+      return [
+        makeOpenAnswerCheckLearnerEvidence({
+          attempt,
+          occurredAt: attempt.updatedAt,
+          revision,
+          signal: "pending",
+          sourceKind: "open_answer_attempt",
+          summary: `Submitted answer: ${attempt.submittedAnswer}`,
+        }),
+        ...evaluatorEvidence,
+      ];
     }
 
     const criterionEvidence = evaluation.criterionFeedback.flatMap(feedback => {
@@ -2229,8 +2233,32 @@ function getOpenAnswerLearnerEvidence(database, { programId, studentIdentityId }
         summary: evaluation.summaryFeedback,
       }),
       ...criterionEvidence,
+      ...evaluatorEvidence,
     ];
   });
+}
+
+function getOpenAnswerEvaluatorLearnerEvidence(database, { attempt, revision }) {
+  return listOpenAnswerEvaluatorRunRecords(database, { attemptId: attempt.id }).flatMap(run =>
+    listOpenAnswerEvaluatorEvidenceRecords(database, { evaluatorRunId: run.id }).map(evidence => ({
+      evidenceId: evidence.id,
+      ownerKind: "accepted_open_answer_check",
+      ownerEntityId: revision.entityId,
+      programId: attempt.programId,
+      sourceKey: `open-answer-evaluator-evidence:${evidence.id}`,
+      sourceKind: "open_answer_evaluator_evidence",
+      signal: "pending",
+      studentIdentityId: attempt.studentIdentityId,
+      occurredAt: evidence.recordedAt,
+      attemptId: attempt.id,
+      checkRevisionId: revision.id,
+      targetKind: "open_answer_check",
+      targetId: revision.entityId,
+      targetKey: learnerStateTargetKey("open_answer_check", revision.entityId),
+      title: revision.title,
+      summary: evidence.redactedSummary ?? evidence.evidenceKind,
+    })),
+  );
 }
 
 function makeOpenAnswerCheckLearnerEvidence({ attempt, occurredAt, revision, signal, sourceKind, summary }) {
