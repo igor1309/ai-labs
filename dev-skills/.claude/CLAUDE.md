@@ -99,12 +99,3 @@ Changes:
 4. Include version change in commit message (optional but recommended)
 
 **Never commit a SKILL.md or its supporting documents without updating the SKILL.md version number.**
-
-## Skill Refactor Discipline
-
-When refactoring a skill for length, verbosity, or coupling to its worked-example project:
-
-- **Structure, don't just delete.** Extract topic-scoped detail (e.g. per-pass mechanics) into `references/` and link it from the SKILL.md spine — progressive disclosure. Extraction is a maintainability/structuring win, not a context-window win, when the runtime inlines method into subagent prompts; do it for structure, and don't oversell it as a context saving. De-duplicate cross-cutting rules so each lives in exactly one place; sub-docs carry only what is unique to their topic.
-- **Separate the portable core from the project-bound harness.** The method (SKILL.md + `references/`) must stay decoupled from project-specific artifacts (evals, reference outputs, case study). Coupling to the *method shape* (e.g. the My-Way pipeline) is fine; coupling to the specific example project is not.
-- **Validate refactors as behavior-preserving.** Once a provenance-stamped baseline exists, re-run the affected passes and diff against the committed baseline — assert the load-bearing facts (verdicts, judgement surface) and allow documented residual wobble. Run validation agents on the **refactored artifact only**; never feed them the case study, reference outputs, or evals, which would leak the expected answer.
-- **Keep method changes out of a structuring refactor.** If a re-run surfaces a method weakness, flag it separately — never fold a behavior change into a refactor claimed as behavior-preserving.

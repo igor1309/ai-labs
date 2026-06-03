@@ -1,7 +1,7 @@
 ---
 name: skill-review
 author: Igor Malyarov
-version: "1.1.4"
+version: "1.2.0"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -106,6 +106,15 @@ Per skill:
 - Don't penalize short skills — 30 lines of signal beats 300 lines of padding
 - Don't require sections that don't apply (no empty "Common Mistakes" sections)
 - Don't flag missing tests — that's a separate concern from content quality
+
+## Refactoring a skill
+
+The axes above evaluate a skill as an artifact; these rules govern *changing* one.
+
+- **Structure over deletion.** Move topic-scoped detail into `references/` with gated links (§5) and de-duplicate cross-cutting rules to a single home (§1) — don't just cut. Note extraction is a maintainability win, not a context-window win when the runtime inlines a skill's method into a subagent prompt; do it for structure, don't sell it as context savings.
+- **Portable core vs project-bound harness.** Keep the method (SKILL.md + `references/`) decoupled from artifacts stamped to one example project (evals, reference outputs, case studies). Coupling to the *method shape* is fine; coupling to the example project is not.
+- **Prove refactors behavior-preserving.** When a provenance-stamped baseline exists, re-run the affected work and diff against it — assert the load-bearing facts (verdicts, judgement surface), allow documented residual wobble. Run validation agents on the **refactored artifact only**; feeding them the case study, reference outputs, or evals leaks the expected answer.
+- **Keep method changes out of a structuring refactor.** If a re-run surfaces a method weakness, fix it as its own change with its own re-validation — never fold a behavior change into a refactor claimed as behavior-preserving.
 
 ## Related Skills
 
