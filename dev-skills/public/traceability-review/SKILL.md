@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.10.0"
+version: "0.10.1"
 author: Igor Malyarov
 ---
 

@@ -74,11 +74,13 @@ whole suite through context, with no accuracy gain for names-only extraction).
 
 The ADR is downstream here, the intent upstream — the reverse of intent→ADR. One
 row per ADR **Decision sentence and Rules/Invariants bullet**, pinned to the ADR's
-own units: do **not** enumerate Executive Summary, Context, Consequences, or
-Non-Goals as rows, don't sub-split a bullet, don't fold duplicate rules, and don't
-promote an Executive-Summary restatement into its own row. (ADR decisions carry no
-stable IDs the way intent stories do, so this unit is softer than an ID-pinned
-pass — report the count as approximate.) Verdicts: `traced` (cite the intent
+own units — **one row per bullet exactly as written**. Do **not** enumerate
+Executive Summary, Context, Consequences, or Non-Goals as rows; do **not**
+sub-split a bullet; do **not** promote an Executive-Summary restatement into its
+own row; and do **not** fold or merge bullets — *not even several that share one
+parent decision* (folding is the main source of count drift). (ADR decisions carry
+no stable IDs the way intent stories do, so this unit is softer than an ID-pinned
+pass — report the count as approximate even after applying these guards.) Verdicts: `traced` (cite the intent
 `ID file:line`), `derived` (no direct intent parent but a legitimate design/
 architectural derivation of a traced decision or system-level need — cite the
 parent; a "derived requirement" is **not** an orphan), `carried-shape` (elaborates

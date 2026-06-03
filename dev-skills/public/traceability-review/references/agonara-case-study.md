@@ -76,12 +76,14 @@ baseline.
 - **The orphan check's row unit is softer than the ID-pinned passes.** Allocation
   and intent→ADR pin rows to externally numbered IDs (INT-01, CUR-01…), so counts
   are stable. The orphan check pins to *ADR prose decisions*, which carry no IDs —
-  so the count wobbled (63 / 63 / 53 across three runs; the outlier promoted
-  Executive-Summary restatements into rows and folded duplicate rules). The
-  0-orphan verdict and *which* decisions are borderline reproduced perfectly; only
-  the count drifts. So the eval pins the row-generation rule + the verdict + the
-  named borderline decisions, not a number — and the skill reports the count as
-  approximate.
+  so the count drifted when runs folded coupled bullets or promoted
+  Executive-Summary restatements (63 / 63 / 53 / 48 across early runs). The
+  0-orphan verdict and *which* decisions are borderline reproduced perfectly
+  throughout; only the count moved. v0.10.1 tightened the guard to *one row per
+  bullet exactly as written — no folding, even of bullets sharing a parent
+  decision*; runs reading only the skill then reproduced 63. The unit is still
+  softer than ID-pinned in principle, so the eval pins the row-generation rule +
+  the verdict + the named borderline decisions, not a number.
 - **Derived requirement ≠ orphan.** A decision with no direct intent parent is not
   automatically scope creep: a *derived requirement* — a technical/architectural
   means that necessarily follows from honouring a traced decision — legitimately

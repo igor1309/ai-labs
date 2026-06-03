@@ -44,9 +44,10 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
   (loss-vs-uncovered, deferred-vs-missing, covered-vs-untested, drift-count,
   derived-vs-orphan). Evals assert the *stable* parts and **leave the disposition
   unpinned**. One twist for the orphan check: its rows pin to **ADR prose
-  decisions, which carry no IDs**, so even the row *count* is soft (63/63/53 over
-  three runs) — the eval pins the row-generation rule and the 0-orphan verdict,
-  not a number.
+  decisions, which carry no IDs**, so the row *count* drifted when runs folded
+  coupled bullets (63/63/53/48). v0.10.1's "one row per bullet, no folding" guard
+  pins independent runs at 63, but the eval still pins the row-generation rule and
+  the 0-orphan verdict, not a number.
 - **Evals are a regression harness, not a living contract** (see
   `evals/README.md`). Reference outputs are perishable, provenance-stamped
   snapshots; when Agonara's docs change, re-run + human-confirm, don't "fix" the
