@@ -54,6 +54,7 @@ run "$s" >/dev/null 2>&1; rc=$?
 check "happy: exit 0" "0" "$rc"
 check "happy: worker invoked once" "1" "$(grep -c . "$s/agent.log" 2>/dev/null || echo 0)"
 check "happy: worker got a --scope token" "1" "$(grep -c -- '--scope' "$s/agent.log" 2>/dev/null || echo 0)"
+check "happy: worker got a fresh --session-key" "1" "$(grep -c -- '--session-key agent:doc-drift-agent:run-' "$s/agent.log" 2>/dev/null || echo 0)"
 check "happy: one scope committed to state" "1" "$(keys "$s/state.json")"
 rm -rf "$s"
 
