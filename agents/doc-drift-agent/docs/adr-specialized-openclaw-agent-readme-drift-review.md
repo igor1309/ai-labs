@@ -2,7 +2,8 @@
 date: 2026-06-02
 author: Igor Malyarov
 version: 0.0.6
-status: proposed
+status: accepted
+accepted: 2026-06-03
 source_intent: Automated Doc Drift Review and Fix Suggestions. Intent v0.0.4
 description: "Use a specialized OpenClaw agent for SCOPED documentation drift review (cross-project READMEs + per-project docs); fixes are doc-edit PRs within a scope; never auto-merge. Amends the README-only scope of v0.0.5."
 ---

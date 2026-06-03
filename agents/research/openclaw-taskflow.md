@@ -92,6 +92,19 @@ Recommended practice inside a flow:
 - provenance fields (`sourceUrl`, `retrievedAt`, `asOf`) with stale-data
   rejection before LLM steps
 
+## Ledger not populating on the VPS (watch item)
+
+> **2026-06-02 finding:** on the live unit (`2026.5.28`) the tasks/TaskFlow ledger
+> records **nothing** for any run type tested — foreground `openclaw agent`, the
+> in-gateway `lobster` tool, or cron-dispatched isolated turns — even though the
+> docs say cron/CLI runs create task records and the machinery is present
+> (`task_runs` table, `recordTask`, cron files wired). `runs.sqlite` stayed ~9 h
+> stale while a 10-minute cron succeeded; `tasks maintenance` is all-zeros;
+> `doctor` finds no fault; no config gate. The orchestrator (ADR-001 §7) therefore
+> relies on its `/etc/cron.d` wrapper's fail-closed Telegram + log + per-scope state
+> for observability, not this ledger. Full diagnosis:
+> `phase4-substrate-spike-findings.md` §4. Watch + recheck 2026-06-16: `agents/TODO.md` §4.
+
 ## Live State on the VPS (2026-06-02)
 
 At the time of writing, the production server had no flows running:

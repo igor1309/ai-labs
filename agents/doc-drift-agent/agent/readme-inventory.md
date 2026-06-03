@@ -17,9 +17,9 @@ Documents below a project's top level that are not in that project's `docs/` are
 
 ## Machine-readable registry
 
-The authoritative scope list lives in **`doc-drift-agent/agent/scope-registry.json`** — `scopes.readmes` (the cross-project README set) plus one entry per top-level project (`docs`: `README.md` + `docs/**`), and `excludedTopLevel` (repo infra that is not an audited project). It currently holds **scope 0 + 22 project scopes**. The worker resolves the active scope's document set from this file; the orchestrator selects among these scopes.
+The authoritative scope list lives in **`agents/doc-drift-agent/agent/scope-registry.json`** — `scopes.readmes` (the cross-project README set) plus one entry per top-level project (`docs`: `README.md` + `docs/**`), and `excludedTopLevel` (repo infra that is not an audited project). It currently holds **scope 0 + 21 project scopes**. The worker resolves the active scope's document set from this file; the orchestrator selects among these scopes.
 
-`doc-drift-agent/tests/scope-registry.test.js` keeps it honest: a coverage check derives the top-level projects-with-docs from the working tree and fails if a project has no scope (or a scope points at a removed project) — the meta-scope made enforceable. The prose tables below remain as scope-0 detail and the known-absence record.
+`agents/doc-drift-agent/tests/scope-registry.test.js` keeps it honest: a coverage check derives the top-level projects-with-docs from the working tree and fails if a project has no scope (or a scope points at a removed project) — the meta-scope made enforceable. The prose tables below remain as scope-0 detail and the known-absence record.
 
 ## Scope 0 — README membership
 
@@ -35,7 +35,7 @@ Cross-reference notes worth keeping (for the Doc ↔ Doc lens):
 
 - **Sub-units under a parent README:** `notio-backend` / `notio-frontend` are documented inside `notio/README.md`; there are no standalone sub-unit READMEs.
 - **Sanctioned omissions (in `## Structure`, not `## Components`):** `dev-skills`, `gemini` — listed under the root `## Structure` table by repo convention; not flagged as drift unless moved into Components scope.
-- **Scope-set drift is enforced, not hand-listed:** every top-level project with a README/`docs/` must have a scope, and every scope must map to an existing project. `doc-drift-agent/tests/scope-registry.test.js` fails otherwise — superseding the old hand-maintained "known absences" list, which had gone stale (`nomos`, `loki`, `dragoman` now have READMEs and scopes).
+- **Scope-set drift is enforced, not hand-listed:** every top-level project with a README/`docs/` must have a scope, and every scope must map to an existing project. `agents/doc-drift-agent/tests/scope-registry.test.js` fails otherwise — superseding the old hand-maintained "known absences" list, which had gone stale (`nomos`, `loki`, `dragoman` now have READMEs and scopes).
 
 ## Refresh policy
 

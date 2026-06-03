@@ -41,7 +41,7 @@ A manual run that crashed before rendering the report does **not** update `T_las
 
 ## Where `T_last_manual` lives
 
-The persistence location is open question #3 in `doc-drift-agent/docs/plans/doc-drift-agent.md` — OpenClaw-local file, repo file, or external KV. This document is location-agnostic on purpose: whatever the runtime picks during Phase B Task B3, the decision rule above is computed from a single UTC timestamp. The store needs only:
+The persistence location is open question #3 in `agents/doc-drift-agent/docs/plans/doc-drift-agent.md` — OpenClaw-local file, repo file, or external KV. This document is location-agnostic on purpose: whatever the runtime picks during Phase B Task B3, the decision rule above is computed from a single UTC timestamp. The store needs only:
 
 - write on successful manual run completion,
 - read on every scheduled tick,

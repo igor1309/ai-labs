@@ -149,12 +149,19 @@ Lobster stores resume state under its state dir and continues without re-running
 prior steps. This is **in-flight** flow state — distinct from any per-scope
 last-audited cursor an orchestration owns.
 
-## Constraint to spike
+## Constraint to spike — RESOLVED 2026-06-02 (unviable)
 
 Embedded (in-process) Lobster **"does not reliably support `openclaw.invoke` for
 nested calls."** A step that calls `openclaw agent` is exactly such a nested call.
-Mitigations: use the standalone `lobster` CLI for that step, or call `llm-task`
-directly. Resolve before relying on the in-gateway path.
+Mitigations were: use the standalone `lobster` CLI for that step, or call `llm-task`
+directly.
+
+**Spike outcome** (`phase4-substrate-spike-findings.md`, live 2026-06-02): the
+nested `openclaw agent` step **deadlocks** under the embedded runner (`lobster
+runtime timed out`), and `llm-task` is disabled on the host (and is not a drop-in
+for a full agent turn). Combined with the tasks/TaskFlow ledger not populating on
+this unit (findings §4), the in-gateway Lobster path was dropped from the
+production substrate; ADR-001 §7 swaps to an `/etc/cron.d` imperative-shell wrapper.
 
 ## References
 
