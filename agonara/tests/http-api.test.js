@@ -463,6 +463,207 @@ test("openAnswerAttemptRoutes_shouldMapStudentWorkspaceRejections_toHttpStatuses
   }
 });
 
+test("quickCheckCandidateRoutes_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs/program-1/quick-checks/candidates`, {
+      body: JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Yes", "No"],
+        prompt: "Does the invariant hold?",
+        title: "Invariant check",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCandidateRoutes_shouldRejectMissingAndInvalidCsrf_beforeMutation", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      createQuickCheckCandidate: () => {
+        throw new Error("quick check candidate command should not run before CSRF passes");
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      {},
+      { "x-agonara-csrf": "wrong-token" },
+    ];
+    const results = [];
+    for (const headers of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/quick-checks/candidates`, {
+        body: JSON.stringify({
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Yes", "No"],
+          prompt: "Does the invariant hold?",
+          title: "Invariant check",
+        }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          ...headers,
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      [
+        {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_required" },
+        },
+        {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_invalid" },
+        },
+      ],
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckAttemptRoutes_shouldRejectMissingMalformedIdempotencyHeader_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitQuickCheckAttempt: () => {
+        throw new Error("quick check attempt command should not run before idempotency passes");
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      {},
+      { "x-agonara-idempotency-key": "   " },
+    ];
+    const results = [];
+    for (const headers of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/quick-check-attempts`, {
+        body: JSON.stringify({
+          checkRevisionId: "quick-check-revision-1",
+          selectedOptionId: "option-1",
+        }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          ...headers,
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCandidateRoutes_shouldRedactFaultResponsesAndLogs", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      createQuickCheckCandidate: () => {
+        throw new Error(
+          "answer-key-secret session-1 csrf-token-1 idempotency-key cookie sql stack /tmp/db.sqlite postgres://db",
+        );
+      },
+    },
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/quick-checks/candidates`, {
+      body: JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Yes", "No"],
+        prompt: "Does the invariant hold?",
+        title: "Invariant check",
+      }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "quick-check-fault-log",
+      },
+      method: "POST",
+    });
+    const logEvent = logEvents.find($0 => $0.requestId === "quick-check-fault-log");
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        responseRequestId: response.headers.get("x-request-id"),
+        body: await response.json(),
+        log: {
+          errorKind: logEvent?.errorKind,
+          hasSensitiveDetail: hasSensitiveCompletionLogDetail(logEvent),
+          operation: logEvent?.operation,
+          outcome: logEvent?.outcome,
+          requestId: logEvent?.requestId,
+          severity: logEvent?.severity,
+        },
+      },
+      {
+        statusCode: 500,
+        responseRequestId: "quick-check-fault-log",
+        body: { status: "fault", reason: "internal_error" },
+        log: {
+          errorKind: "unexpected",
+          hasSensitiveDetail: false,
+          operation: "POST /programs/program-1/quick-checks/candidates",
+          outcome: "fault",
+          requestId: "quick-check-fault-log",
+          severity: "error",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("openAnswerAttemptRoutes_shouldRedactFaultResponses", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     studentWorkspaceCommandsOverride: {

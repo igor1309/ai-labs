@@ -31,7 +31,7 @@ Push policy: no push
 Worktree mode: reuse existing
 Expected worktree: `worktrees/agonara-gap-closure`
 Expected branch: `codex/agonara-gap-closure`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
@@ -94,7 +94,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 1 - HTTP Substrate
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: establish Quick Check route recognition, shared status mapping, body/query parsing, and redaction without successful domain mutations yet.
 

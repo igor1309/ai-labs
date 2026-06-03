@@ -544,6 +544,49 @@ async function handleStudentWorkspaceApi({
 }) {
   const attemptsMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-attempts$/);
   const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
+  const quickCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/quick-check-attempts$/);
+  if (request.method === "POST" && quickCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const idempotencyKey = parseAttemptIdempotencyKey(request);
+    if (idempotencyKey.status === "rejected") {
+      sendJson(response, 400, idempotencyKey);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const submission = parseSubmitQuickCheckAttemptBody(body.value);
+    if (submission.status === "rejected") {
+      sendJson(response, 400, submission);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.submitQuickCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: submission.value.checkRevisionId,
+      idempotencyKey: idempotencyKey.value,
+      programId: decodeURIComponent(quickCheckAttemptsMatch[1]),
+      selectedOptionId: submission.value.selectedOptionId,
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckAttemptResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && attemptDetailMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -691,6 +734,43 @@ async function handleCorpusApi({
   const acceptedOpenAnswerCheckRevisionMatch = pathname.match(
     /^\/open-answer-checks\/revisions\/([^/]+)$/,
   );
+  const quickCheckCandidatesMatch = pathname.match(
+    /^\/programs\/([^/]+)\/quick-checks\/candidates$/,
+  );
+  if (request.method === "POST" && quickCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidQuickCheckCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createQuickCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      answerKeyOptionIndex: body.value.answerKeyOptionIndex,
+      checkKind: body.value.checkKind,
+      options: body.value.options,
+      programId: decodeURIComponent(quickCheckCandidatesMatch[1]),
+      prompt: body.value.prompt,
+      rationale: body.value.rationale,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckCandidateResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1634,6 +1714,22 @@ function mapOpenAnswerCheckCandidateResult(result) {
   return accepted({ openAnswerCheckCandidate: result.value.openAnswerCheckCandidate });
 }
 
+function mapQuickCheckCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ quickCheckCandidate: result.value.quickCheckCandidate });
+}
+
+function mapQuickCheckAttemptResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
+}
+
 function mapAcceptedCorpusResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -1894,6 +1990,22 @@ function parseSubmitOpenAnswerAttemptBody(body) {
   });
 }
 
+function parseSubmitQuickCheckAttemptBody(body) {
+  if (
+    Object.keys(body).length !== 2 ||
+    !hasOnlyKeys(body, ["checkRevisionId", "selectedOptionId"]) ||
+    !isNonEmptyRequestText(body.checkRevisionId) ||
+    !isNonEmptyRequestText(body.selectedOptionId)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    checkRevisionId: body.checkRevisionId,
+    selectedOptionId: body.selectedOptionId,
+  });
+}
+
 function isNonEmptyRequestText(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -1921,6 +2033,29 @@ function isValidOpenAnswerCheckCandidateBody(body) {
     Array.isArray(body.criterionEntityIds) &&
     body.criterionEntityIds.length > 0 &&
     body.criterionEntityIds.every($0 => typeof $0 === "string");
+}
+
+function isValidQuickCheckCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "answerKeyOptionIndex",
+    "checkKind",
+    "options",
+    "prompt",
+    "rationale",
+    "sourceIds",
+    "title",
+  ]) &&
+    body.checkKind === "single_select_quick_check" &&
+    isNonEmptyRequestText(body.title) &&
+    isNonEmptyRequestText(body.prompt) &&
+    (body.rationale === undefined || typeof body.rationale === "string") &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    Array.isArray(body.options) &&
+    body.options.length >= 2 &&
+    body.options.every(isNonEmptyRequestText) &&
+    Number.isInteger(body.answerKeyOptionIndex) &&
+    body.answerKeyOptionIndex >= 0 &&
+    body.answerKeyOptionIndex < body.options.length;
 }
 
 function hasOnlyKeys(body, allowedKeys) {
@@ -2221,7 +2356,11 @@ function httpStatusFor(reason) {
     case "criterion_entity_not_found":
     case "criterion_revision_not_found":
     case "program_not_found":
+    case "quick_check_candidate_not_found":
+    case "quick_check_entity_not_found":
+    case "quick_check_revision_not_found":
     case "revision_not_found":
+    case "selected_option_not_found":
       return 404;
     case "accepted_entity_program_mismatch":
     case "accepted_kind_mismatch":
@@ -2243,6 +2382,10 @@ function httpStatusFor(reason) {
     case "membership_missing":
     case "membership_removed":
     case "program_creation_incomplete":
+    case "quick_check_candidate_already_accepted":
+    case "quick_check_candidate_already_rejected":
+    case "quick_check_entity_program_mismatch":
+    case "quick_check_revision_program_mismatch":
     case "source_not_found":
     case "source_program_mismatch":
       return 409;

@@ -1803,7 +1803,7 @@ test("quickCheckBoundarySurfaceDetectors_shouldDetectPublicAndResolverLeaks", ()
     assert.deepEqual(
       {
         publicSurfaces: [
-          { serverSource: "POST /quick-check/attempts" },
+          { serverSource: "POST /quick-check-worker/jobs" },
           { cliSource: "submitQuickCheckAttempt" },
           { adminUiSource: "quick_check_dashboard" },
         ].map(source =>
@@ -9762,7 +9762,8 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
 }
 
 function containsAnyQuickCheckPublicSurface({ adminUiSource, cliSource, serverSource }) {
-  const normalized = [adminUiSource, cliSource, serverSource].join("\n").toLowerCase();
+  const normalizedPublicSources = [adminUiSource, cliSource].join("\n").toLowerCase();
+  const normalizedServerSource = serverSource.toLowerCase();
   return [
     "quickcheck",
     "quick-check",
@@ -9773,7 +9774,22 @@ function containsAnyQuickCheckPublicSurface({ adminUiSource, cliSource, serverSo
     "submitquickcheck",
     "createquickcheck",
     "acceptquickcheck",
-  ].some($0 => normalized.includes($0));
+  ].some($0 => normalizedPublicSources.includes($0)) ||
+    [
+      "/quick-check-worker",
+      "/quick-check-provider",
+      "/quick-check-human-review",
+      "/quick-check-randomization",
+      "/quick-check-multiple-select",
+      "/quick-check-topic",
+      "/quick-check-period",
+      "/quick-check-mastery",
+      "/quick-check-weak-area",
+      "/quick-check-progress",
+      "/quick-check-grading",
+      "/quick-check-analytics",
+      "/quick-check-reporting",
+    ].some($0 => normalizedServerSource.includes($0));
 }
 
 function containsInternalQuickCheckResolverSurface({
