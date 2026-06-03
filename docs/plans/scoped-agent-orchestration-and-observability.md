@@ -7,7 +7,7 @@ description: "Implementation plan: deliver the ADR-001 orchestration + observabi
 # Implementation Plan — Scoped Agent Orchestration & Observability (ADR-001)
 
 Implements `docs/adr/agents/ADR-001-scoped-agent-orchestration-and-observability.md`
-(v0.0.3, proposed). Design context: `doc-drift-agent/docs/scoped-audit-intake.md`,
+(v0.0.3, accepted 2026-06-03). Design context: `doc-drift-agent/docs/scoped-audit-intake.md`,
 `…/scoped-audit-pre-adr-shapes.md`; evidence: `agents/research/{scoped-agent-orchestration,openclaw-taskflow,openclaw-lobster,phase4-substrate-spike-findings}.md`.
 
 **Substrate amended (ADR-001 §7, 2026-06-02).** The Phase 4 spike found the in-gateway
@@ -55,14 +55,14 @@ Preflight check: [x] done — Phases 1–3 merged (PR #457), relocation merged, 
 
 Preconditions (block the **entire** plan; verify in preflight):
 
-- [ ] The **scope-model decision** (cross-project READMEs + one scope per
+- [x] The **scope-model decision** (cross-project READMEs + one scope per
   top-level project's docs, with the worker's edit surface expanded from
-  README-only to a project's `docs/`) is **accepted** as an amendment to the
-  doc-drift intent/ADR or a dedicated scope-model ADR. Per ADR-001's stated
-  dependency, this plan MUST NOT be implemented before it.
-- [ ] The **parameterized single-scope worker** (Shape 1) exists and accepts a
-  scope contract `{id, document-set/globs, truth-sources}` (required from Phase 5;
-  Phases 1–4 may proceed against a stub).
+  README-only to a project's `docs/`) is **accepted** — doc-drift ADR
+  `adr-specialized-openclaw-agent-readme-drift-review.md` v0.0.6, status `accepted`
+  2026-06-03.
+- [x] The **parameterized single-scope worker** (Shape 1) exists and accepts a
+  scope contract — `agent.md` reads `--scope <id>`, resolves `scopes.<id>.docs`
+  from `scope-registry.json` (default `readmes`); shipped in PR #455.
 
 ## Scope guardrails
 

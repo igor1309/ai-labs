@@ -2,7 +2,8 @@
 date: 2026-06-02
 author: Igor Malyarov
 version: 0.0.3
-status: proposed
+status: accepted
+accepted: 2026-06-03
 description: "Orchestrate scoped agent runs; scope selection as tested TS step CLIs; one scope per run; every run resolves to an observable terminal status. Substrate amended (2026-06-02, §7): native-cron agent turn + cron run history, after the Phase 4 spike found the in-gateway Lobster/TaskFlow path unviable on the live unit. First adopter: doc-drift scoped audit."
 ---
 
@@ -179,7 +180,7 @@ relying on the in-gateway path.
 
 ## 7. Amendment 2026-06-02 — Phase 4 spike: substrate swap to native cron + cron run history
 
-**Status:** proposed (draft for review). Supersedes the Lobster/TaskFlow substrate
+**Status:** accepted 2026-06-03. Supersedes the Lobster/TaskFlow substrate
 invariants below; the core decision (§3) is unchanged.
 
 The Phase 4 spike (evidence: `agents/research/phase4-substrate-spike-findings.md`,
