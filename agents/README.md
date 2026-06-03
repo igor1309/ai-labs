@@ -8,7 +8,7 @@ description: "agents/ — specialized OpenClaw agents whose definitions live her
 
 Specialized OpenClaw agents whose definitions live here and whose runtime is the OpenClaw VPS. Each agent owns a subdirectory: `agent/` (system prompt + specs, synced to the VPS workspace), `runtime/` (cron wrapper + entry), `docs/`, and a `README.md`.
 
-`doc-drift-agent` and `dashboard-sync-agent` predate this directory and still live at the repo top level; consolidating them under `agents/` is tracked in issue #434.
+`dashboard-sync-agent` predates this directory and still lives at the repo top level; consolidating it under `agents/` is tracked in issue #434.
 
 ## Agents
 
