@@ -6064,7 +6064,7 @@ function assertValidLearnerEvidenceTargetLinksInBackup(backup) {
 
   for (const link of backup.learnerEvidenceTargetLinks ?? []) {
     if (ids.has(link.id)) {
-      throw new StorageInvariantError("learner_state_target_link_not_found");
+      throw new StorageInvariantError("learner_state_target_link_id_conflict");
     }
     ids.add(link.id);
 

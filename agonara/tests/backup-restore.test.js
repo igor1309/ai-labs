@@ -2217,6 +2217,16 @@ test("restoreBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBackup", a
     },
     {
       mutate: value => {
+        addCrossProgramLearnerStateTargetLinkBackupRecords(value);
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          targetId: "entity-cross-program",
+        };
+      },
+      expectedReason: "learner_state_target_program_mismatch",
+    },
+    {
+      mutate: value => {
         value.learnerEvidenceTargetLinks[0] = {
           ...value.learnerEvidenceTargetLinks[0],
           evidenceOwnerEntityId: "missing-quick-check",
@@ -2226,12 +2236,31 @@ test("restoreBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBackup", a
     },
     {
       mutate: value => {
+        addCrossProgramLearnerStateTargetLinkBackupRecords(value);
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          evidenceOwnerEntityId: "quick-check-entity-cross-program",
+        };
+      },
+      expectedReason: "learner_state_evidence_owner_program_mismatch",
+    },
+    {
+      mutate: value => {
         value.learnerEvidenceTargetLinks.push({
           ...value.learnerEvidenceTargetLinks[1],
           id: "learner-target-link-duplicate",
         });
       },
       expectedReason: "learner_state_target_link_idempotency_conflict",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks.push({
+          ...value.learnerEvidenceTargetLinks[1],
+          targetId: "entity-1",
+        });
+      },
+      expectedReason: "learner_state_target_link_id_conflict",
     },
   ];
 
@@ -2733,6 +2762,113 @@ function seedLearnerEvidenceTargetLinkRecords(database, { identityId, programId 
       "2026-06-03T10:02:00.000Z",
       "2026-06-03T10:02:00.000Z",
     );
+}
+
+function addCrossProgramLearnerStateTargetLinkBackupRecords(backup) {
+  backup.programShells.push({
+    id: "program-cross",
+    title: "Cross Program",
+    description: null,
+    admissionPolicy: "self_join",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programMemberships.push({
+    id: "membership-cross",
+    programId: "program-cross",
+    identityId: "identity-1",
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programSources.push({
+    id: "source-cross",
+    programId: "program-cross",
+    sourceKind: "article",
+    title: "Cross source",
+    locator: "https://example.test/cross",
+    citation: "Cross citation",
+    recordedByIdentityId: "identity-1",
+    recordedAt: "2026-06-03T09:01:00.000Z",
+  });
+  backup.corpusCandidates.push({
+    id: "candidate-cross",
+    programId: "program-cross",
+    candidateKind: "topic",
+    title: "Cross topic candidate",
+    body: "Cross topic body",
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:02:00.000Z",
+    updatedAt: "2026-06-03T09:02:00.000Z",
+  });
+  backup.acceptedCorpusEntities.push({
+    id: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    currentRevisionId: "revision-cross-program",
+  });
+  backup.acceptedCorpusRevisions.push({
+    id: "revision-cross-program",
+    entityId: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    title: "Cross topic",
+    body: "Cross topic body",
+    acceptedFromCandidateId: "candidate-cross",
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: "2026-06-03T09:03:00.000Z",
+  });
+  backup.quickCheckCandidates.push({
+    id: "quick-check-candidate-cross",
+    programId: "program-cross",
+    checkKind: "single_select_quick_check",
+    title: "Cross quick check",
+    prompt: "Cross prompt",
+    options: [
+      { id: "quick-check-candidate-cross-option-a", text: "Cross option A" },
+      { id: "quick-check-candidate-cross-option-b", text: "Cross option B" },
+    ],
+    answerKeyOptionId: "quick-check-candidate-cross-option-a",
+    sourceIds: ["source-cross"],
+    rationale: "Cross quick rationale",
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:04:00.000Z",
+    updatedAt: "2026-06-03T09:04:00.000Z",
+  });
+  backup.acceptedQuickCheckEntities.push({
+    id: "quick-check-entity-cross-program",
+    programId: "program-cross",
+    currentRevisionId: "quick-check-revision-cross-program",
+  });
+  backup.acceptedQuickCheckRevisions.push({
+    id: "quick-check-revision-cross-program",
+    entityId: "quick-check-entity-cross-program",
+    programId: "program-cross",
+    checkKind: "single_select_quick_check",
+    title: "Accepted cross quick check",
+    prompt: "Accepted cross prompt",
+    options: [
+      { id: "quick-check-revision-cross-program-option-a", text: "Cross revision option A" },
+      { id: "quick-check-revision-cross-program-option-b", text: "Cross revision option B" },
+    ],
+    answerKeyOptionId: "quick-check-revision-cross-program-option-a",
+    acceptedFromCandidateId: "quick-check-candidate-cross",
+    sourceIds: ["source-cross"],
+    rationale: "Accepted cross quick rationale",
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: "2026-06-03T09:05:00.000Z",
+  });
 }
 
 function seedQuickCheckReplacementRevision(database, { identityId, programId }) {

@@ -1760,6 +1760,7 @@ test("restoreIdentityBackup_shouldPreserveLearnerEvidenceTargetLinks_onAcceptedB
   try {
     seedAcceptedQuickCheck(database, { programId: "program-a" });
     seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    seedAcceptedLearnerStateTargetLinkCrossProgramReferences(database);
     storage.createProgramMembershipRecord(database, {
       id: "membership-a",
       programId: "program-a",
@@ -1843,6 +1844,7 @@ test("restoreIdentityBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBa
   try {
     seedAcceptedQuickCheck(database, { programId: "program-a" });
     seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    seedAcceptedLearnerStateTargetLinkCrossProgramReferences(database);
     storage.createProgramMembershipRecord(database, {
       id: "membership-a",
       programId: "program-a",
@@ -1909,10 +1911,28 @@ test("restoreIdentityBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBa
         mutate: candidate => {
           candidate.learnerEvidenceTargetLinks[0] = {
             ...candidate.learnerEvidenceTargetLinks[0],
+            targetId: "entity-topic-b",
+          };
+        },
+        reason: "learner_state_target_program_mismatch",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
             evidenceOwnerEntityId: "missing-quick-check",
           };
         },
         reason: "quick_check_entity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            evidenceOwnerEntityId: "quick-check-entity-b",
+          };
+        },
+        reason: "learner_state_evidence_owner_program_mismatch",
       },
       {
         mutate: candidate => {
@@ -1922,6 +1942,15 @@ test("restoreIdentityBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBa
           });
         },
         reason: "learner_state_target_link_idempotency_conflict",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks.push({
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetId: "entity-topic-b",
+          });
+        },
+        reason: "learner_state_target_link_id_conflict",
       },
     ];
 
@@ -4878,6 +4907,53 @@ function seedAcceptedNavigationEntity(database, {
       locator: acceptedKind === "material_reference" ? "https://example.test/material" : null,
       citation: acceptedKind === "material_reference" ? "Example citation" : null,
       sourceIds: [sourceId],
+    }),
+  );
+}
+
+function seedAcceptedLearnerStateTargetLinkCrossProgramReferences(database) {
+  storage.createProgramShellRecord(database, makeProgramShell({ id: "program-b" }));
+  storage.createProgramMembershipRecord(database, {
+    id: "membership-b",
+    programId: "program-b",
+    identityId: "identity-a",
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-03T09:00:00.000Z",
+  });
+  storage.createProgramSourceRecord(database, makeProgramSource({ id: "source-b", programId: "program-b" }));
+  seedAcceptedNavigationEntity(database, {
+    acceptedKind: "topic",
+    entityId: "topic-b",
+    programId: "program-b",
+    sourceId: "source-b",
+  });
+  storage.createQuickCheckCandidateRecord(
+    database,
+    makeQuickCheckCandidate({
+      id: "quick-check-candidate-b",
+      programId: "program-b",
+      sourceIds: ["source-b"],
+      status: "accepted",
+    }),
+  );
+  storage.createAcceptedQuickCheckEntityRecord(
+    database,
+    makeAcceptedQuickCheckEntity({
+      id: "quick-check-entity-b",
+      programId: "program-b",
+      currentRevisionId: "quick-check-revision-b",
+    }),
+  );
+  storage.createAcceptedQuickCheckRevisionRecord(
+    database,
+    makeAcceptedQuickCheckRevision({
+      id: "quick-check-revision-b",
+      entityId: "quick-check-entity-b",
+      programId: "program-b",
+      acceptedFromCandidateId: "quick-check-candidate-b",
+      sourceIds: ["source-b"],
     }),
   );
 }

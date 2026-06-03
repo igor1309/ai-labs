@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Harden Phase 1 learner-state target-link storage after adversarial review with cross-Program target/evidence-owner restore rejection coverage and explicit duplicate target-link id validation.
 - Implement Phase 1 of the learner-state interpretation plan with learner evidence target-link storage, active-link idempotency, soft deletion, backup/restore preservation, and malformed restore rejection.
 - Harden the learner-state interpretation plan after adversarial review by making per-phase worktree and branch preflight an explicit implementation gate.
 - Add the learner-state interpretation child implementation plan with exact target-link, derivation, HTTP, UI, test, review, commit, dashboard, and archive gates for Phase 3 of the product gap closure.
