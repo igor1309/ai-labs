@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.2.0"
+version: "0.3.0"
 author: Igor Malyarov
 ---
 
@@ -22,9 +22,9 @@ between artifacts that share a parent**. The ground truth for each check is
 the **upstream node**, not the code. This is distinct from doc-drift, whose
 ground truth is the code/repo state.
 
-Validated so far on the `intent × intent` and `intent → ADR` layer-pairs
-against Agonara. The remaining layer-pairs are scoped below but not yet
-exercised — treat them as the roadmap, not as tested behavior.
+Validated so far on the `intent × intent`, `intent → ADR`, and `ADR × ADR`
+layer-pairs against Agonara. The remaining layer-pairs are scoped below but not
+yet exercised — treat them as the roadmap, not as tested behavior.
 
 ## Scope: layer-pairs
 
@@ -47,6 +47,7 @@ layer-pair:
    contracts described consistently by provider and every consumer. Anchor on
    the project's module responsibility map (Owns / Does Not Own / Key Boundary)
    and the contract ADRs.
+   *(implemented, v0.3.0 — compatibility only; seam coverage is a separate pass)*
 4. **ADR → spec** — per module; each ADR decision is honoured by its spec.
 5. **spec ↔ tests** — per module. Read **test names only** (not bodies, not
    code) and map them against spec clauses: every spec behaviour has a named
@@ -108,7 +109,45 @@ a capability's *shape* does not defer its *existence*.
 
 **Cross-module seams are out of scope here.** A capability that falls between
 modules and that no single module owns is a *cross-module* coverage finding —
-it belongs to `ADR × ADR`, not to any one per-module pass.
+it belongs to the cross-module seam-coverage pass, not to any one per-module
+pass.
+
+## ADR × ADR: ownership matrix + contract register
+
+The cross-module ("across") pass. It checks that the modules **fit together**,
+working from the module responsibility map (the shared ownership substrate) and
+every ADR's Decision / Rules / Boundaries / Non-Goals — **not** the intents
+(that is intent→ADR). Two deterministic artifacts, completeness-first:
+
+1. **Ownership matrix. One row per `Owns` entry in the responsibility map,
+   verbatim — do not sub-split or invent finer responsibilities.** (Ad-hoc row
+   granularity is what makes drift findings vary run-to-run; pinning the rows to
+   the map's own entries stabilises the enumeration.) Each row: the map owner,
+   the ADR(s) that actually decide it (`file:line`), and a **verdict** —
+   `single-owner` | `double-ownership` | `map-adr-drift`.
+2. **Cross-module contract register.** One row per contract a module provides
+   and another consumes: contract, provider ADR (`file:line`), consumer ADR(s)
+   (`file:line`), and a **verdict** — `consistent` | `inconsistent` |
+   `boundary-violation`.
+
+**Findings derive mechanically** — no finding that is not a row, no row without
+a verdict: `double-ownership` / `inconsistent` / `boundary-violation` → finding
+(fail for a hard contradiction); `map-adr-drift` → finding (warning; the
+provisional map lags an accepted ADR). A clean result is valid and must be
+backed by the completed matrix + register, not asserted.
+
+A module consuming another's contract **through** the contract is not a
+violation — only reaching past it into the provider's owned internals is.
+
+**Out of scope here: *seam coverage*** — a capability owned by **no** module.
+That needs the intent layer (to know what should be owned) and is a distinct
+cross-module pass, not the compatibility check above. When a per-module
+intent→ADR pass tags a seam for the cross-module layer, it means that
+seam-coverage pass.
+
+If the ADR set grows too large to hold at once, split by **clustered concern**
+(identity/auth, membership, corpus/curation, assessment), not by module-pair —
+ADRs already cluster and cross-reference that way.
 
 ## Discipline
 
@@ -178,4 +217,6 @@ evidence), `Inspected` (files, versions, enumerated artifact IDs), and
 `Open questions`. For `intent → ADR` (run per module): `Summary` (matrix row
 count + verdict breakdown + finding totals), `Coverage matrix` (the complete
 table — the core artifact), `Findings` (derived mechanically from the matrix),
+`Open questions`, and `Inspected`. For `ADR × ADR`: `Summary`,
+`Ownership matrix`, `Cross-module contract register`, `Findings`,
 `Open questions`, and `Inspected`.
