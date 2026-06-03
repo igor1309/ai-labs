@@ -1480,17 +1480,21 @@ function getOpenAnswerAttempt({ database, input }) {
 }
 
 function getQuickCheckAttempt({ database, getEffectiveParticipation, input }) {
+  const attempt = getQuickCheckAttemptRecord(database, input?.attemptId);
+  if (!attempt) {
+    return rejected("attempt_not_found");
+  }
+
   const authorization = authorizeStudentProgram({
     database,
     getEffectiveParticipation,
-    input,
+    input: { ...input, programId: input?.programId ?? attempt.programId },
   });
   if (authorization.rejection) {
     return authorization.rejection;
   }
 
   const { identity, program } = authorization;
-  const attempt = getQuickCheckAttemptRecord(database, input?.attemptId);
   if (!attempt || attempt.programId !== program.id || attempt.studentIdentityId !== identity.id) {
     return rejected("attempt_not_found");
   }

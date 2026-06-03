@@ -190,7 +190,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 4 - Student Attempt Routes
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: expose Student Workspace-owned Quick Check attempt submission and owner-only reads over HTTP.
 

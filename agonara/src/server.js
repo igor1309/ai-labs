@@ -545,6 +545,64 @@ async function handleStudentWorkspaceApi({
   const attemptsMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-attempts$/);
   const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
   const quickCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/quick-check-attempts$/);
+  const quickCheckAttemptDetailMatch = pathname.match(/^\/quick-check-attempts\/([^/]+)$/);
+  if (request.method === "GET" && quickCheckAttemptDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getQuickCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      attemptId: decodeURIComponent(quickCheckAttemptDetailMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckAttemptResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseQuickCheckAttemptListFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const programId = decodeURIComponent(quickCheckAttemptsMatch[1]);
+    const routeKey = JSON.stringify([
+      "student-quick-check-attempts",
+      session.value.identity.id,
+      programId,
+      filters.value.checkRevisionId ?? "all",
+    ]);
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listQuickCheckAttempts({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: filters.value.checkRevisionId,
+      programId,
+    });
+    const mappedResult = mapQuickCheckAttemptListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
   if (request.method === "POST" && quickCheckAttemptsMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2153,6 +2211,16 @@ function parseOpenAnswerAttemptListFilters(request) {
   });
 }
 
+function parseQuickCheckAttemptListFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const checkRevisionId = url.searchParams.get("checkRevisionId");
+  if (checkRevisionId !== null && !isNonEmptyRequestText(checkRevisionId)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ checkRevisionId: checkRevisionId ?? undefined });
+}
+
 function parseSubmitOpenAnswerAttemptBody(body) {
   if (
     Object.keys(body).length !== 2 ||
@@ -2496,6 +2564,29 @@ function mapOpenAnswerAttemptListResult({ generateToken, listCursors, query, res
 
   return accepted({
     attempts: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapQuickCheckAttemptListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.quickCheckAttempts,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    quickCheckAttempts: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
