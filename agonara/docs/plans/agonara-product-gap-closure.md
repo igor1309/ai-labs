@@ -157,6 +157,7 @@ Preflight check: [ ] done
 - Do not let LLM output become accepted corpus without explicit curator acceptance.
 - Do not introduce external provider calls before the provider boundary, redaction rules, failure behavior, and tests are specified.
 - Do not start code changes for a phase until the phase's governing spec or ADR has passed adversarial review and been committed.
+- Do not commit phase implementation until post-implementation self-review and adversarial review are clean, every fail or warning is fixed, and required gates have been rerun.
 - Do not push or open a PR unless the user explicitly asks after local commits are complete.
 
 ## ADR traceability matrix
@@ -218,6 +219,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the Quick Check HTTP API spec, UI spec, and redaction rules; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: A curator can manage Quick Checks through UI, a student can answer and inspect Quick Checks through UI, implemented spec metadata matches the shipped API, and tests/build pass.
 
@@ -251,6 +253,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the corpus navigation spec, ADR-010, and Corpus/Student boundary rules; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: Students can navigate accepted topics, concepts, and linked materials without creating personal learner state, and curators can accept graph updates through tested boundaries.
 
@@ -283,6 +286,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the learner-state spec, owner-only read rules, and Corpus/Student separation; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: Students can inspect personal progress and weak areas with evidence links, and the shared Program corpus remains unchanged by interpretation.
 
@@ -316,6 +320,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the aggregate-check spec, readiness evidence rules, and Quick Check regression constraints; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: Students can complete topic/period readiness checks and inspect evidence-backed results without changing accepted corpus.
 
@@ -351,6 +356,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the membership invitation/recovery spec, attribution rules, and Admin-vs-Program-role boundary; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: Controlled invitations, participant management, and exceptional recovery work through tested Program Membership boundaries with attribution.
 
@@ -383,6 +389,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the coverage-gap spec, Curator Workspace ownership, and Student weak-area separation; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: Curators can inspect corpus coverage gaps as draft guidance without mutating accepted corpus or Student state.
 
@@ -417,6 +424,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
+- Post-implementation review gate: self-review and adversarial review the phase implementation against this plan, the provider-boundary spec, provenance/redaction rules, and draft-to-accepted Corpus rules; fix every fail or warning and rerun affected gates before committing.
 
 **Completion signal**: Curators can generate, inspect, accept, and reject LLM-assisted suggestions with provenance, redaction, and draft-state protection.
 
@@ -433,11 +441,13 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Every code/config/generated-artifact phase passes the Agonara test wrapper, root build wrapper, and `git diff --check`.
 - Every docs-only phase passes Markdown/front-matter/link checks and `git diff --check`.
 - Every phase's governing spec or ADR passes adversarial review before implementation code begins.
+- Every phase passes post-implementation self-review and adversarial review, fixes every fail or warning, and reruns affected gates before commit.
 - The implementation plan tracker is updated after each completed phase and committed.
 
 ## Final closeout
 
 Final gates: `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`, `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`, Markdown/front-matter/link checks for touched docs, and `git diff --check`.
+LOC dashboard: refresh `docs/loc-dashboard.html` with `./scripts/loc-dashboard.sh --sort=name`, then verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
 Archive plan: move to `agonara/docs/plans/implemented/agonara-product-gap-closure.md`
 Commit archive move: yes
 Push/PR: follow push policy; no push unless explicitly requested.

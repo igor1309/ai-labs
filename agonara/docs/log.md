@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Tighten the Agonara product gap closure plan by requiring post-implementation self/adversarial review for every phase and adding the LOC dashboard refresh to final closeout.
 - Harden the Agonara product gap closure plan after adversarial review by making it human-review-gated, adding a phase tracker, and requiring clean spec/ADR review before implementation code begins.
 - Add the Agonara product gap closure plan, archiving the completed gap-closure plan and sequencing Quick Check UI, corpus navigation, learner-state interpretation, aggregate checks, membership flows, and LLM-assisted curation from review findings.
 - Harden the Quick Check HTTP API after adversarial review by resolving sessions before CSRF on candidate acceptance/rejection and hiding non-owner attempt-detail access behind `attempt_not_found`.
