@@ -9,263 +9,127 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.4.0"
+version: "0.5.0"
 author: Igor Malyarov
 ---
 
 # Traceability Review
 
-Requirements-traceability consistency review across a project's My-Way
-pipeline. The invariant is **no loss, no contradiction** as intent flows
-into ADRs, ADRs into specs, and specs into tests — plus **no divergence
-between artifacts that share a parent**. The ground truth for each check is
-the **upstream node**, not the code. This is distinct from doc-drift, whose
-ground truth is the code/repo state.
+A requirements-traceability consistency review across a project's My-Way
+pipeline (`intent → ADR → spec → tests`). The invariant: **no loss, no
+contradiction** as each node carries its upstream node forward, and **no
+divergence between artifacts that share a parent**. The ground truth for every
+check is the **upstream node**, not the code — this is what distinguishes it
+from doc-drift (whose ground truth is the code).
 
-Validated so far on the `intent × intent`, `intent → ADR`, `ADR × ADR`, and the
-cross-cutting `allocation completeness` passes against Agonara. The remaining
-layer-pairs are scoped below but not yet exercised — treat them as the roadmap,
-not as tested behavior.
+Validated across four passes against Agonara (intent×intent, intent→ADR,
+ADR×ADR, allocation completeness). Treat unimplemented passes below as roadmap,
+not tested behavior.
 
-## Scope: layer-pairs
+## Precondition (topology)
 
-The pipeline is `intent → ADR → spec → tests`. Each review run targets one
-layer-pair:
+The skill assumes the My-Way shape: a **role-decomposed intent layer** (a
+product intent plus per-role user-story files), **module-decomposed ADRs**, and
+a **module responsibility map** as the ownership substrate. A project without
+that shape needs discovery adapted, not a drop-in run. `{{ARGS}}` = the target
+project.
 
-1. **intent × intent** — internal consistency of the intent layer:
-   **horizontal** cross-role and inside-role consistency only. Vertical
-   intent→story coverage is *not* checked here — it belongs to intent→ADR.
-   *(implemented, v0.0.1)*
-2. **intent → ADR** — every accepted intent is carried into an ADR with no
-   loss or contradiction; an ADR that diverges from its source intent sends
-   the question back to the intent (amend the intent, then re-derive the ADR).
-   This pair also owns **vertical coverage**: every intent capability/story
-   must be reflected downstream; a parent capability the decomposition does
-   not carry is a coverage finding here, not at intent×intent.
-   *(implemented per-module, v0.2.0 — see "intent → ADR" below)*
-3. **ADR × ADR** — cross-ADR consistency, including **cross-module
-   compatibility**: no double ownership, no boundary violation, and shared
-   contracts described consistently by provider and every consumer. Anchor on
-   the project's module responsibility map (Owns / Does Not Own / Key Boundary)
-   and the contract ADRs.
-   *(implemented, v0.3.0 — compatibility only; seam coverage is the allocation-completeness pass, v0.4.0)*
-4. **ADR → spec** — per module; each ADR decision is honoured by its spec.
-5. **spec ↔ tests** — per module. Read **test names only** (not bodies, not
-   code) and map them against spec clauses: every spec behaviour has a named
-   test, every test name traces to a spec clause. Do **not** run tests — on a
-   trunk-only repo a merged test is a passing test. Implemented-plans are out
-   of scope (they were scaffolding from spec to code).
-6. **Allocation completeness (cross-cutting)** — not a sequential pipeline pair:
-   the global check that every intent capability is allocated to ≥1 module.
-   Catches **unallocated capabilities** (owned by no module) that per-module
-   passes structurally cannot see — the realized "seam coverage".
-   *(implemented, v0.4.0 — see "Allocation completeness" below)*
+## The passes
 
-## Scope axis
+1. **intent × intent** — internal consistency of the intent layer (horizontal:
+   cross-role and inside-role). *(implemented)*
+2. **intent → ADR** — every accepted intent carried into an ADR with no loss or
+   contradiction; **plus vertical coverage** (every intent capability reflected
+   downstream or explicitly deferred). Run **per module**. *(implemented)*
+3. **ADR × ADR** — cross-module compatibility: no double ownership, no boundary
+   violation, contracts consistent provider↔consumer, and no map-vs-ADR
+   ownership drift. *(implemented)*
+4. **allocation completeness** (cross-cutting) — every intent capability owned
+   by ≥1 module; a capability owned by **no** module is *unallocated*.
+   *(implemented)*
+5. **ADR → spec** — per module; each ADR decision honoured by its spec. *(roadmap)*
+6. **spec ↔ tests** — per module; test **names** only (no bodies, don't run
+   tests — on a trunk-only repo a merged test passes); every spec clause has a
+   named test, every test name traces to a clause. *(roadmap)*
 
-The axis changes down the pipeline, because the artifacts do:
+(The upward "orphan" check — does every ADR/spec trace *back* to a source
+intent — is a separate future pass; "unallocated" here is the *downward* check.)
 
-- **Intent layer → role axis.** Intents are role-decomposed (a product intent
-  plus per-role user-story files). Two slices: **cross-role** (stories of
-  different roles that share a parent concern) and **inside-role** (stories
-  within one role file).
-- **ADR/spec layers → module axis.** ADRs and specs decompose by module, not
-  role. Cross-module compatibility lives here, not at the intent layer —
-  modules do not exist until ADR time.
+## How a pass works
 
-## intent → ADR: per-module deterministic coverage matrix
+Every pass is a **complete enumeration**, not an impression. This is the one
+non-negotiable: list **every** item in scope (every story, every owned
+responsibility, every capability) — one row each — and give each row a verdict
+with evidence. **Completeness is load-bearing: incompleteness is precisely what
+makes runs disagree, because each run otherwise scrutinises a different subset.**
+Pin rows to the source artifacts' own units (e.g. one row per intent story, one
+per responsibility-map `Owns` entry) — don't sub-split or invent finer rows, or
+the counts wobble run-to-run.
 
-Run this layer-pair **one module at a time**, not over the whole ADR set. A
-whole-surface pass *samples* — each run scrutinises a different subset, so its
-findings do not reproduce. Per-module scope plus a forced-complete matrix
-removes that sampling variance (validated against Agonara: whole-surface runs
-agreed on almost no findings; per-module matrix runs reliably surfaced the same
-real defect).
+Then **classify each row and derive findings from the classifications** — no
+finding that isn't a row, no row without a verdict. The natural verdicts are
+"faithfully carried / consistent", "explicitly deferred", "narrowed (a loss)",
+"contradicted", "uncovered / unallocated". A finding is any row that isn't clean.
 
-ADRs carry no `source_intent` field, so the intent→ADR mapping is **inferred by
-subject/module** — use the project's module responsibility map as the
-authoritative owner index. For the module under review, read the intent layer
-(upstream, source of truth), the module's governing ADR(s), and the
-responsibility map (mapping aid, not a review target).
-
-**The matrix is the primary mechanism — it, not impressions, drives findings:**
-
-1. **Enumerate every intent capability the map assigns to this module.** Do not
-   stop at the ones that catch your eye; completeness is the point.
-2. **One row per capability**, each with an explicit **verdict** —
-   `carried` | `deferred` | `uncovered` | `carried-with-loss` | `contradicted`
-   — and **evidence**: the ADR `file:line` + quote that carries/defers it, or
-   `none`.
-3. **Findings are derived mechanically from the matrix** — no finding that is
-   not a row, and no row without a verdict:
-   - `contradicted` → fidelity finding (fail)
-   - `carried-with-loss` → fidelity finding (warning); quote BOTH the intent
-     commitment and the narrowing ADR passage
-   - `uncovered` → coverage finding (warning)
-   - `carried` / `deferred` → clean (a `deferred` row MUST cite the deferring
-     ADR/intent line)
-
-**Disposition rule (do not mislabel).** An ADR deciding implementation detail
-the intent left open, or explicitly deferring via Non-Goals, is `carried` /
-`deferred`, never a finding. But a capability **omitted from a closed
-enumeration and not named in Non-Goals is a finding** — `carried-with-loss` if
-the capability is partially present but narrowed, `uncovered` if wholly absent.
-It is **not** `deferred` merely because *related* schema is deferred: deferring
-a capability's *shape* does not defer its *existence*.
-
-**Cross-module seams are out of scope here.** A capability that falls between
-modules and that no single module owns is an **allocation-completeness** finding
-(see that pass below), not a per-module one.
-
-## ADR × ADR: ownership matrix + contract register
-
-The cross-module ("across") pass. It checks that the modules **fit together**,
-working from the module responsibility map (the shared ownership substrate) and
-every ADR's Decision / Rules / Boundaries / Non-Goals — **not** the intents
-(that is intent→ADR). Two deterministic artifacts, completeness-first:
-
-1. **Ownership matrix. One row per `Owns` entry in the responsibility map,
-   verbatim — do not sub-split or invent finer responsibilities.** (Ad-hoc row
-   granularity is what makes drift findings vary run-to-run; pinning the rows to
-   the map's own entries stabilises the enumeration.) Each row: the map owner,
-   the ADR(s) that actually decide it (`file:line`), and a **verdict** —
-   `single-owner` | `double-ownership` | `map-adr-drift`.
-2. **Cross-module contract register.** One row per contract a module provides
-   and another consumes: contract, provider ADR (`file:line`), consumer ADR(s)
-   (`file:line`), and a **verdict** — `consistent` | `inconsistent` |
-   `boundary-violation`.
-
-**Findings derive mechanically** — no finding that is not a row, no row without
-a verdict: `double-ownership` / `inconsistent` / `boundary-violation` → finding
-(fail for a hard contradiction); `map-adr-drift` → finding (warning; the
-provisional map lags an accepted ADR). A clean result is valid and must be
-backed by the completed matrix + register, not asserted.
-
-A module consuming another's contract **through** the contract is not a
-violation — only reaching past it into the provider's owned internals is.
-
-**Out of scope here: *seam coverage*** — a capability owned by **no** module.
-That needs the intent layer (to know what should be owned) and is the
-**allocation-completeness** pass below, not the compatibility check above. When
-a per-module intent→ADR pass tags a seam for the cross-module layer, it means
-the allocation-completeness pass.
-
-If the ADR set grows too large to hold at once, split by **clustered concern**
-(identity/auth, membership, corpus/curation, assessment), not by module-pair —
-ADRs already cluster and cross-reference that way.
-
-## Allocation completeness: global capability × ownership matrix
-
-A cross-cutting pass (not a sequential pipeline pair): does **every** intent
-capability have ≥1 owning module? A capability owned by no module — falling
-between boundaries — is an **unallocated capability** (the finding). Per-module
-passes can't see these: a capability nobody claims never appears in any
-module's owned set. (Term discipline: "unallocated" = no *downward* owner, this
-pass; reserve "orphan" for the *upward* check — an ADR/spec with no source
-intent — a separate, not-yet-built pass. See
-`research/orphan-requirement-allocation-completeness.md`.)
-
-Read the full intent capability set, the responsibility map, and every ADR
-(ADRs override the provisional map for ownership; an ADR Non-Goal is the
-authority for deferral).
-
-**Matrix is primary. One row per intent capability, verbatim — do not sub-split
-or invent** (same row-pin as ADR×ADR; ad-hoc granularity is what wobbles the
-verdict-bucket counts run-to-run). Each row: capability id + statement, owner(s)
-with module + ADR/map `file:line` (or `none`), owner_count, verdict.
-
-**Five suppression rules — apply before flagging, to prevent false unallocated
-findings:**
-
-1. **Status gate.** Explicitly deferred / out-of-scope (ADR Non-Goal, intent
-   "out of slice") → `deferred`, never a finding.
-2. **Type gate.** A cross-cutting / non-functional capability needs ≥1 owner at
-   the architectural / ADR / system level (a shared responsibility, not
-   necessarily a feature module) → `cross-cutting-allocated`.
-3. **Multi-owner.** N>1 owners is fine; fire only at owner_count = 0.
-4. **Pending.** Ownership acknowledged but unassigned (explicit TBD) → `pending`
-   (a warning bucket), not an unallocated finding.
-5. **System-level owner counts.** An ADR, or a named cross-cutting/shared node
-   in the map, is a valid owner.
-
-Only `owner_count = 0` after these rules is `UNALLOCATED` → finding (warning). A
-clean (0-unallocated) result is valid and must be backed by the completed
-matrix. Boundary this pass clarified on Agonara: a capability whose *record* is
-owned (e.g. the Program shell) but whose student-facing *view/projection* isn't
-ADR-decided is **allocated**, with the projection logged as an ADR→spec open
-question — not an unallocated finding.
+Scale to the right scope: per-module where the artifacts decompose by module
+(intent→ADR, ADR→spec) so each run is small enough to *be* complete; whole-set
+only where the unit is compact (the responsibility map for ADR×ADR). If a set
+is too large to hold at once, split by clustered concern, not arbitrarily.
 
 ## Discipline
 
-- Report **factual contradiction or divergence only**. Never report style,
-  wording polish, missing-feature wishes, or completeness gaps.
-- **Evidence is mandatory.** Every finding quotes both contradicting passages
-  with `file:line` for each side and the artifact IDs.
-- **A clean result is valid and common.** Do not manufacture findings. Back a
-  clean verdict with positive evidence (cite the interlocking passages) so the
-  "clean" is auditable, not asserted.
-- The reviewer **suggests but never applies.** No edits, no PRs, no merges, no
-  closing. The suggested fix is advisory and is not the only valid resolution.
-- The reviewer never opens issues or queue items. Output is the findings file.
+- **Evidence is mandatory.** Every finding quotes both sides with `file:line`
+  and the artifact IDs. A clean result is valid and common — back it with the
+  completed enumeration and cited interlocking evidence, never assert it.
+- **Deferred ≠ finding.** An ADR deciding detail the intent left open, or
+  explicitly deferring via a Non-Goal, is faithful. Only an *unacknowledged*
+  loss/gap is a finding — deferring a capability's *shape* does not defer its
+  *existence*. A row whose existence is carried but whose shape is deferred is
+  `carried` with the deferral cited, not a separate verdict.
+- **Suggest, never apply.** The reviewer proposes the minimum fix; it never
+  edits, PRs, merges, closes, or opens issues. Output is the findings file.
+- **Route what you can't resolve.** A tension the current layer can't settle is
+  an **open question** tagged with the layer that likely resolves it — not a
+  forced finding and not ambient doubt.
+- **Factual only** — contradiction, loss, divergence, missing ownership. Never
+  style, wording, or missing-feature wishes.
 
-## Open questions vs. findings
+## Pass-specific notes
 
-A tension that the current layer cannot resolve is an **open question**, not a
-finding — and it is tagged with the layer that most likely resolves it (e.g.
-"resolved at intent→ADR / ADR-006"). This routes the tension downstream
-instead of leaving it as ambient doubt or forcing a false finding. Open
-questions are candidates for a human resolution session; the reviewer does not
-resolve them.
-
-## Running it
-
-Argument: `{{ARGS}}` = the target project (e.g. `agonara`).
-
-The reviewer reads **only** the artifacts of the layer-pair under review and
-nothing below it. For `intent × intent`, that is the project's intent layer:
-the product-intent document plus the per-role user-story files. Enumerate
-every artifact ID per file so coverage is auditable. Assumes the My-Way
-intent-layer layout; if a project's layout differs, adapt discovery rather
-than reading unrelated files.
-
-## Finding format
-
-Per finding:
-
-- **Verdict:** fail | warning
-- **What:** one-line statement of the contradiction
-- **Why:** the principle that makes the two incompatible
-- **Side A:** `file:line` + quoted passage + artifact ID
-- **Side B:** `file:line` + quoted passage + artifact ID
-- **Suggested fix:** the minimum advisory change; if it can only be resolved
-  outside this layer, say so explicitly.
+- **intent × intent** is horizontal only; vertical intent→story coverage
+  belongs to intent→ADR.
+- **intent → ADR**: ADRs carry no `source_intent` field — infer the mapping by
+  subject/module via the responsibility map. This pass owns vertical coverage.
+- **ADR × ADR** works from the responsibility map + each ADR's
+  Decision/Rules/Boundaries/Non-Goals (not the intents). Produce an ownership
+  matrix and a cross-module contract register. A consumer using another's
+  contract *through* the contract is fine; reaching past it into the provider's
+  internals is a violation. Where the provisional map and an accepted ADR
+  disagree on ownership, that's drift (a finding) — ADRs are authoritative.
+- **allocation completeness**: read the full intent capability set + the map +
+  every ADR (ADRs override the provisional map; a Non-Goal is the deferral
+  authority). Before flagging a capability as owned-by-nobody, rule out the four
+  false positives: it's **explicitly deferred**; it's **cross-cutting/NFR** with
+  an owner at the architectural/ADR/system level (not necessarily a feature
+  module); it has **≥1 owner** (multi-owner is fine — fire only at zero); or
+  ownership is acknowledged-but-**pending** (an explicit TBD → a separate warning
+  bucket). A record can be owned while its presentation/view is a downstream
+  (spec) concern — that's allocated, with the view logged as an open question,
+  not unallocated.
 
 ## Output
 
-Write one Markdown file to `<project>/docs/traceability-reviews/` named
-`<UTC-timestamp>-<layer-pair>.md` (e.g. `2026-06-03T1007Z-intent.md`). Valid
-Markdown: one `#` title, `##` sections, real headers, `-`/`1.` lists.
+One Markdown file in `<project>/docs/traceability-reviews/`, named
+`<UTC-timestamp>-<pass>.md`. Front-matter carries the AGENTS.md trio (`date`,
+`model`, `description`) plus, for version comparison and provenance:
+`skill`, `skill_version` (the version this ran under — it doubles as the agent
+version), `scope` (pass + project), `mechanism` (the pass's method — matrix,
+register, etc. — where it has one), and `inputs` (each reviewed file with its
+document `version` or `status`, so a findings diff isolates skill change from
+document change).
 
-Front-matter must carry the AGENTS.md trio (`date`, `model`, `description`)
-plus, for version comparison and provenance:
-
-- `skill: traceability-review`
-- `skill_version:` — matches this skill's version (doubles as the agent version)
-- `scope:` — the layer-pair and project
-- `slices:` — the slices reviewed
-- `inputs:` — each reviewed file with its document `version` (from the file's
-  own front-matter), so a findings diff between two runs isolates skill change
-  from document change
-
-Body sections: `Summary` (counts per slice + one-sentence verdict),
-one section per slice (findings or "No contradictions found." with positive
-evidence), `Inspected` (files, versions, enumerated artifact IDs), and
-`Open questions`. For `intent → ADR` (run per module): `Summary` (matrix row
-count + verdict breakdown + finding totals), `Coverage matrix` (the complete
-table — the core artifact), `Findings` (derived mechanically from the matrix),
-`Open questions`, and `Inspected`. For `ADR × ADR`: `Summary`,
-`Ownership matrix`, `Cross-module contract register`, `Findings`,
-`Open questions`, and `Inspected`. For `allocation completeness`: `Summary`
-(capability count + verdict breakdown + finding total), `Allocation matrix` (the
-complete table), `Findings` (UNALLOCATED rows), `Open questions`, and
-`Inspected`.
+Body: a `Summary` (the enumeration count, verdict breakdown, finding total, and
+a one-sentence verdict), the **complete enumeration** (the matrix/register — the
+core auditable artifact), `Findings` (derived from the non-clean rows, full
+evidence), `Open questions` (tagged), and `Inspected` (files, versions, the IDs
+enumerated — so coverage is checkable).
