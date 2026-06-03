@@ -6,14 +6,13 @@ description: "Next steps for the traceability-review skill: consolidation refact
 
 # Traceability Review — TODO
 
-Baseline: **v0.5.0** — four validated passes + the intent-driven lean, committed on branch `traceability`. **Re-run the relevant eval after each change** to confirm behavior is preserved before committing.
+Baseline: **v0.6.0** — four validated passes + the intent-driven lean + project specifics lifted to a case study, committed on branch `traceability`. **Re-run the relevant eval after each change** to confirm behavior is preserved before committing.
 
 ## Consolidation refactor (remaining moves — one at a time, eval + review after each)
 
-The skill grew prescriptive while we were killing run-to-run variance — right for *discovery*, wrong as the *resting state*. Two moves remain:
+The skill grew prescriptive while we were killing run-to-run variance — right for *discovery*, wrong as the *resting state*. One move remains:
 
-1. **Lift project specifics out.** *(Lighter now — the v0.5.0 lean already genericized the inline Agonara prose and added an explicit `## Precondition (topology)` section.)* Remaining: extract a field-notes / case-study doc capturing the Agonara findings (confusing-neighbors loss, program-discovery resolution, map drift) and confirm nothing brittle remains inline.
-2. **Reclassify evals.** Treat eval fixtures as a **skill-quality regression harness** (does the next version behave like the last on a frozen fixture), **not** a living per-project contract. Per-project fixtures + reference outputs are perishable, provenance-stamped snapshots; refresh them via the human-confirm loop when the target's docs move. Document this so a future reader does not mistake a stale-doc eval failure for a skill regression.
+1. **Reclassify evals.** Treat eval fixtures as a **skill-quality regression harness** (does the next version behave like the last on a frozen fixture), **not** a living per-project contract. Per-project fixtures + reference outputs are perishable, provenance-stamped snapshots; refresh them via the human-confirm loop when the target's docs move. Document this so a future reader does not mistake a stale-doc eval failure for a skill regression.
 
 ## Remaining passes
 - **ADR → spec** (per module) — each ADR decision honoured by its spec. Same per-module deterministic-matrix mechanism that's now proven.

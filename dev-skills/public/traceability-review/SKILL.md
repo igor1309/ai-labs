@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.5.0"
+version: "0.6.0"
 author: Igor Malyarov
 ---
 
@@ -22,9 +22,9 @@ divergence between artifacts that share a parent**. The ground truth for every
 check is the **upstream node**, not the code — this is what distinguishes it
 from doc-drift (whose ground truth is the code).
 
-Validated across four passes against Agonara (intent×intent, intent→ADR,
-ADR×ADR, allocation completeness). Treat unimplemented passes below as roadmap,
-not tested behavior.
+Validated across four passes (intent×intent, intent→ADR, ADR×ADR, allocation
+completeness) — see `references/agonara-case-study.md` for the worked example.
+Treat unimplemented passes below as roadmap, not tested behavior.
 
 ## Precondition (topology)
 
