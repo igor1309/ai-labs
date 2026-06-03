@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 2 of the topic, concept, and material navigation plan with navigation candidate commands, atomic acceptance of accepted corpus and relationship drafts, student-safe graph reads, authorization checks, and no-Student-state read boundaries.
 - Switch the topic, concept, and material navigation plan to auto-continue mode after explicit user direction while keeping per-phase review and commit gates.
 - Implement Phase 1 of the topic, concept, and material navigation plan with storage support for navigation corpus kinds, material-reference metadata, accepted relationships, prerequisite cycle rejection, and backup/restore graph validation.
 - Add the topic, concept, and material navigation child implementation plan with exact storage/domain/HTTP/UI/test inventories, per-phase reviews, commit gates, dashboard closeout, and archive closure.

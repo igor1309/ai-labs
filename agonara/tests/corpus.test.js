@@ -10,6 +10,7 @@ import {
   createSession,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
+  getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
   getAcceptedQuickCheckEntityRecord,
   getAcceptedQuickCheckRevisionRecord,
@@ -21,6 +22,7 @@ import {
   initializeIdentityStorage,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
+  listAcceptedNavigationRelationshipRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
@@ -964,6 +966,627 @@ test("listAcceptedCorpus_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
         admin: "accepted",
         other: { status: "rejected", reason: "participation_required" },
         missingRevision: { status: "rejected", reason: "revision_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createNavigationCandidate_shouldPersistDraftMaterialMetadataAndRelationshipDrafts_onValidInput", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+
+    const result = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Linked reading",
+      body: "Read section 2.",
+      materialReferenceKind: "article",
+      locator: "https://example.test/reading",
+      citation: "Example Reading",
+      sourceIds: ["source-1"],
+      relationshipDrafts: [
+        {
+          relationshipKind: "concept_uses_material",
+          fromEntityId: "concept-1",
+          toCandidateRef: "self",
+          label: "reading",
+          sourceIds: ["source-1"],
+        },
+      ],
+      rationale: "Supports concept",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        stored: getCorpusCandidateRecord(database, "source-2"),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            navigationCandidate: {
+              candidateId: "source-2",
+              programId: "program-a",
+              candidateKind: "material_reference",
+              title: "Linked reading",
+              body: "Read section 2.",
+              materialReferenceKind: "article",
+              locator: "https://example.test/reading",
+              citation: "Example Reading",
+              sourceIds: ["source-1"],
+              relationshipDrafts: [
+                {
+                  relationshipKind: "concept_uses_material",
+                  fromEntityId: "concept-1",
+                  toCandidateRef: "self",
+                  label: "reading",
+                  sourceIds: ["source-1"],
+                },
+              ],
+              rationale: "Supports concept",
+              status: "draft",
+              createdByIdentityId: "identity-curator",
+              createdAt: "2026-05-28T11:00:00.002Z",
+              updatedAt: "2026-05-28T11:00:00.002Z",
+            },
+          },
+        },
+        stored: {
+          id: "source-2",
+          programId: "program-a",
+          candidateKind: "material_reference",
+          title: "Linked reading",
+          body: "Read section 2.",
+          materialReferenceKind: "article",
+          locator: "https://example.test/reading",
+          citation: "Example Reading",
+          sourceIds: ["source-1"],
+          relationshipDrafts: [
+            {
+              relationshipKind: "concept_uses_material",
+              fromEntityId: "concept-1",
+              toCandidateRef: "self",
+              label: "reading",
+              sourceIds: ["source-1"],
+            },
+          ],
+          rationale: "Supports concept",
+          status: "draft",
+          createdByIdentityId: "identity-curator",
+          createdAt: "2026-05-28T11:00:00.002Z",
+          updatedAt: "2026-05-28T11:00:00.002Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createNavigationCandidate_shouldRejectInvalidNavigationInputAndUnauthorizedMutation", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program A source",
+    });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      sourceKind: "article",
+      title: "Program B source",
+    });
+
+    assert.deepEqual(
+      {
+        unauthorized: commands.createNavigationCandidate({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: "Topic",
+        }),
+        candidateKind: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "unsupported",
+          title: "Topic",
+        }),
+        title: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "topic",
+          title: " ",
+        }),
+        requiredBody: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "definition",
+          title: "Definition",
+          body: " ",
+        }),
+        materialReference: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "material_reference",
+          title: "Material",
+          materialReferenceKind: "article",
+        }),
+        relationshipUpdate: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "relationship_update",
+          title: "Relationships",
+        }),
+        malformedRelationshipDraft: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "concept",
+          title: "Concept",
+          relationshipDrafts: [
+            {
+              relationshipKind: "topic_includes_concept",
+              toCandidateRef: "self",
+            },
+          ],
+        }),
+        missingRelationshipSource: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "relationship_update",
+          title: "Relationships",
+          relationshipDrafts: [
+            {
+              relationshipKind: "concept_related",
+              fromEntityId: "concept-a",
+              toEntityId: "concept-b",
+              sourceIds: ["source-missing"],
+            },
+          ],
+        }),
+        crossProgramRelationshipSource: commands.createNavigationCandidate({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          candidateKind: "relationship_update",
+          title: "Relationships",
+          relationshipDrafts: [
+            {
+              relationshipKind: "concept_related",
+              fromEntityId: "concept-a",
+              toEntityId: "concept-b",
+              sourceIds: ["source-2"],
+            },
+          ],
+        }),
+      },
+      {
+        unauthorized: { status: "rejected", reason: "admin_or_curator_required" },
+        candidateKind: { status: "rejected", reason: "validation_failed" },
+        title: { status: "rejected", reason: "validation_failed" },
+        requiredBody: { status: "rejected", reason: "validation_failed" },
+        materialReference: { status: "rejected", reason: "validation_failed" },
+        relationshipUpdate: { status: "rejected", reason: "validation_failed" },
+        malformedRelationshipDraft: { status: "rejected", reason: "validation_failed" },
+        missingRelationshipSource: { status: "rejected", reason: "source_not_found" },
+        crossProgramRelationshipSource: { status: "rejected", reason: "source_program_mismatch" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptNavigationCandidate_shouldCreateAcceptedMaterialAndRelationship_onValidDraft", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+    const concept = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Concept A",
+      sourceIds: ["source-1"],
+    });
+    commands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: concept.value.navigationCandidate.candidateId,
+    });
+    const material = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Linked reading",
+      materialReferenceKind: "article",
+      locator: "https://example.test/reading",
+      sourceIds: ["source-1"],
+      relationshipDrafts: [
+        {
+          relationshipKind: "concept_uses_material",
+          fromEntityId: "source-3",
+          toCandidateRef: "self",
+          label: "uses",
+          sourceIds: ["source-1"],
+        },
+      ],
+    });
+
+    const result = commands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: material.value.navigationCandidate.candidateId,
+    });
+    const acceptedRelationship = result.value.navigationChange.acceptedRelationships[0];
+
+    assert.deepEqual(
+      {
+        result,
+        relationship: listAcceptedNavigationRelationshipRecords(database, { programId: "program-a" }),
+        relationshipRevision: getAcceptedNavigationRelationshipRevisionRecord(
+          database,
+          acceptedRelationship.relationshipRevisionId,
+        ),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            navigationChange: {
+              acceptedCorpus: {
+                entityId: "corpus-event-5",
+                revisionId: "source-6",
+                programId: "program-a",
+                acceptedKind: "material_reference",
+                title: "Linked reading",
+                materialReferenceKind: "article",
+                locator: "https://example.test/reading",
+                sourceIds: ["source-1"],
+                acceptedFromCandidateId: "corpus-event-4",
+                acceptedByIdentityId: "identity-curator",
+                acceptedAt: "2026-05-28T11:00:00.008Z",
+              },
+              acceptedRelationships: [
+                {
+                  relationshipId: "source-7",
+                  relationshipRevisionId: "corpus-event-6",
+                  programId: "program-a",
+                  relationshipKind: "concept_uses_material",
+                  fromEntityId: "source-3",
+                  fromRevisionId: "corpus-event-3",
+                  fromKind: "concept",
+                  toEntityId: "corpus-event-5",
+                  toRevisionId: "source-6",
+                  toKind: "material_reference",
+                  label: "uses",
+                  sourceIds: ["source-1"],
+                  acceptedFromCandidateId: "corpus-event-4",
+                  acceptedByIdentityId: "identity-curator",
+                  acceptedAt: "2026-05-28T11:00:00.008Z",
+                },
+              ],
+            },
+          },
+        },
+        relationship: [
+          {
+            id: "source-7",
+            programId: "program-a",
+            relationshipKind: "concept_uses_material",
+            fromEntityId: "source-3",
+            toEntityId: "corpus-event-5",
+            currentRevisionId: "corpus-event-6",
+          },
+        ],
+        relationshipRevision: {
+          id: "corpus-event-6",
+          relationshipId: "source-7",
+          programId: "program-a",
+          relationshipKind: "concept_uses_material",
+          fromEntityId: "source-3",
+          fromRevisionId: "corpus-event-3",
+          fromKind: "concept",
+          toEntityId: "corpus-event-5",
+          toRevisionId: "source-6",
+          toKind: "material_reference",
+          label: "uses",
+          sourceIds: ["source-1"],
+          acceptedFromCandidateId: "corpus-event-4",
+          acceptedByIdentityId: "identity-curator",
+          acceptedAt: "2026-05-28T11:00:00.008Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listProgramNavigation_shouldReturnStudentSafeGraphWithoutStudentStateMutation_onAcceptedNavigation", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedStudentMembership(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+    });
+    const topic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Topic A",
+    });
+    const concept = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Concept A",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+    });
+    acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Material A",
+      materialReferenceKind: "article",
+      locator: "https://example.test/material",
+      relationshipDrafts: [
+        {
+          relationshipKind: "concept_uses_material",
+          fromEntityId: concept.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+    });
+    const before = snapshotNavigationReadBoundary(database);
+
+    const result = commands.listProgramNavigation({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const detail = commands.getNavigationEntity({
+      actingIdentityId: "identity-student",
+      entityId: concept.entityId,
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        detail,
+        leakedForbiddenDetails: containsNavigationForbiddenDetail([result, detail]),
+        boundary: snapshotNavigationReadBoundary(database),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            navigation: {
+              programId: "program-a",
+              topics: [
+                {
+                  entityId: topic.entityId,
+                  revisionId: topic.revisionId,
+                  acceptedKind: "topic",
+                  title: "Topic A",
+                },
+              ],
+              ungroupedConcepts: [],
+              ungroupedMaterials: [],
+            },
+          },
+        },
+        detail: {
+          status: "accepted",
+          value: {
+            navigationNode: {
+              entityId: concept.entityId,
+              revisionId: concept.revisionId,
+              programId: "program-a",
+              acceptedKind: "concept",
+              title: "Concept A",
+              relationships: {
+                outgoing: [
+                  {
+                    relationshipId: "corpus-event-9",
+                    relationshipRevisionId: "source-9",
+                    relationshipKind: "concept_uses_material",
+                    fromEntityId: concept.entityId,
+                    fromRevisionId: concept.revisionId,
+                    fromKind: "concept",
+                    fromTitle: "Concept A",
+                    toEntityId: "source-8",
+                    toRevisionId: "corpus-event-8",
+                    toKind: "material_reference",
+                    toTitle: "Material A",
+                  },
+                ],
+                incoming: [
+                  {
+                    relationshipId: "source-6",
+                    relationshipRevisionId: "corpus-event-5",
+                    relationshipKind: "topic_includes_concept",
+                    fromEntityId: topic.entityId,
+                    fromRevisionId: topic.revisionId,
+                    fromKind: "topic",
+                    fromTitle: "Topic A",
+                    toEntityId: concept.entityId,
+                    toRevisionId: concept.revisionId,
+                    toKind: "concept",
+                    toTitle: "Concept A",
+                  },
+                ],
+              },
+            },
+          },
+        },
+        leakedForbiddenDetails: false,
+        boundary: before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("listProgramNavigation_shouldAuthorizeStudentCuratorAndAdminOnly_onAcceptedNavigation", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-other" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedStudentMembership(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+    });
+    const topic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Topic A",
+    });
+    commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Topic A replacement",
+    });
+    commands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "corpus-event-3",
+      targetEntityId: topic.entityId,
+    });
+
+    assert.deepEqual(
+      {
+        student: commands.listProgramNavigation({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }).status,
+        curator: commands.getNavigationEntity({
+          actingIdentityId: "identity-curator",
+          entityId: topic.entityId,
+        }).status,
+        admin: commands.getNavigationRevision({
+          actingIdentityId: "identity-admin",
+          revisionId: topic.revisionId,
+        }),
+        other: commands.listProgramNavigation({
+          actingIdentityId: "identity-other",
+          programId: "program-a",
+        }),
+        missingEntity: commands.getNavigationEntity({
+          actingIdentityId: "identity-curator",
+          entityId: "entity-missing",
+        }),
+        missingRevision: commands.getNavigationRevision({
+          actingIdentityId: "identity-curator",
+          revisionId: "revision-missing",
+        }),
+      },
+      {
+        student: "accepted",
+        curator: "accepted",
+        admin: {
+          status: "accepted",
+          value: {
+            navigationRevision: {
+              entityId: topic.entityId,
+              revisionId: topic.revisionId,
+              programId: "program-a",
+              acceptedKind: "topic",
+              title: "Topic A",
+              isCurrentRevision: false,
+            },
+          },
+        },
+        other: { status: "rejected", reason: "participation_required" },
+        missingEntity: { status: "rejected", reason: "navigation_entity_not_found" },
+        missingRevision: { status: "rejected", reason: "navigation_revision_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptNavigationCandidate_shouldRejectInvalidRelationshipDraftAtomically_onWrongEndpointKind", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const topic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Topic A",
+    });
+    const candidate = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Material A",
+      materialReferenceKind: "article",
+      locator: "https://example.test/material",
+      relationshipDrafts: [
+        {
+          relationshipKind: "concept_uses_material",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+    });
+
+    const result = commands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.value.navigationCandidate.candidateId,
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        candidateStatus: getCorpusCandidateRecord(database, candidate.value.navigationCandidate.candidateId).status,
+        acceptedEntityCount: listAcceptedCorpusEntityRecords(database, { programId: "program-a" }).length,
+        acceptedRelationshipCount: listAcceptedNavigationRelationshipRecords(database, { programId: "program-a" }).length,
+        eventCount: listCorpusEventRecords(database, { programId: "program-a" }).length,
+      },
+      {
+        result: { status: "rejected", reason: "navigation_relationship_endpoint_kind_mismatch" },
+        candidateStatus: "draft",
+        acceptedEntityCount: 1,
+        acceptedRelationshipCount: 0,
+        eventCount: 3,
       },
     );
   } finally {
@@ -4434,6 +5057,72 @@ function containsQuickCheckDeliveryForbiddenDetail(values) {
     "postgres://",
     "database-url",
   ].some($0 => serialized.includes($0));
+}
+
+function containsNavigationForbiddenDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "sourceids",
+    "acceptedfromcandidateid",
+    "acceptedbyidentityid",
+    "acceptedat",
+    "rationale",
+    "candidateid",
+    "createdbyidentityid",
+    "relationshipdrafts",
+    "draft",
+    "rejected",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "select ",
+    "stack",
+    "/tmp",
+    "postgres://",
+    "database-url",
+  ].some($0 => serialized.includes($0));
+}
+
+function snapshotNavigationReadBoundary(database) {
+  return {
+    corpusEventCount: countRows(database, "corpus_events"),
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerEvaluationCount: countRows(database, "open_answer_evaluations"),
+    quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    sessionCount: countRows(database, "sessions"),
+  };
+}
+
+function acceptNavigationCandidate(
+  commands,
+  {
+    programId,
+    candidateKind,
+    title,
+    body,
+    materialReferenceKind,
+    locator,
+    citation,
+    relationshipDrafts = [],
+  },
+) {
+  const candidate = commands.createNavigationCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    candidateKind,
+    title,
+    body,
+    materialReferenceKind,
+    locator,
+    citation,
+    relationshipDrafts,
+  });
+  const acceptedCandidate = commands.acceptNavigationCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.navigationCandidate.candidateId,
+  });
+  return acceptedCandidate.value.navigationChange.acceptedCorpus;
 }
 
 function snapshotAdjacentDomains(database) {

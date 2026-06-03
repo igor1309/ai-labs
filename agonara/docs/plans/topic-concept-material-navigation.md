@@ -128,7 +128,7 @@ Targeted commands:
 ## Phase tracker
 
 - [x] Phase 1 - Storage Substrate and Restore Graph Validation
-- [ ] Phase 2 - Corpus Domain Navigation Commands and Queries
+- [x] Phase 2 - Corpus Domain Navigation Commands and Queries
 - [ ] Phase 3 - HTTP Navigation API
 - [ ] Phase 4 - Product UI Navigation
 - [ ] Phase 5 - Traceability, Dashboard, Archive, and Parent Closeout

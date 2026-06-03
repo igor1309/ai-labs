@@ -176,6 +176,22 @@ export function initializeIdentityStorage(database) {
       ),
       title text not null,
       body text,
+      material_reference_kind text check (
+        material_reference_kind in (
+          'article',
+          'book',
+          'course',
+          'lecture',
+          'note',
+          'problem_set',
+          'standard',
+          'video',
+          'other'
+        )
+      ),
+      locator text,
+      citation text,
+      relationship_drafts_json text not null default '[]',
       source_ids_json text not null,
       rationale text,
       status text not null check (status in ('draft', 'accepted', 'rejected')),
@@ -797,6 +813,10 @@ export function createCorpusCandidateRecord(
     candidateKind,
     title,
     body = null,
+    materialReferenceKind = null,
+    locator = null,
+    citation = null,
+    relationshipDrafts = [],
     sourceIds = [],
     rationale = null,
     status,
@@ -817,13 +837,17 @@ export function createCorpusCandidateRecord(
          candidate_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
+         relationship_drafts_json,
          source_ids_json,
          rationale,
          status,
          created_by_identity_id,
          created_at,
          updated_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -831,6 +855,10 @@ export function createCorpusCandidateRecord(
       candidateKind,
       title,
       body,
+      materialReferenceKind,
+      locator,
+      citation,
+      JSON.stringify(relationshipDrafts),
       JSON.stringify(sourceIds),
       rationale,
       status,
@@ -846,6 +874,8 @@ export function getCorpusCandidateRecord(database, id) {
   const row = database
     .prepare(
       `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+              material_reference_kind as materialReferenceKind, locator, citation,
+              relationship_drafts_json as relationshipDraftsJson,
               source_ids_json as sourceIdsJson, rationale, status,
               created_by_identity_id as createdByIdentityId,
               created_at as createdAt, updated_at as updatedAt
@@ -862,6 +892,8 @@ export function listCorpusCandidateRecords(database, { programId = null, status 
     return database
       .prepare(
         `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+                material_reference_kind as materialReferenceKind, locator, citation,
+                relationship_drafts_json as relationshipDraftsJson,
                 source_ids_json as sourceIdsJson, rationale, status,
                 created_by_identity_id as createdByIdentityId,
                 created_at as createdAt, updated_at as updatedAt
@@ -876,6 +908,8 @@ export function listCorpusCandidateRecords(database, { programId = null, status 
     return database
       .prepare(
         `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+                material_reference_kind as materialReferenceKind, locator, citation,
+                relationship_drafts_json as relationshipDraftsJson,
                 source_ids_json as sourceIdsJson, rationale, status,
                 created_by_identity_id as createdByIdentityId,
                 created_at as createdAt, updated_at as updatedAt
@@ -890,6 +924,8 @@ export function listCorpusCandidateRecords(database, { programId = null, status 
   return database
     .prepare(
       `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+              material_reference_kind as materialReferenceKind, locator, citation,
+              relationship_drafts_json as relationshipDraftsJson,
               source_ids_json as sourceIdsJson, rationale, status,
               created_by_identity_id as createdByIdentityId,
               created_at as createdAt, updated_at as updatedAt
@@ -4115,13 +4151,17 @@ export function restoreIdentityBackup(database, backup) {
          candidate_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
+         relationship_drafts_json,
          source_ids_json,
          rationale,
          status,
          created_by_identity_id,
          created_at,
          updated_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedCorpusEntity = database.prepare(
       `insert into accepted_corpus_entities (
@@ -4452,6 +4492,10 @@ export function restoreIdentityBackup(database, backup) {
         candidate.candidateKind,
         candidate.title,
         candidate.body ?? null,
+        candidate.materialReferenceKind ?? null,
+        candidate.locator ?? null,
+        candidate.citation ?? null,
+        JSON.stringify(candidate.relationshipDrafts ?? []),
         JSON.stringify(candidate.sourceIds ?? []),
         candidate.rationale ?? null,
         candidate.status,
@@ -4877,7 +4921,7 @@ function getAuditEvent(database, id) {
 }
 
 function mapCorpusCandidateRecord(row) {
-  return {
+  const candidate = {
     id: row.id,
     programId: row.programId,
     candidateKind: row.candidateKind,
@@ -4890,6 +4934,23 @@ function mapCorpusCandidateRecord(row) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+
+  if (row.materialReferenceKind !== null) {
+    candidate.materialReferenceKind = row.materialReferenceKind;
+  }
+  if (row.locator !== null) {
+    candidate.locator = row.locator;
+  }
+  if (row.citation !== null) {
+    candidate.citation = row.citation;
+  }
+
+  const relationshipDrafts = JSON.parse(row.relationshipDraftsJson ?? "[]");
+  if (relationshipDrafts.length > 0) {
+    candidate.relationshipDrafts = relationshipDrafts;
+  }
+
+  return candidate;
 }
 
 function mapAssessmentCriterionCandidateRecord(row) {
