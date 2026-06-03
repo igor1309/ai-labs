@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Add the Quick Check product UI child implementation plan with exact files, routes, screens, Playwright tests, phase gates, DoD, dashboard LOC closeout, and archive closure.
 - Start Phase 1 of the Agonara product gap closure plan with a Quick Check product UI spec and implemented-status traceability for the Quick Check HTTP API spec.
 - Improve the Agonara product gap closure plan by requiring child implementation plans per phase, exact files/routes/screens/tests inventories, and Playwright-pinned UI validation before implementation starts.
 - Tighten the Agonara product gap closure plan by requiring post-implementation self/adversarial review for every phase and adding the LOC dashboard refresh to final closeout.
