@@ -89,6 +89,23 @@
         "Findings are derived mechanically from the matrix and no false positive is made — a narrowing authorized by an ADR Non-Goal or first-slice scoping line is deferred, never flagged missing.",
         "The Inspected section confirms ADR-010 and both corpus-storage-and-curator-acceptance specs were read."
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Run the spec ↔ tests pass on the agonara Corpus Storage + Curator Workspace module — does every spec clause have a named test, and does every test name trace to a clause?",
+      "expected_output": "A bidirectional coverage matrix (spec clauses ↔ test names) for the module, built from test titles only (no bodies, tests not run) with the test scope discovered across the whole suite, finding coverage clean (no orphan tests; negative-guarantee verifiability noted as an open question, not a forced untested finding).",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by spec-tests and the module (corpus-curator).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the spec ↔ tests pass / the Corpus Storage + Curator Workspace module / agonara, a mechanism noting bidirectional coverage by names only, and an inputs list giving both corpus-storage-and-curator-acceptance specs and the test files used.",
+        "Spec clauses are enumerated from BOTH specs (first-slice + API) as the clause set.",
+        "The test scope is discovered across the whole test suite (not a single hand-listed file): corpus/curator-relevant titles are drawn from wherever they live — domain corpus*.test.js, API http-api.test.js, backup-restore.test.js, executable-acceptance — and titles for other modules are classified out-of-scope, not orphan.",
+        "Coverage is bidirectional: a Spec->test table (each clause -> covering test name or untested) and a Test->spec table (each in-scope test name -> traced clause or orphan).",
+        "Only test NAMES are used (describe/it/test titles, e.g. grep-extracted); test bodies are not analyzed and the tests are NOT run.",
+        "There are 0 orphan tests (every in-scope test name traces to a clause).",
+        "Forward coverage is essentially complete (clauses covered by named tests) with no contradicted/false-coverage rows.",
+        "A negative or does-not guarantee clause that no test names is treated as an open question (names-only cannot confirm an absence), not a forced untested finding.",
+        "A clean result is backed by the completed bidirectional tables, not asserted, and the Inspected section lists the specs and test files consulted."
+      ]
     }
   ]
 }
