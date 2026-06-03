@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.7.0"
+version: "0.8.0"
 author: Igor Malyarov
 ---
 
@@ -50,7 +50,7 @@ project.
 5. **ADR → spec** — per module; each ADR decision honoured by its spec. *(implemented)*
 6. **spec ↔ tests** — per module; test **names** only (no bodies, don't run
    tests — on a trunk-only repo a merged test passes); every spec clause has a
-   named test, every test name traces to a clause. *(roadmap)*
+   named test, every test name traces to a clause. *(implemented)*
 
 (The upward "orphan" check — does every ADR/spec trace *back* to a source
 intent — is a separate future pass; "unallocated" here is the *downward* check.)
@@ -122,6 +122,20 @@ is too large to hold at once, split by clustered concern, not arbitrarily.
   A spec narrower than the ADR is `deferred` — **not** `missing` — only when an
   ADR Non-Goal or first-slice scoping line authorizes the narrowing; cite that
   line and route the unrealized scope as an open question for the later slice.
+- **spec ↔ tests**: bidirectional coverage between spec clauses and test
+  *names*. **Titles only** — extract `describe`/`it`/`test` strings (`grep`
+  them; never read bodies) — and **do not run tests** (trunk-only → merged =
+  passing). **Discover the test scope**: a module's clauses are tested across
+  *several* files (domain, API/transport, backup, executable-acceptance), so
+  grep titles across the whole test suite and map by behaviour — don't rely on
+  a hand-listed file set. Forward: every spec clause needs a named test (else
+  `untested` → warning). Backward: every test name traces to a clause (`orphan`
+  → warning); titles for other modules are `out-of-scope`, not orphan; a
+  too-vague title — or a negative/"does-not" guarantee that no test names
+  (names-only can't confirm an *absence*) — is an open question, not a forced
+  verdict. Extract titles with `grep`, not a written script (measured: a script
+  adds authoring + run cost and dumps the whole suite through context, with no
+  accuracy gain for names-only extraction).
 
 ## Output
 

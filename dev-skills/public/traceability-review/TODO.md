@@ -6,9 +6,6 @@ description: "Next steps for the traceability-review skill: consolidation refact
 
 # Traceability Review — TODO
 
-## Remaining passes
-- **spec ↔ tests** (per module) — test *names* only, no running; every spec clause has a named test, every test name traces to a clause.
-
 ## New pass identified (from research)
 - **Upward orphan check** — does every ADR/spec trace *back* to a source intent, or is it unrequested scope creep? Distinct from allocation completeness (which is the *downward* check). Vocabulary grounded in `research/orphan-requirement-allocation-completeness.md`.
 

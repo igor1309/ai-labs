@@ -62,3 +62,11 @@ baseline.
   concern is allocated, with the view logged as an open question.
 - **Vocabulary.** "Unallocated" = no *downward* owner (allocation completeness);
   "orphan" = no *upward* parent (a separate, not-yet-built pass). Don't conflate.
+- **spec ↔ tests scope is discovered, not listed.** A module's clauses are
+  tested across several files (domain, API, backup, executable); hand-listing
+  files produced false "untested" findings until the pass grepped titles across
+  the *whole* suite. And `grep` beats a written extraction script (measured: the
+  script added authoring + run cost and pushed the whole suite through context,
+  with no accuracy gain for names-only extraction). A negative/"does-not"
+  guarantee that no test names is an open question — names-only can't confirm an
+  *absence* — not an untested finding.
