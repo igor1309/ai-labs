@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 4 of the topic and period readiness checks plan with session-backed HTTP curation routes, Student delivery and attempt routes, CSRF/idempotency gates, owner-only attempt reads, status mapping, and student-safe redaction coverage.
 - Implement Phase 3 of the topic and period readiness checks plan with explicit Student readiness attempt submission, learner-state snapshot derivation, stable historical reads, idempotency replay/conflict handling, owner-only attempt reads, and raw-assessment non-promotion coverage.
 - Implement Phase 2 of the topic and period readiness checks plan with Program Curator readiness candidate curation, accepted scope and requirement validation, replacement revisions, curation reads, and no Student Workspace mutation coverage.
 - Harden Phase 1 readiness storage after adversarial review by validating requirement result labels from observed learner-state levels and giving `not_ready` precedence over `in_progress`.

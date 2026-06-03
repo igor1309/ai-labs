@@ -552,6 +552,9 @@ async function handleStudentWorkspaceApi({
   const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
   const quickCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/quick-check-attempts$/);
   const quickCheckAttemptDetailMatch = pathname.match(/^\/quick-check-attempts\/([^/]+)$/);
+  const readinessCheckDeliveriesMatch = pathname.match(/^\/programs\/([^/]+)\/readiness-checks$/);
+  const readinessCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/readiness-check-attempts$/);
+  const readinessCheckAttemptDetailMatch = pathname.match(/^\/readiness-check-attempts\/([^/]+)$/);
   const learnerStateProgramMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state$/);
   const learnerStateTargetMatch = pathname.match(/^\/learner-state\/targets\/([^/]+)\/([^/]+)$/);
   if (request.method === "GET" && learnerStateProgramMatch) {
@@ -598,6 +601,135 @@ async function handleStudentWorkspaceApi({
     });
     const mappedResult = mapQuickCheckAttemptDetailResult(result);
     sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckAttemptDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getReadinessCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      attemptId: decodeURIComponent(readinessCheckAttemptDetailMatch[1]),
+    });
+    const mappedResult = mapReadinessCheckAttemptDetailResult(result);
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckDeliveriesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(readinessCheckDeliveriesMatch[1]);
+    const routeKey = `readiness-check-deliveries:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listReadinessCheckDeliveries({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapReadinessCheckDeliveryListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseReadinessCheckAttemptListFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const programId = decodeURIComponent(readinessCheckAttemptsMatch[1]);
+    const routeKey = JSON.stringify([
+      "student-readiness-check-attempts",
+      session.value.identity.id,
+      programId,
+      filters.value.readinessCheckRevisionId ?? "all",
+    ]);
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listReadinessCheckAttempts({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      readinessCheckRevisionId: filters.value.readinessCheckRevisionId,
+    });
+    const mappedResult = mapReadinessCheckAttemptListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && readinessCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const idempotencyKey = parseAttemptIdempotencyKey(request);
+    if (idempotencyKey.status === "rejected") {
+      sendJson(response, 400, idempotencyKey);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const submission = parseSubmitReadinessCheckAttemptBody(body.value);
+    if (submission.status === "rejected") {
+      sendJson(response, 400, submission);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.submitReadinessCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      idempotencyKey: idempotencyKey.value,
+      programId: decodeURIComponent(readinessCheckAttemptsMatch[1]),
+      readinessCheckRevisionId: submission.value.readinessCheckRevisionId,
+    });
+    sendJson(response, statusForResult(result), mapReadinessCheckAttemptResult(result));
     return true;
   }
 
@@ -852,6 +984,18 @@ async function handleCorpusApi({
   const acceptedQuickCheckCurationRevisionMatch = pathname.match(
     /^\/quick-checks\/revisions\/([^/]+)\/curation$/,
   );
+  const readinessCheckCandidatesMatch = pathname.match(
+    /^\/programs\/([^/]+)\/readiness-checks\/candidates$/,
+  );
+  const readinessCheckAcceptanceMatch = pathname.match(
+    /^\/readiness-checks\/candidates\/([^/]+)\/acceptance$/,
+  );
+  const readinessCheckRejectionMatch = pathname.match(
+    /^\/readiness-checks\/candidates\/([^/]+)\/rejection$/,
+  );
+  const acceptedReadinessCheckCurationRevisionMatch = pathname.match(
+    /^\/readiness-checks\/revisions\/([^/]+)\/curation$/,
+  );
   const learnerStateTargetLinksMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state-target-links$/);
   const learnerStateTargetLinkMatch = pathname.match(/^\/learner-state-target-links\/([^/]+)$/);
   if (request.method === "GET" && learnerStateTargetLinksMatch) {
@@ -1003,6 +1147,43 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "GET" && readinessCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(readinessCheckCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `readiness-check-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listReadinessCheckCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapReadinessCheckCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
   if (request.method === "POST" && quickCheckCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1037,6 +1218,38 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "POST" && readinessCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidReadinessCheckCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createReadinessCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(readinessCheckCandidatesMatch[1]),
+      rationale: body.value.rationale,
+      requirements: body.value.requirements,
+      scope: body.value.scope,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapReadinessCheckCandidateResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && acceptedQuickCheckCurationRevisionMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1049,6 +1262,21 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(acceptedQuickCheckCurationRevisionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapAcceptedQuickCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedReadinessCheckCurationRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedReadinessCheckRevisionForCuration({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedReadinessCheckCurationRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedReadinessCheckResult(result));
     return true;
   }
 
@@ -1080,6 +1308,34 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "POST" && readinessCheckAcceptanceMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptReadinessCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(readinessCheckAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapAcceptedReadinessCheckResult(result));
+    return true;
+  }
+
   if (request.method === "POST" && quickCheckRejectionMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1104,6 +1360,33 @@ async function handleCorpusApi({
       candidateId: decodeURIComponent(quickCheckRejectionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapQuickCheckCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && readinessCheckRejectionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectReadinessCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(readinessCheckRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapReadinessCheckCandidateResult(result));
     return true;
   }
 
@@ -2271,12 +2554,28 @@ function mapQuickCheckCandidateResult(result) {
   return accepted({ quickCheckCandidate: result.value.quickCheckCandidate });
 }
 
+function mapReadinessCheckCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ readinessCheckCandidate: result.value.readinessCheckCandidate });
+}
+
 function mapQuickCheckAttemptResult(result) {
   if (result.status === "rejected") {
     return result;
   }
 
   return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
+}
+
+function mapReadinessCheckAttemptResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ readinessCheckAttempt: result.value.readinessCheckAttempt });
 }
 
 function mapQuickCheckAttemptDetailResult(result) {
@@ -2289,12 +2588,30 @@ function mapQuickCheckAttemptDetailResult(result) {
   return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
 }
 
+function mapReadinessCheckAttemptDetailResult(result) {
+  if (result.status === "rejected") {
+    return result.reason === "participation_required"
+      ? rejected("attempt_not_found")
+      : result;
+  }
+
+  return accepted({ readinessCheckAttempt: result.value.readinessCheckAttempt });
+}
+
 function mapAcceptedQuickCheckResult(result) {
   if (result.status === "rejected") {
     return result;
   }
 
   return accepted({ acceptedQuickCheck: result.value.acceptedQuickCheck });
+}
+
+function mapAcceptedReadinessCheckResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ acceptedReadinessCheck: result.value.acceptedReadinessCheck });
 }
 
 function mapQuickCheckDeliveryResult(result) {
@@ -2591,6 +2908,16 @@ function parseQuickCheckAttemptListFilters(request) {
   return accepted({ checkRevisionId: checkRevisionId ?? undefined });
 }
 
+function parseReadinessCheckAttemptListFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const readinessCheckRevisionId = url.searchParams.get("readinessCheckRevisionId");
+  if (readinessCheckRevisionId !== null && !isNonEmptyRequestText(readinessCheckRevisionId)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ readinessCheckRevisionId: readinessCheckRevisionId ?? undefined });
+}
+
 function parseSubmitOpenAnswerAttemptBody(body) {
   if (
     Object.keys(body).length !== 2 ||
@@ -2621,6 +2948,18 @@ function parseSubmitQuickCheckAttemptBody(body) {
     checkRevisionId: body.checkRevisionId,
     selectedOptionId: body.selectedOptionId,
   });
+}
+
+function parseSubmitReadinessCheckAttemptBody(body) {
+  if (
+    Object.keys(body).length !== 1 ||
+    !hasOnlyKeys(body, ["readinessCheckRevisionId"]) ||
+    !isNonEmptyRequestText(body.readinessCheckRevisionId)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ readinessCheckRevisionId: body.readinessCheckRevisionId });
 }
 
 function isNonEmptyRequestText(value) {
@@ -2719,6 +3058,48 @@ function isValidQuickCheckCandidateBody(body) {
     Number.isInteger(body.answerKeyOptionIndex) &&
     body.answerKeyOptionIndex >= 0 &&
     body.answerKeyOptionIndex < body.options.length;
+}
+
+function isValidReadinessCheckCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "rationale",
+    "requirements",
+    "scope",
+    "sourceIds",
+    "title",
+  ]) &&
+    isNonEmptyRequestText(body.title) &&
+    (body.rationale === undefined || typeof body.rationale === "string") &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    isValidReadinessScopeBody(body.scope) &&
+    Array.isArray(body.requirements) &&
+    body.requirements.length > 0 &&
+    body.requirements.every(isValidReadinessRequirementBody);
+}
+
+function isValidReadinessScopeBody(scope) {
+  if (scope?.scopeKind === "topic") {
+    return hasOnlyKeys(scope, ["scopeKind", "topicEntityId"]) &&
+      isNonEmptyRequestText(scope.topicEntityId);
+  }
+  if (scope?.scopeKind === "period") {
+    return hasOnlyKeys(scope, ["scopeKind", "title", "topicEntityIds"]) &&
+      isNonEmptyRequestText(scope.title) &&
+      Array.isArray(scope.topicEntityIds) &&
+      scope.topicEntityIds.length > 0 &&
+      scope.topicEntityIds.every(isNonEmptyRequestText);
+  }
+  return false;
+}
+
+function isValidReadinessRequirementBody(requirement) {
+  return requirement !== null &&
+    typeof requirement === "object" &&
+    !Array.isArray(requirement) &&
+    hasOnlyKeys(requirement, ["requiredLevel", "targetId", "targetKind"]) &&
+    isNonEmptyRequestText(requirement.targetKind) &&
+    isNonEmptyRequestText(requirement.targetId) &&
+    isNonEmptyRequestText(requirement.requiredLevel);
 }
 
 function isValidLearnerStateTargetLinkBody(body) {
@@ -2905,6 +3286,29 @@ function mapQuickCheckCandidateListResult({ generateToken, listCursors, query, r
   });
 }
 
+function mapReadinessCheckCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.readinessCheckCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    readinessCheckCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function mapQuickCheckDeliveryListResult({ generateToken, listCursors, query, result, routeKey }) {
   if (result.status === "rejected") {
     return result;
@@ -2924,6 +3328,29 @@ function mapQuickCheckDeliveryListResult({ generateToken, listCursors, query, re
 
   return accepted({
     quickCheckDeliveries: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapReadinessCheckDeliveryListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.readinessChecks,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    readinessChecks: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
@@ -3043,6 +3470,29 @@ function mapQuickCheckAttemptListResult({ generateToken, listCursors, query, res
   });
 }
 
+function mapReadinessCheckAttemptListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.readinessCheckAttempts,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    readinessCheckAttempts: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
   const csrfToken = generateToken();
   csrfTokens.set(sessionId, csrfToken);
@@ -3132,6 +3582,11 @@ function httpStatusFor(reason) {
     case "learner_state_evidence_owner_not_found":
     case "learner_state_target_link_not_found":
     case "learner_state_target_not_found":
+    case "readiness_candidate_not_found":
+    case "readiness_entity_not_found":
+    case "readiness_requirement_target_not_found":
+    case "readiness_revision_not_found":
+    case "readiness_scope_not_found":
     case "revision_not_found":
     case "selected_option_not_found":
       return 404;
@@ -3165,6 +3620,13 @@ function httpStatusFor(reason) {
     case "quick_check_candidate_already_rejected":
     case "quick_check_entity_program_mismatch":
     case "quick_check_revision_program_mismatch":
+    case "readiness_candidate_already_accepted":
+    case "readiness_candidate_already_rejected":
+    case "readiness_entity_program_mismatch":
+    case "readiness_requirement_id_conflict":
+    case "readiness_requirement_program_mismatch":
+    case "readiness_revision_program_mismatch":
+    case "readiness_scope_program_mismatch":
     case "source_not_found":
     case "source_program_mismatch":
       return 409;
