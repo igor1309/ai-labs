@@ -1681,6 +1681,13 @@ test("quickCheckExecutableAcceptance_shouldCoverFirstSliceEndToEnd", () => {
           cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
           serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
         }),
+        resolverSurface: containsInternalQuickCheckResolverSurface({
+          commands,
+          corpusCommands,
+          adminUiSource: readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+          cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+          serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+        }),
         outOfScopeBehavior: containsAnyOutOfScopeStudentWorkspaceBehavior(
           [
             readFileSync(new URL("../src/corpus.js", import.meta.url), "utf8"),
@@ -1758,6 +1765,7 @@ test("quickCheckExecutableAcceptance_shouldCoverFirstSliceEndToEnd", () => {
         adjacentAfter: adjacentBefore,
         deferredAfter: deferredBefore,
         publicSurface: false,
+        resolverSurface: false,
         outOfScopeBehavior: false,
       },
     );

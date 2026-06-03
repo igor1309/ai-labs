@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Harden Phase 9 Quick Check closeout after adversarial review by proving the executable acceptance flow keeps the internal answer-key resolver off command, HTTP, CLI, and UI surfaces.
 - Complete the Quick Check first-slice implementation with executable domain acceptance coverage, Product Intent traceability, final gate closeout, and the implementation plan archived under implemented plans.
 - Harden Phase 8 Quick Check backup and restore after adversarial review by proving historical attempt idempotency across replacement revisions and rejecting duplicate restored idempotency scopes before mutation.
 - Implement Phase 8 of the Quick Check first-slice plan with protected backup and restore support for candidates, accepted revisions, answer keys, attempts, matched results, historical references, redacted restored reads, and malformed graph rejection.
