@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Add the topic and period readiness checks spec and child implementation plan, separating explicit readiness attempts from raw Quick Check/open-answer attempts and sequencing storage, Corpus curation, Student Workspace derivation, HTTP, UI, traceability, dashboard, and archive gates.
 - Close the learner-state interpretation plan with implemented spec status, Product Intent traceability, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Harden Phase 5 learner-state UI after adversarial review with Program-context clearing for private learner-state surfaces and negative-evidence weak-area browser coverage.
 - Implement Phase 5 of the learner-state interpretation plan with `/learn` target-link curation controls, owner-only learner-state summaries, supporting-evidence detail views, redaction checks, and Quick Check/navigation UI regression coverage.
