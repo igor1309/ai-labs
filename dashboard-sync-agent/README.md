@@ -1,7 +1,7 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
-description: "dashboard-sync-agent project README — sibling OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 6PM UTC cron"
+date: 2026-06-01
+model: claude-opus-4-8
+description: "dashboard-sync-agent project README — sibling OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 01:30 UTC cron"
 ---
 
 # dashboard-sync-agent
@@ -47,7 +47,7 @@ The `agent/` subtree has been added. A `runtime/` subtree (mirroring `doc-drift-
 
 ## Description
 
-Sibling OpenClaw agent that keeps *scripts/loc-dashboard.sh*, *docs/products.html*, and the *docs/loc-dashboard.html* data array in sync with repo state on a daily 18:00 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
+Sibling OpenClaw agent that keeps *scripts/loc-dashboard.sh*, *docs/products.html*, and the *docs/loc-dashboard.html* data array in sync with repo state on a daily 01:30 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
 
 ## Stack
 

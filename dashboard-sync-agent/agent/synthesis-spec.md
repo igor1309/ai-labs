@@ -1,6 +1,6 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
+date: 2026-06-01
+model: claude-opus-4-8
 description: "Synthesis spec for dashboard-sync-agent: how the project registry and per-project READMEs map to scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array"
 ---
 
@@ -148,6 +148,22 @@ The agent uses the **same order as the script's `--sort=name` output** — ASCII
 ### Surface (3) idempotence
 
 If the new array is byte-identical to the current array, the surface is "no drift."
+
+### Surface (3) drift tolerance
+
+Small daily LOC churn (a few lines moving in a single project) is noise the maintainer would rather skip than review. A configurable threshold suppresses **numeric-only** jitter while always surfacing structural change.
+
+The threshold `<N>` (lines) comes from the agent's `--loc-threshold=<N>` trigger argument; absent the argument, `<N>` is **300** (see `agent.md` "LOC drift threshold argument").
+
+Classify Surface (3) as follows, after regenerating the `data` array from the script output:
+
+1. **Structural drift always wins.** If the regenerated array adds or removes any `name` entry relative to the current array (a project entered or left the tracked set, or an aggregate row appeared/disappeared), the surface is `drift` regardless of magnitude. The threshold never suppresses a structural change.
+2. **Numeric drift magnitude.** For every `name` present in both the current and regenerated arrays, compute `|code_new − code_old| + |tests_new − tests_old| + |docs_new − docs_old|`. Sum these across all shared names — call it `delta`.
+3. **Apply the threshold.** With no structural drift:
+   - `delta < N` → surface is `clean`, recorded in the report as `clean (below LOC threshold: <delta> < <N>)`. The agent does not write the file, does not push, and does not open a PR on account of this surface.
+   - `delta ≥ N` → surface is `drift`; regenerate and write normally.
+
+The threshold applies only to Surface (3). Surfaces (1) and (2) are structural and are never gated by it. A `delta` of exactly `N` is `drift` (the gate is strict `<`).
 
 ## Cross-surface ordering
 

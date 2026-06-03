@@ -1,6 +1,6 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
+date: 2026-06-01
+model: claude-opus-4-8
 description: "Scheduled-run suppression policy for dashboard-sync-agent. The cron wrapper enforces this gate before invoking the agent."
 ---
 
@@ -10,7 +10,7 @@ A scheduled run is **skipped** if a manual run completed within the suppression 
 
 ## Window
 
-**6 hours.** The agent's output is mechanical regen from registries and a script's tabular output; the half-life of meaningful new drift is shorter than for `doc-drift-agent`'s judgment-heavy review. A 6-hour window means a manual run after 12:00 UTC suppresses the 18:00 UTC scheduled tick on the same day; an early-morning manual run does not.
+**6 hours.** The agent's output is mechanical regen from registries and a script's tabular output; the half-life of meaningful new drift is shorter than for `doc-drift-agent`'s judgment-heavy review. A 6-hour window means a manual run after 19:30 UTC (the previous evening) suppresses the next 01:30 UTC scheduled tick; an earlier manual run does not.
 
 This is half of `doc-drift-agent`'s 12-hour window and is intentional.
 
@@ -45,11 +45,11 @@ All times UTC.
 
 | `last_manual_run_utc` | Scheduled tick at | `diff` | Decision |
 |----------------------|-------------------|--------|----------|
-| `null` | 2026-05-10 18:00 | n/a (last_epoch = 0) | run |
-| 2026-05-10 11:30 | 2026-05-10 18:00 | 6h 30m | run |
-| 2026-05-10 12:30 | 2026-05-10 18:00 | 5h 30m | skip |
-| 2026-05-10 17:59 | 2026-05-10 18:00 | 1m | skip |
-| 2026-05-10 18:00 | 2026-05-11 18:00 | 24h | run |
+| `null` | 2026-05-10 01:30 | n/a (last_epoch = 0) | run |
+| 2026-05-09 19:00 | 2026-05-10 01:30 | 6h 30m | run |
+| 2026-05-09 20:00 | 2026-05-10 01:30 | 5h 30m | skip |
+| 2026-05-10 01:29 | 2026-05-10 01:30 | 1m | skip |
+| 2026-05-10 01:30 | 2026-05-11 01:30 | 24h | run |
 
 ## Time zones
 

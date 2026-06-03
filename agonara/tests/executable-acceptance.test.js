@@ -386,6 +386,411 @@ test("acceptance_shouldExerciseProgramMembershipApi_onHttpInstance", async () =>
   }
 });
 
+test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "student@example.test",
+      });
+      const missingProgramCsrf = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie },
+      );
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { description: "Foundations", title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      const missingSourceCsrf = await postJson(
+        `${baseUrl}/programs/${programId}/sources`,
+        { sourceKind: "textbook", title: "Linear Algebra Done Right" },
+        { cookie: bootstrap.cookie },
+      );
+      const source = await postJson(
+        `${baseUrl}/programs/${programId}/sources`,
+        {
+          citation: "Chapter 1",
+          sourceKind: "textbook",
+          title: "Linear Algebra Done Right",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const sourceId = source.body.value.programSource.sourceId;
+      const missingCandidateCsrf = await postJson(
+        `${baseUrl}/programs/${programId}/corpus-candidates`,
+        {
+          candidateKind: "topic",
+          sourceIds: [sourceId],
+          title: "Vector spaces",
+        },
+        { cookie: bootstrap.cookie },
+      );
+      const candidate = await postJson(
+        `${baseUrl}/programs/${programId}/corpus-candidates`,
+        {
+          body: "A vector space is a set with compatible addition and scalar multiplication.",
+          candidateKind: "topic",
+          rationale: "Core foundation for the program.",
+          sourceIds: [sourceId],
+          title: "Vector spaces",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const candidateId = candidate.body.value.corpusCandidate.candidateId;
+      const missingAcceptCsrf = await postJson(
+        `${baseUrl}/corpus-candidates/${candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie },
+      );
+      const firstAccepted = await postJson(
+        `${baseUrl}/corpus-candidates/${candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const entityId = firstAccepted.body.value.acceptedCorpus.entityId;
+      const historicalRevisionId = firstAccepted.body.value.acceptedCorpus.revisionId;
+      const replacementCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/corpus-candidates`,
+        {
+          candidateKind: "topic",
+          sourceIds: [sourceId],
+          title: "Finite-dimensional vector spaces",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const replacementCandidateId = replacementCandidate.body.value.corpusCandidate.candidateId;
+      const replaced = await postJson(
+        `${baseUrl}/corpus-candidates/${replacementCandidateId}/acceptance`,
+        { targetEntityId: entityId },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const draft = await postJson(
+        `${baseUrl}/programs/${programId}/corpus-candidates`,
+        {
+          candidateKind: "topic",
+          sourceIds: [sourceId],
+          title: "Draft-only eigenvalues",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedDraft = await postJson(
+        `${baseUrl}/programs/${programId}/corpus-candidates`,
+        {
+          candidateKind: "topic",
+          sourceIds: [sourceId],
+          title: "Rejected determinants",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedDraftId = rejectedDraft.body.value.corpusCandidate.candidateId;
+      const missingRejectCsrf = await postJson(
+        `${baseUrl}/corpus-candidates/${rejectedDraftId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie },
+      );
+      const rejected = await postJson(
+        `${baseUrl}/corpus-candidates/${rejectedDraftId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const studentJoin = await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const acceptedCorpus = await getJson(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+        cookie: student.cookie,
+      });
+      const historicalRevision = await getJson(`${baseUrl}/accepted-corpus-revisions/${historicalRevisionId}`, {
+        cookie: student.cookie,
+      });
+      const corpusEvents = await getJson(`${baseUrl}/programs/${programId}/corpus-events`, {
+        cookie: bootstrap.cookie,
+      });
+      const outOfScopeRoutes = [];
+      for (const route of [
+        "/corpus-events",
+        `/programs/${programId}/corpus-events/ui`,
+        `/programs/${programId}/corpus-events/ingestion`,
+        `/programs/${programId}/corpus-events/llm`,
+        `/programs/${programId}/corpus-events/student-workspace`,
+        "/corpus-materials",
+        "/corpus-cli",
+        "/assessments",
+      ]) {
+        outOfScopeRoutes.push((await getJson(`${baseUrl}${route}`, { cookie: bootstrap.cookie })).statusCode);
+      }
+
+      assert.deepEqual(
+        {
+          acceptedCorpus: acceptedCorpus.body.value.acceptedCorpus.map($0 => ({
+            acceptedFromCandidateId: $0.acceptedFromCandidateId,
+            sourceIds: $0.sourceIds,
+            title: $0.title,
+          })),
+          corpusEventTypes: corpusEvents.body.value.corpusEvents.map($0 => $0.eventType),
+          currentRevisionIsNew: replaced.body.value.acceptedCorpus.revisionId !== historicalRevisionId,
+          draftStatus: draft.body.value.corpusCandidate.status,
+          historicalTitle: historicalRevision.body.value.acceptedCorpus.title,
+          httpStatusCodes: {
+            acceptedCorpus: acceptedCorpus.statusCode,
+            candidate: candidate.statusCode,
+            corpusEvents: corpusEvents.statusCode,
+            created: created.statusCode,
+            draft: draft.statusCode,
+            firstAccepted: firstAccepted.statusCode,
+            historicalRevision: historicalRevision.statusCode,
+            missingAcceptCsrf: missingAcceptCsrf.statusCode,
+            missingCandidateCsrf: missingCandidateCsrf.statusCode,
+            missingProgramCsrf: missingProgramCsrf.statusCode,
+            missingRejectCsrf: missingRejectCsrf.statusCode,
+            missingSourceCsrf: missingSourceCsrf.statusCode,
+            rejected: rejected.statusCode,
+            rejectedDraft: rejectedDraft.statusCode,
+            replaced: replaced.statusCode,
+            replacementCandidate: replacementCandidate.statusCode,
+            source: source.statusCode,
+            studentJoin: studentJoin.statusCode,
+          },
+          missingAcceptCsrf: missingAcceptCsrf.body,
+          missingCandidateCsrf: missingCandidateCsrf.body,
+          missingProgramCsrf: missingProgramCsrf.body,
+          missingRejectCsrf: missingRejectCsrf.body,
+          missingSourceCsrf: missingSourceCsrf.body,
+          outOfScopeRoutes,
+          rejectedStatus: rejected.body.value.corpusCandidate.status,
+        },
+        {
+          acceptedCorpus: [
+            {
+              acceptedFromCandidateId: replacementCandidateId,
+              sourceIds: [sourceId],
+              title: "Finite-dimensional vector spaces",
+            },
+          ],
+          corpusEventTypes: [
+            "program_source_recorded",
+            "corpus_candidate_created",
+            "corpus_candidate_accepted",
+            "corpus_candidate_created",
+            "corpus_candidate_accepted",
+            "corpus_candidate_created",
+            "corpus_candidate_created",
+            "corpus_candidate_rejected",
+          ],
+          currentRevisionIsNew: true,
+          draftStatus: "draft",
+          historicalTitle: "Vector spaces",
+          httpStatusCodes: {
+            acceptedCorpus: 200,
+            candidate: 200,
+            corpusEvents: 200,
+            created: 200,
+            draft: 200,
+            firstAccepted: 200,
+            historicalRevision: 200,
+            missingAcceptCsrf: 403,
+            missingCandidateCsrf: 403,
+            missingProgramCsrf: 403,
+            missingRejectCsrf: 403,
+            missingSourceCsrf: 403,
+            rejected: 200,
+            rejectedDraft: 200,
+            replaced: 200,
+            replacementCandidate: 200,
+            source: 200,
+            studentJoin: 200,
+          },
+          missingAcceptCsrf: { status: "rejected", reason: "csrf_required" },
+          missingCandidateCsrf: { status: "rejected", reason: "csrf_required" },
+          missingProgramCsrf: { status: "rejected", reason: "csrf_required" },
+          missingRejectCsrf: { status: "rejected", reason: "csrf_required" },
+          missingSourceCsrf: { status: "rejected", reason: "csrf_required" },
+          outOfScopeRoutes: [404, 404, 404, 404, 404, 404, 404, 404],
+          rejectedStatus: "rejected",
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
+test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      const source = await postJson(
+        `${baseUrl}/programs/${programId}/sources`,
+        { sourceKind: "textbook", title: "Linear Algebra Done Right" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const sourceId = source.body.value.programSource.sourceId;
+      const missingCriterionCsrf = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Explain closure.", title: "Closure" },
+        { cookie: bootstrap.cookie },
+      );
+      const criterionCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Explain closure.", sourceIds: [sourceId], title: "Closure" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const criterionCandidateId = criterionCandidate.body.value.assessmentCriterionCandidate.candidateId;
+      const criterion = await postJson(
+        `${baseUrl}/assessment-criteria/candidates/${criterionCandidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const criterionEntityId = criterion.body.value.acceptedAssessmentCriterion.entityId;
+      const historicalCriterionRevisionId = criterion.body.value.acceptedAssessmentCriterion.revisionId;
+      const checkCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/open-answer-checks/candidates`,
+        {
+          checkKind: "open_answer",
+          criterionEntityIds: [criterionEntityId],
+          prompt: "Why is closure required?",
+          sourceIds: [sourceId],
+          title: "Closure check",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const checkCandidateId = checkCandidate.body.value.openAnswerCheckCandidate.candidateId;
+      const check = await postJson(
+        `${baseUrl}/open-answer-checks/candidates/${checkCandidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const historicalCheckRevisionId = check.body.value.acceptedOpenAnswerCheck.revisionId;
+      const revisedCriterionCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Explain closure under both operations.", sourceIds: [sourceId], title: "Closure revised" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJson(
+        `${baseUrl}/assessment-criteria/candidates/${revisedCriterionCandidate.body.value.assessmentCriterionCandidate.candidateId}/acceptance`,
+        { targetEntityId: criterionEntityId },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCriterionCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/assessment-criteria/candidates`,
+        { body: "Rejected criterion.", title: "Rejected criterion" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCriterion = await postJson(
+        `${baseUrl}/assessment-criteria/candidates/${rejectedCriterionCandidate.body.value.assessmentCriterionCandidate.candidateId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCheckCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/open-answer-checks/candidates`,
+        {
+          checkKind: "open_answer",
+          criterionEntityIds: [criterionEntityId],
+          prompt: "Rejected prompt.",
+          title: "Rejected check",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejectedCheck = await postJson(
+        `${baseUrl}/open-answer-checks/candidates/${rejectedCheckCandidate.body.value.openAnswerCheckCandidate.candidateId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const acceptedCriteria = await getJson(`${baseUrl}/programs/${programId}/assessment-criteria`, {
+        cookie: student.cookie,
+      });
+      const acceptedChecks = await getJson(`${baseUrl}/programs/${programId}/open-answer-checks`, {
+        cookie: student.cookie,
+      });
+      const historicalCriterion = await getJson(
+        `${baseUrl}/assessment-criteria/revisions/${historicalCriterionRevisionId}`,
+        { cookie: student.cookie },
+      );
+      const historicalCheck = await getJson(`${baseUrl}/open-answer-checks/revisions/${historicalCheckRevisionId}`, {
+        cookie: student.cookie,
+      });
+      const outOfScopeRoutes = [];
+      for (const route of ["/assessments", "/student-workspace", "/assessment-feedback", "/assessment-cli"]) {
+        outOfScopeRoutes.push((await getJson(`${baseUrl}${route}`, { cookie: student.cookie })).statusCode);
+      }
+
+      assert.deepEqual(
+        {
+          acceptedCriterionTitles: acceptedCriteria.body.value.acceptedAssessmentCriteria.map($0 => $0.title),
+          acceptedCheckTitles: acceptedChecks.body.value.acceptedOpenAnswerChecks.map($0 => $0.title),
+          historicalCriterionTitle: historicalCriterion.body.value.acceptedAssessmentCriterion.title,
+          historicalCheckCriterionRevisionIds:
+            historicalCheck.body.value.acceptedOpenAnswerCheck.criterionRevisionIds,
+          httpStatusCodes: {
+            acceptedChecks: acceptedChecks.statusCode,
+            acceptedCriteria: acceptedCriteria.statusCode,
+            historicalCheck: historicalCheck.statusCode,
+            historicalCriterion: historicalCriterion.statusCode,
+            missingCriterionCsrf: missingCriterionCsrf.statusCode,
+          },
+          missingCriterionCsrf: missingCriterionCsrf.body,
+          outOfScopeRoutes,
+          rejectedCheckStatus: rejectedCheck.body.value.openAnswerCheckCandidate.status,
+          rejectedCriterionStatus: rejectedCriterion.body.value.assessmentCriterionCandidate.status,
+        },
+        {
+          acceptedCriterionTitles: ["Closure revised"],
+          acceptedCheckTitles: ["Closure check"],
+          historicalCriterionTitle: "Closure",
+          historicalCheckCriterionRevisionIds: [historicalCriterionRevisionId],
+          httpStatusCodes: {
+            acceptedChecks: 200,
+            acceptedCriteria: 200,
+            historicalCheck: 200,
+            historicalCriterion: 200,
+            missingCriterionCsrf: 403,
+          },
+          missingCriterionCsrf: { status: "rejected", reason: "csrf_required" },
+          outOfScopeRoutes: [404, 404, 404, 404],
+          rejectedCheckStatus: "rejected",
+          rejectedCriterionStatus: "rejected",
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldRateLimitLoginAndCorrelateHealthRequest_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 
@@ -483,6 +888,28 @@ async function bootstrapHttp(baseUrl) {
     bootstrapSecret: "operator-secret",
     displayName: "Root Admin",
     login: "admin@example.test",
+    password: "correct horse battery staple",
+  });
+}
+
+async function createHttpIdentitySession(baseUrl, bootstrap, { displayName, login }) {
+  const created = await postJson(
+    `${baseUrl}/identity/identities`,
+    { displayName },
+    { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+  );
+  const identityId = created.body.value.id;
+  await postJson(
+    `${baseUrl}/identity/identities/${identityId}/local-password`,
+    {
+      login,
+      password: "correct horse battery staple",
+    },
+    { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+  );
+
+  return await postJson(`${baseUrl}/identity/sessions`, {
+    login,
     password: "correct horse battery staple",
   });
 }

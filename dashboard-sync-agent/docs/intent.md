@@ -1,12 +1,12 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
-description: "Intent for dashboard-sync-agent: a sibling OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 6PM UTC cron"
+date: 2026-06-01
+model: claude-opus-4-8
+description: "Intent for dashboard-sync-agent: a sibling OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 01:30 UTC cron"
 ---
 
 # dashboard-sync-agent — Intent
 
-A specialized OpenClaw agent that runs daily at 18:00 UTC and keeps three repo surfaces in sync with current repo state. Sibling to `doc-drift-agent`: same runtime pattern (workspace sync, `AGENTS.md` system prompt, cron wrapper, Telegram notifier, PR-only output), distinct scope and editable-file allowlist.
+A specialized OpenClaw agent that runs daily at 01:30 UTC and keeps three repo surfaces in sync with current repo state. Sibling to `doc-drift-agent`: same runtime pattern (workspace sync, `AGENTS.md` system prompt, cron wrapper, Telegram notifier, PR-only output), distinct scope and editable-file allowlist.
 
 ## Surfaces in scope
 
@@ -26,7 +26,7 @@ The agent edits exactly three files. The source of truth for what counts as a pr
 ## Triggers
 
 - **Manual.** A maintainer issues a Telegram command to OpenClaw.
-- **Scheduled.** Cron fires the agent at `0 18 * * *` UTC daily.
+- **Scheduled.** Cron fires the agent at `30 1 * * *` UTC daily (01:30 UTC).
 
 ## Output
 

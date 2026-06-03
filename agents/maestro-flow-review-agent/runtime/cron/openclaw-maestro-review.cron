@@ -1,0 +1,9 @@
+# OpenClaw maestro-flow-review-agent: daily scheduled Maestro flow review.
+# Cron is UTC; runs at 03:00 UTC daily — an hour before the 04:00 UTC OAuth
+# refresh (and its ~30-95s gateway downtime), so no overlap. The wrapper
+# enforces the 12h manual-run suppression gate and posts one message per
+# tick (heartbeat model): findings, "✓ ran — 0 findings", "⏸ suppressed",
+# or "⚠ run FAILED". A missing message at ~03:05 UTC means the cron or host failed.
+#
+# Deployed to: /etc/cron.d/openclaw-maestro-review (root:root, mode 644).
+0 3 * * * openclaw /home/openclaw/.openclaw/scripts/maestro-review-cron.sh
