@@ -58,6 +58,9 @@ test("learnerStateStudent_shouldRefreshSummaryOpenEvidenceAndHideNonOwnerState",
     await expect(page.locator("#learner-state-evidence-list")).toContainText("positive");
     expect(await learnerStateForbiddenText(page)).toEqual([]);
 
+    await page.locator("#program-id-input").fill("program-without-loaded-learner-state");
+    await expect(page.locator("#learner-state-student-panel")).not.toContainText("quick_check_attempt");
+
     await page.locator("#logout-button").click();
     await signIn(page, harness.baseUrl);
     await page.locator("#program-id-input").fill(harness.programId);
@@ -67,6 +70,25 @@ test("learnerStateStudent_shouldRefreshSummaryOpenEvidenceAndHideNonOwnerState",
     await expect(page.locator("#learner-state-status")).toHaveText("Learner state unavailable.");
     await expect(page.locator("#learner-state-target-detail")).toHaveText("Learner-state target unavailable");
     await expect(page.locator("#learner-state-student-panel")).not.toContainText("quick_check_attempt");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("learnerStateStudent_shouldShowWeakAreas_onNegativeEvidence", async ({ page }) => {
+  const harness = await startLearnerStateHarness({ linked: true, attempted: true, matched: false });
+
+  try {
+    await signIn(page, harness.baseUrl, harness.student.login, harness.student.password);
+    await page.locator("#program-id-input").fill(harness.programId);
+    await page.locator("#student-mode-tab").click();
+    await page.locator("#refresh-learner-state-button").click();
+
+    await expect(page.locator("#learner-state-summary")).toContainText("Program needs_attention");
+    await expect(page.locator("#learner-state-weak-area-list")).toContainText("Vector spaces");
+    await expect(page.locator("#learner-state-weak-area-list")).toContainText("Closure check");
+    await page.locator("#learner-state-topic-list").getByRole("button", { name: /Vector spaces/ }).click();
+    await expect(page.locator("#learner-state-evidence-list")).toContainText("negative");
   } finally {
     await harness.close();
   }
@@ -169,7 +191,7 @@ async function visibleControlOverlaps(page) {
   });
 }
 
-async function startLearnerStateHarness({ linked, attempted }) {
+async function startLearnerStateHarness({ linked, attempted, matched = true }) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
   const now = () => new Date("2026-06-03T10:00:00.000Z");
@@ -238,9 +260,12 @@ async function startLearnerStateHarness({ linked, attempted }) {
     });
   }
   if (attempted) {
+    const selectedOption = matched
+      ? quickCheck.options.find($0 => $0.optionId === quickCheck.answerKeyOptionId)
+      : quickCheck.options.find($0 => $0.optionId !== quickCheck.answerKeyOptionId);
     await submitQuickCheckAttempt(baseUrl, student, programId, {
       checkRevisionId: quickCheck.revisionId,
-      selectedOptionId: quickCheck.answerKeyOptionId,
+      selectedOptionId: selectedOption.optionId,
     });
   }
 

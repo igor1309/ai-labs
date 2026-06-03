@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Harden Phase 5 learner-state UI after adversarial review with Program-context clearing for private learner-state surfaces and negative-evidence weak-area browser coverage.
 - Implement Phase 5 of the learner-state interpretation plan with `/learn` target-link curation controls, owner-only learner-state summaries, supporting-evidence detail views, redaction checks, and Quick Check/navigation UI regression coverage.
 - Harden Phase 4 learner-state HTTP routes after adversarial review with explicit unsupported and missing evidence-owner status mapping coverage.
 - Implement Phase 4 of the learner-state interpretation plan with HTTP target-link curation routes, owner-only learner-state summary/detail routes, CSRF mutation gates, status mapping, redaction coverage, and executable acceptance coverage.

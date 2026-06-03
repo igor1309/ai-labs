@@ -780,6 +780,7 @@ export const learnUiHtml = `<!doctype html>
 
       elements.programIdInput.addEventListener("input", () => {
         state.programId = elements.programIdInput.value.trim();
+        clearLearnerStateSurfaces();
       });
 
       elements.candidateForm.addEventListener("submit", async event => {
@@ -1101,15 +1102,10 @@ export const learnUiHtml = `<!doctype html>
       function clearSession() {
         state.csrfToken = null;
         state.identity = null;
-        state.learnerState = null;
-        state.learnerStateTargetLinks = [];
         state.pendingQuickCheckAttemptKey = null;
-        state.selectedLearnerStateTarget = null;
         state.selectedAttemptId = null;
         elements.signinStatus.textContent = "";
-        renderLearnerState();
-        renderLearnerStateTargetLinks();
-        renderLearnerStateTargetDetail(null);
+        clearLearnerStateSurfaces();
         renderSession();
       }
 
@@ -1264,6 +1260,17 @@ export const learnUiHtml = `<!doctype html>
       function canUseProgramApi() {
         state.programId = elements.programIdInput.value.trim();
         return Boolean(state.identity && state.programId);
+      }
+
+      function clearLearnerStateSurfaces() {
+        state.learnerState = null;
+        state.learnerStateTargetLinks = [];
+        state.selectedLearnerStateTarget = null;
+        renderLearnerState();
+        renderLearnerStateTargetLinks();
+        renderLearnerStateTargetDetail(null);
+        elements.learnerStateStatus.textContent = "Learner state not loaded.";
+        elements.learnerStateTargetLinkStatus.textContent = "";
       }
 
       async function refreshLearnerStateTargetLinks() {
