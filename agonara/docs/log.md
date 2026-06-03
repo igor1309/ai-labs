@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Add the Quick Check HTTP API handoff with session-backed route contracts, answer-key redaction rules, strict TDD implementation phases, and INT-04 traceability.
 - Refresh Agonara current-state docs so README, backlog, implementation notes, and Product Intent distinguish implemented backend/domain slices from deferred transport and product surfaces.
 - Implement Agonara operational completion tracing across Identity, Program, Corpus, and Student Workspace HTTP routes with documented diagnostics payloads and redacted fault logging.
 - Harden the Agonara gap closure plan after adversarial review by adding build gates, separating Quick Check HTTP implementation from handoff docs, and making operational spec drift a stop condition.
