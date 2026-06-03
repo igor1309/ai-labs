@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.0.1"
+version: "0.1.0"
 author: Igor Malyarov
 ---
 
@@ -22,9 +22,9 @@ between artifacts that share a parent**. The ground truth for each check is
 the **upstream node**, not the code. This is distinct from doc-drift, whose
 ground truth is the code/repo state.
 
-Validated so far on the `intent × intent` layer-pair against Agonara. The
-other layer-pairs are scoped below but not yet exercised — treat them as the
-roadmap, not as tested behavior.
+Validated so far on the `intent × intent` and `intent → ADR` layer-pairs
+against Agonara. The remaining layer-pairs are scoped below but not yet
+exercised — treat them as the roadmap, not as tested behavior.
 
 ## Scope: layer-pairs
 
@@ -41,6 +41,7 @@ layer-pair:
    This pair also owns **vertical coverage**: every intent capability/story
    must be reflected downstream; a parent capability the decomposition does
    not carry is a coverage finding here, not at intent×intent.
+   *(implemented, v0.1.0)*
 3. **ADR × ADR** — cross-ADR consistency, including **cross-module
    compatibility**: no double ownership, no boundary violation, and shared
    contracts described consistently by provider and every consumer. Anchor on
@@ -64,6 +65,37 @@ The axis changes down the pipeline, because the artifacts do:
 - **ADR/spec layers → module axis.** ADRs and specs decompose by module, not
   role. Cross-module compatibility lives here, not at the intent layer —
   modules do not exist until ADR time.
+
+## intent → ADR: the two checks
+
+ADRs in a My-Way repo carry no `source_intent` field, so the intent→ADR
+mapping is **inferred by subject/module** — use the project's module
+responsibility map as the index. Read the full intent layer (upstream, the
+source of truth) and every ADR (downstream, under review); the responsibility
+map is a mapping aid, not a review target.
+
+Run two checks:
+
+1. **Fidelity — no loss, no contradiction.**
+   - *Contradiction:* an ADR decision conflicts with an intent story, boundary,
+     actor definition, or ownership statement → finding (fail).
+   - *Loss:* an ADR silently drops or narrows an intent commitment without
+     acknowledging it (e.g. a closed `MUST` list that omits a named intent
+     capability) → finding (warning/fail).
+   - **Not a finding:** an ADR deciding implementation detail the intent left
+     open, or legitimately extending beyond intent. Flag only genuine
+     contradiction or *unacknowledged* loss — an explicit deferral
+     ("out of this slice") is faithful, not a loss.
+
+2. **Vertical coverage — carried or deferred.** Every intent capability/story
+   must be reflected in at least one ADR **or** explicitly deferred. A
+   capability that no ADR carries and that no ADR/intent line marks deferred is
+   a coverage finding (warning). Explicit deferral is not a finding; record it
+   as deferred.
+
+Output a **coverage matrix** mapping each intent group (by module) to the
+ADR(s) that carry it, with status `covered` / `deferred` / `UNCOVERED`, so
+coverage is auditable.
 
 ## Discipline
 
@@ -130,4 +162,5 @@ plus, for version comparison and provenance:
 Body sections: `Summary` (counts per slice + one-sentence verdict),
 one section per slice (findings or "No contradictions found." with positive
 evidence), `Inspected` (files, versions, enumerated artifact IDs), and
-`Open questions`.
+`Open questions`. For `intent → ADR`, the per-slice sections are
+`Fidelity findings` and `Coverage findings`, plus a `Coverage matrix` section.
