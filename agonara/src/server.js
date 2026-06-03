@@ -26,7 +26,15 @@ export function createServer({
   return http.createServer(async (request, response) => {
     const requestId = getRequestId(request);
     const pathname = getPathname(request);
+    const operation = `${request.method} ${pathname}`;
     response.setHeader("x-request-id", requestId);
+    response.once("finish", () => {
+      logCompletion(log, now, {
+        operation,
+        requestId,
+        ...(response.agonaraCompletionLog ?? completionLogForBody(response.statusCode, null)),
+      });
+    });
 
     try {
       if (request.method === "GET" && pathname === "/admin") {
@@ -99,12 +107,6 @@ export function createServer({
 
       if (request.method === "GET" && pathname === "/operations/health") {
         const status = healthCheck();
-        logCompletion(log, now, {
-          severity: "info",
-          operation: "GET /operations/health",
-          requestId,
-          outcome: "accepted",
-        });
         sendJson(response, 200, {
           status,
           checkedAt: now().toISOString(),
@@ -118,29 +120,16 @@ export function createServer({
           const sessionId = getSessionCookie(request);
           const diagnosticsAccess = identityCommands.listIdentities({ actingSessionId: sessionId });
           if (diagnosticsAccess.status === "accepted") {
-            logCompletion(log, now, {
-              severity: "info",
-              operation: "GET /operations/diagnostics",
-              requestId,
-              outcome: "accepted",
-            });
+            const generatedAt = now().toISOString();
             sendJson(response, 200, {
-              status: "accepted",
-              value: {
-                checkedAt: now().toISOString(),
-                components: [{ component: "identity", status: "ok" }],
-              },
+              status: "ok",
+              generatedAt,
+              requestId,
+              checks: [{ name: "identity", status: "ok", observedAt: generatedAt }],
             });
             return;
           }
 
-          logCompletion(log, now, {
-            severity: "warning",
-            operation: "GET /operations/diagnostics",
-            requestId,
-            outcome: "rejected",
-            reason: diagnosticsAccess.reason,
-          });
           sendJson(response, httpStatusFor(diagnosticsAccess.reason), {
             status: "rejected",
             reason: diagnosticsAccess.reason,
@@ -148,26 +137,12 @@ export function createServer({
           return;
         }
 
-        logCompletion(log, now, {
-          severity: "warning",
-          operation: "GET /operations/diagnostics",
-          requestId,
-          outcome: "rejected",
-          reason: "session_not_found",
-        });
         sendJson(response, 401, { status: "rejected", reason: "session_not_found" });
         return;
       }
 
       sendJson(response, 404, { status: "rejected", reason: "not_found" });
     } catch {
-      logCompletion(log, now, {
-        severity: "error",
-        operation: `${request.method} ${pathname}`,
-        requestId,
-        outcome: "fault",
-        errorKind: "unexpected",
-      });
       sendJson(response, 500, { status: "fault", reason: "internal_error" });
     }
   });
@@ -1389,13 +1364,36 @@ function isValidRequestId(requestId) {
 }
 
 function sendJson(response, statusCode, body, headers = {}) {
+  response.agonaraCompletionLog = completionLogForBody(statusCode, body);
   response.writeHead(statusCode, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(body));
 }
 
 function sendHtml(response, statusCode, body) {
+  response.agonaraCompletionLog = completionLogForBody(statusCode, null);
   response.writeHead(statusCode, { "content-type": "text/html; charset=utf-8" });
   response.end(body);
+}
+
+function completionLogForBody(statusCode, body) {
+  if (body?.status === "fault" || statusCode >= 500) {
+    return {
+      severity: "error",
+      outcome: "fault",
+      errorKind: "unexpected",
+    };
+  }
+  if (body?.status === "rejected" || statusCode >= 400) {
+    return {
+      severity: "warning",
+      outcome: "rejected",
+      reason: body?.reason ?? "http_error",
+    };
+  }
+  return {
+    severity: "info",
+    outcome: "accepted",
+  };
 }
 
 function logCompletion(log, now, event) {
