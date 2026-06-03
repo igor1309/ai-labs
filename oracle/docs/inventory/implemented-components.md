@@ -28,18 +28,18 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Public API:
 - `professionNormalizer.normalize(input) -> Promise<NormalizerResult>` (configured singleton)
 - `configureProfessionNormalizer({ cache, modelClient }) -> void`
-- `createProfessionNormalizer({ cache, modelClient }) -> { normalize(...) }`
+- `createProfessionNormalizer({ cache, cacheVersion, modelClient }) -> { normalize(...) }`
 - `normalizeProfession(profession) -> string` (trim + collapse whitespace)
 - Owned protocol shapes:
 - `NormalizerCache.read(key)`, `NormalizerCache.write(key, value)`
 - `NormalizerModelClient.normalize({ locale, profession })`
 - Cache key policy:
-- `normalizer:${locale}:${normalizedProfession}`
+- `normalizer:${cacheVersion}:${locale}:${normalizedProfession}`
 - Wiring point:
 - Created per request in assembler via `createProfessionNormalizer({...})` inside `makeWorkerFetch(...)`.
 - Tests:
 - `oracle/packages/profession-normalizer/tests/profession-normalizer.test.js`
-- Asserts dependency validation, configured singleton delegation, cache hit/miss behavior, cache keying, normalization helper behavior, clarification-result passthrough.
+- Asserts dependency validation, configured singleton delegation, cache hit/miss behavior, cache keying, cache-version partitioning, normalization helper behavior, clarification-result passthrough.
 
 #### `profession-outlook` (module)
 - Source: `oracle/packages/profession-outlook/src/profession-outlook.js`
