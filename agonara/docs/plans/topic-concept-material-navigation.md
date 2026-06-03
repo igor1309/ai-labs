@@ -48,7 +48,7 @@ Push policy: no push
 Worktree mode: reuse existing
 Expected worktree: `worktrees/agonara-gap-closure`
 Expected branch: `codex/agonara-gap-closure`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 
@@ -127,7 +127,7 @@ Targeted commands:
 
 ## Phase tracker
 
-- [ ] Phase 1 - Storage Substrate and Restore Graph Validation
+- [x] Phase 1 - Storage Substrate and Restore Graph Validation
 - [ ] Phase 2 - Corpus Domain Navigation Commands and Queries
 - [ ] Phase 3 - HTTP Navigation API
 - [ ] Phase 4 - Product UI Navigation

@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 1 of the topic, concept, and material navigation plan with storage support for navigation corpus kinds, material-reference metadata, accepted relationships, prerequisite cycle rejection, and backup/restore graph validation.
 - Add the topic, concept, and material navigation child implementation plan with exact storage/domain/HTTP/UI/test inventories, per-phase reviews, commit gates, dashboard closeout, and archive closure.
 - Start Phase 2 of the Agonara product gap closure plan with a topic, concept, material, and relationship navigation spec that keeps accepted Program corpus separate from Student Workspace state.
 - Complete and archive the Quick Check product UI plan with implemented spec traceability, INT-04 links, README/implementation-note status updates, browser layout/accessibility checks, and dashboard LOC closeout.

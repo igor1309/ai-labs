@@ -171,7 +171,9 @@ export function initializeIdentityStorage(database) {
     create table if not exists corpus_candidates (
       id text primary key,
       program_id text not null references program_shells(id),
-      candidate_kind text not null check (candidate_kind in ('topic', 'concept')),
+      candidate_kind text not null check (
+        candidate_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference', 'relationship_update')
+      ),
       title text not null,
       body text,
       source_ids_json text not null,
@@ -413,7 +415,9 @@ export function initializeIdentityStorage(database) {
     create table if not exists accepted_corpus_entities (
       id text primary key,
       program_id text not null references program_shells(id),
-      accepted_kind text not null check (accepted_kind in ('topic', 'concept')),
+      accepted_kind text not null check (
+        accepted_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
       current_revision_id text not null
     );
 
@@ -421,12 +425,82 @@ export function initializeIdentityStorage(database) {
       id text primary key,
       entity_id text not null references accepted_corpus_entities(id),
       program_id text not null references program_shells(id),
-      accepted_kind text not null check (accepted_kind in ('topic', 'concept')),
+      accepted_kind text not null check (
+        accepted_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
       title text not null,
       body text,
+      material_reference_kind text check (
+        material_reference_kind in (
+          'article',
+          'book',
+          'course',
+          'lecture',
+          'note',
+          'problem_set',
+          'standard',
+          'video',
+          'other'
+        )
+      ),
+      locator text,
+      citation text,
       accepted_from_candidate_id text not null references corpus_candidates(id),
       source_ids_json text not null,
       rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists accepted_navigation_relationships (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      relationship_kind text not null check (
+        relationship_kind in (
+          'topic_includes_concept',
+          'topic_uses_material',
+          'concept_uses_material',
+          'concept_has_definition',
+          'concept_has_principle',
+          'concept_prerequisite',
+          'concept_related',
+          'concept_distinguishes_from'
+        )
+      ),
+      from_entity_id text not null references accepted_corpus_entities(id),
+      to_entity_id text not null references accepted_corpus_entities(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_navigation_relationship_revisions (
+      id text primary key,
+      relationship_id text not null references accepted_navigation_relationships(id),
+      program_id text not null references program_shells(id),
+      relationship_kind text not null check (
+        relationship_kind in (
+          'topic_includes_concept',
+          'topic_uses_material',
+          'concept_uses_material',
+          'concept_has_definition',
+          'concept_has_principle',
+          'concept_prerequisite',
+          'concept_related',
+          'concept_distinguishes_from'
+        )
+      ),
+      from_entity_id text not null references accepted_corpus_entities(id),
+      from_revision_id text not null references accepted_corpus_revisions(id),
+      from_kind text not null check (
+        from_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
+      to_entity_id text not null references accepted_corpus_entities(id),
+      to_revision_id text not null references accepted_corpus_revisions(id),
+      to_kind text not null check (
+        to_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
+      label text,
+      source_ids_json text not null,
+      accepted_from_candidate_id text not null references corpus_candidates(id),
       accepted_by_identity_id text not null references identities(id),
       accepted_at text not null
     );
@@ -2658,6 +2732,9 @@ export function createAcceptedCorpusRevisionRecord(
     acceptedKind,
     title,
     body = null,
+    materialReferenceKind = null,
+    locator = null,
+    citation = null,
     acceptedFromCandidateId,
     sourceIds = [],
     rationale = null,
@@ -2667,6 +2744,13 @@ export function createAcceptedCorpusRevisionRecord(
 ) {
   assertProgramShellExists(database, programId);
   assertIdentityExists(database, acceptedByIdentityId);
+  assertAcceptedCorpusRevisionMaterialReferenceShape({
+    acceptedKind,
+    body,
+    materialReferenceKind,
+    locator,
+    citation,
+  });
 
   database
     .prepare(
@@ -2677,12 +2761,15 @@ export function createAcceptedCorpusRevisionRecord(
          accepted_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
          accepted_from_candidate_id,
          source_ids_json,
          rationale,
          accepted_by_identity_id,
          accepted_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -2691,6 +2778,9 @@ export function createAcceptedCorpusRevisionRecord(
       acceptedKind,
       title,
       body,
+      materialReferenceKind,
+      locator,
+      citation,
       acceptedFromCandidateId,
       JSON.stringify(sourceIds),
       rationale,
@@ -2705,7 +2795,8 @@ export function getAcceptedCorpusRevisionRecord(database, id) {
   const row = database
     .prepare(
       `select id, entity_id as entityId, program_id as programId, accepted_kind as acceptedKind,
-              title, body, accepted_from_candidate_id as acceptedFromCandidateId,
+              title, body, material_reference_kind as materialReferenceKind, locator, citation,
+              accepted_from_candidate_id as acceptedFromCandidateId,
               source_ids_json as sourceIdsJson, rationale,
               accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
        from accepted_corpus_revisions
@@ -2720,7 +2811,8 @@ export function listAcceptedCorpusRevisionRecords(database) {
   return database
     .prepare(
       `select id, entity_id as entityId, program_id as programId, accepted_kind as acceptedKind,
-              title, body, accepted_from_candidate_id as acceptedFromCandidateId,
+              title, body, material_reference_kind as materialReferenceKind, locator, citation,
+              accepted_from_candidate_id as acceptedFromCandidateId,
               source_ids_json as sourceIdsJson, rationale,
               accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
        from accepted_corpus_revisions
@@ -2728,6 +2820,229 @@ export function listAcceptedCorpusRevisionRecords(database) {
     )
     .all()
     .map(mapAcceptedCorpusRevisionRecord);
+}
+
+export function createAcceptedNavigationRelationshipRecord(
+  database,
+  { id, programId, relationshipKind, fromEntityId, toEntityId, currentRevisionId },
+) {
+  assertProgramShellExists(database, programId);
+  const fromEntity = getAcceptedCorpusEntityRecord(database, fromEntityId);
+  const toEntity = getAcceptedCorpusEntityRecord(database, toEntityId);
+  assertNavigationRelationshipEndpoints({
+    programId,
+    relationshipKind,
+    fromEntity,
+    toEntity,
+  });
+  assertNavigationRelationshipDoesNotCreateCycle(database, {
+    programId,
+    relationshipKind,
+    fromEntityId,
+    toEntityId,
+  });
+
+  database
+    .prepare(
+      `insert into accepted_navigation_relationships (
+         id, program_id, relationship_kind, from_entity_id, to_entity_id, current_revision_id
+       ) values (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(id, programId, relationshipKind, fromEntityId, toEntityId, currentRevisionId);
+
+  return getAcceptedNavigationRelationshipRecord(database, id);
+}
+
+export function getAcceptedNavigationRelationshipRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              to_entity_id as toEntityId,
+              current_revision_id as currentRevisionId
+       from accepted_navigation_relationships
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedNavigationRelationshipRecords(database, { programId = null } = {}) {
+  const whereClause = programId === null ? "" : "where program_id = ?";
+  const values = programId === null ? [] : [programId];
+
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              to_entity_id as toEntityId,
+              current_revision_id as currentRevisionId
+       from accepted_navigation_relationships
+       ${whereClause}
+       order by id`,
+    )
+    .all(...values);
+}
+
+export function updateAcceptedNavigationRelationshipCurrentRevision(
+  database,
+  { relationshipId, currentRevisionId },
+) {
+  const revision = getAcceptedNavigationRelationshipRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("navigation_relationship_revision_not_found");
+  }
+
+  if (revision.relationshipId !== relationshipId) {
+    throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_navigation_relationships
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, relationshipId);
+
+  return getAcceptedNavigationRelationshipRecord(database, relationshipId);
+}
+
+export function createAcceptedNavigationRelationshipRevisionRecord(
+  database,
+  {
+    id,
+    relationshipId,
+    programId,
+    relationshipKind,
+    fromEntityId,
+    fromRevisionId,
+    fromKind,
+    toEntityId,
+    toRevisionId,
+    toKind,
+    label = null,
+    sourceIds = [],
+    acceptedFromCandidateId,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  const relationship = getAcceptedNavigationRelationshipRecord(database, relationshipId);
+  if (!relationship) {
+    throw new StorageInvariantError("navigation_relationship_not_found");
+  }
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertNavigationRelationshipRevisionMatches({
+    database,
+    relationship,
+    programId,
+    relationshipKind,
+    fromEntityId,
+    fromRevisionId,
+    fromKind,
+    toEntityId,
+    toRevisionId,
+    toKind,
+    acceptedFromCandidateId,
+    sourceIds,
+  });
+
+  database
+    .prepare(
+      `insert into accepted_navigation_relationship_revisions (
+         id,
+         relationship_id,
+         program_id,
+         relationship_kind,
+         from_entity_id,
+         from_revision_id,
+         from_kind,
+         to_entity_id,
+         to_revision_id,
+         to_kind,
+         label,
+         source_ids_json,
+         accepted_from_candidate_id,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      relationshipId,
+      programId,
+      relationshipKind,
+      fromEntityId,
+      fromRevisionId,
+      fromKind,
+      toEntityId,
+      toRevisionId,
+      toKind,
+      label,
+      JSON.stringify(sourceIds),
+      acceptedFromCandidateId,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedNavigationRelationshipRevisionRecord(database, id);
+}
+
+export function getAcceptedNavigationRelationshipRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              relationship_id as relationshipId,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              from_revision_id as fromRevisionId,
+              from_kind as fromKind,
+              to_entity_id as toEntityId,
+              to_revision_id as toRevisionId,
+              to_kind as toKind,
+              label,
+              source_ids_json as sourceIdsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              accepted_by_identity_id as acceptedByIdentityId,
+              accepted_at as acceptedAt
+       from accepted_navigation_relationship_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedNavigationRelationshipRevisionRecord(row) : null;
+}
+
+export function listAcceptedNavigationRelationshipRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id,
+              relationship_id as relationshipId,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              from_revision_id as fromRevisionId,
+              from_kind as fromKind,
+              to_entity_id as toEntityId,
+              to_revision_id as toRevisionId,
+              to_kind as toKind,
+              label,
+              source_ids_json as sourceIdsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              accepted_by_identity_id as acceptedByIdentityId,
+              accepted_at as acceptedAt
+       from accepted_navigation_relationship_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedNavigationRelationshipRevisionRecord);
 }
 
 export function createCorpusEventRecord(
@@ -3070,6 +3385,163 @@ function assertProgramSourcesBelongToProgram(database, { programId, sourceIds })
     if (source.programId !== programId) {
       throw new StorageInvariantError("program_source_mismatch");
     }
+  }
+}
+
+function assertAcceptedCorpusRevisionMaterialReferenceShape({
+  acceptedKind,
+  body,
+  materialReferenceKind,
+  locator,
+  citation,
+}) {
+  if (acceptedKind !== "material_reference") {
+    if (materialReferenceKind !== null || locator !== null || citation !== null) {
+      throw new StorageInvariantError("accepted_material_reference_invalid");
+    }
+    return;
+  }
+
+  if (
+    !isNonEmptyString(materialReferenceKind) ||
+    (!isNonEmptyString(locator) && !isNonEmptyString(citation) && !isNonEmptyString(body))
+  ) {
+    throw new StorageInvariantError("accepted_material_reference_invalid");
+  }
+}
+
+function assertNavigationRelationshipRevisionMatches({
+  database,
+  relationship,
+  programId,
+  relationshipKind,
+  fromEntityId,
+  fromRevisionId,
+  fromKind,
+  toEntityId,
+  toRevisionId,
+  toKind,
+  acceptedFromCandidateId,
+  sourceIds,
+}) {
+  if (
+    relationship.programId !== programId ||
+    relationship.relationshipKind !== relationshipKind ||
+    relationship.fromEntityId !== fromEntityId ||
+    relationship.toEntityId !== toEntityId
+  ) {
+    throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+  }
+
+  const fromEntity = getAcceptedCorpusEntityRecord(database, fromEntityId);
+  const toEntity = getAcceptedCorpusEntityRecord(database, toEntityId);
+  assertNavigationRelationshipEndpoints({
+    programId,
+    relationshipKind,
+    fromEntity,
+    toEntity,
+  });
+
+  const fromRevision = getAcceptedCorpusRevisionRecord(database, fromRevisionId);
+  const toRevision = getAcceptedCorpusRevisionRecord(database, toRevisionId);
+  assertNavigationRelationshipEndpointRevision({
+    entity: fromEntity,
+    revision: fromRevision,
+    revisionKind: fromKind,
+  });
+  assertNavigationRelationshipEndpointRevision({
+    entity: toEntity,
+    revision: toRevision,
+    revisionKind: toKind,
+  });
+
+  const candidate = getCorpusCandidateRecord(database, acceptedFromCandidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("candidate_not_found");
+  }
+  if (candidate.status !== "accepted") {
+    throw new StorageInvariantError("candidate_not_accepted");
+  }
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("candidate_program_mismatch");
+  }
+
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+}
+
+function assertNavigationRelationshipEndpointRevision({ entity, revision, revisionKind }) {
+  if (!revision) {
+    throw new StorageInvariantError("accepted_revision_not_found");
+  }
+  if (revision.entityId !== entity.id) {
+    throw new StorageInvariantError("accepted_revision_entity_mismatch");
+  }
+  if (revision.programId !== entity.programId) {
+    throw new StorageInvariantError("accepted_revision_program_mismatch");
+  }
+  if (revision.acceptedKind !== entity.acceptedKind || revision.acceptedKind !== revisionKind) {
+    throw new StorageInvariantError("accepted_revision_kind_mismatch");
+  }
+}
+
+function assertNavigationRelationshipEndpoints({ programId, relationshipKind, fromEntity, toEntity }) {
+  if (!fromEntity || !toEntity) {
+    throw new StorageInvariantError("accepted_entity_not_found");
+  }
+  if (fromEntity.id === toEntity.id) {
+    throw new StorageInvariantError("navigation_relationship_self_reference");
+  }
+  if (fromEntity.programId !== programId || toEntity.programId !== programId) {
+    throw new StorageInvariantError("navigation_relationship_program_mismatch");
+  }
+  if (!isValidNavigationRelationshipEndpointPair(relationshipKind, fromEntity.acceptedKind, toEntity.acceptedKind)) {
+    throw new StorageInvariantError("navigation_relationship_endpoint_kind_mismatch");
+  }
+}
+
+function isValidNavigationRelationshipEndpointPair(relationshipKind, fromKind, toKind) {
+  return (
+    (relationshipKind === "topic_includes_concept" && fromKind === "topic" && toKind === "concept") ||
+    (relationshipKind === "topic_uses_material" && fromKind === "topic" && toKind === "material_reference") ||
+    (relationshipKind === "concept_uses_material" && fromKind === "concept" && toKind === "material_reference") ||
+    (relationshipKind === "concept_has_definition" && fromKind === "concept" && toKind === "definition") ||
+    (relationshipKind === "concept_has_principle" && fromKind === "concept" && toKind === "principle") ||
+    (relationshipKind === "concept_prerequisite" && fromKind === "concept" && toKind === "concept") ||
+    (relationshipKind === "concept_related" && fromKind === "concept" && toKind === "concept") ||
+    (relationshipKind === "concept_distinguishes_from" && fromKind === "concept" && toKind === "concept")
+  );
+}
+
+function assertNavigationRelationshipDoesNotCreateCycle(
+  database,
+  { programId, relationshipKind, fromEntityId, toEntityId },
+) {
+  if (relationshipKind !== "concept_prerequisite") {
+    return;
+  }
+
+  const edgesByFromEntityId = new Map();
+  for (const relationship of listAcceptedNavigationRelationshipRecords(database, { programId })) {
+    if (relationship.relationshipKind !== "concept_prerequisite") {
+      continue;
+    }
+    const targets = edgesByFromEntityId.get(relationship.fromEntityId) ?? [];
+    targets.push(relationship.toEntityId);
+    edgesByFromEntityId.set(relationship.fromEntityId, targets);
+  }
+
+  const visited = new Set();
+  const stack = [toEntityId];
+  while (stack.length > 0) {
+    const currentEntityId = stack.pop();
+    if (currentEntityId === fromEntityId) {
+      throw new StorageInvariantError("navigation_prerequisite_cycle");
+    }
+    if (visited.has(currentEntityId)) {
+      continue;
+    }
+    visited.add(currentEntityId);
+    stack.push(...(edgesByFromEntityId.get(currentEntityId) ?? []));
   }
 }
 
@@ -3471,6 +3943,8 @@ export function exportIdentityBackup(database) {
     corpusCandidates: listCorpusCandidateRecords(database),
     acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
     acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
+    acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
+    acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
     corpusEvents: listCorpusEventRecords(database),
     assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
     acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
@@ -3504,6 +3978,7 @@ export function restoreIdentityBackup(database, backup) {
   }
 
   assertValidCorpusGraphInBackup(backup);
+  assertValidNavigationGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
   assertValidQuickCheckGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
@@ -3528,6 +4003,8 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from accepted_assessment_criterion_revisions").run();
     database.prepare("delete from accepted_assessment_criterion_entities").run();
     database.prepare("delete from assessment_criterion_candidates").run();
+    database.prepare("delete from accepted_navigation_relationship_revisions").run();
+    database.prepare("delete from accepted_navigation_relationships").run();
     database.prepare("delete from accepted_corpus_revisions").run();
     database.prepare("delete from accepted_corpus_entities").run();
     database.prepare("delete from corpus_candidates").run();
@@ -3659,12 +4136,44 @@ export function restoreIdentityBackup(database, backup) {
          accepted_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
          accepted_from_candidate_id,
          source_ids_json,
          rationale,
          accepted_by_identity_id,
          accepted_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedNavigationRelationship = database.prepare(
+      `insert into accepted_navigation_relationships (
+         id,
+         program_id,
+         relationship_kind,
+         from_entity_id,
+         to_entity_id,
+         current_revision_id
+       ) values (?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedNavigationRelationshipRevision = database.prepare(
+      `insert into accepted_navigation_relationship_revisions (
+         id,
+         relationship_id,
+         program_id,
+         relationship_kind,
+         from_entity_id,
+         from_revision_id,
+         from_kind,
+         to_entity_id,
+         to_revision_id,
+         to_kind,
+         label,
+         source_ids_json,
+         accepted_from_candidate_id,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertCorpusEvent = database.prepare(
       `insert into corpus_events (
@@ -3969,9 +4478,43 @@ export function restoreIdentityBackup(database, backup) {
         revision.acceptedKind,
         revision.title,
         revision.body ?? null,
+        revision.materialReferenceKind ?? null,
+        revision.locator ?? null,
+        revision.citation ?? null,
         revision.acceptedFromCandidateId,
         JSON.stringify(revision.sourceIds ?? []),
         revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+    }
+
+    for (const relationship of backup.acceptedNavigationRelationships ?? []) {
+      insertAcceptedNavigationRelationship.run(
+        relationship.id,
+        relationship.programId,
+        relationship.relationshipKind,
+        relationship.fromEntityId,
+        relationship.toEntityId,
+        relationship.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedNavigationRelationshipRevisions ?? []) {
+      insertAcceptedNavigationRelationshipRevision.run(
+        revision.id,
+        revision.relationshipId,
+        revision.programId,
+        revision.relationshipKind,
+        revision.fromEntityId,
+        revision.fromRevisionId,
+        revision.fromKind,
+        revision.toEntityId,
+        revision.toRevisionId,
+        revision.toKind,
+        revision.label ?? null,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.acceptedFromCandidateId,
         revision.acceptedByIdentityId,
         revision.acceptedAt,
       );
@@ -4602,7 +5145,7 @@ function mapOpenAnswerEvaluatorJobRecord(row) {
 }
 
 function mapAcceptedCorpusRevisionRecord(row) {
-  return {
+  const revision = {
     id: row.id,
     entityId: row.entityId,
     programId: row.programId,
@@ -4612,6 +5155,38 @@ function mapAcceptedCorpusRevisionRecord(row) {
     acceptedFromCandidateId: row.acceptedFromCandidateId,
     sourceIds: JSON.parse(row.sourceIdsJson),
     rationale: row.rationale,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+
+  if (row.materialReferenceKind !== null) {
+    revision.materialReferenceKind = row.materialReferenceKind;
+  }
+  if (row.locator !== null) {
+    revision.locator = row.locator;
+  }
+  if (row.citation !== null) {
+    revision.citation = row.citation;
+  }
+
+  return revision;
+}
+
+function mapAcceptedNavigationRelationshipRevisionRecord(row) {
+  return {
+    id: row.id,
+    relationshipId: row.relationshipId,
+    programId: row.programId,
+    relationshipKind: row.relationshipKind,
+    fromEntityId: row.fromEntityId,
+    fromRevisionId: row.fromRevisionId,
+    fromKind: row.fromKind,
+    toEntityId: row.toEntityId,
+    toRevisionId: row.toRevisionId,
+    toKind: row.toKind,
+    label: row.label,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
     acceptedByIdentityId: row.acceptedByIdentityId,
     acceptedAt: row.acceptedAt,
   };
@@ -4721,6 +5296,13 @@ function assertValidCorpusGraphInBackup(backup) {
     if (entity.acceptedKind !== revision.acceptedKind) {
       throw new StorageInvariantError("accepted_revision_kind_mismatch");
     }
+    assertAcceptedCorpusRevisionMaterialReferenceShape({
+      acceptedKind: revision.acceptedKind,
+      body: revision.body ?? null,
+      materialReferenceKind: revision.materialReferenceKind ?? null,
+      locator: revision.locator ?? null,
+      citation: revision.citation ?? null,
+    });
 
     const candidate = candidatesById.get(revision.acceptedFromCandidateId);
     if (!candidate) {
@@ -4758,6 +5340,151 @@ function assertValidCorpusGraphInBackup(backup) {
 
     if (currentRevision.acceptedKind !== entity.acceptedKind) {
       throw new StorageInvariantError("accepted_revision_kind_mismatch");
+    }
+  }
+}
+
+function assertValidNavigationGraphInBackup(backup) {
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const candidatesById = new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map((backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]));
+  const revisionsById = new Map((backup.acceptedCorpusRevisions ?? []).map($0 => [$0.id, $0]));
+  const relationshipsById = new Map(
+    (backup.acceptedNavigationRelationships ?? []).map($0 => [$0.id, $0]),
+  );
+  const relationshipRevisionsById = new Map(
+    (backup.acceptedNavigationRelationshipRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+
+  for (const relationship of backup.acceptedNavigationRelationships ?? []) {
+    const fromEntity = entitiesById.get(relationship.fromEntityId);
+    const toEntity = entitiesById.get(relationship.toEntityId);
+    assertNavigationRelationshipBackupEndpoints({
+      programId: relationship.programId,
+      relationshipKind: relationship.relationshipKind,
+      fromEntity,
+      toEntity,
+    });
+
+    const currentRevision = relationshipRevisionsById.get(relationship.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("navigation_relationship_revision_not_found");
+    }
+    if (currentRevision.relationshipId !== relationship.id) {
+      throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+    }
+  }
+
+  for (const revision of backup.acceptedNavigationRelationshipRevisions ?? []) {
+    const relationship = relationshipsById.get(revision.relationshipId);
+    if (!relationship) {
+      throw new StorageInvariantError("navigation_relationship_not_found");
+    }
+    if (
+      relationship.programId !== revision.programId ||
+      relationship.relationshipKind !== revision.relationshipKind ||
+      relationship.fromEntityId !== revision.fromEntityId ||
+      relationship.toEntityId !== revision.toEntityId
+    ) {
+      throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+    }
+    if (!isValidNavigationRelationshipEndpointPair(revision.relationshipKind, revision.fromKind, revision.toKind)) {
+      throw new StorageInvariantError("navigation_relationship_endpoint_kind_mismatch");
+    }
+
+    assertNavigationRelationshipBackupRevisionEndpoint({
+      entity: entitiesById.get(revision.fromEntityId),
+      revision: revisionsById.get(revision.fromRevisionId),
+      revisionKind: revision.fromKind,
+    });
+    assertNavigationRelationshipBackupRevisionEndpoint({
+      entity: entitiesById.get(revision.toEntityId),
+      revision: revisionsById.get(revision.toRevisionId),
+      revisionKind: revision.toKind,
+    });
+
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("candidate_not_found");
+    }
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("candidate_not_accepted");
+    }
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+  }
+
+  assertNavigationBackupHasNoPrerequisiteCycles(backup.acceptedNavigationRelationships ?? []);
+}
+
+function assertNavigationRelationshipBackupEndpoints({ programId, relationshipKind, fromEntity, toEntity }) {
+  if (!fromEntity || !toEntity) {
+    throw new StorageInvariantError("accepted_entity_not_found");
+  }
+  if (fromEntity.id === toEntity.id) {
+    throw new StorageInvariantError("navigation_relationship_self_reference");
+  }
+  if (fromEntity.programId !== programId || toEntity.programId !== programId) {
+    throw new StorageInvariantError("navigation_relationship_program_mismatch");
+  }
+  if (!isValidNavigationRelationshipEndpointPair(relationshipKind, fromEntity.acceptedKind, toEntity.acceptedKind)) {
+    throw new StorageInvariantError("navigation_relationship_endpoint_kind_mismatch");
+  }
+}
+
+function assertNavigationRelationshipBackupRevisionEndpoint({ entity, revision, revisionKind }) {
+  if (!entity) {
+    throw new StorageInvariantError("accepted_entity_not_found");
+  }
+  if (!revision) {
+    throw new StorageInvariantError("accepted_revision_not_found");
+  }
+  if (revision.entityId !== entity.id) {
+    throw new StorageInvariantError("accepted_revision_entity_mismatch");
+  }
+  if (revision.programId !== entity.programId) {
+    throw new StorageInvariantError("accepted_revision_program_mismatch");
+  }
+  if (revision.acceptedKind !== entity.acceptedKind || revision.acceptedKind !== revisionKind) {
+    throw new StorageInvariantError("accepted_revision_kind_mismatch");
+  }
+}
+
+function assertNavigationBackupHasNoPrerequisiteCycles(relationships) {
+  const edgesByProgramAndFrom = new Map();
+  for (const relationship of relationships) {
+    if (relationship.relationshipKind !== "concept_prerequisite") {
+      continue;
+    }
+    const key = `${relationship.programId}:${relationship.fromEntityId}`;
+    const targets = edgesByProgramAndFrom.get(key) ?? [];
+    targets.push(relationship.toEntityId);
+    edgesByProgramAndFrom.set(key, targets);
+  }
+
+  for (const relationship of relationships) {
+    if (relationship.relationshipKind !== "concept_prerequisite") {
+      continue;
+    }
+    const visited = new Set();
+    const stack = [relationship.toEntityId];
+    while (stack.length > 0) {
+      const currentEntityId = stack.pop();
+      if (currentEntityId === relationship.fromEntityId) {
+        throw new StorageInvariantError("navigation_prerequisite_cycle");
+      }
+      if (visited.has(currentEntityId)) {
+        continue;
+      }
+      visited.add(currentEntityId);
+      stack.push(...(edgesByProgramAndFrom.get(`${relationship.programId}:${currentEntityId}`) ?? []));
     }
   }
 }

@@ -444,6 +444,293 @@ test("createAcceptedCorpusRecords_shouldPersistEntityAndCurrentRevisionLink_onEx
   }
 });
 
+test("createAcceptedCorpusRecords_shouldPersistNavigationKindsAndMaterialMetadata_onExistingCandidates", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+
+    for (const acceptedKind of ["topic", "concept", "definition", "principle", "material_reference"]) {
+      storage.createCorpusCandidateRecord(
+        database,
+        makeCorpusCandidate({
+          id: `candidate-${acceptedKind}`,
+          programId: "program-a",
+          sourceIds: ["source-a"],
+          status: "accepted",
+          candidateKind: acceptedKind,
+        }),
+      );
+      storage.createAcceptedCorpusEntityRecord(
+        database,
+        makeAcceptedCorpusEntity({
+          id: `entity-${acceptedKind}`,
+          programId: "program-a",
+          acceptedKind,
+          currentRevisionId: `revision-${acceptedKind}`,
+        }),
+      );
+      storage.createAcceptedCorpusRevisionRecord(
+        database,
+        makeAcceptedCorpusRevision({
+          id: `revision-${acceptedKind}`,
+          entityId: `entity-${acceptedKind}`,
+          programId: "program-a",
+          acceptedFromCandidateId: `candidate-${acceptedKind}`,
+          acceptedKind,
+          materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+          locator: acceptedKind === "material_reference" ? "https://example.test/material" : null,
+          citation: acceptedKind === "material_reference" ? "Example citation" : null,
+        }),
+      );
+    }
+
+    assert.deepEqual(
+      storage.listAcceptedCorpusRevisionRecords(database)
+        .map($0 => ({
+          acceptedKind: $0.acceptedKind,
+          materialReferenceKind: $0.materialReferenceKind ?? null,
+          locator: $0.locator ?? null,
+          citation: $0.citation ?? null,
+        }))
+        .sort((left, right) => left.acceptedKind.localeCompare(right.acceptedKind)),
+      [
+        { acceptedKind: "concept", materialReferenceKind: null, locator: null, citation: null },
+        { acceptedKind: "definition", materialReferenceKind: null, locator: null, citation: null },
+        {
+          acceptedKind: "material_reference",
+          materialReferenceKind: "article",
+          locator: "https://example.test/material",
+          citation: "Example citation",
+        },
+        { acceptedKind: "principle", materialReferenceKind: null, locator: null, citation: null },
+        { acceptedKind: "topic", materialReferenceKind: null, locator: null, citation: null },
+      ],
+    );
+    assert.deepEqual(
+      {
+        nonMaterialMetadata: captureStorageReason(() =>
+          storage.createAcceptedCorpusRevisionRecord(
+            database,
+            makeAcceptedCorpusRevision({
+              id: "revision-topic-invalid-material",
+              entityId: "entity-topic",
+              programId: "program-a",
+              acceptedFromCandidateId: "candidate-topic",
+              acceptedKind: "topic",
+              materialReferenceKind: "article",
+            }),
+          ),
+        ),
+        missingMaterialMetadata: captureStorageReason(() =>
+          storage.createAcceptedCorpusRevisionRecord(
+            database,
+            makeAcceptedCorpusRevision({
+              id: "revision-material-invalid",
+              entityId: "entity-material_reference",
+              programId: "program-a",
+              acceptedFromCandidateId: "candidate-material_reference",
+              acceptedKind: "material_reference",
+            }),
+          ),
+        ),
+      },
+      {
+        nonMaterialMetadata: "accepted_material_reference_invalid",
+        missingMaterialMetadata: "accepted_material_reference_invalid",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedNavigationRelationshipRecords_shouldPersistValidRelationshipsAndRejectWrongEndpointKinds_onAcceptedNavigationEntities", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "definition" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "principle" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "material_reference" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({
+        id: "candidate-relationship",
+        programId: "program-a",
+        candidateKind: "relationship_update",
+        status: "accepted",
+      }),
+    );
+
+    const relationship = storage.createAcceptedNavigationRelationshipRecord(database, {
+      id: "relationship-topic-concept",
+      programId: "program-a",
+      relationshipKind: "topic_includes_concept",
+      fromEntityId: "entity-topic",
+      toEntityId: "entity-concept",
+      currentRevisionId: "relationship-revision-topic-concept",
+    });
+    const revision = storage.createAcceptedNavigationRelationshipRevisionRecord(
+      database,
+      makeAcceptedNavigationRelationshipRevision({
+        id: "relationship-revision-topic-concept",
+        relationshipId: "relationship-topic-concept",
+        relationshipKind: "topic_includes_concept",
+        fromEntityId: "entity-topic",
+        fromRevisionId: "revision-topic",
+        fromKind: "topic",
+        toEntityId: "entity-concept",
+        toRevisionId: "revision-concept",
+        toKind: "concept",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        relationship,
+        revision,
+        listed: storage.listAcceptedNavigationRelationshipRevisionRecords(database).map($0 => ({
+          relationshipKind: $0.relationshipKind,
+          fromKind: $0.fromKind,
+          toKind: $0.toKind,
+          sourceIds: $0.sourceIds,
+        })),
+        wrongEndpoint: captureStorageReason(() =>
+          storage.createAcceptedNavigationRelationshipRecord(database, {
+            id: "relationship-wrong",
+            programId: "program-a",
+            relationshipKind: "topic_includes_concept",
+            fromEntityId: "entity-concept",
+            toEntityId: "entity-topic",
+            currentRevisionId: "relationship-revision-wrong",
+          }),
+        ),
+      },
+      {
+        relationship: {
+          id: "relationship-topic-concept",
+          programId: "program-a",
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: "entity-topic",
+          toEntityId: "entity-concept",
+          currentRevisionId: "relationship-revision-topic-concept",
+        },
+        revision: {
+          id: "relationship-revision-topic-concept",
+          relationshipId: "relationship-topic-concept",
+          programId: "program-a",
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: "entity-topic",
+          fromRevisionId: "revision-topic",
+          fromKind: "topic",
+          toEntityId: "entity-concept",
+          toRevisionId: "revision-concept",
+          toKind: "concept",
+          label: "Relationship relationship-revision-topic-concept",
+          sourceIds: ["source-a"],
+          acceptedFromCandidateId: "candidate-relationship",
+          acceptedByIdentityId: "identity-a",
+          acceptedAt: "2026-06-03T10:00:00.000Z",
+        },
+        listed: [
+          {
+            relationshipKind: "topic_includes_concept",
+            fromKind: "topic",
+            toKind: "concept",
+            sourceIds: ["source-a"],
+          },
+        ],
+        wrongEndpoint: "navigation_relationship_endpoint_kind_mismatch",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedNavigationRelationshipRecords_shouldRejectCrossProgramEndpointsAndPrerequisiteCycles_onAcceptedNavigationEntities", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-b" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-b", programId: "program-b" }),
+    );
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-a", programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-b", programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-c", programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-other", programId: "program-b" });
+
+    storage.createAcceptedNavigationRelationshipRecord(database, {
+      id: "relationship-a-b",
+      programId: "program-a",
+      relationshipKind: "concept_prerequisite",
+      fromEntityId: "entity-concept-a",
+      toEntityId: "entity-concept-b",
+      currentRevisionId: "relationship-revision-a-b",
+    });
+    storage.createAcceptedNavigationRelationshipRecord(database, {
+      id: "relationship-b-c",
+      programId: "program-a",
+      relationshipKind: "concept_prerequisite",
+      fromEntityId: "entity-concept-b",
+      toEntityId: "entity-concept-c",
+      currentRevisionId: "relationship-revision-b-c",
+    });
+
+    assert.deepEqual(
+      {
+        crossProgram: captureStorageReason(() =>
+          storage.createAcceptedNavigationRelationshipRecord(database, {
+            id: "relationship-cross-program",
+            programId: "program-a",
+            relationshipKind: "concept_prerequisite",
+            fromEntityId: "entity-concept-a",
+            toEntityId: "entity-concept-other",
+            currentRevisionId: "relationship-revision-cross-program",
+          }),
+        ),
+        cycle: captureStorageReason(() =>
+          storage.createAcceptedNavigationRelationshipRecord(database, {
+            id: "relationship-c-a",
+            programId: "program-a",
+            relationshipKind: "concept_prerequisite",
+            fromEntityId: "entity-concept-c",
+            toEntityId: "entity-concept-a",
+            currentRevisionId: "relationship-revision-c-a",
+          }),
+        ),
+      },
+      {
+        crossProgram: "navigation_relationship_program_mismatch",
+        cycle: "navigation_prerequisite_cycle",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createAcceptedAssessmentCriterionRecords_shouldPersistEntityAndCurrentRevisionLink_onExistingCandidate", () => {
   const database = makeInitializedDatabase();
 
@@ -4143,11 +4430,11 @@ function makeProgramSource({ id, programId, title = `Source ${id}` }) {
   };
 }
 
-function makeCorpusCandidate({ id, programId, sourceIds = [], status = "draft" }) {
+function makeCorpusCandidate({ id, programId, candidateKind = "topic", sourceIds = [], status = "draft" }) {
   return {
     id,
     programId,
-    candidateKind: "topic",
+    candidateKind,
     title: `Candidate ${id}`,
     body: `Body ${id}`,
     sourceIds,
@@ -4174,29 +4461,127 @@ function makeAssessmentCriterionCandidate({ id, programId, sourceIds = [], statu
   };
 }
 
-function makeAcceptedCorpusEntity({ id, programId, currentRevisionId }) {
+function makeAcceptedCorpusEntity({ id, programId, acceptedKind = "topic", currentRevisionId }) {
   return {
     id,
     programId,
-    acceptedKind: "topic",
+    acceptedKind,
     currentRevisionId,
   };
 }
 
-function makeAcceptedCorpusRevision({ id, entityId, programId }) {
+function makeAcceptedCorpusRevision({
+  id,
+  entityId,
+  programId,
+  acceptedKind = "topic",
+  acceptedFromCandidateId = "candidate-a",
+  sourceIds = ["source-a"],
+  materialReferenceKind = null,
+  locator = null,
+  citation = null,
+}) {
   return {
     id,
     entityId,
     programId,
-    acceptedKind: "topic",
+    acceptedKind,
     title: `Accepted ${id}`,
     body: `Accepted body ${id}`,
-    acceptedFromCandidateId: "candidate-a",
-    sourceIds: ["source-a"],
+    acceptedFromCandidateId,
+    sourceIds,
     rationale: `Accepted rationale ${id}`,
     acceptedByIdentityId: "identity-a",
     acceptedAt: "2026-05-28T10:20:00.000Z",
+    materialReferenceKind,
+    locator,
+    citation,
   };
+}
+
+function seedAcceptedNavigationEntity(database, {
+  acceptedKind,
+  entityId = acceptedKind,
+  programId = "program-a",
+  sourceId = programId === "program-a" ? "source-a" : "source-b",
+}) {
+  storage.createCorpusCandidateRecord(
+    database,
+    makeCorpusCandidate({
+      id: `candidate-${entityId}`,
+      programId,
+      sourceIds: [sourceId],
+      status: "accepted",
+      candidateKind: acceptedKind,
+    }),
+  );
+  storage.createAcceptedCorpusEntityRecord(
+    database,
+    makeAcceptedCorpusEntity({
+      id: `entity-${entityId}`,
+      programId,
+      acceptedKind,
+      currentRevisionId: `revision-${entityId}`,
+    }),
+  );
+  return storage.createAcceptedCorpusRevisionRecord(
+    database,
+    makeAcceptedCorpusRevision({
+      id: `revision-${entityId}`,
+      entityId: `entity-${entityId}`,
+      programId,
+      acceptedFromCandidateId: `candidate-${entityId}`,
+      acceptedKind,
+      materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+      locator: acceptedKind === "material_reference" ? "https://example.test/material" : null,
+      citation: acceptedKind === "material_reference" ? "Example citation" : null,
+      sourceIds: [sourceId],
+    }),
+  );
+}
+
+function makeAcceptedNavigationRelationshipRevision({
+  id,
+  relationshipId,
+  programId = "program-a",
+  relationshipKind,
+  fromEntityId,
+  fromRevisionId,
+  fromKind,
+  toEntityId,
+  toRevisionId,
+  toKind,
+  sourceIds = ["source-a"],
+}) {
+  return {
+    id,
+    relationshipId,
+    programId,
+    relationshipKind,
+    fromEntityId,
+    fromRevisionId,
+    fromKind,
+    toEntityId,
+    toRevisionId,
+    toKind,
+    label: `Relationship ${id}`,
+    sourceIds,
+    acceptedFromCandidateId: "candidate-relationship",
+    acceptedByIdentityId: "identity-a",
+    acceptedAt: "2026-06-03T10:00:00.000Z",
+  };
+}
+
+function captureStorageReason(action) {
+  try {
+    action();
+  } catch (error) {
+    if (error instanceof StorageInvariantError) {
+      return error.reason;
+    }
+    throw error;
+  }
+  return null;
 }
 
 function makeAcceptedAssessmentCriterionEntity({ id, programId, currentRevisionId }) {

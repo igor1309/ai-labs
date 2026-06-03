@@ -368,6 +368,51 @@ test("exportBackup_shouldIncludeCorpusRecords_onBackup", async () => {
   }
 });
 
+test("exportBackup_shouldIncludeNavigationRelationshipRecords_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        relationshipIds: backup.acceptedNavigationRelationships?.map($0 => $0.id),
+        relationshipRevisionIds: backup.acceptedNavigationRelationshipRevisions?.map($0 => $0.id),
+      },
+      {
+        relationshipIds: ["relationship-1"],
+        relationshipRevisionIds: ["relationship-revision-1"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("exportBackup_shouldIncludeAssessmentRecords_onBackup", async () => {
   const { commands, database } = makeSUT({
     ids: [
@@ -1916,6 +1961,125 @@ test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithCrossProgramSource_onB
   }
 });
 
+test("restoreBackup_shouldRejectNavigationRelationshipRevisionWithWrongEndpointKind_onBackup", async () => {
+  const backup = await makeExportedNavigationBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedNavigationRelationshipRevisions[0] = {
+      ...backup.acceptedNavigationRelationshipRevisions[0],
+      toKind: "topic",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "navigation_relationship_endpoint_kind_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedNavigationRelationshipGraphs_onBackup", async () => {
+  const invalidBackups = [
+    {
+      mutate: value => {
+        value.acceptedNavigationRelationships[0] = {
+          ...value.acceptedNavigationRelationships[0],
+          currentRevisionId: "missing-relationship-revision",
+        };
+      },
+      expectedReason: "navigation_relationship_revision_not_found",
+    },
+    {
+      mutate: value => {
+        value.acceptedNavigationRelationships = [];
+      },
+      expectedReason: "navigation_relationship_not_found",
+    },
+    {
+      mutate: value => {
+        value.acceptedNavigationRelationships[0] = {
+          ...value.acceptedNavigationRelationships[0],
+          programId: "program-b",
+        };
+      },
+      expectedReason: "navigation_relationship_program_mismatch",
+    },
+    {
+      mutate: value => {
+        value.corpusCandidates[0] = {
+          ...value.corpusCandidates[0],
+          candidateKind: "concept",
+        };
+        value.acceptedCorpusEntities[0] = {
+          ...value.acceptedCorpusEntities[0],
+          acceptedKind: "concept",
+        };
+        value.acceptedCorpusRevisions[0] = {
+          ...value.acceptedCorpusRevisions[0],
+          acceptedKind: "concept",
+        };
+        value.acceptedNavigationRelationships[0] = {
+          ...value.acceptedNavigationRelationships[0],
+          relationshipKind: "concept_prerequisite",
+        };
+        value.acceptedNavigationRelationshipRevisions[0] = {
+          ...value.acceptedNavigationRelationshipRevisions[0],
+          relationshipKind: "concept_prerequisite",
+          fromKind: "concept",
+        };
+        value.acceptedNavigationRelationships.push({
+          id: "relationship-2",
+          programId: "program-1",
+          relationshipKind: "concept_prerequisite",
+          fromEntityId: "entity-2",
+          toEntityId: "entity-1",
+          currentRevisionId: "relationship-revision-2",
+        });
+        value.acceptedNavigationRelationshipRevisions.push({
+          id: "relationship-revision-2",
+          relationshipId: "relationship-2",
+          programId: "program-1",
+          relationshipKind: "concept_prerequisite",
+          fromEntityId: "entity-2",
+          fromRevisionId: "revision-2",
+          fromKind: "concept",
+          toEntityId: "entity-1",
+          toRevisionId: "revision-1",
+          toKind: "concept",
+          label: "Reverse prerequisite",
+          sourceIds: ["source-1"],
+          acceptedFromCandidateId: "candidate-relationship",
+          acceptedByIdentityId: "identity-1",
+          acceptedAt: "2026-05-27T10:13:00.000Z",
+        });
+      },
+      expectedReason: "navigation_prerequisite_cycle",
+    },
+  ];
+
+  for (const invalidBackup of invalidBackups) {
+    const backup = await makeExportedNavigationBackup();
+    const target = makeSUT();
+
+    try {
+      invalidBackup.mutate(backup);
+
+      const result = target.commands.restoreBackup(backup);
+
+      assert.deepEqual(result, {
+        status: "rejected",
+        reason: invalidBackup.expectedReason,
+      });
+    } finally {
+      target.database.close();
+    }
+  }
+});
+
 test("restoreBackup_shouldRejectMalformedQuickCheckGraphs_onBackup", async () => {
   const backup = await makeExportedQuickCheckBackup();
   const invalidBackups = [
@@ -2112,6 +2276,108 @@ function seedCorpusRecords(database, { identityId, programId }) {
       "2026-05-27T10:06:00.000Z",
       "accepted",
       null,
+    );
+}
+
+function seedNavigationRelationshipRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into corpus_candidates (
+         id, program_id, candidate_kind, title, body, source_ids_json, rationale, status,
+         created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "candidate-2",
+      programId,
+      "concept",
+      "Concept Candidate",
+      "Concept Body",
+      JSON.stringify(["source-1"]),
+      "Concept Rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:07:00.000Z",
+      "2026-05-27T10:08:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into corpus_candidates (
+         id, program_id, candidate_kind, title, body, source_ids_json, rationale, status,
+         created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "candidate-relationship",
+      programId,
+      "relationship_update",
+      "Relationship Candidate",
+      "Relationship Body",
+      JSON.stringify(["source-1"]),
+      "Relationship Rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:09:00.000Z",
+      "2026-05-27T10:10:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_corpus_entities (
+         id, program_id, accepted_kind, current_revision_id
+       ) values (?, ?, ?, ?)`,
+    )
+    .run("entity-2", programId, "concept", "revision-2");
+  database
+    .prepare(
+      `insert into accepted_corpus_revisions (
+         id, entity_id, program_id, accepted_kind, title, body, accepted_from_candidate_id,
+         source_ids_json, rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "revision-2",
+      "entity-2",
+      programId,
+      "concept",
+      "Accepted Concept",
+      "Accepted Concept Body",
+      "candidate-2",
+      JSON.stringify(["source-1"]),
+      "Concept Rationale",
+      identityId,
+      "2026-05-27T10:11:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_navigation_relationships (
+         id, program_id, relationship_kind, from_entity_id, to_entity_id, current_revision_id
+       ) values (?, ?, ?, ?, ?, ?)`,
+    )
+    .run("relationship-1", programId, "topic_includes_concept", "entity-1", "entity-2", "relationship-revision-1");
+  database
+    .prepare(
+      `insert into accepted_navigation_relationship_revisions (
+         id, relationship_id, program_id, relationship_kind, from_entity_id, from_revision_id, from_kind,
+         to_entity_id, to_revision_id, to_kind, label, source_ids_json, accepted_from_candidate_id,
+         accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "relationship-revision-1",
+      "relationship-1",
+      programId,
+      "topic_includes_concept",
+      "entity-1",
+      "revision-1",
+      "topic",
+      "entity-2",
+      "revision-2",
+      "concept",
+      "Topic concept link",
+      JSON.stringify(["source-1"]),
+      "candidate-relationship",
+      identityId,
+      "2026-05-27T10:12:00.000Z",
     );
 }
 
@@ -2754,6 +3020,32 @@ async function makeExportedCorpusBackup() {
       membershipEventId: "membership-event-1",
     });
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedNavigationBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(source.database, { identityId: "identity-1", programId: "program-1" });
 
     return source.commands.exportBackup().value.backup;
   } finally {
