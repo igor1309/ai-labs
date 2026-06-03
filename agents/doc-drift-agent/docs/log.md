@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-03
+
+- Cut the scoped **orchestrator** over to production (ADR-001 Phase 6). Deployed `runtime/cron/doc-drift-orchestrator.sh` to the VPS (`~/.openclaw/scripts/`, mode 700, byte-identical) and repointed `/etc/cron.d/openclaw-doc-drift` from the legacy all-READMEs `doc-drift-cron.sh` to it — schedule unchanged (01:00 UTC), backup retained, mirror updated in the `inventory` repo. Refreshed the source clone to `trunk fa197344` so the relocated `scope-select` CLIs are present. Verified live with a manual run before the cutover (schedule isolated): selector → `readmes`, worker exit clean, per-scope state advanced (`orchestrator-state.json`, `lastAuditedCommit fa197344` / `lastAuditedAt 2026-06-03T05:25:57Z`), drift-found → fix PR #464 + compact Telegram to `#doc-drift`. The next 01:00 UTC tick is the unattended confirmation.
+
 ## 2026-06-02
 
 - Built the scoped nightly **orchestrator wrapper** (ADR-001 Phase 5, §7 substrate) — `runtime/cron/doc-drift-orchestrator.sh`. It refreshes the source clone, runs the tested `select-cli.js` to pick one scope (changed ∪ stale, budget 1), invokes `openclaw agent --scope <id>`, and — only after a fail-closed verified-good run — records the audit via `commit-cli.js` into a per-scope state file (`orchestrator-state.json`). It supersedes the all-READMEs `doc-drift-cron.sh`; the `/etc/cron.d` cutover is Phase 6. Config is env-overridable so the select→worker→commit wiring is exercised with stubs (no host/network) by `doc-drift-orchestrator.test.sh` — 10 assertions across happy / no-eligible-scope / fail-closed paths, all green. Observability is the wrapper's fail-closed Telegram + log + per-scope state, **not** the tasks/TaskFlow ledger: the Phase 4 spike found the in-gateway Lobster path unviable (nested-`openclaw agent` deadlock) and the ledger non-populating on the unit (`agents/research/phase4-substrate-spike-findings.md`; watch `agents/TODO.md` §4).

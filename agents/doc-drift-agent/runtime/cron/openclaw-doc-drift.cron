@@ -1,6 +1,7 @@
-# OpenClaw doc-drift-agent: daily scheduled README drift review.
-# Cron is UTC; runs at 01:00 UTC daily. Wrapper enforces the 12h
-# manual-run suppression gate before invoking the agent.
+# OpenClaw doc-drift-agent: daily scoped README/docs drift review (ADR-001 §7).
+# Cron is UTC; runs at 01:00 UTC daily. The orchestrator selects one scope
+# (changed ∪ stale, budget 1), runs the worker, and records per-scope state.
+# Supersedes doc-drift-cron.sh (the all-READMEs-in-one-pass wrapper).
 #
 # Deployed to: /etc/cron.d/openclaw-doc-drift (root:root, mode 644).
-0 1 * * * openclaw /home/openclaw/.openclaw/scripts/doc-drift-cron.sh
+0 1 * * * openclaw /home/openclaw/.openclaw/scripts/doc-drift-orchestrator.sh
