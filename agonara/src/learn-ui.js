@@ -223,6 +223,25 @@ export const learnUiHtml = `<!doctype html>
       min-height: 88px;
     }
 
+    .list button {
+      width: 100%;
+      background: var(--surface-muted);
+      border-color: var(--border);
+      color: var(--text);
+      text-align: left;
+    }
+
+    .option-row {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .option-row input[type="radio"] {
+      width: auto;
+    }
+
     .empty {
       border: 1px dashed var(--border);
       border-radius: 8px;
@@ -342,6 +361,14 @@ export const learnUiHtml = `<!doctype html>
             </label>
             <fieldset id="quick-check-options-fieldset" class="stack">
               <legend>Options</legend>
+              <div class="option-row">
+                <input name="answerKeyOptionIndex" type="radio" value="0" aria-label="Answer key option 1" checked>
+                <input name="optionText" aria-label="Option 1">
+              </div>
+              <div class="option-row">
+                <input name="answerKeyOptionIndex" type="radio" value="1" aria-label="Answer key option 2">
+                <input name="optionText" aria-label="Option 2">
+              </div>
             </fieldset>
             <label>
               Rationale
@@ -383,17 +410,29 @@ export const learnUiHtml = `<!doctype html>
   <script>
     (() => {
       const state = {
+        acceptedQuickCheck: null,
+        candidates: [],
         csrfToken: null,
         identity: null,
         mode: "curator",
         programId: "",
+        selectedCandidateId: null,
+        selectedRevisionId: null,
       };
 
       const elements = {
+        acceptQuickCheckButton: document.querySelector("[data-action='accept-quick-check']"),
+        candidateForm: document.querySelector("#quick-check-candidate-form"),
+        candidateList: document.querySelector("#quick-check-candidate-list"),
+        candidateStatusFilter: document.querySelector("#quick-check-candidate-status-filter"),
         curatorModeTab: document.querySelector("#curator-mode-tab"),
+        curationDetail: document.querySelector("#quick-check-curation-detail"),
         logoutButton: document.querySelector("#logout-button"),
+        optionInputs: Array.from(document.querySelectorAll("input[name='optionText']")),
         programIdInput: document.querySelector("#program-id-input"),
         quickCheckActions: Array.from(document.querySelectorAll("[data-requires-session]")),
+        readQuickCheckCurationButton: document.querySelector("[data-action='read-quick-check-curation']"),
+        rejectQuickCheckButton: document.querySelector("[data-action='reject-quick-check']"),
         refreshCandidatesButton: document.querySelector("#refresh-candidates-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
         sessionSummary: document.querySelector("#session-summary"),
@@ -449,12 +488,108 @@ export const learnUiHtml = `<!doctype html>
         state.programId = elements.programIdInput.value.trim();
       });
 
+      elements.candidateForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi()) {
+          renderCurationStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const formData = new FormData(elements.candidateForm);
+        const options = elements.optionInputs.map($0 => $0.value.trim());
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/quick-checks/candidates", {
+          body: {
+            answerKeyOptionIndex: Number(formData.get("answerKeyOptionIndex")),
+            checkKind: "single_select_quick_check",
+            options,
+            prompt: String(formData.get("prompt") ?? ""),
+            rationale: String(formData.get("rationale") ?? ""),
+            sourceIds: [],
+            title: String(formData.get("title") ?? ""),
+          },
+          csrf: true,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          state.selectedCandidateId = result.value.quickCheckCandidate.candidateId;
+          await refreshCandidates();
+          renderCurationStatus("Created " + result.value.quickCheckCandidate.title);
+          return;
+        }
+        renderCurationStatus("Create failed");
+      });
+
       elements.curatorModeTab.addEventListener("click", () => {
         setMode("curator");
       });
 
       elements.studentModeTab.addEventListener("click", () => {
         setMode("student");
+      });
+
+      elements.refreshCandidatesButton.addEventListener("click", async () => {
+        await refreshCandidates();
+      });
+
+      elements.candidateList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-candidate-id]");
+        if (!button) {
+          return;
+        }
+        state.selectedCandidateId = button.dataset.candidateId;
+        const candidate = state.candidates.find($0 => $0.candidateId === state.selectedCandidateId);
+        renderCurationStatus(candidate ? "Selected " + candidate.title : "Selected candidate unavailable");
+      });
+
+      elements.acceptQuickCheckButton.addEventListener("click", async () => {
+        if (!state.selectedCandidateId) {
+          renderCurationStatus("Select a candidate first.");
+          return;
+        }
+        const result = await requestJson("/quick-checks/candidates/" + encodeURIComponent(state.selectedCandidateId) + "/acceptance", {
+          body: {},
+          csrf: true,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          state.acceptedQuickCheck = result.value.acceptedQuickCheck;
+          state.selectedRevisionId = result.value.acceptedQuickCheck.revisionId;
+          renderCurationStatus("Accepted " + result.value.acceptedQuickCheck.title);
+          await refreshCandidates();
+          return;
+        }
+        renderCurationStatus("Accept failed");
+      });
+
+      elements.rejectQuickCheckButton.addEventListener("click", async () => {
+        if (!state.selectedCandidateId) {
+          renderCurationStatus("Select a candidate first.");
+          return;
+        }
+        const result = await requestJson("/quick-checks/candidates/" + encodeURIComponent(state.selectedCandidateId) + "/rejection", {
+          body: {},
+          csrf: true,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          renderCurationStatus("Rejected " + result.value.quickCheckCandidate.title);
+          await refreshCandidates();
+          return;
+        }
+        renderCurationStatus("Reject failed");
+      });
+
+      elements.readQuickCheckCurationButton.addEventListener("click", async () => {
+        if (!state.selectedRevisionId) {
+          renderCurationStatus("Accept a candidate before inspection.");
+          return;
+        }
+        const result = await requestJson("/quick-checks/revisions/" + encodeURIComponent(state.selectedRevisionId) + "/curation");
+        if (result.status === "accepted") {
+          state.acceptedQuickCheck = result.value.acceptedQuickCheck;
+          renderAcceptedQuickCheck(state.acceptedQuickCheck);
+          return;
+        }
+        renderCurationStatus("Inspection failed");
       });
 
       function acceptSession(value) {
@@ -478,6 +613,62 @@ export const learnUiHtml = `<!doctype html>
         for (const action of elements.quickCheckActions) {
           action.disabled = !signedIn;
         }
+      }
+
+      async function refreshCandidates() {
+        if (!canUseProgramApi()) {
+          renderCurationStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const status = elements.candidateStatusFilter.value;
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/quick-checks/candidates?status=" + encodeURIComponent(status),
+        );
+        if (result.status === "accepted") {
+          state.candidates = result.value.quickCheckCandidates;
+          renderCandidateList();
+          return;
+        }
+        state.candidates = [];
+        renderCandidateList();
+        renderCurationStatus("Refresh failed");
+      }
+
+      function renderCandidateList() {
+        if (state.candidates.length === 0) {
+          elements.candidateList.innerHTML = '<p class="empty">No curator items loaded.</p>';
+          return;
+        }
+        elements.candidateList.innerHTML = "";
+        for (const candidate of state.candidates) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.candidateId = candidate.candidateId;
+          button.textContent = candidate.title + " " + candidate.status;
+          elements.candidateList.append(button);
+        }
+      }
+
+      function renderAcceptedQuickCheck(quickCheck) {
+        const answer = quickCheck.options.find($0 => $0.optionId === quickCheck.answerKeyOptionId);
+        const lines = [
+          quickCheck.title,
+          quickCheck.prompt,
+          "Answer: " + (answer ? answer.text : "Unavailable"),
+        ];
+        if (quickCheck.rationale) {
+          lines.push("Rationale: " + quickCheck.rationale);
+        }
+        elements.curationDetail.textContent = lines.join("\\n");
+      }
+
+      function renderCurationStatus(message) {
+        elements.curationDetail.textContent = message;
+      }
+
+      function canUseProgramApi() {
+        state.programId = elements.programIdInput.value.trim();
+        return Boolean(state.identity && state.programId);
       }
 
       function setMode(mode) {

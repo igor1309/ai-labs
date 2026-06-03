@@ -119,7 +119,7 @@ Targeted commands:
 
 - [x] Phase 1 - Shell Route and Redaction
 - [x] Phase 2 - Session and Program Context UI
-- [ ] Phase 3 - Curator Quick Check UI
+- [x] Phase 3 - Curator Quick Check UI
 - [ ] Phase 4 - Student Quick Check UI
 - [ ] Phase 5 - Layout, Accessibility, Traceability, and Closeout
 

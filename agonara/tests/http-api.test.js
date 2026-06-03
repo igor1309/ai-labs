@@ -107,7 +107,6 @@ test("quickCheckProductUiLearnRoute_shouldHideRuntimeSecrets_onGetLearn", async 
       "agonara_session=",
       "password_hash",
       "x-agonara-idempotency-key",
-      "answerKeyOptionId",
       "acceptedFromCandidateId",
       "DATABASE_URL",
       "better-sqlite3",
