@@ -72,6 +72,23 @@
         "No false UNALLOCATED finding is made — a deferred, cross-cutting, or owner-explicit capability is never flagged as owned-by-nobody.",
         "The Inspected section confirms the four intent files, the responsibility map, and all 16 ADRs were read."
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Run the ADR → spec pass on the agonara Corpus Storage + Curator Workspace module — does the spec honour every ADR-010 decision?",
+      "expected_output": "A complete per-decision matrix over ADR-010 and its two corpus-acceptance specs, finding the specs faithful (0 contradicted, 0 missing) with the broad content-kind set correctly classified deferred (not missing) under the ADR's narrow-first-implementation allowance.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by adr-spec and the module (corpus-curator).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the ADR → spec pass, the Corpus Storage + Curator Workspace module, and agonara, mechanism: per-decision matrix, and an inputs list giving adr-010 (status) and both corpus-storage-and-curator-acceptance specs (api + first-slice) with version/status.",
+        "The matrix is the primary artifact: one row per ADR-010 decision / rule / invariant (pinned to the ADR's own Decision and Rules sections), each row carrying a verdict (honoured, contradicted, missing, or deferred) and either a spec file:line evidence citation or 'none'.",
+        "There are 0 contradicted rows (no fail).",
+        "There are 0 missing rows, so 0 findings total.",
+        "Honoured rows cite concrete spec evidence with file:line (e.g. the 'draft rejection MUST NOT delete accepted corpus' invariant at adr-010:85 maps to a first-slice spec rule).",
+        "The broad content-kind set (ADR-010 at :48/:75 owns topics, concepts, definitions, principles, material references, source metadata, accepted assessment items, and criteria) where the first slice realizes only topic/concept is classified deferred (not missing), citing adr-010:102 (narrow first implementation) and/or Non-Goal adr-010:109, and routed as an open question for a later spec slice — not reported as a gap.",
+        "Admin recovery (R23, adr-010:87 'later ADR-defined exceptional flow') and the later-ADR extension clause (adr-010:88) are classified deferred, not findings.",
+        "Findings are derived mechanically from the matrix and no false positive is made — a narrowing authorized by an ADR Non-Goal or first-slice scoping line is deferred, never flagged missing.",
+        "The Inspected section confirms ADR-010 and both corpus-storage-and-curator-acceptance specs were read."
+      ]
     }
   ]
 }
