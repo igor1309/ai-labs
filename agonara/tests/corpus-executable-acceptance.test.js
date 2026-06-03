@@ -90,6 +90,102 @@ test("corpusAcceptance_shouldBuildAcceptedProgramCorpusFromGroundedCandidate", (
   }
 });
 
+test("learnerEvidenceTargetLinkCuration_shouldCreateListAndSoftDeleteAcceptedCorpusMetadata", () => {
+  const { corpusCommands, database, programCommands } = makeSUT();
+
+  try {
+    const program = programCommands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Cell Biology",
+      description: "Introductory cell biology",
+    }).value.programShell;
+    const targetCandidate = corpusCommands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      candidateKind: "topic",
+      title: "Membrane transport",
+    }).value.navigationCandidate;
+    const acceptedTarget = corpusCommands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: targetCandidate.candidateId,
+    }).value.navigationChange.acceptedCorpus;
+    const quickCheckCandidate = corpusCommands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      checkKind: "single_select_quick_check",
+      title: "Membrane transport check",
+      prompt: "Which property controls membrane transport?",
+      options: ["Selective permeability", "Random sorting"],
+      answerKeyIndex: 0,
+    }).value.quickCheckCandidate;
+    const acceptedQuickCheck = corpusCommands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: quickCheckCandidate.candidateId,
+    }).value.acceptedQuickCheck;
+    const created = corpusCommands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      targetKind: "topic",
+      targetId: acceptedTarget.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: acceptedQuickCheck.entityId,
+    });
+    const listedBeforeDelete = corpusCommands.listLearnerEvidenceTargetLinks({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+    });
+    const deleted = corpusCommands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      linkId: created.value.learnerEvidenceTargetLink.linkId,
+    });
+    const listedAfterDelete = corpusCommands.listLearnerEvidenceTargetLinks({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+    });
+
+    assert.deepEqual(
+      {
+        created: learnerEvidenceTargetLinkAcceptanceProjection(created),
+        listedBeforeDelete: listedBeforeDelete.value.learnerEvidenceTargetLinks.map(learnerEvidenceTargetLinkSummary),
+        deletedStatus: deleted.value.learnerEvidenceTargetLink.status,
+        listedAfterDelete,
+      },
+      {
+        created: {
+          status: "accepted",
+          link: {
+            programId: program.programId,
+            targetKind: "topic",
+            targetId: acceptedTarget.entityId,
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: acceptedQuickCheck.entityId,
+            status: "active",
+          },
+        },
+        listedBeforeDelete: [
+          {
+            programId: program.programId,
+            targetKind: "topic",
+            targetId: acceptedTarget.entityId,
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: acceptedQuickCheck.entityId,
+            status: "active",
+          },
+        ],
+        deletedStatus: "deleted",
+        listedAfterDelete: {
+          status: "accepted",
+          value: {
+            learnerEvidenceTargetLinks: [],
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("corpusAcceptance_shouldReplaceCurrentRevisionAndKeepHistoricalRevision", () => {
   const { corpusCommands, database, programCommands } = makeSUT();
 
@@ -618,6 +714,24 @@ function listOutOfScopeSurfaces() {
       .filter($0 => $0.test(content))
       .map($0 => `${file}:${$0.source}`);
   });
+}
+
+function learnerEvidenceTargetLinkAcceptanceProjection(result) {
+  return {
+    status: result.status,
+    link: learnerEvidenceTargetLinkSummary(result.value.learnerEvidenceTargetLink),
+  };
+}
+
+function learnerEvidenceTargetLinkSummary(link) {
+  return {
+    programId: link.programId,
+    targetKind: link.targetKind,
+    targetId: link.targetId,
+    evidenceOwnerKind: link.evidenceOwnerKind,
+    evidenceOwnerEntityId: link.evidenceOwnerEntityId,
+    status: link.status,
+  };
 }
 
 function containsForbiddenDetail(values) {

@@ -14,9 +14,11 @@ import {
   createAssessmentCriterionCandidateRecord,
   createCorpusCandidateRecord,
   createCorpusEventRecord,
+  createLearnerEvidenceTargetLinkRecord,
   createOpenAnswerCheckCandidateRecord,
   createProgramSourceRecord,
   createQuickCheckCandidateRecord,
+  deleteLearnerEvidenceTargetLinkRecord,
   getAcceptedAssessmentCriterionEntityRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusEntityRecord,
@@ -29,6 +31,7 @@ import {
   getAssessmentCriterionCandidateRecord,
   getCorpusCandidateRecord,
   getIdentity,
+  getLearnerEvidenceTargetLinkRecord,
   getOpenAnswerCheckCandidateRecord,
   getProgramShellRecord,
   getQuickCheckCandidateRecord,
@@ -41,6 +44,7 @@ import {
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
+  listLearnerEvidenceTargetLinkRecords,
   listOpenAnswerCheckCandidateRecords,
   listProgramSourceRecords,
   listQuickCheckCandidateRecords,
@@ -99,6 +103,12 @@ const supportedNavigationRelationshipKinds = new Set([
 const supportedAssessmentCandidateStatuses = new Set(["draft", "accepted", "rejected"]);
 const supportedCheckKinds = new Set(["open_answer"]);
 const supportedQuickCheckKinds = new Set(["single_select_quick_check"]);
+const supportedLearnerEvidenceTargetKinds = new Set(["topic", "concept", "material_reference"]);
+const supportedLearnerEvidenceOwnerKinds = new Set([
+  "accepted_assessment_criterion",
+  "accepted_open_answer_check",
+  "accepted_quick_check",
+]);
 
 export function createCorpusCommands({
   database,
@@ -125,6 +135,8 @@ export function createCorpusCommands({
       createQuickCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     createCorpusCandidate: input =>
       createCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
+    createLearnerEvidenceTargetLink: input =>
+      createLearnerEvidenceTargetLink({ database, generateId, getEffectiveParticipation, input, now }),
     createNavigationCandidate: input =>
       createNavigationCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     getAcceptedAssessmentCriterionRevision: input =>
@@ -135,6 +147,8 @@ export function createCorpusCommands({
       getAcceptedQuickCheckRevisionForCuration({ database, getEffectiveParticipation, input }),
     getQuickCheckDelivery: input =>
       getQuickCheckDelivery({ database, getEffectiveParticipation, input }),
+    deleteLearnerEvidenceTargetLink: input =>
+      deleteLearnerEvidenceTargetLink({ database, getEffectiveParticipation, input, now }),
     getAcceptedCorpusRevision: input =>
       getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }),
     getNavigationEntity: input =>
@@ -159,6 +173,8 @@ export function createCorpusCommands({
       listNavigationCandidates({ database, getEffectiveParticipation, input }),
     listCorpusEvents: input =>
       listCorpusEvents({ database, getEffectiveParticipation, input }),
+    listLearnerEvidenceTargetLinks: input =>
+      listLearnerEvidenceTargetLinks({ database, getEffectiveParticipation, input }),
     listOpenAnswerCheckCandidates: input =>
       listOpenAnswerCheckCandidates({ database, getEffectiveParticipation, input }),
     listProgramSources: input =>
@@ -835,6 +851,103 @@ function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {
     acceptedCorpus: entities.map($0 =>
       summarizeAcceptedCorpus(getAcceptedCorpusRevisionRecord(database, $0.currentRevisionId)),
     ),
+  });
+}
+
+function createLearnerEvidenceTargetLink({ database, generateId, getEffectiveParticipation, input, now }) {
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const targetResolution = resolveLearnerEvidenceTarget(database, {
+    programId: authorization.program.id,
+    targetKind: input?.targetKind,
+    targetId: input?.targetId,
+  });
+  if (targetResolution.status === "rejected") {
+    return rejected(targetResolution.reason);
+  }
+
+  const evidenceOwnerResolution = resolveLearnerEvidenceOwner(database, {
+    programId: authorization.program.id,
+    evidenceOwnerKind: input?.evidenceOwnerKind,
+    evidenceOwnerEntityId: input?.evidenceOwnerEntityId,
+  });
+  if (evidenceOwnerResolution.status === "rejected") {
+    return rejected(evidenceOwnerResolution.reason);
+  }
+
+  const existingLink = listLearnerEvidenceTargetLinkRecords(database, {
+    programId: authorization.program.id,
+  }).find(
+    $0 =>
+      $0.targetKind === input.targetKind &&
+      $0.targetId === input.targetId &&
+      $0.evidenceOwnerKind === input.evidenceOwnerKind &&
+      $0.evidenceOwnerEntityId === input.evidenceOwnerEntityId,
+  );
+  if (existingLink) {
+    return accepted({ learnerEvidenceTargetLink: summarizeLearnerEvidenceTargetLink(existingLink) });
+  }
+
+  const timestamp = now().toISOString();
+  const link = createLearnerEvidenceTargetLinkRecord(database, {
+    id: generateId(),
+    programId: authorization.program.id,
+    targetKind: input.targetKind,
+    targetId: input.targetId,
+    evidenceOwnerKind: input.evidenceOwnerKind,
+    evidenceOwnerEntityId: input.evidenceOwnerEntityId,
+    createdByIdentityId: authorization.identity.id,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+
+  return accepted({ learnerEvidenceTargetLink: summarizeLearnerEvidenceTargetLink(link) });
+}
+
+function deleteLearnerEvidenceTargetLink({ database, getEffectiveParticipation, input, now }) {
+  const link = getLearnerEvidenceTargetLinkRecord(database, input?.linkId);
+  if (!link || link.status !== "active") {
+    return rejected("learner_state_target_link_not_found");
+  }
+
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: link.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const deletedLink = deleteLearnerEvidenceTargetLinkRecord(database, {
+    id: link.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({ learnerEvidenceTargetLink: summarizeLearnerEvidenceTargetLink(deletedLink) });
+}
+
+function listLearnerEvidenceTargetLinks({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  return accepted({
+    learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, {
+      programId: authorization.program.id,
+    }).map(summarizeLearnerEvidenceTargetLink),
   });
 }
 
@@ -1730,6 +1843,105 @@ function resolveAssessmentCuratorAuthorization({ database, getEffectiveParticipa
   return { status: "accepted", identity, program };
 }
 
+function resolveLearnerEvidenceTarget(database, { programId, targetKind, targetId }) {
+  if (
+    !supportedLearnerEvidenceTargetKinds.has(targetKind) ||
+    !isNonEmptyText(targetId)
+  ) {
+    return { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+
+  const entity = getAcceptedCorpusEntityRecord(database, targetId);
+  if (!entity) {
+    return { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+  if (entity.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_target_program_mismatch" };
+  }
+  if (entity.acceptedKind !== targetKind) {
+    return { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+
+  const revision = getAcceptedCorpusRevisionRecord(database, entity.currentRevisionId);
+  if (!revision || revision.programId !== programId || revision.acceptedKind !== targetKind) {
+    return { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+
+  return { status: "accepted", entity, revision };
+}
+
+function resolveLearnerEvidenceOwner(
+  database,
+  { programId, evidenceOwnerKind, evidenceOwnerEntityId },
+) {
+  if (
+    !supportedLearnerEvidenceOwnerKinds.has(evidenceOwnerKind) ||
+    !isNonEmptyText(evidenceOwnerEntityId)
+  ) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+
+  if (evidenceOwnerKind === "accepted_quick_check") {
+    return resolveLearnerEvidenceQuickCheckOwner(database, { programId, evidenceOwnerEntityId });
+  }
+  if (evidenceOwnerKind === "accepted_open_answer_check") {
+    return resolveLearnerEvidenceOpenAnswerCheckOwner(database, { programId, evidenceOwnerEntityId });
+  }
+
+  return resolveLearnerEvidenceAssessmentCriterionOwner(database, { programId, evidenceOwnerEntityId });
+}
+
+function resolveLearnerEvidenceQuickCheckOwner(database, { programId, evidenceOwnerEntityId }) {
+  const entity = getAcceptedQuickCheckEntityRecord(database, evidenceOwnerEntityId);
+  if (!entity) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+  if (entity.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_program_mismatch" };
+  }
+
+  const revision = getAcceptedQuickCheckRevisionRecord(database, entity.currentRevisionId);
+  if (!revision || revision.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+
+  return { status: "accepted", entity, revision };
+}
+
+function resolveLearnerEvidenceOpenAnswerCheckOwner(database, { programId, evidenceOwnerEntityId }) {
+  const entity = getAcceptedOpenAnswerCheckEntityRecord(database, evidenceOwnerEntityId);
+  if (!entity) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+  if (entity.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_program_mismatch" };
+  }
+
+  const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, entity.currentRevisionId);
+  if (!revision || revision.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+
+  return { status: "accepted", entity, revision };
+}
+
+function resolveLearnerEvidenceAssessmentCriterionOwner(database, { programId, evidenceOwnerEntityId }) {
+  const entity = getAcceptedAssessmentCriterionEntityRecord(database, evidenceOwnerEntityId);
+  if (!entity) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+  if (entity.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_program_mismatch" };
+  }
+
+  const revision = getAcceptedAssessmentCriterionRevisionRecord(database, entity.currentRevisionId);
+  if (!revision || revision.programId !== programId) {
+    return { status: "rejected", reason: "learner_state_evidence_owner_not_found" };
+  }
+
+  return { status: "accepted", entity, revision };
+}
+
 function resolveAssessmentAcceptedReadAuthorization({ database, getEffectiveParticipation, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -2139,6 +2351,21 @@ function summarizeAcceptedCorpus(revision) {
   }
 
   return summary;
+}
+
+function summarizeLearnerEvidenceTargetLink(link) {
+  return {
+    linkId: link.id,
+    programId: link.programId,
+    targetKind: link.targetKind,
+    targetId: link.targetId,
+    evidenceOwnerKind: link.evidenceOwnerKind,
+    evidenceOwnerEntityId: link.evidenceOwnerEntityId,
+    status: link.status,
+    createdByIdentityId: link.createdByIdentityId,
+    createdAt: link.createdAt,
+    updatedAt: link.updatedAt,
+  };
 }
 
 function summarizeNavigationCandidate(candidate) {

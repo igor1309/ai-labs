@@ -27,6 +27,7 @@ import {
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
+  listLearnerEvidenceTargetLinkRecords,
   listOpenAnswerCheckCandidateRecords,
   listProgramSourceRecords,
   listQuickCheckCandidateRecords,
@@ -4636,6 +4637,408 @@ test("quickCheckDeliveryReads_shouldNotMutateCorpusOrAdjacentDomains", async () 
   }
 });
 
+test("learnerEvidenceTargetLinks_shouldExposeCurationCommands", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    assert.deepEqual(
+      {
+        create: typeof commands.createLearnerEvidenceTargetLink,
+        delete: typeof commands.deleteLearnerEvidenceTargetLink,
+        list: typeof commands.listLearnerEvidenceTargetLinks,
+      },
+      {
+        create: "function",
+        delete: "function",
+        list: "function",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerEvidenceTargetLinks_shouldCreateListAndSoftDeleteActiveLinksForProgramCurator", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("learner-link", 80) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const target = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Cell membranes",
+    });
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    const beforeStudentWorkspace = snapshotLearnerEvidenceStudentWorkspace(database);
+
+    const created = commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    });
+    const duplicate = commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    });
+    const listedBeforeDelete = commands.listLearnerEvidenceTargetLinks({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const deleted = commands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      linkId: created.value.learnerEvidenceTargetLink.linkId,
+    });
+    const listedAfterDelete = commands.listLearnerEvidenceTargetLinks({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const createdLink = created.value.learnerEvidenceTargetLink;
+
+    assert.deepEqual(
+      {
+        created: {
+          status: created.status,
+          link: learnerEvidenceTargetLinkProjection(createdLink),
+          hasStableGeneratedFields: isNonEmptyTestText(createdLink.linkId) &&
+            isNonEmptyTestText(createdLink.createdAt) &&
+            createdLink.createdAt === createdLink.updatedAt,
+        },
+        duplicateMatchesCreated: duplicate.value.learnerEvidenceTargetLink,
+        listedBeforeDelete,
+        deleted: {
+          status: deleted.status,
+          link: {
+            ...deleted.value.learnerEvidenceTargetLink,
+            updatedAt: "redacted-updated-at",
+          },
+        },
+        listedAfterDelete,
+        storedLinks: listLearnerEvidenceTargetLinkRecords(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }).map($0 => ({
+          id: isNonEmptyTestText($0.id),
+          status: $0.status,
+          targetKind: $0.targetKind,
+          targetId: $0.targetId,
+          evidenceOwnerKind: $0.evidenceOwnerKind,
+          evidenceOwnerEntityId: $0.evidenceOwnerEntityId,
+        })),
+        studentWorkspaceBefore: beforeStudentWorkspace,
+        studentWorkspaceAfter: snapshotLearnerEvidenceStudentWorkspace(database),
+      },
+      {
+        created: {
+          status: "accepted",
+          link: {
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: target.entityId,
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: quickCheck.entityId,
+            status: "active",
+            createdByIdentityId: "identity-curator",
+          },
+          hasStableGeneratedFields: true,
+        },
+        duplicateMatchesCreated: createdLink,
+        listedBeforeDelete: {
+          status: "accepted",
+          value: {
+            learnerEvidenceTargetLinks: [createdLink],
+          },
+        },
+        deleted: {
+          status: "accepted",
+          link: {
+            ...createdLink,
+            status: "deleted",
+            updatedAt: "redacted-updated-at",
+          },
+        },
+        listedAfterDelete: {
+          status: "accepted",
+          value: {
+            learnerEvidenceTargetLinks: [],
+          },
+        },
+        storedLinks: [
+          {
+            id: true,
+            status: "deleted",
+            targetKind: "topic",
+            targetId: target.entityId,
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: quickCheck.entityId,
+          },
+        ],
+        studentWorkspaceBefore: beforeStudentWorkspace,
+        studentWorkspaceAfter: beforeStudentWorkspace,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerEvidenceTargetLinks_shouldRequireActiveProgramCuratorForCreateListAndDelete", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("learner-auth", 80) });
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedStudentMembership(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+    });
+    const target = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Authorization topic",
+    });
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    const validInput = {
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    };
+    const link = commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      ...validInput,
+    }).value.learnerEvidenceTargetLink;
+
+    assert.deepEqual(
+      {
+        createStudent: commands.createLearnerEvidenceTargetLink({
+          actingIdentityId: "identity-student",
+          ...validInput,
+        }),
+        createAdmin: commands.createLearnerEvidenceTargetLink({
+          actingIdentityId: "identity-admin",
+          ...validInput,
+        }),
+        createDisabled: commands.createLearnerEvidenceTargetLink({
+          actingIdentityId: "identity-disabled",
+          ...validInput,
+        }),
+        createMissingProgram: commands.createLearnerEvidenceTargetLink({
+          actingIdentityId: "identity-curator",
+          ...validInput,
+          programId: "program-missing",
+        }),
+        listStudent: commands.listLearnerEvidenceTargetLinks({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }),
+        listAdmin: commands.listLearnerEvidenceTargetLinks({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+        }),
+        deleteAdmin: commands.deleteLearnerEvidenceTargetLink({
+          actingIdentityId: "identity-admin",
+          linkId: link.linkId,
+        }),
+        deleteMissing: commands.deleteLearnerEvidenceTargetLink({
+          actingIdentityId: "identity-curator",
+          linkId: "learner-target-link-missing",
+        }),
+      },
+      {
+        createStudent: { status: "rejected", reason: "admin_or_curator_required" },
+        createAdmin: { status: "rejected", reason: "admin_or_curator_required" },
+        createDisabled: { status: "rejected", reason: "identity_not_active" },
+        createMissingProgram: { status: "rejected", reason: "program_not_found" },
+        listStudent: { status: "rejected", reason: "admin_or_curator_required" },
+        listAdmin: { status: "rejected", reason: "admin_or_curator_required" },
+        deleteAdmin: { status: "rejected", reason: "admin_or_curator_required" },
+        deleteMissing: { status: "rejected", reason: "learner_state_target_link_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerEvidenceTargetLinks_shouldRejectInvalidTargetsAndEvidenceOwners", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("learner-validation", 160) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    const target = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Valid topic",
+    });
+    const nonNavigationTarget = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "definition",
+      title: "Definition",
+      body: "Definition body",
+    });
+    const crossProgramTarget = createAcceptedNavigationTarget(commands, {
+      programId: "program-b",
+      candidateKind: "topic",
+      title: "Other topic",
+    });
+    const draftTarget = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Draft topic",
+    }).value.navigationCandidate;
+    const rejectedTarget = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Rejected topic",
+    }).value.navigationCandidate;
+    commands.rejectNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedTarget.candidateId,
+    });
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    const crossProgramQuickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-b" });
+    const draftQuickCheck = commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Draft quick check",
+      prompt: "Draft prompt",
+      options: ["A", "B"],
+      answerKeyIndex: 0,
+    }).value.quickCheckCandidate;
+    const rejectedQuickCheck = commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Rejected quick check",
+      prompt: "Rejected prompt",
+      options: ["A", "B"],
+      answerKeyIndex: 0,
+    }).value.quickCheckCandidate;
+    commands.rejectQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedQuickCheck.candidateId,
+    });
+    const acceptedCriterion = createAcceptedAssessmentCriterionOwner(commands, {
+      programId: "program-a",
+    });
+    const openAnswerCheck = createAcceptedOpenAnswerOwner(commands, {
+      programId: "program-a",
+      criterionEntityIds: [acceptedCriterion.entityId],
+    });
+
+    const baseInput = {
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    };
+
+    assert.deepEqual(
+      {
+        unsupportedTargetKind: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetKind: "definition",
+          targetId: nonNavigationTarget.entityId,
+        }),
+        nonNavigationTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetId: nonNavigationTarget.entityId,
+        }),
+        missingTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetId: "target-missing",
+        }),
+        draftTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetId: draftTarget.candidateId,
+        }),
+        rejectedTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetId: rejectedTarget.candidateId,
+        }),
+        crossProgramTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetId: crossProgramTarget.entityId,
+        }),
+        unsupportedEvidenceOwnerKind: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerKind: "quick_check_candidate",
+        }),
+        missingEvidenceOwner: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerEntityId: "evidence-owner-missing",
+        }),
+        draftEvidenceOwner: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerEntityId: draftQuickCheck.candidateId,
+        }),
+        rejectedEvidenceOwner: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerEntityId: rejectedQuickCheck.candidateId,
+        }),
+        crossProgramEvidenceOwner: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerEntityId: crossProgramQuickCheck.entityId,
+        }),
+        acceptedOpenAnswerOwner: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerKind: "accepted_open_answer_check",
+          evidenceOwnerEntityId: openAnswerCheck.entityId,
+        }).status,
+        acceptedCriterionOwner: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          evidenceOwnerKind: "accepted_assessment_criterion",
+          evidenceOwnerEntityId: acceptedCriterion.entityId,
+        }).status,
+      },
+      {
+        unsupportedTargetKind: { status: "rejected", reason: "learner_state_target_not_found" },
+        nonNavigationTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        missingTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        draftTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        rejectedTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        crossProgramTarget: { status: "rejected", reason: "learner_state_target_program_mismatch" },
+        unsupportedEvidenceOwnerKind: {
+          status: "rejected",
+          reason: "learner_state_evidence_owner_not_found",
+        },
+        missingEvidenceOwner: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+        draftEvidenceOwner: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+        rejectedEvidenceOwner: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+        crossProgramEvidenceOwner: {
+          status: "rejected",
+          reason: "learner_state_evidence_owner_program_mismatch",
+        },
+        acceptedOpenAnswerOwner: "accepted",
+        acceptedCriterionOwner: "accepted",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listCorpusEvents_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 
@@ -5005,6 +5408,10 @@ function sequentialIds() {
   ];
 }
 
+function generatedIds(prefix, count) {
+  return Array.from({ length: count }, (_, index) => `${prefix}-${index + 1}`);
+}
+
 function makeIdGenerator(ids) {
   const nextIds = [...ids];
   return () => nextIds.shift();
@@ -5016,6 +5423,22 @@ function captureResult(run) {
   } catch (error) {
     return { thrown: error.code ?? error.message };
   }
+}
+
+function isNonEmptyTestText(value) {
+  return typeof value === "string" && value.length > 0;
+}
+
+function learnerEvidenceTargetLinkProjection(link) {
+  return {
+    programId: link.programId,
+    targetKind: link.targetKind,
+    targetId: link.targetId,
+    evidenceOwnerKind: link.evidenceOwnerKind,
+    evidenceOwnerEntityId: link.evidenceOwnerEntityId,
+    status: link.status,
+    createdByIdentityId: link.createdByIdentityId,
+  };
 }
 
 function containsForbiddenDetail(values) {
@@ -5125,6 +5548,82 @@ function acceptNavigationCandidate(
   return acceptedCandidate.value.navigationChange.acceptedCorpus;
 }
 
+function createAcceptedNavigationTarget(
+  commands,
+  {
+    programId,
+    candidateKind,
+    title,
+    body = `${title} body`,
+  },
+) {
+  const candidate = commands.createNavigationCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    candidateKind,
+    title,
+    body,
+    ...(candidateKind === "material_reference"
+      ? {
+          materialReferenceKind: "article",
+          locator: `https://example.test/${title.toLowerCase().replaceAll(" ", "-")}`,
+        }
+      : {}),
+  });
+  const acceptedCandidate = commands.acceptNavigationCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.navigationCandidate.candidateId,
+  });
+  return acceptedCandidate.value.navigationChange.acceptedCorpus;
+}
+
+function createAcceptedQuickCheckOwner(commands, { programId }) {
+  const candidate = commands.createQuickCheckCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    checkKind: "single_select_quick_check",
+    title: `Quick check ${programId}`,
+    prompt: `Prompt ${programId}`,
+    options: ["A", "B"],
+    answerKeyIndex: 0,
+  });
+  const acceptedCandidate = commands.acceptQuickCheckCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.quickCheckCandidate.candidateId,
+  });
+  return acceptedCandidate.value.acceptedQuickCheck;
+}
+
+function createAcceptedAssessmentCriterionOwner(commands, { programId }) {
+  const candidate = commands.createAssessmentCriterionCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    title: `Criterion ${programId}`,
+    body: `Criterion body ${programId}`,
+  });
+  const acceptedCandidate = commands.acceptAssessmentCriterionCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.assessmentCriterionCandidate.candidateId,
+  });
+  return acceptedCandidate.value.acceptedAssessmentCriterion;
+}
+
+function createAcceptedOpenAnswerOwner(commands, { programId, criterionEntityIds }) {
+  const candidate = commands.createOpenAnswerCheckCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    checkKind: "open_answer",
+    title: `Open answer ${programId}`,
+    prompt: `Open answer prompt ${programId}`,
+    criterionEntityIds,
+  });
+  const acceptedCandidate = commands.acceptOpenAnswerCheckCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.openAnswerCheckCandidate.candidateId,
+  });
+  return acceptedCandidate.value.acceptedOpenAnswerCheck;
+}
+
 function snapshotAdjacentDomains(database) {
   return {
     acceptedAssessmentCriterionEntityCount: countRows(database, "accepted_assessment_criterion_entities"),
@@ -5175,6 +5674,18 @@ function snapshotAdjacentDomains(database) {
          order by id`,
       )
       .all(),
+  };
+}
+
+function snapshotLearnerEvidenceStudentWorkspace(database) {
+  return {
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerEvaluationCount: countRows(database, "open_answer_evaluations"),
+    openAnswerEvaluationFailureCount: countRows(database, "open_answer_evaluation_failures"),
+    openAnswerEvaluatorEvidenceCount: countRows(database, "open_answer_evaluator_evidence"),
+    openAnswerEvaluatorRunCount: countRows(database, "open_answer_evaluator_runs"),
+    quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    sessionCount: countRows(database, "sessions"),
   };
 }
 
