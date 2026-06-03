@@ -7,37 +7,47 @@ import {
   createAcceptedCorpusRevisionRecord,
   createAcceptedOpenAnswerCheckEntityRecord,
   createAcceptedOpenAnswerCheckRevisionRecord,
+  createAcceptedQuickCheckEntityRecord,
+  createAcceptedQuickCheckRevisionRecord,
   createAssessmentCriterionCandidateRecord,
   createCorpusCandidateRecord,
   createCorpusEventRecord,
   createOpenAnswerCheckCandidateRecord,
   createProgramSourceRecord,
+  createQuickCheckCandidateRecord,
   getAcceptedAssessmentCriterionEntityRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusEntityRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
+  getAcceptedQuickCheckEntityRecord,
+  getAcceptedQuickCheckRevisionRecord,
   getAssessmentCriterionCandidateRecord,
   getCorpusCandidateRecord,
   getIdentity,
   getOpenAnswerCheckCandidateRecord,
   getProgramShellRecord,
+  getQuickCheckCandidateRecord,
   isEffectiveAdmin,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedQuickCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
   listOpenAnswerCheckCandidateRecords,
   listProgramSourceRecords,
+  listQuickCheckCandidateRecords,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedCorpusEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
+  updateAcceptedQuickCheckEntityCurrentRevision,
   updateAssessmentCriterionCandidateStatus,
   updateCorpusCandidateStatus,
   updateOpenAnswerCheckCandidateStatus,
+  updateQuickCheckCandidateStatus,
 } from "./storage.js";
 
 const supportedSourceKinds = new Set([
@@ -55,6 +65,7 @@ const supportedSourceKinds = new Set([
 const supportedCandidateKinds = new Set(["topic", "concept"]);
 const supportedAssessmentCandidateStatuses = new Set(["draft", "accepted", "rejected"]);
 const supportedCheckKinds = new Set(["open_answer"]);
+const supportedQuickCheckKinds = new Set(["single_select_quick_check"]);
 
 export function createCorpusCommands({
   database,
@@ -67,24 +78,34 @@ export function createCorpusCommands({
       acceptAssessmentCriterionCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     acceptOpenAnswerCheckCandidate: input =>
       acceptOpenAnswerCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }),
+    acceptQuickCheckCandidate: input =>
+      acceptQuickCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     acceptCorpusCandidate: input =>
       acceptCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     createAssessmentCriterionCandidate: input =>
       createAssessmentCriterionCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     createOpenAnswerCheckCandidate: input =>
       createOpenAnswerCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }),
+    createQuickCheckCandidate: input =>
+      createQuickCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     createCorpusCandidate: input =>
       createCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
     getAcceptedAssessmentCriterionRevision: input =>
       getAcceptedAssessmentCriterionRevision({ database, getEffectiveParticipation, input }),
     getAcceptedOpenAnswerCheckRevision: input =>
       getAcceptedOpenAnswerCheckRevision({ database, getEffectiveParticipation, input }),
+    getAcceptedQuickCheckRevisionForCuration: input =>
+      getAcceptedQuickCheckRevisionForCuration({ database, getEffectiveParticipation, input }),
+    getQuickCheckDelivery: input =>
+      getQuickCheckDelivery({ database, getEffectiveParticipation, input }),
     getAcceptedCorpusRevision: input =>
       getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }),
     listAcceptedAssessmentCriteria: input =>
       listAcceptedAssessmentCriteria({ database, getEffectiveParticipation, input }),
     listAcceptedOpenAnswerChecks: input =>
       listAcceptedOpenAnswerChecks({ database, getEffectiveParticipation, input }),
+    listQuickCheckDeliveries: input =>
+      listQuickCheckDeliveries({ database, getEffectiveParticipation, input }),
     listAcceptedCorpus: input =>
       listAcceptedCorpus({ database, getEffectiveParticipation, input }),
     listAssessmentCriterionCandidates: input =>
@@ -97,12 +118,16 @@ export function createCorpusCommands({
       listOpenAnswerCheckCandidates({ database, getEffectiveParticipation, input }),
     listProgramSources: input =>
       listProgramSources({ database, getEffectiveParticipation, input }),
+    listQuickCheckCandidates: input =>
+      listQuickCheckCandidates({ database, getEffectiveParticipation, input }),
     recordProgramSource: input =>
       recordProgramSource({ database, generateId, getEffectiveParticipation, input, now }),
     rejectAssessmentCriterionCandidate: input =>
       rejectAssessmentCriterionCandidate({ database, getEffectiveParticipation, input, now }),
     rejectOpenAnswerCheckCandidate: input =>
       rejectOpenAnswerCheckCandidate({ database, getEffectiveParticipation, input, now }),
+    rejectQuickCheckCandidate: input =>
+      rejectQuickCheckCandidate({ database, getEffectiveParticipation, input, now }),
     rejectCorpusCandidate: input =>
       rejectCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }),
   };
@@ -259,6 +284,85 @@ function acceptOpenAnswerCheckCandidate({ database, generateId, getEffectivePart
   })();
 
   return accepted({ acceptedOpenAnswerCheck: summarizeAcceptedOpenAnswerCheck(revision) });
+}
+
+function acceptQuickCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
+  const candidate = getQuickCheckCandidateRecord(database, input?.candidateId);
+  if (!candidate) {
+    return rejected("quick_check_candidate_not_found");
+  }
+
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: candidate.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  if (candidate.status === "accepted") {
+    return rejected("quick_check_candidate_already_accepted");
+  }
+  if (candidate.status === "rejected") {
+    return rejected("quick_check_candidate_already_rejected");
+  }
+
+  const targetEntity = input?.targetEntityId
+    ? getAcceptedQuickCheckEntityRecord(database, input.targetEntityId)
+    : null;
+  if (input?.targetEntityId && !targetEntity) {
+    return rejected("quick_check_entity_not_found");
+  }
+  if (targetEntity && targetEntity.programId !== candidate.programId) {
+    return rejected("quick_check_entity_program_mismatch");
+  }
+
+  const entityId = input?.targetEntityId ?? generateId();
+  const revisionId = generateId();
+  const acceptedOptions = candidate.options.map($0 => ({ id: generateId(), text: $0.text }));
+  const candidateAnswerKeyIndex = candidate.options.findIndex($0 => $0.id === candidate.answerKeyOptionId);
+  const acceptedAt = now().toISOString();
+
+  const revision = database.transaction(() => {
+    if (!input?.targetEntityId) {
+      createAcceptedQuickCheckEntityRecord(database, {
+        id: entityId,
+        programId: candidate.programId,
+        currentRevisionId: revisionId,
+      });
+    }
+
+    const createdRevision = createAcceptedQuickCheckRevisionRecord(database, {
+      id: revisionId,
+      entityId,
+      programId: candidate.programId,
+      checkKind: candidate.checkKind,
+      title: candidate.title,
+      prompt: candidate.prompt,
+      options: acceptedOptions,
+      answerKeyOptionId: acceptedOptions[candidateAnswerKeyIndex].id,
+      acceptedFromCandidateId: candidate.id,
+      sourceIds: candidate.sourceIds,
+      rationale: candidate.rationale,
+      acceptedByIdentityId: authorization.identity.id,
+      acceptedAt,
+    });
+    if (input?.targetEntityId) {
+      updateAcceptedQuickCheckEntityCurrentRevision(database, {
+        entityId,
+        currentRevisionId: revisionId,
+      });
+    }
+    updateQuickCheckCandidateStatus(database, {
+      candidateId: candidate.id,
+      status: "accepted",
+      updatedAt: acceptedAt,
+    });
+    return createdRevision;
+  })();
+
+  return accepted({ acceptedQuickCheck: summarizeAcceptedQuickCheck(revision) });
 }
 
 function acceptCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
@@ -450,6 +554,27 @@ function listAcceptedOpenAnswerChecks({ database, getEffectiveParticipation, inp
   });
 }
 
+function listQuickCheckDeliveries({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveQuickCheckDeliveryAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const entities = listAcceptedQuickCheckEntityRecords(database, {
+    programId: authorization.program.id,
+  });
+
+  return accepted({
+    quickCheckDeliveries: entities.map($0 =>
+      summarizeQuickCheckDelivery(getAcceptedQuickCheckRevisionRecord(database, $0.currentRevisionId)),
+    ),
+  });
+}
+
 function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {
   const authorization = resolveAcceptedReadAuthorization({
     database,
@@ -505,6 +630,45 @@ function getAcceptedOpenAnswerCheckRevision({ database, getEffectiveParticipatio
   }
 
   return accepted({ acceptedOpenAnswerCheck: summarizeAcceptedOpenAnswerCheck(revision) });
+}
+
+function getAcceptedQuickCheckRevisionForCuration({ database, getEffectiveParticipation, input }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("quick_check_revision_not_found");
+  }
+
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: revision.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  return accepted({ acceptedQuickCheck: summarizeAcceptedQuickCheck(revision) });
+}
+
+function getQuickCheckDelivery({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveQuickCheckDeliveryAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const revision = getAcceptedQuickCheckRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("quick_check_revision_not_found");
+  }
+  if (revision.programId !== authorization.program.id) {
+    return rejected("quick_check_revision_program_mismatch");
+  }
+
+  return accepted({ quickCheckDelivery: summarizeQuickCheckDelivery(revision) });
 }
 
 function getAcceptedCorpusRevision({ database, getEffectiveParticipation, input }) {
@@ -599,6 +763,57 @@ function createOpenAnswerCheckCandidate({ database, generateId, getEffectivePart
     });
 
     return accepted({ openAnswerCheckCandidate: summarizeOpenAnswerCheckCandidate(candidate) });
+  } catch (error) {
+    if (error instanceof StorageInvariantError) {
+      return rejected(mapAssessmentCriterionStorageRejection(error.reason));
+    }
+    throw error;
+  }
+}
+
+function createQuickCheckCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
+  const authorization = resolveAssessmentCuratorAuthorization({ database, getEffectiveParticipation, input });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  if (
+    !supportedQuickCheckKinds.has(input?.checkKind) ||
+    !isNonEmptyText(input?.title) ||
+    !isNonEmptyText(input?.prompt) ||
+    !isValidOptionalText(input?.rationale) ||
+    !isValidIdArray(input?.sourceIds) ||
+    !isValidQuickCheckOptionTexts(input?.options) ||
+    !Number.isInteger(input?.answerKeyIndex) ||
+    input.answerKeyIndex < 0 ||
+    input.answerKeyIndex >= input.options.length
+  ) {
+    return rejected("validation_failed");
+  }
+
+  const optionTexts = input.options.map($0 => $0.trim());
+  const candidateId = generateId();
+  const optionRecords = optionTexts.map($0 => ({ id: generateId(), text: $0 }));
+  const occurredAt = now().toISOString();
+
+  try {
+    const candidate = createQuickCheckCandidateRecord(database, {
+      id: candidateId,
+      programId: authorization.program.id,
+      checkKind: input.checkKind,
+      title: input.title.trim(),
+      prompt: input.prompt.trim(),
+      options: optionRecords,
+      answerKeyOptionId: optionRecords[input.answerKeyIndex].id,
+      sourceIds: input.sourceIds ?? [],
+      rationale: input.rationale?.trim(),
+      status: "draft",
+      createdByIdentityId: authorization.identity.id,
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+    });
+
+    return accepted({ quickCheckCandidate: summarizeQuickCheckCandidate(candidate) });
   } catch (error) {
     if (error instanceof StorageInvariantError) {
       return rejected(mapAssessmentCriterionStorageRejection(error.reason));
@@ -827,6 +1042,23 @@ function listOpenAnswerCheckCandidates({ database, getEffectiveParticipation, in
   });
 }
 
+function listQuickCheckCandidates({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveAssessmentCuratorAuthorization({ database, getEffectiveParticipation, input });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (input?.status !== undefined && !supportedAssessmentCandidateStatuses.has(input.status)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    quickCheckCandidates: listQuickCheckCandidateRecords(database, {
+      programId: authorization.program.id,
+      status: input?.status ?? null,
+    }).map(summarizeQuickCheckCandidate),
+  });
+}
+
 function listCorpusCandidates({ database, getEffectiveParticipation, input }) {
   const authorization = resolveCuratorAuthorization({ database, getEffectiveParticipation, input });
   if (authorization.status === "rejected") {
@@ -914,6 +1146,37 @@ function rejectOpenAnswerCheckCandidate({ database, getEffectiveParticipation, i
   });
 
   return accepted({ openAnswerCheckCandidate: summarizeOpenAnswerCheckCandidate(updated) });
+}
+
+function rejectQuickCheckCandidate({ database, getEffectiveParticipation, input, now }) {
+  const candidate = getQuickCheckCandidateRecord(database, input?.candidateId);
+  if (!candidate) {
+    return rejected("quick_check_candidate_not_found");
+  }
+
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: candidate.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  if (candidate.status === "accepted") {
+    return rejected("quick_check_candidate_already_accepted");
+  }
+  if (candidate.status === "rejected") {
+    return rejected("quick_check_candidate_already_rejected");
+  }
+
+  const updated = updateQuickCheckCandidateStatus(database, {
+    candidateId: candidate.id,
+    status: "rejected",
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({ quickCheckCandidate: summarizeQuickCheckCandidate(updated) });
 }
 
 function rejectCorpusCandidate({ database, generateId, getEffectiveParticipation, input, now }) {
@@ -1037,6 +1300,29 @@ function resolveAssessmentAcceptedReadAuthorization({ database, getEffectivePart
   });
 
   if (studentParticipation.allowed || curatorParticipation.allowed) {
+    return { status: "accepted", identity, program };
+  }
+
+  return { status: "rejected", reason: "participation_required" };
+}
+
+function resolveQuickCheckDeliveryAuthorization({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return { status: "rejected", reason: "identity_not_active" };
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return { status: "rejected", reason: "program_not_found" };
+  }
+
+  const studentParticipation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  if (studentParticipation.allowed) {
     return { status: "accepted", identity, program };
   }
 
@@ -1243,6 +1529,29 @@ function summarizeOpenAnswerCheckCandidate(candidate) {
   return summary;
 }
 
+function summarizeQuickCheckCandidate(candidate) {
+  const summary = {
+    candidateId: candidate.id,
+    programId: candidate.programId,
+    checkKind: candidate.checkKind,
+    title: candidate.title,
+    prompt: candidate.prompt,
+    options: candidate.options.map($0 => ({ optionId: $0.id, text: $0.text })),
+    answerKeyOptionId: candidate.answerKeyOptionId,
+    sourceIds: candidate.sourceIds,
+    status: candidate.status,
+    createdByIdentityId: candidate.createdByIdentityId,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+  };
+
+  if (candidate.rationale !== null) {
+    summary.rationale = candidate.rationale;
+  }
+
+  return summary;
+}
+
 function summarizeCorpusCandidate(candidate) {
   const summary = {
     candidateId: candidate.id,
@@ -1306,6 +1615,41 @@ function summarizeAcceptedOpenAnswerCheck(revision) {
   }
 
   return summary;
+}
+
+function summarizeAcceptedQuickCheck(revision) {
+  const summary = {
+    entityId: revision.entityId,
+    revisionId: revision.id,
+    programId: revision.programId,
+    checkKind: revision.checkKind,
+    title: revision.title,
+    prompt: revision.prompt,
+    options: revision.options.map($0 => ({ optionId: $0.id, text: $0.text })),
+    answerKeyOptionId: revision.answerKeyOptionId,
+    acceptedFromCandidateId: revision.acceptedFromCandidateId,
+    sourceIds: revision.sourceIds,
+    acceptedByIdentityId: revision.acceptedByIdentityId,
+    acceptedAt: revision.acceptedAt,
+  };
+
+  if (revision.rationale !== null) {
+    summary.rationale = revision.rationale;
+  }
+
+  return summary;
+}
+
+function summarizeQuickCheckDelivery(revision) {
+  return {
+    entityId: revision.entityId,
+    revisionId: revision.id,
+    programId: revision.programId,
+    checkKind: revision.checkKind,
+    title: revision.title,
+    prompt: revision.prompt,
+    options: revision.options.map($0 => ({ optionId: $0.id, text: $0.text })),
+  };
 }
 
 function summarizeAcceptedCorpus(revision) {
@@ -1383,6 +1727,15 @@ function isValidIdArray(value) {
 
 function isNonEmptyIdArray(value) {
   return Array.isArray(value) && value.length > 0 && value.every(isNonEmptyText);
+}
+
+function isValidQuickCheckOptionTexts(value) {
+  if (!Array.isArray(value) || value.length < 2 || !value.every(isNonEmptyText)) {
+    return false;
+  }
+
+  const trimmedOptionTexts = value.map($0 => $0.trim().toLowerCase());
+  return new Set(trimmedOptionTexts).size === trimmedOptionTexts.length;
 }
 
 function isValidOptionalText(value) {

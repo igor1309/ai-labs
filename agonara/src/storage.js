@@ -8,6 +8,49 @@ export class StorageInvariantError extends Error {
   }
 }
 
+const forbiddenResponseDetailPatterns = [
+  /\bsession\b/i,
+  /\bcsrf\b/i,
+  /\bcookie\b/i,
+  /\bauthorization\b/i,
+  /\braw\s+model\b/i,
+  /\braw\s+prompt\b/i,
+  /\bselect\s+\*/i,
+  /\bstack\s+trace\b/i,
+  /\/tmp\b/i,
+  /\bpostgres:\/\//i,
+  /\bdatabase-url\b/i,
+];
+
+const forbiddenEvaluatorArtifactKeys = new Set([
+  "authorizationheader",
+  "cookieheader",
+  "csrftoken",
+  "databaseurl",
+  "evaluatordiagnostics",
+  "filesystempath",
+  "hiddenpolicyinstructions",
+  "modelmetadatapayload",
+  "providerdiagnostics",
+  "rawmodelresponse",
+  "rawprompt",
+  "reviewernotes",
+  "sessionid",
+  "sqltext",
+  "stacktrace",
+]);
+
+const evaluatorArtifactTextKeys = new Set([
+  "cancellationreason",
+  "failurereason",
+  "feedback",
+  "jobfailurereason",
+  "priorfailurereason",
+  "redactedsummary",
+  "summaryfeedback",
+  "timeoutreason",
+]);
+
 export function openIdentityDatabase(path = ":memory:") {
   const database = new Database(path);
   database.pragma("foreign_keys = ON");
@@ -186,6 +229,74 @@ export function initializeIdentityStorage(database) {
       updated_at text not null
     );
 
+    create table if not exists quick_check_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      check_kind text not null check (check_kind in ('single_select_quick_check')),
+      title text not null,
+      prompt text not null,
+      answer_key_option_id text not null,
+      source_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists quick_check_candidate_options (
+      candidate_id text not null references quick_check_candidates(id),
+      id text not null,
+      option_order integer not null,
+      text text not null,
+      primary key (candidate_id, id),
+      unique (candidate_id, option_order)
+    );
+
+    create table if not exists accepted_quick_check_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_quick_check_revisions (
+      id text primary key,
+      entity_id text not null references accepted_quick_check_entities(id),
+      program_id text not null references program_shells(id),
+      check_kind text not null check (check_kind in ('single_select_quick_check')),
+      title text not null,
+      prompt text not null,
+      answer_key_option_id text not null,
+      accepted_from_candidate_id text not null references quick_check_candidates(id),
+      source_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists accepted_quick_check_revision_options (
+      revision_id text not null references accepted_quick_check_revisions(id),
+      id text not null,
+      option_order integer not null,
+      text text not null,
+      primary key (revision_id, id),
+      unique (revision_id, option_order)
+    );
+
+    create table if not exists quick_check_attempts (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      check_revision_id text not null references accepted_quick_check_revisions(id),
+      selected_option_id text not null,
+      matched integer not null check (matched in (0, 1)),
+      idempotency_key text not null,
+      submitted_at text not null,
+      unique (program_id, student_identity_id, check_revision_id, idempotency_key),
+      foreign key (check_revision_id, selected_option_id)
+        references accepted_quick_check_revision_options(revision_id, id)
+    );
+
     create table if not exists accepted_open_answer_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -218,7 +329,8 @@ export function initializeIdentityStorage(database) {
       status text not null check (status in ('submitted', 'evaluating', 'evaluated', 'evaluation_failed')),
       submitted_at text not null,
       updated_at text not null,
-      unique (program_id, student_identity_id, check_revision_id, idempotency_key)
+      unique (program_id, student_identity_id, check_revision_id, idempotency_key),
+      unique (id, program_id, student_identity_id, check_revision_id)
     );
 
     create table if not exists open_answer_evaluations (
@@ -238,6 +350,64 @@ export function initializeIdentityStorage(database) {
       attempt_id text primary key references open_answer_attempts(id),
       reason text not null,
       failed_at text not null
+    );
+
+    create table if not exists open_answer_evaluator_runs (
+      id text primary key,
+      attempt_id text not null references open_answer_attempts(id),
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      check_revision_id text not null references accepted_open_answer_check_revisions(id),
+      criterion_revision_ids_json text not null,
+      evaluator_path_kind text not null check (
+        evaluator_path_kind in ('student_workspace', 'deterministic', 'llm_assisted', 'human_reviewed')
+      ),
+      evaluator_policy_id text not null,
+      status text not null check (status in ('running', 'succeeded', 'failed', 'cancelled')),
+      requested_by_identity_id text references identities(id),
+      reviewer_identity_id text references identities(id),
+      reviewer_capability text,
+      started_at text,
+      completed_at text,
+      failed_at text,
+      failure_reason text,
+      prior_failure_reason text,
+      prior_failed_at text,
+      job_status text check (
+        job_status in ('waiting', 'leased', 'retry_waiting', 'succeeded', 'failed', 'cancelled', 'timed_out')
+      ),
+      attempt_number integer,
+      retry_policy_json text,
+      budget_policy_json text,
+      lease_id text,
+      worker_id text,
+      lease_claimed_at text,
+      lease_expires_at text,
+      next_retry_at text,
+      cancellation_reason text,
+      timeout_reason text,
+      job_failure_reason text,
+      terminal_completion_signature_json text,
+      job_created_at text,
+      job_updated_at text,
+      unique (id, attempt_id),
+      foreign key (attempt_id, program_id, student_identity_id, check_revision_id)
+        references open_answer_attempts(id, program_id, student_identity_id, check_revision_id)
+    );
+
+    create unique index if not exists one_running_open_answer_evaluator_run_per_attempt
+      on open_answer_evaluator_runs (attempt_id)
+      where status = 'running';
+
+    create table if not exists open_answer_evaluator_evidence (
+      id text primary key,
+      evaluator_run_id text not null references open_answer_evaluator_runs(id),
+      attempt_id text not null references open_answer_attempts(id),
+      evidence_kind text not null,
+      visibility text not null check (visibility in ('internal')),
+      redacted_summary text,
+      recorded_at text not null,
+      foreign key (evaluator_run_id, attempt_id) references open_answer_evaluator_runs(id, attempt_id)
     );
 
     create table if not exists accepted_corpus_entities (
@@ -1074,6 +1244,407 @@ export function updateOpenAnswerCheckCandidateStatus(database, { candidateId, st
   return getOpenAnswerCheckCandidateRecord(database, candidateId);
 }
 
+export function createQuickCheckCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    checkKind,
+    title,
+    prompt,
+    options,
+    answerKeyOptionId,
+    sourceIds = [],
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertQuickCheckOptionCollection({ options, answerKeyOptionId });
+
+  database
+    .prepare(
+      `insert into quick_check_candidates (
+         id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      checkKind,
+      title,
+      prompt,
+      answerKeyOptionId,
+      JSON.stringify(sourceIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  for (const [optionIndex, option] of options.entries()) {
+    database
+      .prepare(
+        `insert into quick_check_candidate_options (id, candidate_id, option_order, text)
+         values (?, ?, ?, ?)`,
+      )
+      .run(option.id, id, optionIndex, option.text);
+  }
+
+  return getQuickCheckCandidateRecord(database, id);
+}
+
+export function getQuickCheckCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, check_kind as checkKind, title, prompt,
+              answer_key_option_id as answerKeyOptionId,
+              source_ids_json as sourceIdsJson,
+              rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from quick_check_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapQuickCheckCandidateRecord(database, row) : null;
+}
+
+export function listQuickCheckCandidateRecords(database, { programId = null, status = null } = {}) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, check_kind as checkKind, title, prompt,
+              answer_key_option_id as answerKeyOptionId,
+              source_ids_json as sourceIdsJson,
+              rationale, status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from quick_check_candidates
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values)
+    .map(row => mapQuickCheckCandidateRecord(database, row));
+}
+
+export function updateQuickCheckCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update quick_check_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getQuickCheckCandidateRecord(database, candidateId);
+}
+
+export function createAcceptedQuickCheckEntityRecord(database, { id, programId, currentRevisionId }) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_quick_check_entities (id, program_id, current_revision_id)
+       values (?, ?, ?)`,
+    )
+    .run(id, programId, currentRevisionId);
+
+  return getAcceptedQuickCheckEntityRecord(database, id);
+}
+
+export function getAcceptedQuickCheckEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_quick_check_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedQuickCheckEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, current_revision_id as currentRevisionId
+         from accepted_quick_check_entities
+         order by id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_quick_check_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
+export function updateAcceptedQuickCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("accepted_quick_check_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("accepted_quick_check_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_quick_check_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedQuickCheckEntityRecord(database, entityId);
+}
+
+export function createAcceptedQuickCheckRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    checkKind,
+    title,
+    prompt,
+    options,
+    answerKeyOptionId,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertQuickCheckCandidateBelongsToProgram(database, { programId, candidateId: acceptedFromCandidateId });
+  assertAcceptedQuickCheckEntityBelongsToProgram(database, { programId, entityId });
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertQuickCheckOptionCollection({ options, answerKeyOptionId });
+
+  database
+    .prepare(
+      `insert into accepted_quick_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      checkKind,
+      title,
+      prompt,
+      answerKeyOptionId,
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  for (const [optionIndex, option] of options.entries()) {
+    database
+      .prepare(
+        `insert into accepted_quick_check_revision_options (id, revision_id, option_order, text)
+         values (?, ?, ?, ?)`,
+      )
+      .run(option.id, id, optionIndex, option.text);
+  }
+
+  return getAcceptedQuickCheckRevisionRecord(database, id);
+}
+
+export function getAcceptedQuickCheckRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, check_kind as checkKind,
+              title, prompt, answer_key_option_id as answerKeyOptionId,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson,
+              rationale, accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_quick_check_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedQuickCheckRevisionRecord(database, row) : null;
+}
+
+export function listAcceptedQuickCheckRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, check_kind as checkKind,
+              title, prompt, answer_key_option_id as answerKeyOptionId,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson,
+              rationale, accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_quick_check_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(row => mapAcceptedQuickCheckRevisionRecord(database, row));
+}
+
+export function createQuickCheckAttemptRecord(
+  database,
+  {
+    id,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    selectedOptionId,
+    matched,
+    idempotencyKey,
+    submittedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, studentIdentityId);
+  assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId, revisionId: checkRevisionId });
+  assertQuickCheckSelectedOptionBelongsToRevision(database, { revisionId: checkRevisionId, selectedOptionId });
+  if (typeof matched !== "boolean") {
+    throw new StorageInvariantError("quick_check_attempt_matched_invalid");
+  }
+  const existingAttempt = getQuickCheckAttemptRecordByIdempotencyScope(database, {
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    idempotencyKey,
+  });
+  if (existingAttempt) {
+    if (existingAttempt.selectedOptionId === selectedOptionId && existingAttempt.matched === matched) {
+      return existingAttempt;
+    }
+    throw new StorageInvariantError("quick_check_attempt_idempotency_conflict");
+  }
+
+  database
+    .prepare(
+      `insert into quick_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         selected_option_id,
+         matched,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+      selectedOptionId,
+      matched ? 1 : 0,
+      idempotencyKey,
+      submittedAt,
+    );
+
+  return getQuickCheckAttemptRecord(database, id);
+}
+
+export function getQuickCheckAttemptRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              check_revision_id as checkRevisionId, selected_option_id as selectedOptionId,
+              matched, idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from quick_check_attempts
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapQuickCheckAttemptRecord(row) : null;
+}
+
+export function listQuickCheckAttemptRecords(
+  database,
+  { programId = null, studentIdentityId = null, checkRevisionId = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (studentIdentityId !== null) {
+    filters.push("student_identity_id = ?");
+    values.push(studentIdentityId);
+  }
+  if (checkRevisionId !== null) {
+    filters.push("check_revision_id = ?");
+    values.push(checkRevisionId);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              check_revision_id as checkRevisionId, selected_option_id as selectedOptionId,
+              matched, idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from quick_check_attempts
+       ${whereClause}
+       order by submitted_at, id`,
+    )
+    .all(...values)
+    .map(mapQuickCheckAttemptRecord);
+}
+
 export function createAcceptedOpenAnswerCheckEntityRecord(database, { id, programId, currentRevisionId }) {
   assertProgramShellExists(database, programId);
 
@@ -1496,6 +2067,510 @@ export function listOpenAnswerEvaluationFailureRecords(database) {
 
 export function deleteOpenAnswerEvaluationFailureRecord(database, attemptId) {
   database.prepare("delete from open_answer_evaluation_failures where attempt_id = ?").run(attemptId);
+}
+
+export function createOpenAnswerEvaluatorRunRecord(
+  database,
+  {
+    id,
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+    evaluatorPathKind,
+    evaluatorPolicyId,
+    status,
+    requestedByIdentityId = null,
+    reviewerIdentityId = null,
+    reviewerCapability = null,
+    startedAt = null,
+    completedAt = null,
+    failedAt = null,
+    failureReason = null,
+    priorFailureReason = null,
+    priorFailedAt = null,
+    jobStatus = null,
+    attemptNumber = null,
+    retryPolicy = null,
+    budgetPolicy = null,
+    leaseId = null,
+    workerId = null,
+    leaseClaimedAt = null,
+    leaseExpiresAt = null,
+    nextRetryAt = null,
+    cancellationReason = null,
+    timeoutReason = null,
+    jobFailureReason = null,
+    jobCreatedAt = startedAt,
+    jobUpdatedAt = startedAt,
+  },
+) {
+  assertOpenAnswerEvaluatorRunMatchesAttempt(database, {
+    attemptId,
+    programId,
+    studentIdentityId,
+    checkRevisionId,
+    criterionRevisionIds,
+  });
+  assertOpenAnswerEvaluatorJobState({
+    jobStatus,
+    attemptNumber,
+    retryPolicy,
+    budgetPolicy,
+    leaseId,
+    workerId,
+    leaseClaimedAt,
+    leaseExpiresAt,
+  });
+  assertOpenAnswerEvaluatorRunScopeAvailable(database, { attemptId, status });
+
+  database
+    .prepare(
+      `insert into open_answer_evaluator_runs (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_path_kind,
+         evaluator_policy_id,
+         status,
+         requested_by_identity_id,
+         reviewer_identity_id,
+         reviewer_capability,
+         started_at,
+         completed_at,
+         failed_at,
+         failure_reason,
+         prior_failure_reason,
+         prior_failed_at,
+         job_status,
+         attempt_number,
+         retry_policy_json,
+         budget_policy_json,
+         lease_id,
+         worker_id,
+         lease_claimed_at,
+         lease_expires_at,
+         next_retry_at,
+         cancellation_reason,
+         timeout_reason,
+         job_failure_reason,
+         job_created_at,
+         job_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      attemptId,
+      programId,
+      studentIdentityId,
+      checkRevisionId,
+      JSON.stringify(criterionRevisionIds),
+      evaluatorPathKind,
+      evaluatorPolicyId,
+      status,
+      requestedByIdentityId,
+      reviewerIdentityId,
+      reviewerCapability,
+      startedAt,
+      completedAt,
+      failedAt,
+      failureReason,
+      priorFailureReason,
+      priorFailedAt,
+      jobStatus,
+      attemptNumber,
+      retryPolicy === null ? null : JSON.stringify(retryPolicy),
+      budgetPolicy === null ? null : JSON.stringify(budgetPolicy),
+      leaseId,
+      workerId,
+      leaseClaimedAt,
+      leaseExpiresAt,
+      nextRetryAt,
+      cancellationReason,
+      timeoutReason,
+      jobFailureReason,
+      jobCreatedAt,
+      jobUpdatedAt,
+    );
+
+  return getOpenAnswerEvaluatorRunRecord(database, id);
+}
+
+export function getOpenAnswerEvaluatorRunRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status, requested_by_identity_id as requestedByIdentityId,
+              reviewer_identity_id as reviewerIdentityId, reviewer_capability as reviewerCapability,
+              started_at as startedAt, completed_at as completedAt, failed_at as failedAt,
+              failure_reason as failureReason, prior_failure_reason as priorFailureReason,
+              prior_failed_at as priorFailedAt
+       from open_answer_evaluator_runs
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapOpenAnswerEvaluatorRunRecord(row) : null;
+}
+
+export function getOpenAnswerEvaluatorJobRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status as runStatus, job_status as jobStatus, attempt_number as attemptNumber,
+              retry_policy_json as retryPolicyJson, budget_policy_json as budgetPolicyJson,
+              lease_id as leaseId, worker_id as workerId, lease_claimed_at as leaseClaimedAt,
+              lease_expires_at as leaseExpiresAt, next_retry_at as nextRetryAt,
+              cancellation_reason as cancellationReason, timeout_reason as timeoutReason,
+              job_failure_reason as jobFailureReason,
+              terminal_completion_signature_json as terminalCompletionSignatureJson,
+              job_created_at as jobCreatedAt,
+              job_updated_at as jobUpdatedAt
+       from open_answer_evaluator_runs
+       where id = ?`,
+    )
+    .get(id);
+
+  return row && row.jobStatus ? mapOpenAnswerEvaluatorJobRecord(row) : null;
+}
+
+export function listOpenAnswerEvaluatorRunRecords(database, { attemptId = null, status = null } = {}) {
+  const filters = [];
+  const values = [];
+
+  if (attemptId !== null) {
+    filters.push("attempt_id = ?");
+    values.push(attemptId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status, requested_by_identity_id as requestedByIdentityId,
+              reviewer_identity_id as reviewerIdentityId, reviewer_capability as reviewerCapability,
+              started_at as startedAt, completed_at as completedAt, failed_at as failedAt,
+              failure_reason as failureReason, prior_failure_reason as priorFailureReason,
+              prior_failed_at as priorFailedAt
+       from open_answer_evaluator_runs
+       ${whereClause}
+       order by started_at, id`,
+    )
+    .all(...values)
+    .map(mapOpenAnswerEvaluatorRunRecord);
+}
+
+function listOpenAnswerEvaluatorRunBackupRecords(database) {
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status, requested_by_identity_id as requestedByIdentityId,
+              reviewer_identity_id as reviewerIdentityId, reviewer_capability as reviewerCapability,
+              started_at as startedAt, completed_at as completedAt, failed_at as failedAt,
+              failure_reason as failureReason, prior_failure_reason as priorFailureReason,
+              prior_failed_at as priorFailedAt, job_status as jobStatus,
+              attempt_number as attemptNumber, retry_policy_json as retryPolicyJson,
+              budget_policy_json as budgetPolicyJson, lease_id as leaseId, worker_id as workerId,
+              lease_claimed_at as leaseClaimedAt, lease_expires_at as leaseExpiresAt,
+              next_retry_at as nextRetryAt, cancellation_reason as cancellationReason,
+              timeout_reason as timeoutReason, job_failure_reason as jobFailureReason,
+              terminal_completion_signature_json as terminalCompletionSignatureJson,
+              job_created_at as jobCreatedAt, job_updated_at as jobUpdatedAt
+       from open_answer_evaluator_runs
+       order by started_at, id`,
+    )
+    .all()
+    .map(mapOpenAnswerEvaluatorRunBackupRecord);
+}
+
+export function listClaimableOpenAnswerEvaluatorJobRecords(database, { now, limit = 50 } = {}) {
+  const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 50;
+  return database
+    .prepare(
+      `select id, attempt_id as attemptId, program_id as programId,
+              student_identity_id as studentIdentityId, check_revision_id as checkRevisionId,
+              criterion_revision_ids_json as criterionRevisionIdsJson,
+              evaluator_path_kind as evaluatorPathKind, evaluator_policy_id as evaluatorPolicyId,
+              status as runStatus, job_status as jobStatus, attempt_number as attemptNumber,
+              retry_policy_json as retryPolicyJson, budget_policy_json as budgetPolicyJson,
+              lease_id as leaseId, worker_id as workerId, lease_claimed_at as leaseClaimedAt,
+              lease_expires_at as leaseExpiresAt, next_retry_at as nextRetryAt,
+              cancellation_reason as cancellationReason, timeout_reason as timeoutReason,
+              job_failure_reason as jobFailureReason,
+              terminal_completion_signature_json as terminalCompletionSignatureJson,
+              job_created_at as jobCreatedAt,
+              job_updated_at as jobUpdatedAt
+       from open_answer_evaluator_runs
+       where job_status = 'waiting'
+          or (job_status = 'retry_waiting' and next_retry_at <= ?)
+       order by case job_status when 'waiting' then 0 else 1 end, job_created_at, id
+       limit ?`,
+    )
+    .all(now, safeLimit)
+    .map(mapOpenAnswerEvaluatorJobRecord);
+}
+
+export function updateOpenAnswerEvaluatorRunStatus(
+  database,
+  { evaluatorRunId, status, completedAt = null, failedAt = null, failureReason = null },
+) {
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set status = ?, completed_at = ?, failed_at = ?, failure_reason = ?
+       where id = ?`,
+    )
+    .run(status, completedAt, failedAt, failureReason, evaluatorRunId);
+
+  return getOpenAnswerEvaluatorRunRecord(database, evaluatorRunId);
+}
+
+export function updateOpenAnswerEvaluatorJobLease(
+  database,
+  { evaluatorJobId, leaseId, workerId, claimedAt, expiresAt, updatedAt = claimedAt },
+) {
+  assertOpenAnswerEvaluatorLeaseFields({ leaseId, workerId, claimedAt, expiresAt });
+
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set job_status = 'leased',
+           lease_id = ?,
+           worker_id = ?,
+           lease_claimed_at = ?,
+           lease_expires_at = ?,
+           next_retry_at = null,
+           cancellation_reason = null,
+           timeout_reason = null,
+           job_failure_reason = null,
+           job_updated_at = ?
+       where id = ?`,
+    )
+    .run(leaseId, workerId, claimedAt, expiresAt, updatedAt, evaluatorJobId);
+
+  return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
+}
+
+export function updateOpenAnswerEvaluatorJobRecovery(
+  database,
+  {
+    evaluatorJobId,
+    runStatus,
+    jobStatus,
+    failedAt,
+    failureReason,
+    attemptNumber,
+    nextRetryAt = null,
+    cancellationReason = null,
+    timeoutReason = null,
+    jobFailureReason = null,
+    updatedAt = failedAt,
+  },
+) {
+  if (
+    !["failed", "cancelled"].includes(runStatus) ||
+    !isOpenAnswerEvaluatorJobStatus(jobStatus) ||
+    !isNonEmptyString(failedAt) ||
+    !isNonEmptyString(failureReason) ||
+    !Number.isInteger(attemptNumber) ||
+    attemptNumber < 1 ||
+    !isNonEmptyString(updatedAt) ||
+    !isValidOpenAnswerEvaluatorRecoveryState({
+      runStatus,
+      jobStatus,
+      nextRetryAt,
+      cancellationReason,
+      timeoutReason,
+      jobFailureReason,
+    })
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set status = ?,
+           completed_at = null,
+           failed_at = ?,
+           failure_reason = ?,
+           job_status = ?,
+           attempt_number = ?,
+           lease_id = null,
+           worker_id = null,
+           lease_claimed_at = null,
+           lease_expires_at = null,
+           terminal_completion_signature_json = null,
+           next_retry_at = ?,
+           cancellation_reason = ?,
+           timeout_reason = ?,
+           job_failure_reason = ?,
+           job_updated_at = ?
+       where id = ?`,
+    )
+    .run(
+      runStatus,
+      failedAt,
+      failureReason,
+      jobStatus,
+      attemptNumber,
+      nextRetryAt,
+      cancellationReason,
+      timeoutReason,
+      jobFailureReason,
+      updatedAt,
+      evaluatorJobId,
+    );
+
+  return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
+}
+
+function isValidOpenAnswerEvaluatorRecoveryState({
+  runStatus,
+  jobStatus,
+  nextRetryAt,
+  cancellationReason,
+  timeoutReason,
+  jobFailureReason,
+}) {
+  if (jobStatus === "retry_waiting") {
+    return (
+      runStatus === "failed" &&
+      isNonEmptyString(nextRetryAt) &&
+      isNonEmptyString(jobFailureReason) &&
+      cancellationReason === null &&
+      timeoutReason === null
+    );
+  }
+  if (jobStatus === "failed") {
+    return (
+      runStatus === "failed" &&
+      nextRetryAt === null &&
+      cancellationReason === null &&
+      timeoutReason === null &&
+      isNonEmptyString(jobFailureReason)
+    );
+  }
+  if (jobStatus === "timed_out") {
+    return (
+      runStatus === "failed" &&
+      nextRetryAt === null &&
+      cancellationReason === null &&
+      isNonEmptyString(timeoutReason) &&
+      jobFailureReason === null
+    );
+  }
+  if (jobStatus === "cancelled") {
+    return (
+      runStatus === "cancelled" &&
+      nextRetryAt === null &&
+      isNonEmptyString(cancellationReason) &&
+      timeoutReason === null &&
+      jobFailureReason === null
+    );
+  }
+  return false;
+}
+
+export function clearOpenAnswerEvaluatorJobLease(
+  database,
+  { evaluatorJobId, jobStatus, updatedAt, terminalCompletionSignature = null },
+) {
+  if (
+    !isOpenAnswerEvaluatorJobStatus(jobStatus) ||
+    !isNonEmptyString(updatedAt) ||
+    !isValidTerminalCompletionSignature(terminalCompletionSignature)
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+
+  database
+    .prepare(
+      `update open_answer_evaluator_runs
+       set job_status = ?,
+           lease_id = null,
+           worker_id = null,
+           lease_claimed_at = null,
+           lease_expires_at = null,
+           terminal_completion_signature_json = ?,
+           job_updated_at = ?
+       where id = ?`,
+    )
+    .run(
+      jobStatus,
+      terminalCompletionSignature === null ? null : JSON.stringify(terminalCompletionSignature),
+      updatedAt,
+      evaluatorJobId,
+    );
+
+  return getOpenAnswerEvaluatorJobRecord(database, evaluatorJobId);
+}
+
+export function createOpenAnswerEvaluatorEvidenceRecord(
+  database,
+  { id, evaluatorRunId, attemptId, evidenceKind, redactedSummary = null, recordedAt },
+) {
+  assertOpenAnswerEvaluatorEvidenceMatchesRun(database, { evaluatorRunId, attemptId });
+
+  database
+    .prepare(
+      `insert into open_answer_evaluator_evidence (
+         id, evaluator_run_id, attempt_id, evidence_kind, visibility, redacted_summary, recorded_at
+       ) values (?, ?, ?, ?, 'internal', ?, ?)`,
+    )
+    .run(id, evaluatorRunId, attemptId, evidenceKind, redactedSummary, recordedAt);
+
+  return getOpenAnswerEvaluatorEvidenceRecord(database, id);
+}
+
+export function getOpenAnswerEvaluatorEvidenceRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, evaluator_run_id as evaluatorRunId, attempt_id as attemptId,
+              evidence_kind as evidenceKind, visibility, redacted_summary as redactedSummary,
+              recorded_at as recordedAt
+       from open_answer_evaluator_evidence
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listOpenAnswerEvaluatorEvidenceRecords(database, { evaluatorRunId = null } = {}) {
+  const whereClause = evaluatorRunId === null ? "" : "where evaluator_run_id = ?";
+  const values = evaluatorRunId === null ? [] : [evaluatorRunId];
+
+  return database
+    .prepare(
+      `select id, evaluator_run_id as evaluatorRunId, attempt_id as attemptId,
+              evidence_kind as evidenceKind, visibility, redacted_summary as redactedSummary,
+              recorded_at as recordedAt
+       from open_answer_evaluator_evidence
+       ${whereClause}
+       order by recorded_at, id`,
+    )
+    .all(...values);
 }
 
 export function createAcceptedCorpusEntityRecord(
@@ -2057,6 +3132,28 @@ function assertOpenAnswerCheckCandidateBelongsToProgram(database, { programId, c
   }
 }
 
+function assertQuickCheckCandidateBelongsToProgram(database, { programId, candidateId }) {
+  const candidate = getQuickCheckCandidateRecord(database, candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("quick_check_candidate_not_found");
+  }
+
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("quick_check_candidate_program_mismatch");
+  }
+}
+
+function assertAcceptedQuickCheckEntityBelongsToProgram(database, { programId, entityId }) {
+  const entity = getAcceptedQuickCheckEntityRecord(database, entityId);
+  if (!entity) {
+    throw new StorageInvariantError("quick_check_entity_not_found");
+  }
+
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("quick_check_entity_program_mismatch");
+  }
+}
+
 function assertAcceptedOpenAnswerCheckEntityBelongsToProgram(database, { programId, entityId }) {
   const entity = getAcceptedOpenAnswerCheckEntityRecord(database, entityId);
   if (!entity) {
@@ -2077,6 +3174,76 @@ function assertAcceptedOpenAnswerCheckRevisionBelongsToProgram(database, { progr
   if (revision.programId !== programId) {
     throw new StorageInvariantError("check_revision_program_mismatch");
   }
+}
+
+function assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId, revisionId }) {
+  const revision = getAcceptedQuickCheckRevisionRecord(database, revisionId);
+  if (!revision) {
+    throw new StorageInvariantError("quick_check_revision_not_found");
+  }
+
+  if (revision.programId !== programId) {
+    throw new StorageInvariantError("quick_check_revision_program_mismatch");
+  }
+}
+
+function assertQuickCheckOptionCollection({ options, answerKeyOptionId }) {
+  if (!Array.isArray(options) || options.length < 2) {
+    throw new StorageInvariantError("quick_check_option_collection_invalid");
+  }
+
+  const optionIds = new Set();
+  const optionTexts = new Set();
+  for (const option of options) {
+    if (!option || typeof option.id !== "string" || typeof option.text !== "string") {
+      throw new StorageInvariantError("quick_check_option_collection_invalid");
+    }
+    const trimmedText = option.text.trim();
+    if (option.id.length === 0 || trimmedText.length === 0) {
+      throw new StorageInvariantError("quick_check_option_collection_invalid");
+    }
+    if (optionIds.has(option.id) || optionTexts.has(trimmedText)) {
+      throw new StorageInvariantError("quick_check_option_collection_invalid");
+    }
+    optionIds.add(option.id);
+    optionTexts.add(trimmedText);
+  }
+
+  if (!optionIds.has(answerKeyOptionId)) {
+    throw new StorageInvariantError("quick_check_answer_key_option_mismatch");
+  }
+}
+
+function assertQuickCheckSelectedOptionBelongsToRevision(database, { revisionId, selectedOptionId }) {
+  const row = database
+    .prepare(
+      `select 1
+       from accepted_quick_check_revision_options
+       where revision_id = ? and id = ?`,
+    )
+    .get(revisionId, selectedOptionId);
+
+  if (!row) {
+    throw new StorageInvariantError("quick_check_selected_option_mismatch");
+  }
+}
+
+function getQuickCheckAttemptRecordByIdempotencyScope(
+  database,
+  { programId, studentIdentityId, checkRevisionId, idempotencyKey },
+) {
+  const attempt = database
+    .prepare(
+      `select id
+       from quick_check_attempts
+       where program_id = ?
+         and student_identity_id = ?
+         and check_revision_id = ?
+         and idempotency_key = ?`,
+    )
+    .get(programId, studentIdentityId, checkRevisionId, idempotencyKey);
+
+  return attempt ? getQuickCheckAttemptRecord(database, attempt.id) : null;
 }
 
 function assertOpenAnswerAttemptIdempotencyScopeAvailable(
@@ -2129,6 +3296,160 @@ function assertOpenAnswerEvaluationMatchesAttempt(
   }
 }
 
+function assertOpenAnswerEvaluatorRunMatchesAttempt(
+  database,
+  { attemptId, programId, studentIdentityId, checkRevisionId, criterionRevisionIds },
+) {
+  const attempt = getOpenAnswerAttemptRecord(database, attemptId);
+  if (!attempt) {
+    throw new StorageInvariantError("attempt_not_found");
+  }
+
+  if (
+    attempt.programId !== programId ||
+    attempt.studentIdentityId !== studentIdentityId ||
+    attempt.checkRevisionId !== checkRevisionId ||
+    JSON.stringify(attempt.criterionRevisionIds) !== JSON.stringify(criterionRevisionIds)
+  ) {
+    throw new StorageInvariantError("evaluator_run_attempt_mismatch");
+  }
+}
+
+function assertOpenAnswerEvaluatorJobState({
+  jobStatus,
+  attemptNumber,
+  retryPolicy,
+  budgetPolicy,
+  leaseId,
+  workerId,
+  leaseClaimedAt,
+  leaseExpiresAt,
+}) {
+  if (
+    jobStatus === null &&
+    attemptNumber === null &&
+    retryPolicy === null &&
+    budgetPolicy === null &&
+    leaseId === null &&
+    workerId === null &&
+    leaseClaimedAt === null &&
+    leaseExpiresAt === null
+  ) {
+    return;
+  }
+
+  if (!isOpenAnswerEvaluatorJobStatus(jobStatus)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (!Number.isInteger(attemptNumber) || attemptNumber < 1) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  assertOpenAnswerEvaluatorRetryPolicy(retryPolicy);
+  assertOpenAnswerEvaluatorBudgetPolicy(budgetPolicy);
+
+  const hasLease = leaseId !== null || workerId !== null || leaseClaimedAt !== null || leaseExpiresAt !== null;
+  if (jobStatus === "leased" && !hasLease) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (
+    hasLease &&
+    (!isNonEmptyString(leaseId) ||
+      !isNonEmptyString(workerId) ||
+      !isNonEmptyString(leaseClaimedAt) ||
+      !isNonEmptyString(leaseExpiresAt))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function isOpenAnswerEvaluatorJobStatus(value) {
+  return [
+    "waiting",
+    "leased",
+    "retry_waiting",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "timed_out",
+  ].includes(value);
+}
+
+function assertOpenAnswerEvaluatorLeaseFields({ leaseId, workerId, claimedAt, expiresAt }) {
+  if (
+    !isNonEmptyString(leaseId) ||
+    !isNonEmptyString(workerId) ||
+    !isNonEmptyString(claimedAt) ||
+    !isNonEmptyString(expiresAt)
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function isValidTerminalCompletionSignature(value) {
+  return (
+    value === null ||
+    (isNonEmptyString(value.leaseId) &&
+      isNonEmptyString(value.workerId) &&
+      (value.providerUsage === null || typeof value.providerUsage === "object") &&
+      (value.outputValidation === null || typeof value.outputValidation === "object"))
+  );
+}
+
+function assertOpenAnswerEvaluatorRetryPolicy(retryPolicy) {
+  if (
+    !retryPolicy ||
+    !Number.isInteger(retryPolicy.maxAttempts) ||
+    retryPolicy.maxAttempts < 1 ||
+    !Array.isArray(retryPolicy.backoffSeconds) ||
+    retryPolicy.backoffSeconds.length < retryPolicy.maxAttempts - 1 ||
+    retryPolicy.backoffSeconds.some($0 => !Number.isInteger($0) || $0 < 0)
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function assertOpenAnswerEvaluatorBudgetPolicy(budgetPolicy) {
+  if (budgetPolicy === null) {
+    return;
+  }
+  if (typeof budgetPolicy !== "object" || Array.isArray(budgetPolicy)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  const numericFields = [
+    budgetPolicy.maxProviderCalls,
+    budgetPolicy.maxInputTokens,
+    budgetPolicy.maxOutputTokens,
+    budgetPolicy.maxEstimatedCostMinorUnits,
+  ].filter($0 => $0 !== undefined);
+  if (numericFields.some($0 => !Number.isInteger($0) || $0 < 0)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function assertOpenAnswerEvaluatorRunScopeAvailable(database, { attemptId, status }) {
+  if (
+    status === "running" &&
+    listOpenAnswerEvaluatorRunRecords(database, { attemptId, status: "running" }).length > 0
+  ) {
+    throw new StorageInvariantError("evaluator_run_conflict");
+  }
+}
+
+function assertOpenAnswerEvaluatorEvidenceMatchesRun(database, { evaluatorRunId, attemptId }) {
+  const evaluatorRun = getOpenAnswerEvaluatorRunRecord(database, evaluatorRunId);
+  if (!evaluatorRun) {
+    throw new StorageInvariantError("evaluator_run_not_found");
+  }
+
+  if (evaluatorRun.attemptId !== attemptId) {
+    throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
+  }
+}
+
 function assertOpenAnswerAttemptExists(database, attemptId) {
   if (!getOpenAnswerAttemptRecord(database, attemptId)) {
     throw new StorageInvariantError("attempt_not_found");
@@ -2154,12 +3475,18 @@ export function exportIdentityBackup(database) {
     assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
     acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
     acceptedAssessmentCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database),
+    quickCheckCandidates: listQuickCheckCandidateRecords(database),
+    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
+    acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
+    quickCheckAttempts: listQuickCheckAttemptRecords(database),
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
     openAnswerAttempts: listOpenAnswerAttemptRecords(database),
     openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
     openAnswerEvaluationFailures: listOpenAnswerEvaluationFailureRecords(database),
+    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunBackupRecords(database),
+    openAnswerEvaluatorEvidence: listOpenAnswerEvaluatorEvidenceRecords(database),
   };
 }
 
@@ -2178,17 +3505,26 @@ export function restoreIdentityBackup(database, backup) {
 
   assertValidCorpusGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
+  assertValidQuickCheckGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
     database.prepare("delete from sessions").run();
     database.prepare("delete from corpus_events").run();
+    database.prepare("delete from open_answer_evaluator_evidence").run();
+    database.prepare("delete from open_answer_evaluator_runs").run();
     database.prepare("delete from open_answer_evaluation_failures").run();
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
+    database.prepare("delete from quick_check_attempts").run();
     database.prepare("delete from accepted_open_answer_check_revisions").run();
     database.prepare("delete from accepted_open_answer_check_entities").run();
     database.prepare("delete from open_answer_check_candidates").run();
+    database.prepare("delete from accepted_quick_check_revision_options").run();
+    database.prepare("delete from accepted_quick_check_revisions").run();
+    database.prepare("delete from accepted_quick_check_entities").run();
+    database.prepare("delete from quick_check_candidate_options").run();
+    database.prepare("delete from quick_check_candidates").run();
     database.prepare("delete from accepted_assessment_criterion_revisions").run();
     database.prepare("delete from accepted_assessment_criterion_entities").run();
     database.prepare("delete from assessment_criterion_candidates").run();
@@ -2368,6 +3704,51 @@ export function restoreIdentityBackup(database, backup) {
          accepted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertQuickCheckCandidate = database.prepare(
+      `insert into quick_check_candidates (
+         id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertQuickCheckCandidateOption = database.prepare(
+      `insert into quick_check_candidate_options (candidate_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    );
+    const insertAcceptedQuickCheckEntity = database.prepare(
+      `insert into accepted_quick_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    );
+    const insertAcceptedQuickCheckRevision = database.prepare(
+      `insert into accepted_quick_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         check_kind,
+         title,
+         prompt,
+         answer_key_option_id,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedQuickCheckRevisionOption = database.prepare(
+      `insert into accepted_quick_check_revision_options (revision_id, id, option_order, text)
+       values (?, ?, ?, ?)`,
+    );
     const insertOpenAnswerCheckCandidate = database.prepare(
       `insert into open_answer_check_candidates (
          id,
@@ -2419,6 +3800,18 @@ export function restoreIdentityBackup(database, backup) {
          updated_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertQuickCheckAttempt = database.prepare(
+      `insert into quick_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         selected_option_id,
+         matched,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
     const insertOpenAnswerEvaluation = database.prepare(
       `insert into open_answer_evaluations (
          id,
@@ -2436,6 +3829,48 @@ export function restoreIdentityBackup(database, backup) {
     const insertOpenAnswerEvaluationFailure = database.prepare(
       `insert into open_answer_evaluation_failures (attempt_id, reason, failed_at)
        values (?, ?, ?)`,
+    );
+    const insertOpenAnswerEvaluatorRun = database.prepare(
+      `insert into open_answer_evaluator_runs (
+         id,
+         attempt_id,
+         program_id,
+         student_identity_id,
+         check_revision_id,
+         criterion_revision_ids_json,
+         evaluator_path_kind,
+         evaluator_policy_id,
+         status,
+         requested_by_identity_id,
+         reviewer_identity_id,
+         reviewer_capability,
+         started_at,
+         completed_at,
+         failed_at,
+         failure_reason,
+         prior_failure_reason,
+         prior_failed_at,
+         job_status,
+         attempt_number,
+         retry_policy_json,
+         budget_policy_json,
+         lease_id,
+         worker_id,
+         lease_claimed_at,
+         lease_expires_at,
+         next_retry_at,
+         cancellation_reason,
+         timeout_reason,
+         job_failure_reason,
+         terminal_completion_signature_json,
+         job_created_at,
+         job_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertOpenAnswerEvaluatorEvidence = database.prepare(
+      `insert into open_answer_evaluator_evidence (
+         id, evaluator_run_id, attempt_id, evidence_kind, visibility, redacted_summary, recorded_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
     );
 
     for (const shell of backup.programShells ?? []) {
@@ -2593,6 +4028,64 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const candidate of backup.quickCheckCandidates ?? []) {
+      insertQuickCheckCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.checkKind,
+        candidate.title,
+        candidate.prompt,
+        candidate.answerKeyOptionId,
+        JSON.stringify(candidate.sourceIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+      for (const [optionIndex, option] of candidate.options.entries()) {
+        insertQuickCheckCandidateOption.run(
+          candidate.id,
+          option.id,
+          optionIndex,
+          option.text,
+        );
+      }
+    }
+
+    for (const entity of backup.acceptedQuickCheckEntities ?? []) {
+      insertAcceptedQuickCheckEntity.run(
+        entity.id,
+        entity.programId,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedQuickCheckRevisions ?? []) {
+      insertAcceptedQuickCheckRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.checkKind,
+        revision.title,
+        revision.prompt,
+        revision.answerKeyOptionId,
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+      for (const [optionIndex, option] of revision.options.entries()) {
+        insertAcceptedQuickCheckRevisionOption.run(
+          revision.id,
+          option.id,
+          optionIndex,
+          option.text,
+        );
+      }
+    }
+
     for (const candidate of backup.openAnswerCheckCandidates ?? []) {
       insertOpenAnswerCheckCandidate.run(
         candidate.id,
@@ -2635,6 +4128,19 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const attempt of backup.quickCheckAttempts ?? []) {
+      insertQuickCheckAttempt.run(
+        attempt.id,
+        attempt.programId,
+        attempt.studentIdentityId,
+        attempt.checkRevisionId,
+        attempt.selectedOptionId,
+        attempt.matched ? 1 : 0,
+        attempt.idempotencyKey,
+        attempt.submittedAt,
+      );
+    }
+
     for (const attempt of backup.openAnswerAttempts ?? []) {
       insertOpenAnswerAttempt.run(
         attempt.id,
@@ -2670,6 +4176,58 @@ export function restoreIdentityBackup(database, backup) {
         failure.attemptId,
         failure.reason,
         failure.failedAt,
+      );
+    }
+
+    for (const evaluatorRun of backup.openAnswerEvaluatorRuns ?? []) {
+      insertOpenAnswerEvaluatorRun.run(
+        evaluatorRun.id,
+        evaluatorRun.attemptId,
+        evaluatorRun.programId,
+        evaluatorRun.studentIdentityId,
+        evaluatorRun.checkRevisionId,
+        JSON.stringify(evaluatorRun.criterionRevisionIds ?? []),
+        evaluatorRun.evaluatorPathKind,
+        evaluatorRun.evaluatorPolicyId,
+        evaluatorRun.status,
+        evaluatorRun.requestedByIdentityId ?? null,
+        evaluatorRun.reviewerIdentityId ?? null,
+        evaluatorRun.reviewerCapability ?? null,
+        evaluatorRun.startedAt ?? null,
+        evaluatorRun.completedAt ?? null,
+        evaluatorRun.failedAt ?? null,
+        evaluatorRun.failureReason ?? null,
+        evaluatorRun.priorFailureReason ?? null,
+        evaluatorRun.priorFailedAt ?? null,
+        evaluatorRun.jobStatus ?? null,
+        evaluatorRun.attemptNumber ?? null,
+        evaluatorRun.retryPolicy ? JSON.stringify(evaluatorRun.retryPolicy) : null,
+        evaluatorRun.budgetPolicy ? JSON.stringify(evaluatorRun.budgetPolicy) : null,
+        evaluatorRun.leaseId ?? null,
+        evaluatorRun.workerId ?? null,
+        evaluatorRun.leaseClaimedAt ?? null,
+        evaluatorRun.leaseExpiresAt ?? null,
+        evaluatorRun.nextRetryAt ?? null,
+        evaluatorRun.cancellationReason ?? null,
+        evaluatorRun.timeoutReason ?? null,
+        evaluatorRun.jobFailureReason ?? null,
+        evaluatorRun.terminalCompletionSignature
+          ? JSON.stringify(evaluatorRun.terminalCompletionSignature)
+          : null,
+        evaluatorRun.jobCreatedAt ?? evaluatorRun.startedAt ?? null,
+        evaluatorRun.jobUpdatedAt ?? evaluatorRun.startedAt ?? null,
+      );
+    }
+
+    for (const evidence of backup.openAnswerEvaluatorEvidence ?? []) {
+      insertOpenAnswerEvaluatorEvidence.run(
+        evidence.id,
+        evidence.evaluatorRunId,
+        evidence.attemptId,
+        evidence.evidenceKind,
+        evidence.visibility,
+        evidence.redactedSummary ?? null,
+        evidence.recordedAt,
       );
     }
   })();
@@ -2838,6 +4396,77 @@ function mapOpenAnswerCheckCandidateRecord(row) {
   };
 }
 
+function mapQuickCheckCandidateRecord(database, row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    checkKind: row.checkKind,
+    title: row.title,
+    prompt: row.prompt,
+    options: listQuickCheckCandidateOptionRecords(database, row.id),
+    answerKeyOptionId: row.answerKeyOptionId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function listQuickCheckCandidateOptionRecords(database, candidateId) {
+  return database
+    .prepare(
+      `select id, text
+       from quick_check_candidate_options
+       where candidate_id = ?
+       order by option_order`,
+    )
+    .all(candidateId);
+}
+
+function mapAcceptedQuickCheckRevisionRecord(database, row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    checkKind: row.checkKind,
+    title: row.title,
+    prompt: row.prompt,
+    options: listAcceptedQuickCheckRevisionOptionRecords(database, row.id),
+    answerKeyOptionId: row.answerKeyOptionId,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+}
+
+function listAcceptedQuickCheckRevisionOptionRecords(database, revisionId) {
+  return database
+    .prepare(
+      `select id, text
+       from accepted_quick_check_revision_options
+       where revision_id = ?
+       order by option_order`,
+    )
+    .all(revisionId);
+}
+
+function mapQuickCheckAttemptRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    selectedOptionId: row.selectedOptionId,
+    matched: Boolean(row.matched),
+    idempotencyKey: row.idempotencyKey,
+    submittedAt: row.submittedAt,
+  };
+}
+
 function mapAcceptedOpenAnswerCheckRevisionRecord(row) {
   return {
     id: row.id,
@@ -2882,6 +4511,93 @@ function mapOpenAnswerEvaluationRecord(row) {
     summaryFeedback: row.summaryFeedback,
     criterionFeedback: JSON.parse(row.criterionFeedbackJson),
     evaluatedAt: row.evaluatedAt,
+  };
+}
+
+function mapOpenAnswerEvaluatorRunRecord(row) {
+  return {
+    id: row.id,
+    attemptId: row.attemptId,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    evaluatorPathKind: row.evaluatorPathKind,
+    evaluatorPolicyId: row.evaluatorPolicyId,
+    status: row.status,
+    requestedByIdentityId: row.requestedByIdentityId,
+    reviewerIdentityId: row.reviewerIdentityId,
+    reviewerCapability: row.reviewerCapability,
+    startedAt: row.startedAt,
+    completedAt: row.completedAt,
+    failedAt: row.failedAt,
+    failureReason: row.failureReason,
+    priorFailureReason: row.priorFailureReason,
+    priorFailedAt: row.priorFailedAt,
+  };
+}
+
+function mapOpenAnswerEvaluatorRunBackupRecord(row) {
+  const run = mapOpenAnswerEvaluatorRunRecord(row);
+  if (!row.jobStatus) {
+    return run;
+  }
+  return {
+    ...run,
+    jobStatus: row.jobStatus,
+    attemptNumber: row.attemptNumber,
+    retryPolicy: JSON.parse(row.retryPolicyJson),
+    budgetPolicy: row.budgetPolicyJson ? JSON.parse(row.budgetPolicyJson) : null,
+    leaseId: row.leaseId,
+    workerId: row.workerId,
+    leaseClaimedAt: row.leaseClaimedAt,
+    leaseExpiresAt: row.leaseExpiresAt,
+    nextRetryAt: row.nextRetryAt,
+    cancellationReason: row.cancellationReason,
+    timeoutReason: row.timeoutReason,
+    jobFailureReason: row.jobFailureReason,
+    ...(row.terminalCompletionSignatureJson
+      ? { terminalCompletionSignature: JSON.parse(row.terminalCompletionSignatureJson) }
+      : {}),
+    jobCreatedAt: row.jobCreatedAt,
+    jobUpdatedAt: row.jobUpdatedAt,
+  };
+}
+
+function mapOpenAnswerEvaluatorJobRecord(row) {
+  return {
+    evaluatorJobId: row.id,
+    evaluatorRunId: row.id,
+    attemptId: row.attemptId,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    checkRevisionId: row.checkRevisionId,
+    criterionRevisionIds: JSON.parse(row.criterionRevisionIdsJson),
+    evaluatorPathKind: row.evaluatorPathKind,
+    evaluatorPolicyId: row.evaluatorPolicyId,
+    runStatus: row.runStatus,
+    jobStatus: row.jobStatus,
+    attemptNumber: row.attemptNumber,
+    retryPolicy: JSON.parse(row.retryPolicyJson),
+    budgetPolicy: row.budgetPolicyJson ? JSON.parse(row.budgetPolicyJson) : null,
+    lease:
+      row.leaseId === null
+        ? null
+        : {
+            leaseId: row.leaseId,
+            workerId: row.workerId,
+            claimedAt: row.leaseClaimedAt,
+            expiresAt: row.leaseExpiresAt,
+          },
+    nextRetryAt: row.nextRetryAt,
+    cancellationReason: row.cancellationReason,
+    timeoutReason: row.timeoutReason,
+    jobFailureReason: row.jobFailureReason,
+    ...(row.terminalCompletionSignatureJson
+      ? { terminalCompletionSignature: JSON.parse(row.terminalCompletionSignatureJson) }
+      : {}),
+    createdAt: row.jobCreatedAt,
+    updatedAt: row.jobUpdatedAt,
   };
 }
 
@@ -3184,6 +4900,140 @@ function assertValidAssessmentGraphInBackup(backup) {
   }
 }
 
+function assertValidQuickCheckGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const candidatesById = new Map((backup.quickCheckCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map((backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]));
+  const revisionsById = new Map((backup.acceptedQuickCheckRevisions ?? []).map($0 => [$0.id, $0]));
+  const attemptIdempotencyScopes = new Set();
+
+  for (const candidate of backup.quickCheckCandidates ?? []) {
+    if (!programShellsById.has(candidate.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(candidate.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+    assertQuickCheckOptionCollection({
+      options: candidate.options,
+      answerKeyOptionId: candidate.answerKeyOptionId,
+    });
+  }
+
+  for (const revision of backup.acceptedQuickCheckRevisions ?? []) {
+    if (!programShellsById.has(revision.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(revision.acceptedByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    const entity = entitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("quick_check_entity_not_found");
+    }
+
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("quick_check_revision_program_mismatch");
+    }
+
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("quick_check_candidate_not_found");
+    }
+
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("quick_check_candidate_not_accepted");
+    }
+
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("quick_check_candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+    assertQuickCheckOptionCollection({
+      options: revision.options,
+      answerKeyOptionId: revision.answerKeyOptionId,
+    });
+  }
+
+  for (const entity of backup.acceptedQuickCheckEntities ?? []) {
+    if (!programShellsById.has(entity.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    const currentRevision = revisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("quick_check_revision_not_found");
+    }
+
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("quick_check_revision_entity_mismatch");
+    }
+
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("quick_check_revision_program_mismatch");
+    }
+  }
+
+  for (const attempt of backup.quickCheckAttempts ?? []) {
+    if (!programShellsById.has(attempt.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (!identitiesById.has(attempt.studentIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    const revision = revisionsById.get(attempt.checkRevisionId);
+    if (!revision) {
+      throw new StorageInvariantError("quick_check_revision_not_found");
+    }
+
+    if (revision.programId !== attempt.programId) {
+      throw new StorageInvariantError("quick_check_revision_program_mismatch");
+    }
+
+    const selectedOption = revision.options.find($0 => $0.id === attempt.selectedOptionId);
+    if (!selectedOption) {
+      throw new StorageInvariantError("quick_check_selected_option_mismatch");
+    }
+
+    if (typeof attempt.matched !== "boolean") {
+      throw new StorageInvariantError("quick_check_attempt_matched_invalid");
+    }
+
+    if ((attempt.selectedOptionId === revision.answerKeyOptionId) !== attempt.matched) {
+      throw new StorageInvariantError("quick_check_attempt_matched_mismatch");
+    }
+
+    const idempotencyScope = [
+      attempt.programId,
+      attempt.studentIdentityId,
+      attempt.checkRevisionId,
+      attempt.idempotencyKey,
+    ].join("\u0000");
+    if (attemptIdempotencyScopes.has(idempotencyScope)) {
+      throw new StorageInvariantError("quick_check_attempt_idempotency_conflict");
+    }
+    attemptIdempotencyScopes.add(idempotencyScope);
+  }
+}
+
 function assertValidStudentAttemptGraphInBackup(backup) {
   const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
   const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
@@ -3191,6 +5041,13 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     (backup.acceptedOpenAnswerCheckRevisions ?? []).map($0 => [$0.id, $0]),
   );
   const attemptsById = new Map((backup.openAnswerAttempts ?? []).map($0 => [$0.id, $0]));
+  const evaluationsByAttemptId = new Map(
+    (backup.openAnswerEvaluations ?? []).map($0 => [$0.attemptId, $0]),
+  );
+  const evaluatorRunsById = new Map(
+    (backup.openAnswerEvaluatorRuns ?? []).map($0 => [$0.id, $0]),
+  );
+  const runningRunAttemptIds = new Set();
 
   for (const attempt of backup.openAnswerAttempts ?? []) {
     if (!programShellsById.has(attempt.programId)) {
@@ -3225,6 +5082,7 @@ function assertValidStudentAttemptGraphInBackup(backup) {
       throw new StorageInvariantError("attempt_status_mismatch");
     }
 
+    assertNoForbiddenEvaluatorArtifactBackup(evaluation);
     assertEvaluationMatchesAttemptBackup(evaluation, attempt);
   }
 
@@ -3236,6 +5094,114 @@ function assertValidStudentAttemptGraphInBackup(backup) {
     if (attempt.status !== "evaluation_failed") {
       throw new StorageInvariantError("attempt_status_mismatch");
     }
+  }
+
+  for (const evaluatorRun of backup.openAnswerEvaluatorRuns ?? []) {
+    const attempt = attemptsById.get(evaluatorRun.attemptId);
+    if (!attempt) {
+      throw new StorageInvariantError("attempt_not_found");
+    }
+
+    assertNoForbiddenEvaluatorArtifactBackup(evaluatorRun);
+    assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt);
+    assertEvaluatorRunAttributionBackup(evaluatorRun, identitiesById);
+    assertEvaluatorJobOrchestrationBackup(evaluatorRun, attempt);
+    assertEvaluatorRunLifecycleMatchesAttemptBackup({
+      attempt,
+      evaluatorRun,
+      evaluationsByAttemptId,
+      runningRunAttemptIds,
+    });
+  }
+
+  for (const evidence of backup.openAnswerEvaluatorEvidence ?? []) {
+    const evaluatorRun = evaluatorRunsById.get(evidence.evaluatorRunId);
+    if (!evaluatorRun) {
+      throw new StorageInvariantError("evaluator_run_not_found");
+    }
+    if (evidence.attemptId !== evaluatorRun.attemptId) {
+      throw new StorageInvariantError("evaluator_evidence_attempt_mismatch");
+    }
+    assertNoForbiddenEvaluatorArtifactBackup(evidence);
+    assertEvaluatorEvidenceBackup(evidence);
+  }
+}
+
+function assertEvaluatorJobOrchestrationBackup(evaluatorRun, attempt) {
+  const jobFields = [
+    evaluatorRun.jobStatus,
+    evaluatorRun.attemptNumber,
+    evaluatorRun.retryPolicy,
+    evaluatorRun.budgetPolicy,
+    evaluatorRun.leaseId,
+    evaluatorRun.workerId,
+    evaluatorRun.leaseClaimedAt,
+    evaluatorRun.leaseExpiresAt,
+    evaluatorRun.nextRetryAt,
+    evaluatorRun.cancellationReason,
+    evaluatorRun.timeoutReason,
+    evaluatorRun.jobFailureReason,
+    evaluatorRun.terminalCompletionSignature,
+    evaluatorRun.jobCreatedAt,
+    evaluatorRun.jobUpdatedAt,
+  ];
+  if (jobFields.every($0 => $0 === undefined || $0 === null)) {
+    return;
+  }
+
+  const retryPolicy = evaluatorRun.retryPolicy ?? null;
+  const budgetPolicy = evaluatorRun.budgetPolicy ?? null;
+  const leaseId = evaluatorRun.leaseId ?? null;
+  const workerId = evaluatorRun.workerId ?? null;
+  const leaseClaimedAt = evaluatorRun.leaseClaimedAt ?? null;
+  const leaseExpiresAt = evaluatorRun.leaseExpiresAt ?? null;
+
+  assertOpenAnswerEvaluatorJobState({
+    jobStatus: evaluatorRun.jobStatus ?? null,
+    attemptNumber: evaluatorRun.attemptNumber ?? null,
+    retryPolicy,
+    budgetPolicy,
+    leaseId,
+    workerId,
+    leaseClaimedAt,
+    leaseExpiresAt,
+  });
+  if (!isValidTerminalCompletionSignature(evaluatorRun.terminalCompletionSignature ?? null)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (!isNonEmptyString(evaluatorRun.jobCreatedAt) || !isNonEmptyString(evaluatorRun.jobUpdatedAt)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+  if (attempt.status === "submitted" && evaluatorRun.jobStatus !== "cancelled") {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (attempt.status === "evaluated" && evaluatorRun.jobStatus !== "succeeded") {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (
+    attempt.status === "evaluation_failed" &&
+    !["failed", "cancelled", "timed_out"].includes(evaluatorRun.jobStatus)
+  ) {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (
+    attempt.status === "evaluating" &&
+    !["waiting", "leased", "retry_waiting"].includes(evaluatorRun.jobStatus)
+  ) {
+    throw new StorageInvariantError("attempt_status_mismatch");
+  }
+  if (
+    ["retry_waiting", "failed", "timed_out", "cancelled"].includes(evaluatorRun.jobStatus) &&
+    !isValidOpenAnswerEvaluatorRecoveryState({
+      runStatus: evaluatorRun.status,
+      jobStatus: evaluatorRun.jobStatus,
+      nextRetryAt: evaluatorRun.nextRetryAt ?? null,
+      cancellationReason: evaluatorRun.cancellationReason ?? null,
+      timeoutReason: evaluatorRun.timeoutReason ?? null,
+      jobFailureReason: evaluatorRun.jobFailureReason ?? null,
+    })
+  ) {
+    throw new StorageInvariantError("validation_failed");
   }
 }
 
@@ -3274,6 +5240,117 @@ function assertEvaluationMatchesAttemptBackup(evaluation, attempt) {
   ) {
     throw new StorageInvariantError("evaluation_attempt_mismatch");
   }
+}
+
+function assertEvaluatorRunMatchesAttemptBackup(evaluatorRun, attempt) {
+  if (
+    evaluatorRun.programId !== attempt.programId ||
+    evaluatorRun.studentIdentityId !== attempt.studentIdentityId ||
+    evaluatorRun.checkRevisionId !== attempt.checkRevisionId ||
+    JSON.stringify(evaluatorRun.criterionRevisionIds) !== JSON.stringify(attempt.criterionRevisionIds)
+  ) {
+    throw new StorageInvariantError("evaluator_run_attempt_mismatch");
+  }
+}
+
+function assertEvaluatorRunAttributionBackup(evaluatorRun, identitiesById) {
+  if (evaluatorRun.requestedByIdentityId && !identitiesById.has(evaluatorRun.requestedByIdentityId)) {
+    throw new StorageInvariantError("identity_not_found");
+  }
+
+  if (evaluatorRun.reviewerIdentityId && !identitiesById.has(evaluatorRun.reviewerIdentityId)) {
+    throw new StorageInvariantError("identity_not_found");
+  }
+
+  if (
+    evaluatorRun.evaluatorPathKind === "human_reviewed" &&
+    (!isNonEmptyText(evaluatorRun.reviewerIdentityId) ||
+      !isNonEmptyText(evaluatorRun.reviewerCapability))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function assertEvaluatorRunLifecycleMatchesAttemptBackup({
+  attempt,
+  evaluatorRun,
+  evaluationsByAttemptId,
+  runningRunAttemptIds,
+}) {
+  if (evaluatorRun.status === "running") {
+    if (runningRunAttemptIds.has(evaluatorRun.attemptId)) {
+      throw new StorageInvariantError("evaluator_run_conflict");
+    }
+    runningRunAttemptIds.add(evaluatorRun.attemptId);
+    if (attempt.status !== "evaluating") {
+      throw new StorageInvariantError("attempt_status_mismatch");
+    }
+  }
+
+  if (evaluatorRun.status === "succeeded" && !evaluationsByAttemptId.has(evaluatorRun.attemptId)) {
+    throw new StorageInvariantError("evaluation_not_found");
+  }
+
+  if (
+    evaluatorRun.status === "cancelled" &&
+    Boolean(evaluatorRun.priorFailureReason) !== Boolean(evaluatorRun.priorFailedAt)
+  ) {
+    throw new StorageInvariantError("evaluation_failure_snapshot_mismatch");
+  }
+}
+
+function assertEvaluatorEvidenceBackup(evidence) {
+  if (
+    evidence.visibility !== "internal" ||
+    (evidence.redactedSummary !== undefined &&
+      evidence.redactedSummary !== null &&
+      (!isNonEmptyText(evidence.redactedSummary) ||
+        containsForbiddenResponseDetail(evidence.redactedSummary)))
+  ) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function assertNoForbiddenEvaluatorArtifactBackup(record) {
+  if (containsForbiddenEvaluatorArtifactBackup(record)) {
+    throw new StorageInvariantError("validation_failed");
+  }
+}
+
+function containsForbiddenEvaluatorArtifactBackup(value, key = null) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return (
+      evaluatorArtifactTextKeys.has(normalizeEvaluatorArtifactKey(key ?? "")) &&
+      containsForbiddenResponseDetail(value)
+    );
+  }
+  if (Array.isArray(value)) {
+    return value.some(entry => containsForbiddenEvaluatorArtifactBackup(entry, key));
+  }
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  return Object.entries(value).some(
+    ([key, entryValue]) =>
+      forbiddenEvaluatorArtifactKeys.has(normalizeEvaluatorArtifactKey(key)) ||
+      containsForbiddenEvaluatorArtifactBackup(entryValue, key),
+  );
+}
+
+function normalizeEvaluatorArtifactKey(key) {
+  return key.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function isNonEmptyText(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function containsForbiddenResponseDetail(value) {
+  return forbiddenResponseDetailPatterns.some($0 => $0.test(value));
 }
 
 function assertCriterionEntityIdsBelongToProgram({
