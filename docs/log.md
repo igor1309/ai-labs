@@ -1,7 +1,16 @@
 # Log
 
+## 2026-06-03
+
+- CLAUDE.md: began the gradual AGENTS.md→progressive-disclosure split. Added a one-sentence progressive-disclosure note at the top and a new `.agents/` folder of on-demand topic docs (README + skill-conversion TODO), then moved six sections out of the root verbatim: Collaboration preferences (read-at-session-start pointer), New Project Checklist, the Process Gates plan/PR procedures (always-on verification commands kept inline), Release Process details, doc-maintenance (README Components table + Log), and Per-Project CI Isolation. Root CLAUDE.md shrank 172→124 lines. Taught `scripts/loc-dashboard.sh` to count `.agents/` (mirroring `.claude/`) and refreshed `docs/loc-dashboard.html` to match `loc-dashboard.sh --sort=name` (repo-text 5077→5161, repo-scripts code 1176→1179, doc-drift-agent docs 1480→1481 drift; total 161,893→161,981).
+
 ## 2026-06-02
 
+- doc-drift-agent: landed the Shape-2 scope-select selection layer (ADR-001 Phases 1–3) — tested `select`/`commit` step CLIs plus a per-scope last-audited state store under `doc-drift-agent/scope-select/`, covered by the existing `doc-drift-agent-core` CI glob. Refreshed `docs/loc-dashboard.html` to match `scripts/loc-dashboard.sh --sort=name` (doc-drift-agent code 138→395, tests 67→404; total 161,299→161,893).
+- Process: refreshed `docs/loc-dashboard.html` for the scoped-worker branch — `doc-drift-agent` (tests 0→67, docs 1108→1480) and `agents` (docs 603→1066, the orchestration research notes), so the cards, table footer, and `data` array match `scripts/loc-dashboard.sh --sort=name` (total 160,397→161,299).
+- agents/research: recorded the `@openclaw/lobster` plugin install/activation on the VPS (`agents/research/openclaw-lobster.md`) — orchestration ADR-001 substrate evidence; the live recovery steps live in the inventory repo's `vps/OpenClaw/migration.md`.
+- doc-drift-agent: landed the scoped-worker registry (Shape 1). Added `doc-drift-agent/agent/scope-registry.json` (scope 0 + 22 project scopes) with a coverage check in the test suite, and a dedicated `doc-drift-agent-core.yml` CI workflow (per-project isolation) wired into `ci.yml` path-filter dispatch so the registry coverage check runs on doc-drift changes only.
+- doc-drift-agent: fixed the unreadable Telegram drift notification. The cron wrapper was dumping the agent's raw Markdown report plus `openclaw agent` stderr (plugin warning + tool-call traces) into the message; rewrote it to parse the report header + Fix PRs URLs into a compact plain-text message (mirroring the maestro-flow-review wrapper fixed 2026-06-01), added a fail-closed "run FAILED" alert, and corrected the stale routing (`docdrift`→`ai-labs` account, DM→`#doc-drift` topic thread 4). `notification-spec.md` gained a mandatory "Rendering" section; the project's README/runtime-README/agent.md were realigned.
 - Process: refreshed the repo LOC dashboard before the Student Workspace open-answer attempt PR so the summary cards, table totals, data array, and update date match the current branch.
 
 ## 2026-06-01
