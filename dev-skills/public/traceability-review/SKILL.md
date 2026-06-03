@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.1.0"
+version: "0.2.0"
 author: Igor Malyarov
 ---
 
@@ -41,7 +41,7 @@ layer-pair:
    This pair also owns **vertical coverage**: every intent capability/story
    must be reflected downstream; a parent capability the decomposition does
    not carry is a coverage finding here, not at intent×intent.
-   *(implemented, v0.1.0)*
+   *(implemented per-module, v0.2.0 — see "intent → ADR" below)*
 3. **ADR × ADR** — cross-ADR consistency, including **cross-module
    compatibility**: no double ownership, no boundary violation, and shared
    contracts described consistently by provider and every consumer. Anchor on
@@ -66,36 +66,49 @@ The axis changes down the pipeline, because the artifacts do:
   role. Cross-module compatibility lives here, not at the intent layer —
   modules do not exist until ADR time.
 
-## intent → ADR: the two checks
+## intent → ADR: per-module deterministic coverage matrix
 
-ADRs in a My-Way repo carry no `source_intent` field, so the intent→ADR
-mapping is **inferred by subject/module** — use the project's module
-responsibility map as the index. Read the full intent layer (upstream, the
-source of truth) and every ADR (downstream, under review); the responsibility
-map is a mapping aid, not a review target.
+Run this layer-pair **one module at a time**, not over the whole ADR set. A
+whole-surface pass *samples* — each run scrutinises a different subset, so its
+findings do not reproduce. Per-module scope plus a forced-complete matrix
+removes that sampling variance (validated against Agonara: whole-surface runs
+agreed on almost no findings; per-module matrix runs reliably surfaced the same
+real defect).
 
-Run two checks:
+ADRs carry no `source_intent` field, so the intent→ADR mapping is **inferred by
+subject/module** — use the project's module responsibility map as the
+authoritative owner index. For the module under review, read the intent layer
+(upstream, source of truth), the module's governing ADR(s), and the
+responsibility map (mapping aid, not a review target).
 
-1. **Fidelity — no loss, no contradiction.**
-   - *Contradiction:* an ADR decision conflicts with an intent story, boundary,
-     actor definition, or ownership statement → finding (fail).
-   - *Loss:* an ADR silently drops or narrows an intent commitment without
-     acknowledging it (e.g. a closed `MUST` list that omits a named intent
-     capability) → finding (warning/fail).
-   - **Not a finding:** an ADR deciding implementation detail the intent left
-     open, or legitimately extending beyond intent. Flag only genuine
-     contradiction or *unacknowledged* loss — an explicit deferral
-     ("out of this slice") is faithful, not a loss.
+**The matrix is the primary mechanism — it, not impressions, drives findings:**
 
-2. **Vertical coverage — carried or deferred.** Every intent capability/story
-   must be reflected in at least one ADR **or** explicitly deferred. A
-   capability that no ADR carries and that no ADR/intent line marks deferred is
-   a coverage finding (warning). Explicit deferral is not a finding; record it
-   as deferred.
+1. **Enumerate every intent capability the map assigns to this module.** Do not
+   stop at the ones that catch your eye; completeness is the point.
+2. **One row per capability**, each with an explicit **verdict** —
+   `carried` | `deferred` | `uncovered` | `carried-with-loss` | `contradicted`
+   — and **evidence**: the ADR `file:line` + quote that carries/defers it, or
+   `none`.
+3. **Findings are derived mechanically from the matrix** — no finding that is
+   not a row, and no row without a verdict:
+   - `contradicted` → fidelity finding (fail)
+   - `carried-with-loss` → fidelity finding (warning); quote BOTH the intent
+     commitment and the narrowing ADR passage
+   - `uncovered` → coverage finding (warning)
+   - `carried` / `deferred` → clean (a `deferred` row MUST cite the deferring
+     ADR/intent line)
 
-Output a **coverage matrix** mapping each intent group (by module) to the
-ADR(s) that carry it, with status `covered` / `deferred` / `UNCOVERED`, so
-coverage is auditable.
+**Disposition rule (do not mislabel).** An ADR deciding implementation detail
+the intent left open, or explicitly deferring via Non-Goals, is `carried` /
+`deferred`, never a finding. But a capability **omitted from a closed
+enumeration and not named in Non-Goals is a finding** — `carried-with-loss` if
+the capability is partially present but narrowed, `uncovered` if wholly absent.
+It is **not** `deferred` merely because *related* schema is deferred: deferring
+a capability's *shape* does not defer its *existence*.
+
+**Cross-module seams are out of scope here.** A capability that falls between
+modules and that no single module owns is a *cross-module* coverage finding —
+it belongs to `ADR × ADR`, not to any one per-module pass.
 
 ## Discipline
 
@@ -162,5 +175,7 @@ plus, for version comparison and provenance:
 Body sections: `Summary` (counts per slice + one-sentence verdict),
 one section per slice (findings or "No contradictions found." with positive
 evidence), `Inspected` (files, versions, enumerated artifact IDs), and
-`Open questions`. For `intent → ADR`, the per-slice sections are
-`Fidelity findings` and `Coverage findings`, plus a `Coverage matrix` section.
+`Open questions`. For `intent → ADR` (run per module): `Summary` (matrix row
+count + verdict breakdown + finding totals), `Coverage matrix` (the complete
+table — the core artifact), `Findings` (derived mechanically from the matrix),
+`Open questions`, and `Inspected`.
