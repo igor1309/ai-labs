@@ -401,6 +401,10 @@ export const learnUiHtml = `<!doctype html>
           <div id="quick-check-attempt-list" class="list">
             <p class="empty">No attempts loaded.</p>
           </div>
+          <label>
+            Attempt id
+            <input id="quick-check-attempt-id-input" autocomplete="off">
+          </label>
           <button data-action="open-quick-check-attempt" data-requires-session class="secondary" type="button">Open attempt</button>
           <div id="quick-check-attempt-detail" class="empty"></div>
         </section>
@@ -411,23 +415,36 @@ export const learnUiHtml = `<!doctype html>
     (() => {
       const state = {
         acceptedQuickCheck: null,
+        attempts: [],
         candidates: [],
         csrfToken: null,
+        deliveries: [],
         identity: null,
         mode: "curator",
+        pendingQuickCheckAttemptKey: null,
         programId: "",
+        selectedAttemptId: null,
         selectedCandidateId: null,
+        selectedDelivery: null,
         selectedRevisionId: null,
       };
 
       const elements = {
         acceptQuickCheckButton: document.querySelector("[data-action='accept-quick-check']"),
+        answerForm: document.querySelector("#quick-check-answer-form"),
+        answerOptions: document.querySelector("#quick-check-answer-options"),
+        attemptDetail: document.querySelector("#quick-check-attempt-detail"),
+        attemptIdInput: document.querySelector("#quick-check-attempt-id-input"),
+        attemptList: document.querySelector("#quick-check-attempt-list"),
         candidateForm: document.querySelector("#quick-check-candidate-form"),
         candidateList: document.querySelector("#quick-check-candidate-list"),
         candidateStatusFilter: document.querySelector("#quick-check-candidate-status-filter"),
         curatorModeTab: document.querySelector("#curator-mode-tab"),
         curationDetail: document.querySelector("#quick-check-curation-detail"),
+        deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
+        deliveryList: document.querySelector("#quick-check-delivery-list"),
         logoutButton: document.querySelector("#logout-button"),
+        openQuickCheckAttemptButton: document.querySelector("[data-action='open-quick-check-attempt']"),
         optionInputs: Array.from(document.querySelectorAll("input[name='optionText']")),
         programIdInput: document.querySelector("#program-id-input"),
         quickCheckActions: Array.from(document.querySelectorAll("[data-requires-session]")),
@@ -439,6 +456,7 @@ export const learnUiHtml = `<!doctype html>
         signinForm: document.querySelector("#signin-form"),
         signinStatus: document.querySelector("#signin-status"),
         studentModeTab: document.querySelector("#student-mode-tab"),
+        submitStatus: document.querySelector("#quick-check-submit-status"),
       };
 
       elements.quickCheckActions.push(elements.refreshCandidatesButton);
@@ -526,6 +544,49 @@ export const learnUiHtml = `<!doctype html>
         setMode("student");
       });
 
+      elements.deliveryList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-revision-id]");
+        if (!button) {
+          return;
+        }
+        void selectDelivery(button.dataset.revisionId);
+      });
+
+      elements.answerForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!state.selectedDelivery) {
+          elements.submitStatus.textContent = "Open a delivery first";
+          return;
+        }
+        const formData = new FormData(elements.answerForm);
+        const selectedOptionIndex = Number(formData.get("selectedQuickCheckOption"));
+        const selectedOption = state.selectedDelivery.options[selectedOptionIndex];
+        if (!selectedOption) {
+          elements.submitStatus.textContent = "Select an answer";
+          return;
+        }
+        if (!state.pendingQuickCheckAttemptKey) {
+          state.pendingQuickCheckAttemptKey = createBrowserId();
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/quick-check-attempts", {
+          body: {
+            checkRevisionId: state.selectedDelivery.revisionId,
+            selectedOptionId: selectedOption.optionId,
+          },
+          csrf: true,
+          idempotencyKey: state.pendingQuickCheckAttemptKey,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          state.selectedAttemptId = result.value.quickCheckAttempt.attemptId;
+          elements.submitStatus.textContent = "Attempt submitted";
+          renderAttemptDetail(result.value.quickCheckAttempt);
+          await refreshAttempts();
+          return;
+        }
+        elements.submitStatus.textContent = "Submission failed";
+      });
+
       elements.refreshCandidatesButton.addEventListener("click", async () => {
         await refreshCandidates();
       });
@@ -592,6 +653,24 @@ export const learnUiHtml = `<!doctype html>
         renderCurationStatus("Inspection failed");
       });
 
+      elements.attemptList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-attempt-id]");
+        if (!button) {
+          return;
+        }
+        state.selectedAttemptId = button.dataset.attemptId;
+        elements.attemptIdInput.value = state.selectedAttemptId;
+        void openAttemptDetail();
+      });
+
+      elements.openQuickCheckAttemptButton.addEventListener("click", async () => {
+        const requestedAttemptId = elements.attemptIdInput.value.trim();
+        if (requestedAttemptId) {
+          state.selectedAttemptId = requestedAttemptId;
+        }
+        await openAttemptDetail();
+      });
+
       function acceptSession(value) {
         state.csrfToken = value.csrfToken;
         state.identity = value.identity;
@@ -601,6 +680,8 @@ export const learnUiHtml = `<!doctype html>
       function clearSession() {
         state.csrfToken = null;
         state.identity = null;
+        state.pendingQuickCheckAttemptKey = null;
+        state.selectedAttemptId = null;
         elements.signinStatus.textContent = "";
         renderSession();
       }
@@ -675,12 +756,142 @@ export const learnUiHtml = `<!doctype html>
         state.mode = mode;
         elements.curatorModeTab.setAttribute("aria-selected", mode === "curator" ? "true" : "false");
         elements.studentModeTab.setAttribute("aria-selected", mode === "student" ? "true" : "false");
+        if (mode === "student" && canUseProgramApi()) {
+          void refreshDeliveries();
+          void refreshAttempts();
+        }
+      }
+
+      async function refreshDeliveries() {
+        if (!canUseProgramApi()) {
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/quick-checks");
+        if (result.status === "accepted") {
+          state.deliveries = result.value.quickCheckDeliveries;
+          renderDeliveryList();
+          return;
+        }
+        state.deliveries = [];
+        renderDeliveryList();
+      }
+
+      function renderDeliveryList() {
+        if (state.deliveries.length === 0) {
+          elements.deliveryList.innerHTML = '<p class="empty">No deliveries loaded.</p>';
+          return;
+        }
+        elements.deliveryList.innerHTML = "";
+        for (const delivery of state.deliveries) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.revisionId = delivery.revisionId;
+          button.textContent = delivery.title;
+          elements.deliveryList.append(button);
+        }
+      }
+
+      async function selectDelivery(revisionId) {
+        const result = await requestJson("/quick-checks/revisions/" + encodeURIComponent(revisionId));
+        if (result.status !== "accepted") {
+          elements.deliveryDetail.textContent = "Delivery unavailable";
+          return;
+        }
+        state.selectedDelivery = result.value.quickCheckDelivery;
+        state.pendingQuickCheckAttemptKey = null;
+        renderDeliveryDetail(state.selectedDelivery);
+      }
+
+      function renderDeliveryDetail(delivery) {
+        elements.deliveryDetail.textContent = delivery.title + "\\n" + delivery.prompt;
+        elements.answerOptions.innerHTML = "<legend>Answer</legend>";
+        delivery.options.forEach((option, index) => {
+          const label = document.createElement("label");
+          const radio = document.createElement("input");
+          radio.name = "selectedQuickCheckOption";
+          radio.type = "radio";
+          radio.value = String(index);
+          label.append(radio, " " + option.text);
+          elements.answerOptions.append(label);
+        });
+      }
+
+      async function refreshAttempts() {
+        if (!canUseProgramApi()) {
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/quick-check-attempts");
+        if (result.status === "accepted") {
+          state.attempts = result.value.quickCheckAttempts;
+          renderAttemptList();
+          return;
+        }
+        state.attempts = [];
+        renderAttemptList();
+      }
+
+      function renderAttemptList() {
+        if (state.attempts.length === 0) {
+          elements.attemptList.innerHTML = '<p class="empty">No attempts loaded.</p>';
+          return;
+        }
+        elements.attemptList.innerHTML = "";
+        for (const attempt of state.attempts) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.attemptId = attempt.attemptId;
+          const delivery = deliveryForRevision(attempt.checkRevisionId);
+          button.textContent = delivery ? delivery.title : "Quick Check attempt";
+          elements.attemptList.append(button);
+        }
+      }
+
+      async function openAttemptDetail() {
+        if (!state.selectedAttemptId) {
+          elements.attemptDetail.textContent = "Attempt unavailable";
+          return;
+        }
+        const result = await requestJson("/quick-check-attempts/" + encodeURIComponent(state.selectedAttemptId));
+        if (result.status !== "accepted") {
+          elements.attemptDetail.removeAttribute("data-attempt-id");
+          elements.attemptDetail.textContent = "Attempt unavailable";
+          return;
+        }
+        renderAttemptDetail(result.value.quickCheckAttempt);
+      }
+
+      function renderAttemptDetail(attempt) {
+        elements.attemptDetail.dataset.attemptId = attempt.attemptId;
+        const delivery = deliveryForRevision(attempt.checkRevisionId);
+        const selectedOption = delivery?.options.find($0 => $0.optionId === attempt.selectedOptionId);
+        elements.attemptDetail.textContent = [
+          delivery ? delivery.title : "Quick Check attempt",
+          delivery ? delivery.prompt : attempt.checkRevisionId,
+          "Selected: " + (selectedOption ? selectedOption.text : "Unavailable"),
+        ].join("\\n");
+      }
+
+      function deliveryForRevision(revisionId) {
+        if (state.selectedDelivery?.revisionId === revisionId) {
+          return state.selectedDelivery;
+        }
+        return state.deliveries.find($0 => $0.revisionId === revisionId) ?? null;
+      }
+
+      function createBrowserId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+        return String(Date.now()) + "-" + Math.random().toString(36).slice(2);
       }
 
       async function requestJson(path, options = {}) {
         const headers = { "content-type": "application/json" };
         if (options.csrf) {
           headers["x-agonara-csrf"] = state.csrfToken;
+        }
+        if (options.idempotencyKey) {
+          headers["x-agonara-idempotency-key"] = options.idempotencyKey;
         }
         const response = await fetch(path, {
           credentials: "same-origin",

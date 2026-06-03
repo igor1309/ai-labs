@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 4 of the Quick Check product UI plan with Playwright-covered Student delivery reads, option-index submission, idempotent retry, owned attempt detail, and non-owner unavailable handling.
 - Implement Phase 3 of the Quick Check product UI plan with Playwright-covered Curator candidate creation, draft/rejected listing, acceptance, rejection, and answer-key curation inspection confined to the Curator panel.
 - Implement Phase 2 of the Quick Check product UI plan with Playwright-covered sign-in, session refresh/logout, Program context, role tabs, and signed-out action guards.
 - Implement Phase 1 of the Quick Check product UI plan with a secret-free `/learn` shell route, stable product UI anchors, and absent out-of-scope learner expansion routes.
