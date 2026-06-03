@@ -38,8 +38,8 @@ Implement [Topic, Concept, and Material Navigation](../specs/topic-concept-mater
 
 ## Execution mode
 
-Mode: human-review-gated
-Human review between tasks: yes
+Mode: auto-continue
+Human review between tasks: no
 Stop conditions: failed gates, unclear scope, missing credentials/tooling, destructive operations, explicit user interruption
 Push policy: no push
 
