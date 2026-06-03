@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 2 of the topic and period readiness checks plan with Program Curator readiness candidate curation, accepted scope and requirement validation, replacement revisions, curation reads, and no Student Workspace mutation coverage.
 - Harden Phase 1 readiness storage after adversarial review by validating requirement result labels from observed learner-state levels and giving `not_ready` precedence over `in_progress`.
 - Implement Phase 1 of the topic and period readiness checks plan with storage support for readiness candidates, accepted revisions, explicit Student attempts, idempotency replay, backup round-trip, and malformed restore rejection.
 - Add the topic and period readiness checks spec and child implementation plan, separating explicit readiness attempts from raw Quick Check/open-answer attempts and sequencing storage, Corpus curation, Student Workspace derivation, HTTP, UI, traceability, dashboard, and archive gates.

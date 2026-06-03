@@ -1928,6 +1928,18 @@ export function listReadinessCheckCandidateRecords(database, { programId = null,
     .map(mapReadinessCheckCandidateRecord);
 }
 
+export function updateReadinessCheckCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update readiness_check_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getReadinessCheckCandidateRecord(database, candidateId);
+}
+
 export function createAcceptedReadinessCheckEntityRecord(database, { id, programId, currentRevisionId }) {
   assertProgramShellExists(database, programId);
 

@@ -133,7 +133,7 @@ Targeted commands:
 ## Phase tracker
 
 - [x] Phase 1 - Readiness Storage and Restore Validation
-- [ ] Phase 2 - Corpus Readiness Check Curation
+- [x] Phase 2 - Corpus Readiness Check Curation
 - [ ] Phase 3 - Student Workspace Readiness Attempt Derivation
 - [ ] Phase 4 - HTTP Readiness API
 - [ ] Phase 5 - Product UI Readiness Surfaces

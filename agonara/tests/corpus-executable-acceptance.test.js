@@ -186,6 +186,146 @@ test("learnerEvidenceTargetLinkCuration_shouldCreateListAndSoftDeleteAcceptedCor
   }
 });
 
+test("readinessCheckCuration_shouldAcceptReplaceAndRejectAcceptedCorpusMetadata", () => {
+  const { corpusCommands, database, programCommands } = makeSUT();
+
+  try {
+    const program = programCommands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Cell Biology",
+      description: "Introductory cell biology",
+    }).value.programShell;
+    const topic = corpusCommands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: corpusCommands.createNavigationCandidate({
+        actingIdentityId: "identity-curator",
+        programId: program.programId,
+        candidateKind: "topic",
+        title: "Membrane transport",
+      }).value.navigationCandidate.candidateId,
+    }).value.navigationChange.acceptedCorpus;
+    const concept = corpusCommands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: corpusCommands.createNavigationCandidate({
+        actingIdentityId: "identity-curator",
+        programId: program.programId,
+        candidateKind: "concept",
+        title: "Selective permeability",
+      }).value.navigationCandidate.candidateId,
+    }).value.navigationChange.acceptedCorpus;
+    const candidate = corpusCommands.createReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Membrane readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "on_track",
+        },
+        {
+          targetKind: "concept",
+          targetId: concept.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const accepted = corpusCommands.acceptReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.candidateId,
+    }).value.acceptedReadinessCheck;
+    const replacementCandidate = corpusCommands.createReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Period readiness",
+      scope: { scopeKind: "period", title: "Period 1", topicEntityIds: [topic.entityId] },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const replacement = corpusCommands.acceptReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: replacementCandidate.candidateId,
+      targetEntityId: accepted.entityId,
+    }).value.acceptedReadinessCheck;
+    const rejectedCandidate = corpusCommands.createReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      title: "Rejected readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const rejected = corpusCommands.rejectReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedCandidate.candidateId,
+    });
+
+    assert.deepEqual(
+      {
+        accepted: readinessCheckAcceptanceSummary(accepted),
+        curationRead: readinessCheckAcceptanceSummary(corpusCommands.getAcceptedReadinessCheckRevisionForCuration({
+          actingIdentityId: "identity-curator",
+          revisionId: accepted.revisionId,
+        }).value.acceptedReadinessCheck),
+        replacement: readinessCheckAcceptanceSummary(replacement),
+        listedAcceptedStatuses: corpusCommands.listReadinessCheckCandidates({
+          actingIdentityId: "identity-curator",
+          programId: program.programId,
+        }).value.readinessCheckCandidates.map($0 => [$0.title, $0.status]),
+        rejectedStatus: rejected.value.readinessCheckCandidate.status,
+      },
+      {
+        accepted: {
+          entityId: accepted.entityId,
+          programId: program.programId,
+          title: "Membrane readiness",
+          scopeKind: "topic",
+          requirementTargets: [
+            ["topic", topic.entityId, "on_track"],
+            ["concept", concept.entityId, "developing"],
+          ],
+        },
+        curationRead: {
+          entityId: accepted.entityId,
+          programId: program.programId,
+          title: "Membrane readiness",
+          scopeKind: "topic",
+          requirementTargets: [
+            ["topic", topic.entityId, "on_track"],
+            ["concept", concept.entityId, "developing"],
+          ],
+        },
+        replacement: {
+          entityId: accepted.entityId,
+          programId: program.programId,
+          title: "Period readiness",
+          scopeKind: "period",
+          requirementTargets: [["topic", topic.entityId, "developing"]],
+        },
+        listedAcceptedStatuses: [
+          ["Membrane readiness", "accepted"],
+          ["Period readiness", "accepted"],
+          ["Rejected readiness", "rejected"],
+        ],
+        rejectedStatus: "rejected",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("corpusAcceptance_shouldReplaceCurrentRevisionAndKeepHistoricalRevision", () => {
   const { corpusCommands, database, programCommands } = makeSUT();
 
@@ -637,6 +777,24 @@ function makeSUT() {
       "entity-4",
       "revision-4",
       "corpus-event-12",
+      "candidate-7",
+      "corpus-event-13",
+      "entity-5",
+      "revision-5",
+      "corpus-event-14",
+      "candidate-8",
+      "corpus-event-15",
+      "entity-6",
+      "revision-6",
+      "corpus-event-16",
+      "candidate-9",
+      "corpus-event-17",
+      "entity-7",
+      "revision-7",
+      "candidate-10",
+      "revision-8",
+      "candidate-11",
+      "corpus-event-18",
     ]),
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
     now,
@@ -731,6 +889,20 @@ function learnerEvidenceTargetLinkSummary(link) {
     evidenceOwnerKind: link.evidenceOwnerKind,
     evidenceOwnerEntityId: link.evidenceOwnerEntityId,
     status: link.status,
+  };
+}
+
+function readinessCheckAcceptanceSummary(readinessCheck) {
+  return {
+    entityId: readinessCheck.entityId,
+    programId: readinessCheck.programId,
+    title: readinessCheck.title,
+    scopeKind: readinessCheck.scope.scopeKind,
+    requirementTargets: readinessCheck.requirements.map($0 => [
+      $0.targetKind,
+      $0.targetId,
+      $0.requiredLevel,
+    ]),
   };
 }
 

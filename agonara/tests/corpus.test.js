@@ -24,6 +24,7 @@ import {
   listAcceptedCorpusEntityRecords,
   listAcceptedNavigationRelationshipRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedReadinessCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
@@ -31,6 +32,8 @@ import {
   listOpenAnswerCheckCandidateRecords,
   listProgramSourceRecords,
   listQuickCheckCandidateRecords,
+  listReadinessCheckAttemptRecords,
+  listReadinessCheckCandidateRecords,
   openIdentityDatabase,
   updateQuickCheckCandidateStatus,
 } from "../src/storage.js";
@@ -5061,6 +5064,564 @@ test("learnerEvidenceTargetLinks_shouldRejectInvalidTargetsAndEvidenceOwners", a
   }
 });
 
+test("readinessCheckCuration_shouldCreateListAcceptReplaceAndRejectCandidatesForProgramCurator", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("readiness-curation", 120) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const source = commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Readiness source",
+    }).value.programSource;
+    const topic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Readiness topic",
+    });
+    const concept = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Readiness concept",
+    });
+    const beforeStudentWorkspace = snapshotReadinessStudentWorkspace(database);
+    const created = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: " Topic readiness ",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "on_track",
+        },
+        {
+          targetKind: "concept",
+          targetId: concept.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+      sourceIds: [source.sourceId],
+      rationale: " Curator rationale ",
+    });
+    const acceptedReadiness = commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: created.value.readinessCheckCandidate.candidateId,
+    });
+    const replacement = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: " Period readiness ",
+      scope: {
+        scopeKind: "period",
+        title: "Period 1",
+        topicEntityIds: [topic.entityId],
+      },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    });
+    const replacementAcceptance = commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: replacement.value.readinessCheckCandidate.candidateId,
+      targetEntityId: acceptedReadiness.value.acceptedReadinessCheck.entityId,
+    });
+    const rejected = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Rejected readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    });
+    const rejection = commands.rejectReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: rejected.value.readinessCheckCandidate.candidateId,
+    });
+
+    assert.deepEqual(
+      {
+        created: readinessCheckCandidateProjection(created.value.readinessCheckCandidate),
+        draftList: commands.listReadinessCheckCandidates?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          status: "draft",
+        }).value.readinessCheckCandidates.map(readinessCheckCandidateProjection),
+        accepted: readinessCurationProjection(acceptedReadiness.value.acceptedReadinessCheck),
+        curationRead: readinessCurationProjection(commands.getAcceptedReadinessCheckRevisionForCuration?.({
+          actingIdentityId: "identity-curator",
+          revisionId: acceptedReadiness.value.acceptedReadinessCheck.revisionId,
+        }).value.acceptedReadinessCheck),
+        replacement: readinessCurationProjection(replacementAcceptance.value.acceptedReadinessCheck),
+        rejectedStatus: rejection.value.readinessCheckCandidate.status,
+        candidateStatuses: listReadinessCheckCandidateRecords(database, { programId: "program-a" })
+          .map($0 => [$0.title, $0.status]),
+        currentRevisionId: listAcceptedReadinessCheckEntityRecords(database, {
+          programId: "program-a",
+        })[0].currentRevisionId,
+        studentWorkspaceBefore: beforeStudentWorkspace,
+        studentWorkspaceAfter: snapshotReadinessStudentWorkspace(database),
+      },
+      {
+        created: {
+          programId: "program-a",
+          title: "Topic readiness",
+          scopeKind: "topic",
+          requirementTargets: [
+            ["topic", topic.entityId, "on_track"],
+            ["concept", concept.entityId, "developing"],
+          ],
+          sourceIds: [source.sourceId],
+          rationale: "Curator rationale",
+          status: "draft",
+          createdByIdentityId: "identity-curator",
+        },
+        draftList: [],
+        accepted: {
+          entityId: acceptedReadiness.value.acceptedReadinessCheck.entityId,
+          programId: "program-a",
+          title: "Topic readiness",
+          scopeKind: "topic",
+          requirementTargets: [
+            ["topic", topic.entityId, "on_track"],
+            ["concept", concept.entityId, "developing"],
+          ],
+          sourceIds: [source.sourceId],
+          rationale: "Curator rationale",
+          acceptedFromCandidateId: created.value.readinessCheckCandidate.candidateId,
+          acceptedByIdentityId: "identity-curator",
+        },
+        curationRead: {
+          entityId: acceptedReadiness.value.acceptedReadinessCheck.entityId,
+          programId: "program-a",
+          title: "Topic readiness",
+          scopeKind: "topic",
+          requirementTargets: [
+            ["topic", topic.entityId, "on_track"],
+            ["concept", concept.entityId, "developing"],
+          ],
+          sourceIds: [source.sourceId],
+          rationale: "Curator rationale",
+          acceptedFromCandidateId: created.value.readinessCheckCandidate.candidateId,
+          acceptedByIdentityId: "identity-curator",
+        },
+        replacement: {
+          entityId: acceptedReadiness.value.acceptedReadinessCheck.entityId,
+          programId: "program-a",
+          title: "Period readiness",
+          scopeKind: "period",
+          requirementTargets: [["topic", topic.entityId, "developing"]],
+          sourceIds: [],
+          acceptedFromCandidateId: replacement.value.readinessCheckCandidate.candidateId,
+          acceptedByIdentityId: "identity-curator",
+        },
+        rejectedStatus: "rejected",
+        candidateStatuses: [
+          ["Topic readiness", "accepted"],
+          ["Period readiness", "accepted"],
+          ["Rejected readiness", "rejected"],
+        ],
+        currentRevisionId: replacementAcceptance.value.acceptedReadinessCheck.revisionId,
+        studentWorkspaceBefore: beforeStudentWorkspace,
+        studentWorkspaceAfter: beforeStudentWorkspace,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readinessCheckCuration_shouldRequireActiveProgramCuratorForCommands", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("readiness-auth", 80) });
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedStudentMembership(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+    });
+    const topic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Authorization topic",
+    });
+    const validInput = {
+      programId: "program-a",
+      title: "Readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    };
+    const candidate = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      ...validInput,
+    }).value.readinessCheckCandidate;
+    const acceptedRevision = commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.candidateId,
+    }).value.acceptedReadinessCheck;
+
+    assert.deepEqual(
+      {
+        createStudent: commands.createReadinessCheckCandidate?.({
+          actingIdentityId: "identity-student",
+          ...validInput,
+        }),
+        createAdmin: commands.createReadinessCheckCandidate?.({
+          actingIdentityId: "identity-admin",
+          ...validInput,
+        }),
+        createDisabled: commands.createReadinessCheckCandidate?.({
+          actingIdentityId: "identity-disabled",
+          ...validInput,
+        }),
+        createMissingProgram: commands.createReadinessCheckCandidate?.({
+          actingIdentityId: "identity-curator",
+          ...validInput,
+          programId: "program-missing",
+        }),
+        listStudent: commands.listReadinessCheckCandidates?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }),
+        acceptStudent: commands.acceptReadinessCheckCandidate?.({
+          actingIdentityId: "identity-student",
+          candidateId: candidate.candidateId,
+        }),
+        rejectAdmin: commands.rejectReadinessCheckCandidate?.({
+          actingIdentityId: "identity-admin",
+          candidateId: candidate.candidateId,
+        }),
+        readAdmin: commands.getAcceptedReadinessCheckRevisionForCuration?.({
+          actingIdentityId: "identity-admin",
+          revisionId: "readiness-revision-missing",
+        }),
+        readExistingAdmin: commands.getAcceptedReadinessCheckRevisionForCuration?.({
+          actingIdentityId: "identity-admin",
+          revisionId: acceptedRevision.revisionId,
+        }),
+      },
+      {
+        createStudent: { status: "rejected", reason: "admin_or_curator_required" },
+        createAdmin: { status: "rejected", reason: "admin_or_curator_required" },
+        createDisabled: { status: "rejected", reason: "identity_disabled" },
+        createMissingProgram: { status: "rejected", reason: "program_not_found" },
+        listStudent: { status: "rejected", reason: "admin_or_curator_required" },
+        acceptStudent: { status: "rejected", reason: "admin_or_curator_required" },
+        rejectAdmin: { status: "rejected", reason: "admin_or_curator_required" },
+        readAdmin: { status: "rejected", reason: "readiness_revision_not_found" },
+        readExistingAdmin: { status: "rejected", reason: "admin_or_curator_required" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readinessCheckCuration_shouldRejectInvalidScopesRequirementsAndTransitions", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("readiness-validation", 180) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    const topic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Valid topic",
+    });
+    const concept = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Valid concept",
+    });
+    const material = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Valid material",
+    });
+    const crossProgramTopic = createAcceptedNavigationTarget(commands, {
+      programId: "program-b",
+      candidateKind: "topic",
+      title: "Other topic",
+    });
+    const crossProgramSource = commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-b",
+      sourceKind: "article",
+      title: "Other readiness source",
+    }).value.programSource;
+    const draftTopic = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Draft topic",
+    }).value.navigationCandidate;
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    const criterion = createAcceptedAssessmentCriterionOwner(commands, { programId: "program-a" });
+    const openAnswer = createAcceptedOpenAnswerOwner(commands, {
+      programId: "program-a",
+      criterionEntityIds: [criterion.entityId],
+    });
+    const crossProgramQuickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-b" });
+    const crossProgramReadiness = commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: commands.createReadinessCheckCandidate?.({
+        actingIdentityId: "identity-curator",
+        programId: "program-b",
+        title: "Other readiness",
+        scope: { scopeKind: "topic", topicEntityId: crossProgramTopic.entityId },
+        requirements: [
+          {
+            targetKind: "topic",
+            targetId: crossProgramTopic.entityId,
+            requiredLevel: "developing",
+          },
+        ],
+      }).value.readinessCheckCandidate.candidateId,
+    }).value.acceptedReadinessCheck;
+    const acceptedCandidate = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Accepted readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: acceptedCandidate.candidateId,
+    });
+    const rejectedCandidate = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Rejected readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    commands.rejectReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: rejectedCandidate.candidateId,
+    });
+    const replacementTargetCandidate = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Replacement target readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const validBase = {
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    };
+
+    assert.deepEqual(
+      {
+        blankTitle: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          title: " ",
+        }),
+        missingScope: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          scope: { scopeKind: "topic", topicEntityId: "topic-missing" },
+        }),
+        crossProgramScope: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          scope: { scopeKind: "topic", topicEntityId: crossProgramTopic.entityId },
+        }),
+        draftScope: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          scope: { scopeKind: "topic", topicEntityId: draftTopic.candidateId },
+        }),
+        emptyPeriodTitle: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          scope: { scopeKind: "period", title: " ", topicEntityIds: [topic.entityId] },
+        }),
+        emptyPeriodTopics: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          scope: { scopeKind: "period", title: "Period", topicEntityIds: [] },
+        }),
+        emptyRequirements: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          requirements: [],
+        }),
+        missingSource: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          sourceIds: ["source-missing"],
+        }),
+        crossProgramSource: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          sourceIds: [crossProgramSource.sourceId],
+        }),
+        duplicateRequirements: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          requirements: [
+            {
+              targetKind: "topic",
+              targetId: topic.entityId,
+              requiredLevel: "developing",
+            },
+            {
+              targetKind: "topic",
+              targetId: topic.entityId,
+              requiredLevel: "on_track",
+            },
+          ],
+        }),
+        unsupportedRequirementTarget: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          requirements: [
+            {
+              targetKind: "definition",
+              targetId: topic.entityId,
+              requiredLevel: "developing",
+            },
+          ],
+        }),
+        crossProgramRequirement: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          requirements: [
+            {
+              targetKind: "quick_check",
+              targetId: crossProgramQuickCheck.entityId,
+              requiredLevel: "developing",
+            },
+          ],
+        }),
+        validEvidenceOwners: commands.createReadinessCheckCandidate?.({
+          ...validBase,
+          requirements: [
+            {
+              targetKind: "concept",
+              targetId: concept.entityId,
+              requiredLevel: "developing",
+            },
+            {
+              targetKind: "material_reference",
+              targetId: material.entityId,
+              requiredLevel: "developing",
+            },
+            {
+              targetKind: "quick_check",
+              targetId: quickCheck.entityId,
+              requiredLevel: "on_track",
+            },
+            {
+              targetKind: "open_answer_check",
+              targetId: openAnswer.entityId,
+              requiredLevel: "developing",
+            },
+            {
+              targetKind: "assessment_criterion",
+              targetId: criterion.entityId,
+              requiredLevel: "developing",
+            },
+          ],
+        }).status,
+        acceptMissing: commands.acceptReadinessCheckCandidate?.({
+          actingIdentityId: "identity-curator",
+          candidateId: "readiness-missing",
+        }),
+        acceptAlreadyAccepted: commands.acceptReadinessCheckCandidate?.({
+          actingIdentityId: "identity-curator",
+          candidateId: acceptedCandidate.candidateId,
+        }),
+        acceptMissingReplacementTarget: commands.acceptReadinessCheckCandidate?.({
+          actingIdentityId: "identity-curator",
+          candidateId: replacementTargetCandidate.candidateId,
+          targetEntityId: "readiness-entity-missing",
+        }),
+        acceptCrossProgramReplacementTarget: commands.acceptReadinessCheckCandidate?.({
+          actingIdentityId: "identity-curator",
+          candidateId: replacementTargetCandidate.candidateId,
+          targetEntityId: crossProgramReadiness.entityId,
+        }),
+        rejectAlreadyRejected: commands.rejectReadinessCheckCandidate?.({
+          actingIdentityId: "identity-curator",
+          candidateId: rejectedCandidate.candidateId,
+        }),
+      },
+      {
+        blankTitle: { status: "rejected", reason: "validation_failed" },
+        missingScope: { status: "rejected", reason: "readiness_scope_not_found" },
+        crossProgramScope: { status: "rejected", reason: "readiness_scope_program_mismatch" },
+        draftScope: { status: "rejected", reason: "readiness_scope_not_found" },
+        emptyPeriodTitle: { status: "rejected", reason: "validation_failed" },
+        emptyPeriodTopics: { status: "rejected", reason: "validation_failed" },
+        emptyRequirements: { status: "rejected", reason: "validation_failed" },
+        missingSource: { status: "rejected", reason: "source_not_found" },
+        crossProgramSource: { status: "rejected", reason: "source_program_mismatch" },
+        duplicateRequirements: { status: "rejected", reason: "readiness_requirement_id_conflict" },
+        unsupportedRequirementTarget: { status: "rejected", reason: "readiness_requirement_target_not_found" },
+        crossProgramRequirement: {
+          status: "rejected",
+          reason: "readiness_requirement_program_mismatch",
+        },
+        validEvidenceOwners: "accepted",
+        acceptMissing: { status: "rejected", reason: "readiness_candidate_not_found" },
+        acceptAlreadyAccepted: { status: "rejected", reason: "readiness_candidate_already_accepted" },
+        acceptMissingReplacementTarget: { status: "rejected", reason: "readiness_entity_not_found" },
+        acceptCrossProgramReplacementTarget: {
+          status: "rejected",
+          reason: "readiness_entity_program_mismatch",
+        },
+        rejectAlreadyRejected: { status: "rejected", reason: "readiness_candidate_already_rejected" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listCorpusEvents_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 
@@ -5460,6 +6021,52 @@ function learnerEvidenceTargetLinkProjection(link) {
     evidenceOwnerEntityId: link.evidenceOwnerEntityId,
     status: link.status,
     createdByIdentityId: link.createdByIdentityId,
+  };
+}
+
+function readinessCheckCandidateProjection(candidate) {
+  return {
+    programId: candidate.programId,
+    title: candidate.title,
+    scopeKind: candidate.scope.scopeKind,
+    requirementTargets: candidate.requirements.map($0 => [
+      $0.targetKind,
+      $0.targetId,
+      $0.requiredLevel,
+    ]),
+    sourceIds: candidate.sourceIds,
+    ...(candidate.rationale !== undefined ? { rationale: candidate.rationale } : {}),
+    status: candidate.status,
+    createdByIdentityId: candidate.createdByIdentityId,
+  };
+}
+
+function readinessCurationProjection(readinessCheck) {
+  return {
+    entityId: readinessCheck.entityId,
+    programId: readinessCheck.programId,
+    title: readinessCheck.title,
+    scopeKind: readinessCheck.scope.scopeKind,
+    requirementTargets: readinessCheck.requirements.map($0 => [
+      $0.targetKind,
+      $0.targetId,
+      $0.requiredLevel,
+    ]),
+    sourceIds: readinessCheck.sourceIds,
+    ...(readinessCheck.rationale !== undefined ? { rationale: readinessCheck.rationale } : {}),
+    acceptedFromCandidateId: readinessCheck.acceptedFromCandidateId,
+    acceptedByIdentityId: readinessCheck.acceptedByIdentityId,
+  };
+}
+
+function snapshotReadinessStudentWorkspace(database) {
+  return {
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerEvaluationCount: countRows(database, "open_answer_evaluations"),
+    openAnswerEvaluatorRunCount: countRows(database, "open_answer_evaluator_runs"),
+    quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    readinessCheckAttemptCount: listReadinessCheckAttemptRecords(database).length,
+    sessionCount: countRows(database, "sessions"),
   };
 }
 
