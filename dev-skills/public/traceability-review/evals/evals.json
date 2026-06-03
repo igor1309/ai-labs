@@ -106,6 +106,25 @@
         "A negative or does-not guarantee clause that no test names is treated as an open question (names-only cannot confirm an absence), not a forced untested finding.",
         "A clean result is backed by the completed bidirectional tables, not asserted, and the Inspected section lists the specs and test files consulted."
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Run the upward orphan check on the agonara Corpus Storage + Curator Workspace module — does every ADR-010 and ADR-009 decision trace back to a source intent, or is any unrequested scope creep?",
+      "expected_output": "A complete upward-trace matrix (one row per ADR-010 and ADR-009 Decision sentence and Rules/Invariants bullet) over the two ADRs and the intent layer, finding 0 orphans — every decision traced to an accepted intent or classified as a legitimate derived/carried-shape decision — with the parent-less-looking decisions (Program shell + operator-visible metadata, self-join admission default, stable accepted revisions, acceptance attribution/event emission) caught by the suppression guards and the genuinely intent-deferred specifics routed as open questions rather than flagged ORPHAN.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by orphan and the layer/module (e.g. 2026-06-03T1928Z-orphan-adr-intent-corpus-curator.md).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the upward orphan check / ADR → intent / the Corpus Storage + Curator Workspace module / agonara, mechanism: upward-trace-matrix, a suppression_rules list, and an inputs list giving adr-010 and adr-009 with status, the four intent files with versions, and the responsibility map with version.",
+        "An upward-trace matrix is the primary artifact: one row per ADR-010 and ADR-009 Decision sentence and Rules/Invariants bullet (pinned to the ADRs' own units — Executive Summary, Context, Consequences, and Non-Goals are NOT enumerated as rows, and rules are neither sub-split nor folded), each row carrying a verdict (traced, derived, carried-shape, or ORPHAN) and a cited parent: an intent ID file:line for traced, the derivation/elaboration parent, or 'none — ORPHAN'.",
+        "There are 0 ORPHAN rows — the module is orphan-free.",
+        "The verdict is backed by the completed matrix with both sides cited (intent file:line and adr file:line), not asserted; the row total is reported as approximate (ADR prose decisions carry no stable IDs) and the eval does NOT require an exact row number.",
+        "The Program shell decisions (ADR-009: a minimal accepted Program record with a stable identifier and operator-visible metadata) are NOT flagged ORPHAN — classified derived or carried-shape because CUR-01/INT-01 commit that a program exists and the shell is the minimal stable scope the intent left to design, with the operator-visible-metadata clause routed as an open question (resolving layer: intent).",
+        "The self-join admission default (ADR-009) is NOT flagged ORPHAN — classified carried-shape of STU-18 (which commits self-join's existence), with the specific default routed as an open question because the intent explicitly leaves admission policy open.",
+        "Stable accepted revisions and addressability (ADR-010) are NOT flagged ORPHAN — classified derived/carried-shape because CUR-10 and INT-07 require that corpus evolution not erase student history, which the revision mechanism honours.",
+        "Acceptance attribution, provenance, atomicity, and event-emission rules are NOT flagged ORPHAN — classified derived as internal integrity/provenance primitives serving traced acceptance and membership decisions (and ADM-15 audit), never user-observable scope creep.",
+        "No false-positive ORPHAN is manufactured: a decision with a derivation chain to a traced decision or a system-level need, or one elaborating an intent-left-open capability, is derived/carried-shape, not ORPHAN; the derived-vs-orphan disposition is left to judgement (the eval does not pin the traced/derived split).",
+        "Only the two ADRs, the four intent files, and the responsibility map are read; no specs, plans, code, tests, or prior review outputs are read, and no source document is edited.",
+        "The Inspected section confirms ADR-010 and ADR-009 (decisions enumerated), the four intent files, and the responsibility map were read."
+      ]
     }
   ]
 }
