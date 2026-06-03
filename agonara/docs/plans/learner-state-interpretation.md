@@ -32,6 +32,16 @@ Fix: none for this plan. Implement the spec without widening scope.
 
 Required tests: use the implementation phases below.
 
+## Adversarial Review Closure
+
+### Review finding - implementation preflight was not explicit enough
+
+Verdict: warning
+
+Why: The first version declared an execution lock and recorded that plan-creation preflight had passed, but it did not require future implementation steps to rerun `git worktree list --porcelain` and `git branch --show-current` before Phase 1 and before each subsequent phase. Process Gates require preflight verification before implementation actions, so a self-contained child plan should make that gate executable for the next implementer.
+
+Fix applied: Added an implementation preflight line under `## Execution lock` and a scope guardrail that blocks phase work when the current path or branch does not match this plan.
+
 ## Goal
 
 Implement `agonara/docs/specs/learner-state-interpretation.md` for INT-07 so Agonara can derive owner-only personal progress, weak-area, and supporting-evidence summaries from accepted checks and Student evidence without persisting authoritative learner-state labels or mutating accepted Program corpus.
@@ -49,6 +59,7 @@ Worktree mode: reuse existing
 Expected worktree: `worktrees/agonara-gap-closure`
 Expected branch: `codex/agonara-gap-closure`
 Preflight check: [x] done
+Implementation preflight: before Phase 1 and before every later phase, run `git worktree list --porcelain` and `git branch --show-current`; continue only when the current worktree is `worktrees/agonara-gap-closure` and the current branch is `codex/agonara-gap-closure`.
 
 ## Scope guardrails
 
@@ -60,6 +71,7 @@ Preflight check: [x] done
 - Do not expose answer keys, candidate ids, accepted-by identity ids, source ids, curator rationale, idempotency keys, evaluator leases, provider diagnostics, raw prompts, raw model responses, sessions, CSRF tokens, cookies, SQL text, filesystem paths, stack traces, database URLs, provider credentials, or infrastructure details on learner-state HTTP responses or UI surfaces.
 - Do not add Admin or Program Curator learner-state reads. Program Curators can curate target links; only owning Students can read learner-state summaries and target details.
 - Do not start implementation until this plan has passed adversarial review and been committed.
+- Do not start or resume a phase if implementation preflight reports a different worktree or branch.
 - Do not commit any implementation phase until targeted tests, full Agonara tests, root build, `git diff --check`, and post-implementation self/adversarial review are clean.
 - Do not mark parent Phase 3 complete until this child plan is fully implemented, verified, reviewed clean, archived, and committed.
 
