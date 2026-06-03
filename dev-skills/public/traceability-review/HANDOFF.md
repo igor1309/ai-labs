@@ -11,7 +11,12 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## State
 
-- Branch **`traceability`**, unpushed, working tree clean. Skill at **v0.9.0**.
+- Branch **`traceability`**, unpushed, working tree clean. Skill at **v0.10.0**.
+- **v0.10.0 was a structuring refactor:** per-pass mechanics extracted to
+  `references/pass-notes.md` (SKILL.md keeps the method spine + a pointer);
+  cross-cutting discipline de-duplicated; a `## Reuse` section added (portable
+  core vs project-bound harness). SKILL.md 185→142 lines. Behaviour-preserving —
+  validated by re-running orphan + allocation against the committed baselines.
 - The **`intent → ADR → spec → tests` pipeline is implemented end to end** — seven
   passes, each validated on Agonara (qualitative-first run + variance):
   1. intent×intent (v0.0.1) · 2. intent→ADR per-module (v0.2.0) ·
@@ -74,7 +79,7 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## Not done
 
-- Nothing is **pushed or merged** — the whole effort sits on `traceability` (32
+- Nothing is **pushed or merged** — the whole effort sits on `traceability` (33
   commits ahead of trunk; run `git rev-list --count trunk..traceability` for the
   live number). Publishing is a deliberate later gate.
 - spec↔tests + all passes are validated on **one module** (Corpus/Curator) and
