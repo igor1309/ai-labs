@@ -6,7 +6,7 @@ description: "Agonara backend and product docs for a structured learning program
 
 # Agonara
 
-Structured learning program environment with the first Identity and Operations slice implemented.
+Structured learning program environment. Identity & Operations, Program Membership, Corpus authoring with curator acceptance, and the Student open-answer workspace are implemented.
 
 ## Description
 
