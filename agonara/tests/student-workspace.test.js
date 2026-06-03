@@ -1513,6 +1513,260 @@ test("quickCheckFlows_shouldPreserveAdjacentDomainsAndAvoidOutOfScopeSurfaces", 
   }
 });
 
+test("quickCheckExecutableAcceptance_shouldCoverFirstSliceEndToEnd", () => {
+  const { commands, corpusCommands, database } = makeSUT({
+    corpusIds: [
+      "quick-check-candidate-acceptance-a",
+      "quick-check-candidate-acceptance-a-option-a",
+      "quick-check-candidate-acceptance-a-option-b",
+      "quick-check-entity-acceptance-a",
+      "quick-check-revision-acceptance-a",
+      "quick-check-revision-acceptance-a-option-a",
+      "quick-check-revision-acceptance-a-option-b",
+      "quick-check-candidate-acceptance-b",
+      "quick-check-candidate-acceptance-b-option-a",
+      "quick-check-candidate-acceptance-b-option-b",
+      "quick-check-revision-acceptance-b",
+      "quick-check-revision-acceptance-b-option-a",
+      "quick-check-revision-acceptance-b-option-b",
+    ],
+    ids: ["attempt-1", "attempt-2", "attempt-3"],
+  });
+  const restored = makeSUT({ ids: ["attempt-restored"] });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, {
+      programId: "program-a",
+      sourceId: "open-answer-source-a",
+    });
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    seedProtectedIdentityState(database);
+    const csrfTokens = new Map([["session-protected", "csrf-token-protected"]]);
+    const adjacentBefore = projectQuickCheckBoundaryIsolationState(database, csrfTokens);
+    const deferredBefore = projectQuickCheckDeferredState(database);
+
+    const candidate = corpusCommands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Acceptance quick check",
+      prompt: "Pick the invariant preserved by this slice.",
+      options: ["Student evidence stays personal", "Answer keys are public"],
+      answerKeyIndex: 0,
+      sourceIds: ["open-answer-source-a"],
+      rationale: "Curator-only acceptance rationale",
+    });
+    const accepted = corpusCommands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "quick-check-candidate-acceptance-a",
+    });
+    const acceptedQuickCheck = accepted.value.acceptedQuickCheck;
+    const deliveries = corpusCommands.listQuickCheckDeliveries({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const delivery = corpusCommands.getQuickCheckDelivery({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      revisionId: acceptedQuickCheck.revisionId,
+    });
+    const matchingAttempt = commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: acceptedQuickCheck.revisionId,
+      selectedOptionId: acceptedQuickCheck.options[0].optionId,
+      idempotencyKey: "acceptance-matching",
+    });
+    const idempotentRetry = commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: acceptedQuickCheck.revisionId,
+      selectedOptionId: acceptedQuickCheck.options[0].optionId,
+      idempotencyKey: "acceptance-matching",
+    });
+    const correctiveAttempt = commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: acceptedQuickCheck.revisionId,
+      selectedOptionId: acceptedQuickCheck.options[1].optionId,
+      idempotencyKey: "acceptance-corrective",
+    });
+    const replacementCandidate = corpusCommands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Acceptance replacement quick check",
+      prompt: "Pick the replacement invariant.",
+      options: ["Historical attempts are rewritten", "Historical attempts stay linked"],
+      answerKeyIndex: 1,
+      sourceIds: ["open-answer-source-a"],
+      rationale: "Curator-only replacement rationale",
+    });
+    const replacement = corpusCommands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "quick-check-candidate-acceptance-b",
+      targetEntityId: acceptedQuickCheck.entityId,
+    });
+    const restoredBackup = exportIdentityBackup(database);
+    restoreIdentityBackup(restored.database, restoredBackup);
+    const restoredDelivery = restored.corpusCommands.getQuickCheckDelivery({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      revisionId: acceptedQuickCheck.revisionId,
+    });
+    const restoredRead = restored.commands.getQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      attemptId: "attempt-1",
+    });
+    const restoredRetry = restored.commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: acceptedQuickCheck.revisionId,
+      selectedOptionId: acceptedQuickCheck.options[0].optionId,
+      idempotencyKey: "acceptance-matching",
+    });
+
+    assert.deepEqual(
+      {
+        statuses: [
+          candidate.status,
+          accepted.status,
+          deliveries.status,
+          delivery.status,
+          matchingAttempt.status,
+          idempotentRetry.status,
+          correctiveAttempt.status,
+          replacementCandidate.status,
+          replacement.status,
+          restoredDelivery.status,
+          restoredRead.status,
+          restoredRetry.status,
+        ],
+        deliveryRevisionIds: deliveries.value.quickCheckDeliveries.map($0 => $0.revisionId),
+        deliveryOptionIds: delivery.value.quickCheckDelivery.options.map($0 => $0.optionId),
+        matchingAttempt: projectQuickCheckAttemptResult(matchingAttempt.value.quickCheckAttempt),
+        idempotentRetry: projectQuickCheckAttemptResult(idempotentRetry.value.quickCheckAttempt),
+        correctiveAttempt: projectQuickCheckAttemptResult(correctiveAttempt.value.quickCheckAttempt),
+        replacementDeliveryRevisionIds: corpusCommands.listQuickCheckDeliveries({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }).value.quickCheckDeliveries.map($0 => $0.revisionId),
+        historicalAttempts: commands.listQuickCheckAttempts({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }).value.quickCheckAttempts.map(projectQuickCheckAttemptResult),
+        restoredRead: projectQuickCheckAttemptResult(restoredRead.value.quickCheckAttempt),
+        restoredRetry: projectQuickCheckAttemptResult(restoredRetry.value.quickCheckAttempt),
+        restoredAttemptRows: listQuickCheckAttemptRecords(restored.database).map($0 => $0.id),
+        forbiddenStudentDetails: containsForbiddenDetail([
+          deliveries,
+          delivery,
+          matchingAttempt,
+          idempotentRetry,
+          correctiveAttempt,
+          restoredDelivery,
+          restoredRead,
+          restoredRetry,
+        ]),
+        adjacentAfter: projectQuickCheckBoundaryIsolationState(database, csrfTokens),
+        deferredAfter: projectQuickCheckDeferredState(database),
+        publicSurface: containsAnyQuickCheckPublicSurface({
+          adminUiSource: readFileSync(new URL("../src/admin-ui.js", import.meta.url), "utf8"),
+          cliSource: readFileSync(new URL("../src/cli.js", import.meta.url), "utf8"),
+          serverSource: readFileSync(new URL("../src/server.js", import.meta.url), "utf8"),
+        }),
+        outOfScopeBehavior: containsAnyOutOfScopeStudentWorkspaceBehavior(
+          [
+            readFileSync(new URL("../src/corpus.js", import.meta.url), "utf8"),
+            readFileSync(new URL("../src/student-workspace.js", import.meta.url), "utf8"),
+          ].join("\n"),
+        ),
+      },
+      {
+        statuses: [
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+          "accepted",
+        ],
+        deliveryRevisionIds: ["quick-check-revision-acceptance-a"],
+        deliveryOptionIds: [
+          "quick-check-revision-acceptance-a-option-a",
+          "quick-check-revision-acceptance-a-option-b",
+        ],
+        matchingAttempt: {
+          attemptId: "attempt-1",
+          checkRevisionId: "quick-check-revision-acceptance-a",
+          selectedOptionId: "quick-check-revision-acceptance-a-option-a",
+          matched: true,
+        },
+        idempotentRetry: {
+          attemptId: "attempt-1",
+          checkRevisionId: "quick-check-revision-acceptance-a",
+          selectedOptionId: "quick-check-revision-acceptance-a-option-a",
+          matched: true,
+        },
+        correctiveAttempt: {
+          attemptId: "attempt-2",
+          checkRevisionId: "quick-check-revision-acceptance-a",
+          selectedOptionId: "quick-check-revision-acceptance-a-option-b",
+          matched: false,
+        },
+        replacementDeliveryRevisionIds: ["quick-check-revision-acceptance-b"],
+        historicalAttempts: [
+          {
+            attemptId: "attempt-1",
+            checkRevisionId: "quick-check-revision-acceptance-a",
+            selectedOptionId: "quick-check-revision-acceptance-a-option-a",
+            matched: true,
+          },
+          {
+            attemptId: "attempt-2",
+            checkRevisionId: "quick-check-revision-acceptance-a",
+            selectedOptionId: "quick-check-revision-acceptance-a-option-b",
+            matched: false,
+          },
+        ],
+        restoredRead: {
+          attemptId: "attempt-1",
+          checkRevisionId: "quick-check-revision-acceptance-a",
+          selectedOptionId: "quick-check-revision-acceptance-a-option-a",
+          matched: true,
+        },
+        restoredRetry: {
+          attemptId: "attempt-1",
+          checkRevisionId: "quick-check-revision-acceptance-a",
+          selectedOptionId: "quick-check-revision-acceptance-a-option-a",
+          matched: true,
+        },
+        restoredAttemptRows: ["attempt-1", "attempt-2"],
+        forbiddenStudentDetails: false,
+        adjacentAfter: adjacentBefore,
+        deferredAfter: deferredBefore,
+        publicSurface: false,
+        outOfScopeBehavior: false,
+      },
+    );
+  } finally {
+    database.close();
+    restored.database.close();
+  }
+});
+
 test("containsAnyOutOfScopeStudentWorkspaceBehavior_shouldDetectDeferredQuickCheckStateSurfaces", () => {
   assert.deepEqual(
     [
@@ -8546,6 +8800,15 @@ function makeQuickCheckAttemptSummary({
     selectedOptionId,
     matched,
     submittedAt: "2026-06-02T10:00:00.000Z",
+  };
+}
+
+function projectQuickCheckAttemptResult(attempt) {
+  return {
+    attemptId: attempt.attemptId,
+    checkRevisionId: attempt.checkRevisionId,
+    selectedOptionId: attempt.selectedOptionId,
+    matched: attempt.matched,
   };
 }
 

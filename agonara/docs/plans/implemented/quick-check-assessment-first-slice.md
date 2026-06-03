@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara deterministic single-select quick-che
 
 Deliver the Agonara v0.0.1 deterministic single-select quick-check assessment slice so Corpus Storage owns draft candidates, accepted revisions, options, and answer keys while Student Workspace owns immutable idempotent attempts, matched results, and student-specific evidence.
 
-This plan implements [Quick-Check Assessment First Slice](../specs/quick-check-assessment-first-slice.md) and [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md). It preserves the Product Intent requirement that students can answer checks during study and receive personal evidence while deferring UI, HTTP routes, CLI commands, option randomization, non-single-select checks, learner-state interpretation, grading, analytics, external providers, evaluator workers, queues, and human review.
+This plan implements [Quick-Check Assessment First Slice](../../specs/quick-check-assessment-first-slice.md) and [ADR-016](../../adr/adr-016-quick-check-assessment-boundary.md). It preserves the Product Intent requirement that students can answer checks during study and receive personal evidence while deferring UI, HTTP routes, CLI commands, option randomization, non-single-select checks, learner-state interpretation, grading, analytics, external providers, evaluator workers, queues, and human review.
 
 ## Execution mode
 
@@ -388,7 +388,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 9 — Executable acceptance and closeout
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: prove the full Quick Check first-slice flow end to end and close the implementation plan with traceability, logs, and archive movement.
 
