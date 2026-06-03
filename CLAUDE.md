@@ -6,6 +6,12 @@
 
 `pfw-*` skills (Point-Free) are not used in this repo. Never invoke any `pfw-*` skill.
 
+## Session start
+
+At the first message of a session, before exploring the repo or acting, consult the
+`using-dev-skills` skill to pick the ladder and invoke the matching skill. This is the
+default, not optional.
+
 ## Collaboration preferences
 
 Always-on behavioral rules — **read at session start**. See

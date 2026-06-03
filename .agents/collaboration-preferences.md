@@ -1,5 +1,5 @@
 ---
-date: 2026-06-02
+date: 2026-06-03
 model: claude-opus-4-8
 description: "Collaboration preferences — always-on behavioral rules for working in this repo"
 ---
@@ -11,6 +11,7 @@ Always-on rules. Read at session start; they apply to every task regardless of s
 - Latest direct user instruction is the highest-priority source of truth for current scope.
 - If the user narrows scope or corrects direction, immediately stop the previous plan and follow the new scope.
 - Before making changes, restate the requested scope in one sentence and execute only that scope.
+- At the first message of a session, before exploring the repo or acting, consult `using-dev-skills` to pick the ladder and invoke the matching skill (e.g. `cold-start-checkpoint`, `intake`, `process-gates` as the task warrants). This is the default, not optional.
 - Follow the written plan/docs as the source of truth; do not invent steps or rename phases.
 - Make small, reviewable changes. Stop after each step for human review only when the active plan declares `human-review-gated`; otherwise auto-continue after green gates and local commit.
 - Add tests alongside changes, not later.

@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-06-03
+
+- Grounding-discipline pass across three skills: cold-start-checkpoint v1.2.0 adds Step 4 (read every doc a handoff/ADR/research/plan references before any live/external tool use); adr-governance v1.1.0 adds review Dimension V "Mechanism Feasibility" — each asserted mechanism must cite a command/doc/code showing it is achievable on the target system before acceptance (mirrored into the release-domain ADR-Review-Process); using-dev-skills v1.0.2 makes consulting the ladder the explicit session-start default, reinforced by an always-on rule in collaboration-preferences and a CLAUDE.md pointer. All three target the same failure mode — stating conclusions before grounding them against the cheapest source of truth. Marketplace v1.50.0.
+
 ## 2026-05-28
 
 - discuss v1.2.0 and intake v1.5.0: require one mandatory counter-argument sentence after any stated lean. Targets the "balanced essay" failure mode without reverting to the menu-of-options anti-pattern both skills already prohibit — Claude must still pick a side, but now name what would flip the pick. In `intake`, scoped to Open Questions only so it doesn't conflict with the "no solution design" hard rule. Marketplace v1.49.0.
