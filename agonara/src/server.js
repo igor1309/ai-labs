@@ -6,6 +6,7 @@ import { createCorpusCommands } from "./corpus.js";
 import { createIdentityCommands } from "./identity.js";
 import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
+import { createStudentWorkspaceCommands } from "./student-workspace.js";
 
 export function createServer({
   generateToken = randomUUID,
@@ -1343,6 +1344,10 @@ export function startServer({
   const programCommands = createProgramCommands({
     database,
   });
+  const studentWorkspaceCommands = createStudentWorkspaceCommands({
+    database,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+  });
   const server = createServer({
     corpusCommands: createCorpusCommands({
       database,
@@ -1353,6 +1358,7 @@ export function startServer({
       database,
     }),
     programCommands,
+    studentWorkspaceCommands,
     log,
   });
   server.on("close", () => {

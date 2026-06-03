@@ -110,7 +110,7 @@ Push policy: no push
 Worktree mode: create new
 Expected worktree: `worktrees/agonara-gap-closure`
 Expected branch: `codex/agonara-gap-closure`
-Preflight check: [ ] done
+Preflight check: [x] done
 
 ## Scope guardrails
 

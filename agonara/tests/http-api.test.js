@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
-import { createServer } from "../src/server.js";
+import { createServer, startServer } from "../src/server.js";
 import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
 import {
   initializeIdentityStorage,
@@ -7435,6 +7437,61 @@ test("identityAdminEndpoints_shouldCreateIdentityAndListAudit_onAdminSession", a
   }
 });
 
+test("startServer_shouldExposeStudentWorkspaceOpenAnswerRoutes_onProductionComposition", async () => {
+  const databaseDirectory = mkdtempSync(join(tmpdir(), "agonara-production-composition-"));
+  const databasePath = join(databaseDirectory, "agonara.sqlite");
+  const server = startServer({
+    bootstrapSecret: "operator-secret",
+    databasePath,
+    host: "127.0.0.1",
+    log: () => {},
+    port: "0",
+  });
+  const baseUrl = await baseUrlForStartedServer(server);
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submission = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Production composition answer.",
+      },
+      "production-composition-key",
+    );
+    const submissionBody = await submission.json();
+    const attemptId = submissionBody.value?.attempt?.attemptId;
+    const detail = await fetch(`${baseUrl}/open-answer-attempts/${attemptId}`, {
+      headers: { cookie: scenario.student.cookie },
+    });
+    const list = await fetch(`${baseUrl}/programs/${scenario.programId}/open-answer-attempts`, {
+      headers: { cookie: scenario.student.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        detailStatusCode: detail.status,
+        listStatusCode: list.status,
+        listedAttemptIds: (await list.json()).value?.attempts.map($0 => $0.attemptId),
+        submissionStatus: submissionBody.status,
+        submissionStatusCode: submission.status,
+      },
+      {
+        detailStatusCode: 200,
+        listStatusCode: 200,
+        listedAttemptIds: [attemptId],
+        submissionStatus: "accepted",
+        submissionStatusCode: 200,
+      },
+    );
+  } finally {
+    await close(server);
+    rmSync(databaseDirectory, { force: true, recursive: true });
+  }
+});
+
 test("operationsDiagnostics_shouldAcceptAdminSession_onActiveAdmin", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 
@@ -8246,6 +8303,25 @@ function listen(server) {
       server.off("error", reject);
       const address = server.address();
       resolve(`http://127.0.0.1:${address.port}`);
+    });
+  });
+}
+
+function baseUrlForStartedServer(server) {
+  return new Promise((resolve, reject) => {
+    const resolveAddress = () => {
+      const address = server.address();
+      resolve(`http://127.0.0.1:${address.port}`);
+    };
+    server.once("error", reject);
+    if (server.listening) {
+      server.off("error", reject);
+      resolveAddress();
+      return;
+    }
+    server.once("listening", () => {
+      server.off("error", reject);
+      resolveAddress();
     });
   });
 }
