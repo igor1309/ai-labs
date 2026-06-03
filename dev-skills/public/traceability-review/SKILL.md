@@ -31,10 +31,16 @@ roadmap, not as tested behavior.
 The pipeline is `intent → ADR → spec → tests`. Each review run targets one
 layer-pair:
 
-1. **intent × intent** — internal consistency of the intent layer. *(implemented)*
+1. **intent × intent** — internal consistency of the intent layer:
+   **horizontal** cross-role and inside-role consistency only. Vertical
+   intent→story coverage is *not* checked here — it belongs to intent→ADR.
+   *(implemented, v0.0.1)*
 2. **intent → ADR** — every accepted intent is carried into an ADR with no
    loss or contradiction; an ADR that diverges from its source intent sends
    the question back to the intent (amend the intent, then re-derive the ADR).
+   This pair also owns **vertical coverage**: every intent capability/story
+   must be reflected downstream; a parent capability the decomposition does
+   not carry is a coverage finding here, not at intent×intent.
 3. **ADR × ADR** — cross-ADR consistency, including **cross-module
    compatibility**: no double ownership, no boundary violation, and shared
    contracts described consistently by provider and every consumer. Anchor on
