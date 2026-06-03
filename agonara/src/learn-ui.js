@@ -542,6 +542,96 @@ export const learnUiHtml = `<!doctype html>
             </section>
           </div>
         </section>
+
+        <section id="learner-state-section" class="panel wide-panel stack" aria-label="Learner State">
+          <h2>Learner state</h2>
+          <p id="learner-state-status" class="status" aria-live="polite">Learner state not loaded.</p>
+          <div class="navigation-grid">
+            <section id="learner-state-target-link-panel" class="stack" aria-label="Learner State Target Links">
+              <h3>Target links</h3>
+              <button id="refresh-learner-state-target-links-button" class="secondary" data-requires-session type="button">Refresh target links</button>
+              <div id="learner-state-target-link-list" class="list">
+                <p class="empty">No learner-state target links loaded.</p>
+              </div>
+              <form id="learner-state-target-link-form" class="stack">
+                <div class="operation-grid">
+                  <label>
+                    Learner target kind
+                    <select id="learner-state-target-kind-input" name="targetKind">
+                      <option value="topic">Topic</option>
+                      <option value="concept">Concept</option>
+                      <option value="material_reference">Material reference</option>
+                    </select>
+                  </label>
+                  <label>
+                    Learner target id
+                    <input id="learner-state-target-id-input" name="targetId" autocomplete="off">
+                  </label>
+                  <label>
+                    Evidence owner kind
+                    <select id="learner-state-evidence-owner-kind-input" name="evidenceOwnerKind">
+                      <option value="accepted_quick_check">Accepted Quick Check</option>
+                      <option value="accepted_open_answer_check">Accepted Open Answer Check</option>
+                      <option value="accepted_assessment_criterion">Accepted assessment criterion</option>
+                    </select>
+                  </label>
+                  <label>
+                    Evidence owner id
+                    <input id="learner-state-evidence-owner-id-input" name="evidenceOwnerEntityId" autocomplete="off">
+                  </label>
+                </div>
+                <button type="submit" data-requires-session>Create target link</button>
+                <p id="learner-state-target-link-status" class="status" aria-live="polite"></p>
+              </form>
+            </section>
+
+            <section id="learner-state-student-panel" class="stack" aria-label="Student Learner State">
+              <h3>Student progress</h3>
+              <button id="refresh-learner-state-button" class="secondary" data-requires-session type="button">Refresh learner state</button>
+              <div id="learner-state-summary" class="empty">No learner-state summary loaded.</div>
+              <div class="detail-section">
+                <h3>Weak areas</h3>
+                <div id="learner-state-weak-area-list" class="list">
+                  <p class="empty">No weak areas loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Topics</h3>
+                <div id="learner-state-topic-list" class="list">
+                  <p class="empty">No learner-state topics loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Concepts</h3>
+                <div id="learner-state-concept-list" class="list">
+                  <p class="empty">No learner-state concepts loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Materials</h3>
+                <div id="learner-state-material-list" class="list">
+                  <p class="empty">No learner-state materials loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Checks</h3>
+                <div id="learner-state-check-list" class="list">
+                  <p class="empty">No learner-state checks loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Criteria</h3>
+                <div id="learner-state-criterion-list" class="list">
+                  <p class="empty">No learner-state criteria loaded.</p>
+                </div>
+              </div>
+              <div id="learner-state-target-detail" class="empty">No learner-state target selected.</div>
+              <div id="learner-state-evidence-list" class="list">
+                <p class="empty">No learner-state evidence loaded.</p>
+              </div>
+            </section>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -554,6 +644,8 @@ export const learnUiHtml = `<!doctype html>
         csrfToken: null,
         deliveries: [],
         identity: null,
+        learnerState: null,
+        learnerStateTargetLinks: [],
         mode: "curator",
         navigation: null,
         navigationCandidates: [],
@@ -564,6 +656,7 @@ export const learnUiHtml = `<!doctype html>
         selectedAttemptId: null,
         selectedCandidateId: null,
         selectedDelivery: null,
+        selectedLearnerStateTarget: null,
         selectedRevisionId: null,
       };
 
@@ -582,6 +675,24 @@ export const learnUiHtml = `<!doctype html>
         deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
         deliveryList: document.querySelector("#quick-check-delivery-list"),
         logoutButton: document.querySelector("#logout-button"),
+        learnerStateCheckList: document.querySelector("#learner-state-check-list"),
+        learnerStateConceptList: document.querySelector("#learner-state-concept-list"),
+        learnerStateCriterionList: document.querySelector("#learner-state-criterion-list"),
+        learnerStateEvidenceList: document.querySelector("#learner-state-evidence-list"),
+        learnerStateEvidenceOwnerIdInput: document.querySelector("#learner-state-evidence-owner-id-input"),
+        learnerStateEvidenceOwnerKindInput: document.querySelector("#learner-state-evidence-owner-kind-input"),
+        learnerStateMaterialList: document.querySelector("#learner-state-material-list"),
+        learnerStateStatus: document.querySelector("#learner-state-status"),
+        learnerStateStudentPanel: document.querySelector("#learner-state-student-panel"),
+        learnerStateSummary: document.querySelector("#learner-state-summary"),
+        learnerStateTargetDetail: document.querySelector("#learner-state-target-detail"),
+        learnerStateTargetIdInput: document.querySelector("#learner-state-target-id-input"),
+        learnerStateTargetKindInput: document.querySelector("#learner-state-target-kind-input"),
+        learnerStateTargetLinkForm: document.querySelector("#learner-state-target-link-form"),
+        learnerStateTargetLinkList: document.querySelector("#learner-state-target-link-list"),
+        learnerStateTargetLinkStatus: document.querySelector("#learner-state-target-link-status"),
+        learnerStateTopicList: document.querySelector("#learner-state-topic-list"),
+        learnerStateWeakAreaList: document.querySelector("#learner-state-weak-area-list"),
         navigationActionStatus: document.querySelector("#navigation-candidate-action-status"),
         navigationBodyInput: document.querySelector("#navigation-body-input"),
         navigationCandidateForm: document.querySelector("#navigation-candidate-form"),
@@ -609,6 +720,8 @@ export const learnUiHtml = `<!doctype html>
         readQuickCheckCurationButton: document.querySelector("[data-action='read-quick-check-curation']"),
         rejectQuickCheckButton: document.querySelector("[data-action='reject-quick-check']"),
         refreshCandidatesButton: document.querySelector("#refresh-candidates-button"),
+        refreshLearnerStateButton: document.querySelector("#refresh-learner-state-button"),
+        refreshLearnerStateTargetLinksButton: document.querySelector("#refresh-learner-state-target-links-button"),
         refreshNavigationButton: document.querySelector("#refresh-navigation-button"),
         refreshNavigationCandidatesButton: document.querySelector("#refresh-navigation-candidates-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
@@ -724,6 +837,30 @@ export const learnUiHtml = `<!doctype html>
         renderNavigationCandidateStatus("Create failed");
       });
 
+      elements.learnerStateTargetLinkForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi()) {
+          renderLearnerStateTargetLinkStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/learner-state-target-links", {
+          body: {
+            evidenceOwnerEntityId: elements.learnerStateEvidenceOwnerIdInput.value.trim(),
+            evidenceOwnerKind: elements.learnerStateEvidenceOwnerKindInput.value,
+            targetId: elements.learnerStateTargetIdInput.value.trim(),
+            targetKind: elements.learnerStateTargetKindInput.value,
+          },
+          csrf: true,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          renderLearnerStateTargetLinkStatus("Target link saved");
+          await refreshLearnerStateTargetLinks();
+          return;
+        }
+        renderLearnerStateTargetLinkStatus("Target link save failed");
+      });
+
       elements.curatorModeTab.addEventListener("click", () => {
         setMode("curator");
       });
@@ -785,6 +922,30 @@ export const learnUiHtml = `<!doctype html>
 
       elements.refreshNavigationButton.addEventListener("click", async () => {
         await refreshNavigation();
+      });
+
+      elements.refreshLearnerStateButton.addEventListener("click", async () => {
+        await refreshLearnerState();
+      });
+
+      elements.refreshLearnerStateTargetLinksButton.addEventListener("click", async () => {
+        await refreshLearnerStateTargetLinks();
+      });
+
+      elements.learnerStateTargetLinkList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action='delete-learner-state-target-link']");
+        if (!button) {
+          return;
+        }
+        void deleteLearnerStateTargetLink(button.dataset.linkId);
+      });
+
+      elements.learnerStateStudentPanel.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action='open-learner-state-target']");
+        if (!button) {
+          return;
+        }
+        void openLearnerStateTarget(button.dataset.targetKind, button.dataset.targetId);
       });
 
       elements.candidateList.addEventListener("click", event => {
@@ -940,9 +1101,15 @@ export const learnUiHtml = `<!doctype html>
       function clearSession() {
         state.csrfToken = null;
         state.identity = null;
+        state.learnerState = null;
+        state.learnerStateTargetLinks = [];
         state.pendingQuickCheckAttemptKey = null;
+        state.selectedLearnerStateTarget = null;
         state.selectedAttemptId = null;
         elements.signinStatus.textContent = "";
+        renderLearnerState();
+        renderLearnerStateTargetLinks();
+        renderLearnerStateTargetDetail(null);
         renderSession();
       }
 
@@ -1097,6 +1264,209 @@ export const learnUiHtml = `<!doctype html>
       function canUseProgramApi() {
         state.programId = elements.programIdInput.value.trim();
         return Boolean(state.identity && state.programId);
+      }
+
+      async function refreshLearnerStateTargetLinks() {
+        if (!canUseProgramApi()) {
+          renderLearnerStateTargetLinkStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/learner-state-target-links");
+        if (result.status === "accepted") {
+          state.learnerStateTargetLinks = result.value.learnerStateTargetLinks;
+          renderLearnerStateTargetLinks();
+          return;
+        }
+        state.learnerStateTargetLinks = [];
+        renderLearnerStateTargetLinks();
+        renderLearnerStateTargetLinkStatus("Target links unavailable");
+      }
+
+      async function deleteLearnerStateTargetLink(linkId) {
+        if (!linkId || !canUseProgramApi()) {
+          renderLearnerStateTargetLinkStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const result = await requestJson("/learner-state-target-links/" + encodeURIComponent(linkId), {
+          csrf: true,
+          method: "DELETE",
+        });
+        if (result.status === "accepted") {
+          renderLearnerStateTargetLinkStatus("Target link deleted");
+          await refreshLearnerStateTargetLinks();
+          return;
+        }
+        renderLearnerStateTargetLinkStatus("Target link delete failed");
+      }
+
+      function renderLearnerStateTargetLinks() {
+        if (state.learnerStateTargetLinks.length === 0) {
+          elements.learnerStateTargetLinkList.innerHTML = '<p class="empty">No learner-state target links loaded.</p>';
+          return;
+        }
+        elements.learnerStateTargetLinkList.innerHTML = "";
+        for (const link of state.learnerStateTargetLinks) {
+          const row = document.createElement("div");
+          row.className = "detail-section";
+          const summary = document.createElement("p");
+          summary.textContent = [
+            link.targetKind,
+            link.targetId,
+            link.evidenceOwnerKind,
+            link.evidenceOwnerEntityId,
+            link.status,
+          ].join("\\n");
+          const deleteButton = document.createElement("button");
+          deleteButton.className = "danger";
+          deleteButton.dataset.action = "delete-learner-state-target-link";
+          deleteButton.dataset.linkId = link.linkId;
+          deleteButton.type = "button";
+          deleteButton.textContent = "Delete target link";
+          row.append(summary, deleteButton);
+          elements.learnerStateTargetLinkList.append(row);
+        }
+      }
+
+      function renderLearnerStateTargetLinkStatus(message) {
+        elements.learnerStateTargetLinkStatus.textContent = message;
+      }
+
+      async function refreshLearnerState() {
+        if (!canUseProgramApi()) {
+          elements.learnerStateStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/learner-state");
+        if (result.status === "accepted") {
+          state.learnerState = result.value.learnerState;
+          state.selectedLearnerStateTarget = null;
+          renderLearnerState();
+          renderLearnerStateTargetDetail(null);
+          elements.learnerStateStatus.textContent = "Learner state loaded.";
+          return;
+        }
+        state.learnerState = null;
+        state.selectedLearnerStateTarget = null;
+        renderLearnerState();
+        renderLearnerStateTargetDetail(null, "Learner-state target unavailable");
+        elements.learnerStateStatus.textContent = "Learner state unavailable.";
+      }
+
+      function renderLearnerState() {
+        const learnerState = state.learnerState;
+        if (!learnerState) {
+          elements.learnerStateSummary.textContent = "No learner-state summary loaded.";
+          renderLearnerStateTargetList(elements.learnerStateWeakAreaList, [], "No weak areas loaded.");
+          renderLearnerStateTargetList(elements.learnerStateTopicList, [], "No learner-state topics loaded.");
+          renderLearnerStateTargetList(elements.learnerStateConceptList, [], "No learner-state concepts loaded.");
+          renderLearnerStateTargetList(elements.learnerStateMaterialList, [], "No learner-state materials loaded.");
+          renderLearnerStateTargetList(elements.learnerStateCheckList, [], "No learner-state checks loaded.");
+          renderLearnerStateTargetList(elements.learnerStateCriterionList, [], "No learner-state criteria loaded.");
+          return;
+        }
+        elements.learnerStateSummary.textContent = [
+          "Program " + learnerState.level,
+          "Targets " + learnerState.totals.targets,
+          "On track " + learnerState.totals.onTrack,
+          "Developing " + learnerState.totals.developing,
+          "Needs attention " + learnerState.totals.needsAttention,
+        ].join("\\n");
+        renderLearnerStateTargetList(elements.learnerStateWeakAreaList, learnerState.weakAreas, "No weak areas loaded.");
+        renderLearnerStateTargetList(elements.learnerStateTopicList, learnerState.topics, "No learner-state topics loaded.");
+        renderLearnerStateTargetList(elements.learnerStateConceptList, learnerState.concepts, "No learner-state concepts loaded.");
+        renderLearnerStateTargetList(elements.learnerStateMaterialList, learnerState.materialReferences, "No learner-state materials loaded.");
+        renderLearnerStateTargetList(elements.learnerStateCheckList, learnerState.checks, "No learner-state checks loaded.");
+        renderLearnerStateTargetList(elements.learnerStateCriterionList, learnerState.criteria, "No learner-state criteria loaded.");
+      }
+
+      function renderLearnerStateTargetList(target, summaries, emptyText) {
+        if (summaries.length === 0) {
+          target.innerHTML = '<p class="empty">' + emptyText + '</p>';
+          return;
+        }
+        target.innerHTML = "";
+        for (const summary of summaries) {
+          target.append(learnerStateTargetButton(summary));
+        }
+      }
+
+      function learnerStateTargetButton(summary) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.action = "open-learner-state-target";
+        button.dataset.targetKind = summary.targetKind;
+        button.dataset.targetId = summary.targetId;
+        button.setAttribute("aria-label", learnerStateTargetActionLabel(summary));
+        button.textContent = [
+          summary.title,
+          summary.targetKind,
+          summary.level,
+          "Evidence " + summary.evidenceCount,
+        ].join(" ");
+        return button;
+      }
+
+      function learnerStateTargetActionLabel(summary) {
+        if (["topic", "concept", "material_reference"].includes(summary.targetKind)) {
+          return "Open learner-state " + summary.targetKind + " " + summary.title;
+        }
+        return "Open learner-state " + summary.targetKind + " progress";
+      }
+
+      async function openLearnerStateTarget(targetKind, targetId) {
+        if (!targetKind || !targetId) {
+          renderLearnerStateTargetDetail(null);
+          return;
+        }
+        const result = await requestJson(
+          "/learner-state/targets/" + encodeURIComponent(targetKind) + "/" + encodeURIComponent(targetId),
+        );
+        if (result.status !== "accepted") {
+          state.selectedLearnerStateTarget = null;
+          renderLearnerStateTargetDetail(null, "Learner-state target unavailable");
+          return;
+        }
+        state.selectedLearnerStateTarget = result.value.learnerStateTarget;
+        renderLearnerStateTargetDetail(state.selectedLearnerStateTarget);
+      }
+
+      function renderLearnerStateTargetDetail(target, unavailableText = "No learner-state target selected.") {
+        if (!target) {
+          elements.learnerStateTargetDetail.textContent = unavailableText;
+          renderLearnerStateEvidenceList([]);
+          return;
+        }
+        elements.learnerStateTargetDetail.textContent = [
+          target.title,
+          target.targetKind,
+          target.level,
+          "Evidence " + target.evidenceCount,
+          "Positive " + target.positiveEvidenceCount,
+          "Partial " + target.partialEvidenceCount,
+          "Negative " + target.negativeEvidenceCount,
+          "Pending " + target.pendingEvidenceCount,
+        ].join("\\n");
+        renderLearnerStateEvidenceList(target.evidence);
+      }
+
+      function renderLearnerStateEvidenceList(evidence) {
+        if (evidence.length === 0) {
+          elements.learnerStateEvidenceList.innerHTML = '<p class="empty">No learner-state evidence loaded.</p>';
+          return;
+        }
+        elements.learnerStateEvidenceList.innerHTML = "";
+        for (const item of evidence) {
+          const row = document.createElement("div");
+          row.className = "empty";
+          row.textContent = [
+            item.sourceKind,
+            item.signal,
+            item.title,
+            item.summary,
+            item.occurredAt,
+          ].filter(Boolean).join("\\n");
+          elements.learnerStateEvidenceList.append(row);
+        }
       }
 
       async function refreshNavigation() {
@@ -1285,6 +1655,7 @@ export const learnUiHtml = `<!doctype html>
         if (mode === "student" && canUseProgramApi()) {
           void refreshDeliveries();
           void refreshAttempts();
+          void refreshLearnerState();
           void refreshNavigation();
         }
       }
