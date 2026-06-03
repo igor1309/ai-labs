@@ -1,7 +1,7 @@
 ---
 date: 2026-06-03
 model: claude-opus-4-8
-description: "Skill improvements from the scoped-orchestrator session: a mechanism-verification step for adr-governance, and using-dev-skills as a session-start default. (The referenced-docs grounding gate for cold-start-checkpoint has shipped — v1.2.0.)"
+description: "Skill improvements from the scoped-orchestrator session: using-dev-skills as a session-start default. (Shipped: cold-start-checkpoint referenced-docs grounding gate v1.2.0; adr-governance Mechanism Feasibility dimension v1.1.0.)"
 ---
 
 # Skill Improvements — Grounding Discipline
@@ -27,14 +27,6 @@ on prose instructions.
 
 Both are the same root cause: a conclusion not anchored to a named source (a referenced
 doc, or the concrete mechanism on the target system).
-
-## Suggestion 2 — `adr-governance`: verify mechanisms before acceptance
-
-Add to the review standard: for each invariant or mechanism an ADR asserts, name the
-command / doc / code that shows it is **achievable on the target system** before status
-flips to `accepted`. This is precisely what would have caught "native `openclaw cron`
-can't run a multi-step wrapper" at write time instead of after acceptance. It turns the
-"Decision Stability" dimension from prose-coherence into executable-claim verification.
 
 ## Suggestion 3 — `using-dev-skills`: treat invocation as a session-start default
 
