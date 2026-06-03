@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.6.1"
+version: "0.7.0"
 author: Igor Malyarov
 ---
 
@@ -47,7 +47,7 @@ project.
 4. **allocation completeness** (cross-cutting) — every intent capability owned
    by ≥1 module; a capability owned by **no** module is *unallocated*.
    *(implemented)*
-5. **ADR → spec** — per module; each ADR decision honoured by its spec. *(roadmap)*
+5. **ADR → spec** — per module; each ADR decision honoured by its spec. *(implemented)*
 6. **spec ↔ tests** — per module; test **names** only (no bodies, don't run
    tests — on a trunk-only repo a merged test passes); every spec clause has a
    named test, every test name traces to a clause. *(roadmap)*
@@ -116,6 +116,12 @@ is too large to hold at once, split by clustered concern, not arbitrarily.
   bucket). A record can be owned while its presentation/view is a downstream
   (spec) concern — that's allocated, with the view logged as an open question,
   not unallocated.
+- **ADR → spec**: the ADR is upstream, the spec must honour it. One row per ADR
+  decision/rule/invariant (pinned to the ADR's Decision/Rules entries); each is
+  `honoured` (cite `spec-file:line`), `contradicted`, `missing`, or `deferred`.
+  A spec narrower than the ADR is `deferred` — **not** `missing` — only when an
+  ADR Non-Goal or first-slice scoping line authorizes the narrowing; cite that
+  line and route the unrealized scope as an open question for the later slice.
 
 ## Output
 

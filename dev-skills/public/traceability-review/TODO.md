@@ -7,7 +7,6 @@ description: "Next steps for the traceability-review skill: consolidation refact
 # Traceability Review — TODO
 
 ## Remaining passes
-- **ADR → spec** (per module) — each ADR decision honoured by its spec. Same per-module deterministic-matrix mechanism that's now proven.
 - **spec ↔ tests** (per module) — test *names* only, no running; every spec clause has a named test, every test name traces to a clause.
 
 ## New pass identified (from research)
