@@ -74,8 +74,9 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## Not done
 
-- Nothing is **pushed or merged** — the whole effort sits on `traceability` (30
-  commits ahead of trunk). Publishing is a deliberate later gate.
+- Nothing is **pushed or merged** — the whole effort sits on `traceability` (32
+  commits ahead of trunk; run `git rev-list --count trunk..traceability` for the
+  live number). Publishing is a deliberate later gate.
 - spec↔tests + all passes are validated on **one module** (Corpus/Curator) and
   the intent/ADR layers; running them across the other Agonara modules is real
   work the passes are ready for, but it's Agonara *remediation*, not tooling.
