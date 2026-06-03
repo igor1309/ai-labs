@@ -12,7 +12,7 @@ Defines what drift the agent looks for, what evidence it must attach to a findin
 
 In scope:
 
-- Factual claims in an in-scope document contradicted by another in-scope document, by the repo state, or by the owning project's backing code/config.
+- Factual claims in a README contradicted by another README, by the repo state, or by the owning project's backing code/config.
 
 Out of scope (mirrors `doc-drift-audit`):
 
@@ -29,7 +29,7 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 ### 1. Doc ↔ Doc
 
-**Definition.** A claim made in one in-scope document is contradicted by a claim in another document the scope covers (per the scope registry, `agents/doc-drift-agent/agent/readme-inventory.md`). For the README scope this is cross-project README consistency.
+**Definition.** A claim made in one README is contradicted by a claim in another README in scope (per `agents/doc-drift-agent/agent/readme-inventory.md`) — cross-project README consistency.
 
 **Detection signals.**
 
@@ -51,11 +51,11 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 ### 2. Doc ↔ repo state
 
-**Definition.** A claim in any in-scope document is contradicted by the actual repo state: file paths, directory layout, configured release units, the `## Components` table inventory.
+**Definition.** A claim in any README is contradicted by the actual repo state: file paths, directory layout, configured release units, the `## Components` table inventory.
 
 **Detection signals.**
 
-- A README references a path (`<dir>/<file>`, `scripts/foo.sh`, a config key) that does not exist in the working tree at the inventory's scoped depth.
+- A README references a path (`<dir>/<file>`, `scripts/foo.sh`, a config key) that does not exist in the working tree at the inventory's depth.
 - A README names a function, command, npm script, or environment variable that the corresponding code/config does not define.
 - A new top-level project directory exists in the repo but does not have a row in the root README `## Components` table (or vice versa — a `## Components` row points at a project that has no top-level directory).
 - A README claims a removed feature still works.
@@ -69,13 +69,12 @@ The agent emits findings under exactly three categories. Every finding declares 
 
 **False positives to skip.**
 
-- Drift candidates already recorded as *known absences* in the scope registry (`agents/doc-drift-agent/agent/readme-inventory.md`) are not findings — unless the registry itself is stale.
-- Documents the scope registry does not assign to the active scope are out of scope for that run. A document referencing them is not drift in this scope.
+- Drift candidates already recorded as *known absences* in `agents/doc-drift-agent/agent/readme-inventory.md` are not findings — unless the inventory itself is stale.
 - Excluded directories (`node_modules/`, `vendor/`, `.build/`, `worktrees/`, `dist/`, `.wrangler/`) are not part of repo state for this purpose.
 
 ### 3. Internal consistency
 
-**Definition.** An in-scope document claims behavior that the owning project's code, config, or scripts do not support.
+**Definition.** A README claims behavior that the owning project's code, config, or scripts do not support.
 
 **Detection signals.**
 
@@ -102,7 +101,7 @@ These apply to every category.
 
 - Every finding must carry both the doc-side claim and the contradicting evidence. A claim with no evidence is discarded.
 - Every suggested fix must be the **minimum edit** that resolves the drift. No surrounding cleanup, no restructuring.
-- The agent never edits files other than the active scope's documentation. Code, config, and script edits are out of scope even when the simplest "fix" would be to change the code instead of the doc — the maintainer makes that call on the PR, not the agent.
+- The agent never edits files other than READMEs. Code, config, and script edits are out of scope even when the simplest "fix" would be to change the code instead of the doc — the maintainer makes that call on the PR, not the agent.
 - The agent never merges or approves PRs (per ADR).
 
 ## Refresh policy
