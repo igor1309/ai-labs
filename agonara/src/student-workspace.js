@@ -9,7 +9,13 @@ import {
   createOpenAnswerEvaluatorRunRecord,
   createQuickCheckAttemptRecord,
   deleteOpenAnswerEvaluationFailureRecord,
+  getAcceptedAssessmentCriterionEntityRecord,
+  getAcceptedAssessmentCriterionRevisionRecord,
+  getAcceptedCorpusEntityRecord,
+  getAcceptedCorpusRevisionRecord,
+  getAcceptedOpenAnswerCheckEntityRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
+  getAcceptedQuickCheckEntityRecord,
   getAcceptedQuickCheckRevisionRecord,
   getIdentity,
   getOpenAnswerAttemptRecord,
@@ -19,7 +25,13 @@ import {
   getOpenAnswerEvaluatorRunRecord,
   getProgramShellRecord,
   getQuickCheckAttemptRecord,
+  listAcceptedAssessmentCriterionEntityRecords,
+  listAcceptedCorpusEntityRecords,
+  listAcceptedNavigationRelationshipRecords,
+  listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedQuickCheckEntityRecords,
   listClaimableOpenAnswerEvaluatorJobRecords,
+  listLearnerEvidenceTargetLinkRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
   listOpenAnswerEvaluatorRunRecords,
@@ -39,6 +51,15 @@ const supportedEvaluatorPathKinds = new Set([
   "human_reviewed",
 ]);
 const supportedEvaluatorWorkerModes = new Set(["single_job", "claim_next"]);
+const supportedLearnerStateTargetKinds = new Set([
+  "program",
+  "topic",
+  "concept",
+  "material_reference",
+  "quick_check",
+  "open_answer_check",
+  "assessment_criterion",
+]);
 const forbiddenResponseDetailPatterns = [
   /\bsession\b/i,
   /\bcsrf\b/i,
@@ -84,6 +105,10 @@ export function createStudentWorkspaceCommands({
       getOpenAnswerAttempt({ database, input }),
     getOpenAnswerEvaluationStatus: input =>
       getOpenAnswerEvaluationStatus({ database, input }),
+    getLearnerStateProgramSummary: input =>
+      getLearnerStateProgramSummary({ database, getEffectiveParticipation, input, now }),
+    getLearnerStateTargetDetail: input =>
+      getLearnerStateTargetDetail({ database, getEffectiveParticipation, input, now }),
     getQuickCheckAttempt: input =>
       getQuickCheckAttempt({ database, getEffectiveParticipation, input }),
     listOpenAnswerAttempts: input =>
@@ -1537,6 +1562,73 @@ function listOpenAnswerEvaluatorEvidence({ database, input }) {
   });
 }
 
+function getLearnerStateProgramSummary({ database, getEffectiveParticipation, input, now }) {
+  const authorization = authorizeStudentProgram({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.rejection) {
+    return authorization.rejection;
+  }
+
+  const model = buildLearnerStateModel({
+    database,
+    programId: authorization.program.id,
+    studentIdentityId: authorization.identity.id,
+  });
+
+  return accepted({
+    learnerState: summarizeLearnerStateProgram({
+      generatedAt: now().toISOString(),
+      model,
+      programId: authorization.program.id,
+      studentIdentityId: authorization.identity.id,
+    }),
+  });
+}
+
+function getLearnerStateTargetDetail({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity || identity.state !== "active") {
+    return rejected("identity_not_active");
+  }
+
+  const targetResolution = resolveLearnerStateTarget(database, {
+    targetKind: input?.targetKind,
+    targetId: input?.targetId,
+  });
+  if (targetResolution.status === "rejected") {
+    return rejected(targetResolution.reason);
+  }
+
+  const participation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: targetResolution.target.programId,
+    participationKind: "student",
+  });
+  if (!participation.allowed) {
+    return rejected("learner_state_target_not_found");
+  }
+
+  const model = buildLearnerStateModel({
+    database,
+    programId: targetResolution.target.programId,
+    studentIdentityId: identity.id,
+  });
+  const summary = model.summariesByKey.get(learnerStateTargetKey(input.targetKind, input.targetId));
+  if (!summary) {
+    return rejected("learner_state_target_not_found");
+  }
+
+  return accepted({
+    learnerStateTarget: {
+      ...summary,
+      evidence: getLearnerStateTargetEvidence(model, summary).map(summarizeLearnerEvidence),
+    },
+  });
+}
+
 function listOpenAnswerAttempts({ database, getEffectiveParticipation, input }) {
   const identity = getIdentity(database, input?.actingIdentityId);
   if (!identity || identity.state !== "active") {
@@ -1898,6 +1990,489 @@ export function resolveAcceptedQuickCheckRevisionForEvaluation({ database, progr
       answerKeyOptionId: revision.answerKeyOptionId,
     },
   });
+}
+
+function buildLearnerStateModel({ database, programId, studentIdentityId }) {
+  const targetDefinitions = getLearnerStateTargetDefinitions(database, programId);
+  const directEvidenceByTarget = new Map(targetDefinitions.map($0 => [$0.key, []]));
+  const evidenceByOwner = new Map();
+
+  for (const evidence of getQuickCheckLearnerEvidence(database, { programId, studentIdentityId })) {
+    addLearnerEvidence(directEvidenceByTarget, evidence);
+    addLearnerEvidenceOwner(evidenceByOwner, "accepted_quick_check", evidence.ownerEntityId, evidence);
+  }
+  for (const evidence of getOpenAnswerLearnerEvidence(database, { programId, studentIdentityId })) {
+    addLearnerEvidence(directEvidenceByTarget, evidence);
+    if (evidence.ownerKind && evidence.ownerEntityId) {
+      addLearnerEvidenceOwner(evidenceByOwner, evidence.ownerKind, evidence.ownerEntityId, evidence);
+    }
+  }
+
+  for (const link of listLearnerEvidenceTargetLinkRecords(database, { programId })) {
+    const targetKey = learnerStateTargetKey(link.targetKind, link.targetId);
+    const linkedEvidence = evidenceByOwner.get(learnerEvidenceOwnerKey(
+      link.evidenceOwnerKind,
+      link.evidenceOwnerEntityId,
+    )) ?? [];
+    for (const evidence of linkedEvidence) {
+      addLearnerEvidence(directEvidenceByTarget, {
+        ...evidence,
+        targetKind: link.targetKind,
+        targetId: link.targetId,
+        targetKey,
+      });
+    }
+  }
+
+  const relationshipRecords = listAcceptedNavigationRelationshipRecords(database, { programId });
+  const targetKindByEntityId = new Map(targetDefinitions.map($0 => [$0.targetId, $0.targetKind]));
+  const directEvidenceResolver = targetKey => directEvidenceByTarget.get(targetKey) ?? [];
+  const rolledEvidenceResolver = target => {
+    const directEvidence = directEvidenceResolver(target.key);
+    if (target.targetKind === "topic") {
+      return [
+        ...directEvidence,
+        ...relationshipRecords
+          .filter($0 => $0.relationshipKind === "topic_includes_concept" && $0.fromEntityId === target.targetId)
+          .flatMap($0 => directEvidenceResolver(learnerStateTargetKey("concept", $0.toEntityId))),
+      ];
+    }
+    if (target.targetKind === "concept") {
+      return [
+        ...directEvidence,
+        ...relationshipRecords
+          .filter(
+            $0 =>
+              $0.fromEntityId === target.targetId &&
+              ["concept_has_definition", "concept_has_principle", "concept_uses_material"].includes(
+                $0.relationshipKind,
+              ),
+          )
+          .flatMap($0 =>
+            directEvidenceResolver(learnerStateTargetKey(targetKindByEntityId.get($0.toEntityId), $0.toEntityId)),
+          ),
+      ];
+    }
+    return directEvidence;
+  };
+
+  const evidenceByTarget = new Map();
+  const summarizeTarget = target => {
+    const evidence = rolledEvidenceResolver(target);
+    evidenceByTarget.set(target.key, evidence);
+    return summarizeLearnerStateTarget(target, evidence);
+  };
+  const topicSummaries = targetDefinitions
+    .filter($0 => $0.targetKind === "topic")
+    .map(summarizeTarget);
+  const conceptSummaries = targetDefinitions
+    .filter($0 => $0.targetKind === "concept")
+    .map(summarizeTarget);
+  const materialReferenceSummaries = targetDefinitions
+    .filter($0 => $0.targetKind === "material_reference")
+    .map(summarizeTarget);
+  const checkSummaries = targetDefinitions
+    .filter($0 => $0.targetKind === "open_answer_check" || $0.targetKind === "quick_check")
+    .map(summarizeTarget);
+  const criterionSummaries = targetDefinitions
+    .filter($0 => $0.targetKind === "assessment_criterion")
+    .map(summarizeTarget);
+  const allSummaries = [
+    ...topicSummaries,
+    ...conceptSummaries,
+    ...materialReferenceSummaries,
+    ...checkSummaries,
+    ...criterionSummaries,
+  ];
+
+  return {
+    allSummaries,
+    criteria: criterionSummaries,
+    checks: checkSummaries,
+    concepts: conceptSummaries,
+    directEvidenceByTarget,
+    evidenceByTarget,
+    materialReferences: materialReferenceSummaries,
+    programId,
+    summariesByKey: new Map(allSummaries.map($0 => [$0.key, $0])),
+    topics: topicSummaries,
+  };
+}
+
+function getLearnerStateTargetDefinitions(database, programId) {
+  const corpusTargets = listAcceptedCorpusEntityRecords(database, { programId })
+    .map(entity => {
+      const revision = getAcceptedCorpusRevisionRecord(database, entity.currentRevisionId);
+      if (!revision || !["topic", "concept", "material_reference"].includes(entity.acceptedKind)) {
+        return null;
+      }
+      return makeLearnerStateTargetDefinition({
+        programId,
+        targetKind: entity.acceptedKind,
+        targetId: entity.id,
+        title: revision.title,
+      });
+    })
+    .filter(Boolean);
+  const quickChecks = listAcceptedQuickCheckEntityRecords(database, { programId }).map(entity => {
+    const revision = getAcceptedQuickCheckRevisionRecord(database, entity.currentRevisionId);
+    return makeLearnerStateTargetDefinition({
+      programId,
+      targetKind: "quick_check",
+      targetId: entity.id,
+      title: revision?.title ?? entity.id,
+    });
+  });
+  const openAnswerChecks = listAcceptedOpenAnswerCheckEntityRecords(database, { programId }).map(entity => {
+    const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, entity.currentRevisionId);
+    return makeLearnerStateTargetDefinition({
+      programId,
+      targetKind: "open_answer_check",
+      targetId: entity.id,
+      title: revision?.title ?? entity.id,
+    });
+  });
+  const criteria = listAcceptedAssessmentCriterionEntityRecords(database, { programId }).map(entity => {
+    const revision = getAcceptedAssessmentCriterionRevisionRecord(database, entity.currentRevisionId);
+    return makeLearnerStateTargetDefinition({
+      programId,
+      targetKind: "assessment_criterion",
+      targetId: entity.id,
+      title: revision?.title ?? entity.id,
+    });
+  });
+  return [...corpusTargets, ...quickChecks, ...openAnswerChecks, ...criteria].sort(
+    (left, right) =>
+      left.targetKind.localeCompare(right.targetKind) ||
+      left.title.localeCompare(right.title) ||
+      left.targetId.localeCompare(right.targetId),
+  );
+}
+
+function getQuickCheckLearnerEvidence(database, { programId, studentIdentityId }) {
+  return listQuickCheckAttemptRecords(database, { programId, studentIdentityId }).flatMap(attempt => {
+    const revision = getAcceptedQuickCheckRevisionRecord(database, attempt.checkRevisionId);
+    if (!revision) {
+      return [];
+    }
+    const selectedOption = revision.options.find($0 => $0.id === attempt.selectedOptionId);
+    return [{
+      evidenceId: attempt.id,
+      ownerEntityId: revision.entityId,
+      programId,
+      sourceKey: revision.id,
+      sourceKind: "quick_check_attempt",
+      signal: attempt.matched ? "positive" : "negative",
+      studentIdentityId,
+      occurredAt: attempt.submittedAt,
+      attemptId: attempt.id,
+      checkRevisionId: revision.id,
+      targetKind: "quick_check",
+      targetId: revision.entityId,
+      targetKey: learnerStateTargetKey("quick_check", revision.entityId),
+      title: revision.title,
+      summary: selectedOption ? `Selected ${selectedOption.text}.` : "Submitted quick check attempt.",
+    }];
+  });
+}
+
+function getOpenAnswerLearnerEvidence(database, { programId, studentIdentityId }) {
+  return listOpenAnswerAttemptRecords(database, { programId, studentIdentityId }).flatMap(attempt => {
+    const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, attempt.checkRevisionId);
+    if (!revision) {
+      return [];
+    }
+    const evaluation = getOpenAnswerEvaluationRecordByAttemptId(database, attempt.id);
+    if (!evaluation) {
+      return [makeOpenAnswerCheckLearnerEvidence({
+        attempt,
+        occurredAt: attempt.updatedAt,
+        revision,
+        signal: "pending",
+        sourceKind: "open_answer_attempt",
+        summary: `Submitted answer: ${attempt.submittedAnswer}`,
+      })];
+    }
+
+    const criterionEvidence = evaluation.criterionFeedback.flatMap(feedback => {
+      const criterionRevision = getAcceptedAssessmentCriterionRevisionRecord(database, feedback.criterionRevisionId);
+      if (!criterionRevision) {
+        return [];
+      }
+      return [{
+        evidenceId: `${evaluation.id}:${feedback.criterionRevisionId}`,
+        ownerKind: "accepted_assessment_criterion",
+        ownerEntityId: criterionRevision.entityId,
+        programId,
+        sourceKey: feedback.criterionRevisionId,
+        sourceKind: "open_answer_criterion_feedback",
+        signal: mapCriterionOutcomeToLearnerSignal(feedback.outcome),
+        studentIdentityId,
+        occurredAt: evaluation.evaluatedAt,
+        attemptId: attempt.id,
+        checkRevisionId: revision.id,
+        criterionRevisionId: feedback.criterionRevisionId,
+        targetKind: "assessment_criterion",
+        targetId: criterionRevision.entityId,
+        targetKey: learnerStateTargetKey("assessment_criterion", criterionRevision.entityId),
+        title: criterionRevision.title,
+        summary: feedback.feedback,
+      }];
+    });
+    return [
+      makeOpenAnswerCheckLearnerEvidence({
+        attempt,
+        occurredAt: evaluation.evaluatedAt,
+        revision,
+        signal: deriveOpenAnswerCheckSignal(criterionEvidence),
+        sourceKind: "open_answer_attempt",
+        summary: evaluation.summaryFeedback,
+      }),
+      ...criterionEvidence,
+    ];
+  });
+}
+
+function makeOpenAnswerCheckLearnerEvidence({ attempt, occurredAt, revision, signal, sourceKind, summary }) {
+  return {
+    evidenceId: attempt.id,
+    ownerKind: "accepted_open_answer_check",
+    ownerEntityId: revision.entityId,
+    programId: attempt.programId,
+    sourceKey: revision.id,
+    sourceKind,
+    signal,
+    studentIdentityId: attempt.studentIdentityId,
+    occurredAt,
+    attemptId: attempt.id,
+    checkRevisionId: revision.id,
+    targetKind: "open_answer_check",
+    targetId: revision.entityId,
+    targetKey: learnerStateTargetKey("open_answer_check", revision.entityId),
+    title: revision.title,
+    summary,
+  };
+}
+
+function mapCriterionOutcomeToLearnerSignal(outcome) {
+  if (outcome === "met") {
+    return "positive";
+  }
+  if (outcome === "missing") {
+    return "negative";
+  }
+  return "partial";
+}
+
+function deriveOpenAnswerCheckSignal(criterionEvidence) {
+  const signals = criterionEvidence.map($0 => $0.signal);
+  if (signals.includes("negative")) {
+    return "negative";
+  }
+  if (signals.includes("partial")) {
+    return "partial";
+  }
+  return signals.length > 0 ? "positive" : "pending";
+}
+
+function summarizeLearnerStateProgram({ generatedAt, model, programId, studentIdentityId }) {
+  const totals = summarizeLearnerStateTotals(model.allSummaries);
+  return {
+    programId,
+    studentIdentityId,
+    generatedAt,
+    level: deriveProgramLearnerStateLevel(model.allSummaries),
+    totals,
+    weakAreas: model.allSummaries
+      .filter($0 => $0.level === "needs_attention")
+      .sort(compareLearnerStateWeakAreas)
+      .map(omitLearnerStateInternalFields),
+    topics: model.topics.map(omitLearnerStateInternalFields),
+    concepts: model.concepts.map(omitLearnerStateInternalFields),
+    materialReferences: model.materialReferences.map(omitLearnerStateInternalFields),
+    checks: model.checks.map(omitLearnerStateInternalFields),
+    criteria: model.criteria.map(omitLearnerStateInternalFields),
+  };
+}
+
+function summarizeLearnerStateTarget(target, evidence) {
+  const latestEvidence = getLatestLearnerEvidencePerSource(evidence);
+  const latestEvidenceAt = evidence.map($0 => $0.occurredAt).sort().at(-1);
+  return {
+    ...target,
+    level: deriveLearnerStateLevel(latestEvidence),
+    evidenceCount: evidence.length,
+    ...(latestEvidenceAt ? { latestEvidenceAt } : {}),
+    positiveEvidenceCount: evidence.filter($0 => $0.signal === "positive").length,
+    partialEvidenceCount: evidence.filter($0 => $0.signal === "partial").length,
+    negativeEvidenceCount: evidence.filter($0 => $0.signal === "negative").length,
+    pendingEvidenceCount: evidence.filter($0 => $0.signal === "pending").length,
+  };
+}
+
+function getLatestLearnerEvidencePerSource(evidence) {
+  const latestBySource = new Map();
+  for (const item of evidence) {
+    const previous = latestBySource.get(item.sourceKey);
+    if (!previous || item.occurredAt > previous.occurredAt) {
+      latestBySource.set(item.sourceKey, item);
+    }
+  }
+  return [...latestBySource.values()];
+}
+
+function deriveLearnerStateLevel(latestEvidence) {
+  if (latestEvidence.length === 0) {
+    return "no_evidence";
+  }
+  const signals = latestEvidence.map($0 => $0.signal);
+  if (signals.includes("negative")) {
+    return "needs_attention";
+  }
+  if (signals.includes("partial")) {
+    return "developing";
+  }
+  if (signals.includes("pending")) {
+    return "in_progress";
+  }
+  return "on_track";
+}
+
+function summarizeLearnerStateTotals(summaries) {
+  return {
+    targets: summaries.length,
+    onTrack: summaries.filter($0 => $0.level === "on_track").length,
+    developing: summaries.filter($0 => $0.level === "developing").length,
+    needsAttention: summaries.filter($0 => $0.level === "needs_attention").length,
+    inProgress: summaries.filter($0 => $0.level === "in_progress").length,
+    noEvidence: summaries.filter($0 => $0.level === "no_evidence").length,
+  };
+}
+
+function deriveProgramLearnerStateLevel(summaries) {
+  const levels = summaries.map($0 => $0.level);
+  if (levels.includes("needs_attention")) {
+    return "needs_attention";
+  }
+  if (levels.includes("developing")) {
+    return "developing";
+  }
+  if (levels.includes("in_progress")) {
+    return "in_progress";
+  }
+  if (levels.includes("on_track")) {
+    return "on_track";
+  }
+  return "no_evidence";
+}
+
+function compareLearnerStateWeakAreas(left, right) {
+  const latestComparison = (right.latestEvidenceAt ?? "").localeCompare(left.latestEvidenceAt ?? "");
+  if (latestComparison !== 0) {
+    return latestComparison;
+  }
+  return left.title.localeCompare(right.title) || left.targetId.localeCompare(right.targetId);
+}
+
+function getLearnerStateTargetEvidence(model, summary) {
+  return (model.evidenceByTarget.get(summary.key) ?? [])
+    .slice()
+    .sort(
+      (left, right) =>
+        right.occurredAt.localeCompare(left.occurredAt) ||
+        left.evidenceId.localeCompare(right.evidenceId),
+    );
+}
+
+function summarizeLearnerEvidence(evidence) {
+  return {
+    evidenceId: evidence.evidenceId,
+    sourceKind: evidence.sourceKind,
+    signal: evidence.signal,
+    programId: evidence.programId,
+    studentIdentityId: evidence.studentIdentityId,
+    occurredAt: evidence.occurredAt,
+    ...(evidence.attemptId ? { attemptId: evidence.attemptId } : {}),
+    ...(evidence.checkRevisionId ? { checkRevisionId: evidence.checkRevisionId } : {}),
+    ...(evidence.criterionRevisionId ? { criterionRevisionId: evidence.criterionRevisionId } : {}),
+    targetKind: evidence.targetKind,
+    targetId: evidence.targetId,
+    title: evidence.title,
+    summary: evidence.summary,
+  };
+}
+
+function omitLearnerStateInternalFields(summary) {
+  const { key, ...publicSummary } = summary;
+  return publicSummary;
+}
+
+function addLearnerEvidence(evidenceByTarget, evidence) {
+  if (!evidenceByTarget.has(evidence.targetKey)) {
+    evidenceByTarget.set(evidence.targetKey, []);
+  }
+  evidenceByTarget.get(evidence.targetKey).push(evidence);
+}
+
+function addLearnerEvidenceOwner(evidenceByOwner, ownerKind, ownerEntityId, evidence) {
+  const key = learnerEvidenceOwnerKey(ownerKind, ownerEntityId);
+  if (!evidenceByOwner.has(key)) {
+    evidenceByOwner.set(key, []);
+  }
+  evidenceByOwner.get(key).push(evidence);
+}
+
+function makeLearnerStateTargetDefinition({ programId, targetKind, targetId, title }) {
+  return {
+    key: learnerStateTargetKey(targetKind, targetId),
+    targetKind,
+    targetId,
+    programId,
+    title,
+  };
+}
+
+function resolveLearnerStateTarget(database, { targetKind, targetId }) {
+  if (!supportedLearnerStateTargetKinds.has(targetKind) || !isNonEmptyText(targetId)) {
+    return { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+  if (targetKind === "program") {
+    const program = getProgramShellRecord(database, targetId);
+    return program
+      ? { status: "accepted", target: { programId: program.id, targetKind, targetId } }
+      : { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+  if (["topic", "concept", "material_reference"].includes(targetKind)) {
+    const entity = getAcceptedCorpusEntityRecord(database, targetId);
+    return entity && entity.acceptedKind === targetKind
+      ? { status: "accepted", target: { programId: entity.programId, targetKind, targetId } }
+      : { status: "rejected", reason: "learner_state_target_not_found" };
+  }
+  const entity = getLearnerStateAcceptedEvidenceOwnerEntity(database, { targetKind, targetId });
+  return entity
+    ? { status: "accepted", target: { programId: entity.programId, targetKind, targetId } }
+    : { status: "rejected", reason: "learner_state_target_not_found" };
+}
+
+function getLearnerStateAcceptedEvidenceOwnerEntity(database, { targetKind, targetId }) {
+  if (targetKind === "quick_check") {
+    return getAcceptedQuickCheckEntityRecord(database, targetId);
+  }
+  if (targetKind === "open_answer_check") {
+    return getAcceptedOpenAnswerCheckEntityRecord(database, targetId);
+  }
+  if (targetKind === "assessment_criterion") {
+    return getAcceptedAssessmentCriterionEntityRecord(database, targetId);
+  }
+  return null;
+}
+
+function learnerStateTargetKey(targetKind, targetId) {
+  return `${targetKind}:${targetId}`;
+}
+
+function learnerEvidenceOwnerKey(ownerKind, ownerEntityId) {
+  return `${ownerKind}:${ownerEntityId}`;
 }
 
 function summarizeAttempt(attempt) {

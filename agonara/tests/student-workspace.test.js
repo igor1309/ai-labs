@@ -7,13 +7,19 @@ import * as studentWorkspace from "../src/student-workspace.js";
 import {
   createAcceptedAssessmentCriterionEntityRecord,
   createAcceptedAssessmentCriterionRevisionRecord,
+  createAcceptedCorpusEntityRecord,
+  createAcceptedCorpusRevisionRecord,
+  createAcceptedNavigationRelationshipRecord,
+  createAcceptedNavigationRelationshipRevisionRecord,
   createAcceptedOpenAnswerCheckEntityRecord,
   createAcceptedOpenAnswerCheckRevisionRecord,
   createAcceptedQuickCheckEntityRecord,
   createAcceptedQuickCheckRevisionRecord,
   createAssessmentCriterionCandidateRecord,
+  createCorpusCandidateRecord,
   createIdentity,
   createLocalPasswordCredential,
+  createLearnerEvidenceTargetLinkRecord,
   createOpenAnswerCheckCandidateRecord,
   createOpenAnswerEvaluatorRunRecord,
   createProgramMembershipRecord,
@@ -36,14 +42,19 @@ import {
   listAcceptedAssessmentCriterionRevisionRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedCorpusRevisionRecords,
+  listAcceptedNavigationRelationshipRecords,
+  listAcceptedNavigationRelationshipRevisionRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedOpenAnswerCheckRevisionRecords,
   listAcceptedQuickCheckEntityRecords,
   listAcceptedQuickCheckRevisionRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
+  listCorpusEventRecords,
+  listLearnerEvidenceTargetLinkRecords,
   listLocalPasswordCredentials,
   listOpenAnswerEvaluationRecords,
+  listOpenAnswerEvaluationFailureRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerCheckCandidateRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
@@ -1775,12 +1786,251 @@ test("quickCheckExecutableAcceptance_shouldCoverFirstSliceEndToEnd", () => {
   }
 });
 
+test("learnerStateSummary_shouldDeriveOwnerEvidenceWeakAreasAndTargetDetail", () => {
+  const { commands, database } = makeSUT({
+    ids: ["quick-negative", "quick-positive", "open-pending", "open-evaluated", "evaluation-1"],
+    now: makeAdvancingClock("2026-06-02T10:00:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedStudentProgramWithAcceptedCheck(database, {
+      programId: "program-a",
+      secondCriterionCandidateId: "criterion-candidate-b",
+      secondCriterionEntityId: "criterion-entity-b",
+      secondCriterionRevisionId: "criterion-revision-b",
+    });
+    seedLearnerStateNavigationGraph(database, { programId: "program-a" });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-material-quick",
+      programId: "program-a",
+      targetKind: "material_reference",
+      targetId: "material-entity-a",
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: "quick-check-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:35:00.000Z",
+      updatedAt: "2026-06-02T09:35:00.000Z",
+    });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-concept-criterion",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-a",
+      evidenceOwnerKind: "accepted_assessment_criterion",
+      evidenceOwnerEntityId: "criterion-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:36:00.000Z",
+      updatedAt: "2026-06-02T09:36:00.000Z",
+    });
+
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-b",
+      idempotencyKey: "quick-negative-key",
+    });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-positive-key",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Pending explanation",
+      idempotencyKey: "open-pending-key",
+    });
+    const evaluatedAttempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Evaluated explanation",
+      idempotencyKey: "open-evaluated-key",
+    }).value.attempt;
+    commands.recordOpenAnswerEvaluation({
+      attemptId: evaluatedAttempt.attemptId,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer misses the central invariant.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          criterionRevisionId: "criterion-revision-a",
+          outcome: "missing",
+          feedback: "Missing invariant.",
+        }),
+        makeCriterionFeedback({
+          criterionRevisionId: "criterion-revision-b",
+          outcome: "unclear",
+          feedback: "Partially explains terminology.",
+        }),
+      ],
+    });
+
+    const summary = commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const materialDetail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "material_reference",
+      targetId: "material-entity-a",
+    });
+    const topicDetail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "topic",
+      targetId: "topic-entity-a",
+    });
+
+    assert.deepEqual(
+      {
+        summary: projectLearnerStateSummary(summary),
+        materialDetail: projectLearnerStateTargetDetail(materialDetail),
+        topicDetail: projectLearnerStateTargetDetail(topicDetail),
+        forbiddenDetails: containsForbiddenDetail([summary, materialDetail, topicDetail]),
+      },
+      {
+        summary: {
+          status: "accepted",
+          level: "needs_attention",
+          totals: {
+            targets: 8,
+            onTrack: 2,
+            developing: 1,
+            needsAttention: 4,
+            inProgress: 0,
+            noEvidence: 1,
+          },
+          weakAreas: [
+            ["open_answer_check", "check-entity-a", "needs_attention"],
+            ["assessment_criterion", "criterion-entity-a", "needs_attention"],
+            ["concept", "concept-entity-a", "needs_attention"],
+            ["topic", "topic-entity-a", "needs_attention"],
+          ],
+          topics: [["topic-entity-a", "needs_attention", 1]],
+          concepts: [
+            ["concept-entity-a", "needs_attention", 1],
+            ["concept-entity-unused", "no_evidence", 0],
+          ],
+          materialReferences: [["material-entity-a", "on_track", 2]],
+          checks: [
+            ["open_answer_check", "check-entity-a", "needs_attention", 2],
+            ["quick_check", "quick-check-entity-a", "on_track", 2],
+          ],
+          criteria: [
+            ["criterion-entity-a", "needs_attention", 1],
+            ["criterion-entity-b", "developing", 1],
+          ],
+        },
+        materialDetail: {
+          status: "accepted",
+          target: ["material_reference", "material-entity-a", "on_track", 2],
+          evidenceSignals: ["positive", "negative"],
+          evidenceKinds: ["quick_check_attempt", "quick_check_attempt"],
+        },
+        topicDetail: {
+          status: "accepted",
+          target: ["topic", "topic-entity-a", "needs_attention", 1],
+          evidenceSignals: ["negative"],
+          evidenceKinds: ["open_answer_criterion_feedback"],
+        },
+        forbiddenDetails: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerStateReads_shouldRejectUnauthorizedActorsAndPreserveStorageState", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedLearnerStateNavigationGraph(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createIdentityIfMissing(database, "identity-curator");
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    createProgramShellIfMissing(database, "program-b");
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-other-program",
+      identityId: "identity-active-other",
+      participationKind: "student",
+      programId: "program-b",
+    }));
+    const before = projectLearnerStateReadBoundary(database);
+
+    const acceptedSummary = commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const acceptedDetail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "topic",
+      targetId: "topic-entity-a",
+    });
+
+    assert.deepEqual(
+      {
+        accepted: [acceptedSummary.status, acceptedDetail.status],
+        disabled: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+        }),
+        curator: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        outsideStudent: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-active-other",
+          programId: "program-a",
+        }),
+        unknownProgram: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-student",
+          programId: "program-missing",
+        }),
+        unsupportedTarget: commands.getLearnerStateTargetDetail({
+          actingIdentityId: "identity-student",
+          targetKind: "definition",
+          targetId: "definition-entity-a",
+        }),
+        missingTarget: commands.getLearnerStateTargetDetail({
+          actingIdentityId: "identity-student",
+          targetKind: "topic",
+          targetId: "target-missing",
+        }),
+        after: projectLearnerStateReadBoundary(database),
+      },
+      {
+        accepted: ["accepted", "accepted"],
+        disabled: { status: "rejected", reason: "identity_not_active" },
+        curator: { status: "rejected", reason: "participation_required" },
+        outsideStudent: { status: "rejected", reason: "participation_required" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        unsupportedTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        missingTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        after: before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("containsAnyOutOfScopeStudentWorkspaceBehavior_shouldDetectDeferredQuickCheckStateSurfaces", () => {
   assert.deepEqual(
     [
       "mastery",
       "weak_area",
-      "progress",
+      "student_progress",
       "review_scheduling",
       "next_step",
       "topic_readiness",
@@ -7865,6 +8115,8 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "completeOpenAnswerEvaluatorRun",
       "failOpenAnswerEvaluatorJob",
       "failOpenAnswerEvaluatorRun",
+      "getLearnerStateProgramSummary",
+      "getLearnerStateTargetDetail",
       "getOpenAnswerAttempt",
       "getOpenAnswerEvaluationStatus",
       "getOpenAnswerEvaluatorJob",
@@ -8655,6 +8907,8 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "completeOpenAnswerEvaluatorRun",
           "failOpenAnswerEvaluatorJob",
           "failOpenAnswerEvaluatorRun",
+          "getLearnerStateProgramSummary",
+          "getLearnerStateTargetDetail",
           "getOpenAnswerAttempt",
           "getOpenAnswerEvaluationStatus",
           "getOpenAnswerEvaluatorJob",
@@ -8818,6 +9072,41 @@ function projectQuickCheckAttemptResult(attempt) {
     selectedOptionId: attempt.selectedOptionId,
     matched: attempt.matched,
   };
+}
+
+function projectLearnerStateSummary(result) {
+  const learnerState = result.value?.learnerState;
+  return {
+    status: result.status,
+    level: learnerState?.level,
+    totals: learnerState?.totals,
+    weakAreas: learnerState?.weakAreas.map(projectLearnerStateTargetTuple),
+    topics: learnerState?.topics.map(projectLearnerStateNavigationTargetTuple),
+    concepts: learnerState?.concepts.map(projectLearnerStateNavigationTargetTuple),
+    materialReferences: learnerState?.materialReferences.map(projectLearnerStateNavigationTargetTuple),
+    checks: learnerState?.checks.map($0 => [$0.targetKind, $0.targetId, $0.level, $0.evidenceCount]),
+    criteria: learnerState?.criteria.map(projectLearnerStateNavigationTargetTuple),
+  };
+}
+
+function projectLearnerStateTargetDetail(result) {
+  const target = result.value?.learnerStateTarget;
+  return {
+    status: result.status,
+    target: target
+      ? [target.targetKind, target.targetId, target.level, target.evidenceCount]
+      : null,
+    evidenceSignals: target?.evidence.map($0 => $0.signal),
+    evidenceKinds: target?.evidence.map($0 => $0.sourceKind),
+  };
+}
+
+function projectLearnerStateTargetTuple(target) {
+  return [target.targetKind, target.targetId, target.level];
+}
+
+function projectLearnerStateNavigationTargetTuple(target) {
+  return [target.targetId, target.level, target.evidenceCount];
 }
 
 function makeEvaluationSummary({
@@ -9309,6 +9598,137 @@ function makeIdGenerator(ids) {
   return () => nextIds.shift();
 }
 
+function makeAdvancingClock(startIso) {
+  let tick = 0;
+  const start = new Date(startIso).getTime();
+  return () => new Date(start + tick++);
+}
+
+function seedLearnerStateNavigationGraph(database, { programId }) {
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "topic-entity-a",
+    revisionId: "topic-revision-a",
+    acceptedKind: "topic",
+    title: "Topic target",
+  });
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "concept-entity-a",
+    revisionId: "concept-revision-a",
+    acceptedKind: "concept",
+    title: "Concept target",
+  });
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "concept-entity-unused",
+    revisionId: "concept-revision-unused",
+    acceptedKind: "concept",
+    title: "Unused concept",
+  });
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "material-entity-a",
+    revisionId: "material-revision-a",
+    acceptedKind: "material_reference",
+    title: "Material target",
+  });
+  createCorpusCandidateRecord(database, {
+    id: "relationship-candidate-topic-concept",
+    programId,
+    candidateKind: "relationship_update",
+    title: "Topic concept relationship",
+    body: null,
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: [],
+    rationale: null,
+    status: "accepted",
+    createdByIdentityId: "identity-curator",
+    createdAt: "2026-06-02T09:32:00.000Z",
+    updatedAt: "2026-06-02T09:32:00.000Z",
+  });
+  createAcceptedNavigationRelationshipRecord(database, {
+    id: "relationship-topic-concept",
+    programId,
+    relationshipKind: "topic_includes_concept",
+    fromEntityId: "topic-entity-a",
+    toEntityId: "concept-entity-a",
+    currentRevisionId: "relationship-topic-concept-revision",
+  });
+  createAcceptedNavigationRelationshipRevisionRecord(database, {
+    id: "relationship-topic-concept-revision",
+    relationshipId: "relationship-topic-concept",
+    programId,
+    relationshipKind: "topic_includes_concept",
+    fromEntityId: "topic-entity-a",
+    fromRevisionId: "topic-revision-a",
+    fromKind: "topic",
+    toEntityId: "concept-entity-a",
+    toRevisionId: "concept-revision-a",
+    toKind: "concept",
+    label: "includes",
+    sourceIds: [],
+    acceptedFromCandidateId: "relationship-candidate-topic-concept",
+    acceptedByIdentityId: "identity-curator",
+    acceptedAt: "2026-06-02T09:33:00.000Z",
+  });
+}
+
+function createAcceptedNavigationTarget(
+  database,
+  {
+    programId,
+    entityId,
+    revisionId,
+    acceptedKind,
+    title,
+  },
+) {
+  const candidateId = `candidate-${entityId}`;
+  createCorpusCandidateRecord(database, {
+    id: candidateId,
+    programId,
+    candidateKind: acceptedKind,
+    title,
+    body: acceptedKind === "material_reference" ? null : `${title} body`,
+    materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+    locator: acceptedKind === "material_reference" ? `https://example.test/${entityId}` : null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: [],
+    rationale: null,
+    status: "accepted",
+    createdByIdentityId: "identity-curator",
+    createdAt: "2026-06-02T09:30:00.000Z",
+    updatedAt: "2026-06-02T09:30:00.000Z",
+  });
+  createAcceptedCorpusEntityRecord(database, {
+    id: entityId,
+    programId,
+    acceptedKind,
+    currentRevisionId: revisionId,
+  });
+  createAcceptedCorpusRevisionRecord(database, {
+    id: revisionId,
+    entityId,
+    programId,
+    acceptedKind,
+    title,
+    body: acceptedKind === "material_reference" ? null : `${title} body`,
+    materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+    locator: acceptedKind === "material_reference" ? `https://example.test/${entityId}` : null,
+    citation: null,
+    acceptedFromCandidateId: candidateId,
+    sourceIds: [],
+    rationale: null,
+    acceptedByIdentityId: "identity-curator",
+    acceptedAt: "2026-06-02T09:31:00.000Z",
+  });
+}
+
 function seedStudentProgramWithAcceptedCheck(
   database,
   {
@@ -9585,6 +10005,25 @@ function projectQuickCheckBoundaryIsolationState(database, csrfTokens) {
   };
 }
 
+function projectLearnerStateReadBoundary(database) {
+  return {
+    corpus: projectAdjacentCorpusState(database),
+    acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
+    acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
+    learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
+    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
+    acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
+    quickCheckAttempts: listQuickCheckAttemptRecords(database),
+    openAnswerAttempts: listOpenAnswerAttemptRecords(database),
+    openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
+    openAnswerEvaluationFailures: listOpenAnswerEvaluationFailureRecords(database),
+    openAnswerEvaluatorEvidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunRecords(database),
+    corpusEvents: listCorpusEventRecords(database),
+    memberships: listProgramMembershipRecords(database),
+  };
+}
+
 function projectQuickCheckDeferredState(database) {
   const backup = exportIdentityBackup(database);
   return {
@@ -9741,7 +10180,7 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
     "raw_model",
     "mastery",
     "weak_area",
-    "progress",
+    "student_progress",
     "review_scheduling",
     "next_step",
     "topic_readiness",
@@ -9850,7 +10289,7 @@ function containsAnyOutOfScopeEvaluatorWorkerSurface({
       "reviewer_ui",
       "mastery",
       "weak_area",
-      "progress",
+      "student_progress",
       "next_step",
       "next-step",
       "nextstep",
