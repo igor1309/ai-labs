@@ -21,20 +21,20 @@
     },
     {
       "id": 2,
-      "prompt": "Run a traceability review of the agonara intent → ADR layer-pair (fidelity and vertical coverage).",
-      "expected_output": "A findings file under agonara/docs/traceability-reviews/ reporting the 16 ADRs as faithful to intent (0 contradictions) with two unacknowledged-loss warnings and one uncovered-capability warning, a full coverage matrix, and explicitly-deferred intent capabilities correctly excluded from findings.",
+      "prompt": "Run an intent → ADR traceability review of the agonara Corpus Storage + Curator Workspace module using the per-module deterministic coverage matrix.",
+      "expected_output": "A complete per-module coverage matrix (~22 capability rows) for Corpus Storage + Curator Workspace — each row verdict-tagged with ADR evidence — with findings derived mechanically: 0 contradictions, CUR-09 and CUR-13 carried with cited ADR lines, and the INT-02/STU-07 confusing-neighbors concept-relation flagged as a finding (loss or uncovered).",
       "expectations": [
-        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by the intent-adr layer-pair (e.g. 2026-06-03T1050Z-intent-adr.md).",
-        "The front-matter includes skill: traceability-review, a skill_version, scope naming the intent → ADR layer-pair and agonara, slices including fidelity and vertical-coverage, and an inputs list giving the four intent files with their versions and all 16 ADRs with their status.",
-        "The Inspected section confirms all 16 ADRs (adr-001 through adr-016) and all four intent files were read in full.",
-        "The Summary reports 0 fidelity fails, 2 fidelity warnings, 1 coverage warning, and 3 open questions.",
-        "The faithful core is backed by positive evidence cited into specific ADRs with file:line — at minimum the corpus/student-state separation, the LLM-not-accepted-until-curator boundary, Admin-is-not-a-learning-role, and the ownership statements.",
-        "A fidelity finding (warning, loss) records that the INT-02/STU-07 confusing-neighbor / concept-distinction commitment is narrowed away by ADR-010's closed accepted-corpus content list, quoting both the intent passage and the ADR-010 passage with file:line.",
-        "A fidelity finding (warning) records that CUR-13 pre-acceptance suggestion-origin visibility is carried by no ADR (ADR-010 carries only acceptance-time provenance), with the residual ambiguity routed to an open question rather than asserted as a hard contradiction.",
-        "A coverage finding (warning) records that CUR-09 coverage-gap discovery is carried by no ADR and not explicitly deferred (ADR-010 names gap analysis only as owned draft state).",
-        "Explicitly-deferred intent capabilities are classified as deferred and NOT reported as findings — in particular INT-06 period-level checks (ADR-016 names them a future slice), INT-07 interpretation, and STU-04/STU-05 session continuity.",
-        "A coverage matrix maps intent groups (by module) to the carrying ADR(s) with an explicit status of covered, deferred, or UNCOVERED.",
-        "All three open questions are tagged with a downstream resolving layer (ADR→spec), and no false-positive findings are made (an ADR deciding implementation detail the intent left open, or an explicit deferral, is not flagged)."
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by intent-adr and the module (e.g. 2026-06-03T1127Z-intent-adr-corpus-curator.md).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the intent → ADR layer-pair, agonara, and the module Corpus Storage + Curator Workspace, mechanism: deterministic-coverage-matrix, and an inputs list giving the intent files with versions, ADR-010 and ADR-009 with status, and the module responsibility map.",
+        "A coverage matrix is the primary artifact: roughly 20-24 rows, one per owned capability, each carrying an explicit verdict (carried, deferred, uncovered, carried-with-loss, or contradicted) and either an ADR file:line evidence quote or 'none'.",
+        "The enumerated capabilities include the curation stories CUR-01 through CUR-13 (and exclude CUR-14 through CUR-18 as Program Membership) plus the corpus-content capabilities INT-01..INT-03, the accepted-content slices of INT-04..INT-06, and STU-06/STU-07/STU-09/STU-10.",
+        "There are 0 contradicted rows (no fidelity fail).",
+        "CUR-09 (coverage-gap discovery) is classified carried, citing ADR-010:52 (gap analysis owned by Curator Workspace) and/or ADR-010:76 (coverage gaps live outside accepted corpus until acceptance).",
+        "CUR-13 (pre-acceptance suggestion origin) is classified carried, citing ADR-010:80 (acceptance preserves provenance to source/candidate/draft/LLM-suggestion/rationale) and/or ADR-010:56.",
+        "The INT-02/STU-07 confusing-neighbors concept-relation is flagged as a finding — either carried-with-loss or uncovered — and is NOT marked carried and NOT treated as deferred, quoting the intent commitment (intent_learning_program_app.md:115 / student_user_stories.md:80) and ADR-010's closed accepted-entity enumeration (adr-010:48 / :75).",
+        "Every finding corresponds to a non-clean matrix row and every row has a verdict; no finding is reported that is not a matrix row, and no false positive is made (an explicitly deferred capability or an implementation detail the intent left open is not flagged).",
+        "Cross-module seam gaps (a capability owned by no single module, e.g. program discovery) are NOT reported here, since they belong to the cross-module ADR × ADR pass.",
+        "The Inspected section confirms ADR-010 and ADR-009 and the four intent files and the responsibility map were read."
       ]
     }
   ]
