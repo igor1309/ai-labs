@@ -1,7 +1,7 @@
 ---
 date: 2026-06-03
 model: claude-opus-4-8
-description: "Skill improvements from the scoped-orchestrator session: using-dev-skills as a session-start default. (Shipped: cold-start-checkpoint referenced-docs grounding gate v1.2.0; adr-governance Mechanism Feasibility dimension v1.1.0.)"
+description: "Skill improvements from the scoped-orchestrator session — all shipped: cold-start-checkpoint referenced-docs grounding gate v1.2.0; adr-governance Mechanism Feasibility dimension v1.1.0; using-dev-skills session-start default v1.0.2. Remaining: VPS/OpenClaw operational grounding (tracked separately)."
 ---
 
 # Skill Improvements — Grounding Discipline
@@ -27,14 +27,6 @@ on prose instructions.
 
 Both are the same root cause: a conclusion not anchored to a named source (a referenced
 doc, or the concrete mechanism on the target system).
-
-## Suggestion 3 — `using-dev-skills`: treat invocation as a session-start default
-
-`using-dev-skills` exists to map the right skill before acting; in this session it was
-skipped, and so were `intake` / `cold-start-checkpoint` / `process-gates`. Several of the
-session's missteps would have been pre-empted by invoking the ladder at the first message.
-The fix is discipline, not new capability: default to consulting `using-dev-skills` at
-session start rather than treating it as optional.
 
 ## Related: VPS/OpenClaw operational grounding
 

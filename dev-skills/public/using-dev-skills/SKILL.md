@@ -1,7 +1,7 @@
 ---
 name: using-dev-skills
 author: Igor Malyarov
-version: "1.0.1"
+version: "1.0.2"
 description: Use when starting any conversation - maps the dev-skills toolkit by ladder (TDD, spec, review, planning, release, Swift) so the right skill is invoked before any response or action.
 trigger: at the start of any task before exploring the repo, writing code, or answering a codebase-specific question
 ---
@@ -9,6 +9,8 @@ trigger: at the start of any task before exploring the repo, writing code, or an
 # Using dev-skills
 
 Entry map for the local `dev-skills` toolkit. It does not prescribe a methodology; it groups skills by the input they apply to so the right one can be invoked.
+
+**Session-start default.** Consulting this map is the default first action of a session, not an optional aid. If a task begins without it, invoke it before any repo exploration or code change.
 
 ## Ladders
 
