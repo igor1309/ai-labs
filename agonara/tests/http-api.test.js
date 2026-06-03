@@ -2479,6 +2479,7 @@ test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", 
       `/quick-checks/candidates/${candidateId}/rejection`,
     ];
     const missingSessionResponses = [];
+    const invalidSessionResponses = [];
     for (const mutationRoute of mutationRoutes) {
       const response = await fetch(`${baseUrl}${mutationRoute}`, {
         body: mutationRoute === route ? JSON.stringify({
@@ -2492,6 +2493,21 @@ test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", 
         method: "POST",
       });
       missingSessionResponses.push({ body: await response.json(), statusCode: response.status });
+      const invalidSession = await fetch(`${baseUrl}${mutationRoute}`, {
+        body: mutationRoute === route ? JSON.stringify({
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed", "Open"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        }) : undefined,
+        headers: {
+          cookie: "agonara_session=session-missing",
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      invalidSessionResponses.push({ body: await invalidSession.json(), statusCode: invalidSession.status });
     }
     const invalidBodies = [
       undefined,
@@ -2560,6 +2576,7 @@ test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", 
     assert.deepEqual(
       {
         invalidResponses,
+        invalidSessionResponses,
         missingSessionResponses,
         unauthorizedResponses,
         unknownProgram: { body: await unknownProgram.json(), statusCode: unknownProgram.status },
@@ -2568,6 +2585,10 @@ test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", 
         invalidResponses: invalidBodies.map(() => ({
           body: { status: "rejected", reason: "validation_failed" },
           statusCode: 400,
+        })),
+        invalidSessionResponses: mutationRoutes.map(() => ({
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
         })),
         missingSessionResponses: mutationRoutes.map(() => ({
           body: { status: "rejected", reason: "session_not_found" },
@@ -2773,7 +2794,11 @@ test("quickCheckAttempts_shouldSubmitRetryReadAndListOwnerAttempt_onEffectiveStu
       "quick-attempt-key-1",
     );
     const detail = await getHttpResponse(baseUrl, `/quick-check-attempts/${attemptId}`, student);
-    const nonOwner = await getHttpResponse(baseUrl, `/quick-check-attempts/${attemptId}`, otherStudent);
+    const nonOwnerCallers = [otherStudent, curator, bootstrap];
+    const nonOwners = [];
+    for (const caller of nonOwnerCallers) {
+      nonOwners.push(await getHttpResponse(baseUrl, `/quick-check-attempts/${attemptId}`, caller));
+    }
     const listed = await listQuickCheckAttempts(
       baseUrl,
       student,
@@ -2793,7 +2818,7 @@ test("quickCheckAttempts_shouldSubmitRetryReadAndListOwnerAttempt_onEffectiveStu
         detail: { body: quickCheckAttemptResponseProjection(detail.body), statusCode: detail.statusCode },
         hasStudentLeaks: containsQuickCheckAttemptLeaks(serializedStudentResponses),
         listed: { body: quickCheckAttemptListProjection(listed.body), statusCode: listed.statusCode },
-        nonOwner,
+        nonOwners,
         retry: quickCheckAttemptResponseProjection(await retry.json()),
         retryStatusCode: retry.status,
         submitted: quickCheckAttemptResponseProjection(submittedBody),
@@ -2834,10 +2859,10 @@ test("quickCheckAttempts_shouldSubmitRetryReadAndListOwnerAttempt_onEffectiveStu
           },
           statusCode: 200,
         },
-        nonOwner: {
+        nonOwners: nonOwnerCallers.map(() => ({
           body: { status: "rejected", reason: "attempt_not_found" },
           statusCode: 404,
-        },
+        })),
         retry: {
           attemptId,
           checkRevisionId: acceptedQuickCheck.revisionId,

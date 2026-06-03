@@ -557,7 +557,8 @@ async function handleStudentWorkspaceApi({
       actingIdentityId: session.value.identity.id,
       attemptId: decodeURIComponent(quickCheckAttemptDetailMatch[1]),
     });
-    sendJson(response, statusForResult(result), mapQuickCheckAttemptResult(result));
+    const mappedResult = mapQuickCheckAttemptDetailResult(result);
+    sendJson(response, statusForResult(mappedResult), mappedResult);
     return true;
   }
 
@@ -938,15 +939,15 @@ async function handleCorpusApi({
   }
 
   if (request.method === "POST" && quickCheckAcceptanceMatch) {
-    const csrf = requireCsrf(request, csrfTokens);
-    if (csrf.status === "rejected") {
-      sendJson(response, httpStatusFor(csrf.reason), csrf);
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
       return true;
     }
 
-    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
-    if (session.status === "rejected") {
-      sendJson(response, httpStatusFor(session.reason), session);
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
       return true;
     }
 
@@ -966,15 +967,15 @@ async function handleCorpusApi({
   }
 
   if (request.method === "POST" && quickCheckRejectionMatch) {
-    const csrf = requireCsrf(request, csrfTokens);
-    if (csrf.status === "rejected") {
-      sendJson(response, httpStatusFor(csrf.reason), csrf);
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
       return true;
     }
 
-    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
-    if (session.status === "rejected") {
-      sendJson(response, httpStatusFor(session.reason), session);
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
       return true;
     }
 
@@ -1946,6 +1947,16 @@ function mapQuickCheckCandidateResult(result) {
 function mapQuickCheckAttemptResult(result) {
   if (result.status === "rejected") {
     return result;
+  }
+
+  return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
+}
+
+function mapQuickCheckAttemptDetailResult(result) {
+  if (result.status === "rejected") {
+    return result.reason === "participation_required"
+      ? rejected("attempt_not_found")
+      : result;
   }
 
   return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });

@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Harden the Quick Check HTTP API after adversarial review by resolving sessions before CSRF on candidate acceptance/rejection and hiding non-owner attempt-detail access behind `attempt_not_found`.
 - Implement the Quick Check HTTP API across curator candidate/acceptance routes, student-safe delivery, idempotent Student Workspace attempts, production composition coverage, out-of-scope route absence checks, and INT-04 traceability.
 - Add the Quick Check HTTP API handoff with session-backed route contracts, answer-key redaction rules, strict TDD implementation phases, and INT-04 traceability.
 - Refresh Agonara current-state docs so README, backlog, implementation notes, and Product Intent distinguish implemented backend/domain slices from deferred transport and product surfaces.
