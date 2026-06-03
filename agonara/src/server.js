@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
 import { createCorpusCommands } from "./corpus.js";
 import { createIdentityCommands } from "./identity.js";
+import { learnUiHtml } from "./learn-ui.js";
 import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 import { createStudentWorkspaceCommands } from "./student-workspace.js";
@@ -39,6 +40,11 @@ export function createServer({
     try {
       if (request.method === "GET" && pathname === "/admin") {
         sendHtml(response, 200, adminBoardHtml);
+        return;
+      }
+
+      if (request.method === "GET" && pathname === "/learn") {
+        sendHtml(response, 200, learnUiHtml);
         return;
       }
 
