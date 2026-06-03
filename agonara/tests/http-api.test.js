@@ -34,7 +34,7 @@ test("identityBootstrap_shouldSetCookieAndHideSessionId_onAcceptedBootstrap", as
         bootstrapSecret: "operator-secret",
         displayName: "Root Admin",
         login: "admin@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -2843,7 +2843,7 @@ test("assessmentRoutes_shouldRedactFaultResponses", async () => {
       listAcceptedOpenAnswerChecks: () => {
         throw new Error(
           "authorization='bearer token' csrf='csrf-secret' cookie='session-1' " +
-          "password='correct horse battery staple' sql='select * from secrets' " +
+          "password='NON_SECRET_TEST_VALUE' sql='select * from secrets' " +
           "path='/Users/operator/private' database='file:agonara.sqlite'",
         );
       },
@@ -5236,7 +5236,7 @@ test("corpusEventsList_shouldDefaultLimitRejectInvalidQueriesAndRedactCursor", a
           hasCsrf: defaultText.includes(bootstrap.csrfToken),
           hasDatabaseUrl: defaultText.includes("file:"),
           hasFilesystemPath: defaultText.includes("/Users/"),
-          hasPassword: defaultText.includes("correct horse battery staple"),
+          hasPassword: defaultText.includes("NON_SECRET_TEST_VALUE"),
           hasSession: defaultText.includes("session-1"),
           hasSql: defaultText.toLowerCase().includes("select "),
           hasStack: defaultText.includes("Error:"),
@@ -5296,7 +5296,7 @@ test("corpusEventsList_shouldRedactFaultResponses", async () => {
         throw new Error(
           "select session_id from sessions where cookie='agonara_session=session-1' " +
             "authorization='bearer token' csrf='csrf-secret' " +
-            "secret='operator-secret' password='correct horse battery staple' " +
+            "secret='operator-secret' password='NON_SECRET_TEST_VALUE' " +
             "database='file:/Users/igormalyarov/agonara.db'",
         );
       },
@@ -5322,7 +5322,7 @@ test("corpusEventsList_shouldRedactFaultResponses", async () => {
           hasCsrf: text.includes(bootstrap.csrfToken),
           hasDatabaseUrl: text.includes("file:"),
           hasFilesystemPath: text.includes("/Users/"),
-          hasPassword: text.includes("correct horse battery staple"),
+          hasPassword: text.includes("NON_SECRET_TEST_VALUE"),
           hasSession: text.includes("session-1"),
           hasSql: text.toLowerCase().includes("select "),
           hasStack: text.includes("Error:"),
@@ -5714,7 +5714,7 @@ test("programShellRoutes_shouldNotExposeSessionCsrfOrCredentialSecrets", async (
     assert.deepEqual(
       {
         leaksCsrf: responseText.includes(bootstrap.csrfToken),
-        leaksPassword: responseText.includes("correct horse battery staple"),
+        leaksPassword: responseText.includes("NON_SECRET_TEST_VALUE"),
         leaksPasswordHash: responseText.includes("scrypt$"),
         leaksSession: responseText.includes(bootstrap.cookie.replace("agonara_session=", "")),
       },
@@ -6313,7 +6313,7 @@ test("effectiveParticipation_shouldRequireAdminOrCurator_forOtherIdentity", asyn
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6325,7 +6325,7 @@ test("effectiveParticipation_shouldRequireAdminOrCurator_forOtherIdentity", asyn
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6424,7 +6424,7 @@ test("effectiveParticipation_shouldAllowNonAdminCurator_forOtherIdentity", async
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6436,7 +6436,7 @@ test("effectiveParticipation_shouldAllowNonAdminCurator_forOtherIdentity", async
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6621,7 +6621,7 @@ test("programEventRoutes_shouldRejectOrdinaryCallers", async () => {
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6633,7 +6633,7 @@ test("programEventRoutes_shouldRejectOrdinaryCallers", async () => {
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6717,7 +6717,7 @@ test("programEventRoutes_shouldAcceptAdminAndNonAdminCurator_forKnownPrograms", 
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6729,7 +6729,7 @@ test("programEventRoutes_shouldAcceptAdminAndNonAdminCurator_forKnownPrograms", 
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -7025,7 +7025,7 @@ test("programEventRoutes_shouldRejectInvalidQueriesAndRedactResponses", async ()
           hasBootstrapSecret: validText.includes("operator-secret"),
           hasCookie: validText.includes("cookie"),
           hasCsrf: validText.includes(bootstrap.csrfToken),
-          hasPassword: validText.includes("correct horse battery staple"),
+          hasPassword: validText.includes("NON_SECRET_TEST_VALUE"),
           hasSession: validText.includes("session-1"),
           hasSql: validText.toLowerCase().includes("select "),
           hasStack: validText.includes("Error:"),
@@ -7110,7 +7110,7 @@ test("adminBoard_shouldExposeSessionControls_withoutSensitiveRuntimeValues", asy
         hasLoginForm: body.includes('id="login-form"'),
         hasSessionPanel: body.includes('id="session-panel"'),
         hasLogoutButton: body.includes('id="logout-button"'),
-        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasPasswordValue: body.includes("NON_SECRET_TEST_VALUE"),
         hasBootstrapSecret: body.includes("operator-secret"),
         hasSessionCookieName: body.includes("agonara_session"),
       },
@@ -7145,7 +7145,7 @@ test("adminBoard_shouldExposeIdentityOperationControls_withoutSensitiveRuntimeVa
         hasDisableAction: body.includes('data-action="disable"'),
         hasGrantAdminAction: body.includes('data-action="grant-admin"'),
         hasRevokeAdminAction: body.includes('data-action="revoke-admin"'),
-        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasPasswordValue: body.includes("NON_SECRET_TEST_VALUE"),
         hasBootstrapSecret: body.includes("operator-secret"),
         hasSessionCookieName: body.includes("agonara_session"),
       },
@@ -7180,7 +7180,7 @@ test("adminBoard_shouldExposeAuditEventInspection_withoutSensitiveRuntimeValues"
         hasAuditList: body.includes('id="audit-event-list"'),
         hasRefreshAuditButton: body.includes('id="refresh-audit-events-button"'),
         hasTargetSessionHeader: body.includes("targetSessionId"),
-        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasPasswordValue: body.includes("NON_SECRET_TEST_VALUE"),
         hasBootstrapSecret: body.includes("operator-secret"),
         hasSessionCookieName: body.includes("agonara_session"),
       },
@@ -7231,7 +7231,7 @@ test("identityBootstrap_shouldSetSecureCookie_onForwardedHttps", async () => {
         bootstrapSecret: "operator-secret",
         displayName: "Root Admin",
         login: "admin@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         "content-type": "application/json",
@@ -7254,7 +7254,7 @@ test("identitySessions_shouldSetCookieAndHideSessionId_onAcceptedLogin", async (
     const response = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "admin@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -7344,7 +7344,7 @@ test("identitySessions_shouldRateLimit_onRepeatedInvalidCredentials", async () =
       response = await fetch(`${baseUrl}/identity/sessions`, {
         body: JSON.stringify({
           login: "admin@example.test",
-          password: "wrong horse battery staple",
+          password: "NON_SECRET_REJECTED_VALUE",
         }),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -7468,7 +7468,7 @@ async function bootstrapAdmin(baseUrl) {
       bootstrapSecret: "operator-secret",
       displayName: "Root Admin",
       login: "admin@example.test",
-      password: "correct horse battery staple",
+      password: "NON_SECRET_TEST_VALUE",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -7495,7 +7495,7 @@ async function createIdentitySession(baseUrl, bootstrap, { displayName, login })
   await fetch(`${baseUrl}/identity/identities/${identityId}/local-password`, {
     body: JSON.stringify({
       login,
-      password: "correct horse battery staple",
+      password: "NON_SECRET_TEST_VALUE",
     }),
     headers: {
       cookie: bootstrap.cookie,
@@ -7507,7 +7507,7 @@ async function createIdentitySession(baseUrl, bootstrap, { displayName, login })
   const loginResponse = await fetch(`${baseUrl}/identity/sessions`, {
     body: JSON.stringify({
       login,
-      password: "correct horse battery staple",
+      password: "NON_SECRET_TEST_VALUE",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
