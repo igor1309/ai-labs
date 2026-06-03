@@ -104,14 +104,40 @@ Fix: Update the spec status to `implemented` or `accepted`, and add a short impl
 
 Required tests: Run Markdown/front-matter/link checks and `git diff --check`.
 
+## Adversarial Review Closure
+
+### Review finding 1 - execution mode was too broad for unspecced product work
+
+Verdict: fail
+
+Why: The initial plan used `auto-continue` across UI, corpus graph, learner-state interpretation, aggregate checks, membership recovery, and LLM-assisted curation. Several of those areas do not yet have accepted specs, so auto-continuing from the review findings into code would reopen design during implementation.
+
+Fix applied: The plan now uses `human-review-gated` mode. Each phase must produce or update its governing spec/ADR first, run adversarial review on that artifact, and stop for human review before implementation continues.
+
+### Review finding 2 - the plan lacked a phase-status tracker
+
+Verdict: warning
+
+Why: Repo process gates require plan tracker updates after completed steps. The initial plan had phase sections but no central tracker that could be updated and committed after each phase.
+
+Fix applied: Added `## Phase tracker` with unchecked entries for every phase and an explicit requirement to update the tracker only after verified gates pass.
+
+### Review finding 3 - large phases hid spec dependencies inside implementation work
+
+Verdict: warning
+
+Why: The initial phase bodies included "add a spec" and "implement" in the same broad task list. That can hide contract uncertainty and make implementation responsible for architecture decisions.
+
+Fix applied: Each phase now requires an accepted spec or ADR review gate before code changes begin. If the spec/ADR review produces fail or warning findings, the phase must fix and commit those docs before implementation work starts.
+
 ## Goal
 
 Close the Agonara product and traceability gaps that remain after Quick Check HTTP delivery. The plan converts the current review findings into buildable slices while preserving the accepted separation between Program corpus, Student state, Program Membership, Curator Workspace, Identity, and operational concerns.
 
 ## Execution mode
 
-Mode: auto-continue
-Human review between tasks: no
+Mode: human-review-gated
+Human review between tasks: yes
 Stop conditions: failed gates, unclear scope, missing credentials/tooling, destructive operations, explicit user interruption
 Push policy: no push
 
@@ -130,6 +156,7 @@ Preflight check: [ ] done
 - Do not make Admin authority the normal operator for Program participation, curation, or learning-domain behavior.
 - Do not let LLM output become accepted corpus without explicit curator acceptance.
 - Do not introduce external provider calls before the provider boundary, redaction rules, failure behavior, and tests are specified.
+- Do not start code changes for a phase until the phase's governing spec or ADR has passed adversarial review and been committed.
 - Do not push or open a PR unless the user explicitly asks after local commits are complete.
 
 ## ADR traceability matrix
@@ -153,6 +180,18 @@ Preflight check: [ ] done
 | STU-22..STU-23, CUR-14..CUR-18, ADM-13..ADM-14 - Invitation, participation management, and recovery | Phase 5 |
 | CUR-11..CUR-13 - LLM-assisted curation and provenance | Phase 7 |
 
+## Phase tracker
+
+- [ ] Phase 1 - Quick Check Product UI and Spec Status
+- [ ] Phase 2 - Topic, Concept, and Material Navigation
+- [ ] Phase 3 - Learner-State Interpretation
+- [ ] Phase 4 - Topic-Level and Period-Level Checks
+- [ ] Phase 5 - Program Membership Invitations and Recovery
+- [ ] Phase 6 - Curator Coverage Gaps
+- [ ] Phase 7 - LLM-Assisted Curation Suggestions
+
+Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
+
 ## Phase 1 - Quick Check Product UI and Spec Status
 
 **Objective**: make the implemented Quick Check HTTP API usable by effective Program Curators and Students, and repair implemented-spec traceability.
@@ -160,6 +199,8 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Update `agonara/docs/specs/quick-check-assessment-api.md` from draft status to implemented or accepted, with links to the implemented plan and HTTP tests.
+- Add or update a Quick Check product UI spec that covers role-specific screens, state transitions, redaction, validation, and failure states.
+- Run adversarial review on the UI spec and fix every fail or warning before code changes begin.
 - Add or extend the product UI shell needed for Quick Check curator and student workflows.
 - Implement curator UI for candidate create, candidate listing, candidate acceptance, candidate rejection, and curation read.
 - Implement student UI for delivery listing, delivery detail, attempt submission, idempotent retry handling, attempt detail, and attempt list.
@@ -172,6 +213,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before UI code begins.
 - Targeted UI/browser tests for curator and student Quick Check flows.
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
@@ -188,6 +230,7 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Add a spec for accepted topics, concepts, definitions, principles, material references, and their relationships.
+- Run adversarial review on the corpus navigation spec and fix every fail or warning before storage, HTTP, or UI code changes begin.
 - Add storage records and graph validation for accepted topic/concept/material revisions.
 - Add curator candidate and acceptance routes for topic, concept, and material graph updates.
 - Add student read routes for program coverage, topic details, linked materials, and material-to-concept back navigation.
@@ -200,6 +243,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
 - Targeted storage tests for graph invariants and malformed restore rejection.
 - HTTP tests for curator acceptance and student-safe navigation reads.
 - UI/browser tests for topic and material traversal.
@@ -219,6 +263,7 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Add a spec for learner-state interpretation inputs, summary shape, persistence or read-time derivation, and evidence links.
+- Run adversarial review on the learner-state spec and fix every fail or warning before Student Workspace or UI code changes begin.
 - Implement Student Workspace commands/queries for owner-only progress, weak areas, and evidence reads.
 - Add UI surfaces for progress labels, weak topics/concepts, and evidence behind each label.
 - Keep progress summaries separate from Program corpus and membership state.
@@ -230,6 +275,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
 - Targeted Student Workspace tests for evidence-to-summary derivation.
 - HTTP tests for owner-only progress and weak-area reads.
 - UI/browser tests showing progress labels and supporting evidence.
@@ -249,6 +295,7 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Add a spec for topic-level and period-level check definitions, accepted revisions, attempts, and readiness result derivation.
+- Run adversarial review on the aggregate-check spec and fix every fail or warning before Corpus, Student Workspace, or UI code changes begin.
 - Implement Corpus Storage support for aggregate check definitions and accepted revisions.
 - Implement Student Workspace attempt submission, owner-only reads, and readiness evidence.
 - Add UI for starting aggregate checks, viewing results, and drilling into evidence.
@@ -261,6 +308,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
 - Storage and domain tests for aggregate check definitions and attempts.
 - HTTP tests for submission, owner-only reads, historical revisions, and readiness evidence.
 - UI/browser tests for topic/period check flow.
@@ -280,6 +328,7 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Add a spec for invitation creation, acceptance, decline, revocation, participant listing, student removal, curator leave, exceptional recovery, and exceptional revocation.
+- Run adversarial review on the membership invitation/recovery spec and fix every fail or warning before Program Membership, HTTP, or UI code changes begin.
 - Implement Program Membership storage and command behavior for invitation and recovery records.
 - Add curator routes for invitation and participant-management behavior.
 - Add student routes for accepting and declining invitations.
@@ -293,6 +342,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
 - Program Membership domain tests for invite, accept, decline, revoke, remove, curator leave, recovery, and exceptional revocation.
 - HTTP tests for authorization, attribution, private errors, and event reads.
 - UI/browser tests for invitation and recovery workflows.
@@ -313,6 +363,7 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Add a spec for coverage-gap inputs, output shape, and draft status.
+- Run adversarial review on the coverage-gap spec and fix every fail or warning before Curator Workspace, HTTP, or UI code changes begin.
 - Implement Curator Workspace coverage-gap reads over accepted Program corpus.
 - Add UI for curator coverage inspection and drill-down.
 - Keep coverage output separate from Student progress and weak-area interpretation.
@@ -324,6 +375,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
 - Curator Workspace tests for coverage gap calculation.
 - HTTP tests for curator-only reads and redaction.
 - UI/browser tests for coverage inspection.
@@ -343,6 +395,7 @@ Preflight check: [ ] done
 **Key work items**:
 
 - Add a provider-boundary spec for suggestion generation, prompt context, output validation, provenance, redaction, and provider failure behavior.
+- Run adversarial review on the provider-boundary spec and fix every fail or warning before Curator Workspace, HTTP, provider, or UI code changes begin.
 - Implement Curator Workspace suggestion records with draft status and origin metadata.
 - Add provider fakes for tests before wiring any real provider configuration.
 - Add curator review routes for suggestion listing, detail, accept, and reject.
@@ -355,6 +408,7 @@ Preflight check: [ ] done
 
 **Validation**:
 
+- Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
 - Curator Workspace tests for suggestion creation, validation, provenance, accept, reject, and provider failure.
 - HTTP tests for curator-only suggestion reads and mutations.
 - UI/browser tests for suggestion review and origin inspection.
@@ -378,6 +432,7 @@ Preflight check: [ ] done
 - Curator coverage-gap and LLM suggestion workflows keep draft guidance separate from accepted corpus until explicit acceptance.
 - Every code/config/generated-artifact phase passes the Agonara test wrapper, root build wrapper, and `git diff --check`.
 - Every docs-only phase passes Markdown/front-matter/link checks and `git diff --check`.
+- Every phase's governing spec or ADR passes adversarial review before implementation code begins.
 - The implementation plan tracker is updated after each completed phase and committed.
 
 ## Final closeout
