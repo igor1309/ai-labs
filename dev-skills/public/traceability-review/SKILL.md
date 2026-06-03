@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.6.0"
+version: "0.6.1"
 author: Igor Malyarov
 ---
 
@@ -133,3 +133,7 @@ a one-sentence verdict), the **complete enumeration** (the matrix/register — t
 core auditable artifact), `Findings` (derived from the non-clean rows, full
 evidence), `Open questions` (tagged), and `Inspected` (files, versions, the IDs
 enumerated — so coverage is checkable).
+
+The committed reference outputs and eval fixtures are a **regression harness**,
+not a living contract — perishable snapshots pinned to the document versions
+they ran against (see `evals/README.md`).
