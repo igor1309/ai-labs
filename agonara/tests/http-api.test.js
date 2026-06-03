@@ -1,15 +1,26 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
 import { createServer } from "../src/server.js";
+import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
 import {
   initializeIdentityStorage,
+  listAcceptedAssessmentCriterionEntityRecords,
+  listAcceptedAssessmentCriterionRevisionRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedCorpusRevisionRecords,
+  listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedOpenAnswerCheckRevisionRecords,
+  listAssessmentCriterionCandidateRecords,
   listCorpusEventRecords,
+  listOpenAnswerAttemptRecords,
+  listOpenAnswerCheckCandidateRecords,
   listProgramMembershipEventRecords,
+  listProgramMembershipRecords,
+  listProgramSourceRecords,
   openIdentityDatabase,
   updateProgramMembershipStatus,
 } from "../src/storage.js";
@@ -189,6 +200,1712 @@ test("openAnswerChecksList_shouldRejectDisabledSessionIdentity_withIdentityDisab
       {
         statusCode: 403,
         body: { status: "rejected", reason: "identity_disabled" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: JSON.stringify({
+        checkRevisionId: "check-revision-1",
+        submittedAnswer: "Explain the invariant.",
+      }),
+      headers: {
+        "content-type": "application/json",
+        "x-agonara-idempotency-key": "attempt-key-1",
+      },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldRejectDisabledSessionIdentity_withIdentityDisabled", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    database
+      .prepare("update identities set state = 'disabled', disabled_at = ? where id = ?")
+      .run("2026-05-27T10:00:00.000Z", bootstrap.body.value.identity.id);
+    const response = await fetch(`${baseUrl}/open-answer-attempts/attempt-1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 403,
+        body: { status: "rejected", reason: "identity_disabled" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectMissingAndInvalidCsrf_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const requestBody = JSON.stringify({
+      checkRevisionId: "check-revision-1",
+      submittedAnswer: "Explain the invariant.",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: requestBody,
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-idempotency-key": "attempt-key-1",
+      },
+      method: "POST",
+    });
+    const invalidCsrf = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: requestBody,
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": "wrong-token",
+        "x-agonara-idempotency-key": "attempt-key-1",
+      },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: {
+          statusCode: missingCsrf.status,
+          body: await missingCsrf.json(),
+        },
+        invalidCsrf: {
+          statusCode: invalidCsrf.status,
+          body: await invalidCsrf.json(),
+        },
+      },
+      {
+        missingCsrf: {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_required" },
+        },
+        invalidCsrf: {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_invalid" },
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectMalformedIdempotencyHeader_withValidationFailed", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const body = JSON.stringify({
+      checkRevisionId: "check-revision-1",
+      submittedAnswer: "Explain the invariant.",
+    });
+    const cases = [
+      {},
+      { "x-agonara-idempotency-key": "" },
+      { "x-agonara-idempotency-key": "   " },
+      { "x-agonara-idempotency-key": "a".repeat(256) },
+    ];
+    const results = [];
+    for (const headers of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+        body,
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          ...headers,
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectInvalidJsonBodies_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: () => {
+        throw new Error("submission command should not be called for invalid JSON bodies");
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      {},
+      { body: "{" },
+      { body: "[]" },
+    ];
+    const results = [];
+    for (const item of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+        body: item.body,
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          "x-agonara-idempotency-key": "attempt-key-1",
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptRoutes_shouldMapStudentWorkspaceRejections_toHttpStatuses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: ({ programId }) => ({ status: "rejected", reason: programId }),
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      ["identity_not_active", 403],
+      ["attempt_not_found", 404],
+      ["check_revision_not_found", 404],
+      ["check_revision_program_mismatch", 409],
+      ["idempotency_conflict", 409],
+    ];
+    const results = [];
+    for (const [reason] of cases) {
+      const response = await fetch(`${baseUrl}/programs/${reason}/open-answer-attempts`, {
+        body: JSON.stringify({
+          checkRevisionId: "check-revision-1",
+          submittedAnswer: "Explain the invariant.",
+        }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          "x-agonara-idempotency-key": "attempt-key-1",
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(([reason, statusCode]) => ({
+        statusCode,
+        body: { status: "rejected", reason },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptRoutes_shouldRedactFaultResponses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: () => {
+        throw new Error(
+          "session-1 csrf-token-1 attempt-key-secret cookie authorization sql stack /tmp/db.sqlite",
+        );
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/open-answer-attempts`, {
+      body: JSON.stringify({
+        checkRevisionId: "check-revision-1",
+        submittedAnswer: "Explain the invariant.",
+      }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-agonara-idempotency-key": "attempt-key-secret",
+      },
+      method: "POST",
+    });
+    const body = await response.json();
+    const serialized = JSON.stringify(body);
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body,
+        hasLeaks: [
+          "session-1",
+          "csrf-token-1",
+          "attempt-key-secret",
+          "cookie",
+          "authorization",
+          "sql",
+          "stack",
+          "/tmp/db.sqlite",
+        ].some($0 => serialized.includes($0)),
+      },
+      {
+        statusCode: 500,
+        body: { status: "fault", reason: "internal_error" },
+        hasLeaks: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldReturnSubmittedAttempt_onEffectiveStudent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const response = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "  Explain the invariant.  ",
+      },
+      "attempt-key-1",
+    );
+    const body = await response.json();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: openAnswerAttemptResponseProjection(body),
+        hasIdempotencyLeak: JSON.stringify(body).includes("attempt-key-1") ||
+          JSON.stringify(body).includes("idempotency"),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          hasAttemptId: true,
+          programId: scenario.programId,
+          studentIdentityId: scenario.student.identityId,
+          checkRevisionId: scenario.acceptedCheck.revisionId,
+          criterionRevisionIds: scenario.acceptedCheck.criterionRevisionIds,
+          submittedAnswer: "Explain the invariant.",
+          attemptStatus: "submitted",
+          submittedAt: "2026-05-27T10:00:00.000Z",
+          updatedAt: "2026-05-27T10:00:00.000Z",
+        },
+        hasIdempotencyLeak: false,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectInvalidSubmissionBodies_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+    studentWorkspaceCommandsOverride: {
+      submitOpenAnswerAttempt: () => {
+        throw new Error("submission command should not be called for invalid submission bodies");
+      },
+    },
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const cases = [
+      { submittedAnswer: "Answer" },
+      { checkRevisionId: scenario.acceptedCheck.revisionId },
+      { checkRevisionId: "", submittedAnswer: "Answer" },
+      { checkRevisionId: "   ", submittedAnswer: "Answer" },
+      { checkRevisionId: 42, submittedAnswer: "Answer" },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: "" },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: "   " },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: 42 },
+      { checkRevisionId: scenario.acceptedCheck.revisionId, submittedAnswer: "Answer", extra: true },
+    ];
+    const results = [];
+    for (const body of cases) {
+      const response = await submitOpenAnswerAttempt(
+        baseUrl,
+        scenario.student,
+        scenario.programId,
+        body,
+        "attempt-key-1",
+      );
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldMapDomainRejections_withSpecStatuses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(140),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const otherProgram = await createProgram(baseUrl, scenario.bootstrap, { title: "Topology" });
+    const otherProgramId = (await otherProgram.json()).value.program.programId;
+    const otherAcceptedCheck = await createAcceptedOpenAnswerCheck(baseUrl, scenario.bootstrap, otherProgramId, {
+      checkTitle: "Topology check",
+      criterionTitle: "Topology criterion",
+    });
+    const cases = [
+      {
+        programId: "program-unknown",
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        reason: "program_not_found",
+        statusCode: 404,
+      },
+      {
+        programId: otherProgramId,
+        checkRevisionId: otherAcceptedCheck.revisionId,
+        reason: "participation_required",
+        statusCode: 403,
+      },
+      {
+        programId: scenario.programId,
+        checkRevisionId: "check-revision-unknown",
+        reason: "check_revision_not_found",
+        statusCode: 404,
+      },
+      {
+        programId: scenario.programId,
+        checkRevisionId: otherAcceptedCheck.revisionId,
+        reason: "check_revision_program_mismatch",
+        statusCode: 409,
+      },
+    ];
+    const results = [];
+    for (const item of cases) {
+      const response = await submitOpenAnswerAttempt(
+        baseUrl,
+        scenario.student,
+        item.programId,
+        {
+          checkRevisionId: item.checkRevisionId,
+          submittedAnswer: "Explain the invariant.",
+        },
+        "attempt-key-1",
+      );
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map($0 => ({
+        statusCode: $0.statusCode,
+        body: { status: "rejected", reason: $0.reason },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldReturnOriginalAttempt_onEquivalentRetry", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const first = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const retried = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const firstBody = await first.json();
+    const retriedBody = await retried.json();
+
+    assert.deepEqual(
+      {
+        firstStatusCode: first.status,
+        retriedStatusCode: retried.status,
+        sameAttemptId:
+          firstBody.value?.attempt?.attemptId === retriedBody.value?.attempt?.attemptId,
+        attemptCount: listOpenAnswerAttemptRecords(database).length,
+      },
+      {
+        firstStatusCode: 200,
+        retriedStatusCode: 200,
+        sameAttemptId: true,
+        attemptCount: 1,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldRejectConflictingIdempotencyReuse_withoutChangingAttempt", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Original answer.",
+      },
+      "attempt-key-1",
+    );
+    const conflict = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Changed answer.",
+      },
+      "attempt-key-1",
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: conflict.status,
+        body: await conflict.json(),
+        attempts: listOpenAnswerAttemptRecords(database).map($0 => $0.submittedAnswer),
+      },
+      {
+        statusCode: 409,
+        body: { status: "rejected", reason: "idempotency_conflict" },
+        attempts: ["Original answer."],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsCreate_shouldLeaveAdjacentStateUnchanged_onAcceptedSubmission", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const before = adjacentAttemptSubmissionState(database);
+    const response = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const body = await response.json();
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        bodyStatus: body.status,
+        hasAttemptId: typeof body.value?.attempt?.attemptId === "string",
+        attemptCount: listOpenAnswerAttemptRecords(database).length,
+        adjacentState: adjacentAttemptSubmissionState(database),
+      },
+      {
+        statusCode: 200,
+        bodyStatus: "accepted",
+        hasAttemptId: true,
+        attemptCount: 1,
+        adjacentState: before,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldReturnOwningStudentAttemptDetail", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submitted = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const submittedAttempt = (await submitted.json()).value.attempt;
+    const detail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${submittedAttempt.attemptId}`,
+      scenario.student,
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: detail.statusCode,
+        body: openAnswerAttemptDetailProjection(detail.body),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          attemptId: submittedAttempt.attemptId,
+          programId: scenario.programId,
+          studentIdentityId: scenario.student.identityId,
+          checkRevisionId: scenario.acceptedCheck.revisionId,
+          criterionRevisionIds: scenario.acceptedCheck.criterionRevisionIds,
+          submittedAnswer: "Explain the invariant.",
+          attemptStatus: "submitted",
+          submittedAt: "2026-05-27T10:00:00.000Z",
+          updatedAt: "2026-05-27T10:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldIncludeEvaluationDetail_onEvaluatedAttempt", async () => {
+  const {
+    baseUrl,
+    close,
+    studentWorkspaceCommands,
+  } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submitted = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const submittedAttempt = (await submitted.json()).value.attempt;
+    studentWorkspaceCommands.recordOpenAnswerEvaluation({
+      attemptId: submittedAttempt.attemptId,
+      criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+        criterionRevisionId: $0,
+        feedback: `Feedback for ${$0}.`,
+        outcome: "met",
+      })),
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer satisfies the accepted criteria.",
+    });
+    const detail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${submittedAttempt.attemptId}`,
+      scenario.student,
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: detail.statusCode,
+        body: openAnswerAttemptEvaluationProjection(detail.body),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          attemptStatus: "evaluated",
+          hasEvaluationId: true,
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "The answer satisfies the accepted criteria.",
+          criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+            criterionRevisionId: $0,
+            feedback: `Feedback for ${$0}.`,
+            outcome: "met",
+          })),
+          evaluatedAt: "2026-05-27T10:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldIncludeActiveFailureDetail_onEvaluationFailedAttempt", async () => {
+  const {
+    baseUrl,
+    close,
+    studentWorkspaceCommands,
+  } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submitted = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const submittedAttempt = (await submitted.json()).value.attempt;
+    studentWorkspaceCommands.recordOpenAnswerEvaluationFailure({
+      attemptId: submittedAttempt.attemptId,
+      reason: "Evaluator timeout.",
+    });
+    const detail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${submittedAttempt.attemptId}`,
+      scenario.student,
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: detail.statusCode,
+        body: openAnswerAttemptFailureProjection(detail.body),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          attemptStatus: "evaluation_failed",
+          reason: "Evaluator timeout.",
+          failedAt: "2026-05-27T10:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldRejectUnknownAttempt_withAttemptNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const detail = await getHttpResponse(
+      baseUrl,
+      "/open-answer-attempts/attempt-unknown",
+      scenario.student,
+    );
+
+    assert.deepEqual(detail, {
+      statusCode: 404,
+      body: { status: "rejected", reason: "attempt_not_found" },
+    });
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldRejectNonOwners_withAttemptNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(110),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submitted = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-1",
+    );
+    const attemptId = (await submitted.json()).value.attempt.attemptId;
+    const otherStudent = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Other Student",
+      login: "other-student@example.test",
+    });
+    await joinStudentProgram(baseUrl, otherStudent, scenario.programId);
+    const ordinary = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Ordinary",
+      login: "ordinary@example.test",
+    });
+    const callers = [otherStudent, scenario.curator, scenario.bootstrap, ordinary];
+    const results = [];
+    for (const caller of callers) {
+      results.push(await getHttpResponse(baseUrl, `/open-answer-attempts/${attemptId}`, caller));
+    }
+
+    assert.deepEqual(
+      results,
+      callers.map(() => ({
+        statusCode: 404,
+        body: { status: "rejected", reason: "attempt_not_found" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsGet_shouldRedactDetailRejectionAndFaultResponses", async () => {
+  const {
+    baseUrl,
+    close,
+    studentWorkspaceCommands,
+  } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+  const faultHarness = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      getOpenAnswerAttempt: () => {
+        throw new Error(
+          "session-1 csrf-token-1 attempt-key-secret cookie authorization raw prompt raw model evaluator diagnostics sql stack /tmp/db.sqlite postgres://db",
+        );
+      },
+    },
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submitted = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Explain the invariant.",
+      },
+      "attempt-key-secret",
+    );
+    const attemptId = (await submitted.json()).value.attempt.attemptId;
+    studentWorkspaceCommands.recordOpenAnswerEvaluation({
+      attemptId,
+      criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+        criterionRevisionId: $0,
+        feedback: `Feedback for ${$0}.`,
+        outcome: "met",
+      })),
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer satisfies the accepted criteria.",
+    });
+    const failed = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Second answer.",
+      },
+      "attempt-key-failure",
+    );
+    const failedAttemptId = (await failed.json()).value.attempt.attemptId;
+    studentWorkspaceCommands.recordOpenAnswerEvaluationFailure({
+      attemptId: failedAttemptId,
+      reason: "Evaluator timeout.",
+    });
+    const accepted = await getHttpResponse(baseUrl, `/open-answer-attempts/${attemptId}`, scenario.student);
+    const failedDetail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${failedAttemptId}`,
+      scenario.student,
+    );
+    const rejected = await getHttpResponse(baseUrl, "/open-answer-attempts/attempt-key-secret", scenario.student);
+    const faultBootstrap = await bootstrapAdmin(faultHarness.baseUrl);
+    const fault = await getHttpResponse(faultHarness.baseUrl, "/open-answer-attempts/attempt-1", faultBootstrap);
+
+    assert.deepEqual(
+      {
+        acceptedStatusCode: accepted.statusCode,
+        acceptedHasLeaks: hasAttemptDetailLeak(accepted.body),
+        failedStatusCode: failedDetail.statusCode,
+        failedHasLeaks: hasAttemptDetailLeak(failedDetail.body),
+        rejected,
+        fault,
+        faultHasLeaks: hasAttemptDetailLeak(fault.body),
+      },
+      {
+        acceptedStatusCode: 200,
+        acceptedHasLeaks: false,
+        failedStatusCode: 200,
+        failedHasLeaks: false,
+        rejected: {
+          statusCode: 404,
+          body: { status: "rejected", reason: "attempt_not_found" },
+        },
+        fault: {
+          statusCode: 500,
+          body: { status: "fault", reason: "internal_error" },
+        },
+        faultHasLeaks: false,
+      },
+    );
+  } finally {
+    await close();
+    await faultHarness.close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldReturnOnlyOwnerAttemptsInRequestedProgram", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(140),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const attempt = await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "Owned answer.",
+      "attempt-key-1",
+    );
+    const otherStudent = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Other Student",
+      login: "other-list-student@example.test",
+    });
+    await joinStudentProgram(baseUrl, otherStudent, scenario.programId);
+    await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      otherStudent,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "Other student answer.",
+      "attempt-key-2",
+    );
+    const otherProgram = await createProgram(baseUrl, scenario.curator, { title: "Topology" });
+    const otherProgramId = (await otherProgram.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, scenario.student, otherProgramId);
+    const otherCheck = await createAcceptedOpenAnswerCheck(baseUrl, scenario.curator, otherProgramId, {
+      checkTitle: "Topology check",
+      criterionTitle: "Topology criterion",
+    });
+    await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      otherProgramId,
+      otherCheck.revisionId,
+      "Other program answer.",
+      "attempt-key-3",
+    );
+    const listed = await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId);
+
+    assert.deepEqual(
+      {
+        statusCode: listed.statusCode,
+        body: openAnswerAttemptListProjection(listed.body),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          attempts: [
+            {
+              attemptId: attempt.attemptId,
+              programId: scenario.programId,
+              studentIdentityId: scenario.student.identityId,
+              checkRevisionId: scenario.acceptedCheck.revisionId,
+              submittedAnswer: "Owned answer.",
+              status: "submitted",
+            },
+          ],
+          hasNextCursor: false,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldRejectCallerWithoutStudentParticipation", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Ordinary",
+      login: "ordinary-list@example.test",
+    });
+    const listed = await listOpenAnswerAttempts(baseUrl, ordinary, scenario.programId);
+
+    assert.deepEqual(listed, {
+      statusCode: 403,
+      body: { status: "rejected", reason: "participation_required" },
+    });
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldApplyStatusFiltersAndRejectUnsupportedStatus", async () => {
+  const {
+    baseUrl,
+    close,
+    studentWorkspaceCommands,
+  } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(120),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "Submitted answer.",
+      "attempt-key-1",
+    );
+    const evaluated = await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "Evaluated answer.",
+      "attempt-key-2",
+    );
+    studentWorkspaceCommands.recordOpenAnswerEvaluation({
+      attemptId: evaluated.attemptId,
+      criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+        criterionRevisionId: $0,
+        feedback: `Feedback for ${$0}.`,
+        outcome: "met",
+      })),
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer satisfies the accepted criteria.",
+    });
+    const evaluatedList = await listOpenAnswerAttempts(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      "status=evaluated",
+    );
+    const invalid = await listOpenAnswerAttempts(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      "status=unsupported",
+    );
+
+    assert.deepEqual(
+      {
+        evaluated: openAnswerAttemptListProjection(evaluatedList.body),
+        evaluatedStatusCode: evaluatedList.statusCode,
+        invalid,
+      },
+      {
+        evaluated: {
+          status: "accepted",
+          attempts: [
+            {
+              attemptId: evaluated.attemptId,
+              programId: scenario.programId,
+              studentIdentityId: scenario.student.identityId,
+              checkRevisionId: scenario.acceptedCheck.revisionId,
+              submittedAnswer: "Evaluated answer.",
+              status: "evaluated",
+            },
+          ],
+          hasNextCursor: false,
+        },
+        evaluatedStatusCode: 200,
+        invalid: {
+          statusCode: 400,
+          body: { status: "rejected", reason: "validation_failed" },
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldApplyCheckRevisionFilterAfterOwnerAndProgramScope", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(150),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const secondCheck = await createAcceptedOpenAnswerCheck(baseUrl, scenario.curator, scenario.programId, {
+      checkTitle: "Second closure check",
+      criterionTitle: "Second criterion",
+    });
+    const expected = await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      secondCheck.revisionId,
+      "Second check answer.",
+      "attempt-key-1",
+    );
+    await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "First check answer.",
+      "attempt-key-2",
+    );
+    const otherStudent = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Other Student",
+      login: "other-check-filter@example.test",
+    });
+    await joinStudentProgram(baseUrl, otherStudent, scenario.programId);
+    await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      otherStudent,
+      scenario.programId,
+      secondCheck.revisionId,
+      "Other student second check answer.",
+      "attempt-key-3",
+    );
+    const listed = await listOpenAnswerAttempts(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      `checkRevisionId=${secondCheck.revisionId}`,
+    );
+
+    assert.deepEqual(
+      {
+        statusCode: listed.statusCode,
+        body: openAnswerAttemptListProjection(listed.body),
+      },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          attempts: [
+            {
+              attemptId: expected.attemptId,
+              programId: scenario.programId,
+              studentIdentityId: scenario.student.identityId,
+              checkRevisionId: secondCheck.revisionId,
+              submittedAnswer: "Second check answer.",
+              status: "submitted",
+            },
+          ],
+          hasNextCursor: false,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldDefaultLimitToFifty", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(180),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    for (let index = 1; index <= 51; index += 1) {
+      await submitOpenAnswerAttemptAndRead(
+        baseUrl,
+        scenario.student,
+        scenario.programId,
+        scenario.acceptedCheck.revisionId,
+        `Answer ${index}.`,
+        `attempt-key-${index}`,
+      );
+    }
+    const listed = await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId);
+
+    assert.deepEqual(
+      {
+        statusCode: listed.statusCode,
+        attemptCount: listed.body.value?.attempts?.length,
+        hasNextCursor: typeof listed.body.value?.nextCursor === "string",
+      },
+      {
+        statusCode: 200,
+        attemptCount: 50,
+        hasNextCursor: true,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldRejectInvalidLimits", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(90),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const cases = ["limit=0", "limit=101", "limit=-1", "limit=abc"];
+    const results = [];
+    for (const query of cases) {
+      results.push(await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId, query));
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldReturnOpaqueCursorAndRejectCursorScopeMismatch", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(130),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    for (let index = 1; index <= 3; index += 1) {
+      await submitOpenAnswerAttemptAndRead(
+        baseUrl,
+        scenario.student,
+        scenario.programId,
+        scenario.acceptedCheck.revisionId,
+        `Cursor answer ${index}.`,
+        `attempt-key-${index}`,
+      );
+    }
+    const firstPage = await listOpenAnswerAttempts(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      "limit=1",
+    );
+    const cursor = firstPage.body.value.nextCursor;
+    const otherStudent = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Other Student",
+      login: "cursor-other-student@example.test",
+    });
+    await joinStudentProgram(baseUrl, otherStudent, scenario.programId);
+    const cases = [
+      await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId, `limit=1&cursor=${cursor}`),
+      await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId, "cursor=missing"),
+      await listOpenAnswerAttempts(baseUrl, scenario.student, "program-unknown", `cursor=${cursor}`),
+      await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId, `status=submitted&cursor=${cursor}`),
+      await listOpenAnswerAttempts(
+        baseUrl,
+        scenario.student,
+        scenario.programId,
+        `checkRevisionId=${scenario.acceptedCheck.revisionId}&cursor=${cursor}`,
+      ),
+      await listOpenAnswerAttempts(baseUrl, otherStudent, scenario.programId, `cursor=${cursor}`),
+    ];
+
+    assert.deepEqual(
+      {
+        firstPageStatusCode: firstPage.statusCode,
+        firstPageAttemptCount: firstPage.body.value.attempts.length,
+        cursorIsOpaque: cursorDoesNotExposeAttemptListState(cursor),
+        cases: cases.map($0 => ({
+          statusCode: $0.statusCode,
+          body: openAnswerAttemptListCursorProjection($0.body),
+        })),
+      },
+      {
+        firstPageStatusCode: 200,
+        firstPageAttemptCount: 1,
+        cursorIsOpaque: true,
+        cases: [
+          {
+            statusCode: 200,
+            body: { status: "accepted", attemptCount: 1, hasNextCursor: true },
+          },
+          {
+            statusCode: 400,
+            body: { status: "rejected", reason: "validation_failed" },
+          },
+          {
+            statusCode: 400,
+            body: { status: "rejected", reason: "validation_failed" },
+          },
+          {
+            statusCode: 400,
+            body: { status: "rejected", reason: "validation_failed" },
+          },
+          {
+            statusCode: 400,
+            body: { status: "rejected", reason: "validation_failed" },
+          },
+          {
+            statusCode: 400,
+            body: { status: "rejected", reason: "validation_failed" },
+          },
+        ],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerAttemptsList_shouldRejectCursorRouteKeyDelimiterCollisions", async () => {
+  const generateToken = makeIdGenerator(["cursor-1", "cursor-2"]);
+  const server = createServer({
+    generateToken,
+    identityCommands: {
+      resolveSession: ({ sessionId }) => ({
+        status: "accepted",
+        value: {
+          identity: {
+            id: sessionId === "session-a" ? "id:a" : "id",
+            state: "active",
+          },
+          session: { id: sessionId },
+        },
+      }),
+    },
+    log: () => {},
+    studentWorkspaceCommands: {
+      listOpenAnswerAttempts: ({ actingIdentityId, programId }) => ({
+        status: "accepted",
+        value: {
+          attempts: [
+            makeOpenAnswerAttemptSummary({
+              attemptId: `${actingIdentityId}:${programId}:1`,
+              programId,
+              studentIdentityId: actingIdentityId,
+            }),
+            makeOpenAnswerAttemptSummary({
+              attemptId: `${actingIdentityId}:${programId}:2`,
+              programId,
+              studentIdentityId: actingIdentityId,
+            }),
+          ],
+        },
+      }),
+    },
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const first = await fetch(`${baseUrl}/programs/b/open-answer-attempts?limit=1`, {
+      headers: { cookie: "agonara_session=session-a" },
+    });
+    const cursor = (await first.json()).value.nextCursor;
+    const collision = await fetch(`${baseUrl}/programs/a:b/open-answer-attempts?cursor=${cursor}`, {
+      headers: { cookie: "agonara_session=session-b" },
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: collision.status,
+        body: await collision.json(),
+      },
+      {
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
+test("openAnswerAttemptsList_shouldRedactCursorsAndFaultResponses", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(100),
+  });
+  const faultHarness = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      listOpenAnswerAttempts: () => {
+        throw new Error(
+          "session-1 csrf-token-1 attempt-key-secret cookie authorization raw prompt raw model evaluator diagnostics sql stack /tmp/db.sqlite postgres://db",
+        );
+      },
+    },
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    for (let index = 1; index <= 2; index += 1) {
+      await submitOpenAnswerAttemptAndRead(
+        baseUrl,
+        scenario.student,
+        scenario.programId,
+        scenario.acceptedCheck.revisionId,
+        `Sensitive answer ${index}.`,
+        `attempt-key-secret-${index}`,
+      );
+    }
+    const listed = await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId, "limit=1");
+    const faultBootstrap = await bootstrapAdmin(faultHarness.baseUrl);
+    const fault = await listOpenAnswerAttempts(faultHarness.baseUrl, faultBootstrap, "program-1");
+
+    assert.deepEqual(
+      {
+        listedStatusCode: listed.statusCode,
+        cursorHasLeaks: cursorExposesAny(listed.body.value.nextCursor, [
+          "Sensitive answer",
+          "attempt-key",
+          "session",
+          "csrf",
+          "cookie",
+          "authorization",
+          "sql",
+          "stack",
+          "/tmp",
+          "postgres://",
+        ]),
+        bodyHasSecretLeaks: JSON.stringify(listed.body).includes("attempt-key-secret"),
+        fault,
+        faultHasLeaks: hasAttemptDetailLeak(fault.body),
+      },
+      {
+        listedStatusCode: 200,
+        cursorHasLeaks: false,
+        bodyHasSecretLeaks: false,
+        fault: {
+          statusCode: 500,
+          body: { status: "fault", reason: "internal_error" },
+        },
+        faultHasLeaks: false,
+      },
+    );
+  } finally {
+    await close();
+    await faultHarness.close();
+  }
+});
+
+test("studentWorkspaceOpenAnswerAttemptHttpAcceptance_shouldCoverSt12St13AndInt05", async () => {
+  const {
+    baseUrl,
+    close,
+    database,
+    studentWorkspaceCommands,
+  } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(130),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const otherStudent = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Other Student",
+      login: "other-student@example.test",
+    });
+    await joinStudentProgram(baseUrl, otherStudent, scenario.programId);
+    const acceptedCheck = await getHttpResponse(
+      baseUrl,
+      `/open-answer-checks/revisions/${scenario.acceptedCheck.revisionId}`,
+      scenario.student,
+    );
+    const submitted = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "  Closure is preserved by the vector-space operations.  ",
+      },
+      "attempt-key-acceptance",
+    );
+    const submittedBody = await submitted.json();
+    const attemptCountAfterSubmission = listOpenAnswerAttemptRecords(database).length;
+    const retry = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "  Closure is preserved by the vector-space operations.  ",
+      },
+      "attempt-key-acceptance",
+    );
+    const retryBody = await retry.json();
+    const attemptCountAfterRetry = listOpenAnswerAttemptRecords(database).length;
+    await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      otherStudent,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "Other student's private answer.",
+      "attempt-key-other-student",
+    );
+    studentWorkspaceCommands.recordOpenAnswerEvaluation({
+      attemptId: submittedBody.value.attempt.attemptId,
+      criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+        criterionRevisionId: $0,
+        feedback: `Feedback for ${$0}.`,
+        outcome: "met",
+      })),
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer is tied to the accepted criteria.",
+    });
+    const detail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${submittedBody.value.attempt.attemptId}`,
+      scenario.student,
+    );
+    const listed = await listOpenAnswerAttempts(baseUrl, scenario.student, scenario.programId);
+    const nonOwnerDetail = await getHttpResponse(
+      baseUrl,
+      `/open-answer-attempts/${submittedBody.value.attempt.attemptId}`,
+      otherStudent,
+    );
+
+    assert.deepEqual(
+      {
+        acceptedCheckStatusCode: acceptedCheck.statusCode,
+        acceptedCheck: acceptedOpenAnswerCheckProjection(acceptedCheck.body),
+        submittedStatusCode: submitted.status,
+        submitted: openAnswerAttemptResponseProjection(submittedBody),
+        retryStatusCode: retry.status,
+        retryAttemptId: retryBody.value.attempt.attemptId,
+        originalAttemptId: submittedBody.value.attempt.attemptId,
+        attemptCountAfterSubmission,
+        attemptCountAfterRetry,
+        detailStatusCode: detail.statusCode,
+        detailEvaluation: openAnswerAttemptEvaluationProjection(detail.body),
+        listedStatusCode: listed.statusCode,
+        listed: openAnswerAttemptListProjection(listed.body),
+        nonOwnerDetail,
+      },
+      {
+        acceptedCheckStatusCode: 200,
+        acceptedCheck: {
+          acceptedFromCandidateId: scenario.acceptedCheck.acceptedFromCandidateId,
+          criterionRevisionIds: scenario.acceptedCheck.criterionRevisionIds,
+          programId: scenario.programId,
+          title: "Closure check",
+        },
+        submittedStatusCode: 200,
+        submitted: {
+          status: "accepted",
+          hasAttemptId: true,
+          programId: scenario.programId,
+          studentIdentityId: scenario.student.identityId,
+          checkRevisionId: scenario.acceptedCheck.revisionId,
+          criterionRevisionIds: scenario.acceptedCheck.criterionRevisionIds,
+          submittedAnswer: "Closure is preserved by the vector-space operations.",
+          attemptStatus: "submitted",
+          submittedAt: "2026-05-27T10:00:00.000Z",
+          updatedAt: "2026-05-27T10:00:00.000Z",
+        },
+        retryStatusCode: 200,
+        retryAttemptId: submittedBody.value.attempt.attemptId,
+        originalAttemptId: submittedBody.value.attempt.attemptId,
+        attemptCountAfterSubmission: 1,
+        attemptCountAfterRetry: 1,
+        detailStatusCode: 200,
+        detailEvaluation: {
+          status: "accepted",
+          attemptStatus: "evaluated",
+          hasEvaluationId: true,
+          evaluatorKind: "student_workspace",
+          summaryFeedback: "The answer is tied to the accepted criteria.",
+          criterionFeedback: scenario.acceptedCheck.criterionRevisionIds.map($0 => ({
+            criterionRevisionId: $0,
+            feedback: `Feedback for ${$0}.`,
+            outcome: "met",
+          })),
+          evaluatedAt: "2026-05-27T10:00:00.000Z",
+        },
+        listedStatusCode: 200,
+        listed: {
+          status: "accepted",
+          attempts: [{
+            attemptId: submittedBody.value.attempt.attemptId,
+            programId: scenario.programId,
+            studentIdentityId: scenario.student.identityId,
+            checkRevisionId: scenario.acceptedCheck.revisionId,
+            submittedAnswer: "Closure is preserved by the vector-space operations.",
+            status: "evaluated",
+          }],
+          hasNextCursor: false,
+        },
+        nonOwnerDetail: {
+          statusCode: 404,
+          body: { status: "rejected", reason: "attempt_not_found" },
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("studentWorkspaceOpenAnswerAttemptHttpAcceptance_shouldKeepOutOfScopeRoutesAbsent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(100),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submittedAttempt = await submitOpenAnswerAttemptAndRead(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      scenario.acceptedCheck.revisionId,
+      "Bounded HTTP route surface answer.",
+      "attempt-key-route-absence",
+    );
+    const absentRoutes = [
+      ["POST", `/open-answer-attempts/${submittedAttempt.attemptId}/evaluating`],
+      ["POST", `/open-answer-attempts/${submittedAttempt.attemptId}/evaluation`],
+      ["POST", `/open-answer-attempts/${submittedAttempt.attemptId}/evaluation-failure`],
+      ["GET", `/student-workspace/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/curator/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/admin/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/llm/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/human-review/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/mastery/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/weak-areas/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/progress/open-answer-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/quick-check-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/topic-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/period-attempts/${submittedAttempt.attemptId}`],
+      ["GET", `/grading/open-answer-attempts/${submittedAttempt.attemptId}`],
+    ];
+    const responses = [];
+    for (const [method, route] of absentRoutes) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        body: method === "POST" ? JSON.stringify({}) : undefined,
+        headers: {
+          cookie: scenario.student.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": scenario.student.csrfToken,
+        },
+        method,
+      });
+      responses.push({
+        body: await response.json(),
+        method,
+        route,
+        statusCode: response.status,
+      });
+    }
+    const serverSource = readFileSync(new URL("../src/server.js", import.meta.url), "utf8");
+
+    assert.deepEqual(
+      {
+        responses,
+        serverUsesEvaluationMutationCommands: containsAnyStudentWorkspaceEvaluationMutationCommand(serverSource),
+      },
+      {
+        responses: absentRoutes.map(([method, route]) => ({
+          body: { status: "rejected", reason: "not_found" },
+          method,
+          route,
+          statusCode: 404,
+        })),
+        serverUsesEvaluationMutationCommands: false,
       },
     );
   } finally {
@@ -5966,6 +7683,321 @@ async function joinStudentProgram(baseUrl, session, programId) {
   });
 }
 
+async function createStudentAttemptApiScenario(baseUrl) {
+  const bootstrap = await bootstrapAdmin(baseUrl);
+  const curator = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Curator",
+    login: "curator@example.test",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Student",
+    login: "student@example.test",
+  });
+  const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+  const programId = (await createdProgram.json()).value.program.programId;
+  await joinStudentProgram(baseUrl, student, programId);
+  const acceptedCheck = await createAcceptedOpenAnswerCheck(baseUrl, curator, programId, {
+    checkTitle: "Closure check",
+    criterionTitles: ["Vector-space closure", "Scalar distribution"],
+  });
+
+  return { acceptedCheck, bootstrap, curator, programId, student };
+}
+
+async function createAcceptedOpenAnswerCheck(
+  baseUrl,
+  session,
+  programId,
+  { checkTitle = "Closure check", criterionTitle = null, criterionTitles = null } = {},
+) {
+  const titles = criterionTitles ?? [criterionTitle ?? "Vector-space closure"];
+  const criterionEntityIds = [];
+  for (const title of titles) {
+    const criterionCandidate = await createAssessmentCriterionCandidate(baseUrl, session, programId, {
+      body: `Explain ${title}.`,
+      title,
+    });
+    const criterionCandidateId = (await criterionCandidate.json()).value.assessmentCriterionCandidate.candidateId;
+    const acceptedCriterion = await acceptAssessmentCriterionCandidate(
+      baseUrl,
+      session,
+      criterionCandidateId,
+      {},
+    );
+    criterionEntityIds.push((await acceptedCriterion.json()).value.acceptedAssessmentCriterion.entityId);
+  }
+
+  const checkCandidate = await createOpenAnswerCheckCandidate(baseUrl, session, programId, {
+    checkKind: "open_answer",
+    criterionEntityIds,
+    prompt: `Why does ${checkTitle} matter?`,
+    title: checkTitle,
+  });
+  const checkCandidateId = (await checkCandidate.json()).value.openAnswerCheckCandidate.candidateId;
+  const acceptedCheck = await acceptOpenAnswerCheckCandidate(baseUrl, session, checkCandidateId, {});
+  return (await acceptedCheck.json()).value.acceptedOpenAnswerCheck;
+}
+
+async function submitOpenAnswerAttempt(baseUrl, session, programId, body, idempotencyKey) {
+  return fetch(`${baseUrl}/programs/${programId}/open-answer-attempts`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+      "x-agonara-idempotency-key": idempotencyKey,
+    },
+    method: "POST",
+  });
+}
+
+async function submitOpenAnswerAttemptAndRead(
+  baseUrl,
+  session,
+  programId,
+  checkRevisionId,
+  submittedAnswer,
+  idempotencyKey,
+) {
+  const response = await submitOpenAnswerAttempt(
+    baseUrl,
+    session,
+    programId,
+    { checkRevisionId, submittedAnswer },
+    idempotencyKey,
+  );
+  return (await response.json()).value.attempt;
+}
+
+async function listOpenAnswerAttempts(baseUrl, session, programId, query = "") {
+  const separator = query ? "?" : "";
+  const response = await fetch(`${baseUrl}/programs/${programId}/open-answer-attempts${separator}${query}`, {
+    headers: { cookie: session.cookie },
+  });
+  return { body: await response.json(), statusCode: response.status };
+}
+
+function openAnswerAttemptResponseProjection(body) {
+  const attempt = body.value?.attempt;
+  return {
+    status: body.status,
+    hasAttemptId: typeof attempt?.attemptId === "string",
+    programId: attempt?.programId,
+    studentIdentityId: attempt?.studentIdentityId,
+    checkRevisionId: attempt?.checkRevisionId,
+    criterionRevisionIds: attempt?.criterionRevisionIds,
+    submittedAnswer: attempt?.submittedAnswer,
+    attemptStatus: attempt?.status,
+    submittedAt: attempt?.submittedAt,
+    updatedAt: attempt?.updatedAt,
+  };
+}
+
+function openAnswerAttemptListProjection(body) {
+  return {
+    status: body.status,
+    attempts: (body.value?.attempts ?? []).map($0 => ({
+      attemptId: $0.attemptId,
+      programId: $0.programId,
+      studentIdentityId: $0.studentIdentityId,
+      checkRevisionId: $0.checkRevisionId,
+      submittedAnswer: $0.submittedAnswer,
+      status: $0.status,
+    })),
+    hasNextCursor: typeof body.value?.nextCursor === "string",
+  };
+}
+
+function openAnswerAttemptListCursorProjection(body) {
+  if (body.status === "rejected") {
+    return body;
+  }
+  return {
+    status: body.status,
+    attemptCount: body.value?.attempts?.length,
+    hasNextCursor: typeof body.value?.nextCursor === "string",
+  };
+}
+
+function openAnswerAttemptDetailProjection(body) {
+  const attempt = body.value?.attempt;
+  return {
+    status: body.status,
+    attemptId: attempt?.attemptId,
+    programId: attempt?.programId,
+    studentIdentityId: attempt?.studentIdentityId,
+    checkRevisionId: attempt?.checkRevisionId,
+    criterionRevisionIds: attempt?.criterionRevisionIds,
+    submittedAnswer: attempt?.submittedAnswer,
+    attemptStatus: attempt?.status,
+    submittedAt: attempt?.submittedAt,
+    updatedAt: attempt?.updatedAt,
+  };
+}
+
+function openAnswerAttemptEvaluationProjection(body) {
+  const evaluation = body.value?.evaluation;
+  return {
+    status: body.status,
+    attemptStatus: body.value?.attempt?.status,
+    hasEvaluationId: typeof evaluation?.evaluationId === "string",
+    evaluatorKind: evaluation?.evaluatorKind,
+    summaryFeedback: evaluation?.summaryFeedback,
+    criterionFeedback: evaluation?.criterionFeedback,
+    evaluatedAt: evaluation?.evaluatedAt,
+  };
+}
+
+function openAnswerAttemptFailureProjection(body) {
+  return {
+    status: body.status,
+    attemptStatus: body.value?.attempt?.status,
+    reason: body.value?.evaluationFailure?.reason,
+    failedAt: body.value?.evaluationFailure?.failedAt,
+  };
+}
+
+function hasAttemptDetailLeak(body) {
+  const serialized = JSON.stringify(body);
+  return [
+    "attempt-key-secret",
+    "idempotency",
+    "session-1",
+    "csrf-token-1",
+    "cookie",
+    "authorization",
+    "raw prompt",
+    "raw model",
+    "evaluator diagnostics",
+    "sql",
+    "stack",
+    "/tmp/db.sqlite",
+    "postgres://db",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsAnyStudentWorkspaceEvaluationMutationCommand(source) {
+  return [
+    "markOpenAnswerAttemptEvaluating",
+    "recordOpenAnswerEvaluation",
+    "recordOpenAnswerEvaluationFailure",
+  ].some($0 => source.includes($0));
+}
+
+function cursorDoesNotExposeAttemptListState(cursor) {
+  return typeof cursor === "string" &&
+    !cursorExposesAny(cursor, [
+      "Cursor answer",
+      "attempt-key",
+      "submitted",
+      "program",
+      "identity",
+      "check",
+      "session",
+      "csrf",
+      "cookie",
+      "authorization",
+      "sql",
+      "stack",
+    ]);
+}
+
+function cursorExposesAny(cursor, fragments) {
+  return fragments.some($0 => cursor.includes($0));
+}
+
+function makeOpenAnswerAttemptSummary({
+  attemptId,
+  checkRevisionId = "check-revision-1",
+  criterionRevisionIds = ["criterion-revision-1"],
+  programId,
+  status = "submitted",
+  studentIdentityId,
+  submittedAnswer = "Answer.",
+}) {
+  return {
+    attemptId,
+    checkRevisionId,
+    criterionRevisionIds,
+    programId,
+    status,
+    studentIdentityId,
+    submittedAnswer,
+    submittedAt: "2026-05-27T10:00:00.000Z",
+    updatedAt: "2026-05-27T10:00:00.000Z",
+  };
+}
+
+function adjacentAttemptSubmissionState(database) {
+  return {
+    programSources: listProgramSourceRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      title: $0.title,
+    })),
+    assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      status: $0.status,
+    })),
+    acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      currentRevisionId: $0.currentRevisionId,
+    })),
+    acceptedAssessmentCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database).map($0 => ({
+      id: $0.id,
+      entityId: $0.entityId,
+      programId: $0.programId,
+    })),
+    openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      status: $0.status,
+    })),
+    acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      currentRevisionId: $0.currentRevisionId,
+    })),
+    acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database).map($0 => ({
+      id: $0.id,
+      entityId: $0.entityId,
+      programId: $0.programId,
+      criterionRevisionIds: $0.criterionRevisionIds,
+    })),
+    acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database).map($0 => ({
+      id: $0.id,
+      programId: $0.programId,
+      currentRevisionId: $0.currentRevisionId,
+    })),
+    acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database).map($0 => ({
+      id: $0.id,
+      entityId: $0.entityId,
+      programId: $0.programId,
+    })),
+    corpusEvents: listCorpusEventRecords(database).map($0 => ({
+      eventType: $0.eventType,
+      outcome: $0.outcome,
+      targetId: $0.targetId,
+    })),
+    programMemberships: listProgramMembershipRecords(database).map($0 => ({
+      id: $0.id,
+      identityId: $0.identityId,
+      participationKind: $0.participationKind,
+      status: $0.status,
+    })),
+    programMembershipEvents: listProgramMembershipEventRecords(database).map($0 => ({
+      eventType: $0.eventType,
+      identityId: $0.identityId,
+      participationKind: $0.participationKind,
+    })),
+    sessions: database
+      .prepare("select id, identity_id as identityId, revoked_at as revokedAt from sessions order by id")
+      .all(),
+  };
+}
+
 async function listenWithIdentity({ ids = defaultIds() } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -6055,6 +8087,54 @@ async function listenWithIdentityProgramAndCorpus({
       database.close();
     },
     database,
+  };
+}
+
+async function listenWithIdentityProgramCorpusAndStudentWorkspace({
+  ids = defaultIds(),
+  studentWorkspaceCommandsOverride = null,
+} = {}) {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-05-27T10:00:00.000Z");
+  const generateId = makeIdGenerator(ids);
+  const programCommands = createProgramCommands({
+    database,
+    generateId,
+    now,
+  });
+  const studentWorkspaceCommands = studentWorkspaceCommandsOverride ?? createStudentWorkspaceCommands({
+    database,
+    generateId,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    now,
+  });
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands,
+    corpusCommands: createCorpusCommands({
+      database,
+      generateId,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+      now,
+    }),
+    studentWorkspaceCommands,
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    database,
+    studentWorkspaceCommands,
   };
 }
 

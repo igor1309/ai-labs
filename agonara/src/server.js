@@ -15,6 +15,7 @@ export function createServer({
   log = logToStdout,
   now = () => new Date(),
   programCommands = null,
+  studentWorkspaceCommands = null,
 } = {}) {
   const csrfTokens = new Map();
   const eventCursors = new Map();
@@ -73,6 +74,22 @@ export function createServer({
           pathname,
           request,
           response,
+        });
+        if (handled) {
+          return;
+        }
+      }
+
+      if (identityCommands && studentWorkspaceCommands) {
+        const handled = await handleStudentWorkspaceApi({
+          csrfTokens,
+          generateToken,
+          identityCommands,
+          listCursors,
+          pathname,
+          request,
+          response,
+          studentWorkspaceCommands,
         });
         if (handled) {
           return;
@@ -533,6 +550,122 @@ async function handleProgramApi({
       programId: decodeURIComponent(programMatch[1]),
     });
     sendJson(response, statusForResult(result), mapProgramShellResult(result));
+    return true;
+  }
+
+  return false;
+}
+
+async function handleStudentWorkspaceApi({
+  csrfTokens,
+  generateToken,
+  identityCommands,
+  listCursors,
+  pathname,
+  request,
+  response,
+  studentWorkspaceCommands,
+}) {
+  const attemptsMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-attempts$/);
+  const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
+  if (request.method === "GET" && attemptDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getOpenAnswerAttempt({
+      actingIdentityId: session.value.identity.id,
+      attemptId: decodeURIComponent(attemptDetailMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && attemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseOpenAnswerAttemptListFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const programId = decodeURIComponent(attemptsMatch[1]);
+    const routeKey = JSON.stringify([
+      "student-open-answer-attempts",
+      session.value.identity.id,
+      programId,
+      filters.value.status ?? "all",
+      filters.value.checkRevisionId ?? "all",
+    ]);
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listOpenAnswerAttempts({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: filters.value.checkRevisionId,
+      programId,
+      status: filters.value.status,
+    });
+    const mappedResult = mapOpenAnswerAttemptListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && attemptsMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const idempotencyKey = parseAttemptIdempotencyKey(request);
+    if (idempotencyKey.status === "rejected") {
+      sendJson(response, 400, idempotencyKey);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const submission = parseSubmitOpenAnswerAttemptBody(body.value);
+    if (submission.status === "rejected") {
+      sendJson(response, 400, submission);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.submitOpenAnswerAttempt({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: submission.value.checkRevisionId,
+      idempotencyKey: idempotencyKey.value,
+      programId: decodeURIComponent(attemptsMatch[1]),
+      submittedAnswer: submission.value.submittedAnswer,
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
@@ -1703,6 +1836,64 @@ function parseAcceptedKind(request) {
   return rejected("validation_failed");
 }
 
+function parseAttemptIdempotencyKey(request) {
+  const header = request.headers["x-agonara-idempotency-key"];
+  if (typeof header !== "string") {
+    return rejected("validation_failed");
+  }
+
+  const idempotencyKey = header.trim();
+  if (!idempotencyKey || idempotencyKey.length > 255) {
+    return rejected("validation_failed");
+  }
+
+  return accepted(idempotencyKey);
+}
+
+function parseOpenAnswerAttemptListFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const status = url.searchParams.get("status");
+  if (
+    status !== null &&
+    status !== "submitted" &&
+    status !== "evaluating" &&
+    status !== "evaluated" &&
+    status !== "evaluation_failed"
+  ) {
+    return rejected("validation_failed");
+  }
+
+  const checkRevisionId = url.searchParams.get("checkRevisionId");
+  if (checkRevisionId !== null && !isNonEmptyRequestText(checkRevisionId)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    checkRevisionId: checkRevisionId ?? undefined,
+    status: status ?? undefined,
+  });
+}
+
+function parseSubmitOpenAnswerAttemptBody(body) {
+  if (
+    Object.keys(body).length !== 2 ||
+    !hasOnlyKeys(body, ["checkRevisionId", "submittedAnswer"]) ||
+    !isNonEmptyRequestText(body.checkRevisionId) ||
+    !isNonEmptyRequestText(body.submittedAnswer)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    checkRevisionId: body.checkRevisionId,
+    submittedAnswer: body.submittedAnswer,
+  });
+}
+
+function isNonEmptyRequestText(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function isValidCandidateSourceIds(sourceIds) {
   return sourceIds === undefined ||
     (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
@@ -1922,6 +2113,29 @@ function mapAcceptedOpenAnswerCheckListResult({ generateToken, listCursors, quer
   });
 }
 
+function mapOpenAnswerAttemptListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.attempts,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    attempts: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
   const csrfToken = generateToken();
   csrfTokens.set(sessionId, csrfToken);
@@ -1994,6 +2208,7 @@ function httpStatusFor(reason) {
       return 403;
     case "identity_not_found":
     case "accepted_entity_not_found":
+    case "attempt_not_found":
     case "candidate_not_found":
     case "check_candidate_not_found":
     case "check_entity_not_found":
@@ -2012,9 +2227,11 @@ function httpStatusFor(reason) {
     case "check_candidate_already_accepted":
     case "check_candidate_already_rejected":
     case "check_entity_program_mismatch":
+    case "check_revision_program_mismatch":
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
+    case "idempotency_conflict":
     case "identity_already_has_credential":
     case "last_admin_removal":
     case "login_already_bound":

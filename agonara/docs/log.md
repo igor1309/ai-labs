@@ -1,7 +1,100 @@
 # Log
 
+## 2026-06-03
+
+- Harden Phase 9 Quick Check closeout after adversarial review by proving the executable acceptance flow keeps the internal answer-key resolver off command, HTTP, CLI, and UI surfaces.
+- Complete the Quick Check first-slice implementation with executable domain acceptance coverage, Product Intent traceability, final gate closeout, and the implementation plan archived under implemented plans.
+- Harden Phase 8 Quick Check backup and restore after adversarial review by proving historical attempt idempotency across replacement revisions and rejecting duplicate restored idempotency scopes before mutation.
+- Implement Phase 8 of the Quick Check first-slice plan with protected backup and restore support for candidates, accepted revisions, answer keys, attempts, matched results, historical references, redacted restored reads, and malformed graph rejection.
+
 ## 2026-06-02
 
+- Harden Phase 7 Quick Check boundary tests after adversarial review with positive controls for public quick-check transport surfaces, internal answer-key resolver leaks, candidate-id leakage, and provider, queue, and human-review expansions.
+- Implement Phase 7 of the Quick Check first-slice plan with integrated boundary isolation coverage across curator candidate, acceptance, delivery, Student submission, and owner-read flows plus deferred learner-state and public-surface absence guards.
+- Harden Phase 6 Quick Check attempt reads after adversarial review by adding positive redaction controls for answer keys, per-option correctness metadata, curator metadata, and idempotency keys.
+- Implement Phase 6 of the Quick Check first-slice plan with owner-only quick-check attempt detail and list reads, Student participation checks, accepted revision filter validation, and student-safe redacted attempt summaries.
+- Implement Phase 5 of the Quick Check first-slice plan with Student Workspace quick-check submission, internal answer-key resolution after Student authorization, deterministic matched results, scoped idempotency, corrective attempts, and historical revision stability.
+- Harden Phase 4 Quick Check delivery after adversarial review by extending delivery-read non-mutation coverage to candidate and accepted revision option rows.
+- Implement Phase 4 of the Quick Check first-slice plan with student-only delivery listing and historical revision reads that return answerable options while redacting answer keys, curator metadata, provenance, and operational details.
+- Harden Phase 3 Quick Check acceptance after adversarial review by covering replacement curation reads across current and historical revisions and proving adjacent domain counts stay unchanged during acceptance.
+- Implement Phase 3 of the Quick Check first-slice plan with accepted quick-check entity creation, replacement revisions, historical curation reads, answer-key-inclusive curator summaries, and invalid state/target rejection coverage.
+- Harden Phase 2 Quick Check curator lifecycle after adversarial review by making duplicate option-text normalization deterministic.
+- Implement Phase 2 of the Quick Check first-slice plan with Program Curator candidate creation, validation, listing, rejection, answer-key-inclusive curator summaries, and Student/Admin-without-curator rejection coverage.
+- Harden Phase 1 Quick Check storage after adversarial review by scoping option identifiers to owning candidates and revisions, enforcing selected-option graph integrity in SQLite, and rejecting malformed matched results.
+- Implement Phase 1 of the Quick Check first-slice plan with storage substrate for candidates, accepted entities, accepted revisions, options, immutable attempts, option graph validation, selected-option validation, and scoped idempotency.
+- Harden the Quick Check first-slice implementation plan after adversarial review by making internal answer-key resolver coverage explicit, correcting Curator/Corpus validation ownership, and separating docs closeout checks from RED/GREEN test steps.
+- Add the Quick Check first-slice implementation plan, sequencing storage, curator lifecycle, accepted revision delivery, Student Workspace attempts, boundary isolation, backup/restore, executable acceptance, and archive closeout through strict TDD commits.
+- Harden the quick-check first-slice spec after adversarial review with an explicit internal answer-key resolution boundary, deterministic query rejections, fault/log/transport redaction, and restore-time graph and matched-result validation.
+- Specify the deterministic single-select quick-check first slice: Corpus Storage owns accepted options and protected answer keys, Student Workspace owns immutable idempotent attempts and matched evidence, and student-safe delivery projections exclude curator-only metadata.
+- Harden ADR-016 after adversarial review with protected answer-key backup semantics, opaque student-facing option identifiers, bounded matched-or-not-matched result reads, and a current assessment decision trail.
+- Accept ADR-016 for deterministic single-select quick checks: Corpus Storage owns versioned accepted questions and answer keys, Student Workspace owns immutable idempotent attempts and evidence, and learner-state interpretation remains deferred.
+- Harden evaluator worker closeout after adversarial review with explicit final-evaluation restore rejection and positive controls for backup artifact detection.
+- Complete the Student Workspace evaluator worker plan with restore-time unsafe-summary rejection, executable worker acceptance, Product Intent traceability, and archived-plan closeout.
+- Complete Phase 6 of the Student Workspace evaluator worker plan after adversarial review expanded the out-of-scope surface guard with positive controls for queue, provider, raw-artifact, UI, learner-model, and topology expansions.
+- Prove evaluator worker ownership boundaries with a successful adapter execution test that snapshots adjacent domains, checks the bounded request-only adapter contract, and guards against out-of-scope worker surfaces.
+- Complete Phase 5 of the Student Workspace evaluator worker plan after adversarial review added explicit LLM-assisted completion-signature replay coverage.
+- Implement redacted evidence and successful completion for the Student Workspace evaluator worker, keeping writes behind leased Student Workspace commands with duplicate-safe terminal rerun rejection and concurrent lease-state coverage.
+- Complete Phase 4 of the Student Workspace evaluator worker plan after adversarial review expanded explicit output-validation coverage across malformed validation, criterion mismatches, blank summaries, redacted evidence, and LLM-assisted output.
+- Implement provider output and budget gates for the Student Workspace evaluator worker, routing malformed adapter output, exceeded usage, rejected validation, unsafe feedback, and exhausted retries through governed job recovery.
+- Complete Phase 3 of the Student Workspace evaluator worker plan after adversarial review added explicit malformed provider adapter coverage.
+- Implement provider request construction for the Student Workspace evaluator worker, passing a redacted snapshot DTO to provider adapters only after claim, policy, and adapter resolution.
+- Complete Phase 2 of the Student Workspace evaluator worker plan after adversarial review widened policy/adapter failure coverage across protected adjacent domains.
+- Implement evaluator policy and provider adapter resolution for the Student Workspace evaluator worker, making post-claim execution fail closed on missing or malformed policy/adapter dependencies without provider calls.
+- Harden the first evaluator worker implementation slice after adversarial review by adding explicit not-yet-due retry rejection coverage and marking Phase 1 complete in the implementation plan.
+- Implement the first Student Workspace evaluator worker slice, adding the in-process worker command boundary for validated `single_job` and `claim_next` job claiming without provider execution.
+- Harden the evaluator worker implementation plan after adversarial review by making phase-status commits mandatory and adding explicit RED/GREEN sequences to every phase.
+- Add the Student Workspace open-answer evaluator worker implementation plan, sequencing the in-process worker through strict TDD phases for claiming, policy resolution, provider request redaction, output and budget gates, completion, boundary isolation, backup/restore, executable acceptance, and closeout.
+- Harden the evaluator worker spec after adversarial review by making post-claim provider failures flow through Student Workspace retry/failure behavior, pinning claim-next ordering to the existing claimable-job query, and requiring evaluator policy retry policy to match the claimed job.
+- Add the Student Workspace open-answer evaluator worker spec, defining the in-process single-run worker contract, evaluator policy shape, provider adapter boundary, output validation, budget enforcement, retry/failure handling, redaction, and executable acceptance expectations.
+- Harden ADR-015 after adversarial review by defining evaluator worker, provider adapter, evaluator policy, and raw evaluator artifact terms before the decision rules rely on them.
+- Accept ADR-015 for the open-answer evaluator worker/provider boundary: workers and provider adapters execute behind Student Workspace jobs, while prompt construction, output validation, raw-artifact handling, provider credentials, budget policy, and final feedback acceptance stay governed by explicit Student Workspace rules.
+- Complete the Student Workspace evaluator orchestration plan with backup/restore preservation, malformed restore rejection, executable job acceptance coverage, Product Intent traceability, and archived-plan closeout.
+- Harden Phase 6 evaluator orchestration recovery after adversarial review by explicitly covering retry-waiting cancellation and rejecting impossible storage recovery state combinations.
+- Implement Phase 6 evaluator orchestration recovery so worker failures, retries, cancellations, and expired leases clear active leases, preserve attempt snapshots, and keep stale workers from mutating terminal jobs.
+- Harden Phase 5 evaluator orchestration completion after adversarial review by retaining an internal terminal completion signature so idempotent replays reject changed lease, worker, provider usage, or output validation.
+- Implement Phase 5 evaluator orchestration completion so leased jobs atomically become final Student Workspace feedback with budget checks, LLM output validation, lease clearing, and duplicate-safe idempotency.
+- Implement Phase 4 evaluator orchestration evidence so worker evidence writes require an active matching unexpired lease while reusing redaction and validation rules.
+- Implement Phase 3 evaluator orchestration leases so Student Workspace can claim waiting or due retry jobs, renew active leases, read redacted job state, and list bounded claimable jobs.
+- Implement Phase 2 evaluator orchestration scheduling so Student Workspace can turn submitted or failed open-answer attempts into waiting evaluator jobs with retry/budget policy validation and prior-failure preservation.
+- Harden Phase 1 evaluator orchestration storage after adversarial review by rejecting leased jobs without leases and validating lease update/clear helper inputs before SQLite writes.
+- Start the Student Workspace evaluator orchestration implementation with Phase 1 storage substrate: separate job status on evaluator runs, retry/budget policies, lease fields, claimable reads, and raw-artifact exclusion.
+- Harden the Student Workspace evaluator orchestration plan after adversarial review by separating orchestration job status from the existing evaluator-run lifecycle and treating traceability/archive checks as docs gates.
+- Add the Student Workspace open-answer evaluator orchestration implementation plan, sequencing job storage, scheduling, leases, leased evidence, idempotent completion, recovery paths, backup/restore, and executable closeout through strict TDD commits.
+- Harden the Student Workspace evaluator orchestration spec after adversarial review by resolving exhausted-retry behavior and making LLM output validation an explicit completion gate.
+- Add the Student Workspace open-answer evaluator orchestration spec, defining job scheduling, leases, retries, cancellation, timeout recovery, completion idempotency, budget gates, and redaction boundaries.
+- Harden ADR-014 after adversarial review by clarifying how orchestration jobs relate to the implemented evaluator-run records and when leases become mandatory.
+- Accept ADR-014 for Student Workspace evaluator orchestration: evaluator jobs own leases, retries, cancellation, timeout recovery, and provider/human handoff boundaries before worker implementation.
+- Harden Student Workspace evaluator backup restore after adversarial review by validating restored reviewer attribution, attribution Identity references, evidence visibility, and unsafe redacted summaries before import.
+- Complete the Student Workspace evaluation status/evidence plan with evaluator-run backup/restore preservation, restored-graph validation, executable domain acceptance, Product Intent traceability, and archived-plan closeout.
+- Harden Student Workspace evaluation status/evidence reads after adversarial review by rejecting unsafe redacted evaluator summaries before they can be persisted and later exposed.
+- Implement owner-only Student Workspace evaluation status and evaluator evidence reads with private non-owner errors, terminal-run omission, redacted evidence metadata, and final evaluation/failure detail coverage.
+- Harden evaluator-run terminal transitions after adversarial review with transaction-boundary run-status regression coverage for completion, failure, and cancellation.
+- Implement evaluator-run terminal transitions for completion, failure, and cancellation with final-evaluation compatibility, active-failure recording, prior-failure restoration, and terminal conflict coverage.
+- Harden evaluator evidence recording after adversarial review by revalidating running-run state inside the evidence-write transaction.
+- Implement redacted evaluator evidence recording for running open-answer evaluator runs with internal-only metadata, malformed-input rejection, terminal-run conflicts, and raw-artifact exclusion coverage.
+- Harden evaluator-run starts after adversarial review by mapping persisted running-run conflicts to domain rejections and revalidating mutable attempt and Identity preconditions inside the transaction.
+- Implement governed evaluator-run starts for submitted and retryable failed open-answer attempts with attribution validation, accepted-revision snapshots, and atomic prior-failure preservation.
+- Harden the evaluator-run storage substrate after adversarial review with database-enforced scalar attempt snapshots and restore cleanup that removes evaluator evidence and runs before attempts.
+- Start the Student Workspace evaluation status/evidence implementation with the Phase 1 persistence substrate: evaluator-run snapshots, lifecycle status updates, one-running-run enforcement, internal redacted evidence metadata, and structural storage guards.
+- Harden the Student Workspace evaluation status/evidence implementation plan after adversarial review by making transitions atomic, snapshotting prior failures before run start, enforcing one running run per attempt, preserving legacy evaluating-backup compatibility, clarifying raw-artifact omission, and covering terminal-run query omission.
+- Add the Student Workspace evaluation status/evidence implementation plan, sequencing evaluator-run persistence, domain transitions, redacted evidence, owner-only reads, backup/restore, and executable closeout through strict TDD commits.
+- Harden the Student Workspace evaluation status/evidence spec after adversarial review by separating internal evaluator path kind from final evaluation summary kind and removing an undefined queued state.
+- Add the Student Workspace open-answer evaluation status and evidence spec, defining internal evaluator runs, redacted evidence metadata, owner-only status reads, and no public evaluation mutation surface.
+- Harden ADR-013 after adversarial review by making automated evaluator and human reviewer attribution explicit for future auditability.
+- Accept ADR-013 for Student Workspace open-answer evaluation governance: evaluator paths remain governed Student Workspace behavior, LLM/human evidence is bounded, and long-running evaluation must be explicit.
+- Archive the Student Workspace open-answer attempt HTTP API plan with executable STU-12/STU-13/INT-05 HTTP acceptance coverage and implemented Product Intent traceability.
+- Harden Student Workspace open-answer attempt HTTP listing after adversarial review by making cursor route keys collision-resistant across owner, Program, status, and check filter components.
+- Implement Student Workspace open-answer attempt HTTP listing with owner/program scoping, Student participation enforcement, status and check filters, bounded pagination, cursor-scope rejection, and cursor/fault redaction coverage.
+- Harden Student Workspace open-answer attempt HTTP detail reads after adversarial review by extending redaction coverage across evaluated and evaluation-failed detail responses plus evaluator diagnostics and database URL fault probes.
+- Implement Student Workspace open-answer attempt HTTP detail reads with owner-only access, evaluation/failure detail coverage, private non-owner `404` behavior, and redaction coverage.
+- Harden Student Workspace open-answer attempt HTTP submission after adversarial review by proving accepted responses hide idempotency keys and non-mutation coverage only passes after a real accepted attempt.
+- Implement Student Workspace open-answer attempt HTTP submission with strict body validation, effective Student authorization, accepted revision snapshots, idempotent retries, conflict handling, and adjacent-state non-mutation coverage.
+- Harden the Student Workspace open-answer attempt HTTP API route substrate after adversarial review with JSON body classification and complete first-slice rejection status mapping.
+- Start the Student Workspace open-answer attempt HTTP API implementation with the Phase 1 route substrate: guarded attempt route recognition, session/CSRF checks, idempotency-header validation, rejection status mapping, and fault redaction coverage.
+- Harden the Student Workspace open-answer attempt HTTP API implementation plan after adversarial review by requiring archive-relative link repair and implemented-plan traceability during closeout.
+- Add the Student Workspace open-answer attempt HTTP API implementation plan, sequencing route substrate, submission, owner-only detail, owner-only listing, executable acceptance, and archive closeout through strict TDD phase commits.
+- Harden the Student Workspace open-answer attempt HTTP API spec after adversarial review by correcting feedback traceability so only the detail route promises evaluation or failure detail.
+- Add the Student Workspace open-answer attempt HTTP API spec, carrying the implemented domain contract into session-backed Student submission and owner-only read routes with CSRF, idempotency, pagination, redaction, and no UI or evaluation mutation surface.
 - Harden the Student Workspace plan archive after adversarial review by completing INT-05 code and test traceability for the delivered domain and backup/restore slice.
 - Archive the completed Student Workspace open-answer attempt implementation plan and update INT-05 traceability to include the delivered plan.
 - Complete Student Workspace open-answer attempt backup/restore and executable acceptance coverage with restored idempotency keys, evaluation/failure state, and orphan accepted-revision graph rejection.
