@@ -18,6 +18,24 @@
         "The reviewer makes no edits to any source document, opens no PR, and creates no file other than the single findings file.",
         "No false-positive findings are manufactured — in particular the Russian/English language difference between the product intent and the story bodies is not reported as a contradiction."
       ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run a traceability review of the agonara intent → ADR layer-pair (fidelity and vertical coverage).",
+      "expected_output": "A findings file under agonara/docs/traceability-reviews/ reporting the 16 ADRs as faithful to intent (0 contradictions) with two unacknowledged-loss warnings and one uncovered-capability warning, a full coverage matrix, and explicitly-deferred intent capabilities correctly excluded from findings.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by the intent-adr layer-pair (e.g. 2026-06-03T1050Z-intent-adr.md).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the intent → ADR layer-pair and agonara, slices including fidelity and vertical-coverage, and an inputs list giving the four intent files with their versions and all 16 ADRs with their status.",
+        "The Inspected section confirms all 16 ADRs (adr-001 through adr-016) and all four intent files were read in full.",
+        "The Summary reports 0 fidelity fails, 2 fidelity warnings, 1 coverage warning, and 3 open questions.",
+        "The faithful core is backed by positive evidence cited into specific ADRs with file:line — at minimum the corpus/student-state separation, the LLM-not-accepted-until-curator boundary, Admin-is-not-a-learning-role, and the ownership statements.",
+        "A fidelity finding (warning, loss) records that the INT-02/STU-07 confusing-neighbor / concept-distinction commitment is narrowed away by ADR-010's closed accepted-corpus content list, quoting both the intent passage and the ADR-010 passage with file:line.",
+        "A fidelity finding (warning) records that CUR-13 pre-acceptance suggestion-origin visibility is carried by no ADR (ADR-010 carries only acceptance-time provenance), with the residual ambiguity routed to an open question rather than asserted as a hard contradiction.",
+        "A coverage finding (warning) records that CUR-09 coverage-gap discovery is carried by no ADR and not explicitly deferred (ADR-010 names gap analysis only as owned draft state).",
+        "Explicitly-deferred intent capabilities are classified as deferred and NOT reported as findings — in particular INT-06 period-level checks (ADR-016 names them a future slice), INT-07 interpretation, and STU-04/STU-05 session continuity.",
+        "A coverage matrix maps intent groups (by module) to the carrying ADR(s) with an explicit status of covered, deferred, or UNCOVERED.",
+        "All three open questions are tagged with a downstream resolving layer (ADR→spec), and no false-positive findings are made (an ADR deciding implementation detail the intent left open, or an explicit deferral, is not flagged)."
+      ]
     }
   ]
 }
