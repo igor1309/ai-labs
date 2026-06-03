@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Add the topic, concept, and material navigation child implementation plan with exact storage/domain/HTTP/UI/test inventories, per-phase reviews, commit gates, dashboard closeout, and archive closure.
 - Start Phase 2 of the Agonara product gap closure plan with a topic, concept, material, and relationship navigation spec that keeps accepted Program corpus separate from Student Workspace state.
 - Complete and archive the Quick Check product UI plan with implemented spec traceability, INT-04 links, README/implementation-note status updates, browser layout/accessibility checks, and dashboard LOC closeout.
 - Implement Phase 4 of the Quick Check product UI plan with Playwright-covered Student delivery reads, option-index submission, idempotent retry, owned attempt detail, and non-owner unavailable handling.
