@@ -172,6 +172,10 @@ export const learnUiHtml = `<!doctype html>
       padding: 18px;
     }
 
+    .wide-panel {
+      grid-column: 1 / -1;
+    }
+
     .toolbar {
       display: grid;
       gap: 14px;
@@ -215,6 +219,19 @@ export const learnUiHtml = `<!doctype html>
       display: grid;
       gap: 16px;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .navigation-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(280px, 1fr) minmax(0, 1.3fr);
+    }
+
+    .detail-section {
+      border-top: 1px solid var(--border);
+      display: grid;
+      gap: 8px;
+      padding-top: 12px;
     }
 
     .list {
@@ -275,7 +292,8 @@ export const learnUiHtml = `<!doctype html>
       header,
       .toolbar,
       .workspace,
-      .operation-grid {
+      .operation-grid,
+      .navigation-grid {
         grid-template-columns: 1fr;
       }
 
@@ -408,6 +426,118 @@ export const learnUiHtml = `<!doctype html>
           <button data-action="open-quick-check-attempt" data-requires-session class="secondary" type="button">Open attempt</button>
           <div id="quick-check-attempt-detail" class="empty"></div>
         </section>
+
+        <section id="navigation-section" class="panel wide-panel stack" aria-label="Topic, Concept, and Material Navigation">
+          <h2>Topic navigation</h2>
+          <p id="navigation-status" class="status" aria-live="polite">Navigation not loaded.</p>
+          <div class="navigation-grid">
+            <section id="navigation-curator-panel" class="stack" aria-label="Curator Navigation">
+              <h3>Curator navigation</h3>
+              <div class="actions">
+                <label>
+                  Navigation candidate state
+                  <select id="navigation-candidate-status-filter">
+                    <option value="draft">Draft</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+                <button id="refresh-navigation-candidates-button" class="secondary" data-requires-session type="button">Refresh</button>
+              </div>
+              <div id="navigation-candidate-list" class="list">
+                <p class="empty">No navigation candidates loaded.</p>
+              </div>
+              <form id="navigation-candidate-form" class="stack">
+                <label>
+                  Navigation kind
+                  <select id="navigation-kind-input" name="candidateKind">
+                    <option value="topic">Topic</option>
+                    <option value="concept">Concept</option>
+                    <option value="definition">Definition</option>
+                    <option value="principle">Principle</option>
+                    <option value="material_reference">Material reference</option>
+                    <option value="relationship_update">Relationship update</option>
+                  </select>
+                </label>
+                <label>
+                  Navigation title
+                  <input id="navigation-title-input" name="title">
+                </label>
+                <label>
+                  Navigation body
+                  <textarea id="navigation-body-input" name="body"></textarea>
+                </label>
+                <div class="operation-grid">
+                  <label>
+                    Material kind
+                    <select id="navigation-material-kind-input" name="materialReferenceKind">
+                      <option value="">None</option>
+                      <option value="article">Article</option>
+                      <option value="book">Book</option>
+                      <option value="video">Video</option>
+                      <option value="exercise_set">Exercise set</option>
+                      <option value="external_resource">External resource</option>
+                    </select>
+                  </label>
+                  <label>
+                    Locator
+                    <input id="navigation-locator-input" name="locator">
+                  </label>
+                </div>
+                <label>
+                  Citation
+                  <input id="navigation-citation-input" name="citation">
+                </label>
+                <label>
+                  Source ids
+                  <input id="navigation-source-ids-input" name="sourceIds">
+                </label>
+                <label>
+                  Navigation relationships JSON
+                  <textarea id="navigation-relationships-input" name="relationshipDrafts"></textarea>
+                </label>
+                <label>
+                  Rationale
+                  <textarea id="navigation-rationale-input" name="rationale"></textarea>
+                </label>
+                <div class="actions">
+                  <button type="submit" data-requires-session>Create navigation</button>
+                  <button data-action="accept-navigation-candidate" data-requires-session class="secondary" type="button">Approve navigation</button>
+                  <button data-action="reject-navigation-candidate" data-requires-session class="danger" type="button">Decline navigation</button>
+                </div>
+              </form>
+              <p id="navigation-candidate-action-status" class="status" aria-live="polite"></p>
+            </section>
+
+            <section id="navigation-student-panel" class="stack" aria-label="Student Navigation">
+              <h3>Student navigation</h3>
+              <button id="refresh-navigation-button" data-requires-session class="secondary" type="button">Refresh navigation</button>
+              <div id="program-navigation-summary" class="empty">No navigation summary loaded.</div>
+              <div class="detail-section">
+                <h3>Topics</h3>
+                <div id="navigation-topic-list" class="list">
+                  <p class="empty">No topics loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Ungrouped concepts</h3>
+                <div id="navigation-ungrouped-concept-list" class="list">
+                  <p class="empty">No ungrouped concepts loaded.</p>
+                </div>
+              </div>
+              <div class="detail-section">
+                <h3>Ungrouped materials</h3>
+                <div id="navigation-ungrouped-material-list" class="list">
+                  <p class="empty">No ungrouped materials loaded.</p>
+                </div>
+              </div>
+              <div id="navigation-node-detail" class="empty"></div>
+              <div id="navigation-material-backlinks" class="list">
+                <p class="empty">No material back links loaded.</p>
+              </div>
+            </section>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -421,8 +551,12 @@ export const learnUiHtml = `<!doctype html>
         deliveries: [],
         identity: null,
         mode: "curator",
+        navigation: null,
+        navigationCandidates: [],
         pendingQuickCheckAttemptKey: null,
         programId: "",
+        selectedNavigationCandidateId: null,
+        selectedNavigationNode: null,
         selectedAttemptId: null,
         selectedCandidateId: null,
         selectedDelivery: null,
@@ -444,19 +578,44 @@ export const learnUiHtml = `<!doctype html>
         deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
         deliveryList: document.querySelector("#quick-check-delivery-list"),
         logoutButton: document.querySelector("#logout-button"),
+        navigationActionStatus: document.querySelector("#navigation-candidate-action-status"),
+        navigationBodyInput: document.querySelector("#navigation-body-input"),
+        navigationCandidateForm: document.querySelector("#navigation-candidate-form"),
+        navigationCandidateList: document.querySelector("#navigation-candidate-list"),
+        navigationCandidateStatusFilter: document.querySelector("#navigation-candidate-status-filter"),
+        navigationCitationInput: document.querySelector("#navigation-citation-input"),
+        navigationKindInput: document.querySelector("#navigation-kind-input"),
+        navigationLocatorInput: document.querySelector("#navigation-locator-input"),
+        navigationMaterialBacklinks: document.querySelector("#navigation-material-backlinks"),
+        navigationMaterialKindInput: document.querySelector("#navigation-material-kind-input"),
+        navigationNodeDetail: document.querySelector("#navigation-node-detail"),
+        navigationRationaleInput: document.querySelector("#navigation-rationale-input"),
+        navigationRelationshipsInput: document.querySelector("#navigation-relationships-input"),
+        navigationSourceIdsInput: document.querySelector("#navigation-source-ids-input"),
+        navigationStatus: document.querySelector("#navigation-status"),
+        navigationStudentPanel: document.querySelector("#navigation-student-panel"),
+        navigationTitleInput: document.querySelector("#navigation-title-input"),
+        openNavigationCandidateAcceptButton: document.querySelector("[data-action='accept-navigation-candidate']"),
+        openNavigationCandidateRejectButton: document.querySelector("[data-action='reject-navigation-candidate']"),
         openQuickCheckAttemptButton: document.querySelector("[data-action='open-quick-check-attempt']"),
         optionInputs: Array.from(document.querySelectorAll("input[name='optionText']")),
+        programNavigationSummary: document.querySelector("#program-navigation-summary"),
         programIdInput: document.querySelector("#program-id-input"),
         quickCheckActions: Array.from(document.querySelectorAll("[data-requires-session]")),
         readQuickCheckCurationButton: document.querySelector("[data-action='read-quick-check-curation']"),
         rejectQuickCheckButton: document.querySelector("[data-action='reject-quick-check']"),
         refreshCandidatesButton: document.querySelector("#refresh-candidates-button"),
+        refreshNavigationButton: document.querySelector("#refresh-navigation-button"),
+        refreshNavigationCandidatesButton: document.querySelector("#refresh-navigation-candidates-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
         sessionSummary: document.querySelector("#session-summary"),
         signinForm: document.querySelector("#signin-form"),
         signinStatus: document.querySelector("#signin-status"),
         studentModeTab: document.querySelector("#student-mode-tab"),
         submitStatus: document.querySelector("#quick-check-submit-status"),
+        ungroupedConceptList: document.querySelector("#navigation-ungrouped-concept-list"),
+        ungroupedMaterialList: document.querySelector("#navigation-ungrouped-material-list"),
+        topicList: document.querySelector("#navigation-topic-list"),
       };
 
       elements.quickCheckActions.push(elements.refreshCandidatesButton);
@@ -536,6 +695,31 @@ export const learnUiHtml = `<!doctype html>
         renderCurationStatus("Create failed");
       });
 
+      elements.navigationCandidateForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi()) {
+          renderNavigationCandidateStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const body = navigationCandidateInput();
+        if (!body) {
+          renderNavigationCandidateStatus("Relationship JSON is invalid.");
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/navigation-candidates", {
+          body,
+          csrf: true,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          state.selectedNavigationCandidateId = result.value.navigationCandidate.candidateId;
+          await refreshNavigationCandidates();
+          renderNavigationCandidateStatus("Created " + result.value.navigationCandidate.title);
+          return;
+        }
+        renderNavigationCandidateStatus("Create failed");
+      });
+
       elements.curatorModeTab.addEventListener("click", () => {
         setMode("curator");
       });
@@ -591,6 +775,14 @@ export const learnUiHtml = `<!doctype html>
         await refreshCandidates();
       });
 
+      elements.refreshNavigationCandidatesButton.addEventListener("click", async () => {
+        await refreshNavigationCandidates();
+      });
+
+      elements.refreshNavigationButton.addEventListener("click", async () => {
+        await refreshNavigation();
+      });
+
       elements.candidateList.addEventListener("click", event => {
         const button = event.target.closest("button[data-candidate-id]");
         if (!button) {
@@ -599,6 +791,16 @@ export const learnUiHtml = `<!doctype html>
         state.selectedCandidateId = button.dataset.candidateId;
         const candidate = state.candidates.find($0 => $0.candidateId === state.selectedCandidateId);
         renderCurationStatus(candidate ? "Selected " + candidate.title : "Selected candidate unavailable");
+      });
+
+      elements.navigationCandidateList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-navigation-candidate-id]");
+        if (!button) {
+          return;
+        }
+        state.selectedNavigationCandidateId = button.dataset.navigationCandidateId;
+        const candidate = state.navigationCandidates.find($0 => $0.candidateId === state.selectedNavigationCandidateId);
+        renderNavigationCandidateStatus(candidate ? "Selected " + candidate.title : "Selected candidate unavailable");
       });
 
       elements.acceptQuickCheckButton.addEventListener("click", async () => {
@@ -621,6 +823,27 @@ export const learnUiHtml = `<!doctype html>
         renderCurationStatus("Accept failed");
       });
 
+      elements.openNavigationCandidateAcceptButton.addEventListener("click", async () => {
+        if (!state.selectedNavigationCandidateId) {
+          renderNavigationCandidateStatus("Select a navigation candidate first.");
+          return;
+        }
+        const result = await requestJson(
+          "/navigation-candidates/" + encodeURIComponent(state.selectedNavigationCandidateId) + "/acceptance",
+          {
+            body: {},
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          renderNavigationCandidateStatus("Accepted " + result.value.navigationChange.acceptedCorpus.title);
+          await refreshNavigationCandidates();
+          return;
+        }
+        renderNavigationCandidateStatus("Accept failed");
+      });
+
       elements.rejectQuickCheckButton.addEventListener("click", async () => {
         if (!state.selectedCandidateId) {
           renderCurationStatus("Select a candidate first.");
@@ -639,6 +862,27 @@ export const learnUiHtml = `<!doctype html>
         renderCurationStatus("Reject failed");
       });
 
+      elements.openNavigationCandidateRejectButton.addEventListener("click", async () => {
+        if (!state.selectedNavigationCandidateId) {
+          renderNavigationCandidateStatus("Select a navigation candidate first.");
+          return;
+        }
+        const result = await requestJson(
+          "/navigation-candidates/" + encodeURIComponent(state.selectedNavigationCandidateId) + "/rejection",
+          {
+            body: {},
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          renderNavigationCandidateStatus("Rejected " + result.value.navigationCandidate.title);
+          await refreshNavigationCandidates();
+          return;
+        }
+        renderNavigationCandidateStatus("Reject failed");
+      });
+
       elements.readQuickCheckCurationButton.addEventListener("click", async () => {
         if (!state.selectedRevisionId) {
           renderCurationStatus("Accept a candidate before inspection.");
@@ -651,6 +895,18 @@ export const learnUiHtml = `<!doctype html>
           return;
         }
         renderCurationStatus("Inspection failed");
+      });
+
+      elements.navigationStudentPanel.addEventListener("click", event => {
+        const nodeButton = event.target.closest("button[data-action='open-navigation-node']");
+        if (nodeButton) {
+          void openNavigationNode(nodeButton.dataset.entityId);
+          return;
+        }
+        const revisionButton = event.target.closest("button[data-action='open-navigation-revision']");
+        if (revisionButton) {
+          void openNavigationRevision(revisionButton.dataset.revisionId);
+        }
       });
 
       elements.attemptList.addEventListener("click", event => {
@@ -730,6 +986,93 @@ export const learnUiHtml = `<!doctype html>
         }
       }
 
+      function navigationCandidateInput() {
+        const relationshipDrafts = parseRelationshipDrafts(elements.navigationRelationshipsInput.value.trim());
+        if (relationshipDrafts === null) {
+          return null;
+        }
+        const body = {
+          candidateKind: elements.navigationKindInput.value,
+          sourceIds: splitIdList(elements.navigationSourceIdsInput.value),
+          title: elements.navigationTitleInput.value.trim(),
+        };
+        addOptionalText(body, "body", elements.navigationBodyInput.value);
+        addOptionalText(body, "citation", elements.navigationCitationInput.value);
+        addOptionalText(body, "locator", elements.navigationLocatorInput.value);
+        addOptionalText(body, "rationale", elements.navigationRationaleInput.value);
+        if (elements.navigationMaterialKindInput.value) {
+          body.materialReferenceKind = elements.navigationMaterialKindInput.value;
+        }
+        if (relationshipDrafts.length > 0) {
+          body.relationshipDrafts = relationshipDrafts;
+        }
+        return body;
+      }
+
+      function parseRelationshipDrafts(value) {
+        if (!value) {
+          return [];
+        }
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function splitIdList(value) {
+        return value
+          .split(",")
+          .map($0 => $0.trim())
+          .filter(Boolean);
+      }
+
+      function addOptionalText(target, key, value) {
+        const trimmed = value.trim();
+        if (trimmed) {
+          target[key] = trimmed;
+        }
+      }
+
+      async function refreshNavigationCandidates() {
+        if (!canUseProgramApi()) {
+          renderNavigationCandidateStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const status = elements.navigationCandidateStatusFilter.value;
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/navigation-candidates?status=" + encodeURIComponent(status),
+        );
+        if (result.status === "accepted") {
+          state.navigationCandidates = result.value.navigationCandidates;
+          renderNavigationCandidateList();
+          return;
+        }
+        state.navigationCandidates = [];
+        renderNavigationCandidateList();
+        renderNavigationCandidateStatus("Refresh failed");
+      }
+
+      function renderNavigationCandidateList() {
+        if (state.navigationCandidates.length === 0) {
+          elements.navigationCandidateList.innerHTML = '<p class="empty">No navigation candidates loaded.</p>';
+          return;
+        }
+        elements.navigationCandidateList.innerHTML = "";
+        for (const candidate of state.navigationCandidates) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.navigationCandidateId = candidate.candidateId;
+          button.textContent = candidate.title + " " + candidate.status;
+          elements.navigationCandidateList.append(button);
+        }
+      }
+
+      function renderNavigationCandidateStatus(message) {
+        elements.navigationActionStatus.textContent = message;
+      }
+
       function renderAcceptedQuickCheck(quickCheck) {
         const answer = quickCheck.options.find($0 => $0.optionId === quickCheck.answerKeyOptionId);
         const lines = [
@@ -752,6 +1095,185 @@ export const learnUiHtml = `<!doctype html>
         return Boolean(state.identity && state.programId);
       }
 
+      async function refreshNavigation() {
+        if (!canUseProgramApi()) {
+          elements.navigationStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/navigation");
+        if (result.status === "accepted") {
+          state.navigation = result.value.navigation;
+          renderNavigationSummary();
+          elements.navigationStatus.textContent = "Navigation loaded.";
+          return;
+        }
+        state.navigation = null;
+        renderNavigationSummary();
+        elements.navigationStatus.textContent = "Navigation unavailable.";
+      }
+
+      function renderNavigationSummary() {
+        const navigation = state.navigation;
+        if (!navigation) {
+          elements.programNavigationSummary.textContent = "No navigation summary loaded.";
+          renderNavigationSummaryList(elements.topicList, [], "No topics loaded.");
+          renderNavigationSummaryList(elements.ungroupedConceptList, [], "No ungrouped concepts loaded.");
+          renderNavigationSummaryList(elements.ungroupedMaterialList, [], "No ungrouped materials loaded.");
+          return;
+        }
+        elements.programNavigationSummary.textContent = [
+          "Topics " + navigation.topics.length,
+          "Ungrouped concepts " + navigation.ungroupedConcepts.length,
+          "Ungrouped materials " + navigation.ungroupedMaterials.length,
+        ].join("\\n");
+        renderNavigationSummaryList(elements.topicList, navigation.topics, "No topics loaded.");
+        renderNavigationSummaryList(elements.ungroupedConceptList, navigation.ungroupedConcepts, "No ungrouped concepts loaded.");
+        renderNavigationSummaryList(elements.ungroupedMaterialList, navigation.ungroupedMaterials, "No ungrouped materials loaded.");
+      }
+
+      function renderNavigationSummaryList(target, nodes, emptyText) {
+        if (nodes.length === 0) {
+          target.innerHTML = '<p class="empty">' + emptyText + '</p>';
+          return;
+        }
+        target.innerHTML = "";
+        for (const node of nodes) {
+          target.append(navigationNodeButton(node));
+        }
+      }
+
+      function navigationNodeButton(node) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.action = "open-navigation-node";
+        button.dataset.entityId = node.entityId;
+        button.textContent = node.title + " " + node.acceptedKind;
+        return button;
+      }
+
+      function navigationRevisionButton(relationship, direction) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.action = "open-navigation-revision";
+        button.dataset.revisionId = direction === "from" ? relationship.fromRevisionId : relationship.toRevisionId;
+        button.textContent = (direction === "from" ? relationship.fromTitle : relationship.toTitle) + " revision";
+        return button;
+      }
+
+      async function openNavigationNode(entityId) {
+        if (!entityId) {
+          return;
+        }
+        const result = await requestJson("/navigation/entities/" + encodeURIComponent(entityId));
+        if (result.status !== "accepted") {
+          elements.navigationNodeDetail.textContent = "Navigation node unavailable.";
+          return;
+        }
+        state.selectedNavigationNode = result.value.navigationNode;
+        await renderNavigationNode(state.selectedNavigationNode);
+      }
+
+      async function openNavigationRevision(revisionId) {
+        if (!revisionId) {
+          return;
+        }
+        const result = await requestJson("/navigation/revisions/" + encodeURIComponent(revisionId));
+        if (result.status !== "accepted") {
+          elements.navigationNodeDetail.textContent = "Navigation revision unavailable.";
+          return;
+        }
+        renderNavigationRevision(result.value.navigationRevision);
+      }
+
+      async function renderNavigationNode(node) {
+        elements.navigationNodeDetail.innerHTML = "";
+        const lines = [
+          node.title,
+          node.acceptedKind,
+          node.body,
+          node.locator,
+          node.citation,
+        ].filter(Boolean);
+        const summary = document.createElement("p");
+        summary.textContent = lines.join("\\n");
+        elements.navigationNodeDetail.append(summary);
+        const outgoing = navigationRelationshipSection("Outgoing", node.relationships.outgoing, "to");
+        const incoming = navigationRelationshipSection("Incoming", node.relationships.incoming, "from");
+        elements.navigationNodeDetail.append(outgoing, incoming);
+        if (node.acceptedKind === "material_reference") {
+          await renderMaterialBacklinks(node);
+        } else {
+          elements.navigationMaterialBacklinks.innerHTML = '<p class="empty">No material back links loaded.</p>';
+        }
+      }
+
+      function navigationRelationshipSection(title, relationships, direction) {
+        const section = document.createElement("div");
+        section.className = "detail-section";
+        const heading = document.createElement("h3");
+        heading.textContent = title;
+        section.append(heading);
+        if (relationships.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "empty";
+          empty.textContent = "No links.";
+          section.append(empty);
+          return section;
+        }
+        for (const relationship of relationships) {
+          section.append(navigationRelationshipNodeButton(relationship, direction));
+          section.append(navigationRevisionButton(relationship, direction));
+        }
+        return section;
+      }
+
+      function navigationRelationshipNodeButton(relationship, direction) {
+        return navigationNodeButton({
+          acceptedKind: direction === "from" ? relationship.fromKind : relationship.toKind,
+          entityId: direction === "from" ? relationship.fromEntityId : relationship.toEntityId,
+          title: direction === "from" ? relationship.fromTitle : relationship.toTitle,
+        });
+      }
+
+      function renderNavigationRevision(revision) {
+        elements.navigationNodeDetail.textContent = [
+          revision.title,
+          revision.acceptedKind,
+          revision.body,
+          revision.locator,
+          "Current revision: " + (revision.isCurrentRevision ? "yes" : "no"),
+        ].filter(Boolean).join("\\n");
+      }
+
+      async function renderMaterialBacklinks(node) {
+        elements.navigationMaterialBacklinks.innerHTML = "";
+        const seen = new Set();
+        for (const relationship of node.relationships.incoming) {
+          appendBacklink(relationship.fromEntityId, relationship.fromTitle, relationship.fromKind, seen);
+          const parent = await requestJson("/navigation/entities/" + encodeURIComponent(relationship.fromEntityId));
+          if (parent.status === "accepted") {
+            for (const parentRelationship of parent.value.navigationNode.relationships.incoming) {
+              appendBacklink(parentRelationship.fromEntityId, parentRelationship.fromTitle, parentRelationship.fromKind, seen);
+            }
+          }
+        }
+        if (seen.size === 0) {
+          elements.navigationMaterialBacklinks.innerHTML = '<p class="empty">No material back links loaded.</p>';
+        }
+      }
+
+      function appendBacklink(entityId, title, acceptedKind, seen) {
+        if (seen.has(entityId)) {
+          return;
+        }
+        seen.add(entityId);
+        elements.navigationMaterialBacklinks.append(navigationNodeButton({
+          acceptedKind,
+          entityId,
+          title,
+        }));
+      }
+
       function setMode(mode) {
         state.mode = mode;
         elements.curatorModeTab.setAttribute("aria-selected", mode === "curator" ? "true" : "false");
@@ -759,6 +1281,7 @@ export const learnUiHtml = `<!doctype html>
         if (mode === "student" && canUseProgramApi()) {
           void refreshDeliveries();
           void refreshAttempts();
+          void refreshNavigation();
         }
       }
 

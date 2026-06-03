@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 4 of the topic, concept, and material navigation plan with `/learn` Curator navigation candidate management, Student topic/concept/material traversal, historical revision opening, material back links, protected-data redaction checks, Student Workspace non-mutation coverage, and desktop/mobile browser layout checks.
 - Implement Phase 3 of the topic, concept, and material navigation plan with session-backed navigation candidate HTTP routes, curator acceptance/rejection routes, student-safe graph reads, historical revision reads, pagination, CSRF gates, and executable HTTP acceptance coverage.
 - Implement Phase 2 of the topic, concept, and material navigation plan with navigation candidate commands, atomic acceptance of accepted corpus and relationship drafts, student-safe graph reads, authorization checks, and no-Student-state read boundaries.
 - Switch the topic, concept, and material navigation plan to auto-continue mode after explicit user direction while keeping per-phase review and commit gates.
