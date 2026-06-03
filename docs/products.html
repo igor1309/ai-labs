@@ -323,7 +323,7 @@
           <span class="product-name">Tools</span>
         </div>
         <p class="product-desc">
-          <strong>Developer workflow helpers.</strong> Git worktree manager, Claude account switcher with usage-limit reporting, shared config symlinker for worktrees — <em>small shell scripts</em> that smooth out daily friction.
+          <strong>Developer workflow helpers.</strong> Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting, shared config symlinker for worktrees — <em>small shell scripts</em> that smooth out daily friction.
         </p>
         <div class="product-stack">
           <span class="tag">Bash</span>
@@ -464,7 +464,7 @@
           <span class="product-name">Dashboard Sync Agent</span>
         </div>
         <p class="product-desc">
-          <strong>Dashboard and loc-script sync.</strong> Sibling OpenClaw agent that keeps <em>scripts/loc-dashboard.sh</em>, <em>docs/products.html</em>, and the <em>docs/loc-dashboard.html</em> data array in sync with repo state on a daily 18:00 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
+          <strong>Dashboard and loc-script sync.</strong> Sibling OpenClaw agent that keeps <em>scripts/loc-dashboard.sh</em>, <em>docs/products.html</em>, and the <em>docs/loc-dashboard.html</em> data array in sync with repo state on a daily 01:30 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
         </p>
         <div class="product-stack">
           <span class="tag">OpenClaw</span>
@@ -479,7 +479,7 @@
           <span class="product-name">Doc Drift Agent</span>
         </div>
         <p class="product-desc">
-          <strong>README drift reviewer.</strong> Specialized OpenClaw agent that compares the root and per-project READMEs against each other and against actual repo state, then proposes README fixes as PRs with evidence. <em>ai-labs owns the definition; OpenClaw owns the runtime</em>. Auto-merge is never used.
+          <strong>README drift reviewer.</strong> Specialized OpenClaw agent that, one scope at a time, compares that scope's documentation against itself and against actual repo state, then proposes doc fixes as PRs with evidence. <em>ai-labs owns the definition; OpenClaw owns the runtime</em>. Auto-merge is never used.
         </p>
         <div class="product-stack">
           <span class="tag">OpenClaw</span>
