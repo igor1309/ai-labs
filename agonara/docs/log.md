@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Harden Phase 2 learner-state target-link curation after adversarial review by marking the phase tracker complete and adding explicit concept and material-reference target coverage.
 - Implement Phase 2 of the learner-state interpretation plan with Corpus-owned learner evidence target-link curation commands, Program Curator authorization, accepted target/evidence-owner validation, soft deletion, and executable acceptance coverage.
 - Harden Phase 1 learner-state target-link storage after adversarial review with cross-Program target/evidence-owner restore rejection coverage and explicit duplicate target-link id validation.
 - Implement Phase 1 of the learner-state interpretation plan with learner evidence target-link storage, active-link idempotency, soft deletion, backup/restore preservation, and malformed restore rejection.

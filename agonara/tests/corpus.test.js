@@ -4886,6 +4886,16 @@ test("learnerEvidenceTargetLinks_shouldRejectInvalidTargetsAndEvidenceOwners", a
       candidateKind: "topic",
       title: "Valid topic",
     });
+    const conceptTarget = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Valid concept",
+    });
+    const materialTarget = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Valid material",
+    });
     const nonNavigationTarget = createAcceptedNavigationTarget(commands, {
       programId: "program-a",
       candidateKind: "definition",
@@ -5011,6 +5021,16 @@ test("learnerEvidenceTargetLinks_shouldRejectInvalidTargetsAndEvidenceOwners", a
           evidenceOwnerKind: "accepted_assessment_criterion",
           evidenceOwnerEntityId: acceptedCriterion.entityId,
         }).status,
+        acceptedConceptTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetKind: "concept",
+          targetId: conceptTarget.entityId,
+        }).status,
+        acceptedMaterialTarget: commands.createLearnerEvidenceTargetLink({
+          ...baseInput,
+          targetKind: "material_reference",
+          targetId: materialTarget.entityId,
+        }).status,
       },
       {
         unsupportedTargetKind: { status: "rejected", reason: "learner_state_target_not_found" },
@@ -5032,6 +5052,8 @@ test("learnerEvidenceTargetLinks_shouldRejectInvalidTargetsAndEvidenceOwners", a
         },
         acceptedOpenAnswerOwner: "accepted",
         acceptedCriterionOwner: "accepted",
+        acceptedConceptTarget: "accepted",
+        acceptedMaterialTarget: "accepted",
       },
     );
   } finally {

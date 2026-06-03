@@ -144,7 +144,7 @@ Targeted commands:
 ## Phase tracker
 
 - [x] Phase 1 - Target-Link Storage and Restore Validation
-- [ ] Phase 2 - Corpus Target-Link Curation Commands
+- [x] Phase 2 - Corpus Target-Link Curation Commands
 - [ ] Phase 3 - Student Workspace Learner-State Derivation
 - [ ] Phase 4 - HTTP Learner-State API
 - [ ] Phase 5 - Product UI Learner-State Surfaces
