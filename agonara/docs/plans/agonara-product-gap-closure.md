@@ -157,6 +157,7 @@ Preflight check: [ ] done
 - Do not let LLM output become accepted corpus without explicit curator acceptance.
 - Do not introduce external provider calls before the provider boundary, redaction rules, failure behavior, and tests are specified.
 - Do not start code changes for a phase until the phase's governing spec or ADR has passed adversarial review and been committed.
+- Do not start code changes for a phase until a child implementation plan exists, has passed adversarial review, names exact files/routes/screens/tests, and is committed.
 - Do not commit phase implementation until post-implementation self-review and adversarial review are clean, every fail or warning is fixed, and required gates have been rerun.
 - Do not push or open a PR unless the user explicitly asks after local commits are complete.
 
@@ -193,6 +194,25 @@ Preflight check: [ ] done
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
 
+## Per-phase execution checkpoints
+
+Each phase is a product area, not a single coding task. Execute each phase through these checkpoints:
+
+1. Spec / ADR checkpoint: write or update the governing spec or ADR, run its adversarial review, fix every fail or warning, run docs checks, and commit.
+2. Child plan checkpoint: create a phase-specific implementation plan under `agonara/docs/plans/`, run adversarial plan review, fix every fail or warning, run docs checks, and commit.
+3. Implementation checkpoint(s): implement one cohesive child-plan step at a time, run targeted verification plus required Agonara/root gates, run post-implementation self-review and adversarial review, fix every fail or warning, rerun affected gates, and commit on green.
+4. Tracker checkpoint: update this parent plan's phase tracker and `agonara/docs/log.md` only after the phase's child-plan steps are complete, verified, reviewed clean, and committed.
+
+Each child plan must replace this parent plan's generic phase language with exact implementation details:
+
+- files and modules expected to change;
+- HTTP routes and response shapes expected to change;
+- UI screens, states, and role-specific interactions expected to change;
+- test files, named test cases, and targeted commands;
+- phase-specific DoD and closeout.
+
+UI/browser validation must use the repo-installed `@playwright/test` harness unless the phase spec justifies another repo-supported harness. The child plan must pin the exact Playwright command, test file locations, browser coverage, and screenshot/accessibility expectations before UI code begins.
+
 ## Phase 1 - Quick Check Product UI and Spec Status
 
 **Objective**: make the implemented Quick Check HTTP API usable by effective Program Curators and Students, and repair implemented-spec traceability.
@@ -202,6 +222,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Update `agonara/docs/specs/quick-check-assessment-api.md` from draft status to implemented or accepted, with links to the implemented plan and HTTP tests.
 - Add or update a Quick Check product UI spec that covers role-specific screens, state transitions, redaction, validation, and failure states.
 - Run adversarial review on the UI spec and fix every fail or warning before code changes begin.
+- Add a child implementation plan that names the exact Agonara UI files, Quick Check routes, screens, browser tests, and Playwright command.
 - Add or extend the product UI shell needed for Quick Check curator and student workflows.
 - Implement curator UI for candidate create, candidate listing, candidate acceptance, candidate rejection, and curation read.
 - Implement student UI for delivery listing, delivery detail, attempt submission, idempotent retry handling, attempt detail, and attempt list.
@@ -215,7 +236,8 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before UI code begins.
-- Targeted UI/browser tests for curator and student Quick Check flows.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
+- Targeted Playwright UI/browser tests for curator and student Quick Check flows using the command pinned by the child plan.
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
@@ -233,6 +255,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 - Add a spec for accepted topics, concepts, definitions, principles, material references, and their relationships.
 - Run adversarial review on the corpus navigation spec and fix every fail or warning before storage, HTTP, or UI code changes begin.
+- Add a child implementation plan that names the exact storage files, Corpus routes, student navigation screens, tests, and Playwright command.
 - Add storage records and graph validation for accepted topic/concept/material revisions.
 - Add curator candidate and acceptance routes for topic, concept, and material graph updates.
 - Add student read routes for program coverage, topic details, linked materials, and material-to-concept back navigation.
@@ -246,6 +269,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
 - Targeted storage tests for graph invariants and malformed restore rejection.
 - HTTP tests for curator acceptance and student-safe navigation reads.
 - UI/browser tests for topic and material traversal.
@@ -267,6 +291,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 - Add a spec for learner-state interpretation inputs, summary shape, persistence or read-time derivation, and evidence links.
 - Run adversarial review on the learner-state spec and fix every fail or warning before Student Workspace or UI code changes begin.
+- Add a child implementation plan that names the exact Student Workspace files, owner-only routes, progress screens, tests, and Playwright command.
 - Implement Student Workspace commands/queries for owner-only progress, weak areas, and evidence reads.
 - Add UI surfaces for progress labels, weak topics/concepts, and evidence behind each label.
 - Keep progress summaries separate from Program corpus and membership state.
@@ -279,6 +304,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
 - Targeted Student Workspace tests for evidence-to-summary derivation.
 - HTTP tests for owner-only progress and weak-area reads.
 - UI/browser tests showing progress labels and supporting evidence.
@@ -300,6 +326,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 - Add a spec for topic-level and period-level check definitions, accepted revisions, attempts, and readiness result derivation.
 - Run adversarial review on the aggregate-check spec and fix every fail or warning before Corpus, Student Workspace, or UI code changes begin.
+- Add a child implementation plan that names the exact Corpus/Student Workspace files, aggregate-check routes, readiness screens, tests, and Playwright command.
 - Implement Corpus Storage support for aggregate check definitions and accepted revisions.
 - Implement Student Workspace attempt submission, owner-only reads, and readiness evidence.
 - Add UI for starting aggregate checks, viewing results, and drilling into evidence.
@@ -313,6 +340,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
 - Storage and domain tests for aggregate check definitions and attempts.
 - HTTP tests for submission, owner-only reads, historical revisions, and readiness evidence.
 - UI/browser tests for topic/period check flow.
@@ -334,6 +362,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 - Add a spec for invitation creation, acceptance, decline, revocation, participant listing, student removal, curator leave, exceptional recovery, and exceptional revocation.
 - Run adversarial review on the membership invitation/recovery spec and fix every fail or warning before Program Membership, HTTP, or UI code changes begin.
+- Add a child implementation plan that names the exact Program Membership files, invitation/recovery routes, UI screens, tests, and Playwright command.
 - Implement Program Membership storage and command behavior for invitation and recovery records.
 - Add curator routes for invitation and participant-management behavior.
 - Add student routes for accepting and declining invitations.
@@ -348,6 +377,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
 - Program Membership domain tests for invite, accept, decline, revoke, remove, curator leave, recovery, and exceptional revocation.
 - HTTP tests for authorization, attribution, private errors, and event reads.
 - UI/browser tests for invitation and recovery workflows.
@@ -370,6 +400,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 - Add a spec for coverage-gap inputs, output shape, and draft status.
 - Run adversarial review on the coverage-gap spec and fix every fail or warning before Curator Workspace, HTTP, or UI code changes begin.
+- Add a child implementation plan that names the exact Curator Workspace files, coverage routes, UI screens, tests, and Playwright command.
 - Implement Curator Workspace coverage-gap reads over accepted Program corpus.
 - Add UI for curator coverage inspection and drill-down.
 - Keep coverage output separate from Student progress and weak-area interpretation.
@@ -382,6 +413,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
 - Curator Workspace tests for coverage gap calculation.
 - HTTP tests for curator-only reads and redaction.
 - UI/browser tests for coverage inspection.
@@ -403,6 +435,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 - Add a provider-boundary spec for suggestion generation, prompt context, output validation, provenance, redaction, and provider failure behavior.
 - Run adversarial review on the provider-boundary spec and fix every fail or warning before Curator Workspace, HTTP, provider, or UI code changes begin.
+- Add a child implementation plan that names the exact Curator Workspace/provider files, suggestion routes, review screens, tests, and Playwright command.
 - Implement Curator Workspace suggestion records with draft status and origin metadata.
 - Add provider fakes for tests before wiring any real provider configuration.
 - Add curator review routes for suggestion listing, detail, accept, and reject.
@@ -416,6 +449,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 **Validation**:
 
 - Spec gate: Markdown/front-matter/link checks, adversarial review cleanout, and `git diff --check` before implementation begins.
+- Child-plan gate: mandatory implementation-plan sections, exact files/routes/screens/tests inventory, adversarial review cleanout, and `git diff --check`.
 - Curator Workspace tests for suggestion creation, validation, provenance, accept, reject, and provider failure.
 - HTTP tests for curator-only suggestion reads and mutations.
 - UI/browser tests for suggestion review and origin inspection.
@@ -441,6 +475,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Every code/config/generated-artifact phase passes the Agonara test wrapper, root build wrapper, and `git diff --check`.
 - Every docs-only phase passes Markdown/front-matter/link checks and `git diff --check`.
 - Every phase's governing spec or ADR passes adversarial review before implementation code begins.
+- Every phase has a committed child implementation plan with exact files/routes/screens/tests, phase-specific DoD, phase closeout, and a pinned UI/browser command where UI is in scope.
 - Every phase passes post-implementation self-review and adversarial review, fixes every fail or warning, and reruns affected gates before commit.
 - The implementation plan tracker is updated after each completed phase and committed.
 
