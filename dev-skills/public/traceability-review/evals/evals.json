@@ -36,6 +36,24 @@
         "Cross-module seam gaps (a capability owned by no single module, e.g. program discovery) are NOT reported here, since they belong to the cross-module ADR × ADR pass.",
         "The Inspected section confirms ADR-010 and ADR-009 and the four intent files and the responsibility map were read."
       ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run an ADR × ADR cross-module compatibility traceability review of the agonara ADRs.",
+      "expected_output": "An ownership matrix (one row per map Owns entry) plus a cross-module contract register over the 16 accepted ADRs and the responsibility map, finding the architecture cross-module compatible (0 double-ownership, 0 contract inconsistency, 0 boundary violation) with map-adr-drift the only finding category — including the accepted Program shell (ADR-009) not named in the map's Corpus Storage Owns cell.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by adr-adr-crossmodule.",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the ADR × ADR layer-pair and agonara, checks listing double-ownership / boundary-violation / contract-consistency / map-adr-drift, mechanism: ownership-matrix + contract-register, and an inputs list giving the module responsibility map with version and all 16 ADRs with status.",
+        "An ownership matrix is produced with one row per responsibility from the map's Owns columns, each row carrying the map owner, the ADR(s) that decide it with file:line, and a verdict (single-owner, double-ownership, or map-adr-drift).",
+        "A cross-module contract register is produced, each row naming a contract with its provider ADR (file:line) and consumer ADR(s) (file:line) and a verdict (consistent, inconsistent, or boundary-violation).",
+        "There are 0 double-ownership rows in the ownership matrix.",
+        "The contract register has 0 inconsistent and 0 boundary-violation rows (every cross-module contract is consistent).",
+        "There are 0 fail findings, and the only finding category present is map-adr-drift (warning).",
+        "A map-adr-drift finding flags that the accepted Program shell owned by Corpus Storage per ADR-009 (adr-009:44) is not named in the map's Corpus Storage Owns cell (module_responsibility_map.md:68).",
+        "The identified shared contracts include at least the effective-participation authorization contract (provider ADR-007, consumed by Student/Curator/Admin) and the curator-acceptance boundary (ADR-010), each verdict consistent with provider and consumer file:line.",
+        "No intents, specs, plans, code, or tests are read, and seam coverage (a capability owned by no module) is explicitly noted as out of scope for this pass.",
+        "The Inspected section confirms the responsibility map and all 16 ADRs (adr-001 through adr-016) were read."
+      ]
     }
   ]
 }
