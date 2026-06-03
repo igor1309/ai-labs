@@ -3223,9 +3223,20 @@ test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatus
       submitReadinessCheckAttempt: () => ({ status: "rejected", reason: "idempotency_conflict" }),
     },
   });
+  const faultHarness = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(20),
+    studentWorkspaceCommandsOverride: {
+      submitReadinessCheckAttempt: () => {
+        throw new Error(
+          "session-1 csrf-token-1 readiness-conflict-key cookie authorization raw prompt raw model provider diagnostics sql stack /tmp/db.sqlite postgres://db",
+        );
+      },
+    },
+  });
 
   try {
     const scenario = await createReadinessHttpScenario(baseUrl);
+    const missingSessionDelivery = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks`);
     const invalidCandidate = await createReadinessCheckCandidate(baseUrl, scenario.curator, scenario.programId, {
       requirements: [],
       scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
@@ -3301,10 +3312,24 @@ test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatus
       { readinessCheckRevisionId: "readiness-revision-1" },
       "readiness-conflict-key",
     );
+    const faultSession = await bootstrapAdmin(faultHarness.baseUrl);
+    const fault = await submitReadinessCheckAttempt(
+      faultHarness.baseUrl,
+      faultSession,
+      "program-1",
+      { readinessCheckRevisionId: "readiness-revision-1" },
+      "readiness-fault-key",
+    );
+    const faultBody = await fault.json();
 
     assert.deepEqual(
       {
         acceptRejected: { body: await acceptRejected.json(), statusCode: acceptRejected.status },
+        fault: {
+          body: faultBody,
+          hasLeaks: containsReadinessFaultLeaks(JSON.stringify(faultBody)),
+          statusCode: fault.status,
+        },
         idempotencyConflict: {
           body: await idempotencyConflict.json(),
           statusCode: idempotencyConflict.status,
@@ -3313,6 +3338,10 @@ test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatus
         invalidCandidate: { body: await invalidCandidate.json(), statusCode: invalidCandidate.status },
         missingAcceptCsrf: { body: await missingAcceptCsrf.json(), statusCode: missingAcceptCsrf.status },
         missingCsrfCandidate: { body: await missingCsrfCandidate.json(), statusCode: missingCsrfCandidate.status },
+        missingSessionDelivery: {
+          body: await missingSessionDelivery.json(),
+          statusCode: missingSessionDelivery.status,
+        },
         noIdempotency: { body: await noIdempotency.json(), statusCode: noIdempotency.status },
         rejected: { status: (await rejected.json()).value.readinessCheckCandidate.status, statusCode: rejected.status },
         studentCandidate: { body: await studentCandidate.json(), statusCode: studentCandidate.status },
@@ -3321,6 +3350,11 @@ test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatus
         acceptRejected: {
           body: { status: "rejected", reason: "readiness_candidate_already_rejected" },
           statusCode: 409,
+        },
+        fault: {
+          body: { status: "fault", reason: "internal_error" },
+          hasLeaks: false,
+          statusCode: 500,
         },
         idempotencyConflict: {
           body: { status: "rejected", reason: "idempotency_conflict" },
@@ -3342,6 +3376,10 @@ test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatus
           body: { status: "rejected", reason: "csrf_required" },
           statusCode: 403,
         },
+        missingSessionDelivery: {
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
+        },
         noIdempotency: {
           body: { status: "rejected", reason: "validation_failed" },
           statusCode: 400,
@@ -3356,6 +3394,7 @@ test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatus
   } finally {
     await close();
     await conflictHarness.close();
+    await faultHarness.close();
   }
 });
 
@@ -10403,6 +10442,24 @@ function containsReadinessStudentHttpLeaks(serialized) {
     "rationale",
     "session-",
     "sourceIds",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsReadinessFaultLeaks(serialized) {
+  return [
+    "authorization",
+    "cookie",
+    "csrf-token-1",
+    "postgres://db",
+    "provider diagnostics",
+    "raw model",
+    "raw prompt",
+    "readiness-fault-key",
+    "select ",
+    "session-1",
+    "sql",
+    "stack",
+    "/tmp/db.sqlite",
   ].some($0 => serialized.includes($0));
 }
 
