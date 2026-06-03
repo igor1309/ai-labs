@@ -1,10 +1,10 @@
 ---
 date: 2026-06-02
 author: Igor Malyarov
-version: 0.0.3
+version: 0.0.4
 status: accepted
 accepted: 2026-06-03
-description: "Orchestrate scoped agent runs; scope selection as tested TS step CLIs; one scope per run; every run resolves to an observable terminal status. Substrate amended (2026-06-02, §7): an /etc/cron.d imperative-shell wrapper (select → openclaw agent worker → commit) with fail-closed Telegram + log + per-scope state for observability, after the Phase 4 spike found the in-gateway Lobster/TaskFlow path unviable on the live unit. First adopter: doc-drift scoped audit."
+description: "Orchestrate scoped agent runs; scope selection as tested TS step CLIs; one scope per run; every run resolves to an observable terminal status. Substrate amended (2026-06-02, §7): an /etc/cron.d imperative-shell wrapper (select → openclaw agent worker → commit) with fail-closed Telegram + log + per-scope state for observability, after the Phase 4 spike found the in-gateway Lobster/TaskFlow path unviable on the live unit. Amended again (2026-06-03, §8): each run MUST start a fresh agent session (no continuation), after accumulated session context triggered a fatal codex automatic-compaction failure. First adopter: doc-drift scoped audit."
 ---
 
 # ADR: Scoped Agent Orchestration & Observability via OpenClaw Lobster/TaskFlow
@@ -238,3 +238,37 @@ auto-merge / auto-approve forbidden.
 `docs/plans/scoped-agent-orchestration-and-observability.md` Phases 5–6 must be
 revised to the native-cron substrate (no production `.lobster`); Phase 4 is closed
 by the spike findings. The selection CLIs (Phases 1–3) are untouched.
+
+## 8. Amendment 2026-06-03 — Each run starts a fresh agent session (no continuation)
+
+**Status:** accepted 2026-06-03.
+
+**New invariant.** Each orchestrator run **MUST** invoke the worker in a **fresh
+agent session** — a unique per-run `--session-key`. It **MUST NOT** continue the
+agent's persistent/default session across runs.
+
+**Why.** `openclaw agent` with no session id/key resumes the agent's default "main
+session channel". The orchestrator (and the earlier cron wrapper) omitted a session
+key, so every run appended to one growing session — it reached ~1.2 MB of transcript
+(~18 MB on disk) for `doc-drift-agent`. On codex (`codex/gpt-5.5`, OpenClaw
+`2026.5.28`), a turn whose context exceeds the CLI native budget triggers automatic
+compaction, which the codex harness refuses — `codex app-server owns automatic
+compaction` (`@openclaw/codex` `compact-*.js`) — and core then raises it as fatal:
+`CLI native harness compaction failed for codex/gpt-5.5: …` (`openclaw` core
+`cli-compaction-*.js`, where `fallbackToContextEngine` is false). A bloated continued
+session crosses that budget **on resume**, poisoning *every* later run — including a
+trivial message. A fresh per-run session bounds each run's context to its own work.
+Evidence: investigation 2026-06-03; operational note in inventory
+`vps/OpenClaw/gotchas.md`.
+
+**Out of scope here (doc-drift methodology, not orchestration).** A fresh session
+bounds *cross-run* accumulation but not a *single* heavy run: an audit that reads
+broadly (one observed oracle run pulled 57 file dumps — source, tests, config — to
+~120 k tokens) can still cross the budget within one run and hit the same compaction
+failure. Bounding per-run context — auditing the scope's **documents** rather than its
+implementation — is owned by the doc-drift agent's ADR + `drift-methodology.md`, not
+this orchestration ADR.
+
+**Implementation.** `doc-drift-orchestrator.sh` passes
+`--session-key "agent:doc-drift-agent:run-<UTC-timestamp>-<scope>"`; the wiring test
+asserts a fresh `--session-key` per run.

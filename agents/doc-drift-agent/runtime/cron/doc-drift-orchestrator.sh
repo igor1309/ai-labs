@@ -82,9 +82,16 @@ fi
 logger -t openclaw-doc-drift "auditing scope '${scope}' @ ${head_commit}"
 
 # --- 3. run the worker on the selected scope ---
+# Each run uses a FRESH per-run session key. The default (persistent) session
+# accumulates context across runs until the codex harness's automatic compaction
+# fails ("codex app-server owns automatic compaction"), poisoning every later
+# turn; a fresh session per run keeps each session small. Key part is colon-free
+# (the prefix `agent:<id>:` already uses colons).
+session_key="agent:doc-drift-agent:run-$(date -u +%Y%m%dT%H%M%SZ)-${scope}"
 output_file=$(mktemp)
 trap 'rm -f "$output_file"' EXIT
 openclaw agent --agent doc-drift-agent \
+  --session-key "$session_key" \
   --message "/doc-drift-review --scheduled --scope ${scope}" > "$output_file" 2>&1
 rc=$?
 end_iso=$(date -u +%FT%TZ)
