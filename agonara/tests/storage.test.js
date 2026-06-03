@@ -2242,6 +2242,218 @@ test("createQuickCheckAttemptRecord_shouldPersistImmutableAttemptReferences_onEx
   }
 });
 
+test("createReadinessCheckCandidateRecord_shouldPersistTopicAndPeriodScopes_onExistingProgramSources", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(database, makeProgramSource({ id: "source-a", programId: "program-a" }));
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-a" });
+
+    const topicCandidate = storage.createReadinessCheckCandidateRecord?.(
+      database,
+      makeReadinessCheckCandidate({
+        id: "readiness-candidate-topic",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+      }),
+    );
+    const periodCandidate = storage.createReadinessCheckCandidateRecord?.(
+      database,
+      makeReadinessCheckCandidate({
+        id: "readiness-candidate-period",
+        programId: "program-a",
+        scope: {
+          scopeKind: "period",
+          title: "First algebra period",
+          topicEntityIds: ["entity-topic-a"],
+        },
+        sourceIds: ["source-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        topicCandidate,
+        periodCandidate,
+        listed: storage.listReadinessCheckCandidateRecords?.(database, {
+          programId: "program-a",
+          status: "draft",
+        }).map($0 => $0.id),
+      },
+      {
+        topicCandidate: makeReadinessCheckCandidate({
+          id: "readiness-candidate-topic",
+          programId: "program-a",
+          sourceIds: ["source-a"],
+        }),
+        periodCandidate: makeReadinessCheckCandidate({
+          id: "readiness-candidate-period",
+          programId: "program-a",
+          scope: {
+            scopeKind: "period",
+            title: "First algebra period",
+            topicEntityIds: ["entity-topic-a"],
+          },
+          sourceIds: ["source-a"],
+        }),
+        listed: ["readiness-candidate-period", "readiness-candidate-topic"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedReadinessCheckRecords_shouldPreserveHistoricalRevisions_onReplacement", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedReadinessCheck(database, { programId: "program-a" });
+    storage.createReadinessCheckCandidateRecord(
+      database,
+      makeReadinessCheckCandidate({
+        id: "readiness-candidate-replacement",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+        status: "accepted",
+      }),
+    );
+    storage.createAcceptedReadinessCheckRevisionRecord(
+      database,
+      makeAcceptedReadinessCheckRevision({
+        id: "readiness-revision-replacement",
+        entityId: "readiness-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "readiness-candidate-replacement",
+        sourceIds: ["source-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        updatedEntity: storage.updateAcceptedReadinessCheckEntityCurrentRevision?.(database, {
+          entityId: "readiness-entity-a",
+          currentRevisionId: "readiness-revision-replacement",
+        }),
+        historicalRevision: storage.getAcceptedReadinessCheckRevisionRecord?.(
+          database,
+          "readiness-revision-a",
+        ),
+        revisionIds: storage.listAcceptedReadinessCheckRevisionRecords?.(database).map($0 => $0.id),
+      },
+      {
+        updatedEntity: {
+          id: "readiness-entity-a",
+          programId: "program-a",
+          currentRevisionId: "readiness-revision-replacement",
+        },
+        historicalRevision: makeAcceptedReadinessCheckRevision({
+          id: "readiness-revision-a",
+          entityId: "readiness-entity-a",
+          programId: "program-a",
+          acceptedFromCandidateId: "readiness-candidate-a",
+          sourceIds: ["source-a"],
+        }),
+        revisionIds: ["readiness-revision-a", "readiness-revision-replacement"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createReadinessCheckAttemptRecord_shouldPersistRequirementSnapshotsAndIdempotency_onAcceptedRevision", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedReadinessCheck(database, { programId: "program-a" });
+
+    const original = storage.createReadinessCheckAttemptRecord?.(
+      database,
+      makeReadinessCheckAttempt({
+        id: "readiness-attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        readinessCheckRevisionId: "readiness-revision-a",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        original,
+        equivalentRetry: storage.createReadinessCheckAttemptRecord?.(
+          database,
+          makeReadinessCheckAttempt({
+            id: "readiness-attempt-b",
+            programId: "program-a",
+            studentIdentityId: "identity-a",
+            readinessCheckRevisionId: "readiness-revision-a",
+          }),
+        ),
+        conflict: captureStorageInvariantReason(() =>
+          storage.createReadinessCheckAttemptRecord(
+            database,
+            makeReadinessCheckAttempt({
+              id: "readiness-attempt-c",
+              programId: "program-a",
+              studentIdentityId: "identity-a",
+              readinessCheckRevisionId: "readiness-revision-a",
+              result: "not_ready",
+              requirementResults: [
+                {
+                  requirementId: "requirement-a",
+                  targetKind: "topic",
+                  targetId: "entity-topic-a",
+                  title: "Topic A",
+                  requiredLevel: "on_track",
+                  observedLevel: "developing",
+                  evidenceCount: 1,
+                  result: "not_ready",
+                },
+                {
+                  requirementId: "requirement-b",
+                  targetKind: "concept",
+                  targetId: "entity-concept-a",
+                  title: "Concept A",
+                  requiredLevel: "developing",
+                  observedLevel: "developing",
+                  evidenceCount: 1,
+                  result: "ready",
+                },
+              ],
+            }),
+          ),
+        ),
+        listed: storage.listReadinessCheckAttemptRecords?.(database, {
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+        }).map($0 => $0.id),
+      },
+      {
+        original: makeReadinessCheckAttempt({
+          id: "readiness-attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          readinessCheckRevisionId: "readiness-revision-a",
+        }),
+        equivalentRetry: makeReadinessCheckAttempt({
+          id: "readiness-attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          readinessCheckRevisionId: "readiness-revision-a",
+        }),
+        conflict: "readiness_attempt_idempotency_conflict",
+        listed: ["readiness-attempt-a"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createQuickCheckAttemptRecord_shouldEnforceScopedIdempotency_onEquivalentAndConflictingReuse", () => {
   const database = makeInitializedDatabase();
 
@@ -5140,6 +5352,126 @@ function makeQuickCheckAttempt({
   };
 }
 
+function makeReadinessCheckCandidate({
+  id,
+  programId,
+  scope = { scopeKind: "topic", topicEntityId: "entity-topic-a" },
+  sourceIds = [],
+  status = "draft",
+}) {
+  return {
+    id,
+    programId,
+    title: `Readiness check ${id}`,
+    scope,
+    requirements: [
+      {
+        requirementId: "requirement-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        requiredLevel: "on_track",
+      },
+      {
+        requirementId: "requirement-b",
+        targetKind: "concept",
+        targetId: "entity-concept-a",
+        requiredLevel: "developing",
+      },
+    ],
+    sourceIds,
+    rationale: `Readiness rationale ${id}`,
+    status,
+    createdByIdentityId: "identity-a",
+    createdAt: "2026-06-03T11:00:00.000Z",
+    updatedAt: "2026-06-03T11:00:00.000Z",
+  };
+}
+
+function makeAcceptedReadinessCheckEntity({ id, programId, currentRevisionId }) {
+  return {
+    id,
+    programId,
+    currentRevisionId,
+  };
+}
+
+function makeAcceptedReadinessCheckRevision({
+  id,
+  entityId,
+  programId,
+  acceptedFromCandidateId = "readiness-candidate-a",
+  sourceIds = ["source-a"],
+}) {
+  return {
+    id,
+    entityId,
+    programId,
+    title: `Accepted readiness check ${id}`,
+    scope: { scopeKind: "topic", topicEntityId: "entity-topic-a" },
+    requirements: [
+      {
+        requirementId: "requirement-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        requiredLevel: "on_track",
+      },
+      {
+        requirementId: "requirement-b",
+        targetKind: "concept",
+        targetId: "entity-concept-a",
+        requiredLevel: "developing",
+      },
+    ],
+    sourceIds,
+    rationale: `Accepted readiness rationale ${id}`,
+    acceptedFromCandidateId,
+    acceptedByIdentityId: "identity-a",
+    acceptedAt: "2026-06-03T11:10:00.000Z",
+  };
+}
+
+function makeReadinessCheckAttempt({
+  id,
+  programId,
+  studentIdentityId,
+  readinessCheckRevisionId,
+  result = "ready",
+  requirementResults = [
+    {
+      requirementId: "requirement-a",
+      targetKind: "topic",
+      targetId: "entity-topic-a",
+      title: "Topic A",
+      requiredLevel: "on_track",
+      observedLevel: "on_track",
+      evidenceCount: 2,
+      result: "ready",
+    },
+    {
+      requirementId: "requirement-b",
+      targetKind: "concept",
+      targetId: "entity-concept-a",
+      title: "Concept A",
+      requiredLevel: "developing",
+      observedLevel: "developing",
+      evidenceCount: 1,
+      result: "ready",
+    },
+  ],
+  idempotencyKey = "idempotency-readiness",
+}) {
+  return {
+    id,
+    programId,
+    studentIdentityId,
+    readinessCheckRevisionId,
+    result,
+    requirementResults,
+    idempotencyKey,
+    submittedAt: "2026-06-03T11:20:00.000Z",
+  };
+}
+
 function makeLearnerEvidenceTargetLink({
   id,
   programId = "program-a",
@@ -5461,6 +5793,41 @@ function seedAcceptedQuickCheck(database, { programId }) {
       entityId: "quick-check-entity-a",
       programId,
       acceptedFromCandidateId: "quick-check-candidate-a",
+      sourceIds: ["source-a"],
+    }),
+  );
+}
+
+function seedAcceptedReadinessCheck(database, { programId }) {
+  createIdentity(database, makeIdentity("identity-a"));
+  storage.createProgramShellRecord(database, makeProgramShell({ id: programId }));
+  storage.createProgramSourceRecord(database, makeProgramSource({ id: "source-a", programId }));
+  seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a", programId });
+  seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-a", programId });
+  storage.createReadinessCheckCandidateRecord(
+    database,
+    makeReadinessCheckCandidate({
+      id: "readiness-candidate-a",
+      programId,
+      sourceIds: ["source-a"],
+      status: "accepted",
+    }),
+  );
+  storage.createAcceptedReadinessCheckEntityRecord(
+    database,
+    makeAcceptedReadinessCheckEntity({
+      id: "readiness-entity-a",
+      programId,
+      currentRevisionId: "readiness-revision-a",
+    }),
+  );
+  storage.createAcceptedReadinessCheckRevisionRecord(
+    database,
+    makeAcceptedReadinessCheckRevision({
+      id: "readiness-revision-a",
+      entityId: "readiness-entity-a",
+      programId,
+      acceptedFromCandidateId: "readiness-candidate-a",
       sourceIds: ["source-a"],
     }),
   );

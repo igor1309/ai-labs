@@ -4,6 +4,7 @@ import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
 import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
+import * as storage from "../src/storage.js";
 import {
   countEffectiveAdmins,
   getLocalPasswordCredentialByLogin,
@@ -1178,6 +1179,110 @@ test("restoreBackup_shouldPreserveHistoricalQuickCheckAttemptAndIdempotency_onRe
     );
   } finally {
     source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreReadinessRecordsAndHistoricalSnapshots_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedReadinessStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        candidateIds: restoredBackup.readinessCheckCandidates?.map($0 => $0.id),
+        entityIds: restoredBackup.acceptedReadinessCheckEntities?.map($0 => $0.id),
+        revisionIds: restoredBackup.acceptedReadinessCheckRevisions?.map($0 => $0.id),
+        attemptSnapshots: restoredBackup.readinessCheckAttempts?.map(projectReadinessAttemptBackupRecord),
+      },
+      {
+        restoreStatus: "accepted",
+        candidateIds: ["readiness-candidate-existing"],
+        entityIds: ["readiness-entity-existing"],
+        revisionIds: ["readiness-revision-existing"],
+        attemptSnapshots: [
+          {
+            id: "readiness-attempt-existing",
+            programId: "program-1",
+            studentIdentityId: "identity-student",
+            readinessCheckRevisionId: "readiness-revision-existing",
+            result: "ready",
+            requirementIds: ["readiness-requirement-topic", "readiness-requirement-concept"],
+            idempotencyKey: "idempotency-readiness-existing",
+          },
+        ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedReadinessGraphs_onInvalidScopeRevisionAndIdempotency", async () => {
+  const backup = await makeExportedReadinessBackup();
+  const target = makeSUT();
+
+  try {
+    const cases = [
+      {
+        mutate: candidate => {
+          candidate.acceptedReadinessCheckRevisions = [];
+        },
+        expectedReason: "readiness_revision_not_found",
+      },
+      {
+        mutate: candidate => {
+          addCrossProgramReadinessTargetBackupRecords(candidate);
+          candidate.readinessCheckCandidates[0] = {
+            ...candidate.readinessCheckCandidates[0],
+            scope: { scopeKind: "topic", topicEntityId: "entity-cross-program" },
+          };
+        },
+        expectedReason: "readiness_scope_program_mismatch",
+      },
+      {
+        mutate: candidate => {
+          candidate.readinessCheckAttempts.push({
+            ...candidate.readinessCheckAttempts[0],
+            id: "readiness-attempt-duplicate",
+          });
+        },
+        expectedReason: "readiness_attempt_idempotency_conflict",
+      },
+    ];
+
+    assert.deepEqual(
+      cases.map(testCase => {
+        const candidateBackup = structuredClone(backup);
+        testCase.mutate(candidateBackup);
+        return target.commands.restoreBackup(candidateBackup).reason;
+      }),
+      cases.map($0 => $0.expectedReason),
+    );
+  } finally {
     target.database.close();
   }
 });
@@ -2764,6 +2869,178 @@ function seedLearnerEvidenceTargetLinkRecords(database, { identityId, programId 
     );
 }
 
+function seedReadinessStorageRecords(database, { identityId, programId }) {
+  storage.createReadinessCheckCandidateRecord?.(
+    database,
+    {
+      id: "readiness-candidate-existing",
+      programId,
+      title: "Topic readiness",
+      scope: { scopeKind: "topic", topicEntityId: "entity-1" },
+      requirements: [
+        {
+          requirementId: "readiness-requirement-topic",
+          targetKind: "topic",
+          targetId: "entity-1",
+          requiredLevel: "on_track",
+        },
+        {
+          requirementId: "readiness-requirement-concept",
+          targetKind: "concept",
+          targetId: "entity-2",
+          requiredLevel: "developing",
+        },
+      ],
+      sourceIds: ["source-1"],
+      rationale: "Readiness rationale",
+      status: "accepted",
+      createdByIdentityId: identityId,
+      createdAt: "2026-06-03T11:00:00.000Z",
+      updatedAt: "2026-06-03T11:00:00.000Z",
+    },
+  );
+  storage.createAcceptedReadinessCheckEntityRecord?.(
+    database,
+    {
+      id: "readiness-entity-existing",
+      programId,
+      currentRevisionId: "readiness-revision-existing",
+    },
+  );
+  storage.createAcceptedReadinessCheckRevisionRecord?.(
+    database,
+    {
+      id: "readiness-revision-existing",
+      entityId: "readiness-entity-existing",
+      programId,
+      title: "Accepted topic readiness",
+      scope: { scopeKind: "topic", topicEntityId: "entity-1" },
+      requirements: [
+        {
+          requirementId: "readiness-requirement-topic",
+          targetKind: "topic",
+          targetId: "entity-1",
+          requiredLevel: "on_track",
+        },
+        {
+          requirementId: "readiness-requirement-concept",
+          targetKind: "concept",
+          targetId: "entity-2",
+          requiredLevel: "developing",
+        },
+      ],
+      sourceIds: ["source-1"],
+      rationale: "Accepted readiness rationale",
+      acceptedFromCandidateId: "readiness-candidate-existing",
+      acceptedByIdentityId: identityId,
+      acceptedAt: "2026-06-03T11:10:00.000Z",
+    },
+  );
+  storage.createReadinessCheckAttemptRecord?.(
+    database,
+    {
+      id: "readiness-attempt-existing",
+      programId,
+      studentIdentityId: "identity-student",
+      readinessCheckRevisionId: "readiness-revision-existing",
+      result: "ready",
+      requirementResults: [
+        {
+          requirementId: "readiness-requirement-topic",
+          targetKind: "topic",
+          targetId: "entity-1",
+          title: "Accepted",
+          requiredLevel: "on_track",
+          observedLevel: "on_track",
+          evidenceCount: 2,
+          result: "ready",
+        },
+        {
+          requirementId: "readiness-requirement-concept",
+          targetKind: "concept",
+          targetId: "entity-2",
+          title: "Accepted Concept",
+          requiredLevel: "developing",
+          observedLevel: "developing",
+          evidenceCount: 1,
+          result: "ready",
+        },
+      ],
+      idempotencyKey: "idempotency-readiness-existing",
+      submittedAt: "2026-06-03T11:20:00.000Z",
+    },
+  );
+}
+
+function addCrossProgramReadinessTargetBackupRecords(backup) {
+  backup.programShells.push({
+    id: "program-cross",
+    title: "Cross Program",
+    description: null,
+    admissionPolicy: "self_join",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programMemberships.push({
+    id: "membership-cross",
+    programId: "program-cross",
+    identityId: "identity-1",
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programSources.push({
+    id: "source-cross",
+    programId: "program-cross",
+    sourceKind: "article",
+    title: "Cross source",
+    locator: "https://example.test/cross",
+    citation: "Cross citation",
+    recordedByIdentityId: "identity-1",
+    recordedAt: "2026-06-03T09:01:00.000Z",
+  });
+  backup.corpusCandidates.push({
+    id: "candidate-cross",
+    programId: "program-cross",
+    candidateKind: "topic",
+    title: "Cross topic candidate",
+    body: "Cross topic body",
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:02:00.000Z",
+    updatedAt: "2026-06-03T09:02:00.000Z",
+  });
+  backup.acceptedCorpusEntities.push({
+    id: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    currentRevisionId: "revision-cross-program",
+  });
+  backup.acceptedCorpusRevisions.push({
+    id: "revision-cross-program",
+    entityId: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    title: "Cross topic",
+    body: "Cross topic body",
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    acceptedFromCandidateId: "candidate-cross",
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: "2026-06-03T09:03:00.000Z",
+  });
+}
+
 function addCrossProgramLearnerStateTargetLinkBackupRecords(backup) {
   backup.programShells.push({
     id: "program-cross",
@@ -3300,6 +3577,18 @@ function projectQuickCheckAttemptBackupRecord(attempt) {
   };
 }
 
+function projectReadinessAttemptBackupRecord(attempt) {
+  return {
+    id: attempt.id,
+    programId: attempt.programId,
+    studentIdentityId: attempt.studentIdentityId,
+    readinessCheckRevisionId: attempt.readinessCheckRevisionId,
+    result: attempt.result,
+    requirementIds: attempt.requirementResults.map($0 => $0.requirementId),
+    idempotencyKey: attempt.idempotencyKey,
+  };
+}
+
 function projectQuickCheckAttemptSummary(attempt) {
   return {
     attemptId: attempt.attemptId,
@@ -3471,6 +3760,34 @@ async function makeExportedLearnerEvidenceTargetLinkBackup() {
       identityId: "identity-1",
       programId: "program-1",
     });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedReadinessBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedReadinessStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
 
     return source.commands.exportBackup().value.backup;
   } finally {

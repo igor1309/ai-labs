@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Implement Phase 1 of the topic and period readiness checks plan with storage support for readiness candidates, accepted revisions, explicit Student attempts, idempotency replay, backup round-trip, and malformed restore rejection.
 - Add the topic and period readiness checks spec and child implementation plan, separating explicit readiness attempts from raw Quick Check/open-answer attempts and sequencing storage, Corpus curation, Student Workspace derivation, HTTP, UI, traceability, dashboard, and archive gates.
 - Close the learner-state interpretation plan with implemented spec status, Product Intent traceability, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Harden Phase 5 learner-state UI after adversarial review with Program-context clearing for private learner-state surfaces and negative-evidence weak-area browser coverage.

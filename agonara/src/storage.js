@@ -315,6 +315,52 @@ export function initializeIdentityStorage(database) {
         references accepted_quick_check_revision_options(revision_id, id)
     );
 
+    create table if not exists readiness_check_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      title text not null,
+      scope_json text not null,
+      requirements_json text not null,
+      source_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists accepted_readiness_check_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_readiness_check_revisions (
+      id text primary key,
+      entity_id text not null references accepted_readiness_check_entities(id),
+      program_id text not null references program_shells(id),
+      title text not null,
+      scope_json text not null,
+      requirements_json text not null,
+      accepted_from_candidate_id text not null references readiness_check_candidates(id),
+      source_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists readiness_check_attempts (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      readiness_check_revision_id text not null references accepted_readiness_check_revisions(id),
+      result text not null check (result in ('ready', 'not_ready', 'in_progress')),
+      requirement_results_json text not null,
+      idempotency_key text not null,
+      submitted_at text not null,
+      unique (program_id, student_identity_id, readiness_check_revision_id, idempotency_key)
+    );
+
     create table if not exists accepted_open_answer_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -1782,6 +1828,377 @@ export function listQuickCheckAttemptRecords(
     )
     .all(...values)
     .map(mapQuickCheckAttemptRecord);
+}
+
+export function createReadinessCheckCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    title,
+    scope,
+    requirements,
+    sourceIds = [],
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertReadinessScope(database, { programId, scope });
+  assertReadinessRequirements(database, { programId, requirements });
+
+  database
+    .prepare(
+      `insert into readiness_check_candidates (
+         id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      title,
+      JSON.stringify(scope),
+      JSON.stringify(requirements),
+      JSON.stringify(sourceIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getReadinessCheckCandidateRecord(database, id);
+}
+
+export function getReadinessCheckCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, title, scope_json as scopeJson,
+              requirements_json as requirementsJson, source_ids_json as sourceIdsJson,
+              rationale, status, created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from readiness_check_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapReadinessCheckCandidateRecord(row) : null;
+}
+
+export function listReadinessCheckCandidateRecords(database, { programId = null, status = null } = {}) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, title, scope_json as scopeJson,
+              requirements_json as requirementsJson, source_ids_json as sourceIdsJson,
+              rationale, status, created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from readiness_check_candidates
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values)
+    .map(mapReadinessCheckCandidateRecord);
+}
+
+export function createAcceptedReadinessCheckEntityRecord(database, { id, programId, currentRevisionId }) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_readiness_check_entities (id, program_id, current_revision_id)
+       values (?, ?, ?)`,
+    )
+    .run(id, programId, currentRevisionId);
+
+  return getAcceptedReadinessCheckEntityRecord(database, id);
+}
+
+export function getAcceptedReadinessCheckEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_readiness_check_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedReadinessCheckEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, current_revision_id as currentRevisionId
+         from accepted_readiness_check_entities
+         order by id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_readiness_check_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
+export function updateAcceptedReadinessCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
+  const revision = getAcceptedReadinessCheckRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("readiness_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("readiness_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_readiness_check_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedReadinessCheckEntityRecord(database, entityId);
+}
+
+export function createAcceptedReadinessCheckRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    title,
+    scope,
+    requirements,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertReadinessCheckCandidateBelongsToProgram(database, {
+    programId,
+    candidateId: acceptedFromCandidateId,
+  });
+  assertAcceptedReadinessCheckEntityBelongsToProgram(database, { programId, entityId });
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertReadinessScope(database, { programId, scope });
+  assertReadinessRequirements(database, { programId, requirements });
+
+  database
+    .prepare(
+      `insert into accepted_readiness_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      title,
+      JSON.stringify(scope),
+      JSON.stringify(requirements),
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedReadinessCheckRevisionRecord(database, id);
+}
+
+export function getAcceptedReadinessCheckRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, title,
+              scope_json as scopeJson, requirements_json as requirementsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_readiness_check_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedReadinessCheckRevisionRecord(row) : null;
+}
+
+export function listAcceptedReadinessCheckRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, title,
+              scope_json as scopeJson, requirements_json as requirementsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_readiness_check_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedReadinessCheckRevisionRecord);
+}
+
+export function createReadinessCheckAttemptRecord(
+  database,
+  {
+    id,
+    programId,
+    studentIdentityId,
+    readinessCheckRevisionId,
+    result,
+    requirementResults,
+    idempotencyKey,
+    submittedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, studentIdentityId);
+  const revision = assertAcceptedReadinessCheckRevisionBelongsToProgram(database, {
+    programId,
+    revisionId: readinessCheckRevisionId,
+  });
+  assertReadinessResult(result);
+  assertReadinessRequirementResults({ revision, requirementResults, result });
+
+  const existingAttempt = getReadinessCheckAttemptRecordByIdempotencyScope(database, {
+    programId,
+    studentIdentityId,
+    readinessCheckRevisionId,
+    idempotencyKey,
+  });
+  if (existingAttempt) {
+    if (
+      existingAttempt.result === result
+      && JSON.stringify(existingAttempt.requirementResults) === JSON.stringify(requirementResults)
+    ) {
+      return existingAttempt;
+    }
+    throw new StorageInvariantError("readiness_attempt_idempotency_conflict");
+  }
+
+  database
+    .prepare(
+      `insert into readiness_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         readiness_check_revision_id,
+         result,
+         requirement_results_json,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      studentIdentityId,
+      readinessCheckRevisionId,
+      result,
+      JSON.stringify(requirementResults),
+      idempotencyKey,
+      submittedAt,
+    );
+
+  return getReadinessCheckAttemptRecord(database, id);
+}
+
+export function getReadinessCheckAttemptRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              readiness_check_revision_id as readinessCheckRevisionId, result,
+              requirement_results_json as requirementResultsJson,
+              idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from readiness_check_attempts
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapReadinessCheckAttemptRecord(row) : null;
+}
+
+export function listReadinessCheckAttemptRecords(
+  database,
+  { programId = null, studentIdentityId = null, readinessCheckRevisionId = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (studentIdentityId !== null) {
+    filters.push("student_identity_id = ?");
+    values.push(studentIdentityId);
+  }
+  if (readinessCheckRevisionId !== null) {
+    filters.push("readiness_check_revision_id = ?");
+    values.push(readinessCheckRevisionId);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              readiness_check_revision_id as readinessCheckRevisionId, result,
+              requirement_results_json as requirementResultsJson,
+              idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from readiness_check_attempts
+       ${whereClause}
+       order by submitted_at, id`,
+    )
+    .all(...values)
+    .map(mapReadinessCheckAttemptRecord);
 }
 
 export function createAcceptedOpenAnswerCheckEntityRecord(database, { id, programId, currentRevisionId }) {
@@ -3860,6 +4277,220 @@ function assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId,
   }
 }
 
+function assertReadinessCheckCandidateBelongsToProgram(database, { programId, candidateId }) {
+  const candidate = getReadinessCheckCandidateRecord(database, candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("readiness_candidate_not_found");
+  }
+
+  if (candidate.status !== "accepted") {
+    throw new StorageInvariantError("readiness_candidate_not_accepted");
+  }
+
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("readiness_candidate_program_mismatch");
+  }
+}
+
+function assertAcceptedReadinessCheckEntityBelongsToProgram(database, { programId, entityId }) {
+  const entity = getAcceptedReadinessCheckEntityRecord(database, entityId);
+  if (!entity) {
+    throw new StorageInvariantError("readiness_entity_not_found");
+  }
+
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("readiness_entity_program_mismatch");
+  }
+}
+
+function assertAcceptedReadinessCheckRevisionBelongsToProgram(database, { programId, revisionId }) {
+  const revision = getAcceptedReadinessCheckRevisionRecord(database, revisionId);
+  if (!revision) {
+    throw new StorageInvariantError("readiness_revision_not_found");
+  }
+
+  if (revision.programId !== programId) {
+    throw new StorageInvariantError("readiness_revision_program_mismatch");
+  }
+
+  return revision;
+}
+
+function assertReadinessScope(database, { programId, scope }) {
+  if (scope?.scopeKind === "topic") {
+    assertReadinessAcceptedCorpusTarget(database, {
+      programId,
+      targetKind: "topic",
+      targetId: scope.topicEntityId,
+      notFoundReason: "readiness_scope_not_found",
+      mismatchReason: "readiness_scope_program_mismatch",
+    });
+    return;
+  }
+
+  if (scope?.scopeKind === "period") {
+    if (typeof scope.title !== "string" || scope.title.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    if (!Array.isArray(scope.topicEntityIds) || scope.topicEntityIds.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    const ids = new Set();
+    for (const topicEntityId of scope.topicEntityIds) {
+      if (ids.has(topicEntityId)) {
+        throw new StorageInvariantError("readiness_scope_invalid");
+      }
+      ids.add(topicEntityId);
+      assertReadinessAcceptedCorpusTarget(database, {
+        programId,
+        targetKind: "topic",
+        targetId: topicEntityId,
+        notFoundReason: "readiness_scope_not_found",
+        mismatchReason: "readiness_scope_program_mismatch",
+      });
+    }
+    return;
+  }
+
+  throw new StorageInvariantError("readiness_scope_invalid");
+}
+
+function assertReadinessRequirements(database, { programId, requirements }) {
+  if (!Array.isArray(requirements) || requirements.length === 0) {
+    throw new StorageInvariantError("readiness_requirements_invalid");
+  }
+
+  const ids = new Set();
+  for (const requirement of requirements) {
+    if (ids.has(requirement.requirementId)) {
+      throw new StorageInvariantError("readiness_requirement_id_conflict");
+    }
+    ids.add(requirement.requirementId);
+    if (!["developing", "on_track"].includes(requirement.requiredLevel)) {
+      throw new StorageInvariantError("readiness_required_level_invalid");
+    }
+    assertReadinessRequirementTarget(database, { programId, requirement });
+  }
+}
+
+function assertReadinessRequirementTarget(database, { programId, requirement }) {
+  if (["topic", "concept", "material_reference"].includes(requirement.targetKind)) {
+    assertReadinessAcceptedCorpusTarget(database, {
+      programId,
+      targetKind: requirement.targetKind,
+      targetId: requirement.targetId,
+      notFoundReason: "readiness_requirement_target_not_found",
+      mismatchReason: "readiness_requirement_program_mismatch",
+    });
+    return;
+  }
+
+  const entity = getReadinessEvidenceOwnerEntity(database, requirement);
+  if (!entity) {
+    throw new StorageInvariantError("readiness_requirement_target_not_found");
+  }
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("readiness_requirement_program_mismatch");
+  }
+}
+
+function assertReadinessAcceptedCorpusTarget(
+  database,
+  { programId, targetKind, targetId, notFoundReason, mismatchReason },
+) {
+  const target = getAcceptedCorpusEntityRecord(database, targetId);
+  if (!target) {
+    throw new StorageInvariantError(notFoundReason);
+  }
+  if (target.programId !== programId) {
+    throw new StorageInvariantError(mismatchReason);
+  }
+  if (target.acceptedKind !== targetKind) {
+    throw new StorageInvariantError("readiness_target_kind_invalid");
+  }
+}
+
+function getReadinessEvidenceOwnerEntity(database, requirement) {
+  if (requirement.targetKind === "quick_check") {
+    return getAcceptedQuickCheckEntityRecord(database, requirement.targetId);
+  }
+  if (requirement.targetKind === "open_answer_check") {
+    return getAcceptedOpenAnswerCheckEntityRecord(database, requirement.targetId);
+  }
+  if (requirement.targetKind === "assessment_criterion") {
+    return getAcceptedAssessmentCriterionEntityRecord(database, requirement.targetId);
+  }
+  throw new StorageInvariantError("readiness_requirement_target_kind_invalid");
+}
+
+function assertReadinessResult(result) {
+  if (!["ready", "not_ready", "in_progress"].includes(result)) {
+    throw new StorageInvariantError("readiness_result_invalid");
+  }
+}
+
+function assertReadinessRequirementResults({ revision, requirementResults, result }) {
+  if (!Array.isArray(requirementResults) || requirementResults.length !== revision.requirements.length) {
+    throw new StorageInvariantError("readiness_requirement_results_invalid");
+  }
+
+  const resultsById = new Map(requirementResults.map($0 => [$0.requirementId, $0]));
+  if (resultsById.size !== requirementResults.length) {
+    throw new StorageInvariantError("readiness_requirement_result_id_conflict");
+  }
+  for (const requirement of revision.requirements) {
+    const requirementResult = resultsById.get(requirement.requirementId);
+    if (!requirementResult) {
+      throw new StorageInvariantError("readiness_requirement_result_mismatch");
+    }
+    if (
+      requirementResult.targetKind !== requirement.targetKind
+      || requirementResult.targetId !== requirement.targetId
+      || requirementResult.requiredLevel !== requirement.requiredLevel
+    ) {
+      throw new StorageInvariantError("readiness_requirement_result_mismatch");
+    }
+    if (!["no_evidence", "in_progress", "developing", "on_track", "needs_attention"].includes(requirementResult.observedLevel)) {
+      throw new StorageInvariantError("readiness_observed_level_invalid");
+    }
+    assertReadinessResult(requirementResult.result);
+  }
+  if (deriveReadinessAttemptResult(requirementResults) !== result) {
+    throw new StorageInvariantError("readiness_attempt_result_mismatch");
+  }
+}
+
+function deriveReadinessAttemptResult(requirementResults) {
+  if (requirementResults.some($0 => $0.result === "in_progress")) {
+    return "in_progress";
+  }
+  if (requirementResults.some($0 => $0.result === "not_ready")) {
+    return "not_ready";
+  }
+  return "ready";
+}
+
+function getReadinessCheckAttemptRecordByIdempotencyScope(
+  database,
+  { programId, studentIdentityId, readinessCheckRevisionId, idempotencyKey },
+) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              readiness_check_revision_id as readinessCheckRevisionId, result,
+              requirement_results_json as requirementResultsJson,
+              idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from readiness_check_attempts
+       where program_id = ?
+         and student_identity_id = ?
+         and readiness_check_revision_id = ?
+         and idempotency_key = ?`,
+    )
+    .get(programId, studentIdentityId, readinessCheckRevisionId, idempotencyKey);
+
+  return row ? mapReadinessCheckAttemptRecord(row) : null;
+}
+
 function assertQuickCheckOptionCollection({ options, answerKeyOptionId }) {
   if (!Array.isArray(options) || options.length < 2) {
     throw new StorageInvariantError("quick_check_option_collection_invalid");
@@ -4155,6 +4786,10 @@ export function exportIdentityBackup(database) {
     acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
     acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
     quickCheckAttempts: listQuickCheckAttemptRecords(database),
+    readinessCheckCandidates: listReadinessCheckCandidateRecords(database),
+    acceptedReadinessCheckEntities: listAcceptedReadinessCheckEntityRecords(database),
+    acceptedReadinessCheckRevisions: listAcceptedReadinessCheckRevisionRecords(database),
+    readinessCheckAttempts: listReadinessCheckAttemptRecords(database),
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
@@ -4184,6 +4819,7 @@ export function restoreIdentityBackup(database, backup) {
   assertValidAssessmentGraphInBackup(backup);
   assertValidQuickCheckGraphInBackup(backup);
   assertValidLearnerEvidenceTargetLinksInBackup(backup);
+  assertValidReadinessGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
@@ -4194,8 +4830,12 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from open_answer_evaluation_failures").run();
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
+    database.prepare("delete from readiness_check_attempts").run();
     database.prepare("delete from learner_evidence_target_links").run();
     database.prepare("delete from quick_check_attempts").run();
+    database.prepare("delete from accepted_readiness_check_revisions").run();
+    database.prepare("delete from accepted_readiness_check_entities").run();
+    database.prepare("delete from readiness_check_candidates").run();
     database.prepare("delete from accepted_open_answer_check_revisions").run();
     database.prepare("delete from accepted_open_answer_check_entities").run();
     database.prepare("delete from open_answer_check_candidates").run();
@@ -4539,6 +5179,53 @@ export function restoreIdentityBackup(database, backup) {
          check_revision_id,
          selected_option_id,
          matched,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertReadinessCheckCandidate = database.prepare(
+      `insert into readiness_check_candidates (
+         id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedReadinessCheckEntity = database.prepare(
+      `insert into accepted_readiness_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    );
+    const insertAcceptedReadinessCheckRevision = database.prepare(
+      `insert into accepted_readiness_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertReadinessCheckAttempt = database.prepare(
+      `insert into readiness_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         readiness_check_revision_id,
+         result,
+         requirement_results_json,
          idempotency_key,
          submitted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -4912,6 +5599,46 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const candidate of backup.readinessCheckCandidates ?? []) {
+      insertReadinessCheckCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.title,
+        JSON.stringify(candidate.scope),
+        JSON.stringify(candidate.requirements ?? []),
+        JSON.stringify(candidate.sourceIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+    }
+
+    for (const entity of backup.acceptedReadinessCheckEntities ?? []) {
+      insertAcceptedReadinessCheckEntity.run(
+        entity.id,
+        entity.programId,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedReadinessCheckRevisions ?? []) {
+      insertAcceptedReadinessCheckRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.title,
+        JSON.stringify(revision.scope),
+        JSON.stringify(revision.requirements ?? []),
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+    }
+
     for (const attempt of backup.quickCheckAttempts ?? []) {
       insertQuickCheckAttempt.run(
         attempt.id,
@@ -4920,6 +5647,19 @@ export function restoreIdentityBackup(database, backup) {
         attempt.checkRevisionId,
         attempt.selectedOptionId,
         attempt.matched ? 1 : 0,
+        attempt.idempotencyKey,
+        attempt.submittedAt,
+      );
+    }
+
+    for (const attempt of backup.readinessCheckAttempts ?? []) {
+      insertReadinessCheckAttempt.run(
+        attempt.id,
+        attempt.programId,
+        attempt.studentIdentityId,
+        attempt.readinessCheckRevisionId,
+        attempt.result,
+        JSON.stringify(attempt.requirementResults ?? []),
         attempt.idempotencyKey,
         attempt.submittedAt,
       );
@@ -5263,6 +6003,51 @@ function mapQuickCheckAttemptRecord(row) {
     checkRevisionId: row.checkRevisionId,
     selectedOptionId: row.selectedOptionId,
     matched: Boolean(row.matched),
+    idempotencyKey: row.idempotencyKey,
+    submittedAt: row.submittedAt,
+  };
+}
+
+function mapReadinessCheckCandidateRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    title: row.title,
+    scope: JSON.parse(row.scopeJson),
+    requirements: JSON.parse(row.requirementsJson),
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapAcceptedReadinessCheckRevisionRecord(row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    title: row.title,
+    scope: JSON.parse(row.scopeJson),
+    requirements: JSON.parse(row.requirementsJson),
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+}
+
+function mapReadinessCheckAttemptRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    readinessCheckRevisionId: row.readinessCheckRevisionId,
+    result: row.result,
+    requirementResults: JSON.parse(row.requirementResultsJson),
     idempotencyKey: row.idempotencyKey,
     submittedAt: row.submittedAt,
   };
@@ -6046,6 +6831,165 @@ function assertValidQuickCheckGraphInBackup(backup) {
   }
 }
 
+function assertValidReadinessGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const acceptedCorpusEntitiesById = new Map(
+    (backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const quickCheckEntitiesById = new Map(
+    (backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const openAnswerCheckEntitiesById = new Map(
+    (backup.acceptedOpenAnswerCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const criterionEntitiesById = new Map(
+    (backup.acceptedAssessmentCriterionEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const candidatesById = new Map((backup.readinessCheckCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map(
+    (backup.acceptedReadinessCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const revisionsById = new Map(
+    (backup.acceptedReadinessCheckRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+  const attemptIdempotencyScopes = new Set();
+
+  assertBackupCollectionHasNoDuplicateIds(backup.readinessCheckCandidates ?? [], "readiness_candidate_id_conflict");
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.acceptedReadinessCheckEntities ?? [],
+    "readiness_entity_id_conflict",
+  );
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.acceptedReadinessCheckRevisions ?? [],
+    "readiness_revision_id_conflict",
+  );
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.readinessCheckAttempts ?? [],
+    "readiness_attempt_id_conflict",
+  );
+
+  for (const candidate of backup.readinessCheckCandidates ?? []) {
+    if (!programShellsById.has(candidate.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(candidate.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+    assertReadinessBackupScope({
+      programId: candidate.programId,
+      scope: candidate.scope,
+      acceptedCorpusEntitiesById,
+    });
+    assertReadinessBackupRequirements({
+      programId: candidate.programId,
+      requirements: candidate.requirements,
+      acceptedCorpusEntitiesById,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+  }
+
+  for (const revision of backup.acceptedReadinessCheckRevisions ?? []) {
+    if (!programShellsById.has(revision.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(revision.acceptedByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    const entity = entitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("readiness_entity_not_found");
+    }
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("readiness_revision_program_mismatch");
+    }
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("readiness_candidate_not_found");
+    }
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("readiness_candidate_not_accepted");
+    }
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("readiness_candidate_program_mismatch");
+    }
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+    assertReadinessBackupScope({
+      programId: revision.programId,
+      scope: revision.scope,
+      acceptedCorpusEntitiesById,
+    });
+    assertReadinessBackupRequirements({
+      programId: revision.programId,
+      requirements: revision.requirements,
+      acceptedCorpusEntitiesById,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+  }
+
+  for (const entity of backup.acceptedReadinessCheckEntities ?? []) {
+    if (!programShellsById.has(entity.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    const currentRevision = revisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("readiness_revision_not_found");
+    }
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("readiness_revision_entity_mismatch");
+    }
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("readiness_revision_program_mismatch");
+    }
+  }
+
+  for (const attempt of backup.readinessCheckAttempts ?? []) {
+    if (!programShellsById.has(attempt.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(attempt.studentIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    const revision = revisionsById.get(attempt.readinessCheckRevisionId);
+    if (!revision) {
+      throw new StorageInvariantError("readiness_revision_not_found");
+    }
+    if (revision.programId !== attempt.programId) {
+      throw new StorageInvariantError("readiness_revision_program_mismatch");
+    }
+    assertReadinessResult(attempt.result);
+    assertReadinessRequirementResults({
+      revision,
+      requirementResults: attempt.requirementResults,
+      result: attempt.result,
+    });
+    const idempotencyScope = [
+      attempt.programId,
+      attempt.studentIdentityId,
+      attempt.readinessCheckRevisionId,
+      attempt.idempotencyKey,
+    ].join("\u0000");
+    if (attemptIdempotencyScopes.has(idempotencyScope)) {
+      throw new StorageInvariantError("readiness_attempt_idempotency_conflict");
+    }
+    attemptIdempotencyScopes.add(idempotencyScope);
+  }
+}
+
 function assertValidLearnerEvidenceTargetLinksInBackup(backup) {
   const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
   const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
@@ -6125,6 +7069,161 @@ function assertValidLearnerEvidenceTargetLinksInBackup(backup) {
       activeScopes.add(activeScope);
     }
   }
+}
+
+function assertBackupCollectionHasNoDuplicateIds(records, reason) {
+  const ids = new Set();
+  for (const record of records) {
+    if (ids.has(record.id)) {
+      throw new StorageInvariantError(reason);
+    }
+    ids.add(record.id);
+  }
+}
+
+function assertReadinessBackupScope({ programId, scope, acceptedCorpusEntitiesById }) {
+  if (scope?.scopeKind === "topic") {
+    assertReadinessBackupAcceptedCorpusTarget({
+      programId,
+      targetKind: "topic",
+      targetId: scope.topicEntityId,
+      acceptedCorpusEntitiesById,
+      notFoundReason: "readiness_scope_not_found",
+      mismatchReason: "readiness_scope_program_mismatch",
+    });
+    return;
+  }
+
+  if (scope?.scopeKind === "period") {
+    if (typeof scope.title !== "string" || scope.title.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    if (!Array.isArray(scope.topicEntityIds) || scope.topicEntityIds.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    const topicEntityIds = new Set();
+    for (const topicEntityId of scope.topicEntityIds) {
+      if (topicEntityIds.has(topicEntityId)) {
+        throw new StorageInvariantError("readiness_scope_invalid");
+      }
+      topicEntityIds.add(topicEntityId);
+      assertReadinessBackupAcceptedCorpusTarget({
+        programId,
+        targetKind: "topic",
+        targetId: topicEntityId,
+        acceptedCorpusEntitiesById,
+        notFoundReason: "readiness_scope_not_found",
+        mismatchReason: "readiness_scope_program_mismatch",
+      });
+    }
+    return;
+  }
+
+  throw new StorageInvariantError("readiness_scope_invalid");
+}
+
+function assertReadinessBackupRequirements({
+  programId,
+  requirements,
+  acceptedCorpusEntitiesById,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (!Array.isArray(requirements) || requirements.length === 0) {
+    throw new StorageInvariantError("readiness_requirements_invalid");
+  }
+
+  const requirementIds = new Set();
+  for (const requirement of requirements) {
+    if (requirementIds.has(requirement.requirementId)) {
+      throw new StorageInvariantError("readiness_requirement_id_conflict");
+    }
+    requirementIds.add(requirement.requirementId);
+    if (!["developing", "on_track"].includes(requirement.requiredLevel)) {
+      throw new StorageInvariantError("readiness_required_level_invalid");
+    }
+    assertReadinessBackupRequirementTarget({
+      programId,
+      requirement,
+      acceptedCorpusEntitiesById,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+  }
+}
+
+function assertReadinessBackupRequirementTarget({
+  programId,
+  requirement,
+  acceptedCorpusEntitiesById,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (["topic", "concept", "material_reference"].includes(requirement.targetKind)) {
+    assertReadinessBackupAcceptedCorpusTarget({
+      programId,
+      targetKind: requirement.targetKind,
+      targetId: requirement.targetId,
+      acceptedCorpusEntitiesById,
+      notFoundReason: "readiness_requirement_target_not_found",
+      mismatchReason: "readiness_requirement_program_mismatch",
+    });
+    return;
+  }
+
+  const target = getReadinessBackupEvidenceOwnerEntity({
+    requirement,
+    quickCheckEntitiesById,
+    openAnswerCheckEntitiesById,
+    criterionEntitiesById,
+  });
+  if (!target) {
+    throw new StorageInvariantError("readiness_requirement_target_not_found");
+  }
+  if (target.programId !== programId) {
+    throw new StorageInvariantError("readiness_requirement_program_mismatch");
+  }
+}
+
+function assertReadinessBackupAcceptedCorpusTarget({
+  programId,
+  targetKind,
+  targetId,
+  acceptedCorpusEntitiesById,
+  notFoundReason,
+  mismatchReason,
+}) {
+  const target = acceptedCorpusEntitiesById.get(targetId);
+  if (!target) {
+    throw new StorageInvariantError(notFoundReason);
+  }
+  if (target.programId !== programId) {
+    throw new StorageInvariantError(mismatchReason);
+  }
+  if (target.acceptedKind !== targetKind) {
+    throw new StorageInvariantError("readiness_target_kind_invalid");
+  }
+}
+
+function getReadinessBackupEvidenceOwnerEntity({
+  requirement,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (requirement.targetKind === "quick_check") {
+    return quickCheckEntitiesById.get(requirement.targetId);
+  }
+  if (requirement.targetKind === "open_answer_check") {
+    return openAnswerCheckEntitiesById.get(requirement.targetId);
+  }
+  if (requirement.targetKind === "assessment_criterion") {
+    return criterionEntitiesById.get(requirement.targetId);
+  }
+  throw new StorageInvariantError("readiness_requirement_target_kind_invalid");
 }
 
 function getLearnerEvidenceTargetLinkBackupEvidenceOwner({
