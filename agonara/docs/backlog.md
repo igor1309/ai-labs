@@ -9,13 +9,20 @@ version: 0.0.4
 
 ## Storage ownership
 
-Storage design is deferred until module behavior and state ownership are clarified.
+Storage is no longer wholly deferred. The implemented SQLite substrate now persists Identity, Admin authority, sessions, audit events, Program shells, Program Memberships, Program events, Corpus sources and accepted revisions, accepted assessment criteria, accepted open-answer checks, Student Workspace open-answer attempts/evaluation state, evaluator orchestration records, Quick Check accepted revisions, protected answer keys, Quick Check attempts, and backup/restore graphs.
 
-Storage must be derived from module responsibilities, not specified as an independent axis.
+Storage must still be derived from module responsibilities, not specified as an independent axis.
+
+Remaining storage questions:
+
+- How should future materials, topic graphs, concept graphs, and learning-path navigation records be modeled without mixing shared Program corpus with personal Student state?
+- Which persisted learner-state summaries are allowed once progress and weak-area interpretation move beyond raw evidence?
+- What invitation, recovery, and membership-policy history is needed for multi-user Program access without turning Admin authority into a Program role?
+- Which Quick Check HTTP transport artifacts, if any, need additional persisted pagination or idempotency records beyond the implemented domain storage?
 
 ## Under consideration
 
-Documents parked in [`under-consideration/`](under-consideration/) need an owning decision before downstream docs are revised. Do not let this folder go stale.
+Documents parked in an `under-consideration/` folder need an owning decision before downstream docs are revised. Do not let that folder go stale.
 
 No active under-consideration documents.
 
