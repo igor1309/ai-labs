@@ -2951,6 +2951,84 @@ test("quickCheckAttempts_shouldRejectInvalidReadsAndListQueries", async () => {
   }
 });
 
+test("quickCheckHttpAcceptance_shouldKeepOutOfScopeRoutesAbsent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(60),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-absence-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-absence-student@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId);
+    const submitted = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+      },
+      "quick-absence-key",
+    );
+    const attemptId = (await submitted.json()).value.quickCheckAttempt.attemptId;
+    const absentRoutes = [
+      ["GET", "/quick-check-ui"],
+      ["GET", `/programs/${programId}/quick-checks/randomized`],
+      ["POST", `/programs/${programId}/quick-checks/multiple-select-attempts`],
+      ["GET", `/programs/${programId}/quick-check-topic-attempts`],
+      ["GET", `/programs/${programId}/quick-check-period-attempts`],
+      ["GET", `/quick-check-mastery/${attemptId}`],
+      ["GET", `/quick-check-weak-areas/${attemptId}`],
+      ["GET", `/quick-check-progress/${attemptId}`],
+      ["GET", `/quick-check-grading/${attemptId}`],
+      ["GET", "/quick-check-provider/jobs"],
+      ["GET", "/quick-check-worker/jobs"],
+      ["GET", "/quick-check-queue/jobs"],
+      ["GET", "/quick-check-human-review/jobs"],
+    ];
+    const responses = [];
+    for (const [method, route] of absentRoutes) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        body: method === "POST" ? JSON.stringify({}) : undefined,
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": student.csrfToken,
+        },
+        method,
+      });
+      responses.push({
+        body: await response.json(),
+        method,
+        route,
+        statusCode: response.status,
+      });
+    }
+
+    assert.deepEqual(
+      responses,
+      absentRoutes.map(([method, route]) => ({
+        body: { status: "rejected", reason: "not_found" },
+        method,
+        route,
+        statusCode: 404,
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("acceptedAssessmentCriteria_shouldListCurrentAndReturnHistoricalRevision_onCuratorSession", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
 
@@ -8314,6 +8392,85 @@ test("startServer_shouldExposeStudentWorkspaceOpenAnswerRoutes_onProductionCompo
         detailStatusCode: 200,
         listStatusCode: 200,
         listedAttemptIds: [attemptId],
+        submissionStatus: "accepted",
+        submissionStatusCode: 200,
+      },
+    );
+  } finally {
+    await close(server);
+    rmSync(databaseDirectory, { force: true, recursive: true });
+  }
+});
+
+test("startServer_shouldExposeQuickCheckRoutes_onProductionComposition", async () => {
+  const databaseDirectory = mkdtempSync(join(tmpdir(), "agonara-quick-check-composition-"));
+  const databasePath = join(databaseDirectory, "agonara.sqlite");
+  const server = startServer({
+    bootstrapSecret: "operator-secret",
+    databasePath,
+    host: "127.0.0.1",
+    log: () => {},
+    port: "0",
+  });
+  const baseUrl = await baseUrlForStartedServer(server);
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-production-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-production-student@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+      answerKeyOptionIndex: 0,
+      options: ["Closed under addition", "Only finite dimension"],
+      prompt: "Which property is required?",
+      title: "Closure check",
+    });
+    const deliveries = await fetch(`${baseUrl}/programs/${programId}/quick-checks`, {
+      headers: { cookie: student.cookie },
+    });
+    const submission = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+      },
+      "quick-production-key",
+    );
+    const submissionBody = await submission.json();
+    const attemptId = submissionBody.value.quickCheckAttempt.attemptId;
+    const detail = await fetch(`${baseUrl}/quick-check-attempts/${attemptId}`, {
+      headers: { cookie: student.cookie },
+    });
+    const attempts = await fetch(`${baseUrl}/programs/${programId}/quick-check-attempts`, {
+      headers: { cookie: student.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        attemptIds: (await attempts.json()).value.quickCheckAttempts.map($0 => $0.attemptId),
+        attemptsStatusCode: attempts.status,
+        deliveryTitles: (await deliveries.json()).value.quickCheckDeliveries.map($0 => $0.title),
+        deliveriesStatusCode: deliveries.status,
+        detailStatusCode: detail.status,
+        submissionStatus: submissionBody.status,
+        submissionStatusCode: submission.status,
+      },
+      {
+        attemptIds: [attemptId],
+        attemptsStatusCode: 200,
+        deliveryTitles: ["Closure check"],
+        deliveriesStatusCode: 200,
+        detailStatusCode: 200,
         submissionStatus: "accepted",
         submissionStatusCode: 200,
       },

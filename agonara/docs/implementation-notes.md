@@ -157,7 +157,7 @@ The original Identity and Operations first slice has been extended by later back
 - Corpus owns Program sources, Corpus candidates, acceptance/rejection, accepted revisions, scoped Corpus event reads, and backup/restore graph validation.
 - Accepted assessment criteria and open-answer checks are accepted Program corpus, with curator/admin/student read separation at the HTTP boundary.
 - Student Workspace owns open-answer attempt submission, idempotency, owner-only attempt reads, evaluation status/evidence reads, evaluator orchestration, evaluator worker execution, and backup/restore preservation.
-- Quick Check assessment has backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, and backup/restore validation.
+- Quick Check assessment has HTTP, backend/domain, and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, idempotent retries, owner-only reads, and backup/restore validation.
 
 The production server entrypoint now composes Identity, Program, Corpus, and Student Workspace command boundaries against the configured SQLite database. Operational completion tracing is emitted from a common HTTP response boundary so accepted, rejected, and faulted Identity, Program, Corpus, Student Workspace, health, and diagnostics routes share request correlation without logging request bodies, cookies, CSRF tokens, idempotency keys, SQL, provider details, or raw evaluator artifacts.
 
@@ -165,7 +165,7 @@ The production server entrypoint now composes Identity, Program, Corpus, and Stu
 
 Current backend/domain support does not imply a complete product UI:
 
-- Quick Check lacks HTTP routes and UI transport even though its domain/storage slice exists.
+- Quick Check lacks UI transport even though its HTTP/domain/storage slice exists.
 - Materials navigation, topic/concept graph navigation, topic-level or period-level checks, progress interpretation, weak-area interpretation, membership invitation, and recovery flows still need separate downstream artifacts.
 - The Admin board is implemented for operational Identity/Admin work; Student and Curator product screens remain outside the current runtime.
 

@@ -18,7 +18,7 @@ Remaining storage questions:
 - How should future materials, topic graphs, concept graphs, and learning-path navigation records be modeled without mixing shared Program corpus with personal Student state?
 - Which persisted learner-state summaries are allowed once progress and weak-area interpretation move beyond raw evidence?
 - What invitation, recovery, and membership-policy history is needed for multi-user Program access without turning Admin authority into a Program role?
-- Which Quick Check HTTP transport artifacts, if any, need additional persisted pagination or idempotency records beyond the implemented domain storage?
+- Which future Quick Check UI artifacts, if any, need persisted learner-facing presentation state beyond the implemented HTTP/domain storage?
 
 ## Under consideration
 

@@ -17,7 +17,7 @@ description: "Implementation plan: Agonara Quick Check assessment HTTP API."
 
 Deliver the Agonara v0.0.1 HTTP API for deterministic single-select Quick Check curation, student-safe delivery, and Student Workspace-owned attempts.
 
-This plan implements [Quick Check Assessment API](../specs/quick-check-assessment-api.md), [Quick-Check Assessment First Slice](../specs/quick-check-assessment-first-slice.md), and [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md). It preserves INT-04 from [Product Intent](../intent_learning_program_app.md) by exposing checks during study without exposing protected answer keys or adding learner-state interpretation.
+This plan implements [Quick Check Assessment API](../../specs/quick-check-assessment-api.md), [Quick-Check Assessment First Slice](../../specs/quick-check-assessment-first-slice.md), and [ADR-016](../../adr/adr-016-quick-check-assessment-boundary.md). It preserves INT-04 from [Product Intent](../../intent_learning_program_app.md) by exposing checks during study without exposing protected answer keys or adding learner-state interpretation.
 
 ## Execution mode
 
@@ -37,7 +37,7 @@ Preflight check: [x] done
 
 ### In scope
 
-- HTTP route adapters for every endpoint in [Quick Check Assessment API](../specs/quick-check-assessment-api.md).
+- HTTP route adapters for every endpoint in [Quick Check Assessment API](../../specs/quick-check-assessment-api.md).
 - Reuse of `agonara_session`, `X-Agonara-CSRF`, accepted/rejected/fault envelopes, common completion tracing, bounded pagination, opaque cursors, JSON body classification, and fault redaction.
 - Curator candidate creation, listing, acceptance, rejection, and answer-key-inclusive curation revision reads.
 - Student-safe delivery listing/detail reads without answer keys, correctness flags, candidate ids, or curator-only metadata.
@@ -223,7 +223,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 5 - Production Composition And Closeout
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: prove Quick Check HTTP routes work through production composition and close documentation without adding out-of-scope product surfaces.
 
@@ -255,7 +255,7 @@ Use Node commands through the repo wrapper:
 
 ## Done criteria
 
-- Every endpoint in [Quick Check Assessment API](../specs/quick-check-assessment-api.md) is implemented.
+- Every endpoint in [Quick Check Assessment API](../../specs/quick-check-assessment-api.md) is implemented.
 - Quick Check HTTP routes are exposed through production `startServer()` composition.
 - Program Curator routes constrain answer-key visibility to curator-authorized surfaces.
 - Student delivery routes never expose answer keys, per-option correctness metadata, candidate ids, or curator-only metadata.

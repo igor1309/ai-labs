@@ -1,5 +1,5 @@
 ---
-date: 2026-05-27
+date: 2026-06-03
 model: gpt-5
 description: "Agonara backend and product docs for a structured learning program environment"
 ---
@@ -29,12 +29,12 @@ Implemented backend and domain surfaces:
 - Corpus curation: Program sources, Corpus candidates, acceptance/rejection, accepted corpus revisions, Corpus event reads, and backup/restore support.
 - Accepted checks and criteria: assessment criteria, open-answer checks, accepted revisions, and curator/student/admin read separation.
 - Student Workspace open answers: Student submission, idempotency, owner-only attempt detail/list reads, evaluation status/evidence reads, evaluator orchestration, worker execution, and backup/restore support.
-- Quick Check assessment: backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, and backup/restore support.
+- Quick Check assessment: session-backed HTTP routes, backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, and backup/restore support.
 - Admin board: a local operations board for bootstrap, sign in/out, Identity management, operational access inspection, and audit event inspection.
 
 Still deferred or backend-only:
 
-- Quick Check does not yet have HTTP routes or UI transport.
+- Quick Check does not yet have UI transport.
 - Materials/topic navigation, topic-level or period-level checks, progress interpretation, weak-area interpretation, and membership invitation/recovery flows still need separate specs or plans.
 - Student-facing and curator-facing product UI beyond the Admin board is not implemented.
 
