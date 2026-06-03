@@ -6,11 +6,11 @@ description: "Next steps for the traceability-review skill: consolidation refact
 
 # Traceability Review — TODO
 
-## New pass identified (from research)
-- **Upward orphan check** — does every ADR/spec trace *back* to a source intent, or is it unrequested scope creep? Distinct from allocation completeness (which is the *downward* check). Vocabulary grounded in `research/orphan-requirement-allocation-completeness.md`.
+## Next
+- **Umbrella ledger** — aggregate findings across all passes into what a human resolution session works from. Grows more necessary with each pass; now the clear next step.
 
-## Cross-cutting
-- **Umbrella ledger** — aggregate findings across all passes into what a human resolution session works from. Grows more necessary with each pass.
+## Possible extension
+- **Spec-level upward orphan check** — pass 7 (v0.9.0) implements the upward orphan check at the **ADR→intent** layer (every ADR decision must trace back to a source intent). The spec→ADR/intent counterpart — does every spec clause trace back to an ADR decision or intent — is the natural extension if spec-level scope creep needs guarding. Vocabulary grounded in `research/orphan-requirement-allocation-completeness.md`.
 
 ## Parked
 - **Publishing workflow** — when merging to trunk: `marketplace.json` + `plugin.json` bump, log entry, PR (per `dev-skills/.claude/CLAUDE.md`). Decide public vs internal.

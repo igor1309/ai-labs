@@ -11,16 +11,17 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## State
 
-- Branch **`traceability`**, unpushed, working tree clean. Skill at **v0.8.0**.
-- The **`intent → ADR → spec → tests` pipeline is implemented end to end** — six
-  passes, each validated on Agonara (qualitative-first run + 3× variance):
+- Branch **`traceability`**, unpushed, working tree clean. Skill at **v0.9.0**.
+- The **`intent → ADR → spec → tests` pipeline is implemented end to end** — seven
+  passes, each validated on Agonara (qualitative-first run + variance):
   1. intent×intent (v0.0.1) · 2. intent→ADR per-module (v0.2.0) ·
   3. ADR×ADR cross-module (v0.3.0) · 4. allocation completeness (v0.4.0) ·
-  5. ADR→spec per-module (v0.7.0) · 6. spec↔tests per-module (v0.8.0).
+  5. ADR→spec per-module (v0.7.0) · 6. spec↔tests per-module (v0.8.0) ·
+  7. upward orphan check, ADR→intent per-module (v0.9.0).
 - v0.5/0.6 were the **consolidation refactor** (intent-driven lean, project
   specifics lifted to the case study, evals reframed as a regression harness).
 - One reference output per pass lives in `agonara/docs/traceability-reviews/`;
-  `evals/evals.json` has eval ids 1–6 (one per pass).
+  `evals/evals.json` has eval ids 1–7 (one per pass).
 
 ## Gotchas (the non-obvious things that bite)
 
@@ -35,8 +36,12 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 - **Method pattern.** Every pass = a **deterministic complete matrix**, rows
   pinned to the source's own units (don't sub-split), findings derived
   mechanically. The residual variance is always a **bounded disposition call**
-  (loss-vs-uncovered, deferred-vs-missing, covered-vs-untested, drift-count).
-  Evals assert the *stable* parts and **leave the disposition unpinned**.
+  (loss-vs-uncovered, deferred-vs-missing, covered-vs-untested, drift-count,
+  derived-vs-orphan). Evals assert the *stable* parts and **leave the disposition
+  unpinned**. One twist for the orphan check: its rows pin to **ADR prose
+  decisions, which carry no IDs**, so even the row *count* is soft (63/63/53 over
+  three runs) — the eval pins the row-generation rule and the 0-orphan verdict,
+  not a number.
 - **Evals are a regression harness, not a living contract** (see
   `evals/README.md`). Reference outputs are perishable, provenance-stamped
   snapshots; when Agonara's docs change, re-run + human-confirm, don't "fix" the
@@ -58,19 +63,18 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## What's next (see TODO.md)
 
-- **Upward orphan check** — does every ADR/spec trace *back* to a source intent
-  (unrequested scope creep)? The *upward* counterpart to allocation
-  completeness; vocabulary grounded in
-  `research/orphan-requirement-allocation-completeness.md`.
 - **Umbrella ledger** — aggregate findings across passes into what a human
-  resolution session works from.
+  resolution session works from. Now the clear next step.
+- **Spec-level upward orphan check** (extension) — pass 7 covers ADR→intent; the
+  spec→ADR/intent counterpart (does every spec clause trace back) is the natural
+  follow-on if spec-level scope creep needs guarding.
 - **Parked:** publishing workflow (marketplace.json/plugin.json/log/PR per
   `dev-skills/.claude/CLAUDE.md`) when ready to merge; hosting/triggering
   (single vs multi agent); the CUR-13 acceptance-time-vs-pre-acceptance refinement.
 
 ## Not done
 
-- Nothing is **pushed or merged** — the whole effort sits on `traceability` (27
+- Nothing is **pushed or merged** — the whole effort sits on `traceability` (30
   commits ahead of trunk). Publishing is a deliberate later gate.
 - spec↔tests + all passes are validated on **one module** (Corpus/Curator) and
   the intent/ADR layers; running them across the other Agonara modules is real

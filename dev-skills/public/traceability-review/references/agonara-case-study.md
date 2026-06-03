@@ -39,6 +39,17 @@ baseline.
   (ADR→spec) concern, not a module-ownership gap. The suppression rules caught
   the would-be false positives (Product Analytics via a system-level owner;
   deferred-mechanics capabilities via an explicit owner).
+- **upward orphan check** — **0 orphans** across 63 ADR-decision rows (ADR-010 +
+  ADR-009, Corpus/Curator). Every Decision/Rule traces back to an accepted intent
+  (INT-/CUR-/STU-/ADM-) or is a legitimate *derived* decision (storage/separation
+  mechanism, acceptance attribution/provenance, atomicity, event emission) of a
+  traced one. The parent-less-*looking* decisions — the Program shell + its
+  operator-visible metadata (ADR-009), the self-join admission default, stable
+  accepted revisions — reproduced as the same judgement calls on every run and
+  were routed to open questions (intent layer), never forced to ORPHAN. This is
+  the *upward* counterpart to allocation completeness: allocation found 0
+  unallocated (no intent without an owner), this found 0 orphan (no ADR decision
+  without an intent parent).
 
 ## Methodological lessons (these are what the skill encodes)
 
@@ -61,7 +72,22 @@ baseline.
   capability whose record is owned but whose presentation is a downstream
   concern is allocated, with the view logged as an open question.
 - **Vocabulary.** "Unallocated" = no *downward* owner (allocation completeness);
-  "orphan" = no *upward* parent (a separate, not-yet-built pass). Don't conflate.
+  "orphan" = no *upward* parent (the upward orphan check). Don't conflate.
+- **The orphan check's row unit is softer than the ID-pinned passes.** Allocation
+  and intent→ADR pin rows to externally numbered IDs (INT-01, CUR-01…), so counts
+  are stable. The orphan check pins to *ADR prose decisions*, which carry no IDs —
+  so the count wobbled (63 / 63 / 53 across three runs; the outlier promoted
+  Executive-Summary restatements into rows and folded duplicate rules). The
+  0-orphan verdict and *which* decisions are borderline reproduced perfectly; only
+  the count drifts. So the eval pins the row-generation rule + the verdict + the
+  named borderline decisions, not a number — and the skill reports the count as
+  approximate.
+- **Derived requirement ≠ orphan.** A decision with no direct intent parent is not
+  automatically scope creep: a *derived requirement* — a technical/architectural
+  means that necessarily follows from honouring a traced decision — legitimately
+  has no stakeholder parent. ORPHAN fires only for *user-observable* scope that is
+  neither a derivation nor an intent-left-open elaboration. Without this guard the
+  pass would false-positive on every storage/attribution/atomicity rule.
 - **spec ↔ tests scope is discovered, not listed.** A module's clauses are
   tested across several files (domain, API, backup, executable); hand-listing
   files produced false "untested" findings until the pass grepped titles across

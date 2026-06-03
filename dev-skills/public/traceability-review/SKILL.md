@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.8.0"
+version: "0.9.0"
 author: Igor Malyarov
 ---
 
@@ -22,9 +22,9 @@ divergence between artifacts that share a parent**. The ground truth for every
 check is the **upstream node**, not the code — this is what distinguishes it
 from doc-drift (whose ground truth is the code).
 
-Validated across four passes (intent×intent, intent→ADR, ADR×ADR, allocation
-completeness) — see `references/agonara-case-study.md` for the worked example.
-Treat unimplemented passes below as roadmap, not tested behavior.
+Validated pass by pass on Agonara — see `references/agonara-case-study.md` for
+the worked example. Treat any pass not marked *(implemented)* below as roadmap,
+not tested behavior.
 
 ## Precondition (topology)
 
@@ -51,9 +51,15 @@ project.
 6. **spec ↔ tests** — per module; test **names** only (no bodies, don't run
    tests — on a trunk-only repo a merged test passes); every spec clause has a
    named test, every test name traces to a clause. *(implemented)*
+7. **upward orphan check** — per module; the *upward* counterpart to allocation
+   completeness. Every ADR decision must trace *back* to a source intent; one
+   that introduces user-observable scope no intent requested — and that is not a
+   design derivation of a traced decision — is an **orphan** (scope creep).
+   *(implemented)*
 
-(The upward "orphan" check — does every ADR/spec trace *back* to a source
-intent — is a separate future pass; "unallocated" here is the *downward* check.)
+("Unallocated" (pass 4) is the *downward* check — an intent capability with no
+owner. "Orphan" (pass 7) is the *upward* check — an ADR decision with no intent
+parent. Don't conflate them.)
 
 ## How a pass works
 
@@ -136,6 +142,25 @@ is too large to hold at once, split by clustered concern, not arbitrarily.
   verdict. Extract titles with `grep`, not a written script (measured: a script
   adds authoring + run cost and dumps the whole suite through context, with no
   accuracy gain for names-only extraction).
+- **upward orphan check**: the ADR is downstream here, the intent upstream — the
+  reverse of intent→ADR. One row per ADR **Decision sentence and Rules/Invariants
+  bullet**, pinned to the ADR's own units; do **not** enumerate Executive
+  Summary, Context, Consequences, or Non-Goals as rows, don't sub-split a bullet,
+  don't fold duplicate rules, and don't promote an Executive-Summary restatement
+  into its own row — that pinning is what keeps the row count stable run-to-run.
+  (ADR decisions carry no stable IDs the way intent stories do, so this unit is
+  softer than an ID-pinned pass; report the count as approximate.) Each row
+  is `traced` (cite the intent `ID file:line`), `derived` (no direct intent
+  parent but a legitimate design/architectural derivation of a traced decision or
+  system-level need — cite the parent; a "derived requirement" is **not** an
+  orphan), `carried-shape` (elaborates the shape of a capability the intent left
+  open — faithful, not scope creep), or `ORPHAN` (a finding: introduces
+  user-observable scope no intent requested **and** not a derivation **and** not
+  an intent-left-open elaboration — gold-plating). The **derived-vs-ORPHAN** call
+  is the one residual judgement; be conservative — when genuinely unsure, route
+  it as an open question tagged `(resolving layer: intent)`, not a forced ORPHAN.
+  A clean run (0 orphans) is common and valid — back it with the completed matrix
+  and the suppression guard that caught each parent-less-looking decision.
 
 ## Output
 
