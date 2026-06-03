@@ -68,6 +68,32 @@ Fix: Do not fold these large product areas into this closure. Add a bounded next
 
 Required tests: Docs verification for front matter, links, traceability, and `git diff --check`.
 
+## Adversarial Review Closure
+
+### Review finding 1 - code phases omitted the build gate
+
+Verdict: fail
+
+Why: Repo process gates require both `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes. The initial plan only required the Agonara test wrapper for code phases.
+
+Fix applied: Phase 1, Phase 2, the Quick Check HTTP implementation phase, and the done criteria now require both the Agonara test wrapper and the root build wrapper.
+
+### Review finding 2 - Quick Check transport stopped at handoff
+
+Verdict: fail
+
+Why: The review finding says Quick Check remains backend/domain-only. A plan that only adds another spec and implementation plan would leave that implementation gap open.
+
+Fix applied: Quick Check work is split into a spec/plan phase and a separate HTTP implementation phase with route tests, production composition checks, redaction checks, and build gates.
+
+### Review finding 3 - tracing phase allowed implementation-time spec drift
+
+Verdict: warning
+
+Why: The operational tracing phase allowed implementation to revise the accepted operational spec inside the same phase. That hides architecture/spec instability in implementation work.
+
+Fix applied: Phase 2 now treats the operational spec as source of truth and stops for a separate spec/ADR review if the contract is wrong.
+
 ## Goal
 
 Close the current Agonara implementation and documentation gaps that make implemented behavior unavailable in production composition, make operational tracing ambiguous, or leave current-state docs misleading. The plan also records the next buildable product handoffs for Quick Check transport and broader learning-product slices without bundling those long-range product features into this closure.
@@ -102,16 +128,16 @@ Preflight check: [ ] done
 | Student Workspace owns open-answer attempt submission and owner-only reads under Program Membership authorization. | Phase 1 |
 | Operational cross-cutting owns request correlation, completion logs, diagnostics, health, redaction, and audit/log separation. | Phase 2 |
 | Corpus, Program Membership, Student Workspace, and Identity boundaries stay visible in current-state docs. | Phase 3 |
-| Quick Check accepted revisions and answer keys stay protected while Student Workspace owns attempts. | Phase 4 |
-| Deferred product slices stay explicit without silently changing accepted architecture. | Phase 5 |
+| Quick Check accepted revisions and answer keys stay protected while Student Workspace owns attempts. | Phase 4, Phase 5 |
+| Deferred product slices stay explicit without silently changing accepted architecture. | Phase 6 |
 
 ## Product intent traceability
 
 | Story | Phase |
 |---|---|
-| INT-04 - Answer checks during study | Phase 4 creates the transport plan/spec handoff for Quick Check user-facing routes. |
+| INT-04 - Answer checks during study | Phase 4 creates the transport contract and Phase 5 implements Quick Check user-facing HTTP routes. |
 | INT-05 - Submit open answers and receive feedback tied to accepted criteria | Phase 1 makes implemented Student Workspace HTTP routes available through production composition. |
-| INT-07 - See personal state and evidence | Phase 5 keeps progress/weak-area work visible as deferred follow-up rather than hidden side effects. |
+| INT-07 - See personal state and evidence | Phase 6 keeps progress/weak-area work visible as deferred follow-up rather than hidden side effects. |
 | ADM-01..ADM-11 - Admin-owned identity and operational recovery | Phase 2 preserves operational tracing and diagnostics redaction while Phase 3 refreshes current-state docs. |
 
 ## Phase 1 - Production Student Workspace Composition
@@ -133,9 +159,10 @@ Preflight check: [ ] done
 **Validation**:
 
 - Targeted command: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
+- Build command: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - Inspect `git diff --check`.
 
-**Completion signal**: Production-composition coverage proves Student Workspace open-answer HTTP routes are available through the real server wiring, and the Agonara test wrapper passes.
+**Completion signal**: Production-composition coverage proves Student Workspace open-answer HTTP routes are available through the real server wiring, and the Agonara test/build wrappers pass.
 
 **Commit**: Commit this phase after validation with a short imperative message.
 
@@ -150,7 +177,7 @@ Preflight check: [ ] done
 - Add or refactor a common HTTP route completion logging path so route handlers do not have to duplicate redaction-sensitive log assembly.
 - Preserve the distinction between operational logs, audit events, Program events, Program Membership events, and Corpus events.
 - Add a test that fault responses and fault logs share the same request id and keep internal details redacted.
-- If implementation uncovers a diagnostics contract that should supersede the current spec, update the operational spec in this same phase and keep tests aligned with the updated contract.
+- If implementation shows the operational spec itself is wrong, stop this phase and create a separate spec/ADR review task before changing runtime behavior.
 
 **Dependencies**: Phase 1 is complete so Student Workspace routes can participate in production-level logging coverage.
 
@@ -159,6 +186,7 @@ Preflight check: [ ] done
 **Validation**:
 
 - Targeted command: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
+- Build command: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - Inspect `git diff --check`.
 
 **Completion signal**: Operational tests cover request ids, accepted/rejected/fault logs, diagnostics shape, and redaction for the implemented HTTP surfaces.
@@ -216,7 +244,35 @@ Preflight check: [ ] done
 
 **Commit**: Commit this phase after validation with a short imperative message.
 
-## Phase 5 - Deferred Product Slice Handoff
+## Phase 5 - Quick Check HTTP API Implementation
+
+**Objective**: implement the Quick Check HTTP API specified in Phase 4 while preserving answer-key protection and Student Workspace attempt ownership.
+
+**Key work items**:
+
+- Add failing HTTP API tests for student delivery listing/detail reads without answer keys or curator-only metadata.
+- Add failing HTTP API tests for student quick-check submission with CSRF and idempotency behavior.
+- Add failing HTTP API tests for owner-only quick-check attempt detail and list reads.
+- Add failing HTTP API tests for curator candidate creation, listing, acceptance, rejection, and answer-key-inclusive curation reads if the Phase 4 API spec includes curator transport in this slice.
+- Add route handling in `agonara/src/server.js` that delegates to existing Corpus and Student Workspace command/query boundaries.
+- Add production-composition coverage for the new Quick Check routes.
+- Update Product Intent traceability and `agonara/docs/log.md` after implementation.
+
+**Dependencies**: Phase 4 is complete and the Quick Check HTTP API spec has stable route, envelope, redaction, and rejection contracts.
+
+**Risks**: Student-facing delivery and attempt routes can leak answer keys, per-option correctness metadata, candidate ids, idempotency keys, or curator-only metadata if curation and student projections are mixed.
+
+**Validation**:
+
+- Targeted command: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
+- Build command: `./scripts/run_silent.sh "build" npx tsc --noEmit`
+- Inspect `git diff --check`.
+
+**Completion signal**: Quick Check HTTP API tests and production-composition tests prove student delivery, submission, owner reads, and any scoped curator routes work through the real server wiring without protected answer-key leakage.
+
+**Commit**: Commit this phase after validation with a short imperative message.
+
+## Phase 6 - Deferred Product Slice Handoff
 
 **Objective**: keep remaining accepted product stories visible as intentional future work with enough structure for separate specs and plans.
 
@@ -227,7 +283,7 @@ Preflight check: [ ] done
 - Link the handoff from Product Intent or backlog.
 - Update `agonara/docs/log.md`.
 
-**Dependencies**: Phase 4 has separated Quick Check transport from broader product-slice work.
+**Dependencies**: Phase 5 has separated Quick Check transport from broader product-slice work.
 
 **Risks**: The handoff can become a vague backlog if it lacks owning artifacts and validation expectations.
 
@@ -245,9 +301,10 @@ Preflight check: [ ] done
 - Production `startServer()` wires Student Workspace commands when the implemented Student Workspace HTTP routes are part of the deployed runtime.
 - Operational tracing and diagnostics behavior is either aligned with the current operational spec or the spec is revised in the same phase with matching tests.
 - Top-level Agonara docs and traceability no longer describe the project as only an Identity and Operations implementation.
-- Quick Check HTTP work has a spec and implementation plan that preserve answer-key protection and Student Workspace ownership.
+- Quick Check HTTP work has a spec, implementation plan, and implemented HTTP route tests that preserve answer-key protection and Student Workspace ownership.
 - Remaining accepted product gaps are represented as bounded follow-up handoffs.
 - All code/config phases pass `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`.
+- All code/config phases pass `./scripts/run_silent.sh "build" npx tsc --noEmit`.
 - `git diff --check` passes before each commit.
 
 ## Final closeout
