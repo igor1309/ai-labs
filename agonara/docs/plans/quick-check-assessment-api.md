@@ -125,7 +125,7 @@ Use Node commands through the repo wrapper:
 
 ## Phase 2 - Curator Candidate And Acceptance Routes
 
-**Status**: [ ] pending
+**Status**: [x] complete
 
 **Objective**: expose Program Curator-owned Quick Check candidate lifecycle and answer-key-inclusive curation reads over HTTP.
 

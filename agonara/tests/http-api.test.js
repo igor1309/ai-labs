@@ -2320,6 +2320,281 @@ test("assessmentCriterionRejection_shouldRejectDraftCandidate_onCuratorSession",
   }
 });
 
+test("quickCheckCandidates_shouldCreateAndListDraftCandidate_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(30) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const createdSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "textbook",
+      title: "Linear Algebra Done Right",
+    });
+    const sourceId = (await createdSource.json()).value.programSource.sourceId;
+    const createdCandidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 1,
+      checkKind: "single_select_quick_check",
+      options: ["A set with addition only", "A set closed under addition and scalar multiplication"],
+      prompt: "Which statement describes a vector space?",
+      sourceIds: [sourceId],
+      title: "Vector-space definition",
+    });
+    const listedCandidates = await fetch(
+      `${baseUrl}/programs/${programId}/quick-checks/candidates?status=draft`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+
+    assert.deepEqual(
+      {
+        created: quickCheckCandidateProjection(await createdCandidate.json()),
+        createdStatusCode: createdCandidate.status,
+        listed: quickCheckCandidateListProjection(await listedCandidates.json()),
+        listedStatusCode: listedCandidates.status,
+      },
+      {
+        created: {
+          answerKeyText: "A set closed under addition and scalar multiplication",
+          checkKind: "single_select_quick_check",
+          optionTexts: ["A set with addition only", "A set closed under addition and scalar multiplication"],
+          programId,
+          prompt: "Which statement describes a vector space?",
+          sourceIds: [sourceId],
+          status: "draft",
+          title: "Vector-space definition",
+        },
+        createdStatusCode: 200,
+        listed: ["Vector-space definition"],
+        listedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckAcceptanceAndRejection_shouldExposeCuratorRevisionAndRejectedCandidate", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const firstCandidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 0,
+      checkKind: "single_select_quick_check",
+      options: ["Closure under addition", "Finite dimension"],
+      prompt: "Which property is required for a vector space?",
+      title: "Closure check",
+    });
+    const firstCandidateId = (await firstCandidate.json()).value.quickCheckCandidate.candidateId;
+    const firstAccepted = await acceptQuickCheckCandidate(baseUrl, bootstrap, firstCandidateId, {});
+    const acceptedQuickCheck = (await firstAccepted.json()).value.acceptedQuickCheck;
+    const curationRevision = await fetch(
+      `${baseUrl}/quick-checks/revisions/${acceptedQuickCheck.revisionId}/curation`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+    const rejectedCandidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 1,
+      checkKind: "single_select_quick_check",
+      options: ["No closure", "Closure under scalar multiplication"],
+      prompt: "Which property is also required?",
+      title: "Scalar closure check",
+    });
+    const rejectedCandidateId = (await rejectedCandidate.json()).value.quickCheckCandidate.candidateId;
+    const rejected = await rejectQuickCheckCandidate(baseUrl, bootstrap, rejectedCandidateId);
+
+    assert.deepEqual(
+      {
+        accepted: acceptedQuickCheckForCurationProjection({ status: "accepted", value: { acceptedQuickCheck } }),
+        acceptedStatusCode: firstAccepted.status,
+        curation: acceptedQuickCheckForCurationProjection(await curationRevision.json()),
+        curationStatusCode: curationRevision.status,
+        rejected: quickCheckCandidateProjection(await rejected.json()),
+        rejectedStatusCode: rejected.status,
+      },
+      {
+        accepted: {
+          acceptedFromCandidateId: firstCandidateId,
+          answerKeyText: "Closure under addition",
+          optionTexts: ["Closure under addition", "Finite dimension"],
+          programId,
+          prompt: "Which property is required for a vector space?",
+          title: "Closure check",
+        },
+        acceptedStatusCode: 200,
+        curation: {
+          acceptedFromCandidateId: firstCandidateId,
+          answerKeyText: "Closure under addition",
+          optionTexts: ["Closure under addition", "Finite dimension"],
+          programId,
+          prompt: "Which property is required for a vector space?",
+          title: "Closure check",
+        },
+        curationStatusCode: 200,
+        rejected: {
+          answerKeyText: "Closure under scalar multiplication",
+          checkKind: "single_select_quick_check",
+          optionTexts: ["No closure", "Closure under scalar multiplication"],
+          programId,
+          prompt: "Which property is also required?",
+          sourceIds: [],
+          status: "rejected",
+          title: "Scalar closure check",
+        },
+        rejectedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-check-curator@example.test",
+    });
+    const outsider = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Outsider",
+      login: "quick-check-outsider@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    const route = `/programs/${programId}/quick-checks/candidates`;
+    const candidate = await createQuickCheckCandidate(baseUrl, curator, programId, {
+      answerKeyOptionIndex: 0,
+      checkKind: "single_select_quick_check",
+      options: ["Closed", "Open"],
+      prompt: "Which property is required?",
+      title: "Closure check",
+    });
+    const candidateId = (await candidate.json()).value.quickCheckCandidate.candidateId;
+    const mutationRoutes = [
+      route,
+      `/quick-checks/candidates/${candidateId}/acceptance`,
+      `/quick-checks/candidates/${candidateId}/rejection`,
+    ];
+    const missingSessionResponses = [];
+    for (const mutationRoute of mutationRoutes) {
+      const response = await fetch(`${baseUrl}${mutationRoute}`, {
+        body: mutationRoute === route ? JSON.stringify({
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed", "Open"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        }) : undefined,
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      missingSessionResponses.push({ body: await response.json(), statusCode: response.status });
+    }
+    const invalidBodies = [
+      undefined,
+      "not valid json{{{",
+      JSON.stringify([]),
+      JSON.stringify({}),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        extra: true,
+        options: ["Closed", "Open"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "open_answer",
+        options: ["Closed", "Open"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Closed"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 2,
+        checkKind: "single_select_quick_check",
+        options: ["Closed", "Open"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Closed", " closed "],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+    ];
+    const invalidResponses = [];
+    for (const body of invalidBodies) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        body,
+        headers: {
+          cookie: curator.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": curator.csrfToken,
+        },
+        method: "POST",
+      });
+      invalidResponses.push({ body: await response.json(), statusCode: response.status });
+    }
+    const unauthorizedResponses = [];
+    for (const session of [bootstrap, outsider]) {
+      const response = await fetch(`${baseUrl}${route}`, { headers: { cookie: session.cookie } });
+      unauthorizedResponses.push({ body: await response.json(), statusCode: response.status });
+    }
+    const unknownProgram = await fetch(`${baseUrl}/programs/program-missing/quick-checks/candidates`, {
+      headers: { cookie: curator.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        invalidResponses,
+        missingSessionResponses,
+        unauthorizedResponses,
+        unknownProgram: { body: await unknownProgram.json(), statusCode: unknownProgram.status },
+      },
+      {
+        invalidResponses: invalidBodies.map(() => ({
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        })),
+        missingSessionResponses: mutationRoutes.map(() => ({
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
+        })),
+        unauthorizedResponses: [
+          {
+            body: { status: "rejected", reason: "admin_or_curator_required" },
+            statusCode: 403,
+          },
+          {
+            body: { status: "rejected", reason: "admin_or_curator_required" },
+            statusCode: 403,
+          },
+        ],
+        unknownProgram: {
+          body: { status: "rejected", reason: "program_not_found" },
+          statusCode: 404,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("acceptedAssessmentCriteria_shouldListCurrentAndReturnHistoricalRevision_onCuratorSession", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
 
@@ -8074,6 +8349,42 @@ async function rejectOpenAnswerCheckCandidate(baseUrl, session, candidateId, bod
   });
 }
 
+async function createQuickCheckCandidate(baseUrl, session, programId, body) {
+  return fetch(`${baseUrl}/programs/${programId}/quick-checks/candidates`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function acceptQuickCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/quick-checks/candidates/${candidateId}/acceptance`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function rejectQuickCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/quick-checks/candidates/${candidateId}/rejection`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
   const { targetEntityId, ...candidateBody } = body;
   const candidate = await createCorpusCandidate(baseUrl, session, programId, candidateBody);
@@ -8651,6 +8962,25 @@ function openAnswerCheckCandidateListProjection(body) {
   return body.value?.openAnswerCheckCandidates?.map($0 => $0.title) ?? [];
 }
 
+function quickCheckCandidateProjection(body) {
+  const candidate = body.value?.quickCheckCandidate;
+  const answerKeyOption = candidate?.options?.find($0 => $0.optionId === candidate.answerKeyOptionId);
+  return {
+    answerKeyText: answerKeyOption?.text,
+    checkKind: candidate?.checkKind,
+    optionTexts: candidate?.options?.map($0 => $0.text),
+    programId: candidate?.programId,
+    prompt: candidate?.prompt,
+    sourceIds: candidate?.sourceIds,
+    status: candidate?.status,
+    title: candidate?.title,
+  };
+}
+
+function quickCheckCandidateListProjection(body) {
+  return body.value?.quickCheckCandidates?.map($0 => $0.title) ?? [];
+}
+
 function acceptedOpenAnswerCheckProjection(body) {
   const check = body.value?.acceptedOpenAnswerCheck;
   return {
@@ -8658,6 +8988,19 @@ function acceptedOpenAnswerCheckProjection(body) {
     criterionRevisionIds: check?.criterionRevisionIds,
     programId: check?.programId,
     title: check?.title,
+  };
+}
+
+function acceptedQuickCheckForCurationProjection(body) {
+  const quickCheck = body.value?.acceptedQuickCheck;
+  const answerKeyOption = quickCheck?.options?.find($0 => $0.optionId === quickCheck.answerKeyOptionId);
+  return {
+    acceptedFromCandidateId: quickCheck?.acceptedFromCandidateId,
+    answerKeyText: answerKeyOption?.text,
+    optionTexts: quickCheck?.options?.map($0 => $0.text),
+    programId: quickCheck?.programId,
+    prompt: quickCheck?.prompt,
+    title: quickCheck?.title,
   };
 }
 

@@ -737,6 +737,52 @@ async function handleCorpusApi({
   const quickCheckCandidatesMatch = pathname.match(
     /^\/programs\/([^/]+)\/quick-checks\/candidates$/,
   );
+  const quickCheckAcceptanceMatch = pathname.match(
+    /^\/quick-checks\/candidates\/([^/]+)\/acceptance$/,
+  );
+  const quickCheckRejectionMatch = pathname.match(
+    /^\/quick-checks\/candidates\/([^/]+)\/rejection$/,
+  );
+  const acceptedQuickCheckCurationRevisionMatch = pathname.match(
+    /^\/quick-checks\/revisions\/([^/]+)\/curation$/,
+  );
+  if (request.method === "GET" && quickCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(quickCheckCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `quick-check-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listQuickCheckCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapQuickCheckCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
   if (request.method === "POST" && quickCheckCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -758,7 +804,7 @@ async function handleCorpusApi({
 
     const result = corpusCommands.createQuickCheckCandidate({
       actingIdentityId: session.value.identity.id,
-      answerKeyOptionIndex: body.value.answerKeyOptionIndex,
+      answerKeyIndex: body.value.answerKeyOptionIndex,
       checkKind: body.value.checkKind,
       options: body.value.options,
       programId: decodeURIComponent(quickCheckCandidatesMatch[1]),
@@ -766,6 +812,76 @@ async function handleCorpusApi({
       rationale: body.value.rationale,
       sourceIds: body.value.sourceIds,
       title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedQuickCheckCurationRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedQuickCheckRevisionForCuration({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedQuickCheckCurationRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedQuickCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && quickCheckAcceptanceMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptQuickCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(quickCheckAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapAcceptedQuickCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && quickCheckRejectionMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectQuickCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(quickCheckRejectionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapQuickCheckCandidateResult(result));
     return true;
@@ -1730,6 +1846,14 @@ function mapQuickCheckAttemptResult(result) {
   return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
 }
 
+function mapAcceptedQuickCheckResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ acceptedQuickCheck: result.value.acceptedQuickCheck });
+}
+
 function mapAcceptedCorpusResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -2179,6 +2303,29 @@ function mapOpenAnswerCheckCandidateListResult({
 
   return accepted({
     openAnswerCheckCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapQuickCheckCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.quickCheckCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    quickCheckCandidates: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
