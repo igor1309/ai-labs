@@ -119,6 +119,61 @@ type ReadinessCheckAttempt = {
 
 Period readiness scopes are named sets of accepted topic entities. This first slice does not introduce calendars, cohorts, classroom periods, schedules, due dates, or institutional reporting periods.
 
+### Response summaries
+
+```ts
+type ReadinessCheckCandidateSummary = {
+  candidateId: string;
+  programId: string;
+  title: string;
+  scope: TopicReadinessScope | PeriodReadinessScope;
+  requirements: ReadinessRequirement[];
+  sourceIds: string[];
+  rationale?: string;
+  status: ReadinessCheckCandidateStatus;
+  createdByIdentityId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type AcceptedReadinessCheckSummary = {
+  entityId: string;
+  revisionId: string;
+  programId: string;
+  title: string;
+  scope: TopicReadinessScope | PeriodReadinessScope;
+  requirements: ReadinessRequirement[];
+  acceptedAt: string;
+};
+
+type AcceptedReadinessCheckCurationSummary = AcceptedReadinessCheckSummary & {
+  acceptedFromCandidateId: string;
+  acceptedByIdentityId: string;
+  sourceIds: string[];
+  rationale?: string;
+};
+
+type ReadinessCheckDelivery = {
+  revisionId: string;
+  programId: string;
+  title: string;
+  scope: TopicReadinessScope | PeriodReadinessScope;
+  requirements: ReadinessRequirement[];
+};
+
+type ReadinessCheckAttemptSummary = {
+  attemptId: string;
+  programId: string;
+  studentIdentityId: string;
+  readinessCheckRevisionId: string;
+  result: ReadinessResult;
+  requirementResults: ReadinessRequirementResult[];
+  submittedAt: string;
+};
+```
+
+Student-facing delivery and attempt summaries omit candidate ids, source ids, curator rationale, accepted-by identity ids, and idempotency keys.
+
 ### Commands
 
 ```ts
@@ -248,20 +303,21 @@ type ReadinessCheckRejectionReason =
 12. Readiness attempt submission requires effective `Student` participation, an accepted readiness check revision in the same Program, CSRF at the HTTP boundary, and an idempotency key.
 13. Readiness attempt submission creates an explicit Student Workspace attempt. Raw Quick Check attempts, open-answer attempts, learner-state reads, and target-link curation must not silently create readiness attempts or readiness results.
 14. Attempt submission evaluates every requirement against the owning Student's current learner-state target summary at submission time.
-15. A requirement result is `ready` when the observed learner-state level satisfies the required level and is not `needs_attention`.
-16. A requirement result is `in_progress` when the observed level is `in_progress` and no stronger failure applies.
-17. A requirement result is `not_ready` when the observed level is `no_evidence`, `needs_attention`, or below the required level.
-18. An attempt result is `ready` only when every requirement result is `ready`.
-19. An attempt result is `in_progress` when no requirement is `not_ready` and at least one requirement is `in_progress`.
-20. An attempt result is `not_ready` when any requirement is `not_ready`.
-21. Attempt results snapshot requirement results, observed levels, evidence counts, titles, and submitted time. Later evidence changes do not rewrite historical attempts.
-22. Reusing the same idempotency key for the same Student, Program, readiness revision, and equivalent submission returns the original attempt.
-23. Reusing an idempotency key for a different Student, Program, readiness revision, or submission shape rejects with `idempotency_conflict`.
-24. Attempt list and detail reads require the owning Student Identity. Program Curators, Admins, other Students in the Program, and Students outside the Program must receive the same unavailable result as a missing attempt.
-25. Readiness check reads and attempts must not create, update, delete, accept, reject, or rewrite Program sources, navigation entities, navigation relationships, accepted checks, accepted criteria, learner evidence target links, Quick Check attempts, open-answer attempts, evaluator evidence, evaluator jobs, sessions, audit events, or Program Membership records except for the explicit readiness records named in this spec.
-26. Student-safe readiness responses must not expose answer keys, candidate ids on Student deliveries, accepted-by identity ids, source ids, curator rationale, idempotency keys, evaluator leases, provider diagnostics, raw prompts, raw model responses, sessions, CSRF tokens, cookies, SQL text, filesystem paths, stack traces, database URLs, provider credentials, or infrastructure details.
-27. Readiness checks are not grades, recommendations, analytics, certification, promotion decisions, schedules, notifications, or classroom reporting.
-28. Backup and restore preserve candidates, accepted readiness check entities/revisions, readiness attempts, idempotency records, and historical snapshots. Malformed restore graphs must reject before mutation.
+15. Required-level satisfaction is explicit: `on_track` satisfies `on_track`; `developing` and `on_track` satisfy `developing`; `in_progress`, `needs_attention`, and `no_evidence` do not satisfy either required level.
+16. A requirement result is `ready` when the observed learner-state level satisfies the required level.
+17. A requirement result is `in_progress` when the observed level is `in_progress`.
+18. A requirement result is `not_ready` when the observed level is `no_evidence`, `needs_attention`, or below the required level.
+19. An attempt result is `ready` only when every requirement result is `ready`.
+20. An attempt result is `in_progress` when no requirement is `not_ready` and at least one requirement is `in_progress`.
+21. An attempt result is `not_ready` when any requirement is `not_ready`.
+22. Attempt results snapshot requirement results, observed levels, evidence counts, titles, and submitted time. Later evidence changes do not rewrite historical attempts.
+23. Reusing the same idempotency key for the same Student, Program, readiness revision, and equivalent submission returns the original attempt.
+24. Reusing an idempotency key for a different Student, Program, readiness revision, or submission shape rejects with `idempotency_conflict`.
+25. Attempt list and detail reads require the owning Student Identity. Program Curators, Admins, other Students in the Program, and Students outside the Program must receive the same unavailable result as a missing attempt.
+26. Readiness check reads and attempts must not create, update, delete, accept, reject, or rewrite Program sources, navigation entities, navigation relationships, accepted checks, accepted criteria, learner evidence target links, Quick Check attempts, open-answer attempts, evaluator evidence, evaluator jobs, sessions, audit events, or Program Membership records except for the explicit readiness records named in this spec.
+27. Student-safe readiness responses must not expose answer keys, candidate ids on Student deliveries, accepted-by identity ids, source ids, curator rationale, idempotency keys, evaluator leases, provider diagnostics, raw prompts, raw model responses, sessions, CSRF tokens, cookies, SQL text, filesystem paths, stack traces, database URLs, provider credentials, or infrastructure details.
+28. Readiness checks are not grades, recommendations, analytics, certification, promotion decisions, schedules, notifications, or classroom reporting.
+29. Backup and restore preserve candidates, accepted readiness check entities/revisions, readiness attempts, idempotency records, and historical snapshots. Malformed restore graphs must reject before mutation.
 
 ## Tests (required)
 
