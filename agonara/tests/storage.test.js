@@ -1601,6 +1601,348 @@ test("createQuickCheckCandidateRecord_shouldPersistOptionsAnswerKeyAndListByProg
   }
 });
 
+test("createLearnerEvidenceTargetLinkRecord_shouldPersistIdempotentActiveLinksAndSoftDelete_onExistingProgram", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createLearnerEvidenceTargetLinkRecord?.(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+    const duplicate = storage.createLearnerEvidenceTargetLinkRecord?.(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-duplicate",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+    const deleted = storage.deleteLearnerEvidenceTargetLinkRecord?.(database, {
+      id: "target-link-a",
+      updatedAt: "2026-06-03T11:00:00.000Z",
+    });
+    const recreated = storage.createLearnerEvidenceTargetLinkRecord?.(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-b",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+        createdAt: "2026-06-03T11:01:00.000Z",
+        updatedAt: "2026-06-03T11:01:00.000Z",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        created,
+        duplicate,
+        deleted,
+        recreated,
+        listed: storage.listLearnerEvidenceTargetLinkRecords?.(database, { programId: "program-a" }),
+        allLinks: storage.listLearnerEvidenceTargetLinkRecords?.(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }),
+      },
+      {
+        created: {
+          id: "target-link-a",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "active",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T10:00:00.000Z",
+          updatedAt: "2026-06-03T10:00:00.000Z",
+        },
+        duplicate: {
+          id: "target-link-a",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "active",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T10:00:00.000Z",
+          updatedAt: "2026-06-03T10:00:00.000Z",
+        },
+        deleted: {
+          id: "target-link-a",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "deleted",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T10:00:00.000Z",
+          updatedAt: "2026-06-03T11:00:00.000Z",
+        },
+        recreated: {
+          id: "target-link-b",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "active",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T11:01:00.000Z",
+          updatedAt: "2026-06-03T11:01:00.000Z",
+        },
+        listed: [
+          {
+            id: "target-link-b",
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: "entity-topic-a",
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: "quick-check-entity-a",
+            status: "active",
+            createdByIdentityId: "identity-a",
+            createdAt: "2026-06-03T11:01:00.000Z",
+            updatedAt: "2026-06-03T11:01:00.000Z",
+          },
+        ],
+        allLinks: [
+          {
+            id: "target-link-a",
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: "entity-topic-a",
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: "quick-check-entity-a",
+            status: "deleted",
+            createdByIdentityId: "identity-a",
+            createdAt: "2026-06-03T10:00:00.000Z",
+            updatedAt: "2026-06-03T11:00:00.000Z",
+          },
+          {
+            id: "target-link-b",
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: "entity-topic-a",
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: "quick-check-entity-a",
+            status: "active",
+            createdByIdentityId: "identity-a",
+            createdAt: "2026-06-03T11:01:00.000Z",
+            updatedAt: "2026-06-03T11:01:00.000Z",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldPreserveLearnerEvidenceTargetLinks_onAcceptedBackup", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedQuickCheck(database, { programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-03T09:00:00.000Z",
+      updatedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.createLearnerEvidenceTargetLinkRecord(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+    storage.deleteLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-a",
+      updatedAt: "2026-06-03T11:00:00.000Z",
+    });
+    storage.createLearnerEvidenceTargetLinkRecord(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-b",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+        createdAt: "2026-06-03T11:01:00.000Z",
+        updatedAt: "2026-06-03T11:01:00.000Z",
+      }),
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    storage.restoreIdentityBackup(restored, backup);
+
+    assert.deepEqual(
+      {
+        exported: backup.learnerEvidenceTargetLinks?.map($0 => ({
+          id: $0.id,
+          status: $0.status,
+        })),
+        restored: storage
+          .listLearnerEvidenceTargetLinkRecords(restored, {
+            programId: "program-a",
+            includeDeleted: true,
+          })
+          .map($0 => ({
+            id: $0.id,
+            status: $0.status,
+          })),
+      },
+      {
+        exported: [
+          { id: "target-link-a", status: "deleted" },
+          { id: "target-link-b", status: "active" },
+        ],
+        restored: [
+          { id: "target-link-a", status: "deleted" },
+          { id: "target-link-b", status: "active" },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBackup", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedQuickCheck(database, { programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-03T09:00:00.000Z",
+      updatedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.createLearnerEvidenceTargetLinkRecord(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    const cases = [
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            programId: "missing-program",
+          };
+        },
+        reason: "program_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            createdByIdentityId: "missing-identity",
+          };
+        },
+        reason: "identity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetKind: "program",
+          };
+        },
+        reason: "learner_state_target_kind_invalid",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetId: "missing-target",
+          };
+        },
+        reason: "accepted_entity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            evidenceOwnerEntityId: "missing-quick-check",
+          };
+        },
+        reason: "quick_check_entity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks.push({
+            ...candidate.learnerEvidenceTargetLinks[0],
+            id: "target-link-duplicate",
+          });
+        },
+        reason: "learner_state_target_link_idempotency_conflict",
+      },
+    ];
+
+    assert.deepEqual(
+      cases.map(testCase => {
+        const candidateBackup = structuredClone(backup);
+        testCase.mutate(candidateBackup);
+        const reason = captureStorageInvariantReason(() =>
+          storage.restoreIdentityBackup(restored, candidateBackup),
+        );
+        assert.deepEqual(storage.listLearnerEvidenceTargetLinkRecords(restored), []);
+        return reason;
+      }),
+      cases.map($0 => $0.reason),
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
 test("createAcceptedQuickCheckRecords_shouldPersistEntityCurrentRevisionAndHistoricalOptions_onExistingCandidate", () => {
   const database = makeInitializedDatabase();
 
@@ -4722,6 +5064,32 @@ function makeQuickCheckAttempt({
   };
 }
 
+function makeLearnerEvidenceTargetLink({
+  id,
+  programId = "program-a",
+  targetKind,
+  targetId,
+  evidenceOwnerKind,
+  evidenceOwnerEntityId,
+  status = "active",
+  createdByIdentityId = "identity-a",
+  createdAt = "2026-06-03T10:00:00.000Z",
+  updatedAt = "2026-06-03T10:00:00.000Z",
+}) {
+  return {
+    id,
+    programId,
+    targetKind,
+    targetId,
+    evidenceOwnerKind,
+    evidenceOwnerEntityId,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  };
+}
+
 function makeAcceptedOpenAnswerCheckEntity({ id, programId, currentRevisionId }) {
   return {
     id,
@@ -4999,6 +5367,7 @@ function seedAcceptedQuickCheck(database, { programId }) {
       id: "quick-check-candidate-a",
       programId,
       sourceIds: ["source-a"],
+      status: "accepted",
     }),
   );
   storage.createAcceptedQuickCheckEntityRecord(

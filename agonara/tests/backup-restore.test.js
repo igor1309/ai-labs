@@ -929,6 +929,70 @@ test("exportBackup_shouldIncludeQuickCheckGraphAndAttempts_onBackup", async () =
   }
 });
 
+test("exportBackup_shouldIncludeLearnerEvidenceTargetLinks_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(database, { programId: "program-1" });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedLearnerEvidenceTargetLinkRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      backup.learnerEvidenceTargetLinks?.map($0 => ({
+        id: $0.id,
+        targetKind: $0.targetKind,
+        targetId: $0.targetId,
+        evidenceOwnerKind: $0.evidenceOwnerKind,
+        evidenceOwnerEntityId: $0.evidenceOwnerEntityId,
+        status: $0.status,
+      })),
+      [
+        {
+          id: "learner-target-link-deleted",
+          targetKind: "topic",
+          targetId: "entity-1",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-existing",
+          status: "deleted",
+        },
+        {
+          id: "learner-target-link-active",
+          targetKind: "topic",
+          targetId: "entity-1",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-existing",
+          status: "active",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreBackup_shouldRestoreQuickCheckGraphAndKeepStudentReadsRedacted_onAcceptedBackup", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -994,6 +1058,57 @@ test("restoreBackup_shouldRestoreQuickCheckGraphAndKeepStudentReadsRedacted_onAc
         ],
         deliveryContainsForbiddenDetails: false,
         attemptContainsForbiddenDetails: false,
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreLearnerEvidenceTargetLinks_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedLearnerEvidenceTargetLinkRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        targetLinks: restoredBackup.learnerEvidenceTargetLinks.map($0 => ({
+          id: $0.id,
+          status: $0.status,
+        })),
+      },
+      {
+        restoreStatus: "accepted",
+        targetLinks: [
+          { id: "learner-target-link-deleted", status: "deleted" },
+          { id: "learner-target-link-active", status: "active" },
+        ],
       },
     );
   } finally {
@@ -2080,6 +2195,65 @@ test("restoreBackup_shouldRejectMalformedNavigationRelationshipGraphs_onBackup",
   }
 });
 
+test("restoreBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBackup", async () => {
+  const invalidBackups = [
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          targetKind: "program",
+        };
+      },
+      expectedReason: "learner_state_target_kind_invalid",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          targetId: "missing-target",
+        };
+      },
+      expectedReason: "accepted_entity_not_found",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          evidenceOwnerEntityId: "missing-quick-check",
+        };
+      },
+      expectedReason: "quick_check_entity_not_found",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks.push({
+          ...value.learnerEvidenceTargetLinks[1],
+          id: "learner-target-link-duplicate",
+        });
+      },
+      expectedReason: "learner_state_target_link_idempotency_conflict",
+    },
+  ];
+
+  for (const invalidBackup of invalidBackups) {
+    const backup = await makeExportedLearnerEvidenceTargetLinkBackup();
+    const target = makeSUT();
+
+    try {
+      invalidBackup.mutate(backup);
+
+      const result = target.commands.restoreBackup(backup);
+
+      assert.deepEqual(result, {
+        status: "rejected",
+        reason: invalidBackup.expectedReason,
+      });
+    } finally {
+      target.database.close();
+    }
+  }
+});
+
 test("restoreBackup_shouldRejectMalformedQuickCheckGraphs_onBackup", async () => {
   const backup = await makeExportedQuickCheckBackup();
   const invalidBackups = [
@@ -2501,6 +2675,63 @@ function seedQuickCheckStorageRecords(database, { identityId, programId }) {
       1,
       "idempotency-quick-check-existing",
       "2026-05-27T10:10:00.000Z",
+    );
+}
+
+function seedLearnerEvidenceTargetLinkRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "learner-target-link-deleted",
+      programId,
+      "topic",
+      "entity-1",
+      "accepted_quick_check",
+      "quick-check-entity-existing",
+      "deleted",
+      identityId,
+      "2026-06-03T10:00:00.000Z",
+      "2026-06-03T10:01:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "learner-target-link-active",
+      programId,
+      "topic",
+      "entity-1",
+      "accepted_quick_check",
+      "quick-check-entity-existing",
+      "active",
+      identityId,
+      "2026-06-03T10:02:00.000Z",
+      "2026-06-03T10:02:00.000Z",
     );
 }
 
@@ -3073,6 +3304,37 @@ async function makeExportedQuickCheckBackup() {
     seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
     seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedLearnerEvidenceTargetLinkBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedLearnerEvidenceTargetLinkRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
 
     return source.commands.exportBackup().value.backup;
   } finally {

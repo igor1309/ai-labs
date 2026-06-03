@@ -521,6 +521,35 @@ export function initializeIdentityStorage(database) {
       accepted_at text not null
     );
 
+    create table if not exists learner_evidence_target_links (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      target_kind text not null check (target_kind in ('topic', 'concept', 'material_reference')),
+      target_id text not null,
+      evidence_owner_kind text not null check (
+        evidence_owner_kind in (
+          'accepted_quick_check',
+          'accepted_open_answer_check',
+          'accepted_assessment_criterion'
+        )
+      ),
+      evidence_owner_entity_id text not null,
+      status text not null check (status in ('active', 'deleted')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create unique index if not exists one_active_learner_evidence_target_link
+      on learner_evidence_target_links (
+        program_id,
+        target_kind,
+        target_id,
+        evidence_owner_kind,
+        evidence_owner_entity_id
+      )
+      where status = 'active';
+
     create table if not exists corpus_events (
       id text primary key,
       event_type text not null check (
@@ -3081,6 +3110,142 @@ export function listAcceptedNavigationRelationshipRevisionRecords(database) {
     .map(mapAcceptedNavigationRelationshipRevisionRecord);
 }
 
+export function createLearnerEvidenceTargetLinkRecord(
+  database,
+  {
+    id,
+    programId,
+    targetKind,
+    targetId,
+    evidenceOwnerKind,
+    evidenceOwnerEntityId,
+    status = "active",
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  if (status !== "active") {
+    throw new StorageInvariantError("learner_state_target_link_status_invalid");
+  }
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+
+  const existingActiveLink = getActiveLearnerEvidenceTargetLinkRecord(database, {
+    programId,
+    targetKind,
+    targetId,
+    evidenceOwnerKind,
+    evidenceOwnerEntityId,
+  });
+  if (existingActiveLink) {
+    return existingActiveLink;
+  }
+
+  database
+    .prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      targetKind,
+      targetId,
+      evidenceOwnerKind,
+      evidenceOwnerEntityId,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getLearnerEvidenceTargetLinkRecord(database, id);
+}
+
+export function deleteLearnerEvidenceTargetLinkRecord(database, { id, updatedAt }) {
+  const link = getLearnerEvidenceTargetLinkRecord(database, id);
+  if (!link) {
+    throw new StorageInvariantError("learner_state_target_link_not_found");
+  }
+
+  database
+    .prepare(
+      `update learner_evidence_target_links
+       set status = 'deleted',
+           updated_at = ?
+       where id = ?`,
+    )
+    .run(updatedAt, id);
+
+  return getLearnerEvidenceTargetLinkRecord(database, id);
+}
+
+export function getLearnerEvidenceTargetLinkRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_kind as targetKind,
+              target_id as targetId,
+              evidence_owner_kind as evidenceOwnerKind,
+              evidence_owner_entity_id as evidenceOwnerEntityId,
+              status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt
+       from learner_evidence_target_links
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listLearnerEvidenceTargetLinkRecords(
+  database,
+  { programId = null, includeDeleted = false } = {},
+) {
+  const filters = [];
+  const values = [];
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (!includeDeleted) {
+    filters.push("status = 'active'");
+  }
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_kind as targetKind,
+              target_id as targetId,
+              evidence_owner_kind as evidenceOwnerKind,
+              evidence_owner_entity_id as evidenceOwnerEntityId,
+              status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt
+       from learner_evidence_target_links
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values);
+}
+
 export function createCorpusEventRecord(
   database,
   {
@@ -3981,6 +4146,7 @@ export function exportIdentityBackup(database) {
     acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
     acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
     acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
+    learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
     corpusEvents: listCorpusEventRecords(database),
     assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
     acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
@@ -4017,6 +4183,7 @@ export function restoreIdentityBackup(database, backup) {
   assertValidNavigationGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
   assertValidQuickCheckGraphInBackup(backup);
+  assertValidLearnerEvidenceTargetLinksInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
@@ -4027,6 +4194,7 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from open_answer_evaluation_failures").run();
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
+    database.prepare("delete from learner_evidence_target_links").run();
     database.prepare("delete from quick_check_attempts").run();
     database.prepare("delete from accepted_open_answer_check_revisions").run();
     database.prepare("delete from accepted_open_answer_check_entities").run();
@@ -4214,6 +4382,20 @@ export function restoreIdentityBackup(database, backup) {
          accepted_by_identity_id,
          accepted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertLearnerEvidenceTargetLink = database.prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertCorpusEvent = database.prepare(
       `insert into corpus_events (
@@ -4561,6 +4743,21 @@ export function restoreIdentityBackup(database, backup) {
         revision.acceptedFromCandidateId,
         revision.acceptedByIdentityId,
         revision.acceptedAt,
+      );
+    }
+
+    for (const link of backup.learnerEvidenceTargetLinks ?? []) {
+      insertLearnerEvidenceTargetLink.run(
+        link.id,
+        link.programId,
+        link.targetKind,
+        link.targetId,
+        link.evidenceOwnerKind,
+        link.evidenceOwnerEntityId,
+        link.status,
+        link.createdByIdentityId,
+        link.createdAt,
+        link.updatedAt,
       );
     }
 
@@ -5253,6 +5450,33 @@ function mapAcceptedNavigationRelationshipRevisionRecord(row) {
   };
 }
 
+function getActiveLearnerEvidenceTargetLinkRecord(
+  database,
+  { programId, targetKind, targetId, evidenceOwnerKind, evidenceOwnerEntityId },
+) {
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_kind as targetKind,
+              target_id as targetId,
+              evidence_owner_kind as evidenceOwnerKind,
+              evidence_owner_entity_id as evidenceOwnerEntityId,
+              status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt
+       from learner_evidence_target_links
+       where program_id = ?
+         and target_kind = ?
+         and target_id = ?
+         and evidence_owner_kind = ?
+         and evidence_owner_entity_id = ?
+         and status = 'active'`,
+    )
+    .get(programId, targetKind, targetId, evidenceOwnerKind, evidenceOwnerEntityId) ?? null;
+}
+
 function assertIdentityExists(database, identityId) {
   if (!getIdentity(database, identityId)) {
     throw new StorageInvariantError("identity_not_found");
@@ -5820,6 +6044,115 @@ function assertValidQuickCheckGraphInBackup(backup) {
     }
     attemptIdempotencyScopes.add(idempotencyScope);
   }
+}
+
+function assertValidLearnerEvidenceTargetLinksInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const targetsById = new Map((backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]));
+  const quickCheckEntitiesById = new Map(
+    (backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const openAnswerCheckEntitiesById = new Map(
+    (backup.acceptedOpenAnswerCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const criterionEntitiesById = new Map(
+    (backup.acceptedAssessmentCriterionEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const activeScopes = new Set();
+  const ids = new Set();
+
+  for (const link of backup.learnerEvidenceTargetLinks ?? []) {
+    if (ids.has(link.id)) {
+      throw new StorageInvariantError("learner_state_target_link_not_found");
+    }
+    ids.add(link.id);
+
+    if (!programShellsById.has(link.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(link.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    if (!["topic", "concept", "material_reference"].includes(link.targetKind)) {
+      throw new StorageInvariantError("learner_state_target_kind_invalid");
+    }
+    if (
+      ![
+        "accepted_quick_check",
+        "accepted_open_answer_check",
+        "accepted_assessment_criterion",
+      ].includes(link.evidenceOwnerKind)
+    ) {
+      throw new StorageInvariantError("learner_state_evidence_owner_kind_invalid");
+    }
+    if (!["active", "deleted"].includes(link.status)) {
+      throw new StorageInvariantError("learner_state_target_link_status_invalid");
+    }
+
+    const target = targetsById.get(link.targetId);
+    if (!target) {
+      throw new StorageInvariantError("accepted_entity_not_found");
+    }
+    if (target.programId !== link.programId) {
+      throw new StorageInvariantError("learner_state_target_program_mismatch");
+    }
+    if (target.acceptedKind !== link.targetKind) {
+      throw new StorageInvariantError("learner_state_target_kind_invalid");
+    }
+
+    const evidenceOwner = getLearnerEvidenceTargetLinkBackupEvidenceOwner({
+      link,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+    if (evidenceOwner.programId !== link.programId) {
+      throw new StorageInvariantError("learner_state_evidence_owner_program_mismatch");
+    }
+
+    if (link.status === "active") {
+      const activeScope = [
+        link.programId,
+        link.targetKind,
+        link.targetId,
+        link.evidenceOwnerKind,
+        link.evidenceOwnerEntityId,
+      ].join("\u0000");
+      if (activeScopes.has(activeScope)) {
+        throw new StorageInvariantError("learner_state_target_link_idempotency_conflict");
+      }
+      activeScopes.add(activeScope);
+    }
+  }
+}
+
+function getLearnerEvidenceTargetLinkBackupEvidenceOwner({
+  link,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (link.evidenceOwnerKind === "accepted_quick_check") {
+    const entity = quickCheckEntitiesById.get(link.evidenceOwnerEntityId);
+    if (!entity) {
+      throw new StorageInvariantError("quick_check_entity_not_found");
+    }
+    return entity;
+  }
+  if (link.evidenceOwnerKind === "accepted_open_answer_check") {
+    const entity = openAnswerCheckEntitiesById.get(link.evidenceOwnerEntityId);
+    if (!entity) {
+      throw new StorageInvariantError("check_entity_not_found");
+    }
+    return entity;
+  }
+
+  const entity = criterionEntitiesById.get(link.evidenceOwnerEntityId);
+  if (!entity) {
+    throw new StorageInvariantError("criterion_entity_not_found");
+  }
+  return entity;
 }
 
 function assertValidStudentAttemptGraphInBackup(backup) {
