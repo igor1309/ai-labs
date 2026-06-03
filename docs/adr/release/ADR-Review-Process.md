@@ -37,7 +37,7 @@ ADR review does NOT:
 
 ## 3. Review Dimensions
 
-Each ADR MUST be evaluated across the following four dimensions.
+Each ADR MUST be evaluated across the following five dimensions.
 
 ### I. Intent Integrity
 
@@ -98,6 +98,30 @@ Red flags:
 
 -   Hidden dependencies on unstated policies.
 -   Decisions that collapse under minor foreseeable evolution.
+
+------------------------------------------------------------------------
+
+### V. Mechanism Feasibility
+
+Reviewer MUST verify, for every mechanism or invariant the ADR asserts as a
+guarantee:
+
+-   A concrete command, doc, or code reference shows the mechanism is
+    achievable on the target system as described.
+-   Capability claims about a platform or tool (e.g., "native X supports Y")
+    are backed by a cited source, not assumed.
+-   Where the capability is version-dependent, the cited evidence is dated or
+    version-pinned, and the asserted API is confirmed to exist at that version.
+
+Red flags:
+
+-   A capability claim with no command/doc/code showing it holds on the target
+    system.
+-   Mechanism described in aspirational terms the target system has not been
+    shown to support.
+
+This dimension checks that the asserted mechanism *can exist* as described; it
+does not require implementation detail (see §5).
 
 ------------------------------------------------------------------------
 
