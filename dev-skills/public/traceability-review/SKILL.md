@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.3.0"
+version: "0.4.0"
 author: Igor Malyarov
 ---
 
@@ -22,9 +22,10 @@ between artifacts that share a parent**. The ground truth for each check is
 the **upstream node**, not the code. This is distinct from doc-drift, whose
 ground truth is the code/repo state.
 
-Validated so far on the `intent × intent`, `intent → ADR`, and `ADR × ADR`
-layer-pairs against Agonara. The remaining layer-pairs are scoped below but not
-yet exercised — treat them as the roadmap, not as tested behavior.
+Validated so far on the `intent × intent`, `intent → ADR`, `ADR × ADR`, and the
+cross-cutting `allocation completeness` passes against Agonara. The remaining
+layer-pairs are scoped below but not yet exercised — treat them as the roadmap,
+not as tested behavior.
 
 ## Scope: layer-pairs
 
@@ -47,13 +48,18 @@ layer-pair:
    contracts described consistently by provider and every consumer. Anchor on
    the project's module responsibility map (Owns / Does Not Own / Key Boundary)
    and the contract ADRs.
-   *(implemented, v0.3.0 — compatibility only; seam coverage is a separate pass)*
+   *(implemented, v0.3.0 — compatibility only; seam coverage is the allocation-completeness pass, v0.4.0)*
 4. **ADR → spec** — per module; each ADR decision is honoured by its spec.
 5. **spec ↔ tests** — per module. Read **test names only** (not bodies, not
    code) and map them against spec clauses: every spec behaviour has a named
    test, every test name traces to a spec clause. Do **not** run tests — on a
    trunk-only repo a merged test is a passing test. Implemented-plans are out
    of scope (they were scaffolding from spec to code).
+6. **Allocation completeness (cross-cutting)** — not a sequential pipeline pair:
+   the global check that every intent capability is allocated to ≥1 module.
+   Catches **unallocated capabilities** (owned by no module) that per-module
+   passes structurally cannot see — the realized "seam coverage".
+   *(implemented, v0.4.0 — see "Allocation completeness" below)*
 
 ## Scope axis
 
@@ -108,9 +114,8 @@ It is **not** `deferred` merely because *related* schema is deferred: deferring
 a capability's *shape* does not defer its *existence*.
 
 **Cross-module seams are out of scope here.** A capability that falls between
-modules and that no single module owns is a *cross-module* coverage finding —
-it belongs to the cross-module seam-coverage pass, not to any one per-module
-pass.
+modules and that no single module owns is an **allocation-completeness** finding
+(see that pass below), not a per-module one.
 
 ## ADR × ADR: ownership matrix + contract register
 
@@ -140,14 +145,55 @@ A module consuming another's contract **through** the contract is not a
 violation — only reaching past it into the provider's owned internals is.
 
 **Out of scope here: *seam coverage*** — a capability owned by **no** module.
-That needs the intent layer (to know what should be owned) and is a distinct
-cross-module pass, not the compatibility check above. When a per-module
-intent→ADR pass tags a seam for the cross-module layer, it means that
-seam-coverage pass.
+That needs the intent layer (to know what should be owned) and is the
+**allocation-completeness** pass below, not the compatibility check above. When
+a per-module intent→ADR pass tags a seam for the cross-module layer, it means
+the allocation-completeness pass.
 
 If the ADR set grows too large to hold at once, split by **clustered concern**
 (identity/auth, membership, corpus/curation, assessment), not by module-pair —
 ADRs already cluster and cross-reference that way.
+
+## Allocation completeness: global capability × ownership matrix
+
+A cross-cutting pass (not a sequential pipeline pair): does **every** intent
+capability have ≥1 owning module? A capability owned by no module — falling
+between boundaries — is an **unallocated capability** (the finding). Per-module
+passes can't see these: a capability nobody claims never appears in any
+module's owned set. (Term discipline: "unallocated" = no *downward* owner, this
+pass; reserve "orphan" for the *upward* check — an ADR/spec with no source
+intent — a separate, not-yet-built pass. See
+`research/orphan-requirement-allocation-completeness.md`.)
+
+Read the full intent capability set, the responsibility map, and every ADR
+(ADRs override the provisional map for ownership; an ADR Non-Goal is the
+authority for deferral).
+
+**Matrix is primary. One row per intent capability, verbatim — do not sub-split
+or invent** (same row-pin as ADR×ADR; ad-hoc granularity is what wobbles the
+verdict-bucket counts run-to-run). Each row: capability id + statement, owner(s)
+with module + ADR/map `file:line` (or `none`), owner_count, verdict.
+
+**Five suppression rules — apply before flagging, to prevent false unallocated
+findings:**
+
+1. **Status gate.** Explicitly deferred / out-of-scope (ADR Non-Goal, intent
+   "out of slice") → `deferred`, never a finding.
+2. **Type gate.** A cross-cutting / non-functional capability needs ≥1 owner at
+   the architectural / ADR / system level (a shared responsibility, not
+   necessarily a feature module) → `cross-cutting-allocated`.
+3. **Multi-owner.** N>1 owners is fine; fire only at owner_count = 0.
+4. **Pending.** Ownership acknowledged but unassigned (explicit TBD) → `pending`
+   (a warning bucket), not an unallocated finding.
+5. **System-level owner counts.** An ADR, or a named cross-cutting/shared node
+   in the map, is a valid owner.
+
+Only `owner_count = 0` after these rules is `UNALLOCATED` → finding (warning). A
+clean (0-unallocated) result is valid and must be backed by the completed
+matrix. Boundary this pass clarified on Agonara: a capability whose *record* is
+owned (e.g. the Program shell) but whose student-facing *view/projection* isn't
+ADR-decided is **allocated**, with the projection logged as an ADR→spec open
+question — not an unallocated finding.
 
 ## Discipline
 
@@ -219,4 +265,7 @@ count + verdict breakdown + finding totals), `Coverage matrix` (the complete
 table — the core artifact), `Findings` (derived mechanically from the matrix),
 `Open questions`, and `Inspected`. For `ADR × ADR`: `Summary`,
 `Ownership matrix`, `Cross-module contract register`, `Findings`,
-`Open questions`, and `Inspected`.
+`Open questions`, and `Inspected`. For `allocation completeness`: `Summary`
+(capability count + verdict breakdown + finding total), `Allocation matrix` (the
+complete table), `Findings` (UNALLOCATED rows), `Open questions`, and
+`Inspected`.
