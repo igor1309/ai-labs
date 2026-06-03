@@ -12,22 +12,16 @@ Files in this directory describe the VPS-side wiring needed to run the doc-drift
 
 | Path | Deployed to | Owner / mode |
 |------|-------------|--------------|
-| `cron/doc-drift-orchestrator.sh` | `/home/openclaw/.openclaw/scripts/doc-drift-orchestrator.sh` | `openclaw:openclaw` 700 |
 | `cron/doc-drift-cron.sh` | `/home/openclaw/.openclaw/scripts/doc-drift-cron.sh` | `openclaw:openclaw` 700 |
 | `cron/openclaw-doc-drift.cron` | `/etc/cron.d/openclaw-doc-drift` | `root:root` 644 |
 
-### Scoped orchestrator (ADR-001 §7)
+### Nightly wrapper
 
-`cron/doc-drift-orchestrator.sh` is the scoped nightly orchestrator: it refreshes the
-source clone, runs the tested `scope-select/select-cli.js` to pick one scope (changed ∪
-stale, budget 1), invokes `openclaw agent --scope <id>`, and — only on a verified-good
-run — records the audit via `commit-cli.js` into the per-scope state file
-`/home/openclaw/.openclaw/agents/doc-drift-agent/orchestrator-state.json`. Observability is
-the fail-closed Telegram alert + this log + that state file (ADR-001 §7; the tasks ledger
-is broken on the unit — `agents/TODO.md` §4). It **supersedes** `doc-drift-cron.sh` (the
-all-READMEs-in-one-pass wrapper); the `/etc/cron.d` entry is repointed to it at the Phase 6
-cutover. Config is env-overridable so the wiring is exercised by
-`cron/doc-drift-orchestrator.test.sh` (`bash …test.sh`) with stubs, no host/network needed.
+`cron/doc-drift-cron.sh` is the nightly wrapper: it enforces the 12h manual-run
+suppression gate (`agent/suppression-policy.md`), refreshes the source clone to `trunk`,
+invokes the agent (which reviews the whole README set in one pass), and posts the
+`notification-spec.md`-shaped Telegram message. The `/etc/cron.d/openclaw-doc-drift` entry
+runs it at 01:00 UTC. Observability is the fail-closed Telegram alert + the cron log.
 
 ## Bot token
 
