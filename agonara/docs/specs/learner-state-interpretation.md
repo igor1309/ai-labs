@@ -2,8 +2,8 @@
 date: 2026-06-03
 model: gpt-5
 description: "Spec: Agonara learner-state interpretation."
-version: 0.0.2
-status: draft
+version: 1.0.0
+status: implemented
 type: spec
 ---
 
@@ -297,3 +297,17 @@ type LearnerStateInterpretationRejectionReason =
 - HTTP and browser surfaces are student-safe, owner-only, and free of protected metadata and operational details.
 - Backup/restore preserves source evidence so derived learner-state summaries remain reproducible after restore.
 - Agonara tests, root build, docs checks, and `git diff --check` pass after implementation.
+
+## Implementation status
+
+Implemented in the learner-state interpretation plan archived at [Learner-State Interpretation Implementation Plan](../plans/implemented/learner-state-interpretation.md).
+
+Traceability:
+
+- Target-link storage, idempotency, soft deletion, and backup/restore validation: [storage tests](../../tests/storage.test.js), [backup/restore tests](../../tests/backup-restore.test.js), [storage implementation](../../src/storage.js).
+- Corpus-owned target-link curation and Program Curator authorization: [Corpus tests](../../tests/corpus.test.js), [Corpus executable acceptance](../../tests/corpus-executable-acceptance.test.js), [Corpus implementation](../../src/corpus.js).
+- Owner-only read-time learner-state derivation, weak-area sorting, target detail evidence, and non-mutation boundary checks: [Student Workspace tests](../../tests/student-workspace.test.js), [Student Workspace implementation](../../src/student-workspace.js).
+- HTTP target-link and learner-state routes, status mapping, CSRF mutation gates, and redaction: [HTTP API tests](../../tests/http-api.test.js), [executable acceptance tests](../../tests/executable-acceptance.test.js), [HTTP implementation](../../src/server.js).
+- Product UI surfaces for target-link curation, learner-state summaries, weak areas, evidence detail, redaction, desktop/mobile layout, and Quick Check/navigation regression coverage: [learner-state browser tests](../../tests/learner-state-interpretation.playwright.js), [Quick Check UI browser tests](../../tests/quick-check-product-ui.playwright.js), [navigation browser tests](../../tests/topic-concept-material-navigation.playwright.js), [`/learn` UI implementation](../../src/learn-ui.js).
+
+Implemented first-slice limits remain unchanged: no topic-level or period-level checks, readiness decisions, recommendation ranking, next-step scheduling, notification behavior, institutional grades, analytics dashboards, Program Curator reads of Student state, Admin reads of Student state, LLM-assisted interpretation, or persisted mastery models.

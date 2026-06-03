@@ -31,12 +31,13 @@ Implemented backend and domain surfaces:
 - Accepted checks and criteria: assessment criteria, open-answer checks, accepted revisions, and curator/student/admin read separation.
 - Student Workspace open answers: Student submission, idempotency, owner-only attempt detail/list reads, evaluation status/evidence reads, evaluator orchestration, worker execution, and backup/restore support.
 - Quick Check assessment: session-backed HTTP routes, backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, backup/restore support, and a `/learn` product UI for Curator and Student Quick Check workflows.
+- Learner-state interpretation: explicit target-link curation metadata, read-time owner-only progress and weak-area summaries, supporting-evidence target detail, HTTP routes, backup/restore preservation, and `/learn` Curator/Student learner-state UI.
 - Admin board: a local operations board for bootstrap, sign in/out, Identity management, operational access inspection, and audit event inspection.
 
 Still deferred or backend-only:
 
-- Topic-level or period-level checks, progress interpretation, weak-area interpretation, curator coverage-gap analysis, LLM-assisted curation suggestions, and membership invitation/recovery flows still need separate specs or plans.
-- Student-facing and curator-facing product UI beyond the `/learn` Quick Check and navigation slices is not implemented.
+- Topic-level or period-level checks, readiness decisions, recommendations, persisted mastery models, curator coverage-gap analysis, LLM-assisted curation suggestions, and membership invitation/recovery flows still need separate specs or plans.
+- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, and learner-state first slices is not implemented.
 
 ## Key Separations
 

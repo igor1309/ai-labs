@@ -159,6 +159,7 @@ The original Identity and Operations first slice has been extended by later back
 - Accepted assessment criteria and open-answer checks are accepted Program corpus, with curator/admin/student read separation at the HTTP boundary.
 - Student Workspace owns open-answer attempt submission, idempotency, owner-only attempt reads, evaluation status/evidence reads, evaluator orchestration, evaluator worker execution, and backup/restore preservation.
 - Quick Check assessment has HTTP, backend/domain, storage, and `/learn` product UI support for Curator candidate management, Student delivery reads, immutable attempts, matched evidence, idempotent retries, owner-only reads, protected answer keys, and backup/restore validation.
+- Learner-state interpretation derives progress, weak-area, and evidence summaries at read time from accepted checks, Student evidence, explicit active learner evidence target links, and accepted navigation relationships. Target-link curation is Program Curator-owned Corpus metadata; learner-state summary and target-detail reads are owner-only Student Workspace reads exposed through HTTP and `/learn`.
 
 The production server entrypoint now composes Identity, Program, Corpus, and Student Workspace command boundaries against the configured SQLite database. Operational completion tracing is emitted from a common HTTP response boundary so accepted, rejected, and faulted Identity, Program, Corpus, Student Workspace, health, and diagnostics routes share request correlation without logging request bodies, cookies, CSRF tokens, idempotency keys, SQL, provider details, or raw evaluator artifacts.
 
@@ -166,8 +167,8 @@ The production server entrypoint now composes Identity, Program, Corpus, and Stu
 
 Current backend/domain support does not imply a complete product UI:
 
-- Topic-level or period-level checks, progress interpretation, weak-area interpretation, curator coverage-gap analysis, LLM-assisted curation suggestions, membership invitation, and recovery flows still need separate downstream artifacts.
-- The Admin board is implemented for operational Identity/Admin work, and `/learn` is implemented for Quick Check and topic/concept/material navigation Student/Curator product slices. Broader Student and Curator product screens remain outside the current runtime.
+- Topic-level or period-level checks, readiness decisions, recommendation ranking, persisted mastery models, curator coverage-gap analysis, LLM-assisted curation suggestions, membership invitation, and recovery flows still need separate downstream artifacts.
+- The Admin board is implemented for operational Identity/Admin work, and `/learn` is implemented for Quick Check, topic/concept/material navigation, and learner-state interpretation Student/Curator product slices. Broader Student and Curator product screens remain outside the current runtime.
 
 ## Open questions
 
