@@ -627,6 +627,156 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
   }
 });
 
+test("acceptance_shouldExerciseNavigationApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "navigation-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { description: "Foundations", title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        { candidateKind: "topic", title: "Vector spaces" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topicAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topic = topicAccepted.body.value.navigationChange.acceptedCorpus;
+      const conceptCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        {
+          candidateKind: "concept",
+          relationshipDrafts: [
+            {
+              relationshipKind: "topic_includes_concept",
+              fromEntityId: topic.entityId,
+              toCandidateRef: "self",
+            },
+          ],
+          title: "Basis",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const conceptAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${conceptCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const concept = conceptAccepted.body.value.navigationChange.acceptedCorpus;
+      const materialCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        {
+          candidateKind: "material_reference",
+          locator: "https://example.test/basis",
+          materialReferenceKind: "article",
+          relationshipDrafts: [
+            {
+              relationshipKind: "concept_uses_material",
+              fromEntityId: concept.entityId,
+              toCandidateRef: "self",
+            },
+          ],
+          title: "Basis reading",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const materialAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${materialCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const candidateList = await getJson(`${baseUrl}/programs/${programId}/navigation-candidates?status=accepted`, {
+        cookie: bootstrap.cookie,
+      });
+      const navigation = await getJson(`${baseUrl}/programs/${programId}/navigation`, {
+        cookie: student.cookie,
+      });
+      const conceptDetail = await getJson(`${baseUrl}/navigation/entities/${concept.entityId}`, {
+        cookie: student.cookie,
+      });
+      const historicalRevision = await getJson(`${baseUrl}/navigation/revisions/${topic.revisionId}`, {
+        cookie: student.cookie,
+      });
+      const serializedStudentReads = JSON.stringify([navigation.body, conceptDetail.body, historicalRevision.body]);
+
+      assert.deepEqual(
+        {
+          candidateTitles: candidateList.body.value.navigationCandidates.map($0 => $0.title),
+          conceptIncomingKinds: conceptDetail.body.value.navigationNode.relationships.incoming.map($0 => $0.relationshipKind),
+          conceptOutgoingKinds: conceptDetail.body.value.navigationNode.relationships.outgoing.map($0 => $0.relationshipKind),
+          historicalTitle: historicalRevision.body.value.navigationRevision.title,
+          httpStatusCodes: {
+            candidateList: candidateList.statusCode,
+            conceptAccepted: conceptAccepted.statusCode,
+            conceptDetail: conceptDetail.statusCode,
+            created: created.statusCode,
+            historicalRevision: historicalRevision.statusCode,
+            materialAccepted: materialAccepted.statusCode,
+            materialCandidate: materialCandidate.statusCode,
+            navigation: navigation.statusCode,
+            topicAccepted: topicAccepted.statusCode,
+            topicCandidate: topicCandidate.statusCode,
+          },
+          leaksCandidateMetadata: [
+            "acceptedFromCandidateId",
+            "sourceIds",
+            "acceptedByIdentityId",
+            "acceptedAt",
+            "relationshipDrafts",
+          ].some($0 => serializedStudentReads.includes($0)),
+          materialKind: materialAccepted.body.value.navigationChange.acceptedCorpus.acceptedKind,
+          topicTitles: navigation.body.value.navigation.topics.map($0 => $0.title),
+        },
+        {
+          candidateTitles: ["Vector spaces", "Basis", "Basis reading"],
+          conceptIncomingKinds: ["topic_includes_concept"],
+          conceptOutgoingKinds: ["concept_uses_material"],
+          historicalTitle: "Vector spaces",
+          httpStatusCodes: {
+            candidateList: 200,
+            conceptAccepted: 200,
+            conceptDetail: 200,
+            created: 200,
+            historicalRevision: 200,
+            materialAccepted: 200,
+            materialCandidate: 200,
+            navigation: 200,
+            topicAccepted: 200,
+            topicCandidate: 200,
+          },
+          leaksCandidateMetadata: false,
+          materialKind: "material_reference",
+          topicTitles: ["Vector spaces"],
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 

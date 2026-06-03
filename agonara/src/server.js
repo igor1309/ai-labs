@@ -768,10 +768,16 @@ async function handleCorpusApi({
 }) {
   const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
   const candidatesMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-candidates$/);
+  const navigationCandidatesMatch = pathname.match(/^\/programs\/([^/]+)\/navigation-candidates$/);
+  const programNavigationMatch = pathname.match(/^\/programs\/([^/]+)\/navigation$/);
   const acceptedCorpusMatch = pathname.match(/^\/programs\/([^/]+)\/accepted-corpus$/);
   const corpusEventsMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-events$/);
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
+  const navigationCandidateAcceptanceMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/acceptance$/);
+  const navigationCandidateRejectionMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/rejection$/);
+  const navigationEntityMatch = pathname.match(/^\/navigation\/entities\/([^/]+)$/);
+  const navigationRevisionMatch = pathname.match(/^\/navigation\/revisions\/([^/]+)$/);
   const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
   const acceptedAssessmentCriteriaMatch = pathname.match(/^\/programs\/([^/]+)\/assessment-criteria$/);
   const assessmentCriterionCandidatesMatch = pathname.match(
@@ -1193,6 +1199,124 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "GET" && navigationCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(navigationCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `navigation-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listNavigationCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapNavigationCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && navigationCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidNavigationCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createNavigationCandidate({
+      actingIdentityId: session.value.identity.id,
+      body: body.value.body,
+      candidateKind: body.value.candidateKind,
+      citation: body.value.citation,
+      locator: body.value.locator,
+      materialReferenceKind: body.value.materialReferenceKind,
+      programId: decodeURIComponent(navigationCandidatesMatch[1]),
+      rationale: body.value.rationale,
+      relationshipDrafts: body.value.relationshipDrafts,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapNavigationCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && programNavigationMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.listProgramNavigation({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(programNavigationMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramNavigationResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && navigationEntityMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getNavigationEntity({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(navigationEntityMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapNavigationEntityResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && navigationRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getNavigationRevision({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(navigationRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapNavigationRevisionResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && candidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -1581,6 +1705,34 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "POST" && navigationCandidateAcceptanceMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptNavigationCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(navigationCandidateAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapNavigationChangeResult(result));
+    return true;
+  }
+
   if (request.method === "POST" && candidateRejectionMatch) {
     const csrf = requireCsrf(request, csrfTokens);
     if (csrf.status === "rejected") {
@@ -1605,6 +1757,33 @@ async function handleCorpusApi({
       candidateId: decodeURIComponent(candidateRejectionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapCorpusCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && navigationCandidateRejectionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectNavigationCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(navigationCandidateRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapNavigationCandidateResult(result));
     return true;
   }
 
@@ -1924,6 +2103,46 @@ function mapCorpusCandidateResult(result) {
   }
 
   return accepted({ corpusCandidate: result.value.corpusCandidate });
+}
+
+function mapNavigationCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationCandidate: result.value.navigationCandidate });
+}
+
+function mapNavigationChangeResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationChange: result.value.navigationChange });
+}
+
+function mapProgramNavigationResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigation: result.value.navigation });
+}
+
+function mapNavigationEntityResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationNode: result.value.navigationNode });
+}
+
+function mapNavigationRevisionResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationRevision: result.value.navigationRevision });
 }
 
 function mapAssessmentCriterionCandidateResult(result) {
@@ -2279,6 +2498,52 @@ function isValidCandidateSourceIds(sourceIds) {
     (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
 }
 
+function isValidNavigationCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "body",
+    "candidateKind",
+    "citation",
+    "locator",
+    "materialReferenceKind",
+    "rationale",
+    "relationshipDrafts",
+    "sourceIds",
+    "title",
+  ]) &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    isValidNavigationRelationshipDrafts(body.relationshipDrafts);
+}
+
+function isValidNavigationRelationshipDrafts(relationshipDrafts) {
+  return relationshipDrafts === undefined ||
+    (
+      Array.isArray(relationshipDrafts) &&
+      relationshipDrafts.every($0 =>
+        typeof $0 === "object" &&
+        $0 !== null &&
+        !Array.isArray($0) &&
+        hasOnlyKeys($0, [
+          "fromCandidateRef",
+          "fromEntityId",
+          "label",
+          "rationale",
+          "relationshipKind",
+          "sourceIds",
+          "toCandidateRef",
+          "toEntityId",
+        ]) &&
+        ($0.fromCandidateRef === undefined || $0.fromCandidateRef === "self") &&
+        ($0.toCandidateRef === undefined || $0.toCandidateRef === "self") &&
+        ($0.relationshipKind === undefined || typeof $0.relationshipKind === "string") &&
+        ($0.fromEntityId === undefined || typeof $0.fromEntityId === "string") &&
+        ($0.toEntityId === undefined || typeof $0.toEntityId === "string") &&
+        ($0.label === undefined || typeof $0.label === "string") &&
+        ($0.rationale === undefined || typeof $0.rationale === "string") &&
+        isValidCandidateSourceIds($0.sourceIds),
+      )
+    );
+}
+
 function isValidAssessmentCriterionCandidateBody(body) {
   return hasOnlyKeys(body, ["body", "rationale", "sourceIds", "title"]) &&
     isValidCandidateSourceIds(body.sourceIds);
@@ -2385,6 +2650,29 @@ function mapCorpusCandidateListResult({ generateToken, listCursors, query, resul
 
   return accepted({
     corpusCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapNavigationCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.navigationCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    navigationCandidates: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
@@ -2688,6 +2976,8 @@ function httpStatusFor(reason) {
     case "criterion_candidate_not_found":
     case "criterion_entity_not_found":
     case "criterion_revision_not_found":
+    case "navigation_entity_not_found":
+    case "navigation_revision_not_found":
     case "program_not_found":
     case "quick_check_candidate_not_found":
     case "quick_check_entity_not_found":
@@ -2714,6 +3004,10 @@ function httpStatusFor(reason) {
     case "membership_left":
     case "membership_missing":
     case "membership_removed":
+    case "navigation_prerequisite_cycle":
+    case "navigation_relationship_endpoint_kind_mismatch":
+    case "navigation_relationship_program_mismatch":
+    case "navigation_relationship_self_reference":
     case "program_creation_incomplete":
     case "quick_check_candidate_already_accepted":
     case "quick_check_candidate_already_rejected":
