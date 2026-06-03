@@ -2,8 +2,8 @@
 date: 2026-06-03
 model: gpt-5
 description: "Spec: Agonara topic, concept, and material navigation."
-version: 0.0.1
-status: draft
+version: 0.0.2
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,17 @@ type: spec
 ## Goal
 
 Define the accepted Program corpus navigation contract, owned by Corpus Storage with curator acceptance through Curator Workspace, so effective Students can traverse accepted topics, concepts, definitions, principles, and linked materials without creating learner state.
+
+## Implementation status
+
+Implemented in [Topic, Concept, and Material Navigation Implementation Plan](../plans/implemented/topic-concept-material-navigation.md).
+
+Primary implementation and verification:
+
+- [Storage and backup/restore](../../src/storage.js), with graph invariant coverage in [storage tests](../../tests/storage.test.js) and [backup/restore tests](../../tests/backup-restore.test.js).
+- [Corpus domain commands and student-safe queries](../../src/corpus.js), with domain coverage in [Corpus tests](../../tests/corpus.test.js) and [Corpus executable acceptance](../../tests/corpus-executable-acceptance.test.js).
+- [HTTP route adapter](../../src/server.js), with route coverage in [HTTP API tests](../../tests/http-api.test.js) and [HTTP executable acceptance](../../tests/executable-acceptance.test.js).
+- [`/learn` product UI](../../src/learn-ui.js), with browser coverage in [navigation Playwright tests](../../tests/topic-concept-material-navigation.playwright.js).
 
 ## Public interface
 

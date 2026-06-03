@@ -34,7 +34,7 @@ Required tests: use the implementation phases below.
 
 ## Goal
 
-Implement [Topic, Concept, and Material Navigation](../specs/topic-concept-material-navigation.md) for INT-03 so accepted Program corpus can represent topics, concepts, definitions, principles, material references, and graph relationships that effective Students can navigate without creating learner state.
+Implement [Topic, Concept, and Material Navigation](../../specs/topic-concept-material-navigation.md) for INT-03 so accepted Program corpus can represent topics, concepts, definitions, principles, material references, and graph relationships that effective Students can navigate without creating learner state.
 
 ## Execution mode
 
@@ -131,7 +131,7 @@ Targeted commands:
 - [x] Phase 2 - Corpus Domain Navigation Commands and Queries
 - [x] Phase 3 - HTTP Navigation API
 - [x] Phase 4 - Product UI Navigation
-- [ ] Phase 5 - Traceability, Dashboard, Archive, and Parent Closeout
+- [x] Phase 5 - Traceability, Dashboard, Archive, and Parent Closeout
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
 

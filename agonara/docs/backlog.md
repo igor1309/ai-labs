@@ -9,13 +9,13 @@ version: 0.0.4
 
 ## Storage ownership
 
-Storage is no longer wholly deferred. The implemented SQLite substrate now persists Identity, Admin authority, sessions, audit events, Program shells, Program Memberships, Program events, Corpus sources and accepted revisions, accepted assessment criteria, accepted open-answer checks, Student Workspace open-answer attempts/evaluation state, evaluator orchestration records, Quick Check accepted revisions, protected answer keys, Quick Check attempts, and backup/restore graphs.
+Storage is no longer wholly deferred. The implemented SQLite substrate now persists Identity, Admin authority, sessions, audit events, Program shells, Program Memberships, Program events, Corpus sources and accepted revisions, accepted topic/concept/material navigation graphs, accepted assessment criteria, accepted open-answer checks, Student Workspace open-answer attempts/evaluation state, evaluator orchestration records, Quick Check accepted revisions, protected answer keys, Quick Check attempts, and backup/restore graphs.
 
 Storage must still be derived from module responsibilities, not specified as an independent axis.
 
 Remaining storage questions:
 
-- How should future materials, topic graphs, concept graphs, and learning-path navigation records be modeled without mixing shared Program corpus with personal Student state?
+- Which future learning-path sequencing or recommendation records are needed beyond the implemented accepted topic/concept/material graph, and how do they stay separate from personal Student state?
 - Which persisted learner-state summaries are allowed once progress and weak-area interpretation move beyond raw evidence?
 - What invitation, recovery, and membership-policy history is needed for multi-user Program access without turning Admin authority into a Program role?
 - Which future Quick Check UI artifacts, if any, need persisted learner-facing presentation state beyond the implemented HTTP/domain storage?

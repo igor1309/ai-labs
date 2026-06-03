@@ -2,6 +2,7 @@
 
 ## 2026-06-03
 
+- Complete Phase 2 of the Agonara product gap closure plan by implementing topic, concept, and material navigation across storage, Corpus domain commands, HTTP routes, `/learn` UI traversal, backup/restore validation, Product Intent traceability, and dashboard closeout.
 - Implement Phase 4 of the topic, concept, and material navigation plan with `/learn` Curator navigation candidate management, Student topic/concept/material traversal, historical revision opening, material back links, protected-data redaction checks, Student Workspace non-mutation coverage, and desktop/mobile browser layout checks.
 - Implement Phase 3 of the topic, concept, and material navigation plan with session-backed navigation candidate HTTP routes, curator acceptance/rejection routes, student-safe graph reads, historical revision reads, pagination, CSRF gates, and executable HTTP acceptance coverage.
 - Implement Phase 2 of the topic, concept, and material navigation plan with navigation candidate commands, atomic acceptance of accepted corpus and relationship drafts, student-safe graph reads, authorization checks, and no-Student-state read boundaries.

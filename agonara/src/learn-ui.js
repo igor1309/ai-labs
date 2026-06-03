@@ -474,9 +474,13 @@ export const learnUiHtml = `<!doctype html>
                       <option value="">None</option>
                       <option value="article">Article</option>
                       <option value="book">Book</option>
+                      <option value="course">Course</option>
+                      <option value="lecture">Lecture</option>
+                      <option value="note">Note</option>
+                      <option value="problem_set">Problem set</option>
+                      <option value="standard">Standard</option>
                       <option value="video">Video</option>
-                      <option value="exercise_set">Exercise set</option>
-                      <option value="external_resource">External resource</option>
+                      <option value="other">Other</option>
                     </select>
                   </label>
                   <label>

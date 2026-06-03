@@ -6,7 +6,7 @@ description: "Agonara backend and product docs for a structured learning program
 
 # Agonara
 
-Structured learning program environment with backend/domain slices for Identity, Operations, Program Membership, Corpus curation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
+Structured learning program environment with backend/domain slices for Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
 
 ## Description
 
@@ -27,6 +27,7 @@ Implemented backend and domain surfaces:
 - Identity and Operations: first-Admin bootstrap, local-password login, server-side sessions, Admin identity operations, audit reads, health, diagnostics, request correlation, completion logs, backup, and restore.
 - Program Shell and Membership: Program creation, Student self-join/leave/rejoin, effective participation checks, Program event reads, and Program Membership event reads.
 - Corpus curation: Program sources, Corpus candidates, acceptance/rejection, accepted corpus revisions, Corpus event reads, and backup/restore support.
+- Topic, concept, and material navigation: accepted topics, concepts, definitions, principles, material references, accepted relationships, historical revisions, curator navigation candidate routes, student-safe traversal routes, backup/restore validation, and `/learn` Curator/Student navigation UI.
 - Accepted checks and criteria: assessment criteria, open-answer checks, accepted revisions, and curator/student/admin read separation.
 - Student Workspace open answers: Student submission, idempotency, owner-only attempt detail/list reads, evaluation status/evidence reads, evaluator orchestration, worker execution, and backup/restore support.
 - Quick Check assessment: session-backed HTTP routes, backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, backup/restore support, and a `/learn` product UI for Curator and Student Quick Check workflows.
@@ -34,8 +35,8 @@ Implemented backend and domain surfaces:
 
 Still deferred or backend-only:
 
-- Materials/topic navigation, topic-level or period-level checks, progress interpretation, weak-area interpretation, and membership invitation/recovery flows still need separate specs or plans.
-- Student-facing and curator-facing product UI beyond the `/learn` Quick Check slice is not implemented.
+- Topic-level or period-level checks, progress interpretation, weak-area interpretation, curator coverage-gap analysis, LLM-assisted curation suggestions, and membership invitation/recovery flows still need separate specs or plans.
+- Student-facing and curator-facing product UI beyond the `/learn` Quick Check and navigation slices is not implemented.
 
 ## Key Separations
 
