@@ -8925,6 +8925,16 @@ test("learnerStateTargetLinkRoutes_shouldRequireCuratorSessionAndCsrf", async ()
       { ...createBody, targetKind: "quick_check" },
       { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
     );
+    const unsupportedEvidenceOwnerKind = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { ...createBody, evidenceOwnerKind: "accepted_navigation_entity" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const missingEvidenceOwner = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { ...createBody, evidenceOwnerEntityId: "quick-check-missing" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
     const created = await postJson(
       `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
       createBody,
@@ -8960,10 +8970,15 @@ test("learnerStateTargetLinkRoutes_shouldRequireCuratorSessionAndCsrf", async ()
         listedAfterDelete: learnerStateTargetLinkListProjection(listedAfterDelete),
         listedBeforeDelete: learnerStateTargetLinkListProjection(listedBeforeDelete),
         malformedCreate: { body: malformedCreate.body, statusCode: malformedCreate.statusCode },
+        missingEvidenceOwner: { body: missingEvidenceOwner.body, statusCode: missingEvidenceOwner.statusCode },
         missingCsrfCreate: { body: missingCsrfCreate.body, statusCode: missingCsrfCreate.statusCode },
         missingCsrfDelete: { body: missingCsrfDelete.body, statusCode: missingCsrfDelete.statusCode },
         missingSessionList: { body: missingSessionList.body, statusCode: missingSessionList.statusCode },
         studentCreate: { body: studentCreate.body, statusCode: studentCreate.statusCode },
+        unsupportedEvidenceOwnerKind: {
+          body: unsupportedEvidenceOwnerKind.body,
+          statusCode: unsupportedEvidenceOwnerKind.statusCode,
+        },
       },
       {
         created: {
@@ -8982,10 +8997,18 @@ test("learnerStateTargetLinkRoutes_shouldRequireCuratorSessionAndCsrf", async ()
         listedAfterDelete: { linkCount: 0, status: "accepted", statusCode: 200 },
         listedBeforeDelete: { linkCount: 1, status: "accepted", statusCode: 200 },
         malformedCreate: { body: { status: "rejected", reason: "learner_state_target_not_found" }, statusCode: 404 },
+        missingEvidenceOwner: {
+          body: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+          statusCode: 404,
+        },
         missingCsrfCreate: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingCsrfDelete: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingSessionList: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
         studentCreate: { body: { status: "rejected", reason: "admin_or_curator_required" }, statusCode: 403 },
+        unsupportedEvidenceOwnerKind: {
+          body: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+          statusCode: 404,
+        },
       },
     );
   } finally {
