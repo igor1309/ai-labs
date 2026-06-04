@@ -794,7 +794,8 @@ async function handleCuratorWorkspaceApi({
       scopeId: filters.value.scopeId,
       scopeKind: filters.value.scopeKind,
     });
-    sendJson(response, statusForResult(result), mapCoverageGapReportResult(result));
+    const mappedResult = mapCoverageGapReportResult(result);
+    sendJson(response, statusForResult(mappedResult), mappedResult);
     return true;
   }
 
@@ -3023,6 +3024,9 @@ function mapLearnerStateTargetResult(result) {
 
 function mapCoverageGapReportResult(result) {
   if (result.status === "rejected") {
+    if (result.reason === "coverage_gap_scope_program_mismatch") {
+      return rejected("coverage_gap_scope_not_found");
+    }
     return result;
   }
 

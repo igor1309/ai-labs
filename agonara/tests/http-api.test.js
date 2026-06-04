@@ -10072,6 +10072,12 @@ test("coverageGapsHttp_shouldEnforceSessionCuratorValidationAndPrivateErrors", a
       `${baseUrl}/programs/${scenario.programId}/coverage-gaps?scopeKind=program&scopeId=${scenario.topic.entityId}`,
       { cookie: scenario.curator.cookie },
     );
+    const otherProgram = await createProgram(baseUrl, scenario.curator, { title: "Real Analysis" });
+    const otherProgramId = (await otherProgram.json()).value.program.programId;
+    const crossProgramScope = await getJson(
+      `${baseUrl}/programs/${otherProgramId}/coverage-gaps?scopeKind=topic&scopeId=${scenario.topic.entityId}`,
+      { cookie: scenario.curator.cookie },
+    );
     const missingScope = await getJson(
       `${baseUrl}/programs/${scenario.programId}/coverage-gaps?scopeKind=topic&scopeId=topic-missing`,
       { cookie: scenario.curator.cookie },
@@ -10080,6 +10086,7 @@ test("coverageGapsHttp_shouldEnforceSessionCuratorValidationAndPrivateErrors", a
     assert.deepEqual(
       {
         adminOnlyRead: { body: adminOnlyRead.body, statusCode: adminOnlyRead.statusCode },
+        crossProgramScope: { body: crossProgramScope.body, statusCode: crossProgramScope.statusCode },
         invalidGapKind: { body: invalidGapKind.body, statusCode: invalidGapKind.statusCode },
         missingScope: { body: missingScope.body, statusCode: missingScope.statusCode },
         missingSession: { body: missingSession.body, statusCode: missingSession.statusCode },
@@ -10088,6 +10095,10 @@ test("coverageGapsHttp_shouldEnforceSessionCuratorValidationAndPrivateErrors", a
       },
       {
         adminOnlyRead: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        crossProgramScope: {
+          body: { status: "rejected", reason: "coverage_gap_scope_not_found" },
+          statusCode: 404,
+        },
         invalidGapKind: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
         missingScope: { body: { status: "rejected", reason: "coverage_gap_scope_not_found" }, statusCode: 404 },
         missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
