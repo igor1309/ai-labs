@@ -1,4 +1,6 @@
 import {
+  createLlmCurationSuggestionGenerationRecord,
+  createLlmCurationSuggestionRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
@@ -6,6 +8,8 @@ import {
   getAcceptedQuickCheckRevisionRecord,
   getAcceptedReadinessCheckRevisionRecord,
   getIdentity,
+  getLlmCurationSuggestionGenerationRecord,
+  getLlmCurationSuggestionRecord,
   getProgramShellRecord,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
@@ -28,17 +32,185 @@ const coverageGapKinds = new Set([
 
 const coverageGapScopeKinds = new Set(["program", "topic", "concept"]);
 const coverageGapSeverities = new Set(["info", "warning", "critical"]);
+const llmCurationSuggestionKinds = new Set([
+  "navigation_candidate",
+  "quick_check_candidate",
+  "assessment_criterion_candidate",
+  "open_answer_check_candidate",
+  "readiness_check_candidate",
+]);
 const severityRank = new Map([
   ["critical", 3],
   ["warning", 2],
   ["info", 1],
 ]);
 
-export function createCuratorWorkspaceCommands({ database, getEffectiveParticipation, now }) {
+export function createCuratorWorkspaceCommands({
+  database,
+  generateId = () => crypto.randomUUID(),
+  getEffectiveParticipation,
+  llmSuggestionPolicies = [],
+  llmSuggestionProviderAdapters = [],
+  now,
+}) {
   return {
+    generateLlmCurationSuggestions: input =>
+      generateLlmCurationSuggestions({
+        database,
+        generateId,
+        getEffectiveParticipation,
+        input,
+        llmSuggestionPolicies,
+        llmSuggestionProviderAdapters,
+        now,
+      }),
     inspectCuratorCoverageGaps: input =>
       inspectCuratorCoverageGaps({ database, getEffectiveParticipation, input, now }),
   };
+}
+
+function generateLlmCurationSuggestions({
+  database,
+  generateId,
+  getEffectiveParticipation,
+  input,
+  llmSuggestionPolicies,
+  llmSuggestionProviderAdapters,
+  now,
+}) {
+  const authorization = authorizeProgramCurator({ database, getEffectiveParticipation, input });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const request = validateLlmSuggestionGenerationRequest(input);
+  if (request.status === "rejected") {
+    return request;
+  }
+
+  const policy = llmSuggestionPolicies.find(
+    $0 => $0.suggestionPolicyId === request.value.suggestionPolicyId,
+  );
+  if (!policy) {
+    return rejected("suggestion_policy_not_found");
+  }
+  if (!isValidLlmSuggestionPolicy(policy)) {
+    return rejected("validation_failed");
+  }
+
+  const allowedSuggestionKinds = request.value.allowedSuggestionKinds ?? policy.allowedSuggestionKinds;
+  if (!isAllowedSuggestionKindSubset({ allowedSuggestionKinds, policy })) {
+    return rejected("validation_failed");
+  }
+
+  const adapter = llmSuggestionProviderAdapters.find($0 => $0.providerAdapterId === policy.providerAdapterId);
+  if (!adapter) {
+    return rejected("provider_adapter_not_found");
+  }
+
+  const context = buildLlmSuggestionPromptContext({
+    database,
+    getEffectiveParticipation,
+    input,
+    now,
+    policy,
+    programId: authorization.value.program.id,
+  });
+  if (context.status === "rejected") {
+    return context;
+  }
+
+  const requestFingerprint = fingerprintLlmSuggestionGenerationRequest({
+    allowedSuggestionKinds,
+    context: context.value,
+    curatorInstruction: request.value.curatorInstruction,
+    maxSuggestions: request.value.maxSuggestions,
+    policy,
+    programId: authorization.value.program.id,
+  });
+  const existingGeneration = getLlmCurationSuggestionGenerationRecord(database, {
+    programId: authorization.value.program.id,
+    idempotencyKey: request.value.idempotencyKey,
+  });
+  if (existingGeneration) {
+    if (existingGeneration.requestFingerprint !== requestFingerprint) {
+      return rejected("validation_failed");
+    }
+    return accepted({
+      suggestions: existingGeneration.suggestionIds
+        .map($0 => getLlmCurationSuggestionRecord(database, $0))
+        .filter(Boolean)
+        .map(summarizeLlmCurationSuggestion),
+    });
+  }
+
+  let providerOutput;
+  try {
+    providerOutput = adapter.suggest({
+      requestId: generateId(),
+      programId: authorization.value.program.id,
+      suggestionPolicyId: policy.suggestionPolicyId,
+      outputValidatorPolicyId: policy.outputValidatorPolicyId,
+      allowedSuggestionKinds,
+      ...(request.value.curatorInstruction ? { curatorInstruction: request.value.curatorInstruction } : {}),
+      context: context.value,
+    });
+  } catch {
+    return rejected("provider_execution_failed");
+  }
+
+  if (!isWithinLlmSuggestionBudget({ policy, providerOutput })) {
+    return rejected("provider_budget_exceeded");
+  }
+  if (!isValidLlmSuggestionProviderOutput({ allowedSuggestionKinds, maxSuggestions: request.value.maxSuggestions, policy, providerOutput })) {
+    return rejected("provider_output_rejected");
+  }
+
+  const generatedAt = now().toISOString();
+  const suggestionRecords = [];
+  for (const providerSuggestion of providerOutput.suggestions) {
+    const suggestionRecord = createLlmCurationSuggestionRecord(database, {
+      id: generateId(),
+      programId: authorization.value.program.id,
+      suggestionKind: providerSuggestion.suggestionKind,
+      title: providerSuggestion.title,
+      summary: providerSuggestion.summary,
+      rationale: providerSuggestion.rationale,
+      suggestedDraft: providerSuggestion.suggestedDraft,
+      supportingEvidence: providerSuggestion.supportingEvidence,
+      origin: {
+        suggestionPolicyId: policy.suggestionPolicyId,
+        providerAdapterId: policy.providerAdapterId,
+        outputValidatorPolicyId: policy.outputValidatorPolicyId,
+        redactionPolicyId: policy.redactionPolicyId,
+        sourceKinds: summarizeLlmSuggestionSourceKinds({ context: context.value, request: request.value }),
+        sourceIds: summarizeLlmSuggestionSourceIds(context.value),
+        coverageGapIds: context.value.coverageGaps.map($0 => $0.gapId),
+        promptContextSummary: summarizeLlmSuggestionPromptContext(context.value),
+        generatedByIdentityId: authorization.value.identity.id,
+        generatedAt,
+      },
+      status: "draft_suggestion",
+      createdByIdentityId: authorization.value.identity.id,
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    });
+    suggestionRecords.push(suggestionRecord);
+  }
+
+  createLlmCurationSuggestionGenerationRecord(database, {
+    id: generateId(),
+    programId: authorization.value.program.id,
+    idempotencyKey: request.value.idempotencyKey,
+    requestFingerprint,
+    suggestionIds: suggestionRecords.map($0 => $0.id),
+    createdByIdentityId: authorization.value.identity.id,
+    createdAt: generatedAt,
+  });
+
+  return accepted({
+    suggestions: suggestionRecords.map(summarizeLlmCurationSuggestion),
+  });
 }
 
 function inspectCuratorCoverageGaps({ database, getEffectiveParticipation, input, now }) {
@@ -83,6 +255,398 @@ function inspectCuratorCoverageGaps({ database, getEffectiveParticipation, input
       gaps,
     },
   });
+}
+
+function validateLlmSuggestionGenerationRequest(input) {
+  if (
+    !isNonEmptyText(input?.programId) ||
+    !isNonEmptyText(input?.suggestionPolicyId) ||
+    !isNonEmptyText(input?.idempotencyKey) ||
+    !Number.isInteger(input?.maxSuggestions) ||
+    input.maxSuggestions < 1 ||
+    input.maxSuggestions > 20
+  ) {
+    return rejected("validation_failed");
+  }
+
+  const curatorInstruction = input.curatorInstruction?.trim() ?? "";
+  const coverageGapIds = input.coverageGapIds ?? [];
+  const contextEntityIds = input.contextEntityIds ?? [];
+  const allowedSuggestionKinds = input.allowedSuggestionKinds;
+  if (
+    (curatorInstruction.length === 0 && coverageGapIds.length === 0 && contextEntityIds.length === 0) ||
+    !Array.isArray(coverageGapIds) ||
+    coverageGapIds.some($0 => !isNonEmptyText($0)) ||
+    !Array.isArray(contextEntityIds) ||
+    contextEntityIds.some($0 => !isNonEmptyText($0)) ||
+    (allowedSuggestionKinds !== undefined &&
+      (!Array.isArray(allowedSuggestionKinds) ||
+        allowedSuggestionKinds.length === 0 ||
+        allowedSuggestionKinds.some($0 => !llmCurationSuggestionKinds.has($0))))
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    allowedSuggestionKinds,
+    contextEntityIds,
+    coverageGapIds,
+    curatorInstruction,
+    idempotencyKey: input.idempotencyKey,
+    maxSuggestions: input.maxSuggestions,
+    suggestionPolicyId: input.suggestionPolicyId,
+  });
+}
+
+function isValidLlmSuggestionPolicy(policy) {
+  return (
+    isNonEmptyText(policy?.suggestionPolicyId) &&
+    isNonEmptyText(policy.providerAdapterId) &&
+    isNonEmptyText(policy.outputValidatorPolicyId) &&
+    isNonEmptyText(policy.redactionPolicyId) &&
+    Array.isArray(policy.allowedSuggestionKinds) &&
+    policy.allowedSuggestionKinds.length > 0 &&
+    policy.allowedSuggestionKinds.every($0 => llmCurationSuggestionKinds.has($0)) &&
+    policy.rawArtifactPolicy === "none" &&
+    isValidLlmSuggestionPromptInputPolicy(policy.promptInputPolicy)
+  );
+}
+
+function isValidLlmSuggestionPromptInputPolicy(promptInputPolicy) {
+  return (
+    promptInputPolicy &&
+    typeof promptInputPolicy === "object" &&
+    typeof promptInputPolicy.includeAcceptedNavigationContext === "boolean" &&
+    typeof promptInputPolicy.includeAcceptedCheckContext === "boolean" &&
+    typeof promptInputPolicy.includeReadinessContext === "boolean" &&
+    typeof promptInputPolicy.includeCoverageGapContext === "boolean" &&
+    promptInputPolicy.includeStudentWorkspaceState === false
+  );
+}
+
+function isAllowedSuggestionKindSubset({ allowedSuggestionKinds, policy }) {
+  const policyKinds = new Set(policy.allowedSuggestionKinds);
+  return (
+    Array.isArray(allowedSuggestionKinds) &&
+    allowedSuggestionKinds.length > 0 &&
+    allowedSuggestionKinds.every($0 => policyKinds.has($0))
+  );
+}
+
+function buildLlmSuggestionPromptContext({
+  database,
+  getEffectiveParticipation,
+  input,
+  now,
+  policy,
+  programId,
+}) {
+  const model = buildCoverageModel(database, programId);
+  const coverageGaps = resolveLlmSuggestionCoverageGaps({
+    database,
+    getEffectiveParticipation,
+    input,
+    now,
+    programId,
+  });
+  if (coverageGaps.status === "rejected") {
+    return coverageGaps;
+  }
+
+  const contextIds = new Set(input.contextEntityIds ?? []);
+  if (!validateLlmSuggestionContextEntityIds({ contextIds, model })) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    acceptedNavigationEntities: policy.promptInputPolicy.includeAcceptedNavigationContext
+      ? model.navigationEntities
+        .filter($0 => contextIds.size === 0 || contextIds.has($0.id) || contextIds.has($0.revision.id))
+        .map($0 => ({
+          entityId: $0.id,
+          acceptedKind: $0.acceptedKind,
+          title: $0.revision.title,
+          body: $0.revision.body ?? null,
+          materialReferenceKind: $0.revision.materialReferenceKind ?? null,
+          locator: $0.revision.locator ?? null,
+        }))
+      : [],
+    acceptedChecks: policy.promptInputPolicy.includeAcceptedCheckContext
+      ? [
+          ...model.quickChecks.map($0 => ({
+            entityId: $0.id,
+            revisionId: $0.revision.id,
+            checkKind: "quick_check",
+            title: $0.revision.title,
+          })),
+          ...model.openAnswerChecks.map($0 => ({
+            entityId: $0.id,
+            revisionId: $0.revision.id,
+            checkKind: "open_answer_check",
+            title: $0.revision.title,
+          })),
+          ...model.criteria.map($0 => ({
+            entityId: $0.id,
+            revisionId: $0.revision.id,
+            checkKind: "assessment_criterion",
+            title: $0.revision.title,
+          })),
+        ].filter($0 => contextIds.size === 0 || contextIds.has($0.entityId) || contextIds.has($0.revisionId))
+      : [],
+    acceptedReadinessChecks: policy.promptInputPolicy.includeReadinessContext
+      ? model.readinessChecks
+        .filter($0 => contextIds.size === 0 || contextIds.has($0.id) || contextIds.has($0.revision.id))
+        .map($0 => ({
+          entityId: $0.id,
+          revisionId: $0.revision.id,
+          title: $0.revision.title,
+          scope: $0.revision.scope,
+          requirements: $0.revision.requirements,
+        }))
+      : [],
+    coverageGaps: policy.promptInputPolicy.includeCoverageGapContext ? coverageGaps.value : [],
+  });
+}
+
+function resolveLlmSuggestionCoverageGaps({ database, getEffectiveParticipation, input, now, programId }) {
+  const requestedGapIds = input.coverageGapIds ?? [];
+  if (requestedGapIds.length === 0) {
+    return accepted([]);
+  }
+
+  const report = inspectCuratorCoverageGaps({
+    database,
+    getEffectiveParticipation,
+    input: {
+      actingIdentityId: input.actingIdentityId,
+      programId,
+    },
+    now,
+  });
+  if (report.status === "rejected") {
+    return report;
+  }
+
+  const gapsById = new Map(report.value.report.gaps.map($0 => [$0.gapId, $0]));
+  const gaps = [];
+  for (const gapId of requestedGapIds) {
+    const gap = gapsById.get(gapId);
+    if (!gap) {
+      return rejected("coverage_gap_not_found");
+    }
+    gaps.push({
+      gapId: gap.gapId,
+      gapKind: gap.gapKind,
+      severity: gap.severity,
+      targetKind: gap.targetKind,
+      targetId: gap.targetId,
+      targetTitle: gap.targetTitle,
+      title: gap.title,
+      description: gap.description,
+      sourceKind: gap.sourceKind,
+      sourceIds: gap.sourceIds,
+    });
+  }
+
+  return accepted(gaps);
+}
+
+function validateLlmSuggestionContextEntityIds({ contextIds, model }) {
+  if (contextIds.size === 0) {
+    return true;
+  }
+
+  const acceptedIds = new Set([
+    ...model.navigationEntities.flatMap($0 => [$0.id, $0.revision.id]),
+    ...model.quickChecks.flatMap($0 => [$0.id, $0.revision.id]),
+    ...model.openAnswerChecks.flatMap($0 => [$0.id, $0.revision.id]),
+    ...model.criteria.flatMap($0 => [$0.id, $0.revision.id]),
+    ...model.readinessChecks.flatMap($0 => [$0.id, $0.revision.id]),
+  ]);
+  return [...contextIds].every($0 => acceptedIds.has($0));
+}
+
+function fingerprintLlmSuggestionGenerationRequest(value) {
+  return JSON.stringify(sortJson(value));
+}
+
+function sortJson(value) {
+  if (Array.isArray(value)) {
+    return value.map(sortJson);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, entryValue]) => [key, sortJson(entryValue)]),
+  );
+}
+
+function isWithinLlmSuggestionBudget({ policy, providerOutput }) {
+  const budget = policy.budgetPolicy ?? {};
+  const usage = providerOutput?.providerUsage ?? {};
+  return [
+    ["maxProviderCalls", "providerCalls"],
+    ["maxInputTokens", "inputTokens"],
+    ["maxOutputTokens", "outputTokens"],
+    ["maxEstimatedCostMinorUnits", "estimatedCostMinorUnits"],
+  ].every(([budgetKey, usageKey]) => {
+    if (budget[budgetKey] === undefined || usage[usageKey] === undefined) {
+      return true;
+    }
+    return Number.isInteger(usage[usageKey]) && usage[usageKey] <= budget[budgetKey];
+  });
+}
+
+function isValidLlmSuggestionProviderOutput({ allowedSuggestionKinds, maxSuggestions, policy, providerOutput }) {
+  return (
+    providerOutput &&
+    providerOutput.outputValidation?.validatorPolicyId === policy.outputValidatorPolicyId &&
+    providerOutput.outputValidation.passed === true &&
+    Array.isArray(providerOutput.suggestions) &&
+    providerOutput.suggestions.length > 0 &&
+    providerOutput.suggestions.length <= maxSuggestions &&
+    providerOutput.suggestions.every($0 =>
+      isValidLlmSuggestionProviderSuggestion({
+        allowedSuggestionKinds,
+        suggestion: $0,
+      }),
+    )
+  );
+}
+
+function isValidLlmSuggestionProviderSuggestion({ allowedSuggestionKinds, suggestion }) {
+  return (
+    suggestion &&
+    allowedSuggestionKinds.includes(suggestion.suggestionKind) &&
+    isNonEmptyText(suggestion.title) &&
+    isNonEmptyText(suggestion.summary) &&
+    isNonEmptyText(suggestion.rationale) &&
+    Array.isArray(suggestion.supportingEvidence) &&
+    suggestion.supportingEvidence.length > 0 &&
+    suggestion.supportingEvidence.every(isValidLlmSuggestionSupportingEvidence) &&
+    isValidLlmSuggestionDraft({ suggestionKind: suggestion.suggestionKind, suggestedDraft: suggestion.suggestedDraft })
+  );
+}
+
+function isValidLlmSuggestionSupportingEvidence(evidence) {
+  return (
+    evidence &&
+    ["curator_instruction", "coverage_gap", "accepted_corpus_context"].includes(evidence.sourceKind) &&
+    isNonEmptyText(evidence.sourceId) &&
+    isNonEmptyText(evidence.label)
+  );
+}
+
+function isValidLlmSuggestionDraft({ suggestionKind, suggestedDraft }) {
+  if (
+    !suggestedDraft ||
+    suggestedDraft.candidateKind !== suggestionKind ||
+    !suggestedDraft.request ||
+    typeof suggestedDraft.request !== "object"
+  ) {
+    return false;
+  }
+  if (suggestionKind === "navigation_candidate") {
+    return (
+      ["topic", "concept", "definition", "principle", "material_reference", "relationship_update"].includes(
+        suggestedDraft.request.candidateKind,
+      ) &&
+      isNonEmptyText(suggestedDraft.request.title)
+    );
+  }
+  if (suggestionKind === "quick_check_candidate") {
+    return (
+      suggestedDraft.request.checkKind === "single_select_quick_check" &&
+      isNonEmptyText(suggestedDraft.request.title) &&
+      isNonEmptyText(suggestedDraft.request.prompt) &&
+      Array.isArray(suggestedDraft.request.options) &&
+      suggestedDraft.request.options.length >= 2 &&
+      Number.isInteger(suggestedDraft.request.answerKeyIndex)
+    );
+  }
+  if (suggestionKind === "assessment_criterion_candidate") {
+    return isNonEmptyText(suggestedDraft.request.title) && isNonEmptyText(suggestedDraft.request.body);
+  }
+  if (suggestionKind === "open_answer_check_candidate") {
+    return (
+      suggestedDraft.request.checkKind === "open_answer" &&
+      isNonEmptyText(suggestedDraft.request.title) &&
+      isNonEmptyText(suggestedDraft.request.prompt) &&
+      Array.isArray(suggestedDraft.request.criterionEntityIds)
+    );
+  }
+  if (suggestionKind === "readiness_check_candidate") {
+    return (
+      isNonEmptyText(suggestedDraft.request.title) &&
+      Boolean(suggestedDraft.request.scope) &&
+      Array.isArray(suggestedDraft.request.requirements) &&
+      suggestedDraft.request.requirements.length > 0
+    );
+  }
+  return false;
+}
+
+function summarizeLlmSuggestionSourceKinds({ context, request }) {
+  return [
+    ...(request.curatorInstruction ? ["curator_instruction"] : []),
+    ...(context.coverageGaps.length > 0 ? ["coverage_gap"] : []),
+    ...(context.acceptedNavigationEntities.length > 0 ||
+    context.acceptedChecks.length > 0 ||
+    context.acceptedReadinessChecks.length > 0
+      ? ["accepted_corpus_context"]
+      : []),
+  ];
+}
+
+function summarizeLlmSuggestionSourceIds(context) {
+  return [
+    ...context.coverageGaps.map($0 => $0.gapId),
+    ...context.acceptedNavigationEntities.map($0 => $0.entityId),
+    ...context.acceptedChecks.map($0 => $0.entityId),
+    ...context.acceptedReadinessChecks.map($0 => $0.entityId),
+  ];
+}
+
+function summarizeLlmSuggestionPromptContext(context) {
+  return [
+    `${context.acceptedNavigationEntities.length} accepted navigation items`,
+    `${context.acceptedChecks.length} accepted checks`,
+    `${context.acceptedReadinessChecks.length} accepted readiness checks`,
+    `${context.coverageGaps.length} coverage gaps`,
+  ].join("; ");
+}
+
+function summarizeLlmCurationSuggestion(suggestion) {
+  return {
+    suggestionId: suggestion.id,
+    programId: suggestion.programId,
+    suggestionKind: suggestion.suggestionKind,
+    title: suggestion.title,
+    summary: suggestion.summary,
+    status: suggestion.status,
+    origin: suggestion.origin,
+    ...(suggestion.materializedCandidateId
+      ? {
+          materializedCandidate: {
+            candidateKind: suggestion.materializedCandidateKind,
+            candidateId: suggestion.materializedCandidateId,
+            materializedAt: suggestion.materializedAt,
+            materializedByIdentityId: suggestion.materializedByIdentityId,
+          },
+        }
+      : {}),
+    ...(suggestion.rejectedAt
+      ? {
+          rejectedAt: suggestion.rejectedAt,
+          rejectedByIdentityId: suggestion.rejectedByIdentityId,
+        }
+      : {}),
+    createdAt: suggestion.createdAt,
+    updatedAt: suggestion.updatedAt,
+  };
 }
 
 function authorizeProgramCurator({ database, getEffectiveParticipation, input }) {

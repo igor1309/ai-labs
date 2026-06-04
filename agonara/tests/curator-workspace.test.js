@@ -21,6 +21,8 @@ import {
   listCorpusCandidateRecords,
   listCorpusEventRecords,
   listLearnerEvidenceTargetLinkRecords,
+  listLlmCurationSuggestionGenerationRecords,
+  listLlmCurationSuggestionRecords,
   listProgramMembershipRecords,
   listQuickCheckAttemptRecords,
   listQuickCheckCandidateRecords,
@@ -286,7 +288,249 @@ test("inspectCuratorCoverageGaps_shouldRedactProtectedDetailsAndPreserveAdjacent
   }
 });
 
+test("generateLlmCurationSuggestions_shouldRejectUnauthorizedAndInvalidProviderBoundaryInput", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+
+    assert.deepEqual(
+      {
+        unknown: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          actingIdentityId: "identity-unknown",
+        })),
+        student: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          actingIdentityId: "identity-student",
+        })),
+        admin: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          actingIdentityId: "identity-admin",
+        })),
+        missingProgram: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          programId: "program-missing",
+        })),
+        invalidMax: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          maxSuggestions: 0,
+        })),
+        emptyContext: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          curatorInstruction: "",
+          coverageGapIds: [],
+          contextEntityIds: [],
+        })),
+        missingPolicy: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          suggestionPolicyId: "policy-missing",
+        })),
+      },
+      {
+        unknown: { status: "rejected", reason: "identity_not_active" },
+        student: { status: "rejected", reason: "program_curator_required" },
+        admin: { status: "rejected", reason: "program_curator_required" },
+        missingProgram: { status: "rejected", reason: "program_not_found" },
+        invalidMax: { status: "rejected", reason: "validation_failed" },
+        emptyContext: { status: "rejected", reason: "validation_failed" },
+        missingPolicy: { status: "rejected", reason: "suggestion_policy_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("generateLlmCurationSuggestions_shouldCreateRedactedDraftSuggestionsAndReplayIdempotently", () => {
+  const providerRequests = [];
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("llm-id"),
+    llmSuggestionProviderAdapters: [
+      makeLlmSuggestionProviderAdapter({
+        providerRequests,
+        suggestions: [
+          makeProviderSuggestion({
+            title: "Add vector-space overview",
+            summary: "Create a topic draft for vector spaces.",
+          }),
+        ],
+      }),
+    ],
+  });
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+    const gapId = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      minimumSeverity: "critical",
+    }).value.report.gaps[0].gapId;
+    const before = snapshotAdjacentState(database);
+
+    const created = commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+      coverageGapIds: [gapId],
+    }));
+    const replayed = commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+      coverageGapIds: [gapId],
+    }));
+    const storedSuggestions = listLlmCurationSuggestionRecords(database).map(projectStoredLlmSuggestion);
+    const generations = listLlmCurationSuggestionGenerationRecords(database).map($0 => ({
+      idempotencyKey: $0.idempotencyKey,
+      requestFingerprint: $0.requestFingerprint,
+      suggestionIds: $0.suggestionIds,
+    }));
+
+    assert.deepEqual(
+      {
+        providerCallCount: providerRequests.length,
+        providerRequest: projectProviderRequest(providerRequests[0]),
+        providerRequestLeaks: containsCoverageForbiddenDetail(providerRequests[0]),
+        created: projectLlmSuggestionResult(created),
+        replayed: projectLlmSuggestionResult(replayed),
+        storedSuggestions,
+        generations,
+        adjacentBefore: before,
+        adjacentAfter: snapshotAdjacentState(database),
+      },
+      {
+        providerCallCount: 1,
+        providerRequest: {
+          allowedSuggestionKinds: ["navigation_candidate"],
+          contextCounts: {
+            acceptedChecks: 4,
+            acceptedNavigationEntities: 5,
+            acceptedReadinessChecks: 1,
+            coverageGaps: 1,
+          },
+          outputValidatorPolicyId: "validator-a",
+          programId: "program-a",
+          suggestionPolicyId: "policy-a",
+        },
+        providerRequestLeaks: false,
+        created: {
+          status: "accepted",
+          suggestions: [
+            {
+              suggestionId: "llm-id-2",
+              status: "draft_suggestion",
+              suggestionKind: "navigation_candidate",
+              title: "Add vector-space overview",
+            },
+          ],
+        },
+        replayed: {
+          status: "accepted",
+          suggestions: [
+            {
+              suggestionId: "llm-id-2",
+              status: "draft_suggestion",
+              suggestionKind: "navigation_candidate",
+              title: "Add vector-space overview",
+            },
+          ],
+        },
+        storedSuggestions: [
+          {
+            id: "llm-id-2",
+            coverageGapIds: [gapId],
+            generatedByIdentityId: "identity-curator",
+            providerAdapterId: "provider-a",
+            status: "draft_suggestion",
+            suggestionKind: "navigation_candidate",
+            title: "Add vector-space overview",
+          },
+        ],
+        generations: [
+          {
+            idempotencyKey: "llm-suggestion-key",
+            requestFingerprint: generations[0]?.requestFingerprint,
+            suggestionIds: ["llm-id-2"],
+          },
+        ],
+        adjacentBefore: before,
+        adjacentAfter: before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("generateLlmCurationSuggestions_shouldRejectUnsafeProviderOutputWithoutMutation", () => {
+  const cases = [
+    {
+      reason: "provider_adapter_not_found",
+      adapters: [],
+      input: makeLlmSuggestionRequest(),
+    },
+    {
+      reason: "provider_execution_failed",
+      adapters: [makeLlmSuggestionProviderAdapter({ throws: true })],
+      input: makeLlmSuggestionRequest(),
+    },
+    {
+      reason: "provider_budget_exceeded",
+      adapters: [
+        makeLlmSuggestionProviderAdapter({
+          providerUsage: { providerCalls: 2 },
+          suggestions: [makeProviderSuggestion()],
+        }),
+      ],
+      input: makeLlmSuggestionRequest(),
+    },
+    {
+      reason: "provider_output_rejected",
+      adapters: [
+        makeLlmSuggestionProviderAdapter({
+          outputValidation: { validatorPolicyId: "validator-other", passed: true },
+          suggestions: [makeProviderSuggestion()],
+        }),
+      ],
+      input: makeLlmSuggestionRequest(),
+    },
+    {
+      reason: "provider_output_rejected",
+      adapters: [
+        makeLlmSuggestionProviderAdapter({
+          suggestions: [makeProviderSuggestion({ suggestionKind: "quick_check_candidate" })],
+        }),
+      ],
+      input: makeLlmSuggestionRequest({ allowedSuggestionKinds: ["navigation_candidate"] }),
+    },
+    {
+      reason: "provider_output_rejected",
+      adapters: [
+        makeLlmSuggestionProviderAdapter({
+          suggestions: [makeProviderSuggestion({ title: "" })],
+        }),
+      ],
+      input: makeLlmSuggestionRequest(),
+    },
+  ];
+
+  assert.deepEqual(
+    cases.map($0 => {
+      const { commands, database } = makeSUT({ llmSuggestionProviderAdapters: $0.adapters });
+
+      try {
+        seedCoverageCorpus(database, { programId: "program-a" });
+        const before = snapshotAdjacentState(database);
+        const result = commands.generateLlmCurationSuggestions?.($0.input);
+        return {
+          noMutation: JSON.stringify(snapshotAdjacentState(database)) === JSON.stringify(before),
+          reason: result?.reason,
+          storedSuggestions: listLlmCurationSuggestionRecords(database).length,
+        };
+      } finally {
+        database.close();
+      }
+    }),
+    cases.map($0 => ({
+      noMutation: true,
+      reason: $0.reason,
+      storedSuggestions: 0,
+    })),
+  );
+});
+
 function makeSUT({
+  generateId = makeIdGenerator("llm-id"),
+  llmSuggestionPolicies = [makeLlmSuggestionPolicy()],
+  llmSuggestionProviderAdapters = [makeLlmSuggestionProviderAdapter()],
   now = () => new Date("2026-06-04T12:00:00.000Z"),
 } = {}) {
   const database = openIdentityDatabase();
@@ -319,7 +563,10 @@ function makeSUT({
   });
   const commands = createCuratorWorkspaceCommands({
     database,
+    generateId,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    llmSuggestionPolicies,
+    llmSuggestionProviderAdapters,
     now,
   });
 
@@ -588,6 +835,111 @@ function seedCuratorProgram(database, { programId }) {
   });
 }
 
+function makeLlmSuggestionRequest({
+  actingIdentityId = "identity-curator",
+  allowedSuggestionKinds = ["navigation_candidate"],
+  contextEntityIds,
+  coverageGapIds = [],
+  curatorInstruction = "Suggest one safe draft topic.",
+  idempotencyKey = "llm-suggestion-key",
+  maxSuggestions = 1,
+  programId = "program-a",
+  suggestionPolicyId = "policy-a",
+} = {}) {
+  return {
+    actingIdentityId,
+    allowedSuggestionKinds,
+    contextEntityIds,
+    coverageGapIds,
+    curatorInstruction,
+    idempotencyKey,
+    maxSuggestions,
+    programId,
+    suggestionPolicyId,
+  };
+}
+
+function makeLlmSuggestionPolicy({
+  allowedSuggestionKinds = ["navigation_candidate"],
+  budgetPolicy = { maxProviderCalls: 1, maxInputTokens: 4000, maxOutputTokens: 800 },
+  outputValidatorPolicyId = "validator-a",
+  providerAdapterId = "provider-a",
+  rawArtifactPolicy = "none",
+  redactionPolicyId = "redaction-a",
+  suggestionPolicyId = "policy-a",
+} = {}) {
+  return {
+    suggestionPolicyId,
+    providerAdapterId,
+    outputValidatorPolicyId,
+    redactionPolicyId,
+    allowedSuggestionKinds,
+    promptInputPolicy: {
+      includeAcceptedNavigationContext: true,
+      includeAcceptedCheckContext: true,
+      includeReadinessContext: true,
+      includeCoverageGapContext: true,
+      includeStudentWorkspaceState: false,
+    },
+    budgetPolicy,
+    rawArtifactPolicy,
+  };
+}
+
+function makeLlmSuggestionProviderAdapter({
+  outputValidation = { validatorPolicyId: "validator-a", passed: true },
+  providerAdapterId = "provider-a",
+  providerRequests = [],
+  providerUsage = { providerCalls: 1, inputTokens: 120, outputTokens: 80 },
+  suggestions = [makeProviderSuggestion()],
+  throws = false,
+} = {}) {
+  return {
+    providerAdapterId,
+    suggest: request => {
+      providerRequests.push(request);
+      if (throws) {
+        throw new Error("provider failed");
+      }
+      return {
+        suggestions,
+        outputValidation,
+        providerUsage,
+      };
+    },
+  };
+}
+
+function makeProviderSuggestion({
+  suggestionKind = "navigation_candidate",
+  title = "Add algebra topic",
+  summary = "Create a topic draft for algebra.",
+} = {}) {
+  return {
+    suggestionKind,
+    title,
+    summary,
+    rationale: "The accepted program has a missing topic evidence path.",
+    suggestedDraft: {
+      candidateKind: suggestionKind,
+      request: {
+        candidateKind: "topic",
+        title,
+        body: `${title} body`,
+        sourceIds: [],
+        rationale: "Draft candidate rationale",
+      },
+    },
+    supportingEvidence: [
+      {
+        sourceKind: "curator_instruction",
+        sourceId: "curator-instruction",
+        label: "Curator instruction",
+      },
+    ],
+  };
+}
+
 function snapshotAdjacentState(database) {
   return {
     acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database).length,
@@ -615,6 +967,48 @@ function snapshotAdjacentState(database) {
     readinessAttempts: listReadinessCheckAttemptRecords(database).length,
     readinessCandidates: listReadinessCheckCandidateRecords(database).map($0 => [$0.id, $0.status]),
     sessionCount: countRows(database, "sessions"),
+  };
+}
+
+function projectProviderRequest(request) {
+  if (!request) {
+    return null;
+  }
+  return {
+    allowedSuggestionKinds: request.allowedSuggestionKinds,
+    contextCounts: {
+      acceptedChecks: request.context.acceptedChecks.length,
+      acceptedNavigationEntities: request.context.acceptedNavigationEntities.length,
+      acceptedReadinessChecks: request.context.acceptedReadinessChecks.length,
+      coverageGaps: request.context.coverageGaps.length,
+    },
+    outputValidatorPolicyId: request.outputValidatorPolicyId,
+    programId: request.programId,
+    suggestionPolicyId: request.suggestionPolicyId,
+  };
+}
+
+function projectLlmSuggestionResult(result) {
+  return {
+    status: result?.status,
+    suggestions: result?.value?.suggestions.map($0 => ({
+      suggestionId: $0.suggestionId,
+      status: $0.status,
+      suggestionKind: $0.suggestionKind,
+      title: $0.title,
+    })),
+  };
+}
+
+function projectStoredLlmSuggestion(suggestion) {
+  return {
+    id: suggestion.id,
+    coverageGapIds: suggestion.origin.coverageGapIds,
+    generatedByIdentityId: suggestion.origin.generatedByIdentityId,
+    providerAdapterId: suggestion.origin.providerAdapterId,
+    status: suggestion.status,
+    suggestionKind: suggestion.suggestionKind,
+    title: suggestion.title,
   };
 }
 
