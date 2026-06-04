@@ -37,7 +37,9 @@ export const adminBoardHtml = `<!doctype html>
     }
 
     button,
-    input {
+    input,
+    select,
+    textarea {
       font: inherit;
     }
 
@@ -136,7 +138,9 @@ export const adminBoardHtml = `<!doctype html>
       text-transform: uppercase;
     }
 
-    input {
+    input,
+    select,
+    textarea {
       width: 100%;
       min-height: 38px;
       border: 1px solid var(--border);
@@ -150,7 +154,14 @@ export const adminBoardHtml = `<!doctype html>
       text-transform: none;
     }
 
-    input:focus {
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
       border-color: var(--accent-2);
       outline: none;
     }
@@ -408,6 +419,81 @@ export const adminBoardHtml = `<!doctype html>
         <p class="muted" id="operational-access-summary">Select Inspect for an identity.</p>
       </section>
 
+      <section class="surface stack" id="program-membership-admin-panel">
+        <h2>Exceptional Program Membership</h2>
+        <div class="operation-grid">
+          <form class="surface stack" id="program-membership-recovery-form" autocomplete="off">
+            <h2>Recover membership</h2>
+            <label>
+              Program ID
+              <input id="program-membership-recovery-program-id-input" name="programId" required autocomplete="off">
+            </label>
+            <label>
+              Target identity ID
+              <input id="program-membership-recovery-target-id-input" name="targetIdentityId" required autocomplete="off">
+            </label>
+            <label>
+              Participation kind
+              <select id="program-membership-recovery-kind-input" name="participationKind">
+                <option value="student">Student</option>
+                <option value="program_curator">Program curator</option>
+              </select>
+            </label>
+            <label>
+              Recovery reason
+              <textarea id="program-membership-recovery-reason-input" name="recoveryReason" required></textarea>
+            </label>
+            <button type="submit">Recover membership</button>
+            <p class="status" id="program-membership-recovery-status"></p>
+          </form>
+
+          <form class="surface stack" id="program-membership-revocation-form" autocomplete="off">
+            <h2>Revoke membership</h2>
+            <label>
+              Program ID
+              <input id="program-membership-revocation-program-id-input" name="programId" required autocomplete="off">
+            </label>
+            <label>
+              Target identity ID
+              <input id="program-membership-revocation-target-id-input" name="targetIdentityId" required autocomplete="off">
+            </label>
+            <label>
+              Participation kind
+              <select id="program-membership-revocation-kind-input" name="participationKind">
+                <option value="student">Student</option>
+                <option value="program_curator">Program curator</option>
+              </select>
+            </label>
+            <label>
+              Revocation reason
+              <textarea id="program-membership-revocation-reason-input" name="revocationReason" required></textarea>
+            </label>
+            <button class="danger" type="submit">Revoke membership</button>
+            <p class="status" id="program-membership-revocation-status"></p>
+          </form>
+        </div>
+        <div class="actions">
+          <button class="secondary" type="button" id="refresh-program-membership-events-button">Refresh membership events</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Outcome</th>
+                <th>Actor</th>
+                <th>Target</th>
+                <th>Policy</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="program-membership-event-list"></tbody>
+          </table>
+        </div>
+        <p class="status" id="program-membership-event-status"></p>
+      </section>
+
       <section class="surface stack" id="audit-events-panel">
         <div class="actions">
           <h2>Audit Events</h2>
@@ -437,7 +523,8 @@ export const adminBoardHtml = `<!doctype html>
       const state = {
         csrfToken: null,
         identity: null,
-        identities: []
+        identities: [],
+        membershipProgramId: null
       };
       const elements = {
         app: document.querySelector("#admin-app"),
@@ -456,9 +543,17 @@ export const adminBoardHtml = `<!doctype html>
         loginForm: document.querySelector("#login-form"),
         loginStatus: document.querySelector("#login-status"),
         logoutButton: document.querySelector("#logout-button"),
+        membershipAdminPanel: document.querySelector("#program-membership-admin-panel"),
+        membershipEventList: document.querySelector("#program-membership-event-list"),
+        membershipEventStatus: document.querySelector("#program-membership-event-status"),
+        membershipRecoveryForm: document.querySelector("#program-membership-recovery-form"),
+        membershipRecoveryStatus: document.querySelector("#program-membership-recovery-status"),
+        membershipRevocationForm: document.querySelector("#program-membership-revocation-form"),
+        membershipRevocationStatus: document.querySelector("#program-membership-revocation-status"),
         operationalAccessSummary: document.querySelector("#operational-access-summary"),
         refreshAuditEventsButton: document.querySelector("#refresh-audit-events-button"),
         refreshIdentitiesButton: document.querySelector("#refresh-identities-button"),
+        refreshMembershipEventsButton: document.querySelector("#refresh-program-membership-events-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
         sessionActions: document.querySelector("#session-actions"),
         sessionChip: document.querySelector("#session-chip"),
@@ -509,6 +604,35 @@ export const adminBoardHtml = `<!doctype html>
         await refreshAuditEvents();
       });
 
+      elements.membershipRecoveryForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const body = Object.fromEntries(new FormData(elements.membershipRecoveryForm));
+        const result = await requestJson("/admin/program-memberships/recovery", {
+          body,
+          csrf: true,
+          method: "POST"
+        });
+        state.membershipProgramId = body.programId;
+        renderStatus(elements.membershipRecoveryStatus, result);
+        await refreshMembershipEvents();
+      });
+
+      elements.membershipRevocationForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!confirm("Revoke this Program membership?")) {
+          return;
+        }
+        const body = Object.fromEntries(new FormData(elements.membershipRevocationForm));
+        const result = await requestJson("/admin/program-memberships/revocation", {
+          body,
+          csrf: true,
+          method: "POST"
+        });
+        state.membershipProgramId = body.programId;
+        renderStatus(elements.membershipRevocationStatus, result);
+        await refreshMembershipEvents();
+      });
+
       elements.identityList.addEventListener("click", async event => {
         const button = event.target.closest("button[data-action]");
         if (!button) {
@@ -548,6 +672,7 @@ export const adminBoardHtml = `<!doctype html>
 
       elements.refreshIdentitiesButton.addEventListener("click", refreshIdentities);
       elements.refreshAuditEventsButton.addEventListener("click", refreshAuditEvents);
+      elements.refreshMembershipEventsButton.addEventListener("click", refreshMembershipEvents);
       elements.refreshSessionButton.addEventListener("click", refreshSession);
 
       refreshSession();
@@ -615,7 +740,13 @@ export const adminBoardHtml = `<!doctype html>
         state.csrfToken = null;
         state.identity = null;
         state.identities = [];
+        state.membershipProgramId = null;
         elements.auditEventList.textContent = "";
+        elements.membershipEventList.textContent = "";
+        elements.membershipEventStatus.textContent = "";
+        elements.membershipRecoveryStatus.textContent = "";
+        elements.membershipRevocationStatus.textContent = "";
+        elements.membershipAdminPanel.classList.add("hidden");
         elements.sessionActions.classList.add("hidden");
         elements.sessionChip.textContent = "Signed out";
         elements.sessionSummary.textContent = "No active session.";
@@ -638,6 +769,7 @@ export const adminBoardHtml = `<!doctype html>
       function setSignedIn(value) {
         state.csrfToken = value.csrfToken;
         state.identity = value.identity;
+        elements.membershipAdminPanel.classList.toggle("hidden", !value.identity.isAdmin);
         elements.sessionActions.classList.remove("hidden");
         elements.sessionChip.textContent = value.identity.displayName;
         elements.sessionSummary.textContent = value.identity.displayName + " · " + value.identity.state + " · " + (value.identity.isAdmin ? "Admin" : "No Admin");
@@ -711,6 +843,38 @@ export const adminBoardHtml = `<!doctype html>
         elements.auditEventStatus.dataset.tone = "accepted";
       }
 
+      async function refreshMembershipEvents() {
+        const programId = state.membershipProgramId ||
+          new FormData(elements.membershipRecoveryForm).get("programId") ||
+          new FormData(elements.membershipRevocationForm).get("programId");
+        if (!programId) {
+          elements.membershipEventStatus.textContent = "Set a Program ID first.";
+          elements.membershipEventStatus.dataset.tone = "rejected";
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(programId) + "/membership-events");
+        if (result.status !== "accepted") {
+          renderStatus(elements.membershipEventStatus, result);
+          return;
+        }
+        state.membershipProgramId = programId;
+        elements.membershipEventList.innerHTML = result.value.events.map(membershipEvent => (
+          '<tr>' +
+            '<td>' + escapeHtml(membershipEvent.occurredAt) + '</td>' +
+            '<td>' + escapeHtml(membershipEvent.eventType) + '</td>' +
+            '<td>' + escapeHtml(membershipEvent.outcome) + '</td>' +
+            '<td><code>' + escapeHtml(membershipEvent.actorIdentityId) + '</code></td>' +
+            '<td><code>' + escapeHtml(membershipEvent.targetIdentityId) + '</code></td>' +
+            '<td>' + escapeHtml(membershipEvent.policyPath ?? "") + '</td>' +
+            '<td>' + escapeHtml(membershipEvent.reason ?? "") + '</td>' +
+          '</tr>'
+        )).join("");
+        elements.membershipEventStatus.textContent = result.value.events.length === 0
+          ? "No membership events."
+          : "Membership events refreshed.";
+        elements.membershipEventStatus.dataset.tone = "accepted";
+      }
+
       function requestForIdentityAction(action, identityId) {
         if (action === "disable") {
           return { method: "POST", path: "/identity/identities/" + encodeURIComponent(identityId) + "/disable" };
@@ -749,6 +913,8 @@ export const adminBoardHtml = `<!doctype html>
           identity_not_found: "Identity was not found.",
           last_admin_removal: "At least one Admin must remain active.",
           last_admin_removal_rejected: "At least one Admin must remain active.",
+          last_curator_required: "At least one active Program Curator must remain.",
+          membership_missing: "Membership was not found.",
           network_error: "Network request failed.",
           rate_limited: "Too many attempts. Wait before retrying.",
           session_not_found: "No active session.",

@@ -427,6 +427,89 @@ export const learnUiHtml = `<!doctype html>
           <div id="quick-check-attempt-detail" class="empty"></div>
         </section>
 
+        <section id="program-membership-section" class="panel wide-panel stack" aria-label="Program Membership">
+          <h2>Program membership</h2>
+          <div class="navigation-grid">
+            <section id="program-membership-curator-panel" class="stack" aria-label="Curator Program Membership">
+              <h3>Curator membership controls</h3>
+              <form id="program-admission-policy-form" class="stack">
+                <label>
+                  Student admission policy
+                  <select id="program-admission-policy-input" name="admissionPolicy">
+                    <option value="self_join">Self join</option>
+                    <option value="invitation_only">Invitation only</option>
+                  </select>
+                </label>
+                <button type="submit" data-requires-session>Save admission policy</button>
+                <p id="program-admission-policy-status" class="status" aria-live="polite"></p>
+              </form>
+              <form id="program-invitation-form" class="stack">
+                <label>
+                  Student identity id
+                  <input id="program-invitation-target-input" name="targetIdentityId" autocomplete="off">
+                </label>
+                <button id="create-program-invitation-button" type="submit" data-requires-session>Create invitation</button>
+                <p id="program-invitation-status" class="status" aria-live="polite"></p>
+              </form>
+              <div class="actions">
+                <label>
+                  Invitation state
+                  <select id="program-invitation-status-filter">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="declined">Declined</option>
+                    <option value="revoked">Revoked</option>
+                  </select>
+                </label>
+                <button id="refresh-program-invitations-button" class="secondary" data-requires-session type="button">Refresh invitations</button>
+              </div>
+              <div id="program-invitation-list" class="list">
+                <p class="empty">No invitations loaded.</p>
+              </div>
+              <div class="actions">
+                <label>
+                  Participant kind
+                  <select id="program-participant-kind-filter">
+                    <option value="">All</option>
+                    <option value="student">Student</option>
+                    <option value="program_curator">Program curator</option>
+                  </select>
+                </label>
+                <label>
+                  Participant state
+                  <select id="program-participant-status-filter">
+                    <option value="">All</option>
+                    <option value="active">Active</option>
+                    <option value="left">Left</option>
+                    <option value="removed">Removed</option>
+                  </select>
+                </label>
+                <button id="refresh-program-participants-button" class="secondary" data-requires-session type="button">Refresh participants</button>
+              </div>
+              <div id="program-participant-list" class="list">
+                <p class="empty">No participants loaded.</p>
+              </div>
+              <p id="program-participant-action-status" class="status" aria-live="polite"></p>
+              <form id="curator-leave-program-form" class="stack">
+                <button id="curator-leave-program-button" class="danger" type="submit" data-requires-session>Stop curating program</button>
+                <p id="curator-leave-program-status" class="status" aria-live="polite"></p>
+              </form>
+            </section>
+
+            <section id="program-membership-student-panel" class="stack" aria-label="Student Program Membership">
+              <h3>Student invitations</h3>
+              <button id="join-student-program-button" data-requires-session type="button">Join selected Program</button>
+              <p id="student-program-membership-status" class="status" aria-live="polite"></p>
+              <button id="refresh-my-program-invitations-button" class="secondary" data-requires-session type="button">Refresh my invitations</button>
+              <div id="my-program-invitation-list" class="list">
+                <p class="empty">No invitations loaded.</p>
+              </div>
+              <p id="my-program-invitation-status" class="status" aria-live="polite"></p>
+            </section>
+          </div>
+        </section>
+
         <section id="navigation-section" class="panel wide-panel stack" aria-label="Topic, Concept, and Material Navigation">
           <h2>Topic navigation</h2>
           <p id="navigation-status" class="status" aria-live="polite">Navigation not loaded.</p>
@@ -741,13 +824,16 @@ export const learnUiHtml = `<!doctype html>
         csrfToken: null,
         deliveries: [],
         identity: null,
+        invitations: [],
         learnerState: null,
         learnerStateTargetLinks: [],
+        myInvitations: [],
         mode: "curator",
         navigation: null,
         navigationCandidates: [],
         pendingQuickCheckAttemptKey: null,
         pendingReadinessAttemptKey: null,
+        participants: [],
         programId: "",
         readinessAttempts: [],
         readinessCandidates: [],
@@ -780,6 +866,26 @@ export const learnUiHtml = `<!doctype html>
         deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
         deliveryList: document.querySelector("#quick-check-delivery-list"),
         logoutButton: document.querySelector("#logout-button"),
+        membershipAdmissionPolicyForm: document.querySelector("#program-admission-policy-form"),
+        membershipAdmissionPolicyInput: document.querySelector("#program-admission-policy-input"),
+        membershipAdmissionPolicyStatus: document.querySelector("#program-admission-policy-status"),
+        membershipCuratorLeaveForm: document.querySelector("#curator-leave-program-form"),
+        membershipCuratorLeaveStatus: document.querySelector("#curator-leave-program-status"),
+        membershipCuratorPanel: document.querySelector("#program-membership-curator-panel"),
+        membershipInvitationForm: document.querySelector("#program-invitation-form"),
+        membershipInvitationList: document.querySelector("#program-invitation-list"),
+        membershipInvitationStatus: document.querySelector("#program-invitation-status"),
+        membershipInvitationStatusFilter: document.querySelector("#program-invitation-status-filter"),
+        membershipInvitationTargetInput: document.querySelector("#program-invitation-target-input"),
+        membershipJoinStudentButton: document.querySelector("#join-student-program-button"),
+        membershipMyInvitationList: document.querySelector("#my-program-invitation-list"),
+        membershipMyInvitationStatus: document.querySelector("#my-program-invitation-status"),
+        membershipParticipantActionStatus: document.querySelector("#program-participant-action-status"),
+        membershipParticipantKindFilter: document.querySelector("#program-participant-kind-filter"),
+        membershipParticipantList: document.querySelector("#program-participant-list"),
+        membershipParticipantStatusFilter: document.querySelector("#program-participant-status-filter"),
+        membershipStudentStatus: document.querySelector("#student-program-membership-status"),
+        membershipStudentPanel: document.querySelector("#program-membership-student-panel"),
         learnerStateCheckList: document.querySelector("#learner-state-check-list"),
         learnerStateConceptList: document.querySelector("#learner-state-concept-list"),
         learnerStateCriterionList: document.querySelector("#learner-state-criterion-list"),
@@ -852,6 +958,9 @@ export const learnUiHtml = `<!doctype html>
         refreshCandidatesButton: document.querySelector("#refresh-candidates-button"),
         refreshLearnerStateButton: document.querySelector("#refresh-learner-state-button"),
         refreshLearnerStateTargetLinksButton: document.querySelector("#refresh-learner-state-target-links-button"),
+        refreshMembershipInvitationsButton: document.querySelector("#refresh-program-invitations-button"),
+        refreshMembershipMyInvitationsButton: document.querySelector("#refresh-my-program-invitations-button"),
+        refreshMembershipParticipantsButton: document.querySelector("#refresh-program-participants-button"),
         refreshNavigationButton: document.querySelector("#refresh-navigation-button"),
         refreshNavigationCandidatesButton: document.querySelector("#refresh-navigation-candidates-button"),
         refreshReadinessCheckCandidatesButton: document.querySelector("#refresh-readiness-check-candidates-button"),
@@ -912,8 +1021,127 @@ export const learnUiHtml = `<!doctype html>
 
       elements.programIdInput.addEventListener("input", () => {
         state.programId = elements.programIdInput.value.trim();
+        clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
+      });
+
+      elements.membershipAdmissionPolicyForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi()) {
+          elements.membershipAdmissionPolicyStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/admission-policy", {
+          body: { admissionPolicy: elements.membershipAdmissionPolicyInput.value },
+          csrf: true,
+          method: "PATCH",
+        });
+        elements.membershipAdmissionPolicyStatus.textContent = result.status === "accepted"
+          ? "Admission policy saved"
+          : membershipMessage(result);
+      });
+
+      elements.membershipInvitationForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi()) {
+          elements.membershipInvitationStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/invitations", {
+          body: {
+            participationKind: "student",
+            targetIdentityId: elements.membershipInvitationTargetInput.value.trim(),
+          },
+          csrf: true,
+          method: "POST",
+        });
+        elements.membershipInvitationStatus.textContent = result.status === "accepted"
+          ? "Invitation created"
+          : membershipMessage(result);
+        if (result.status === "accepted") {
+          elements.membershipInvitationTargetInput.value = "";
+          await refreshMembershipInvitations();
+        }
+      });
+
+      elements.membershipCuratorLeaveForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi() || !confirm("Stop curating this Program?")) {
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/curator-membership", {
+          csrf: true,
+          method: "DELETE",
+        });
+        elements.membershipCuratorLeaveStatus.textContent = result.status === "accepted"
+          ? "Curator membership left"
+          : membershipMessage(result);
+        await refreshMembershipParticipants();
+      });
+
+      elements.refreshMembershipInvitationsButton.addEventListener("click", refreshMembershipInvitations);
+      elements.refreshMembershipParticipantsButton.addEventListener("click", refreshMembershipParticipants);
+      elements.refreshMembershipMyInvitationsButton.addEventListener("click", refreshMembershipMyInvitations);
+      elements.membershipJoinStudentButton.addEventListener("click", async () => {
+        if (!canUseProgramApi()) {
+          elements.membershipStudentStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/student-membership", {
+          csrf: true,
+          method: "POST",
+        });
+        elements.membershipStudentStatus.textContent = result.status === "accepted"
+          ? "Program joined"
+          : membershipMessage(result);
+      });
+
+      elements.membershipInvitationList.addEventListener("click", async event => {
+        const button = event.target.closest("[data-action='revoke-program-invitation']");
+        if (!button || !confirm("Revoke this invitation?")) {
+          return;
+        }
+        const result = await requestJson(
+          "/program-invitations/" + encodeURIComponent(button.dataset.invitationId) + "/revocation",
+          { body: {}, csrf: true, method: "POST" },
+        );
+        elements.membershipInvitationStatus.textContent = result.status === "accepted"
+          ? "Invitation revoked"
+          : membershipMessage(result);
+        await refreshMembershipInvitations();
+      });
+
+      elements.membershipParticipantList.addEventListener("click", async event => {
+        const button = event.target.closest("[data-action='remove-student-participant']");
+        if (!button || !confirm("Remove this Student from the Program?")) {
+          return;
+        }
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/participants/student/" +
+            encodeURIComponent(button.dataset.identityId),
+          { csrf: true, method: "DELETE" },
+        );
+        elements.membershipParticipantActionStatus.textContent = result.status === "accepted"
+          ? "Student removed"
+          : membershipMessage(result);
+        await refreshMembershipParticipants();
+      });
+
+      elements.membershipMyInvitationList.addEventListener("click", async event => {
+        const button = event.target.closest("[data-action]");
+        if (!button || !["accept-program-invitation", "decline-program-invitation"].includes(button.dataset.action)) {
+          return;
+        }
+        const action = button.dataset.action === "accept-program-invitation" ? "acceptance" : "decline";
+        const result = await requestJson(
+          "/program-invitations/" + encodeURIComponent(button.dataset.invitationId) + "/" + action,
+          { body: {}, csrf: true, method: "POST" },
+        );
+        elements.membershipMyInvitationStatus.textContent = result.status === "accepted"
+          ? action === "acceptance" ? "Invitation accepted" : "Invitation declined"
+          : membershipMessage(result);
+        await refreshMembershipMyInvitations();
       });
 
       elements.candidateForm.addEventListener("submit", async event => {
@@ -1406,9 +1634,12 @@ export const learnUiHtml = `<!doctype html>
         state.identity = null;
         state.pendingQuickCheckAttemptKey = null;
         state.pendingReadinessAttemptKey = null;
+        state.programId = "";
         state.selectedAttemptId = null;
         state.selectedReadinessAttemptId = null;
+        elements.programIdInput.value = "";
         elements.signinStatus.textContent = "";
+        clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
         renderSession();
@@ -1659,6 +1890,174 @@ export const learnUiHtml = `<!doctype html>
 
       function renderCurationStatus(message) {
         elements.curationDetail.textContent = message;
+      }
+
+      async function refreshMembershipInvitations() {
+        if (!canUseProgramApi()) {
+          return;
+        }
+        const status = elements.membershipInvitationStatusFilter.value;
+        const query = status ? "?status=" + encodeURIComponent(status) : "";
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/invitations" + query,
+        );
+        state.invitations = result.status === "accepted" ? result.value.invitations : [];
+        renderMembershipInvitations();
+        if (result.status !== "accepted") {
+          elements.membershipInvitationStatus.textContent = membershipMessage(result);
+        }
+      }
+
+      function renderMembershipInvitations() {
+        elements.membershipInvitationList.innerHTML = "";
+        if (state.invitations.length === 0) {
+          elements.membershipInvitationList.innerHTML = '<p class="empty">No invitations loaded.</p>';
+          return;
+        }
+        for (const invitation of state.invitations) {
+          const row = document.createElement("div");
+          row.className = "detail-section";
+          const summary = document.createElement("p");
+          summary.textContent = [
+            invitation.targetIdentityId,
+            invitation.participationKind,
+            invitation.status,
+            invitation.createdAt,
+          ].join("\\n");
+          row.append(summary);
+          if (invitation.status === "pending") {
+            row.append(membershipActionButton("revoke-program-invitation", "Revoke invitation", invitation.invitationId));
+          }
+          elements.membershipInvitationList.append(row);
+        }
+      }
+
+      async function refreshMembershipParticipants() {
+        if (!canUseProgramApi()) {
+          return;
+        }
+        const query = new URLSearchParams();
+        if (elements.membershipParticipantKindFilter.value) {
+          query.set("participationKind", elements.membershipParticipantKindFilter.value);
+        }
+        if (elements.membershipParticipantStatusFilter.value) {
+          query.set("status", elements.membershipParticipantStatusFilter.value);
+        }
+        const suffix = query.size ? "?" + query.toString() : "";
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/participants" + suffix,
+        );
+        state.participants = result.status === "accepted" ? result.value.participants : [];
+        renderMembershipParticipants();
+        if (result.status !== "accepted") {
+          elements.membershipParticipantActionStatus.textContent = membershipMessage(result);
+        }
+      }
+
+      function renderMembershipParticipants() {
+        elements.membershipParticipantList.innerHTML = "";
+        if (state.participants.length === 0) {
+          elements.membershipParticipantList.innerHTML = '<p class="empty">No participants loaded.</p>';
+          return;
+        }
+        for (const participant of state.participants) {
+          const row = document.createElement("div");
+          row.className = "detail-section";
+          const summary = document.createElement("p");
+          summary.textContent = [
+            participant.identityId,
+            participant.participationKind,
+            participant.status,
+            participant.updatedAt,
+          ].join("\\n");
+          row.append(summary);
+          if (participant.participationKind === "student" && participant.status !== "removed") {
+            const button = membershipActionButton("remove-student-participant", "Remove Student");
+            button.dataset.identityId = participant.identityId;
+            button.classList.add("danger");
+            row.append(button);
+          }
+          elements.membershipParticipantList.append(row);
+        }
+      }
+
+      async function refreshMembershipMyInvitations() {
+        if (!state.identity) {
+          return;
+        }
+        const result = await requestJson("/program-invitations/me");
+        state.myInvitations = result.status === "accepted" ? result.value.invitations : [];
+        renderMembershipMyInvitations();
+        if (result.status !== "accepted") {
+          elements.membershipMyInvitationStatus.textContent = membershipMessage(result);
+        }
+      }
+
+      function renderMembershipMyInvitations() {
+        elements.membershipMyInvitationList.innerHTML = "";
+        if (state.myInvitations.length === 0) {
+          elements.membershipMyInvitationList.innerHTML = '<p class="empty">No invitations loaded.</p>';
+          return;
+        }
+        for (const invitation of state.myInvitations) {
+          const row = document.createElement("div");
+          row.className = "detail-section";
+          const summary = document.createElement("p");
+          summary.textContent = [
+            invitation.programId,
+            invitation.participationKind,
+            invitation.status,
+            invitation.createdAt,
+          ].join("\\n");
+          row.append(summary);
+          if (invitation.status === "pending") {
+            row.append(
+              membershipActionButton("accept-program-invitation", "Accept invitation", invitation.invitationId),
+              membershipActionButton("decline-program-invitation", "Decline invitation", invitation.invitationId),
+            );
+          }
+          elements.membershipMyInvitationList.append(row);
+        }
+      }
+
+      function membershipActionButton(action, label, invitationId = null) {
+        const button = document.createElement("button");
+        button.className = "secondary";
+        button.dataset.action = action;
+        if (invitationId) {
+          button.dataset.invitationId = invitationId;
+        }
+        button.type = "button";
+        button.textContent = label;
+        return button;
+      }
+
+      function membershipMessage(result) {
+        const messages = {
+          admin_required: "Admin authority is required",
+          admin_or_curator_required: "Admin or Program Curator participation is required",
+          invitation_not_found: "Invitation unavailable",
+          last_curator_required: "At least one active Program Curator must remain",
+          participation_required: "Program Curator participation is required",
+          policy_not_satisfied: "This Program requires an invitation",
+          validation_failed: "Membership input is invalid",
+        };
+        return messages[result.reason] ?? "Membership request failed";
+      }
+
+      function clearMembershipSurfaces() {
+        state.invitations = [];
+        state.myInvitations = [];
+        state.participants = [];
+        renderMembershipInvitations();
+        renderMembershipMyInvitations();
+        renderMembershipParticipants();
+        elements.membershipAdmissionPolicyStatus.textContent = "";
+        elements.membershipCuratorLeaveStatus.textContent = "";
+        elements.membershipInvitationStatus.textContent = "";
+        elements.membershipMyInvitationStatus.textContent = "";
+        elements.membershipParticipantActionStatus.textContent = "";
+        elements.membershipStudentStatus.textContent = "";
       }
 
       function canUseProgramApi() {
@@ -2264,9 +2663,15 @@ export const learnUiHtml = `<!doctype html>
       }
 
       function setMode(mode) {
+        const changed = state.mode !== mode;
         state.mode = mode;
         elements.curatorModeTab.setAttribute("aria-selected", mode === "curator" ? "true" : "false");
         elements.studentModeTab.setAttribute("aria-selected", mode === "student" ? "true" : "false");
+        elements.membershipCuratorPanel.classList.toggle("hidden", mode !== "curator");
+        elements.membershipStudentPanel.classList.toggle("hidden", mode !== "student");
+        if (changed) {
+          clearMembershipSurfaces();
+        }
         if (mode === "student" && canUseProgramApi()) {
           void refreshDeliveries();
           void refreshAttempts();
