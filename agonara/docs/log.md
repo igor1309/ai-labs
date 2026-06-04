@@ -1,7 +1,92 @@
 # Log
 
+## 2026-06-04
+
+- Close LLM-assisted curation suggestion traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout/archive placement, implemented child-plan references, and LOC dashboard refresh.
+- Implement Phase 5 of the LLM-assisted curation suggestions plan with `/learn` Program Curator generation, filtered review, redacted origin inspection, draft materialization, rejection, role isolation, and browser regression coverage.
+- Implement Phase 4 of the LLM-assisted curation suggestions plan with session-backed HTTP generation, listing, detail, acceptance, rejection, provider-fake production composition, redaction, and executable acceptance coverage.
+- Implement Phase 3 of the LLM-assisted curation suggestions plan with Program Curator review listing/detail, terminal rejection, and draft candidate materialization without accepted-corpus mutation.
+- Implement Phase 2 of the LLM-assisted curation suggestions plan with Curator Workspace provider-fake generation, redacted prompt context, policy/output/budget validation, idempotent replay, and no adjacent-domain mutation.
+- Implement Phase 1 of the LLM-assisted curation suggestions plan with durable suggestion/generation storage, terminal review state, materialized draft-candidate references, backup export, and restore validation.
+- Harden the LLM-assisted curation suggestions child plan after adversarial review by making provider file ownership explicit and carrying browser regression gates into final closeout.
+- Add the LLM-assisted curation suggestions child implementation plan with exact storage, Curator Workspace, HTTP, UI, test, review, dashboard, and archive gates for Phase 7 of the product gap closure.
+- Harden the LLM-assisted curation suggestions spec after adversarial review by clarifying answer-key redaction, terminal suggestion transitions, and composition-owned provider adapters.
+- Add the LLM-assisted curation suggestions spec with Curator Workspace-owned provider boundaries, draft suggestion records, explicit materialization into draft candidates, provenance, redaction, and backup/restore rules.
+- Close Curator Coverage Gaps traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
+- Harden Phase 3 coverage UI after adversarial review by removing source-derived gap ids from DOM attributes and proving Admin-only denial with a real Admin identity.
+- Implement Phase 3 of the Curator Coverage Gaps plan with `/learn` Program Curator filtering, report refresh, list and drill-down surfaces, browser redaction checks, unauthorized-session coverage, and existing workflow preservation.
+- Harden Phase 2 coverage HTTP after adversarial review by hiding cross-Program scope mismatches behind `coverage_gap_scope_not_found`.
+- Implement Phase 2 of the Curator Coverage Gaps plan with a session-backed Program Curator HTTP route, query filtering, private status mapping, redacted report responses, and production composition coverage.
+- Harden Phase 1 coverage diagnostics after adversarial review by explicitly testing unlinked Quick Check, open-answer check, and assessment-criterion coverage gaps.
+- Implement Phase 1 of the Curator Coverage Gaps plan with a read-only Curator Workspace diagnostic query, deterministic accepted-corpus coverage gaps, Program Curator authorization, filtering, redaction, and no-mutation coverage.
+- Harden the Curator Coverage Gaps child plan after adversarial review by adding conditional storage verification, precise Product Intent traceability wording, and explicit tracker-update commit rules.
+- Add the Curator Coverage Gaps child implementation plan with exact Curator Workspace, HTTP, UI, test, review, dashboard, and archive gates for Phase 6 of the product gap closure.
+- Harden the Curator Coverage Gaps spec after adversarial review by adding INT-01 traceability, deterministic gap identity rules, and an explicit domain-state boundary for operational logging.
+- Add the Curator Coverage Gaps spec for read-only draft guidance over accepted corpus, separating curator diagnostics from Student weak-area state and accepted-corpus mutation.
+- Close Program Membership invitations and recovery traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
+- Harden Phase 4 membership product UI after adversarial review with stale-response guards across Program, identity, and session changes; cleared membership form inputs; accessible Admin feedback; edited-Program event context; and explicit Admin redaction coverage.
+- Implement Phase 4 of the Program Membership invitations and recovery plan with role-isolated `/learn` invitation, participant, admission-policy, self-join, and curator-leave workflows plus Admin-only exceptional recovery, revocation, and membership-event inspection.
+- Harden Phase 3 membership HTTP after adversarial review with session-before-CSRF ordering for existing Program mutations, Admin-vs-Curator invitation separation, exceptional last-curator protection, attributable Admin recovery, diagnostic-read redaction, and invitation-only self-join coverage.
+- Implement Phase 3 of the Program Membership invitations and recovery plan with session-backed invitation, participant-management, curator-leave, and exceptional Admin membership routes, strict body validation, private errors, and executable HTTP acceptance coverage.
+- Harden Phase 2 membership commands after adversarial review with attributable rejected events, atomic state/event transitions, effective last-curator protection, and distinct exceptional validation reasons.
+- Implement Phase 2 of the Program Membership invitations and recovery plan with controlled Student invitation lifecycle, participant management, curator leave, admission-policy enforcement, and reasoned exceptional Admin recovery/revocation.
+- Harden Phase 1 membership invitation storage after adversarial review by mapping pending-scope status conflicts and rejecting malformed membership event metadata during restore validation.
+- Implement Phase 1 of the Program Membership invitations and recovery plan with invitation-only admission policy storage, Program invitation records, membership event metadata, backup preservation, and malformed restore rejection.
+- Harden the Program Membership invitations and recovery plan after adversarial review by expanding curator-leave targeted test matching and requiring Admin-board preservation coverage.
+- Add the Program Membership invitations and recovery child implementation plan with exact storage, domain, HTTP, UI, test, review, commit, dashboard, and archive gates for Phase 5 of the product gap closure.
+- Start parent Phase 5 of the Agonara product gap closure plan with a Program Membership invitations and recovery spec that keeps ordinary curator/student participation flows separate from exceptional Admin recovery.
+- Close the topic and period readiness checks plan with implemented spec status, Product Intent traceability, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
+- Implement Phase 5 of the topic and period readiness checks plan with `/learn` readiness curation controls, Student delivery and explicit readiness attempt workflows, idempotent retry, owner-only attempt detail, evidence drill-down, redaction checks, and Quick Check/navigation/learner-state browser regression coverage.
+
 ## 2026-06-03
 
+- Implement Phase 4 of the topic and period readiness checks plan with session-backed HTTP curation routes, Student delivery and attempt routes, CSRF/idempotency gates, owner-only attempt reads, status mapping, and student-safe redaction coverage.
+- Implement Phase 3 of the topic and period readiness checks plan with explicit Student readiness attempt submission, learner-state snapshot derivation, stable historical reads, idempotency replay/conflict handling, owner-only attempt reads, and raw-assessment non-promotion coverage.
+- Implement Phase 2 of the topic and period readiness checks plan with Program Curator readiness candidate curation, accepted scope and requirement validation, replacement revisions, curation reads, and no Student Workspace mutation coverage.
+- Harden Phase 1 readiness storage after adversarial review by validating requirement result labels from observed learner-state levels and giving `not_ready` precedence over `in_progress`.
+- Implement Phase 1 of the topic and period readiness checks plan with storage support for readiness candidates, accepted revisions, explicit Student attempts, idempotency replay, backup round-trip, and malformed restore rejection.
+- Add the topic and period readiness checks spec and child implementation plan, separating explicit readiness attempts from raw Quick Check/open-answer attempts and sequencing storage, Corpus curation, Student Workspace derivation, HTTP, UI, traceability, dashboard, and archive gates.
+- Close the learner-state interpretation plan with implemented spec status, Product Intent traceability, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
+- Harden Phase 5 learner-state UI after adversarial review with Program-context clearing for private learner-state surfaces and negative-evidence weak-area browser coverage.
+- Implement Phase 5 of the learner-state interpretation plan with `/learn` target-link curation controls, owner-only learner-state summaries, supporting-evidence detail views, redaction checks, and Quick Check/navigation UI regression coverage.
+- Harden Phase 4 learner-state HTTP routes after adversarial review with explicit unsupported and missing evidence-owner status mapping coverage.
+- Implement Phase 4 of the learner-state interpretation plan with HTTP target-link curation routes, owner-only learner-state summary/detail routes, CSRF mutation gates, status mapping, redaction coverage, and executable acceptance coverage.
+- Harden Phase 3 learner-state derivation after adversarial review with deleted-link, no-implicit-inference, pending-status, evaluator-evidence, and partial-outcome coverage.
+- Implement Phase 3 of the learner-state interpretation plan with owner-only read-time Student Workspace summaries, weak-area sorting, target detail evidence, explicit target-link contribution, latest-evidence levels, and read-only boundary coverage.
+- Harden Phase 2 learner-state target-link curation after adversarial review by marking the phase tracker complete and adding explicit concept and material-reference target coverage.
+- Implement Phase 2 of the learner-state interpretation plan with Corpus-owned learner evidence target-link curation commands, Program Curator authorization, accepted target/evidence-owner validation, soft deletion, and executable acceptance coverage.
+- Harden Phase 1 learner-state target-link storage after adversarial review with cross-Program target/evidence-owner restore rejection coverage and explicit duplicate target-link id validation.
+- Implement Phase 1 of the learner-state interpretation plan with learner evidence target-link storage, active-link idempotency, soft deletion, backup/restore preservation, and malformed restore rejection.
+- Harden the learner-state interpretation plan after adversarial review by making per-phase worktree and branch preflight an explicit implementation gate.
+- Add the learner-state interpretation child implementation plan with exact target-link, derivation, HTTP, UI, test, review, commit, dashboard, and archive gates for Phase 3 of the product gap closure.
+- Harden the learner-state interpretation spec after adversarial review by adding explicit target-link curation, deletion status, active-link derivation rules, and target-link validation tests so weak topic/concept summaries do not rely on implicit source or text inference.
+- Start Phase 3 of the Agonara product gap closure plan with a learner-state interpretation spec that keeps progress and weak-area labels owner-only, evidence-backed, read-time derived, and separate from Program corpus mutation.
+- Complete Phase 2 of the Agonara product gap closure plan by implementing topic, concept, and material navigation across storage, Corpus domain commands, HTTP routes, `/learn` UI traversal, backup/restore validation, Product Intent traceability, and dashboard closeout.
+- Implement Phase 4 of the topic, concept, and material navigation plan with `/learn` Curator navigation candidate management, Student topic/concept/material traversal, historical revision opening, material back links, protected-data redaction checks, Student Workspace non-mutation coverage, and desktop/mobile browser layout checks.
+- Implement Phase 3 of the topic, concept, and material navigation plan with session-backed navigation candidate HTTP routes, curator acceptance/rejection routes, student-safe graph reads, historical revision reads, pagination, CSRF gates, and executable HTTP acceptance coverage.
+- Implement Phase 2 of the topic, concept, and material navigation plan with navigation candidate commands, atomic acceptance of accepted corpus and relationship drafts, student-safe graph reads, authorization checks, and no-Student-state read boundaries.
+- Switch the topic, concept, and material navigation plan to auto-continue mode after explicit user direction while keeping per-phase review and commit gates.
+- Implement Phase 1 of the topic, concept, and material navigation plan with storage support for navigation corpus kinds, material-reference metadata, accepted relationships, prerequisite cycle rejection, and backup/restore graph validation.
+- Add the topic, concept, and material navigation child implementation plan with exact storage/domain/HTTP/UI/test inventories, per-phase reviews, commit gates, dashboard closeout, and archive closure.
+- Start Phase 2 of the Agonara product gap closure plan with a topic, concept, material, and relationship navigation spec that keeps accepted Program corpus separate from Student Workspace state.
+- Complete and archive the Quick Check product UI plan with implemented spec traceability, INT-04 links, README/implementation-note status updates, browser layout/accessibility checks, and dashboard LOC closeout.
+- Implement Phase 4 of the Quick Check product UI plan with Playwright-covered Student delivery reads, option-index submission, idempotent retry, owned attempt detail, and non-owner unavailable handling.
+- Implement Phase 3 of the Quick Check product UI plan with Playwright-covered Curator candidate creation, draft/rejected listing, acceptance, rejection, and answer-key curation inspection confined to the Curator panel.
+- Implement Phase 2 of the Quick Check product UI plan with Playwright-covered sign-in, session refresh/logout, Program context, role tabs, and signed-out action guards.
+- Implement Phase 1 of the Quick Check product UI plan with a secret-free `/learn` shell route, stable product UI anchors, and absent out-of-scope learner expansion routes.
+- Add the Quick Check product UI child implementation plan with exact files, routes, screens, Playwright tests, phase gates, DoD, dashboard LOC closeout, and archive closure.
+- Start Phase 1 of the Agonara product gap closure plan with a Quick Check product UI spec and implemented-status traceability for the Quick Check HTTP API spec.
+- Improve the Agonara product gap closure plan by requiring child implementation plans per phase, exact files/routes/screens/tests inventories, and Playwright-pinned UI validation before implementation starts.
+- Tighten the Agonara product gap closure plan by requiring post-implementation self/adversarial review for every phase and adding the LOC dashboard refresh to final closeout.
+- Harden the Agonara product gap closure plan after adversarial review by making it human-review-gated, adding a phase tracker, and requiring clean spec/ADR review before implementation code begins.
+- Add the Agonara product gap closure plan, archiving the completed gap-closure plan and sequencing Quick Check UI, corpus navigation, learner-state interpretation, aggregate checks, membership flows, and LLM-assisted curation from review findings.
+- Harden the Quick Check HTTP API after adversarial review by resolving sessions before CSRF on candidate acceptance/rejection and hiding non-owner attempt-detail access behind `attempt_not_found`.
+- Implement the Quick Check HTTP API across curator candidate/acceptance routes, student-safe delivery, idempotent Student Workspace attempts, production composition coverage, out-of-scope route absence checks, and INT-04 traceability.
+- Add the Quick Check HTTP API handoff with session-backed route contracts, answer-key redaction rules, strict TDD implementation phases, and INT-04 traceability.
+- Refresh Agonara current-state docs so README, backlog, implementation notes, and Product Intent distinguish implemented backend/domain slices from deferred transport and product surfaces.
+- Implement Agonara operational completion tracing across Identity, Program, Corpus, and Student Workspace HTTP routes with documented diagnostics payloads and redacted fault logging.
+- Harden the Agonara gap closure plan after adversarial review by adding build gates, separating Quick Check HTTP implementation from handoff docs, and making operational spec drift a stop condition.
+- Add the Agonara gap closure implementation plan, grounding production composition, operational tracing, docs drift, Quick Check transport, and deferred product-slice handoffs in review findings.
 - Harden Phase 9 Quick Check closeout after adversarial review by proving the executable acceptance flow keeps the internal answer-key resolver off command, HTTP, CLI, and UI surfaces.
 - Complete the Quick Check first-slice implementation with executable domain acceptance coverage, Product Intent traceability, final gate closeout, and the implementation plan archived under implemented plans.
 - Harden Phase 8 Quick Check backup and restore after adversarial review by proving historical attempt idempotency across replacement revisions and rejecting duplicate restored idempotency scopes before mutation.

@@ -7,20 +7,30 @@ import * as studentWorkspace from "../src/student-workspace.js";
 import {
   createAcceptedAssessmentCriterionEntityRecord,
   createAcceptedAssessmentCriterionRevisionRecord,
+  createAcceptedCorpusEntityRecord,
+  createAcceptedCorpusRevisionRecord,
+  createAcceptedNavigationRelationshipRecord,
+  createAcceptedNavigationRelationshipRevisionRecord,
   createAcceptedOpenAnswerCheckEntityRecord,
   createAcceptedOpenAnswerCheckRevisionRecord,
   createAcceptedQuickCheckEntityRecord,
   createAcceptedQuickCheckRevisionRecord,
+  createAcceptedReadinessCheckEntityRecord,
+  createAcceptedReadinessCheckRevisionRecord,
   createAssessmentCriterionCandidateRecord,
+  createCorpusCandidateRecord,
   createIdentity,
   createLocalPasswordCredential,
+  createLearnerEvidenceTargetLinkRecord,
   createOpenAnswerCheckCandidateRecord,
   createOpenAnswerEvaluatorRunRecord,
   createProgramMembershipRecord,
   createProgramShellRecord,
   createProgramSourceRecord,
   createQuickCheckCandidateRecord,
+  createReadinessCheckCandidateRecord,
   createSession,
+  deleteLearnerEvidenceTargetLinkRecord,
   exportIdentityBackup,
   getIdentity,
   getOpenAnswerAttemptRecord,
@@ -36,14 +46,21 @@ import {
   listAcceptedAssessmentCriterionRevisionRecords,
   listAcceptedCorpusEntityRecords,
   listAcceptedCorpusRevisionRecords,
+  listAcceptedNavigationRelationshipRecords,
+  listAcceptedNavigationRelationshipRevisionRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedOpenAnswerCheckRevisionRecords,
   listAcceptedQuickCheckEntityRecords,
   listAcceptedQuickCheckRevisionRecords,
+  listAcceptedReadinessCheckEntityRecords,
+  listAcceptedReadinessCheckRevisionRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
+  listCorpusEventRecords,
+  listLearnerEvidenceTargetLinkRecords,
   listLocalPasswordCredentials,
   listOpenAnswerEvaluationRecords,
+  listOpenAnswerEvaluationFailureRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerCheckCandidateRecords,
   listOpenAnswerEvaluatorEvidenceRecords,
@@ -52,6 +69,7 @@ import {
   listProgramSourceRecords,
   listQuickCheckAttemptRecords,
   listQuickCheckCandidateRecords,
+  listReadinessCheckAttemptRecords,
   openIdentityDatabase,
   restoreIdentityBackup,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
@@ -1775,12 +1793,746 @@ test("quickCheckExecutableAcceptance_shouldCoverFirstSliceEndToEnd", () => {
   }
 });
 
+test("learnerStateSummary_shouldDeriveOwnerEvidenceWeakAreasAndTargetDetail", () => {
+  const { commands, database } = makeSUT({
+    ids: ["quick-negative", "quick-positive", "open-pending", "open-evaluated", "evaluation-1"],
+    now: makeAdvancingClock("2026-06-02T10:00:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedStudentProgramWithAcceptedCheck(database, {
+      programId: "program-a",
+      secondCriterionCandidateId: "criterion-candidate-b",
+      secondCriterionEntityId: "criterion-entity-b",
+      secondCriterionRevisionId: "criterion-revision-b",
+    });
+    seedLearnerStateNavigationGraph(database, { programId: "program-a" });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-material-quick",
+      programId: "program-a",
+      targetKind: "material_reference",
+      targetId: "material-entity-a",
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: "quick-check-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:35:00.000Z",
+      updatedAt: "2026-06-02T09:35:00.000Z",
+    });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-concept-criterion",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-a",
+      evidenceOwnerKind: "accepted_assessment_criterion",
+      evidenceOwnerEntityId: "criterion-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:36:00.000Z",
+      updatedAt: "2026-06-02T09:36:00.000Z",
+    });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-deleted-unused-concept",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-unused",
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: "quick-check-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:37:00.000Z",
+      updatedAt: "2026-06-02T09:37:00.000Z",
+    });
+    deleteLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-deleted-unused-concept",
+      updatedAt: "2026-06-02T09:38:00.000Z",
+    });
+
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-b",
+      idempotencyKey: "quick-negative-key",
+    });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-positive-key",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Pending explanation",
+      idempotencyKey: "open-pending-key",
+    });
+    const evaluatedAttempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Evaluated explanation",
+      idempotencyKey: "open-evaluated-key",
+    }).value.attempt;
+    commands.recordOpenAnswerEvaluation({
+      attemptId: evaluatedAttempt.attemptId,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer misses the central invariant.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          criterionRevisionId: "criterion-revision-a",
+          outcome: "missing",
+          feedback: "Missing invariant.",
+        }),
+        makeCriterionFeedback({
+          criterionRevisionId: "criterion-revision-b",
+          outcome: "unclear",
+          feedback: "Partially explains terminology.",
+        }),
+      ],
+    });
+
+    const summary = commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const materialDetail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "material_reference",
+      targetId: "material-entity-a",
+    });
+    const topicDetail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "topic",
+      targetId: "topic-entity-a",
+    });
+
+    assert.deepEqual(
+      {
+        summary: projectLearnerStateSummary(summary),
+        materialDetail: projectLearnerStateTargetDetail(materialDetail),
+        topicDetail: projectLearnerStateTargetDetail(topicDetail),
+        forbiddenDetails: containsForbiddenDetail([summary, materialDetail, topicDetail]),
+      },
+      {
+        summary: {
+          status: "accepted",
+          level: "needs_attention",
+          totals: {
+            targets: 8,
+            onTrack: 2,
+            developing: 1,
+            needsAttention: 4,
+            inProgress: 0,
+            noEvidence: 1,
+          },
+          weakAreas: [
+            ["open_answer_check", "check-entity-a", "needs_attention"],
+            ["assessment_criterion", "criterion-entity-a", "needs_attention"],
+            ["concept", "concept-entity-a", "needs_attention"],
+            ["topic", "topic-entity-a", "needs_attention"],
+          ],
+          topics: [["topic-entity-a", "needs_attention", 1]],
+          concepts: [
+            ["concept-entity-unused", "no_evidence", 0],
+            ["concept-entity-a", "needs_attention", 1],
+          ],
+          materialReferences: [["material-entity-a", "on_track", 2]],
+          checks: [
+            ["open_answer_check", "check-entity-a", "needs_attention", 2],
+            ["quick_check", "quick-check-entity-a", "on_track", 2],
+          ],
+          criteria: [
+            ["criterion-entity-a", "needs_attention", 1],
+            ["criterion-entity-b", "developing", 1],
+          ],
+        },
+        materialDetail: {
+          status: "accepted",
+          target: ["material_reference", "material-entity-a", "on_track", 2],
+          evidenceSignals: ["positive", "negative"],
+          evidenceKinds: ["quick_check_attempt", "quick_check_attempt"],
+        },
+        topicDetail: {
+          status: "accepted",
+          target: ["topic", "topic-entity-a", "needs_attention", 1],
+          evidenceSignals: ["negative"],
+          evidenceKinds: ["open_answer_criterion_feedback"],
+        },
+        forbiddenDetails: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerStateTargetDetail_shouldMapPendingAttemptStatesAndEvaluatorEvidence", () => {
+  const { commands, database } = makeSUT({
+    ids: ["submitted-attempt", "evaluating-attempt", "evaluator-run-1", "evidence-1", "failed-attempt"],
+    now: makeAdvancingClock("2026-06-02T10:20:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Submitted answer",
+      idempotencyKey: "submitted-key",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Evaluating answer",
+      idempotencyKey: "evaluating-key",
+    });
+    commands.beginOpenAnswerEvaluatorRun({
+      attemptId: "evaluating-attempt",
+      evaluatorPathKind: "deterministic",
+      evaluatorPolicyId: "policy-a",
+    });
+    commands.recordOpenAnswerEvaluatorEvidence({
+      evaluatorRunId: "evaluator-run-1",
+      evidenceKind: "retrieval_trace",
+      redactedSummary: "Relevant rubric sentence.",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Failed answer",
+      idempotencyKey: "failed-key",
+    });
+    commands.recordOpenAnswerEvaluationFailure({
+      attemptId: "failed-attempt",
+      reason: "temporary evaluator outage",
+    });
+
+    const detail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "open_answer_check",
+      targetId: "check-entity-a",
+    });
+
+    assert.deepEqual(projectLearnerStateTargetDetail(detail), {
+      status: "accepted",
+      target: ["open_answer_check", "check-entity-a", "in_progress", 4],
+      evidenceSignals: ["pending", "pending", "pending", "pending"],
+      evidenceKinds: [
+        "open_answer_attempt",
+        "open_answer_evaluator_evidence",
+        "open_answer_attempt",
+        "open_answer_attempt",
+      ],
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerStateTargetDetail_shouldMapPartiallyMetCriterionToDeveloping", () => {
+  const { commands, database } = makeSUT({
+    ids: ["partial-attempt", "partial-evaluation"],
+    now: makeAdvancingClock("2026-06-02T10:30:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    const attempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Partially complete answer",
+      idempotencyKey: "partial-key",
+    }).value.attempt;
+    commands.recordOpenAnswerEvaluation({
+      attemptId: attempt.attemptId,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer partially addresses the criterion.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          outcome: "partially_met",
+          feedback: "Names the idea but omits the consequence.",
+        }),
+      ],
+    });
+
+    const detail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "assessment_criterion",
+      targetId: "criterion-entity-a",
+    });
+
+    assert.deepEqual(projectLearnerStateTargetDetail(detail), {
+      status: "accepted",
+      target: ["assessment_criterion", "criterion-entity-a", "developing", 1],
+      evidenceSignals: ["partial"],
+      evidenceKinds: ["open_answer_criterion_feedback"],
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("learnerStateReads_shouldRejectUnauthorizedActorsAndPreserveStorageState", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedLearnerStateNavigationGraph(database, { programId: "program-a" });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createIdentityIfMissing(database, "identity-curator");
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    createProgramShellIfMissing(database, "program-b");
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-other-program",
+      identityId: "identity-active-other",
+      participationKind: "student",
+      programId: "program-b",
+    }));
+    const before = projectLearnerStateReadBoundary(database);
+
+    const acceptedSummary = commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const acceptedDetail = commands.getLearnerStateTargetDetail({
+      actingIdentityId: "identity-student",
+      targetKind: "topic",
+      targetId: "topic-entity-a",
+    });
+
+    assert.deepEqual(
+      {
+        accepted: [acceptedSummary.status, acceptedDetail.status],
+        disabled: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+        }),
+        curator: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        outsideStudent: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-active-other",
+          programId: "program-a",
+        }),
+        unknownProgram: commands.getLearnerStateProgramSummary({
+          actingIdentityId: "identity-student",
+          programId: "program-missing",
+        }),
+        unsupportedTarget: commands.getLearnerStateTargetDetail({
+          actingIdentityId: "identity-student",
+          targetKind: "definition",
+          targetId: "definition-entity-a",
+        }),
+        missingTarget: commands.getLearnerStateTargetDetail({
+          actingIdentityId: "identity-student",
+          targetKind: "topic",
+          targetId: "target-missing",
+        }),
+        after: projectLearnerStateReadBoundary(database),
+      },
+      {
+        accepted: ["accepted", "accepted"],
+        disabled: { status: "rejected", reason: "identity_not_active" },
+        curator: { status: "rejected", reason: "participation_required" },
+        outsideStudent: { status: "rejected", reason: "participation_required" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        unsupportedTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        missingTarget: { status: "rejected", reason: "learner_state_target_not_found" },
+        after: before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readinessAttempts_shouldDeriveResultSnapshotAndPreserveHistory_onExplicitSubmission", () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "quick-negative",
+      "open-partial",
+      "partial-evaluation",
+      "readiness-attempt-1",
+      "quick-positive",
+      "readiness-attempt-2",
+    ],
+    now: makeAdvancingClock("2026-06-02T11:00:00.000Z"),
+  });
+
+  try {
+    seedReadinessStudentProgram(database, { programId: "program-a" });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "readiness-link-concept-criterion",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-a",
+      evidenceOwnerKind: "accepted_assessment_criterion",
+      evidenceOwnerEntityId: "criterion-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T10:45:00.000Z",
+      updatedAt: "2026-06-02T10:45:00.000Z",
+    });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-b",
+      idempotencyKey: "quick-negative-key",
+    });
+    const partialAttempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Partial explanation",
+      idempotencyKey: "open-partial-key",
+    }).value.attempt;
+    commands.recordOpenAnswerEvaluation({
+      attemptId: partialAttempt.attemptId,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer partially addresses the concept.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          outcome: "partially_met",
+          feedback: "Names the idea but misses the consequence.",
+        }),
+      ],
+    });
+
+    const deliveries = commands.listReadinessCheckDeliveries?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    const firstAttempt = commands.submitReadinessCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      readinessCheckRevisionId: "readiness-revision-a",
+      idempotencyKey: "readiness-key-a",
+    });
+    const replay = commands.submitReadinessCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      readinessCheckRevisionId: "readiness-revision-a",
+      idempotencyKey: "readiness-key-a",
+    });
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-positive-key",
+    });
+    const secondAttempt = commands.submitReadinessCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      readinessCheckRevisionId: "readiness-revision-a",
+      idempotencyKey: "readiness-key-b",
+    });
+
+    assert.deepEqual(
+      {
+        deliveries: projectReadinessDeliveries(deliveries),
+        firstAttempt: projectReadinessAttempt(firstAttempt),
+        replay: projectReadinessAttempt(replay),
+        secondAttempt: projectReadinessAttempt(secondAttempt),
+        historicalDetail: projectReadinessAttempt(commands.getReadinessCheckAttempt?.({
+          actingIdentityId: "identity-student",
+          attemptId: firstAttempt.value.readinessCheckAttempt.attemptId,
+        })),
+        storedAttempts: listReadinessCheckAttemptRecords(database).map($0 => $0.result),
+        forbiddenDetails: containsForbiddenDetail([deliveries, firstAttempt, secondAttempt]),
+      },
+      {
+        deliveries: {
+          status: "accepted",
+          readinessChecks: [
+            {
+              entityId: "readiness-entity-a",
+              revisionId: "readiness-revision-a",
+              title: "Topic readiness",
+              scopeKind: "topic",
+              requirementTargets: [
+                ["quick_check", "quick-check-entity-a", "on_track"],
+                ["concept", "concept-entity-a", "developing"],
+              ],
+            },
+          ],
+        },
+        firstAttempt: {
+          status: "accepted",
+          result: "not_ready",
+          requirementResults: [
+            ["quick_check", "quick-check-entity-a", "needs_attention", "not_ready"],
+            ["concept", "concept-entity-a", "developing", "ready"],
+          ],
+        },
+        replay: {
+          status: "accepted",
+          result: "not_ready",
+          requirementResults: [
+            ["quick_check", "quick-check-entity-a", "needs_attention", "not_ready"],
+            ["concept", "concept-entity-a", "developing", "ready"],
+          ],
+        },
+        secondAttempt: {
+          status: "accepted",
+          result: "ready",
+          requirementResults: [
+            ["quick_check", "quick-check-entity-a", "on_track", "ready"],
+            ["concept", "concept-entity-a", "developing", "ready"],
+          ],
+        },
+        historicalDetail: {
+          status: "accepted",
+          result: "not_ready",
+          requirementResults: [
+            ["quick_check", "quick-check-entity-a", "needs_attention", "not_ready"],
+            ["concept", "concept-entity-a", "developing", "ready"],
+          ],
+        },
+        storedAttempts: ["not_ready", "ready"],
+        forbiddenDetails: false,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readinessAttempts_shouldSupportInProgressIdempotencyConflictOwnerOnlyReadsAndPrivateDenials", () => {
+  const { commands, database } = makeSUT({
+    ids: ["pending-open-attempt", "readiness-attempt-1", "pending-evaluation"],
+    now: makeAdvancingClock("2026-06-02T11:30:00.000Z"),
+  });
+
+  try {
+    seedReadinessStudentProgram(database, { includeConceptReadiness: true, programId: "program-a" });
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "readiness-link-concept-criterion",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-a",
+      evidenceOwnerKind: "accepted_open_answer_check",
+      evidenceOwnerEntityId: "check-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T11:20:00.000Z",
+      updatedAt: "2026-06-02T11:20:00.000Z",
+    });
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    createIdentityIfMissing(database, "identity-curator");
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-curator-a",
+      identityId: "identity-curator",
+      participationKind: "program_curator",
+      programId: "program-a",
+    }));
+    createProgramShellIfMissing(database, "program-b");
+    createProgramMembershipRecord(database, makeMembership({
+      id: "membership-other-program",
+      identityId: "identity-active-other",
+      participationKind: "student",
+      programId: "program-b",
+    }));
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Pending answer",
+      idempotencyKey: "pending-open-key",
+    });
+    const acceptedAttempt = commands.submitReadinessCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      readinessCheckRevisionId: "readiness-revision-concept",
+      idempotencyKey: "readiness-key-a",
+    });
+    commands.recordOpenAnswerEvaluation({
+      attemptId: "pending-open-attempt",
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer partially addresses the concept.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          outcome: "partially_met",
+          feedback: "Partial answer.",
+        }),
+      ],
+    });
+
+    assert.deepEqual(
+      {
+        acceptedAttempt: projectReadinessAttempt(acceptedAttempt),
+        listOwner: projectReadinessAttemptList(commands.listReadinessCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        })),
+        listRevision: projectReadinessAttemptList(commands.listReadinessCheckAttempts?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          readinessCheckRevisionId: "readiness-revision-concept",
+        })),
+        conflict: commands.submitReadinessCheckAttempt?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          readinessCheckRevisionId: "readiness-revision-concept",
+          idempotencyKey: "readiness-key-a",
+        }),
+        disabled: commands.listReadinessCheckDeliveries?.({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+        }),
+        curatorList: commands.listReadinessCheckAttempts?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        outsideStudentList: commands.listReadinessCheckAttempts?.({
+          actingIdentityId: "identity-active-other",
+          programId: "program-a",
+        }),
+        unknownProgram: commands.listReadinessCheckDeliveries?.({
+          actingIdentityId: "identity-student",
+          programId: "program-missing",
+        }),
+        unknownRevision: commands.submitReadinessCheckAttempt?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+          readinessCheckRevisionId: "readiness-revision-missing",
+          idempotencyKey: "readiness-key-missing",
+        }),
+        otherStudentDetail: commands.getReadinessCheckAttempt?.({
+          actingIdentityId: "identity-active-other",
+          attemptId: acceptedAttempt.value.readinessCheckAttempt.attemptId,
+        }),
+        unknownAttempt: commands.getReadinessCheckAttempt?.({
+          actingIdentityId: "identity-student",
+          attemptId: "readiness-attempt-missing",
+        }),
+      },
+      {
+        acceptedAttempt: {
+          status: "accepted",
+          result: "in_progress",
+          requirementResults: [
+            ["concept", "concept-entity-a", "in_progress", "in_progress"],
+          ],
+        },
+        listOwner: {
+          status: "accepted",
+          attempts: [["readiness-attempt-1", "in_progress"]],
+        },
+        listRevision: {
+          status: "accepted",
+          attempts: [["readiness-attempt-1", "in_progress"]],
+        },
+        conflict: { status: "rejected", reason: "idempotency_conflict" },
+        disabled: { status: "rejected", reason: "identity_not_active" },
+        curatorList: { status: "rejected", reason: "participation_required" },
+        outsideStudentList: { status: "rejected", reason: "participation_required" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+        unknownRevision: { status: "rejected", reason: "readiness_revision_not_found" },
+        otherStudentDetail: { status: "rejected", reason: "attempt_not_found" },
+        unknownAttempt: { status: "rejected", reason: "attempt_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("getReadinessCheckAttempt_shouldRequireActiveStudentParticipation_onOwnerDetailRead", () => {
+  const { commands, database } = makeSUT({
+    ids: ["readiness-attempt-1"],
+  });
+
+  try {
+    seedReadinessStudentProgram(database, { includeConceptReadiness: true, programId: "program-a" });
+    const acceptedAttempt = commands.submitReadinessCheckAttempt?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      readinessCheckRevisionId: "readiness-revision-concept",
+      idempotencyKey: "readiness-key-a",
+    });
+
+    database
+      .prepare("update program_memberships set status = 'removed', updated_at = ? where id = ?")
+      .run("2026-06-02T11:45:00.000Z", "membership-student-a");
+
+    assert.deepEqual(
+      commands.getReadinessCheckAttempt?.({
+        actingIdentityId: "identity-student",
+        attemptId: acceptedAttempt.value.readinessCheckAttempt.attemptId,
+      }),
+      { status: "rejected", reason: "participation_required" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readinessReadsAndLearnerStateReads_shouldNotImplicitlyCreateAttemptsOrMutateAdjacentState", () => {
+  const { commands, database } = makeSUT({ ids: ["quick-attempt", "open-attempt"] });
+
+  try {
+    seedReadinessStudentProgram(database, { programId: "program-a" });
+    const before = projectReadinessBoundary(database);
+
+    commands.submitQuickCheckAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "quick-check-revision-a",
+      selectedOptionId: "quick-check-revision-a-option-a",
+      idempotencyKey: "quick-key",
+    });
+    commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Open answer",
+      idempotencyKey: "open-key",
+    });
+    commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+    commands.listReadinessCheckDeliveries?.({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    });
+
+    assert.deepEqual(
+      {
+        beforeReadinessAttempts: before.readinessCheckAttempts,
+        after: projectReadinessBoundary(database),
+      },
+      {
+        beforeReadinessAttempts: [],
+        after: {
+          ...before,
+          quickCheckAttemptCount: 1,
+          openAnswerAttemptCount: 1,
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("containsAnyOutOfScopeStudentWorkspaceBehavior_shouldDetectDeferredQuickCheckStateSurfaces", () => {
   assert.deepEqual(
     [
       "mastery",
       "weak_area",
-      "progress",
+      "student_progress",
       "review_scheduling",
       "next_step",
       "topic_readiness",
@@ -1803,7 +2555,7 @@ test("quickCheckBoundarySurfaceDetectors_shouldDetectPublicAndResolverLeaks", ()
     assert.deepEqual(
       {
         publicSurfaces: [
-          { serverSource: "POST /quick-check/attempts" },
+          { serverSource: "POST /quick-check-worker/jobs" },
           { cliSource: "submitQuickCheckAttempt" },
           { adminUiSource: "quick_check_dashboard" },
         ].map(source =>
@@ -7865,14 +8617,19 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "completeOpenAnswerEvaluatorRun",
       "failOpenAnswerEvaluatorJob",
       "failOpenAnswerEvaluatorRun",
+      "getLearnerStateProgramSummary",
+      "getLearnerStateTargetDetail",
       "getOpenAnswerAttempt",
       "getOpenAnswerEvaluationStatus",
       "getOpenAnswerEvaluatorJob",
       "getQuickCheckAttempt",
+      "getReadinessCheckAttempt",
       "listClaimableOpenAnswerEvaluatorJobs",
       "listOpenAnswerAttempts",
       "listOpenAnswerEvaluatorEvidence",
       "listQuickCheckAttempts",
+      "listReadinessCheckAttempts",
+      "listReadinessCheckDeliveries",
       "markOpenAnswerAttemptEvaluating",
       "recordOpenAnswerEvaluation",
       "recordOpenAnswerEvaluationFailure",
@@ -7883,6 +8640,7 @@ test("studentWorkspaceFirstSlice_shouldNotExposeOutOfScopeSurfaces", () => {
       "scheduleOpenAnswerEvaluatorJob",
       "submitOpenAnswerAttempt",
       "submitQuickCheckAttempt",
+      "submitReadinessCheckAttempt",
       "timeOutOpenAnswerEvaluatorJob",
     ]);
     assert.deepEqual(
@@ -8655,14 +9413,19 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "completeOpenAnswerEvaluatorRun",
           "failOpenAnswerEvaluatorJob",
           "failOpenAnswerEvaluatorRun",
+          "getLearnerStateProgramSummary",
+          "getLearnerStateTargetDetail",
           "getOpenAnswerAttempt",
           "getOpenAnswerEvaluationStatus",
           "getOpenAnswerEvaluatorJob",
           "getQuickCheckAttempt",
+          "getReadinessCheckAttempt",
           "listClaimableOpenAnswerEvaluatorJobs",
           "listOpenAnswerAttempts",
           "listOpenAnswerEvaluatorEvidence",
           "listQuickCheckAttempts",
+          "listReadinessCheckAttempts",
+          "listReadinessCheckDeliveries",
           "markOpenAnswerAttemptEvaluating",
           "recordOpenAnswerEvaluation",
           "recordOpenAnswerEvaluationFailure",
@@ -8673,6 +9436,7 @@ test("studentWorkspaceOpenAnswerExecutableAcceptance_shouldCoverFirstSliceFlow",
           "scheduleOpenAnswerEvaluatorJob",
           "submitOpenAnswerAttempt",
           "submitQuickCheckAttempt",
+          "submitReadinessCheckAttempt",
           "timeOutOpenAnswerEvaluatorJob",
         ],
       },
@@ -8818,6 +9582,78 @@ function projectQuickCheckAttemptResult(attempt) {
     selectedOptionId: attempt.selectedOptionId,
     matched: attempt.matched,
   };
+}
+
+function projectLearnerStateSummary(result) {
+  const learnerState = result.value?.learnerState;
+  return {
+    status: result.status,
+    level: learnerState?.level,
+    totals: learnerState?.totals,
+    weakAreas: learnerState?.weakAreas.map(projectLearnerStateTargetTuple),
+    topics: learnerState?.topics.map(projectLearnerStateNavigationTargetTuple),
+    concepts: learnerState?.concepts.map(projectLearnerStateNavigationTargetTuple),
+    materialReferences: learnerState?.materialReferences.map(projectLearnerStateNavigationTargetTuple),
+    checks: learnerState?.checks.map($0 => [$0.targetKind, $0.targetId, $0.level, $0.evidenceCount]),
+    criteria: learnerState?.criteria.map(projectLearnerStateNavigationTargetTuple),
+  };
+}
+
+function projectLearnerStateTargetDetail(result) {
+  const target = result.value?.learnerStateTarget;
+  return {
+    status: result.status,
+    target: target
+      ? [target.targetKind, target.targetId, target.level, target.evidenceCount]
+      : null,
+    evidenceSignals: target?.evidence.map($0 => $0.signal),
+    evidenceKinds: target?.evidence.map($0 => $0.sourceKind),
+  };
+}
+
+function projectReadinessDeliveries(result) {
+  return {
+    status: result?.status,
+    readinessChecks: result?.value?.readinessChecks.map($0 => ({
+      entityId: $0.entityId,
+      revisionId: $0.revisionId,
+      title: $0.title,
+      scopeKind: $0.scope.scopeKind,
+      requirementTargets: $0.requirements.map(requirement => [
+        requirement.targetKind,
+        requirement.targetId,
+        requirement.requiredLevel,
+      ]),
+    })),
+  };
+}
+
+function projectReadinessAttempt(result) {
+  return {
+    status: result?.status,
+    result: result?.value?.readinessCheckAttempt?.result,
+    requirementResults: result?.value?.readinessCheckAttempt?.requirementResults.map($0 => [
+      $0.targetKind,
+      $0.targetId,
+      $0.observedLevel,
+      $0.result,
+    ]),
+  };
+}
+
+function projectReadinessAttemptList(result) {
+  return {
+    status: result?.status,
+    attempts: result?.value?.readinessCheckAttempts.map($0 => [$0.attemptId, $0.result]),
+  };
+}
+
+function projectLearnerStateTargetTuple(target) {
+  return [target.targetKind, target.targetId, target.level];
+}
+
+function projectLearnerStateNavigationTargetTuple(target) {
+  return [target.targetId, target.level, target.evidenceCount];
 }
 
 function makeEvaluationSummary({
@@ -9309,6 +10145,249 @@ function makeIdGenerator(ids) {
   return () => nextIds.shift();
 }
 
+function makeAdvancingClock(startIso) {
+  let tick = 0;
+  const start = new Date(startIso).getTime();
+  return () => new Date(start + tick++);
+}
+
+function seedLearnerStateNavigationGraph(database, { programId }) {
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "topic-entity-a",
+    revisionId: "topic-revision-a",
+    acceptedKind: "topic",
+    title: "Topic target",
+  });
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "concept-entity-a",
+    revisionId: "concept-revision-a",
+    acceptedKind: "concept",
+    title: "Concept target",
+  });
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "concept-entity-unused",
+    revisionId: "concept-revision-unused",
+    acceptedKind: "concept",
+    title: "Accepted quick check quick-check-revision-a",
+    sourceIds: ["quick-check-source-a"],
+  });
+  createAcceptedNavigationTarget(database, {
+    programId,
+    entityId: "material-entity-a",
+    revisionId: "material-revision-a",
+    acceptedKind: "material_reference",
+    title: "Material target",
+  });
+  createCorpusCandidateRecord(database, {
+    id: "relationship-candidate-topic-concept",
+    programId,
+    candidateKind: "relationship_update",
+    title: "Topic concept relationship",
+    body: null,
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: [],
+    rationale: null,
+    status: "accepted",
+    createdByIdentityId: "identity-curator",
+    createdAt: "2026-06-02T09:32:00.000Z",
+    updatedAt: "2026-06-02T09:32:00.000Z",
+  });
+  createAcceptedNavigationRelationshipRecord(database, {
+    id: "relationship-topic-concept",
+    programId,
+    relationshipKind: "topic_includes_concept",
+    fromEntityId: "topic-entity-a",
+    toEntityId: "concept-entity-a",
+    currentRevisionId: "relationship-topic-concept-revision",
+  });
+  createAcceptedNavigationRelationshipRevisionRecord(database, {
+    id: "relationship-topic-concept-revision",
+    relationshipId: "relationship-topic-concept",
+    programId,
+    relationshipKind: "topic_includes_concept",
+    fromEntityId: "topic-entity-a",
+    fromRevisionId: "topic-revision-a",
+    fromKind: "topic",
+    toEntityId: "concept-entity-a",
+    toRevisionId: "concept-revision-a",
+    toKind: "concept",
+    label: "includes",
+    sourceIds: [],
+    acceptedFromCandidateId: "relationship-candidate-topic-concept",
+    acceptedByIdentityId: "identity-curator",
+    acceptedAt: "2026-06-02T09:33:00.000Z",
+  });
+}
+
+function seedReadinessStudentProgram(database, { includeConceptReadiness = false, programId }) {
+  seedStudentProgramWithAcceptedQuickCheck(database, { programId });
+  seedStudentProgramWithAcceptedCheck(database, { programId });
+  seedLearnerStateNavigationGraph(database, { programId });
+  createReadinessCheckCandidateRecord(database, {
+    id: "readiness-candidate-a",
+    programId,
+    title: "Topic readiness",
+    scope: { scopeKind: "topic", topicEntityId: "topic-entity-a" },
+    requirements: [
+      {
+        requirementId: "readiness-requirement-quick",
+        targetKind: "quick_check",
+        targetId: "quick-check-entity-a",
+        requiredLevel: "on_track",
+      },
+      {
+        requirementId: "readiness-requirement-concept",
+        targetKind: "concept",
+        targetId: "concept-entity-a",
+        requiredLevel: "developing",
+      },
+    ],
+    sourceIds: [],
+    rationale: null,
+    status: "accepted",
+    createdByIdentityId: "identity-curator",
+    createdAt: "2026-06-02T10:40:00.000Z",
+    updatedAt: "2026-06-02T10:40:00.000Z",
+  });
+  createAcceptedReadinessCheckEntityRecord(database, {
+    id: "readiness-entity-a",
+    programId,
+    currentRevisionId: "readiness-revision-a",
+  });
+  createAcceptedReadinessCheckRevisionRecord(database, {
+    id: "readiness-revision-a",
+    entityId: "readiness-entity-a",
+    programId,
+    title: "Topic readiness",
+    scope: { scopeKind: "topic", topicEntityId: "topic-entity-a" },
+    requirements: [
+      {
+        requirementId: "readiness-requirement-quick",
+        targetKind: "quick_check",
+        targetId: "quick-check-entity-a",
+        requiredLevel: "on_track",
+      },
+      {
+        requirementId: "readiness-requirement-concept",
+        targetKind: "concept",
+        targetId: "concept-entity-a",
+        requiredLevel: "developing",
+      },
+    ],
+    acceptedFromCandidateId: "readiness-candidate-a",
+    sourceIds: [],
+    rationale: null,
+    acceptedByIdentityId: "identity-curator",
+    acceptedAt: "2026-06-02T10:41:00.000Z",
+  });
+  if (includeConceptReadiness) {
+    createReadinessCheckCandidateRecord(database, {
+      id: "readiness-candidate-concept",
+      programId,
+      title: "Concept readiness",
+      scope: { scopeKind: "topic", topicEntityId: "topic-entity-a" },
+      requirements: [
+        {
+          requirementId: "readiness-requirement-concept-only",
+          targetKind: "concept",
+          targetId: "concept-entity-a",
+          requiredLevel: "developing",
+        },
+      ],
+      sourceIds: [],
+      rationale: null,
+      status: "accepted",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T10:42:00.000Z",
+      updatedAt: "2026-06-02T10:42:00.000Z",
+    });
+    createAcceptedReadinessCheckEntityRecord(database, {
+      id: "readiness-entity-concept",
+      programId,
+      currentRevisionId: "readiness-revision-concept",
+    });
+    createAcceptedReadinessCheckRevisionRecord(database, {
+      id: "readiness-revision-concept",
+      entityId: "readiness-entity-concept",
+      programId,
+      title: "Concept readiness",
+      scope: { scopeKind: "topic", topicEntityId: "topic-entity-a" },
+      requirements: [
+        {
+          requirementId: "readiness-requirement-concept-only",
+          targetKind: "concept",
+          targetId: "concept-entity-a",
+          requiredLevel: "developing",
+        },
+      ],
+      acceptedFromCandidateId: "readiness-candidate-concept",
+      sourceIds: [],
+      rationale: null,
+      acceptedByIdentityId: "identity-curator",
+      acceptedAt: "2026-06-02T10:43:00.000Z",
+    });
+  }
+}
+
+function createAcceptedNavigationTarget(
+  database,
+  {
+    programId,
+    entityId,
+    revisionId,
+    acceptedKind,
+    title,
+    sourceIds = [],
+  },
+) {
+  const candidateId = `candidate-${entityId}`;
+  createCorpusCandidateRecord(database, {
+    id: candidateId,
+    programId,
+    candidateKind: acceptedKind,
+    title,
+    body: acceptedKind === "material_reference" ? null : `${title} body`,
+    materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+    locator: acceptedKind === "material_reference" ? `https://example.test/${entityId}` : null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds,
+    rationale: null,
+    status: "accepted",
+    createdByIdentityId: "identity-curator",
+    createdAt: "2026-06-02T09:30:00.000Z",
+    updatedAt: "2026-06-02T09:30:00.000Z",
+  });
+  createAcceptedCorpusEntityRecord(database, {
+    id: entityId,
+    programId,
+    acceptedKind,
+    currentRevisionId: revisionId,
+  });
+  createAcceptedCorpusRevisionRecord(database, {
+    id: revisionId,
+    entityId,
+    programId,
+    acceptedKind,
+    title,
+    body: acceptedKind === "material_reference" ? null : `${title} body`,
+    materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+    locator: acceptedKind === "material_reference" ? `https://example.test/${entityId}` : null,
+    citation: null,
+    acceptedFromCandidateId: candidateId,
+    sourceIds,
+    rationale: null,
+    acceptedByIdentityId: "identity-curator",
+    acceptedAt: "2026-06-02T09:31:00.000Z",
+  });
+}
+
 function seedStudentProgramWithAcceptedCheck(
   database,
   {
@@ -9585,6 +10664,45 @@ function projectQuickCheckBoundaryIsolationState(database, csrfTokens) {
   };
 }
 
+function projectLearnerStateReadBoundary(database) {
+  return {
+    corpus: projectAdjacentCorpusState(database),
+    acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
+    acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
+    learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
+    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
+    acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
+    quickCheckAttempts: listQuickCheckAttemptRecords(database),
+    openAnswerAttempts: listOpenAnswerAttemptRecords(database),
+    openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
+    openAnswerEvaluationFailures: listOpenAnswerEvaluationFailureRecords(database),
+    openAnswerEvaluatorEvidence: listOpenAnswerEvaluatorEvidenceRecords(database),
+    openAnswerEvaluatorRuns: listOpenAnswerEvaluatorRunRecords(database),
+    corpusEvents: listCorpusEventRecords(database),
+    memberships: listProgramMembershipRecords(database),
+  };
+}
+
+function projectReadinessBoundary(database) {
+  return {
+    acceptedReadinessCheckEntities: listAcceptedReadinessCheckEntityRecords(database),
+    acceptedReadinessCheckRevisions: listAcceptedReadinessCheckRevisionRecords(database),
+    readinessCheckAttempts: listReadinessCheckAttemptRecords(database),
+    corpus: projectAdjacentCorpusState(database),
+    acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
+    acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
+    learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
+    quickCheckAttemptCount: listQuickCheckAttemptRecords(database).length,
+    openAnswerAttemptCount: listOpenAnswerAttemptRecords(database).length,
+    openAnswerEvaluationCount: listOpenAnswerEvaluationRecords(database).length,
+    openAnswerEvaluationFailureCount: listOpenAnswerEvaluationFailureRecords(database).length,
+    openAnswerEvaluatorEvidenceCount: listOpenAnswerEvaluatorEvidenceRecords(database).length,
+    openAnswerEvaluatorRunCount: listOpenAnswerEvaluatorRunRecords(database).length,
+    corpusEvents: listCorpusEventRecords(database),
+    memberships: listProgramMembershipRecords(database),
+  };
+}
+
 function projectQuickCheckDeferredState(database) {
   const backup = exportIdentityBackup(database);
   return {
@@ -9741,7 +10859,7 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
     "raw_model",
     "mastery",
     "weak_area",
-    "progress",
+    "student_progress",
     "review_scheduling",
     "next_step",
     "topic_readiness",
@@ -9762,7 +10880,8 @@ function containsAnyOutOfScopeStudentWorkspaceBehavior(source) {
 }
 
 function containsAnyQuickCheckPublicSurface({ adminUiSource, cliSource, serverSource }) {
-  const normalized = [adminUiSource, cliSource, serverSource].join("\n").toLowerCase();
+  const normalizedPublicSources = [adminUiSource, cliSource].join("\n").toLowerCase();
+  const normalizedServerSource = serverSource.toLowerCase();
   return [
     "quickcheck",
     "quick-check",
@@ -9773,7 +10892,22 @@ function containsAnyQuickCheckPublicSurface({ adminUiSource, cliSource, serverSo
     "submitquickcheck",
     "createquickcheck",
     "acceptquickcheck",
-  ].some($0 => normalized.includes($0));
+  ].some($0 => normalizedPublicSources.includes($0)) ||
+    [
+      "/quick-check-worker",
+      "/quick-check-provider",
+      "/quick-check-human-review",
+      "/quick-check-randomization",
+      "/quick-check-multiple-select",
+      "/quick-check-topic",
+      "/quick-check-period",
+      "/quick-check-mastery",
+      "/quick-check-weak-area",
+      "/quick-check-progress",
+      "/quick-check-grading",
+      "/quick-check-analytics",
+      "/quick-check-reporting",
+    ].some($0 => normalizedServerSource.includes($0));
 }
 
 function containsInternalQuickCheckResolverSurface({
@@ -9834,7 +10968,7 @@ function containsAnyOutOfScopeEvaluatorWorkerSurface({
       "reviewer_ui",
       "mastery",
       "weak_area",
-      "progress",
+      "student_progress",
       "next_step",
       "next-step",
       "nextstep",

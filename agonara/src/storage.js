@@ -40,6 +40,20 @@ const forbiddenEvaluatorArtifactKeys = new Set([
   "stacktrace",
 ]);
 
+const llmCurationSuggestionKinds = new Set([
+  "navigation_candidate",
+  "quick_check_candidate",
+  "assessment_criterion_candidate",
+  "open_answer_check_candidate",
+  "readiness_check_candidate",
+]);
+
+const llmCurationSuggestionStatuses = new Set([
+  "draft_suggestion",
+  "materialized",
+  "rejected",
+]);
+
 const evaluatorArtifactTextKeys = new Set([
   "cancellationreason",
   "failurereason",
@@ -105,7 +119,7 @@ export function initializeIdentityStorage(database) {
       id text primary key,
       title text not null,
       description text,
-      admission_policy text not null check (admission_policy in ('self_join')),
+      admission_policy text not null check (admission_policy in ('self_join', 'invitation_only')),
       created_by_identity_id text not null references identities(id),
       created_at text not null
     );
@@ -120,6 +134,23 @@ export function initializeIdentityStorage(database) {
       updated_at text not null,
       unique (program_id, identity_id, participation_kind)
     );
+
+    create table if not exists program_invitations (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      target_identity_id text not null references identities(id),
+      participation_kind text not null check (participation_kind in ('student')),
+      status text not null check (status in ('pending', 'accepted', 'declined', 'revoked')),
+      invited_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null,
+      status_changed_by_identity_id text references identities(id),
+      status_changed_at text
+    );
+
+    create unique index if not exists program_invitations_pending_scope
+      on program_invitations (program_id, target_identity_id, participation_kind)
+      where status = 'pending';
 
     create table if not exists program_events (
       id text primary key,
@@ -138,7 +169,18 @@ export function initializeIdentityStorage(database) {
       target_identity_id text not null references identities(id),
       program_id text not null references program_shells(id),
       participation_kind text not null check (participation_kind in ('student', 'program_curator')),
+      policy_path text check (
+        policy_path in (
+          'self_join',
+          'curator_invitation',
+          'curator_removal',
+          'curator_leave',
+          'admin_exceptional_recovery',
+          'admin_exceptional_revocation'
+        )
+      ),
       resulting_status text check (resulting_status in ('active', 'left', 'removed')),
+      invitation_status text check (invitation_status in ('pending', 'accepted', 'declined', 'revoked')),
       occurred_at text not null,
       outcome text not null check (outcome in ('accepted', 'rejected')),
       reason text
@@ -171,9 +213,27 @@ export function initializeIdentityStorage(database) {
     create table if not exists corpus_candidates (
       id text primary key,
       program_id text not null references program_shells(id),
-      candidate_kind text not null check (candidate_kind in ('topic', 'concept')),
+      candidate_kind text not null check (
+        candidate_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference', 'relationship_update')
+      ),
       title text not null,
       body text,
+      material_reference_kind text check (
+        material_reference_kind in (
+          'article',
+          'book',
+          'course',
+          'lecture',
+          'note',
+          'problem_set',
+          'standard',
+          'video',
+          'other'
+        )
+      ),
+      locator text,
+      citation text,
+      relationship_drafts_json text not null default '[]',
       source_ids_json text not null,
       rationale text,
       status text not null check (status in ('draft', 'accepted', 'rejected')),
@@ -297,6 +357,101 @@ export function initializeIdentityStorage(database) {
         references accepted_quick_check_revision_options(revision_id, id)
     );
 
+    create table if not exists readiness_check_candidates (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      title text not null,
+      scope_json text not null,
+      requirements_json text not null,
+      source_ids_json text not null,
+      rationale text,
+      status text not null check (status in ('draft', 'accepted', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists accepted_readiness_check_entities (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_readiness_check_revisions (
+      id text primary key,
+      entity_id text not null references accepted_readiness_check_entities(id),
+      program_id text not null references program_shells(id),
+      title text not null,
+      scope_json text not null,
+      requirements_json text not null,
+      accepted_from_candidate_id text not null references readiness_check_candidates(id),
+      source_ids_json text not null,
+      rationale text,
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists readiness_check_attempts (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      student_identity_id text not null references identities(id),
+      readiness_check_revision_id text not null references accepted_readiness_check_revisions(id),
+      result text not null check (result in ('ready', 'not_ready', 'in_progress')),
+      requirement_results_json text not null,
+      idempotency_key text not null,
+      submitted_at text not null,
+      unique (program_id, student_identity_id, readiness_check_revision_id, idempotency_key)
+    );
+
+    create table if not exists llm_curation_suggestions (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      suggestion_kind text not null check (
+        suggestion_kind in (
+          'navigation_candidate',
+          'quick_check_candidate',
+          'assessment_criterion_candidate',
+          'open_answer_check_candidate',
+          'readiness_check_candidate'
+        )
+      ),
+      title text not null,
+      summary text not null,
+      rationale text not null,
+      suggested_draft_json text not null,
+      supporting_evidence_json text not null,
+      origin_json text not null,
+      status text not null check (status in ('draft_suggestion', 'materialized', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null,
+      materialized_candidate_kind text check (
+        materialized_candidate_kind in (
+          'navigation_candidate',
+          'quick_check_candidate',
+          'assessment_criterion_candidate',
+          'open_answer_check_candidate',
+          'readiness_check_candidate'
+        )
+      ),
+      materialized_candidate_id text,
+      materialized_by_identity_id text references identities(id),
+      materialized_at text,
+      rejected_by_identity_id text references identities(id),
+      rejected_at text
+    );
+
+    create table if not exists llm_curation_suggestion_generations (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      idempotency_key text not null,
+      request_fingerprint text not null,
+      suggestion_ids_json text not null,
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      unique (program_id, idempotency_key)
+    );
+
     create table if not exists accepted_open_answer_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
@@ -413,7 +568,9 @@ export function initializeIdentityStorage(database) {
     create table if not exists accepted_corpus_entities (
       id text primary key,
       program_id text not null references program_shells(id),
-      accepted_kind text not null check (accepted_kind in ('topic', 'concept')),
+      accepted_kind text not null check (
+        accepted_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
       current_revision_id text not null
     );
 
@@ -421,15 +578,114 @@ export function initializeIdentityStorage(database) {
       id text primary key,
       entity_id text not null references accepted_corpus_entities(id),
       program_id text not null references program_shells(id),
-      accepted_kind text not null check (accepted_kind in ('topic', 'concept')),
+      accepted_kind text not null check (
+        accepted_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
       title text not null,
       body text,
+      material_reference_kind text check (
+        material_reference_kind in (
+          'article',
+          'book',
+          'course',
+          'lecture',
+          'note',
+          'problem_set',
+          'standard',
+          'video',
+          'other'
+        )
+      ),
+      locator text,
+      citation text,
       accepted_from_candidate_id text not null references corpus_candidates(id),
       source_ids_json text not null,
       rationale text,
       accepted_by_identity_id text not null references identities(id),
       accepted_at text not null
     );
+
+    create table if not exists accepted_navigation_relationships (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      relationship_kind text not null check (
+        relationship_kind in (
+          'topic_includes_concept',
+          'topic_uses_material',
+          'concept_uses_material',
+          'concept_has_definition',
+          'concept_has_principle',
+          'concept_prerequisite',
+          'concept_related',
+          'concept_distinguishes_from'
+        )
+      ),
+      from_entity_id text not null references accepted_corpus_entities(id),
+      to_entity_id text not null references accepted_corpus_entities(id),
+      current_revision_id text not null
+    );
+
+    create table if not exists accepted_navigation_relationship_revisions (
+      id text primary key,
+      relationship_id text not null references accepted_navigation_relationships(id),
+      program_id text not null references program_shells(id),
+      relationship_kind text not null check (
+        relationship_kind in (
+          'topic_includes_concept',
+          'topic_uses_material',
+          'concept_uses_material',
+          'concept_has_definition',
+          'concept_has_principle',
+          'concept_prerequisite',
+          'concept_related',
+          'concept_distinguishes_from'
+        )
+      ),
+      from_entity_id text not null references accepted_corpus_entities(id),
+      from_revision_id text not null references accepted_corpus_revisions(id),
+      from_kind text not null check (
+        from_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
+      to_entity_id text not null references accepted_corpus_entities(id),
+      to_revision_id text not null references accepted_corpus_revisions(id),
+      to_kind text not null check (
+        to_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
+      label text,
+      source_ids_json text not null,
+      accepted_from_candidate_id text not null references corpus_candidates(id),
+      accepted_by_identity_id text not null references identities(id),
+      accepted_at text not null
+    );
+
+    create table if not exists learner_evidence_target_links (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      target_kind text not null check (target_kind in ('topic', 'concept', 'material_reference')),
+      target_id text not null,
+      evidence_owner_kind text not null check (
+        evidence_owner_kind in (
+          'accepted_quick_check',
+          'accepted_open_answer_check',
+          'accepted_assessment_criterion'
+        )
+      ),
+      evidence_owner_entity_id text not null,
+      status text not null check (status in ('active', 'deleted')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create unique index if not exists one_active_learner_evidence_target_link
+      on learner_evidence_target_links (
+        program_id,
+        target_kind,
+        target_id,
+        evidence_owner_kind,
+        evidence_owner_entity_id
+      )
+      where status = 'active';
 
     create table if not exists corpus_events (
       id text primary key,
@@ -661,6 +917,145 @@ export function listProgramShellRecords(database) {
     .all();
 }
 
+export function updateProgramAdmissionPolicyRecord(database, { programId, admissionPolicy }) {
+  assertProgramShellExists(database, programId);
+  database
+    .prepare(
+      `update program_shells
+       set admission_policy = ?
+       where id = ?`,
+    )
+    .run(admissionPolicy, programId);
+
+  return getProgramShellRecord(database, programId);
+}
+
+export function createProgramInvitationRecord(
+  database,
+  {
+    id,
+    programId,
+    targetIdentityId,
+    participationKind,
+    status,
+    invitedByIdentityId,
+    createdAt,
+    updatedAt,
+    statusChangedByIdentityId = null,
+    statusChangedAt = null,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, targetIdentityId);
+  assertIdentityExists(database, invitedByIdentityId);
+  if (statusChangedByIdentityId !== null) {
+    assertIdentityExists(database, statusChangedByIdentityId);
+  }
+
+  try {
+    database
+      .prepare(
+        `insert into program_invitations (
+           id,
+           program_id,
+           target_identity_id,
+           participation_kind,
+           status,
+           invited_by_identity_id,
+           created_at,
+           updated_at,
+           status_changed_by_identity_id,
+           status_changed_at
+         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        programId,
+        targetIdentityId,
+        participationKind,
+        status,
+        invitedByIdentityId,
+        createdAt,
+        updatedAt,
+        statusChangedByIdentityId,
+        statusChangedAt,
+      );
+  } catch (error) {
+    throw mapProgramInvitationConstraintError(error);
+  }
+
+  return getProgramInvitationRecord(database, id);
+}
+
+export function updateProgramInvitationStatusRecord(
+  database,
+  { id, status, statusChangedByIdentityId, statusChangedAt, updatedAt },
+) {
+  assertIdentityExists(database, statusChangedByIdentityId);
+  try {
+    database
+      .prepare(
+        `update program_invitations
+         set status = ?,
+             status_changed_by_identity_id = ?,
+             status_changed_at = ?,
+             updated_at = ?
+         where id = ?`,
+      )
+      .run(status, statusChangedByIdentityId, statusChangedAt, updatedAt, id);
+  } catch (error) {
+    throw mapProgramInvitationConstraintError(error);
+  }
+
+  return getProgramInvitationRecord(database, id);
+}
+
+export function getProgramInvitationRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_identity_id as targetIdentityId,
+              participation_kind as participationKind,
+              status,
+              invited_by_identity_id as invitedByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt,
+              status_changed_by_identity_id as statusChangedByIdentityId,
+              status_changed_at as statusChangedAt
+       from program_invitations
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listProgramInvitationRecords(
+  database,
+  { programId = null, targetIdentityId = null, status = null } = {},
+) {
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_identity_id as targetIdentityId,
+              participation_kind as participationKind,
+              status,
+              invited_by_identity_id as invitedByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt,
+              status_changed_by_identity_id as statusChangedByIdentityId,
+              status_changed_at as statusChangedAt
+       from program_invitations
+       where (? is null or program_id = ?)
+         and (? is null or target_identity_id = ?)
+         and (? is null or status = ?)
+       order by created_at, id`,
+    )
+    .all(programId, programId, targetIdentityId, targetIdentityId, status, status);
+}
+
 export function createProgramSourceRecord(
   database,
   { id, programId, sourceKind, title, locator = null, citation = null, recordedByIdentityId, recordedAt },
@@ -723,6 +1118,10 @@ export function createCorpusCandidateRecord(
     candidateKind,
     title,
     body = null,
+    materialReferenceKind = null,
+    locator = null,
+    citation = null,
+    relationshipDrafts = [],
     sourceIds = [],
     rationale = null,
     status,
@@ -743,13 +1142,17 @@ export function createCorpusCandidateRecord(
          candidate_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
+         relationship_drafts_json,
          source_ids_json,
          rationale,
          status,
          created_by_identity_id,
          created_at,
          updated_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -757,6 +1160,10 @@ export function createCorpusCandidateRecord(
       candidateKind,
       title,
       body,
+      materialReferenceKind,
+      locator,
+      citation,
+      JSON.stringify(relationshipDrafts),
       JSON.stringify(sourceIds),
       rationale,
       status,
@@ -772,6 +1179,8 @@ export function getCorpusCandidateRecord(database, id) {
   const row = database
     .prepare(
       `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+              material_reference_kind as materialReferenceKind, locator, citation,
+              relationship_drafts_json as relationshipDraftsJson,
               source_ids_json as sourceIdsJson, rationale, status,
               created_by_identity_id as createdByIdentityId,
               created_at as createdAt, updated_at as updatedAt
@@ -788,6 +1197,8 @@ export function listCorpusCandidateRecords(database, { programId = null, status 
     return database
       .prepare(
         `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+                material_reference_kind as materialReferenceKind, locator, citation,
+                relationship_drafts_json as relationshipDraftsJson,
                 source_ids_json as sourceIdsJson, rationale, status,
                 created_by_identity_id as createdByIdentityId,
                 created_at as createdAt, updated_at as updatedAt
@@ -802,6 +1213,8 @@ export function listCorpusCandidateRecords(database, { programId = null, status 
     return database
       .prepare(
         `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+                material_reference_kind as materialReferenceKind, locator, citation,
+                relationship_drafts_json as relationshipDraftsJson,
                 source_ids_json as sourceIdsJson, rationale, status,
                 created_by_identity_id as createdByIdentityId,
                 created_at as createdAt, updated_at as updatedAt
@@ -816,6 +1229,8 @@ export function listCorpusCandidateRecords(database, { programId = null, status 
   return database
     .prepare(
       `select id, program_id as programId, candidate_kind as candidateKind, title, body,
+              material_reference_kind as materialReferenceKind, locator, citation,
+              relationship_drafts_json as relationshipDraftsJson,
               source_ids_json as sourceIdsJson, rationale, status,
               created_by_identity_id as createdByIdentityId,
               created_at as createdAt, updated_at as updatedAt
@@ -1643,6 +2058,710 @@ export function listQuickCheckAttemptRecords(
     )
     .all(...values)
     .map(mapQuickCheckAttemptRecord);
+}
+
+export function createReadinessCheckCandidateRecord(
+  database,
+  {
+    id,
+    programId,
+    title,
+    scope,
+    requirements,
+    sourceIds = [],
+    rationale = null,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertReadinessScope(database, { programId, scope });
+  assertReadinessRequirements(database, { programId, requirements });
+
+  database
+    .prepare(
+      `insert into readiness_check_candidates (
+         id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      title,
+      JSON.stringify(scope),
+      JSON.stringify(requirements),
+      JSON.stringify(sourceIds),
+      rationale,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getReadinessCheckCandidateRecord(database, id);
+}
+
+export function getReadinessCheckCandidateRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, title, scope_json as scopeJson,
+              requirements_json as requirementsJson, source_ids_json as sourceIdsJson,
+              rationale, status, created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from readiness_check_candidates
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapReadinessCheckCandidateRecord(row) : null;
+}
+
+export function listReadinessCheckCandidateRecords(database, { programId = null, status = null } = {}) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, title, scope_json as scopeJson,
+              requirements_json as requirementsJson, source_ids_json as sourceIdsJson,
+              rationale, status, created_by_identity_id as createdByIdentityId,
+              created_at as createdAt, updated_at as updatedAt
+       from readiness_check_candidates
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values)
+    .map(mapReadinessCheckCandidateRecord);
+}
+
+export function updateReadinessCheckCandidateStatus(database, { candidateId, status, updatedAt }) {
+  database
+    .prepare(
+      `update readiness_check_candidates
+       set status = ?, updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedAt, candidateId);
+
+  return getReadinessCheckCandidateRecord(database, candidateId);
+}
+
+export function createLlmCurationSuggestionRecord(
+  database,
+  {
+    id,
+    programId,
+    suggestionKind,
+    title,
+    summary,
+    rationale,
+    suggestedDraft,
+    supportingEvidence,
+    origin,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+    materializedCandidateKind = null,
+    materializedCandidateId = null,
+    materializedByIdentityId = null,
+    materializedAt = null,
+    rejectedByIdentityId = null,
+    rejectedAt = null,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertLlmCurationSuggestionShape({
+    programId,
+    suggestionKind,
+    title,
+    summary,
+    rationale,
+    suggestedDraft,
+    supportingEvidence,
+    origin,
+    status,
+    materializedCandidateKind,
+    materializedCandidateId,
+    materializedByIdentityId,
+    materializedAt,
+    rejectedByIdentityId,
+    rejectedAt,
+  });
+  assertIdentityExists(database, origin.generatedByIdentityId);
+  if (materializedByIdentityId !== null) {
+    assertIdentityExists(database, materializedByIdentityId);
+  }
+  if (rejectedByIdentityId !== null) {
+    assertIdentityExists(database, rejectedByIdentityId);
+  }
+  if (status === "materialized") {
+    assertLlmCurationSuggestionMaterializedCandidate(database, {
+      programId,
+      candidateKind: materializedCandidateKind,
+      candidateId: materializedCandidateId,
+    });
+  }
+
+  database
+    .prepare(
+      `insert into llm_curation_suggestions (
+         id,
+         program_id,
+         suggestion_kind,
+         title,
+         summary,
+         rationale,
+         suggested_draft_json,
+         supporting_evidence_json,
+         origin_json,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at,
+         materialized_candidate_kind,
+         materialized_candidate_id,
+         materialized_by_identity_id,
+         materialized_at,
+         rejected_by_identity_id,
+         rejected_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      suggestionKind,
+      title,
+      summary,
+      rationale,
+      JSON.stringify(suggestedDraft),
+      JSON.stringify(supportingEvidence),
+      JSON.stringify(origin),
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+      materializedCandidateKind,
+      materializedCandidateId,
+      materializedByIdentityId,
+      materializedAt,
+      rejectedByIdentityId,
+      rejectedAt,
+    );
+
+  return getLlmCurationSuggestionRecord(database, id);
+}
+
+export function getLlmCurationSuggestionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, suggestion_kind as suggestionKind,
+              title, summary, rationale, suggested_draft_json as suggestedDraftJson,
+              supporting_evidence_json as supportingEvidenceJson, origin_json as originJson,
+              status, created_by_identity_id as createdByIdentityId, created_at as createdAt,
+              updated_at as updatedAt, materialized_candidate_kind as materializedCandidateKind,
+              materialized_candidate_id as materializedCandidateId,
+              materialized_by_identity_id as materializedByIdentityId,
+              materialized_at as materializedAt,
+              rejected_by_identity_id as rejectedByIdentityId, rejected_at as rejectedAt
+       from llm_curation_suggestions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapLlmCurationSuggestionRecord(row) : null;
+}
+
+export function listLlmCurationSuggestionRecords(
+  database,
+  { programId = null, status = null, suggestionKind = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+  if (suggestionKind !== null) {
+    filters.push("suggestion_kind = ?");
+    values.push(suggestionKind);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, suggestion_kind as suggestionKind,
+              title, summary, rationale, suggested_draft_json as suggestedDraftJson,
+              supporting_evidence_json as supportingEvidenceJson, origin_json as originJson,
+              status, created_by_identity_id as createdByIdentityId, created_at as createdAt,
+              updated_at as updatedAt, materialized_candidate_kind as materializedCandidateKind,
+              materialized_candidate_id as materializedCandidateId,
+              materialized_by_identity_id as materializedByIdentityId,
+              materialized_at as materializedAt,
+              rejected_by_identity_id as rejectedByIdentityId, rejected_at as rejectedAt
+       from llm_curation_suggestions
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values)
+    .map(mapLlmCurationSuggestionRecord);
+}
+
+export function materializeLlmCurationSuggestionRecord(
+  database,
+  { suggestionId, candidateKind, candidateId, materializedByIdentityId, materializedAt, updatedAt },
+) {
+  const suggestion = getLlmCurationSuggestionRecord(database, suggestionId);
+  if (!suggestion) {
+    throw new StorageInvariantError("llm_curation_suggestion_not_found");
+  }
+  if (suggestion.status !== "draft_suggestion") {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal");
+  }
+  if (candidateKind !== suggestion.suggestionKind) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_mismatch");
+  }
+  assertIdentityExists(database, materializedByIdentityId);
+  assertLlmCurationSuggestionMaterializedCandidate(database, {
+    programId: suggestion.programId,
+    candidateKind,
+    candidateId,
+  });
+
+  database
+    .prepare(
+      `update llm_curation_suggestions
+       set status = 'materialized',
+           updated_at = ?,
+           materialized_candidate_kind = ?,
+           materialized_candidate_id = ?,
+           materialized_by_identity_id = ?,
+           materialized_at = ?
+       where id = ?`,
+    )
+    .run(updatedAt, candidateKind, candidateId, materializedByIdentityId, materializedAt, suggestionId);
+
+  return getLlmCurationSuggestionRecord(database, suggestionId);
+}
+
+export function rejectLlmCurationSuggestionRecord(
+  database,
+  { suggestionId, rejectedByIdentityId, rejectedAt, updatedAt },
+) {
+  const suggestion = getLlmCurationSuggestionRecord(database, suggestionId);
+  if (!suggestion) {
+    throw new StorageInvariantError("llm_curation_suggestion_not_found");
+  }
+  if (suggestion.status !== "draft_suggestion") {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal");
+  }
+  assertIdentityExists(database, rejectedByIdentityId);
+
+  database
+    .prepare(
+      `update llm_curation_suggestions
+       set status = 'rejected',
+           updated_at = ?,
+           rejected_by_identity_id = ?,
+           rejected_at = ?
+       where id = ?`,
+    )
+    .run(updatedAt, rejectedByIdentityId, rejectedAt, suggestionId);
+
+  return getLlmCurationSuggestionRecord(database, suggestionId);
+}
+
+export function createLlmCurationSuggestionGenerationRecord(
+  database,
+  { id, programId, idempotencyKey, requestFingerprint, suggestionIds, createdByIdentityId, createdAt },
+) {
+  if (!isNonEmptyString(id) || !isNonEmptyString(idempotencyKey) || !isNonEmptyString(requestFingerprint)) {
+    throw new StorageInvariantError("llm_curation_suggestion_generation_shape_invalid");
+  }
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertLlmCurationSuggestionIdsBelongToProgram(database, { programId, suggestionIds });
+
+  try {
+    database
+      .prepare(
+        `insert into llm_curation_suggestion_generations (
+           id,
+           program_id,
+           idempotency_key,
+           request_fingerprint,
+           suggestion_ids_json,
+           created_by_identity_id,
+           created_at
+         ) values (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        programId,
+        idempotencyKey,
+        requestFingerprint,
+        JSON.stringify(suggestionIds),
+        createdByIdentityId,
+        createdAt,
+      );
+  } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_idempotency_conflict");
+    }
+    throw error;
+  }
+
+  return getLlmCurationSuggestionGenerationRecord(database, { programId, idempotencyKey });
+}
+
+export function getLlmCurationSuggestionGenerationRecord(database, { programId, idempotencyKey }) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, idempotency_key as idempotencyKey,
+              request_fingerprint as requestFingerprint,
+              suggestion_ids_json as suggestionIdsJson,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt
+       from llm_curation_suggestion_generations
+       where program_id = ? and idempotency_key = ?`,
+    )
+    .get(programId, idempotencyKey);
+
+  return row ? mapLlmCurationSuggestionGenerationRecord(row) : null;
+}
+
+export function listLlmCurationSuggestionGenerationRecords(database, { programId = null } = {}) {
+  if (programId !== null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, idempotency_key as idempotencyKey,
+                request_fingerprint as requestFingerprint,
+                suggestion_ids_json as suggestionIdsJson,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt
+         from llm_curation_suggestion_generations
+         where program_id = ?
+         order by created_at, id`,
+      )
+      .all(programId)
+      .map(mapLlmCurationSuggestionGenerationRecord);
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, idempotency_key as idempotencyKey,
+              request_fingerprint as requestFingerprint,
+              suggestion_ids_json as suggestionIdsJson,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt
+       from llm_curation_suggestion_generations
+       order by created_at, id`,
+    )
+    .all()
+    .map(mapLlmCurationSuggestionGenerationRecord);
+}
+
+export function createAcceptedReadinessCheckEntityRecord(database, { id, programId, currentRevisionId }) {
+  assertProgramShellExists(database, programId);
+
+  database
+    .prepare(
+      `insert into accepted_readiness_check_entities (id, program_id, current_revision_id)
+       values (?, ?, ?)`,
+    )
+    .run(id, programId, currentRevisionId);
+
+  return getAcceptedReadinessCheckEntityRecord(database, id);
+}
+
+export function getAcceptedReadinessCheckEntityRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_readiness_check_entities
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedReadinessCheckEntityRecords(database, { programId = null } = {}) {
+  if (programId === null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, current_revision_id as currentRevisionId
+         from accepted_readiness_check_entities
+         order by id`,
+      )
+      .all();
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId
+       from accepted_readiness_check_entities
+       where program_id = ?
+       order by id`,
+    )
+    .all(programId);
+}
+
+export function updateAcceptedReadinessCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
+  const revision = getAcceptedReadinessCheckRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("readiness_revision_not_found");
+  }
+
+  if (revision.entityId !== entityId) {
+    throw new StorageInvariantError("readiness_revision_entity_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_readiness_check_entities
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, entityId);
+
+  return getAcceptedReadinessCheckEntityRecord(database, entityId);
+}
+
+export function createAcceptedReadinessCheckRevisionRecord(
+  database,
+  {
+    id,
+    entityId,
+    programId,
+    title,
+    scope,
+    requirements,
+    acceptedFromCandidateId,
+    sourceIds = [],
+    rationale = null,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertReadinessCheckCandidateBelongsToProgram(database, {
+    programId,
+    candidateId: acceptedFromCandidateId,
+  });
+  assertAcceptedReadinessCheckEntityBelongsToProgram(database, { programId, entityId });
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+  assertReadinessScope(database, { programId, scope });
+  assertReadinessRequirements(database, { programId, requirements });
+
+  database
+    .prepare(
+      `insert into accepted_readiness_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      entityId,
+      programId,
+      title,
+      JSON.stringify(scope),
+      JSON.stringify(requirements),
+      acceptedFromCandidateId,
+      JSON.stringify(sourceIds),
+      rationale,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedReadinessCheckRevisionRecord(database, id);
+}
+
+export function getAcceptedReadinessCheckRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, title,
+              scope_json as scopeJson, requirements_json as requirementsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_readiness_check_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedReadinessCheckRevisionRecord(row) : null;
+}
+
+export function listAcceptedReadinessCheckRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id, entity_id as entityId, program_id as programId, title,
+              scope_json as scopeJson, requirements_json as requirementsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              source_ids_json as sourceIdsJson, rationale,
+              accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
+       from accepted_readiness_check_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedReadinessCheckRevisionRecord);
+}
+
+export function createReadinessCheckAttemptRecord(
+  database,
+  {
+    id,
+    programId,
+    studentIdentityId,
+    readinessCheckRevisionId,
+    result,
+    requirementResults,
+    idempotencyKey,
+    submittedAt,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, studentIdentityId);
+  const revision = assertAcceptedReadinessCheckRevisionBelongsToProgram(database, {
+    programId,
+    revisionId: readinessCheckRevisionId,
+  });
+  assertReadinessResult(result);
+  assertReadinessRequirementResults({ revision, requirementResults, result });
+
+  const existingAttempt = getReadinessCheckAttemptRecordByIdempotencyScope(database, {
+    programId,
+    studentIdentityId,
+    readinessCheckRevisionId,
+    idempotencyKey,
+  });
+  if (existingAttempt) {
+    if (
+      existingAttempt.result === result
+      && JSON.stringify(existingAttempt.requirementResults) === JSON.stringify(requirementResults)
+    ) {
+      return existingAttempt;
+    }
+    throw new StorageInvariantError("readiness_attempt_idempotency_conflict");
+  }
+
+  database
+    .prepare(
+      `insert into readiness_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         readiness_check_revision_id,
+         result,
+         requirement_results_json,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      studentIdentityId,
+      readinessCheckRevisionId,
+      result,
+      JSON.stringify(requirementResults),
+      idempotencyKey,
+      submittedAt,
+    );
+
+  return getReadinessCheckAttemptRecord(database, id);
+}
+
+export function getReadinessCheckAttemptRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              readiness_check_revision_id as readinessCheckRevisionId, result,
+              requirement_results_json as requirementResultsJson,
+              idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from readiness_check_attempts
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapReadinessCheckAttemptRecord(row) : null;
+}
+
+export function listReadinessCheckAttemptRecords(
+  database,
+  { programId = null, studentIdentityId = null, readinessCheckRevisionId = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (studentIdentityId !== null) {
+    filters.push("student_identity_id = ?");
+    values.push(studentIdentityId);
+  }
+  if (readinessCheckRevisionId !== null) {
+    filters.push("readiness_check_revision_id = ?");
+    values.push(readinessCheckRevisionId);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              readiness_check_revision_id as readinessCheckRevisionId, result,
+              requirement_results_json as requirementResultsJson,
+              idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from readiness_check_attempts
+       ${whereClause}
+       order by submitted_at, id`,
+    )
+    .all(...values)
+    .map(mapReadinessCheckAttemptRecord);
 }
 
 export function createAcceptedOpenAnswerCheckEntityRecord(database, { id, programId, currentRevisionId }) {
@@ -2658,6 +3777,9 @@ export function createAcceptedCorpusRevisionRecord(
     acceptedKind,
     title,
     body = null,
+    materialReferenceKind = null,
+    locator = null,
+    citation = null,
     acceptedFromCandidateId,
     sourceIds = [],
     rationale = null,
@@ -2667,6 +3789,13 @@ export function createAcceptedCorpusRevisionRecord(
 ) {
   assertProgramShellExists(database, programId);
   assertIdentityExists(database, acceptedByIdentityId);
+  assertAcceptedCorpusRevisionMaterialReferenceShape({
+    acceptedKind,
+    body,
+    materialReferenceKind,
+    locator,
+    citation,
+  });
 
   database
     .prepare(
@@ -2677,12 +3806,15 @@ export function createAcceptedCorpusRevisionRecord(
          accepted_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
          accepted_from_candidate_id,
          source_ids_json,
          rationale,
          accepted_by_identity_id,
          accepted_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -2691,6 +3823,9 @@ export function createAcceptedCorpusRevisionRecord(
       acceptedKind,
       title,
       body,
+      materialReferenceKind,
+      locator,
+      citation,
       acceptedFromCandidateId,
       JSON.stringify(sourceIds),
       rationale,
@@ -2705,7 +3840,8 @@ export function getAcceptedCorpusRevisionRecord(database, id) {
   const row = database
     .prepare(
       `select id, entity_id as entityId, program_id as programId, accepted_kind as acceptedKind,
-              title, body, accepted_from_candidate_id as acceptedFromCandidateId,
+              title, body, material_reference_kind as materialReferenceKind, locator, citation,
+              accepted_from_candidate_id as acceptedFromCandidateId,
               source_ids_json as sourceIdsJson, rationale,
               accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
        from accepted_corpus_revisions
@@ -2720,7 +3856,8 @@ export function listAcceptedCorpusRevisionRecords(database) {
   return database
     .prepare(
       `select id, entity_id as entityId, program_id as programId, accepted_kind as acceptedKind,
-              title, body, accepted_from_candidate_id as acceptedFromCandidateId,
+              title, body, material_reference_kind as materialReferenceKind, locator, citation,
+              accepted_from_candidate_id as acceptedFromCandidateId,
               source_ids_json as sourceIdsJson, rationale,
               accepted_by_identity_id as acceptedByIdentityId, accepted_at as acceptedAt
        from accepted_corpus_revisions
@@ -2728,6 +3865,365 @@ export function listAcceptedCorpusRevisionRecords(database) {
     )
     .all()
     .map(mapAcceptedCorpusRevisionRecord);
+}
+
+export function createAcceptedNavigationRelationshipRecord(
+  database,
+  { id, programId, relationshipKind, fromEntityId, toEntityId, currentRevisionId },
+) {
+  assertProgramShellExists(database, programId);
+  const fromEntity = getAcceptedCorpusEntityRecord(database, fromEntityId);
+  const toEntity = getAcceptedCorpusEntityRecord(database, toEntityId);
+  assertNavigationRelationshipEndpoints({
+    programId,
+    relationshipKind,
+    fromEntity,
+    toEntity,
+  });
+  assertNavigationRelationshipDoesNotCreateCycle(database, {
+    programId,
+    relationshipKind,
+    fromEntityId,
+    toEntityId,
+  });
+
+  database
+    .prepare(
+      `insert into accepted_navigation_relationships (
+         id, program_id, relationship_kind, from_entity_id, to_entity_id, current_revision_id
+       ) values (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(id, programId, relationshipKind, fromEntityId, toEntityId, currentRevisionId);
+
+  return getAcceptedNavigationRelationshipRecord(database, id);
+}
+
+export function getAcceptedNavigationRelationshipRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              to_entity_id as toEntityId,
+              current_revision_id as currentRevisionId
+       from accepted_navigation_relationships
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listAcceptedNavigationRelationshipRecords(database, { programId = null } = {}) {
+  const whereClause = programId === null ? "" : "where program_id = ?";
+  const values = programId === null ? [] : [programId];
+
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              to_entity_id as toEntityId,
+              current_revision_id as currentRevisionId
+       from accepted_navigation_relationships
+       ${whereClause}
+       order by id`,
+    )
+    .all(...values);
+}
+
+export function updateAcceptedNavigationRelationshipCurrentRevision(
+  database,
+  { relationshipId, currentRevisionId },
+) {
+  const revision = getAcceptedNavigationRelationshipRevisionRecord(database, currentRevisionId);
+  if (!revision) {
+    throw new StorageInvariantError("navigation_relationship_revision_not_found");
+  }
+
+  if (revision.relationshipId !== relationshipId) {
+    throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+  }
+
+  database
+    .prepare(
+      `update accepted_navigation_relationships
+       set current_revision_id = ?
+       where id = ?`,
+    )
+    .run(currentRevisionId, relationshipId);
+
+  return getAcceptedNavigationRelationshipRecord(database, relationshipId);
+}
+
+export function createAcceptedNavigationRelationshipRevisionRecord(
+  database,
+  {
+    id,
+    relationshipId,
+    programId,
+    relationshipKind,
+    fromEntityId,
+    fromRevisionId,
+    fromKind,
+    toEntityId,
+    toRevisionId,
+    toKind,
+    label = null,
+    sourceIds = [],
+    acceptedFromCandidateId,
+    acceptedByIdentityId,
+    acceptedAt,
+  },
+) {
+  const relationship = getAcceptedNavigationRelationshipRecord(database, relationshipId);
+  if (!relationship) {
+    throw new StorageInvariantError("navigation_relationship_not_found");
+  }
+  assertIdentityExists(database, acceptedByIdentityId);
+  assertNavigationRelationshipRevisionMatches({
+    database,
+    relationship,
+    programId,
+    relationshipKind,
+    fromEntityId,
+    fromRevisionId,
+    fromKind,
+    toEntityId,
+    toRevisionId,
+    toKind,
+    acceptedFromCandidateId,
+    sourceIds,
+  });
+
+  database
+    .prepare(
+      `insert into accepted_navigation_relationship_revisions (
+         id,
+         relationship_id,
+         program_id,
+         relationship_kind,
+         from_entity_id,
+         from_revision_id,
+         from_kind,
+         to_entity_id,
+         to_revision_id,
+         to_kind,
+         label,
+         source_ids_json,
+         accepted_from_candidate_id,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      relationshipId,
+      programId,
+      relationshipKind,
+      fromEntityId,
+      fromRevisionId,
+      fromKind,
+      toEntityId,
+      toRevisionId,
+      toKind,
+      label,
+      JSON.stringify(sourceIds),
+      acceptedFromCandidateId,
+      acceptedByIdentityId,
+      acceptedAt,
+    );
+
+  return getAcceptedNavigationRelationshipRevisionRecord(database, id);
+}
+
+export function getAcceptedNavigationRelationshipRevisionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              relationship_id as relationshipId,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              from_revision_id as fromRevisionId,
+              from_kind as fromKind,
+              to_entity_id as toEntityId,
+              to_revision_id as toRevisionId,
+              to_kind as toKind,
+              label,
+              source_ids_json as sourceIdsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              accepted_by_identity_id as acceptedByIdentityId,
+              accepted_at as acceptedAt
+       from accepted_navigation_relationship_revisions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapAcceptedNavigationRelationshipRevisionRecord(row) : null;
+}
+
+export function listAcceptedNavigationRelationshipRevisionRecords(database) {
+  return database
+    .prepare(
+      `select id,
+              relationship_id as relationshipId,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              from_revision_id as fromRevisionId,
+              from_kind as fromKind,
+              to_entity_id as toEntityId,
+              to_revision_id as toRevisionId,
+              to_kind as toKind,
+              label,
+              source_ids_json as sourceIdsJson,
+              accepted_from_candidate_id as acceptedFromCandidateId,
+              accepted_by_identity_id as acceptedByIdentityId,
+              accepted_at as acceptedAt
+       from accepted_navigation_relationship_revisions
+       order by accepted_at, id`,
+    )
+    .all()
+    .map(mapAcceptedNavigationRelationshipRevisionRecord);
+}
+
+export function createLearnerEvidenceTargetLinkRecord(
+  database,
+  {
+    id,
+    programId,
+    targetKind,
+    targetId,
+    evidenceOwnerKind,
+    evidenceOwnerEntityId,
+    status = "active",
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+  },
+) {
+  if (status !== "active") {
+    throw new StorageInvariantError("learner_state_target_link_status_invalid");
+  }
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+
+  const existingActiveLink = getActiveLearnerEvidenceTargetLinkRecord(database, {
+    programId,
+    targetKind,
+    targetId,
+    evidenceOwnerKind,
+    evidenceOwnerEntityId,
+  });
+  if (existingActiveLink) {
+    return existingActiveLink;
+  }
+
+  database
+    .prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      targetKind,
+      targetId,
+      evidenceOwnerKind,
+      evidenceOwnerEntityId,
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+    );
+
+  return getLearnerEvidenceTargetLinkRecord(database, id);
+}
+
+export function deleteLearnerEvidenceTargetLinkRecord(database, { id, updatedAt }) {
+  const link = getLearnerEvidenceTargetLinkRecord(database, id);
+  if (!link) {
+    throw new StorageInvariantError("learner_state_target_link_not_found");
+  }
+
+  database
+    .prepare(
+      `update learner_evidence_target_links
+       set status = 'deleted',
+           updated_at = ?
+       where id = ?`,
+    )
+    .run(updatedAt, id);
+
+  return getLearnerEvidenceTargetLinkRecord(database, id);
+}
+
+export function getLearnerEvidenceTargetLinkRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_kind as targetKind,
+              target_id as targetId,
+              evidence_owner_kind as evidenceOwnerKind,
+              evidence_owner_entity_id as evidenceOwnerEntityId,
+              status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt
+       from learner_evidence_target_links
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listLearnerEvidenceTargetLinkRecords(
+  database,
+  { programId = null, includeDeleted = false } = {},
+) {
+  const filters = [];
+  const values = [];
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (!includeDeleted) {
+    filters.push("status = 'active'");
+  }
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_kind as targetKind,
+              target_id as targetId,
+              evidence_owner_kind as evidenceOwnerKind,
+              evidence_owner_entity_id as evidenceOwnerEntityId,
+              status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt
+       from learner_evidence_target_links
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values);
 }
 
 export function createCorpusEventRecord(
@@ -2980,7 +4476,9 @@ export function createProgramMembershipEventRecord(
     targetIdentityId,
     programId,
     participationKind,
+    policyPath = null,
     resultingStatus = null,
+    invitationStatus = null,
     occurredAt,
     outcome,
     reason = null,
@@ -2990,8 +4488,8 @@ export function createProgramMembershipEventRecord(
     .prepare(
       `insert into program_membership_events (
          id, event_type, actor_identity_id, target_identity_id, program_id,
-         participation_kind, resulting_status, occurred_at, outcome, reason
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         participation_kind, policy_path, resulting_status, invitation_status, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -3000,7 +4498,9 @@ export function createProgramMembershipEventRecord(
       targetIdentityId,
       programId,
       participationKind,
+      policyPath,
       resultingStatus,
+      invitationStatus,
       occurredAt,
       outcome,
       reason,
@@ -3015,7 +4515,9 @@ export function getProgramMembershipEventRecord(database, id) {
       `select id, event_type as eventType, actor_identity_id as actorIdentityId,
               target_identity_id as targetIdentityId, program_id as programId,
               participation_kind as participationKind,
+              policy_path as policyPath,
               resulting_status as resultingStatus,
+              invitation_status as invitationStatus,
               occurred_at as occurredAt, outcome, reason
        from program_membership_events
        where id = ?`,
@@ -3032,7 +4534,9 @@ export function listProgramMembershipEventRecords(database, { programId = null }
         `select id, event_type as eventType, actor_identity_id as actorIdentityId,
                 target_identity_id as targetIdentityId, program_id as programId,
                 participation_kind as participationKind,
+                policy_path as policyPath,
                 resulting_status as resultingStatus,
+                invitation_status as invitationStatus,
                 occurred_at as occurredAt, outcome, reason
          from program_membership_events
          order by occurred_at, id`,
@@ -3045,7 +4549,9 @@ export function listProgramMembershipEventRecords(database, { programId = null }
       `select id, event_type as eventType, actor_identity_id as actorIdentityId,
               target_identity_id as targetIdentityId, program_id as programId,
               participation_kind as participationKind,
+              policy_path as policyPath,
               resulting_status as resultingStatus,
+              invitation_status as invitationStatus,
               occurred_at as occurredAt, outcome, reason
        from program_membership_events
        where program_id = ?
@@ -3070,6 +4576,163 @@ function assertProgramSourcesBelongToProgram(database, { programId, sourceIds })
     if (source.programId !== programId) {
       throw new StorageInvariantError("program_source_mismatch");
     }
+  }
+}
+
+function assertAcceptedCorpusRevisionMaterialReferenceShape({
+  acceptedKind,
+  body,
+  materialReferenceKind,
+  locator,
+  citation,
+}) {
+  if (acceptedKind !== "material_reference") {
+    if (materialReferenceKind !== null || locator !== null || citation !== null) {
+      throw new StorageInvariantError("accepted_material_reference_invalid");
+    }
+    return;
+  }
+
+  if (
+    !isNonEmptyString(materialReferenceKind) ||
+    (!isNonEmptyString(locator) && !isNonEmptyString(citation) && !isNonEmptyString(body))
+  ) {
+    throw new StorageInvariantError("accepted_material_reference_invalid");
+  }
+}
+
+function assertNavigationRelationshipRevisionMatches({
+  database,
+  relationship,
+  programId,
+  relationshipKind,
+  fromEntityId,
+  fromRevisionId,
+  fromKind,
+  toEntityId,
+  toRevisionId,
+  toKind,
+  acceptedFromCandidateId,
+  sourceIds,
+}) {
+  if (
+    relationship.programId !== programId ||
+    relationship.relationshipKind !== relationshipKind ||
+    relationship.fromEntityId !== fromEntityId ||
+    relationship.toEntityId !== toEntityId
+  ) {
+    throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+  }
+
+  const fromEntity = getAcceptedCorpusEntityRecord(database, fromEntityId);
+  const toEntity = getAcceptedCorpusEntityRecord(database, toEntityId);
+  assertNavigationRelationshipEndpoints({
+    programId,
+    relationshipKind,
+    fromEntity,
+    toEntity,
+  });
+
+  const fromRevision = getAcceptedCorpusRevisionRecord(database, fromRevisionId);
+  const toRevision = getAcceptedCorpusRevisionRecord(database, toRevisionId);
+  assertNavigationRelationshipEndpointRevision({
+    entity: fromEntity,
+    revision: fromRevision,
+    revisionKind: fromKind,
+  });
+  assertNavigationRelationshipEndpointRevision({
+    entity: toEntity,
+    revision: toRevision,
+    revisionKind: toKind,
+  });
+
+  const candidate = getCorpusCandidateRecord(database, acceptedFromCandidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("candidate_not_found");
+  }
+  if (candidate.status !== "accepted") {
+    throw new StorageInvariantError("candidate_not_accepted");
+  }
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("candidate_program_mismatch");
+  }
+
+  assertProgramSourcesBelongToProgram(database, { programId, sourceIds });
+}
+
+function assertNavigationRelationshipEndpointRevision({ entity, revision, revisionKind }) {
+  if (!revision) {
+    throw new StorageInvariantError("accepted_revision_not_found");
+  }
+  if (revision.entityId !== entity.id) {
+    throw new StorageInvariantError("accepted_revision_entity_mismatch");
+  }
+  if (revision.programId !== entity.programId) {
+    throw new StorageInvariantError("accepted_revision_program_mismatch");
+  }
+  if (revision.acceptedKind !== entity.acceptedKind || revision.acceptedKind !== revisionKind) {
+    throw new StorageInvariantError("accepted_revision_kind_mismatch");
+  }
+}
+
+function assertNavigationRelationshipEndpoints({ programId, relationshipKind, fromEntity, toEntity }) {
+  if (!fromEntity || !toEntity) {
+    throw new StorageInvariantError("accepted_entity_not_found");
+  }
+  if (fromEntity.id === toEntity.id) {
+    throw new StorageInvariantError("navigation_relationship_self_reference");
+  }
+  if (fromEntity.programId !== programId || toEntity.programId !== programId) {
+    throw new StorageInvariantError("navigation_relationship_program_mismatch");
+  }
+  if (!isValidNavigationRelationshipEndpointPair(relationshipKind, fromEntity.acceptedKind, toEntity.acceptedKind)) {
+    throw new StorageInvariantError("navigation_relationship_endpoint_kind_mismatch");
+  }
+}
+
+function isValidNavigationRelationshipEndpointPair(relationshipKind, fromKind, toKind) {
+  return (
+    (relationshipKind === "topic_includes_concept" && fromKind === "topic" && toKind === "concept") ||
+    (relationshipKind === "topic_uses_material" && fromKind === "topic" && toKind === "material_reference") ||
+    (relationshipKind === "concept_uses_material" && fromKind === "concept" && toKind === "material_reference") ||
+    (relationshipKind === "concept_has_definition" && fromKind === "concept" && toKind === "definition") ||
+    (relationshipKind === "concept_has_principle" && fromKind === "concept" && toKind === "principle") ||
+    (relationshipKind === "concept_prerequisite" && fromKind === "concept" && toKind === "concept") ||
+    (relationshipKind === "concept_related" && fromKind === "concept" && toKind === "concept") ||
+    (relationshipKind === "concept_distinguishes_from" && fromKind === "concept" && toKind === "concept")
+  );
+}
+
+function assertNavigationRelationshipDoesNotCreateCycle(
+  database,
+  { programId, relationshipKind, fromEntityId, toEntityId },
+) {
+  if (relationshipKind !== "concept_prerequisite") {
+    return;
+  }
+
+  const edgesByFromEntityId = new Map();
+  for (const relationship of listAcceptedNavigationRelationshipRecords(database, { programId })) {
+    if (relationship.relationshipKind !== "concept_prerequisite") {
+      continue;
+    }
+    const targets = edgesByFromEntityId.get(relationship.fromEntityId) ?? [];
+    targets.push(relationship.toEntityId);
+    edgesByFromEntityId.set(relationship.fromEntityId, targets);
+  }
+
+  const visited = new Set();
+  const stack = [toEntityId];
+  while (stack.length > 0) {
+    const currentEntityId = stack.pop();
+    if (currentEntityId === fromEntityId) {
+      throw new StorageInvariantError("navigation_prerequisite_cycle");
+    }
+    if (visited.has(currentEntityId)) {
+      continue;
+    }
+    visited.add(currentEntityId);
+    stack.push(...(edgesByFromEntityId.get(currentEntityId) ?? []));
   }
 }
 
@@ -3185,6 +4848,460 @@ function assertAcceptedQuickCheckRevisionBelongsToProgram(database, { programId,
   if (revision.programId !== programId) {
     throw new StorageInvariantError("quick_check_revision_program_mismatch");
   }
+}
+
+function assertReadinessCheckCandidateBelongsToProgram(database, { programId, candidateId }) {
+  const candidate = getReadinessCheckCandidateRecord(database, candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("readiness_candidate_not_found");
+  }
+
+  if (candidate.status !== "accepted") {
+    throw new StorageInvariantError("readiness_candidate_not_accepted");
+  }
+
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("readiness_candidate_program_mismatch");
+  }
+}
+
+function assertAcceptedReadinessCheckEntityBelongsToProgram(database, { programId, entityId }) {
+  const entity = getAcceptedReadinessCheckEntityRecord(database, entityId);
+  if (!entity) {
+    throw new StorageInvariantError("readiness_entity_not_found");
+  }
+
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("readiness_entity_program_mismatch");
+  }
+}
+
+function assertAcceptedReadinessCheckRevisionBelongsToProgram(database, { programId, revisionId }) {
+  const revision = getAcceptedReadinessCheckRevisionRecord(database, revisionId);
+  if (!revision) {
+    throw new StorageInvariantError("readiness_revision_not_found");
+  }
+
+  if (revision.programId !== programId) {
+    throw new StorageInvariantError("readiness_revision_program_mismatch");
+  }
+
+  return revision;
+}
+
+function assertReadinessScope(database, { programId, scope }) {
+  if (scope?.scopeKind === "topic") {
+    assertReadinessAcceptedCorpusTarget(database, {
+      programId,
+      targetKind: "topic",
+      targetId: scope.topicEntityId,
+      notFoundReason: "readiness_scope_not_found",
+      mismatchReason: "readiness_scope_program_mismatch",
+    });
+    return;
+  }
+
+  if (scope?.scopeKind === "period") {
+    if (typeof scope.title !== "string" || scope.title.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    if (!Array.isArray(scope.topicEntityIds) || scope.topicEntityIds.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    const ids = new Set();
+    for (const topicEntityId of scope.topicEntityIds) {
+      if (ids.has(topicEntityId)) {
+        throw new StorageInvariantError("readiness_scope_invalid");
+      }
+      ids.add(topicEntityId);
+      assertReadinessAcceptedCorpusTarget(database, {
+        programId,
+        targetKind: "topic",
+        targetId: topicEntityId,
+        notFoundReason: "readiness_scope_not_found",
+        mismatchReason: "readiness_scope_program_mismatch",
+      });
+    }
+    return;
+  }
+
+  throw new StorageInvariantError("readiness_scope_invalid");
+}
+
+function assertReadinessRequirements(database, { programId, requirements }) {
+  if (!Array.isArray(requirements) || requirements.length === 0) {
+    throw new StorageInvariantError("readiness_requirements_invalid");
+  }
+
+  const ids = new Set();
+  for (const requirement of requirements) {
+    if (ids.has(requirement.requirementId)) {
+      throw new StorageInvariantError("readiness_requirement_id_conflict");
+    }
+    ids.add(requirement.requirementId);
+    if (!["developing", "on_track"].includes(requirement.requiredLevel)) {
+      throw new StorageInvariantError("readiness_required_level_invalid");
+    }
+    assertReadinessRequirementTarget(database, { programId, requirement });
+  }
+}
+
+function assertReadinessRequirementTarget(database, { programId, requirement }) {
+  if (["topic", "concept", "material_reference"].includes(requirement.targetKind)) {
+    assertReadinessAcceptedCorpusTarget(database, {
+      programId,
+      targetKind: requirement.targetKind,
+      targetId: requirement.targetId,
+      notFoundReason: "readiness_requirement_target_not_found",
+      mismatchReason: "readiness_requirement_program_mismatch",
+    });
+    return;
+  }
+
+  const entity = getReadinessEvidenceOwnerEntity(database, requirement);
+  if (!entity) {
+    throw new StorageInvariantError("readiness_requirement_target_not_found");
+  }
+  if (entity.programId !== programId) {
+    throw new StorageInvariantError("readiness_requirement_program_mismatch");
+  }
+}
+
+function assertReadinessAcceptedCorpusTarget(
+  database,
+  { programId, targetKind, targetId, notFoundReason, mismatchReason },
+) {
+  const target = getAcceptedCorpusEntityRecord(database, targetId);
+  if (!target) {
+    throw new StorageInvariantError(notFoundReason);
+  }
+  if (target.programId !== programId) {
+    throw new StorageInvariantError(mismatchReason);
+  }
+  if (target.acceptedKind !== targetKind) {
+    throw new StorageInvariantError("readiness_target_kind_invalid");
+  }
+}
+
+function getReadinessEvidenceOwnerEntity(database, requirement) {
+  if (requirement.targetKind === "quick_check") {
+    return getAcceptedQuickCheckEntityRecord(database, requirement.targetId);
+  }
+  if (requirement.targetKind === "open_answer_check") {
+    return getAcceptedOpenAnswerCheckEntityRecord(database, requirement.targetId);
+  }
+  if (requirement.targetKind === "assessment_criterion") {
+    return getAcceptedAssessmentCriterionEntityRecord(database, requirement.targetId);
+  }
+  throw new StorageInvariantError("readiness_requirement_target_kind_invalid");
+}
+
+function assertLlmCurationSuggestionShape({
+  suggestionKind,
+  title,
+  summary,
+  rationale,
+  suggestedDraft,
+  supportingEvidence,
+  origin,
+  status,
+  materializedCandidateKind,
+  materializedCandidateId,
+  materializedByIdentityId,
+  materializedAt,
+  rejectedByIdentityId,
+  rejectedAt,
+}) {
+  if (!llmCurationSuggestionKinds.has(suggestionKind)) {
+    throw new StorageInvariantError("llm_curation_suggestion_kind_invalid");
+  }
+  if (!llmCurationSuggestionStatuses.has(status)) {
+    throw new StorageInvariantError("llm_curation_suggestion_status_invalid");
+  }
+  if (!isNonEmptyString(title) || !isNonEmptyString(summary) || !isNonEmptyString(rationale)) {
+    throw new StorageInvariantError("llm_curation_suggestion_shape_invalid");
+  }
+  if (containsForbiddenLlmCurationSuggestionArtifact({ title, summary, rationale })) {
+    throw new StorageInvariantError("llm_curation_suggestion_raw_artifact_forbidden");
+  }
+  assertLlmCurationSuggestionDraft({ suggestionKind, suggestedDraft });
+  assertLlmCurationSuggestionSupportingEvidence(supportingEvidence);
+  assertLlmCurationSuggestionOrigin(origin);
+
+  if (status === "draft_suggestion") {
+    assertNoLlmCurationSuggestionTerminalFields({
+      materializedCandidateKind,
+      materializedCandidateId,
+      materializedByIdentityId,
+      materializedAt,
+      rejectedByIdentityId,
+      rejectedAt,
+    });
+    return;
+  }
+
+  if (status === "materialized") {
+    if (materializedCandidateKind !== suggestionKind) {
+      throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_mismatch");
+    }
+    if (
+      !llmCurationSuggestionKinds.has(materializedCandidateKind) ||
+      !isNonEmptyString(materializedCandidateId) ||
+      !isNonEmptyString(materializedByIdentityId) ||
+      !isNonEmptyString(materializedAt) ||
+      rejectedByIdentityId !== null ||
+      rejectedAt !== null
+    ) {
+      throw new StorageInvariantError("llm_curation_suggestion_terminal_state_invalid");
+    }
+    return;
+  }
+
+  if (
+    materializedCandidateKind !== null ||
+    materializedCandidateId !== null ||
+    materializedByIdentityId !== null ||
+    materializedAt !== null ||
+    !isNonEmptyString(rejectedByIdentityId) ||
+    !isNonEmptyString(rejectedAt)
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal_state_invalid");
+  }
+}
+
+function assertLlmCurationSuggestionDraft({ suggestionKind, suggestedDraft }) {
+  if (
+    !suggestedDraft ||
+    typeof suggestedDraft !== "object" ||
+    Array.isArray(suggestedDraft) ||
+    suggestedDraft.candidateKind !== suggestionKind ||
+    !suggestedDraft.request ||
+    typeof suggestedDraft.request !== "object" ||
+    Array.isArray(suggestedDraft.request)
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_draft_invalid");
+  }
+  assertNoForbiddenLlmCurationSuggestionArtifact(suggestedDraft);
+}
+
+function assertLlmCurationSuggestionSupportingEvidence(supportingEvidence) {
+  if (!Array.isArray(supportingEvidence) || supportingEvidence.length === 0) {
+    throw new StorageInvariantError("llm_curation_suggestion_evidence_invalid");
+  }
+  for (const evidence of supportingEvidence) {
+    if (
+      !evidence ||
+      typeof evidence !== "object" ||
+      Array.isArray(evidence) ||
+      !isNonEmptyString(evidence.sourceKind) ||
+      !isNonEmptyString(evidence.sourceId) ||
+      !isNonEmptyString(evidence.label)
+    ) {
+      throw new StorageInvariantError("llm_curation_suggestion_evidence_invalid");
+    }
+    assertNoForbiddenLlmCurationSuggestionArtifact(evidence);
+  }
+}
+
+function assertLlmCurationSuggestionOrigin(origin) {
+  if (
+    !origin ||
+    typeof origin !== "object" ||
+    Array.isArray(origin) ||
+    !isNonEmptyString(origin.suggestionPolicyId) ||
+    !isNonEmptyString(origin.providerAdapterId) ||
+    !isNonEmptyString(origin.outputValidatorPolicyId) ||
+    !isNonEmptyString(origin.redactionPolicyId) ||
+    !Array.isArray(origin.sourceKinds) ||
+    !Array.isArray(origin.sourceIds) ||
+    !Array.isArray(origin.coverageGapIds) ||
+    !isNonEmptyString(origin.promptContextSummary) ||
+    !isNonEmptyString(origin.generatedByIdentityId) ||
+    !isNonEmptyString(origin.generatedAt)
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_origin_invalid");
+  }
+  assertNoForbiddenLlmCurationSuggestionArtifact(origin);
+}
+
+function assertNoLlmCurationSuggestionTerminalFields({
+  materializedCandidateKind,
+  materializedCandidateId,
+  materializedByIdentityId,
+  materializedAt,
+  rejectedByIdentityId,
+  rejectedAt,
+}) {
+  if (
+    materializedCandidateKind !== null ||
+    materializedCandidateId !== null ||
+    materializedByIdentityId !== null ||
+    materializedAt !== null ||
+    rejectedByIdentityId !== null ||
+    rejectedAt !== null
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal_state_invalid");
+  }
+}
+
+function assertLlmCurationSuggestionMaterializedCandidate(database, { programId, candidateKind, candidateId }) {
+  const candidate = getLlmCurationSuggestionMaterializedCandidate(database, { candidateKind, candidateId });
+  if (!candidate) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_found");
+  }
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_program_mismatch");
+  }
+  if (candidate.status !== "draft") {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_draft");
+  }
+}
+
+function getLlmCurationSuggestionMaterializedCandidate(database, { candidateKind, candidateId }) {
+  if (candidateKind === "navigation_candidate") {
+    return getCorpusCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "quick_check_candidate") {
+    return getQuickCheckCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "assessment_criterion_candidate") {
+    return getAssessmentCriterionCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "open_answer_check_candidate") {
+    return getOpenAnswerCheckCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "readiness_check_candidate") {
+    return getReadinessCheckCandidateRecord(database, candidateId);
+  }
+
+  throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_invalid");
+}
+
+function assertLlmCurationSuggestionIdsBelongToProgram(database, { programId, suggestionIds }) {
+  if (!Array.isArray(suggestionIds)) {
+    throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+  }
+  const ids = new Set();
+  for (const suggestionId of suggestionIds) {
+    if (!isNonEmptyString(suggestionId) || ids.has(suggestionId)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+    }
+    ids.add(suggestionId);
+    const suggestion = getLlmCurationSuggestionRecord(database, suggestionId);
+    if (!suggestion) {
+      throw new StorageInvariantError("llm_curation_suggestion_not_found");
+    }
+    if (suggestion.programId !== programId) {
+      throw new StorageInvariantError("llm_curation_suggestion_program_mismatch");
+    }
+  }
+}
+
+function assertNoForbiddenLlmCurationSuggestionArtifact(record) {
+  if (containsForbiddenLlmCurationSuggestionArtifact(record)) {
+    throw new StorageInvariantError("llm_curation_suggestion_raw_artifact_forbidden");
+  }
+}
+
+function containsForbiddenLlmCurationSuggestionArtifact(value, key = null) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return containsForbiddenResponseDetail(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(entry => containsForbiddenLlmCurationSuggestionArtifact(entry, key));
+  }
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  return Object.entries(value).some(
+    ([entryKey, entryValue]) =>
+      forbiddenEvaluatorArtifactKeys.has(normalizeEvaluatorArtifactKey(entryKey)) ||
+      containsForbiddenLlmCurationSuggestionArtifact(entryValue, entryKey),
+  );
+}
+
+function assertReadinessResult(result) {
+  if (!["ready", "not_ready", "in_progress"].includes(result)) {
+    throw new StorageInvariantError("readiness_result_invalid");
+  }
+}
+
+function assertReadinessRequirementResults({ revision, requirementResults, result }) {
+  if (!Array.isArray(requirementResults) || requirementResults.length !== revision.requirements.length) {
+    throw new StorageInvariantError("readiness_requirement_results_invalid");
+  }
+
+  const resultsById = new Map(requirementResults.map($0 => [$0.requirementId, $0]));
+  if (resultsById.size !== requirementResults.length) {
+    throw new StorageInvariantError("readiness_requirement_result_id_conflict");
+  }
+  for (const requirement of revision.requirements) {
+    const requirementResult = resultsById.get(requirement.requirementId);
+    if (!requirementResult) {
+      throw new StorageInvariantError("readiness_requirement_result_mismatch");
+    }
+    if (
+      requirementResult.targetKind !== requirement.targetKind
+      || requirementResult.targetId !== requirement.targetId
+      || requirementResult.requiredLevel !== requirement.requiredLevel
+    ) {
+      throw new StorageInvariantError("readiness_requirement_result_mismatch");
+    }
+    if (!["no_evidence", "in_progress", "developing", "on_track", "needs_attention"].includes(requirementResult.observedLevel)) {
+      throw new StorageInvariantError("readiness_observed_level_invalid");
+    }
+    if (deriveReadinessRequirementResult(requirementResult) !== requirementResult.result) {
+      throw new StorageInvariantError("readiness_requirement_result_mismatch");
+    }
+  }
+  if (deriveReadinessAttemptResult(requirementResults) !== result) {
+    throw new StorageInvariantError("readiness_attempt_result_mismatch");
+  }
+}
+
+function deriveReadinessRequirementResult(requirementResult) {
+  if (requirementResult.observedLevel === "in_progress") {
+    return "in_progress";
+  }
+  if (requirementResult.requiredLevel === "developing") {
+    return ["developing", "on_track"].includes(requirementResult.observedLevel) ? "ready" : "not_ready";
+  }
+  return requirementResult.observedLevel === "on_track" ? "ready" : "not_ready";
+}
+
+function deriveReadinessAttemptResult(requirementResults) {
+  if (requirementResults.some($0 => $0.result === "not_ready")) {
+    return "not_ready";
+  }
+  if (requirementResults.some($0 => $0.result === "in_progress")) {
+    return "in_progress";
+  }
+  return "ready";
+}
+
+function getReadinessCheckAttemptRecordByIdempotencyScope(
+  database,
+  { programId, studentIdentityId, readinessCheckRevisionId, idempotencyKey },
+) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, student_identity_id as studentIdentityId,
+              readiness_check_revision_id as readinessCheckRevisionId, result,
+              requirement_results_json as requirementResultsJson,
+              idempotency_key as idempotencyKey, submitted_at as submittedAt
+       from readiness_check_attempts
+       where program_id = ?
+         and student_identity_id = ?
+         and readiness_check_revision_id = ?
+         and idempotency_key = ?`,
+    )
+    .get(programId, studentIdentityId, readinessCheckRevisionId, idempotencyKey);
+
+  return row ? mapReadinessCheckAttemptRecord(row) : null;
 }
 
 function assertQuickCheckOptionCollection({ options, answerKeyOptionId }) {
@@ -3465,12 +5582,16 @@ export function exportIdentityBackup(database) {
     auditEvents: listAuditEvents(database),
     programShells: listProgramShellRecords(database),
     programMemberships: listProgramMembershipRecords(database),
+    programInvitations: listProgramInvitationRecords(database),
     programEvents: listProgramEventRecords(database),
     programMembershipEvents: listProgramMembershipEventRecords(database),
     programSources: listProgramSourceRecords(database),
     corpusCandidates: listCorpusCandidateRecords(database),
     acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
     acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
+    acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
+    acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
+    learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
     corpusEvents: listCorpusEventRecords(database),
     assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
     acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
@@ -3479,6 +5600,12 @@ export function exportIdentityBackup(database) {
     acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
     acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
     quickCheckAttempts: listQuickCheckAttemptRecords(database),
+    readinessCheckCandidates: listReadinessCheckCandidateRecords(database),
+    acceptedReadinessCheckEntities: listAcceptedReadinessCheckEntityRecords(database),
+    acceptedReadinessCheckRevisions: listAcceptedReadinessCheckRevisionRecords(database),
+    readinessCheckAttempts: listReadinessCheckAttemptRecords(database),
+    llmCurationSuggestions: listLlmCurationSuggestionRecords(database),
+    llmCurationSuggestionGenerations: listLlmCurationSuggestionGenerationRecords(database),
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
@@ -3504,8 +5631,13 @@ export function restoreIdentityBackup(database, backup) {
   }
 
   assertValidCorpusGraphInBackup(backup);
+  assertValidNavigationGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
   assertValidQuickCheckGraphInBackup(backup);
+  assertValidLearnerEvidenceTargetLinksInBackup(backup);
+  assertValidProgramMembershipGraphInBackup(backup);
+  assertValidReadinessGraphInBackup(backup);
+  assertValidLlmCurationSuggestionGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
@@ -3516,7 +5648,14 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from open_answer_evaluation_failures").run();
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
+    database.prepare("delete from readiness_check_attempts").run();
+    database.prepare("delete from llm_curation_suggestion_generations").run();
+    database.prepare("delete from llm_curation_suggestions").run();
+    database.prepare("delete from learner_evidence_target_links").run();
     database.prepare("delete from quick_check_attempts").run();
+    database.prepare("delete from accepted_readiness_check_revisions").run();
+    database.prepare("delete from accepted_readiness_check_entities").run();
+    database.prepare("delete from readiness_check_candidates").run();
     database.prepare("delete from accepted_open_answer_check_revisions").run();
     database.prepare("delete from accepted_open_answer_check_entities").run();
     database.prepare("delete from open_answer_check_candidates").run();
@@ -3528,11 +5667,14 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from accepted_assessment_criterion_revisions").run();
     database.prepare("delete from accepted_assessment_criterion_entities").run();
     database.prepare("delete from assessment_criterion_candidates").run();
+    database.prepare("delete from accepted_navigation_relationship_revisions").run();
+    database.prepare("delete from accepted_navigation_relationships").run();
     database.prepare("delete from accepted_corpus_revisions").run();
     database.prepare("delete from accepted_corpus_entities").run();
     database.prepare("delete from corpus_candidates").run();
     database.prepare("delete from program_sources").run();
     database.prepare("delete from program_membership_events").run();
+    database.prepare("delete from program_invitations").run();
     database.prepare("delete from program_memberships").run();
     database.prepare("delete from program_events").run();
     database.prepare("delete from program_shells").run();
@@ -3615,6 +5757,20 @@ export function restoreIdentityBackup(database, backup) {
          id, program_id, identity_id, participation_kind, status, created_at, updated_at
        ) values (?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertProgramInvitation = database.prepare(
+      `insert into program_invitations (
+         id,
+         program_id,
+         target_identity_id,
+         participation_kind,
+         status,
+         invited_by_identity_id,
+         created_at,
+         updated_at,
+         status_changed_by_identity_id,
+         status_changed_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
     const insertProgramEvent = database.prepare(
       `insert into program_events (
          id, event_type, actor_identity_id, program_id, occurred_at, outcome, reason
@@ -3623,8 +5779,8 @@ export function restoreIdentityBackup(database, backup) {
     const insertProgramMembershipEvent = database.prepare(
       `insert into program_membership_events (
          id, event_type, actor_identity_id, target_identity_id, program_id,
-         participation_kind, resulting_status, occurred_at, outcome, reason
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         participation_kind, policy_path, resulting_status, invitation_status, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertProgramSource = database.prepare(
       `insert into program_sources (
@@ -3638,13 +5794,17 @@ export function restoreIdentityBackup(database, backup) {
          candidate_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
+         relationship_drafts_json,
          source_ids_json,
          rationale,
          status,
          created_by_identity_id,
          created_at,
          updated_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedCorpusEntity = database.prepare(
       `insert into accepted_corpus_entities (
@@ -3659,12 +5819,58 @@ export function restoreIdentityBackup(database, backup) {
          accepted_kind,
          title,
          body,
+         material_reference_kind,
+         locator,
+         citation,
          accepted_from_candidate_id,
          source_ids_json,
          rationale,
          accepted_by_identity_id,
          accepted_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedNavigationRelationship = database.prepare(
+      `insert into accepted_navigation_relationships (
+         id,
+         program_id,
+         relationship_kind,
+         from_entity_id,
+         to_entity_id,
+         current_revision_id
+       ) values (?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedNavigationRelationshipRevision = database.prepare(
+      `insert into accepted_navigation_relationship_revisions (
+         id,
+         relationship_id,
+         program_id,
+         relationship_kind,
+         from_entity_id,
+         from_revision_id,
+         from_kind,
+         to_entity_id,
+         to_revision_id,
+         to_kind,
+         label,
+         source_ids_json,
+         accepted_from_candidate_id,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertLearnerEvidenceTargetLink = database.prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertCorpusEvent = database.prepare(
       `insert into corpus_events (
@@ -3812,6 +6018,87 @@ export function restoreIdentityBackup(database, backup) {
          submitted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertReadinessCheckCandidate = database.prepare(
+      `insert into readiness_check_candidates (
+         id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         source_ids_json,
+         rationale,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertAcceptedReadinessCheckEntity = database.prepare(
+      `insert into accepted_readiness_check_entities (
+         id, program_id, current_revision_id
+       ) values (?, ?, ?)`,
+    );
+    const insertAcceptedReadinessCheckRevision = database.prepare(
+      `insert into accepted_readiness_check_revisions (
+         id,
+         entity_id,
+         program_id,
+         title,
+         scope_json,
+         requirements_json,
+         accepted_from_candidate_id,
+         source_ids_json,
+         rationale,
+         accepted_by_identity_id,
+         accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertReadinessCheckAttempt = database.prepare(
+      `insert into readiness_check_attempts (
+         id,
+         program_id,
+         student_identity_id,
+         readiness_check_revision_id,
+         result,
+         requirement_results_json,
+         idempotency_key,
+         submitted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertLlmCurationSuggestion = database.prepare(
+      `insert into llm_curation_suggestions (
+         id,
+         program_id,
+         suggestion_kind,
+         title,
+         summary,
+         rationale,
+         suggested_draft_json,
+         supporting_evidence_json,
+         origin_json,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at,
+         materialized_candidate_kind,
+         materialized_candidate_id,
+         materialized_by_identity_id,
+         materialized_at,
+         rejected_by_identity_id,
+         rejected_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertLlmCurationSuggestionGeneration = database.prepare(
+      `insert into llm_curation_suggestion_generations (
+         id,
+         program_id,
+         idempotency_key,
+         request_fingerprint,
+         suggestion_ids_json,
+         created_by_identity_id,
+         created_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    );
     const insertOpenAnswerEvaluation = database.prepare(
       `insert into open_answer_evaluations (
          id,
@@ -3896,6 +6183,21 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const invitation of backup.programInvitations ?? []) {
+      insertProgramInvitation.run(
+        invitation.id,
+        invitation.programId,
+        invitation.targetIdentityId,
+        invitation.participationKind,
+        invitation.status,
+        invitation.invitedByIdentityId,
+        invitation.createdAt,
+        invitation.updatedAt,
+        invitation.statusChangedByIdentityId ?? null,
+        invitation.statusChangedAt ?? null,
+      );
+    }
+
     for (const event of backup.programEvents ?? []) {
       insertProgramEvent.run(
         event.id,
@@ -3916,7 +6218,9 @@ export function restoreIdentityBackup(database, backup) {
         event.targetIdentityId,
         event.programId,
         event.participationKind,
+        event.policyPath ?? null,
         event.resultingStatus ?? null,
+        event.invitationStatus ?? null,
         event.occurredAt,
         event.outcome,
         event.reason ?? null,
@@ -3943,6 +6247,10 @@ export function restoreIdentityBackup(database, backup) {
         candidate.candidateKind,
         candidate.title,
         candidate.body ?? null,
+        candidate.materialReferenceKind ?? null,
+        candidate.locator ?? null,
+        candidate.citation ?? null,
+        JSON.stringify(candidate.relationshipDrafts ?? []),
         JSON.stringify(candidate.sourceIds ?? []),
         candidate.rationale ?? null,
         candidate.status,
@@ -3969,11 +6277,60 @@ export function restoreIdentityBackup(database, backup) {
         revision.acceptedKind,
         revision.title,
         revision.body ?? null,
+        revision.materialReferenceKind ?? null,
+        revision.locator ?? null,
+        revision.citation ?? null,
         revision.acceptedFromCandidateId,
         JSON.stringify(revision.sourceIds ?? []),
         revision.rationale ?? null,
         revision.acceptedByIdentityId,
         revision.acceptedAt,
+      );
+    }
+
+    for (const relationship of backup.acceptedNavigationRelationships ?? []) {
+      insertAcceptedNavigationRelationship.run(
+        relationship.id,
+        relationship.programId,
+        relationship.relationshipKind,
+        relationship.fromEntityId,
+        relationship.toEntityId,
+        relationship.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedNavigationRelationshipRevisions ?? []) {
+      insertAcceptedNavigationRelationshipRevision.run(
+        revision.id,
+        revision.relationshipId,
+        revision.programId,
+        revision.relationshipKind,
+        revision.fromEntityId,
+        revision.fromRevisionId,
+        revision.fromKind,
+        revision.toEntityId,
+        revision.toRevisionId,
+        revision.toKind,
+        revision.label ?? null,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.acceptedFromCandidateId,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+    }
+
+    for (const link of backup.learnerEvidenceTargetLinks ?? []) {
+      insertLearnerEvidenceTargetLink.run(
+        link.id,
+        link.programId,
+        link.targetKind,
+        link.targetId,
+        link.evidenceOwnerKind,
+        link.evidenceOwnerEntityId,
+        link.status,
+        link.createdByIdentityId,
+        link.createdAt,
+        link.updatedAt,
       );
     }
 
@@ -4128,6 +6485,82 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const candidate of backup.readinessCheckCandidates ?? []) {
+      insertReadinessCheckCandidate.run(
+        candidate.id,
+        candidate.programId,
+        candidate.title,
+        JSON.stringify(candidate.scope),
+        JSON.stringify(candidate.requirements ?? []),
+        JSON.stringify(candidate.sourceIds ?? []),
+        candidate.rationale ?? null,
+        candidate.status,
+        candidate.createdByIdentityId,
+        candidate.createdAt,
+        candidate.updatedAt,
+      );
+    }
+
+    for (const suggestion of backup.llmCurationSuggestions ?? []) {
+      insertLlmCurationSuggestion.run(
+        suggestion.id,
+        suggestion.programId,
+        suggestion.suggestionKind,
+        suggestion.title,
+        suggestion.summary,
+        suggestion.rationale,
+        JSON.stringify(suggestion.suggestedDraft),
+        JSON.stringify(suggestion.supportingEvidence),
+        JSON.stringify(suggestion.origin),
+        suggestion.status,
+        suggestion.createdByIdentityId,
+        suggestion.createdAt,
+        suggestion.updatedAt,
+        suggestion.materializedCandidateKind ?? null,
+        suggestion.materializedCandidateId ?? null,
+        suggestion.materializedByIdentityId ?? null,
+        suggestion.materializedAt ?? null,
+        suggestion.rejectedByIdentityId ?? null,
+        suggestion.rejectedAt ?? null,
+      );
+    }
+
+    for (const generation of backup.llmCurationSuggestionGenerations ?? []) {
+      insertLlmCurationSuggestionGeneration.run(
+        generation.id,
+        generation.programId,
+        generation.idempotencyKey,
+        generation.requestFingerprint,
+        JSON.stringify(generation.suggestionIds ?? []),
+        generation.createdByIdentityId,
+        generation.createdAt,
+      );
+    }
+
+    for (const entity of backup.acceptedReadinessCheckEntities ?? []) {
+      insertAcceptedReadinessCheckEntity.run(
+        entity.id,
+        entity.programId,
+        entity.currentRevisionId,
+      );
+    }
+
+    for (const revision of backup.acceptedReadinessCheckRevisions ?? []) {
+      insertAcceptedReadinessCheckRevision.run(
+        revision.id,
+        revision.entityId,
+        revision.programId,
+        revision.title,
+        JSON.stringify(revision.scope),
+        JSON.stringify(revision.requirements ?? []),
+        revision.acceptedFromCandidateId,
+        JSON.stringify(revision.sourceIds ?? []),
+        revision.rationale ?? null,
+        revision.acceptedByIdentityId,
+        revision.acceptedAt,
+      );
+    }
+
     for (const attempt of backup.quickCheckAttempts ?? []) {
       insertQuickCheckAttempt.run(
         attempt.id,
@@ -4136,6 +6569,19 @@ export function restoreIdentityBackup(database, backup) {
         attempt.checkRevisionId,
         attempt.selectedOptionId,
         attempt.matched ? 1 : 0,
+        attempt.idempotencyKey,
+        attempt.submittedAt,
+      );
+    }
+
+    for (const attempt of backup.readinessCheckAttempts ?? []) {
+      insertReadinessCheckAttempt.run(
+        attempt.id,
+        attempt.programId,
+        attempt.studentIdentityId,
+        attempt.readinessCheckRevisionId,
+        attempt.result,
+        JSON.stringify(attempt.requirementResults ?? []),
         attempt.idempotencyKey,
         attempt.submittedAt,
       );
@@ -4334,7 +6780,7 @@ function getAuditEvent(database, id) {
 }
 
 function mapCorpusCandidateRecord(row) {
-  return {
+  const candidate = {
     id: row.id,
     programId: row.programId,
     candidateKind: row.candidateKind,
@@ -4347,6 +6793,23 @@ function mapCorpusCandidateRecord(row) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+
+  if (row.materialReferenceKind !== null) {
+    candidate.materialReferenceKind = row.materialReferenceKind;
+  }
+  if (row.locator !== null) {
+    candidate.locator = row.locator;
+  }
+  if (row.citation !== null) {
+    candidate.citation = row.citation;
+  }
+
+  const relationshipDrafts = JSON.parse(row.relationshipDraftsJson ?? "[]");
+  if (relationshipDrafts.length > 0) {
+    candidate.relationshipDrafts = relationshipDrafts;
+  }
+
+  return candidate;
 }
 
 function mapAssessmentCriterionCandidateRecord(row) {
@@ -4462,6 +6925,87 @@ function mapQuickCheckAttemptRecord(row) {
     checkRevisionId: row.checkRevisionId,
     selectedOptionId: row.selectedOptionId,
     matched: Boolean(row.matched),
+    idempotencyKey: row.idempotencyKey,
+    submittedAt: row.submittedAt,
+  };
+}
+
+function mapReadinessCheckCandidateRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    title: row.title,
+    scope: JSON.parse(row.scopeJson),
+    requirements: JSON.parse(row.requirementsJson),
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapLlmCurationSuggestionRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    suggestionKind: row.suggestionKind,
+    title: row.title,
+    summary: row.summary,
+    rationale: row.rationale,
+    suggestedDraft: JSON.parse(row.suggestedDraftJson),
+    supportingEvidence: JSON.parse(row.supportingEvidenceJson),
+    origin: JSON.parse(row.originJson),
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    materializedCandidateKind: row.materializedCandidateKind,
+    materializedCandidateId: row.materializedCandidateId,
+    materializedByIdentityId: row.materializedByIdentityId,
+    materializedAt: row.materializedAt,
+    rejectedByIdentityId: row.rejectedByIdentityId,
+    rejectedAt: row.rejectedAt,
+  };
+}
+
+function mapLlmCurationSuggestionGenerationRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    idempotencyKey: row.idempotencyKey,
+    requestFingerprint: row.requestFingerprint,
+    suggestionIds: JSON.parse(row.suggestionIdsJson),
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+  };
+}
+
+function mapAcceptedReadinessCheckRevisionRecord(row) {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    programId: row.programId,
+    title: row.title,
+    scope: JSON.parse(row.scopeJson),
+    requirements: JSON.parse(row.requirementsJson),
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    rationale: row.rationale,
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+}
+
+function mapReadinessCheckAttemptRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    studentIdentityId: row.studentIdentityId,
+    readinessCheckRevisionId: row.readinessCheckRevisionId,
+    result: row.result,
+    requirementResults: JSON.parse(row.requirementResultsJson),
     idempotencyKey: row.idempotencyKey,
     submittedAt: row.submittedAt,
   };
@@ -4602,7 +7146,7 @@ function mapOpenAnswerEvaluatorJobRecord(row) {
 }
 
 function mapAcceptedCorpusRevisionRecord(row) {
-  return {
+  const revision = {
     id: row.id,
     entityId: row.entityId,
     programId: row.programId,
@@ -4615,6 +7159,65 @@ function mapAcceptedCorpusRevisionRecord(row) {
     acceptedByIdentityId: row.acceptedByIdentityId,
     acceptedAt: row.acceptedAt,
   };
+
+  if (row.materialReferenceKind !== null) {
+    revision.materialReferenceKind = row.materialReferenceKind;
+  }
+  if (row.locator !== null) {
+    revision.locator = row.locator;
+  }
+  if (row.citation !== null) {
+    revision.citation = row.citation;
+  }
+
+  return revision;
+}
+
+function mapAcceptedNavigationRelationshipRevisionRecord(row) {
+  return {
+    id: row.id,
+    relationshipId: row.relationshipId,
+    programId: row.programId,
+    relationshipKind: row.relationshipKind,
+    fromEntityId: row.fromEntityId,
+    fromRevisionId: row.fromRevisionId,
+    fromKind: row.fromKind,
+    toEntityId: row.toEntityId,
+    toRevisionId: row.toRevisionId,
+    toKind: row.toKind,
+    label: row.label,
+    sourceIds: JSON.parse(row.sourceIdsJson),
+    acceptedFromCandidateId: row.acceptedFromCandidateId,
+    acceptedByIdentityId: row.acceptedByIdentityId,
+    acceptedAt: row.acceptedAt,
+  };
+}
+
+function getActiveLearnerEvidenceTargetLinkRecord(
+  database,
+  { programId, targetKind, targetId, evidenceOwnerKind, evidenceOwnerEntityId },
+) {
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_kind as targetKind,
+              target_id as targetId,
+              evidence_owner_kind as evidenceOwnerKind,
+              evidence_owner_entity_id as evidenceOwnerEntityId,
+              status,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt
+       from learner_evidence_target_links
+       where program_id = ?
+         and target_kind = ?
+         and target_id = ?
+         and evidence_owner_kind = ?
+         and evidence_owner_entity_id = ?
+         and status = 'active'`,
+    )
+    .get(programId, targetKind, targetId, evidenceOwnerKind, evidenceOwnerEntityId) ?? null;
 }
 
 function assertIdentityExists(database, identityId) {
@@ -4662,6 +7265,18 @@ function mapCredentialConstraintError(error) {
   return error;
 }
 
+function mapProgramInvitationConstraintError(error) {
+  if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+    return new StorageInvariantError("invitation_conflict");
+  }
+
+  if (error.code === "SQLITE_CONSTRAINT_CHECK" && error.message.includes("participation_kind")) {
+    return new StorageInvariantError("unsupported_participation_kind");
+  }
+
+  return error;
+}
+
 function isValidBackupShape(backup) {
   return Boolean(
     backup &&
@@ -4694,6 +7309,78 @@ function hasActiveCuratorForEveryProgramInBackup(backup) {
   return shells.every($0 => curatorPrograms.has($0.id));
 }
 
+function assertValidProgramMembershipGraphInBackup(backup) {
+  const identityIds = new Set((backup.identities ?? []).map($0 => $0.id));
+  const programIds = new Set((backup.programShells ?? []).map($0 => $0.id));
+  const invitationIds = new Set();
+  const pendingInvitationScopes = new Set();
+  const membershipScopes = new Set();
+  const policyPaths = new Set([
+    null,
+    undefined,
+    "self_join",
+    "curator_invitation",
+    "curator_removal",
+    "curator_leave",
+    "admin_exceptional_recovery",
+    "admin_exceptional_revocation",
+  ]);
+  const invitationStatuses = new Set([null, undefined, "pending", "accepted", "declined", "revoked"]);
+
+  for (const shell of backup.programShells ?? []) {
+    if (!["self_join", "invitation_only"].includes(shell.admissionPolicy)) {
+      throw new StorageInvariantError("validation_failed");
+    }
+  }
+
+  for (const membership of backup.programMemberships ?? []) {
+    const scope = `${membership.programId}:${membership.identityId}:${membership.participationKind}`;
+    if (membershipScopes.has(scope)) {
+      throw new StorageInvariantError("membership_conflict");
+    }
+    membershipScopes.add(scope);
+  }
+
+  for (const invitation of backup.programInvitations ?? []) {
+    if (invitationIds.has(invitation.id)) {
+      throw new StorageInvariantError("invitation_conflict");
+    }
+    invitationIds.add(invitation.id);
+
+    if (!programIds.has(invitation.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (
+      !identityIds.has(invitation.targetIdentityId) ||
+      !identityIds.has(invitation.invitedByIdentityId) ||
+      (invitation.statusChangedByIdentityId !== null &&
+        invitation.statusChangedByIdentityId !== undefined &&
+        !identityIds.has(invitation.statusChangedByIdentityId))
+    ) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    if (invitation.participationKind !== "student") {
+      throw new StorageInvariantError("unsupported_participation_kind");
+    }
+
+    if (invitation.status === "pending") {
+      const scope = `${invitation.programId}:${invitation.targetIdentityId}:${invitation.participationKind}`;
+      if (pendingInvitationScopes.has(scope)) {
+        throw new StorageInvariantError("invitation_conflict");
+      }
+      pendingInvitationScopes.add(scope);
+    }
+  }
+
+  for (const event of backup.programMembershipEvents ?? []) {
+    if (!policyPaths.has(event.policyPath) || !invitationStatuses.has(event.invitationStatus)) {
+      throw new StorageInvariantError("validation_failed");
+    }
+  }
+}
+
 function assertValidCorpusGraphInBackup(backup) {
   const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
   const candidatesById = new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]));
@@ -4721,6 +7408,13 @@ function assertValidCorpusGraphInBackup(backup) {
     if (entity.acceptedKind !== revision.acceptedKind) {
       throw new StorageInvariantError("accepted_revision_kind_mismatch");
     }
+    assertAcceptedCorpusRevisionMaterialReferenceShape({
+      acceptedKind: revision.acceptedKind,
+      body: revision.body ?? null,
+      materialReferenceKind: revision.materialReferenceKind ?? null,
+      locator: revision.locator ?? null,
+      citation: revision.citation ?? null,
+    });
 
     const candidate = candidatesById.get(revision.acceptedFromCandidateId);
     if (!candidate) {
@@ -4758,6 +7452,151 @@ function assertValidCorpusGraphInBackup(backup) {
 
     if (currentRevision.acceptedKind !== entity.acceptedKind) {
       throw new StorageInvariantError("accepted_revision_kind_mismatch");
+    }
+  }
+}
+
+function assertValidNavigationGraphInBackup(backup) {
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const candidatesById = new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map((backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]));
+  const revisionsById = new Map((backup.acceptedCorpusRevisions ?? []).map($0 => [$0.id, $0]));
+  const relationshipsById = new Map(
+    (backup.acceptedNavigationRelationships ?? []).map($0 => [$0.id, $0]),
+  );
+  const relationshipRevisionsById = new Map(
+    (backup.acceptedNavigationRelationshipRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+
+  for (const relationship of backup.acceptedNavigationRelationships ?? []) {
+    const fromEntity = entitiesById.get(relationship.fromEntityId);
+    const toEntity = entitiesById.get(relationship.toEntityId);
+    assertNavigationRelationshipBackupEndpoints({
+      programId: relationship.programId,
+      relationshipKind: relationship.relationshipKind,
+      fromEntity,
+      toEntity,
+    });
+
+    const currentRevision = relationshipRevisionsById.get(relationship.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("navigation_relationship_revision_not_found");
+    }
+    if (currentRevision.relationshipId !== relationship.id) {
+      throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+    }
+  }
+
+  for (const revision of backup.acceptedNavigationRelationshipRevisions ?? []) {
+    const relationship = relationshipsById.get(revision.relationshipId);
+    if (!relationship) {
+      throw new StorageInvariantError("navigation_relationship_not_found");
+    }
+    if (
+      relationship.programId !== revision.programId ||
+      relationship.relationshipKind !== revision.relationshipKind ||
+      relationship.fromEntityId !== revision.fromEntityId ||
+      relationship.toEntityId !== revision.toEntityId
+    ) {
+      throw new StorageInvariantError("navigation_relationship_revision_relationship_mismatch");
+    }
+    if (!isValidNavigationRelationshipEndpointPair(revision.relationshipKind, revision.fromKind, revision.toKind)) {
+      throw new StorageInvariantError("navigation_relationship_endpoint_kind_mismatch");
+    }
+
+    assertNavigationRelationshipBackupRevisionEndpoint({
+      entity: entitiesById.get(revision.fromEntityId),
+      revision: revisionsById.get(revision.fromRevisionId),
+      revisionKind: revision.fromKind,
+    });
+    assertNavigationRelationshipBackupRevisionEndpoint({
+      entity: entitiesById.get(revision.toEntityId),
+      revision: revisionsById.get(revision.toRevisionId),
+      revisionKind: revision.toKind,
+    });
+
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("candidate_not_found");
+    }
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("candidate_not_accepted");
+    }
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("candidate_program_mismatch");
+    }
+
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+  }
+
+  assertNavigationBackupHasNoPrerequisiteCycles(backup.acceptedNavigationRelationships ?? []);
+}
+
+function assertNavigationRelationshipBackupEndpoints({ programId, relationshipKind, fromEntity, toEntity }) {
+  if (!fromEntity || !toEntity) {
+    throw new StorageInvariantError("accepted_entity_not_found");
+  }
+  if (fromEntity.id === toEntity.id) {
+    throw new StorageInvariantError("navigation_relationship_self_reference");
+  }
+  if (fromEntity.programId !== programId || toEntity.programId !== programId) {
+    throw new StorageInvariantError("navigation_relationship_program_mismatch");
+  }
+  if (!isValidNavigationRelationshipEndpointPair(relationshipKind, fromEntity.acceptedKind, toEntity.acceptedKind)) {
+    throw new StorageInvariantError("navigation_relationship_endpoint_kind_mismatch");
+  }
+}
+
+function assertNavigationRelationshipBackupRevisionEndpoint({ entity, revision, revisionKind }) {
+  if (!entity) {
+    throw new StorageInvariantError("accepted_entity_not_found");
+  }
+  if (!revision) {
+    throw new StorageInvariantError("accepted_revision_not_found");
+  }
+  if (revision.entityId !== entity.id) {
+    throw new StorageInvariantError("accepted_revision_entity_mismatch");
+  }
+  if (revision.programId !== entity.programId) {
+    throw new StorageInvariantError("accepted_revision_program_mismatch");
+  }
+  if (revision.acceptedKind !== entity.acceptedKind || revision.acceptedKind !== revisionKind) {
+    throw new StorageInvariantError("accepted_revision_kind_mismatch");
+  }
+}
+
+function assertNavigationBackupHasNoPrerequisiteCycles(relationships) {
+  const edgesByProgramAndFrom = new Map();
+  for (const relationship of relationships) {
+    if (relationship.relationshipKind !== "concept_prerequisite") {
+      continue;
+    }
+    const key = `${relationship.programId}:${relationship.fromEntityId}`;
+    const targets = edgesByProgramAndFrom.get(key) ?? [];
+    targets.push(relationship.toEntityId);
+    edgesByProgramAndFrom.set(key, targets);
+  }
+
+  for (const relationship of relationships) {
+    if (relationship.relationshipKind !== "concept_prerequisite") {
+      continue;
+    }
+    const visited = new Set();
+    const stack = [relationship.toEntityId];
+    while (stack.length > 0) {
+      const currentEntityId = stack.pop();
+      if (currentEntityId === relationship.fromEntityId) {
+        throw new StorageInvariantError("navigation_prerequisite_cycle");
+      }
+      if (visited.has(currentEntityId)) {
+        continue;
+      }
+      visited.add(currentEntityId);
+      stack.push(...(edgesByProgramAndFrom.get(`${relationship.programId}:${currentEntityId}`) ?? []));
     }
   }
 }
@@ -5032,6 +7871,573 @@ function assertValidQuickCheckGraphInBackup(backup) {
     }
     attemptIdempotencyScopes.add(idempotencyScope);
   }
+}
+
+function assertValidReadinessGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const sourcesById = new Map((backup.programSources ?? []).map($0 => [$0.id, $0]));
+  const acceptedCorpusEntitiesById = new Map(
+    (backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const quickCheckEntitiesById = new Map(
+    (backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const openAnswerCheckEntitiesById = new Map(
+    (backup.acceptedOpenAnswerCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const criterionEntitiesById = new Map(
+    (backup.acceptedAssessmentCriterionEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const candidatesById = new Map((backup.readinessCheckCandidates ?? []).map($0 => [$0.id, $0]));
+  const entitiesById = new Map(
+    (backup.acceptedReadinessCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const revisionsById = new Map(
+    (backup.acceptedReadinessCheckRevisions ?? []).map($0 => [$0.id, $0]),
+  );
+  const attemptIdempotencyScopes = new Set();
+
+  assertBackupCollectionHasNoDuplicateIds(backup.readinessCheckCandidates ?? [], "readiness_candidate_id_conflict");
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.acceptedReadinessCheckEntities ?? [],
+    "readiness_entity_id_conflict",
+  );
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.acceptedReadinessCheckRevisions ?? [],
+    "readiness_revision_id_conflict",
+  );
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.readinessCheckAttempts ?? [],
+    "readiness_attempt_id_conflict",
+  );
+
+  for (const candidate of backup.readinessCheckCandidates ?? []) {
+    if (!programShellsById.has(candidate.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(candidate.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    assertSourceIdsBelongToProgram({
+      programId: candidate.programId,
+      sourceIds: candidate.sourceIds ?? [],
+      sourcesById,
+    });
+    assertReadinessBackupScope({
+      programId: candidate.programId,
+      scope: candidate.scope,
+      acceptedCorpusEntitiesById,
+    });
+    assertReadinessBackupRequirements({
+      programId: candidate.programId,
+      requirements: candidate.requirements,
+      acceptedCorpusEntitiesById,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+  }
+
+  for (const revision of backup.acceptedReadinessCheckRevisions ?? []) {
+    if (!programShellsById.has(revision.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(revision.acceptedByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    const entity = entitiesById.get(revision.entityId);
+    if (!entity) {
+      throw new StorageInvariantError("readiness_entity_not_found");
+    }
+    if (entity.programId !== revision.programId) {
+      throw new StorageInvariantError("readiness_revision_program_mismatch");
+    }
+    const candidate = candidatesById.get(revision.acceptedFromCandidateId);
+    if (!candidate) {
+      throw new StorageInvariantError("readiness_candidate_not_found");
+    }
+    if (candidate.status !== "accepted") {
+      throw new StorageInvariantError("readiness_candidate_not_accepted");
+    }
+    if (candidate.programId !== revision.programId) {
+      throw new StorageInvariantError("readiness_candidate_program_mismatch");
+    }
+    assertSourceIdsBelongToProgram({
+      programId: revision.programId,
+      sourceIds: revision.sourceIds ?? [],
+      sourcesById,
+    });
+    assertReadinessBackupScope({
+      programId: revision.programId,
+      scope: revision.scope,
+      acceptedCorpusEntitiesById,
+    });
+    assertReadinessBackupRequirements({
+      programId: revision.programId,
+      requirements: revision.requirements,
+      acceptedCorpusEntitiesById,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+  }
+
+  for (const entity of backup.acceptedReadinessCheckEntities ?? []) {
+    if (!programShellsById.has(entity.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    const currentRevision = revisionsById.get(entity.currentRevisionId);
+    if (!currentRevision) {
+      throw new StorageInvariantError("readiness_revision_not_found");
+    }
+    if (currentRevision.entityId !== entity.id) {
+      throw new StorageInvariantError("readiness_revision_entity_mismatch");
+    }
+    if (currentRevision.programId !== entity.programId) {
+      throw new StorageInvariantError("readiness_revision_program_mismatch");
+    }
+  }
+
+  for (const attempt of backup.readinessCheckAttempts ?? []) {
+    if (!programShellsById.has(attempt.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(attempt.studentIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    const revision = revisionsById.get(attempt.readinessCheckRevisionId);
+    if (!revision) {
+      throw new StorageInvariantError("readiness_revision_not_found");
+    }
+    if (revision.programId !== attempt.programId) {
+      throw new StorageInvariantError("readiness_revision_program_mismatch");
+    }
+    assertReadinessResult(attempt.result);
+    assertReadinessRequirementResults({
+      revision,
+      requirementResults: attempt.requirementResults,
+      result: attempt.result,
+    });
+    const idempotencyScope = [
+      attempt.programId,
+      attempt.studentIdentityId,
+      attempt.readinessCheckRevisionId,
+      attempt.idempotencyKey,
+    ].join("\u0000");
+    if (attemptIdempotencyScopes.has(idempotencyScope)) {
+      throw new StorageInvariantError("readiness_attempt_idempotency_conflict");
+    }
+    attemptIdempotencyScopes.add(idempotencyScope);
+  }
+}
+
+function assertValidLearnerEvidenceTargetLinksInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const targetsById = new Map((backup.acceptedCorpusEntities ?? []).map($0 => [$0.id, $0]));
+  const quickCheckEntitiesById = new Map(
+    (backup.acceptedQuickCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const openAnswerCheckEntitiesById = new Map(
+    (backup.acceptedOpenAnswerCheckEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const criterionEntitiesById = new Map(
+    (backup.acceptedAssessmentCriterionEntities ?? []).map($0 => [$0.id, $0]),
+  );
+  const activeScopes = new Set();
+  const ids = new Set();
+
+  for (const link of backup.learnerEvidenceTargetLinks ?? []) {
+    if (ids.has(link.id)) {
+      throw new StorageInvariantError("learner_state_target_link_id_conflict");
+    }
+    ids.add(link.id);
+
+    if (!programShellsById.has(link.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(link.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    if (!["topic", "concept", "material_reference"].includes(link.targetKind)) {
+      throw new StorageInvariantError("learner_state_target_kind_invalid");
+    }
+    if (
+      ![
+        "accepted_quick_check",
+        "accepted_open_answer_check",
+        "accepted_assessment_criterion",
+      ].includes(link.evidenceOwnerKind)
+    ) {
+      throw new StorageInvariantError("learner_state_evidence_owner_kind_invalid");
+    }
+    if (!["active", "deleted"].includes(link.status)) {
+      throw new StorageInvariantError("learner_state_target_link_status_invalid");
+    }
+
+    const target = targetsById.get(link.targetId);
+    if (!target) {
+      throw new StorageInvariantError("accepted_entity_not_found");
+    }
+    if (target.programId !== link.programId) {
+      throw new StorageInvariantError("learner_state_target_program_mismatch");
+    }
+    if (target.acceptedKind !== link.targetKind) {
+      throw new StorageInvariantError("learner_state_target_kind_invalid");
+    }
+
+    const evidenceOwner = getLearnerEvidenceTargetLinkBackupEvidenceOwner({
+      link,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+    if (evidenceOwner.programId !== link.programId) {
+      throw new StorageInvariantError("learner_state_evidence_owner_program_mismatch");
+    }
+
+    if (link.status === "active") {
+      const activeScope = [
+        link.programId,
+        link.targetKind,
+        link.targetId,
+        link.evidenceOwnerKind,
+        link.evidenceOwnerEntityId,
+      ].join("\u0000");
+      if (activeScopes.has(activeScope)) {
+        throw new StorageInvariantError("learner_state_target_link_idempotency_conflict");
+      }
+      activeScopes.add(activeScope);
+    }
+  }
+}
+
+function assertValidLlmCurationSuggestionGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const suggestionsById = new Map((backup.llmCurationSuggestions ?? []).map($0 => [$0.id, $0]));
+  const materializedCandidatesByKind = makeLlmCurationSuggestionBackupCandidateMaps(backup);
+  const generationScopes = new Set();
+
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.llmCurationSuggestions ?? [],
+    "llm_curation_suggestion_id_conflict",
+  );
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.llmCurationSuggestionGenerations ?? [],
+    "llm_curation_suggestion_generation_id_conflict",
+  );
+
+  for (const suggestion of backup.llmCurationSuggestions ?? []) {
+    if (!programShellsById.has(suggestion.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (
+      !identitiesById.has(suggestion.createdByIdentityId) ||
+      !identitiesById.has(suggestion.origin?.generatedByIdentityId) ||
+      (suggestion.materializedByIdentityId !== null &&
+        suggestion.materializedByIdentityId !== undefined &&
+        !identitiesById.has(suggestion.materializedByIdentityId)) ||
+      (suggestion.rejectedByIdentityId !== null &&
+        suggestion.rejectedByIdentityId !== undefined &&
+        !identitiesById.has(suggestion.rejectedByIdentityId))
+    ) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    assertLlmCurationSuggestionShape({
+      suggestionKind: suggestion.suggestionKind,
+      title: suggestion.title,
+      summary: suggestion.summary,
+      rationale: suggestion.rationale,
+      suggestedDraft: suggestion.suggestedDraft,
+      supportingEvidence: suggestion.supportingEvidence,
+      origin: suggestion.origin,
+      status: suggestion.status,
+      materializedCandidateKind: suggestion.materializedCandidateKind ?? null,
+      materializedCandidateId: suggestion.materializedCandidateId ?? null,
+      materializedByIdentityId: suggestion.materializedByIdentityId ?? null,
+      materializedAt: suggestion.materializedAt ?? null,
+      rejectedByIdentityId: suggestion.rejectedByIdentityId ?? null,
+      rejectedAt: suggestion.rejectedAt ?? null,
+    });
+
+    if (suggestion.status === "materialized") {
+      assertLlmCurationSuggestionBackupMaterializedCandidate({
+        programId: suggestion.programId,
+        candidateKind: suggestion.materializedCandidateKind,
+        candidateId: suggestion.materializedCandidateId,
+        materializedCandidatesByKind,
+      });
+    }
+  }
+
+  for (const generation of backup.llmCurationSuggestionGenerations ?? []) {
+    if (!programShellsById.has(generation.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(generation.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    if (!isNonEmptyString(generation.idempotencyKey) || !isNonEmptyString(generation.requestFingerprint)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_shape_invalid");
+    }
+    const scope = `${generation.programId}:${generation.idempotencyKey}`;
+    if (generationScopes.has(scope)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_idempotency_conflict");
+    }
+    generationScopes.add(scope);
+
+    assertLlmCurationSuggestionBackupGenerationIds({
+      programId: generation.programId,
+      suggestionIds: generation.suggestionIds,
+      suggestionsById,
+    });
+  }
+}
+
+function makeLlmCurationSuggestionBackupCandidateMaps(backup) {
+  return new Map([
+    ["navigation_candidate", new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]))],
+    ["quick_check_candidate", new Map((backup.quickCheckCandidates ?? []).map($0 => [$0.id, $0]))],
+    [
+      "assessment_criterion_candidate",
+      new Map((backup.assessmentCriterionCandidates ?? []).map($0 => [$0.id, $0])),
+    ],
+    ["open_answer_check_candidate", new Map((backup.openAnswerCheckCandidates ?? []).map($0 => [$0.id, $0]))],
+    ["readiness_check_candidate", new Map((backup.readinessCheckCandidates ?? []).map($0 => [$0.id, $0]))],
+  ]);
+}
+
+function assertLlmCurationSuggestionBackupMaterializedCandidate({
+  programId,
+  candidateKind,
+  candidateId,
+  materializedCandidatesByKind,
+}) {
+  const candidatesById = materializedCandidatesByKind.get(candidateKind);
+  if (!candidatesById) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_invalid");
+  }
+
+  const candidate = candidatesById.get(candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_found");
+  }
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_program_mismatch");
+  }
+  if (candidate.status !== "draft") {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_draft");
+  }
+}
+
+function assertLlmCurationSuggestionBackupGenerationIds({
+  programId,
+  suggestionIds,
+  suggestionsById,
+}) {
+  if (!Array.isArray(suggestionIds)) {
+    throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+  }
+  const ids = new Set();
+  for (const suggestionId of suggestionIds) {
+    if (!isNonEmptyString(suggestionId) || ids.has(suggestionId)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+    }
+    ids.add(suggestionId);
+    const suggestion = suggestionsById.get(suggestionId);
+    if (!suggestion) {
+      throw new StorageInvariantError("llm_curation_suggestion_not_found");
+    }
+    if (suggestion.programId !== programId) {
+      throw new StorageInvariantError("llm_curation_suggestion_program_mismatch");
+    }
+  }
+}
+
+function assertBackupCollectionHasNoDuplicateIds(records, reason) {
+  const ids = new Set();
+  for (const record of records) {
+    if (ids.has(record.id)) {
+      throw new StorageInvariantError(reason);
+    }
+    ids.add(record.id);
+  }
+}
+
+function assertReadinessBackupScope({ programId, scope, acceptedCorpusEntitiesById }) {
+  if (scope?.scopeKind === "topic") {
+    assertReadinessBackupAcceptedCorpusTarget({
+      programId,
+      targetKind: "topic",
+      targetId: scope.topicEntityId,
+      acceptedCorpusEntitiesById,
+      notFoundReason: "readiness_scope_not_found",
+      mismatchReason: "readiness_scope_program_mismatch",
+    });
+    return;
+  }
+
+  if (scope?.scopeKind === "period") {
+    if (typeof scope.title !== "string" || scope.title.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    if (!Array.isArray(scope.topicEntityIds) || scope.topicEntityIds.length === 0) {
+      throw new StorageInvariantError("readiness_scope_invalid");
+    }
+    const topicEntityIds = new Set();
+    for (const topicEntityId of scope.topicEntityIds) {
+      if (topicEntityIds.has(topicEntityId)) {
+        throw new StorageInvariantError("readiness_scope_invalid");
+      }
+      topicEntityIds.add(topicEntityId);
+      assertReadinessBackupAcceptedCorpusTarget({
+        programId,
+        targetKind: "topic",
+        targetId: topicEntityId,
+        acceptedCorpusEntitiesById,
+        notFoundReason: "readiness_scope_not_found",
+        mismatchReason: "readiness_scope_program_mismatch",
+      });
+    }
+    return;
+  }
+
+  throw new StorageInvariantError("readiness_scope_invalid");
+}
+
+function assertReadinessBackupRequirements({
+  programId,
+  requirements,
+  acceptedCorpusEntitiesById,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (!Array.isArray(requirements) || requirements.length === 0) {
+    throw new StorageInvariantError("readiness_requirements_invalid");
+  }
+
+  const requirementIds = new Set();
+  for (const requirement of requirements) {
+    if (requirementIds.has(requirement.requirementId)) {
+      throw new StorageInvariantError("readiness_requirement_id_conflict");
+    }
+    requirementIds.add(requirement.requirementId);
+    if (!["developing", "on_track"].includes(requirement.requiredLevel)) {
+      throw new StorageInvariantError("readiness_required_level_invalid");
+    }
+    assertReadinessBackupRequirementTarget({
+      programId,
+      requirement,
+      acceptedCorpusEntitiesById,
+      quickCheckEntitiesById,
+      openAnswerCheckEntitiesById,
+      criterionEntitiesById,
+    });
+  }
+}
+
+function assertReadinessBackupRequirementTarget({
+  programId,
+  requirement,
+  acceptedCorpusEntitiesById,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (["topic", "concept", "material_reference"].includes(requirement.targetKind)) {
+    assertReadinessBackupAcceptedCorpusTarget({
+      programId,
+      targetKind: requirement.targetKind,
+      targetId: requirement.targetId,
+      acceptedCorpusEntitiesById,
+      notFoundReason: "readiness_requirement_target_not_found",
+      mismatchReason: "readiness_requirement_program_mismatch",
+    });
+    return;
+  }
+
+  const target = getReadinessBackupEvidenceOwnerEntity({
+    requirement,
+    quickCheckEntitiesById,
+    openAnswerCheckEntitiesById,
+    criterionEntitiesById,
+  });
+  if (!target) {
+    throw new StorageInvariantError("readiness_requirement_target_not_found");
+  }
+  if (target.programId !== programId) {
+    throw new StorageInvariantError("readiness_requirement_program_mismatch");
+  }
+}
+
+function assertReadinessBackupAcceptedCorpusTarget({
+  programId,
+  targetKind,
+  targetId,
+  acceptedCorpusEntitiesById,
+  notFoundReason,
+  mismatchReason,
+}) {
+  const target = acceptedCorpusEntitiesById.get(targetId);
+  if (!target) {
+    throw new StorageInvariantError(notFoundReason);
+  }
+  if (target.programId !== programId) {
+    throw new StorageInvariantError(mismatchReason);
+  }
+  if (target.acceptedKind !== targetKind) {
+    throw new StorageInvariantError("readiness_target_kind_invalid");
+  }
+}
+
+function getReadinessBackupEvidenceOwnerEntity({
+  requirement,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (requirement.targetKind === "quick_check") {
+    return quickCheckEntitiesById.get(requirement.targetId);
+  }
+  if (requirement.targetKind === "open_answer_check") {
+    return openAnswerCheckEntitiesById.get(requirement.targetId);
+  }
+  if (requirement.targetKind === "assessment_criterion") {
+    return criterionEntitiesById.get(requirement.targetId);
+  }
+  throw new StorageInvariantError("readiness_requirement_target_kind_invalid");
+}
+
+function getLearnerEvidenceTargetLinkBackupEvidenceOwner({
+  link,
+  quickCheckEntitiesById,
+  openAnswerCheckEntitiesById,
+  criterionEntitiesById,
+}) {
+  if (link.evidenceOwnerKind === "accepted_quick_check") {
+    const entity = quickCheckEntitiesById.get(link.evidenceOwnerEntityId);
+    if (!entity) {
+      throw new StorageInvariantError("quick_check_entity_not_found");
+    }
+    return entity;
+  }
+  if (link.evidenceOwnerKind === "accepted_open_answer_check") {
+    const entity = openAnswerCheckEntitiesById.get(link.evidenceOwnerEntityId);
+    if (!entity) {
+      throw new StorageInvariantError("check_entity_not_found");
+    }
+    return entity;
+  }
+
+  const entity = criterionEntitiesById.get(link.evidenceOwnerEntityId);
+  if (!entity) {
+    throw new StorageInvariantError("criterion_entity_not_found");
+  }
+  return entity;
 }
 
 function assertValidStudentAttemptGraphInBackup(backup) {
