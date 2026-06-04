@@ -33,7 +33,7 @@ description: "Open task backlog and parked decisions for the traceability-review
   not for coverage: **Assessment** 6/7 exercises dual ownership (one spec realizing
   both Corpus-side and Student-side of an ADR); **Student Workspace** exercises scale +
   async + 5-spec fan-out against the completeness invariant and the per-cluster split.
-  Outputs are project-bound (`agonara/docs/traceability-reviews/`, no SKILL bump);
+  Outputs are kept under the skill's `evals/traceability-reviews/` (no SKILL bump);
   evaluate the run, fold any wobble back into the skill, don't diff against a fixture.
 
 ## Parked
