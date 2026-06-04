@@ -21,6 +21,20 @@ description: "Open task backlog and parked decisions for the traceability-review
 - Lineage: a principled sibling to doc-drift-audit — ground truth is the upstream
   pipeline node, not the code.
 
+## Workflow machinery
+The skill runs as a dynamic workflow — `.claude/workflows/traceability-review.js` (+ `README.md`);
+invoke `/traceability-review <project> [on "<Module>"]`. Open work:
+- Calibrate the spec↔tests pass: route negative/"does-not" guarantees to open questions, not
+  findings; reconcile its internal covered/untested counts.
+- Stabilise module identity across scope runs (scope re-segments and renames each run) — return
+  stable ids, or stop keying the gate on agent-named module names.
+- Make scope's per-module row estimate trustworthy or stop relying on it (it returned 0 for a
+  ~99-row module).
+- Settle schema vs markdown for pass output: large matrices have flaked StructuredOutput while a
+  larger run did not — diagnose before choosing.
+- Verify the precondition short-circuit against a project with no ADRs/specs.
+- Decide whether to freeze `evals/traceability-reviews/` outputs as `evals.json` regression fixtures.
+
 ## Candidates
 - **Spec-level upward orphan check** — the active skill-development thread. Pass 7
   covers ADR→intent (every ADR decision traces back to a source intent); the
