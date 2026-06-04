@@ -117,6 +117,8 @@ test("inspectCuratorCoverageGaps_shouldReportDeterministicAcceptedCorpusDiagnost
     const {
       concept,
       linkedTopic,
+      orphanCriterion,
+      orphanOpenAnswer,
       orphanQuickCheck,
       readinessCheck,
       topic,
@@ -182,6 +184,22 @@ test("inspectCuratorCoverageGaps_shouldReportDeterministicAcceptedCorpusDiagnost
             0,
           ],
           ["warning", "topic_without_materials", "topic", topic.entityId, topic.title, 0],
+          [
+            "warning",
+            "check_without_target_links",
+            "assessment_criterion",
+            orphanCriterion.entityId,
+            orphanCriterion.title,
+            0,
+          ],
+          [
+            "warning",
+            "check_without_target_links",
+            "open_answer_check",
+            orphanOpenAnswer.entityId,
+            orphanOpenAnswer.title,
+            0,
+          ],
           ["warning", "check_without_target_links", "quick_check", orphanQuickCheck.entityId, orphanQuickCheck.title, 0],
           ["warning", "concept_without_materials", "concept", concept.entityId, concept.title, 0],
           ["info", "topic_without_concepts", "topic", topic.entityId, topic.title, 0],
@@ -386,6 +404,15 @@ function seedCoverageCorpus(database, { programId }) {
     programId,
     title: "Unlinked vector check",
   });
+  const orphanCriterion = createAcceptedAssessmentCriterion(corpusCommands, {
+    programId,
+    title: "Criterion coverage",
+  });
+  const orphanOpenAnswer = createAcceptedOpenAnswer(corpusCommands, {
+    criterionEntityIds: [orphanCriterion.entityId],
+    programId,
+    title: "Open answer coverage",
+  });
   corpusCommands.createLearnerEvidenceTargetLink({
     actingIdentityId: "identity-curator",
     programId,
@@ -415,6 +442,8 @@ function seedCoverageCorpus(database, { programId }) {
     linkedQuickCheck,
     linkedQuickCheckOptionId: linkedQuickCheck.options[0].optionId,
     linkedTopic,
+    orphanCriterion,
+    orphanOpenAnswer,
     orphanQuickCheck,
     readinessCheck,
     topic,
@@ -478,6 +507,38 @@ function createAcceptedQuickCheck(commands, { programId, title }) {
     candidateId: candidate.value.quickCheckCandidate.candidateId,
   });
   return accepted.value.acceptedQuickCheck;
+}
+
+function createAcceptedAssessmentCriterion(commands, { programId, title }) {
+  const candidate = commands.createAssessmentCriterionCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    title,
+    body: `${title} body`,
+    rationale: "Curator-only criterion rationale",
+  });
+  const accepted = commands.acceptAssessmentCriterionCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.assessmentCriterionCandidate.candidateId,
+  });
+  return accepted.value.acceptedAssessmentCriterion;
+}
+
+function createAcceptedOpenAnswer(commands, { criterionEntityIds, programId, title }) {
+  const candidate = commands.createOpenAnswerCheckCandidate({
+    actingIdentityId: "identity-curator",
+    programId,
+    checkKind: "open_answer",
+    title,
+    prompt: `${title} prompt`,
+    criterionEntityIds,
+    rationale: "Curator-only open-answer rationale",
+  });
+  const accepted = commands.acceptOpenAnswerCheckCandidate({
+    actingIdentityId: "identity-curator",
+    candidateId: candidate.value.openAnswerCheckCandidate.candidateId,
+  });
+  return accepted.value.acceptedOpenAnswerCheck;
 }
 
 function createAcceptedReadinessCheck(
