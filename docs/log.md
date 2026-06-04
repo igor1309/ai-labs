@@ -3,7 +3,7 @@
 ## 2026-06-04
 
 - Agonara branch PR prep: merged `origin/trunk`, preserved trunk's doc-drift README-only reset log entries, kept the expanded Agonara README implementation snapshot plus demo pointer, and refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` (total 220,072→220,762).
-- Agonara: prepared a PR handoff for the gap-closure branch with suggested PR title/body, verification matrix, merge-policy notes, and an explicit mixed-branch scope risk against `origin/trunk`.
+- Agonara: prepared the full-branch PR handoff for the gap-closure branch with a title/body covering all post-merge branch work, verification matrix, merge-policy notes, and Agonara boundary scope notes.
 - Agonara: refreshed `docs/loc-dashboard.html` after LLM-assisted curation suggestion closeout so summary cards, table totals, data array, and update date match `scripts/loc-dashboard.sh --sort=name` (total 214,596→220,072).
 
 ## 2026-06-03
