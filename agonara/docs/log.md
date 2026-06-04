@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Add the LLM-assisted curation suggestions spec with Curator Workspace-owned provider boundaries, draft suggestion records, explicit materialization into draft candidates, provenance, redaction, and backup/restore rules.
 - Close Curator Coverage Gaps traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Harden Phase 3 coverage UI after adversarial review by removing source-derived gap ids from DOM attributes and proving Admin-only denial with a real Admin identity.
 - Implement Phase 3 of the Curator Coverage Gaps plan with `/learn` Program Curator filtering, report refresh, list and drill-down surfaces, browser redaction checks, unauthorized-session coverage, and existing workflow preservation.
