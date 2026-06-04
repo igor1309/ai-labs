@@ -11,7 +11,9 @@ The mechanics unique to each pass: its **row unit**, its **verdict set**, and th
 enumeration, pinning rows to the source's own units, classify-then-derive-
 findings, mandatory evidence, deferred ≠ finding, suggest-never-apply, and
 routing what you can't resolve to a tagged open question — lives in `SKILL.md`
-and is **not** repeated here. Read the relevant section when running a pass.
+and is **not** repeated here. Read the relevant section when running a pass. The
+final section covers the cross-cutting **umbrella ledger**, which aggregates the
+passes' outputs rather than reviewing source artifacts.
 
 ## intent × intent
 
@@ -90,3 +92,34 @@ derivation **and** not an intent-left-open elaboration — gold-plating). The
 **derived-vs-ORPHAN** call is the one residual judgement; be conservative — when
 unsure, route it as an open question tagged `(resolving layer: intent)`, not a
 forced ORPHAN.
+
+## umbrella ledger (cross-cutting)
+
+Aggregates the per-pass outputs — it reviews *prior outputs*, not source artifacts.
+Use the **current authoritative output per pass**; exclude superseded/earlier runs
+(e.g. a whole-surface intent→ADR run replaced by the per-module one). Read each
+aggregated output's `Findings` **and** `Open questions` sections — every output has
+open questions even when it records no findings.
+
+One row per finding and per open question:
+
+`| id | source (pass · output-file · finding-id/line) | kind (finding / open-question) | severity (fail / warning / —) | type | subject | resolving layer | one-line summary |`
+
+- **Link, don't duplicate.** Each row cites its source output and the item id; it
+  does **not** re-quote the full evidence or re-argue the finding — the source
+  output holds that. The ledger is an index + triage view, not a copy.
+- **No new findings.** The ledger may *group* items into threads but must never
+  introduce a finding or open question that no source output produced.
+- **Resolving-layer rollup** (deterministic). Group every row by its resolving
+  layer — open questions carry the tag; for a finding the layer is where its fix
+  lands (`map-adr-drift` → map revision, `carried-with-loss` → the ADR). Output,
+  per layer, the items to settle there — this is the session's work queue.
+- **Threads** (judgement). Group items that are the same underlying tension across
+  passes (e.g. a map-drift cluster; one Program-shell subject surfacing in both
+  ADR×ADR and the orphan check; a confusable-concept loss plus its downstream
+  schema question). Threads are the bounded-disposition part — the enumeration and
+  the rollup are stable, thread groupings may vary, so the eval pins the
+  enumeration and rollup, not the exact thread set.
+- **Summary:** finding counts by severity, the open-question count, the
+  resolving-layer histogram, the thread count, and one sentence on what the
+  resolution session should settle first.

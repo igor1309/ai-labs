@@ -11,22 +11,31 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## State
 
-- Branch **`traceability`**, unpushed, working tree clean. Skill at **v0.10.0**.
+- Branch **`traceability`**, unpushed, working tree clean. Skill at **v0.11.0**.
 - **v0.10.0 was a structuring refactor:** per-pass mechanics extracted to
   `references/pass-notes.md` (SKILL.md keeps the method spine + a pointer);
   cross-cutting discipline de-duplicated; a `## Reuse` section added (portable
   core vs project-bound harness). SKILL.md 185→142 lines. Behaviour-preserving —
   validated by re-running orphan + allocation against the committed baselines.
+  **v0.10.1** tightened the orphan-check row guard against folding (count pins to
+  63). **v0.11.0** added the cross-cutting **umbrella ledger**.
 - The **`intent → ADR → spec → tests` pipeline is implemented end to end** — seven
   passes, each validated on Agonara (qualitative-first run + variance):
   1. intent×intent (v0.0.1) · 2. intent→ADR per-module (v0.2.0) ·
   3. ADR×ADR cross-module (v0.3.0) · 4. allocation completeness (v0.4.0) ·
   5. ADR→spec per-module (v0.7.0) · 6. spec↔tests per-module (v0.8.0) ·
   7. upward orphan check, ADR→intent per-module (v0.9.0).
+- Plus the cross-cutting **umbrella ledger** (v0.11.0) — aggregates the seven
+  authoritative per-pass outputs into one resolution-session register (enumerate
+  every finding + open question, resolving-layer rollup, threads). On Agonara: 20
+  items (5 findings — 4 map-adr-drift + 1 carried-with-loss, 0 fail; 15 open
+  questions). **Validated qualitatively (1 run); variance run DEFERRED (hit the
+  session subagent limit) — a future session should run the 2nd ledger pass and
+  confirm the enumeration reproduces.**
 - v0.5/0.6 were the **consolidation refactor** (intent-driven lean, project
   specifics lifted to the case study, evals reframed as a regression harness).
 - One reference output per pass lives in `agonara/docs/traceability-reviews/`;
-  `evals/evals.json` has eval ids 1–7 (one per pass).
+  `evals/evals.json` has eval ids 1–8 (passes 1–7 + the umbrella ledger).
 
 ## Gotchas (the non-obvious things that bite)
 
@@ -69,8 +78,10 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## What's next (see TODO.md)
 
-- **Umbrella ledger** — aggregate findings across passes into what a human
-  resolution session works from. Now the clear next step.
+- **Umbrella ledger variance check (immediate)** — the ledger shipped on one
+  qualitative run; its 2nd run was deferred (session subagent limit). Re-run the
+  ledger over the seven authoritative outputs and confirm the enumeration (20
+  items, 5 findings) reproduces; the threads are the expected unpinned wobble.
 - **Spec-level upward orphan check** (extension) — pass 7 covers ADR→intent; the
   spec→ADR/intent counterpart (does every spec clause trace back) is the natural
   follow-on if spec-level scope creep needs guarding.

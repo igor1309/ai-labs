@@ -50,6 +50,16 @@ baseline.
   the *upward* counterpart to allocation completeness: allocation found 0
   unallocated (no intent without an owner), this found 0 orphan (no ADR decision
   without an intent parent).
+- **umbrella ledger** (cross-cutting) — aggregating the seven authoritative
+  outputs gave **20 items: 5 findings** (4 ADR×ADR `map-adr-drift` + 1 intent→ADR
+  `carried-with-loss`, all warnings, 0 fail) **+ 15 open questions**. The
+  resolving-layer rollup put the largest block on **one map revision** (the four
+  map-drift findings + the map-revision-timing question all clear together — the
+  resolution session's first move), with the rest routing to ADR (5), intent (6),
+  spec/schema (2), and spec↔tests (2). Threads surfaced the cross-pass tensions
+  (map-drift cluster; the confusable-concept loss + its downstream schema
+  question; the deferred first-slice backlog; the intent-underspecification set).
+  *Validated qualitatively — the variance run was deferred (session limit).*
 
 ## Methodological lessons (these are what the skill encodes)
 
@@ -90,6 +100,16 @@ baseline.
   has no stakeholder parent. ORPHAN fires only for *user-observable* scope that is
   neither a derivation nor an intent-left-open elaboration. Without this guard the
   pass would false-positive on every storage/attribution/atomicity rule.
+- **The umbrella ledger aggregates, it does not re-analyse.** Its hard rule is
+  *no new findings* — it indexes and groups what the passes already produced, and
+  links back rather than re-quoting. Enumeration (one row per finding/open
+  question) is near-deterministic; the **threads** are the judgement layer (which
+  cross-pass items move together), so the eval pins the enumeration + the
+  resolving-layer rollup, not the thread set. The rollup by *resolving layer* is
+  the payload — it turns 20 scattered items into a work queue (one map revision
+  clears five). And it is a **generated snapshot**, not a tracker: persistence
+  lives in source-doc edits / Linear, so the ledger stays consistent with the
+  perishable per-pass outputs it rolls up.
 - **spec ↔ tests scope is discovered, not listed.** A module's clauses are
   tested across several files (domain, API, backup, executable); hand-listing
   files produced false "untested" findings until the pass grepped titles across

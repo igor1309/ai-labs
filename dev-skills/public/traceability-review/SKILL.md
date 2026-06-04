@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.10.1"
+version: "0.11.0"
 author: Igor Malyarov
 ---
 
@@ -124,6 +124,27 @@ enumerated — so coverage is checkable).
 The committed reference outputs and eval fixtures are a **regression harness**,
 not a living contract — perishable snapshots pinned to the document versions
 they ran against (see `evals/README.md`).
+
+## Umbrella ledger
+
+A cross-cutting **aggregation** over the per-pass outputs — not a pass over source
+artifacts. It rolls every pass's `Findings` and `Open questions` into one register
+a human resolution session works from. Like every output it is a **generated,
+provenance-stamped snapshot** (regenerated when passes re-run); it is *not* a
+persistent tracker — disposition happens by editing source docs or filing Linear
+items, and resolved items drop out of the next regen.
+
+- **Input:** the current authoritative output per pass — exclude superseded or
+  earlier runs (e.g. a whole-surface run replaced by per-module ones).
+- **Enumerate completely:** one row per finding and one row per open question, in
+  every aggregated output, pinned to `(pass, item-id)`. The ledger introduces **no
+  new finding** — it only organizes what the passes already found.
+- **Two derived views:** a deterministic **resolving-layer rollup** (group items by
+  the layer that settles them — intent / map revision / spec / ADR — so the session
+  sees what to decide where) and a **threads** view (group items that are the same
+  underlying tension across passes; this is the judgement layer).
+
+See `references/pass-notes.md` for the row columns and the link-don't-duplicate rule.
 
 ## Reuse
 
