@@ -929,16 +929,20 @@ export function updateProgramInvitationStatusRecord(
   { id, status, statusChangedByIdentityId, statusChangedAt, updatedAt },
 ) {
   assertIdentityExists(database, statusChangedByIdentityId);
-  database
-    .prepare(
-      `update program_invitations
-       set status = ?,
-           status_changed_by_identity_id = ?,
-           status_changed_at = ?,
-           updated_at = ?
-       where id = ?`,
-    )
-    .run(status, statusChangedByIdentityId, statusChangedAt, updatedAt, id);
+  try {
+    database
+      .prepare(
+        `update program_invitations
+         set status = ?,
+             status_changed_by_identity_id = ?,
+             status_changed_at = ?,
+             updated_at = ?
+         where id = ?`,
+      )
+      .run(status, statusChangedByIdentityId, statusChangedAt, updatedAt, id);
+  } catch (error) {
+    throw mapProgramInvitationConstraintError(error);
+  }
 
   return getProgramInvitationRecord(database, id);
 }
@@ -6588,6 +6592,17 @@ function assertValidProgramMembershipGraphInBackup(backup) {
   const invitationIds = new Set();
   const pendingInvitationScopes = new Set();
   const membershipScopes = new Set();
+  const policyPaths = new Set([
+    null,
+    undefined,
+    "self_join",
+    "curator_invitation",
+    "curator_removal",
+    "curator_leave",
+    "admin_exceptional_recovery",
+    "admin_exceptional_revocation",
+  ]);
+  const invitationStatuses = new Set([null, undefined, "pending", "accepted", "declined", "revoked"]);
 
   for (const shell of backup.programShells ?? []) {
     if (!["self_join", "invitation_only"].includes(shell.admissionPolicy)) {
@@ -6633,6 +6648,12 @@ function assertValidProgramMembershipGraphInBackup(backup) {
         throw new StorageInvariantError("invitation_conflict");
       }
       pendingInvitationScopes.add(scope);
+    }
+  }
+
+  for (const event of backup.programMembershipEvents ?? []) {
+    if (!policyPaths.has(event.policyPath) || !invitationStatuses.has(event.invitationStatus)) {
+      throw new StorageInvariantError("validation_failed");
     }
   }
 }

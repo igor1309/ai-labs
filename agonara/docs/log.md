@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden Phase 1 membership invitation storage after adversarial review by mapping pending-scope status conflicts and rejecting malformed membership event metadata during restore validation.
 - Implement Phase 1 of the Program Membership invitations and recovery plan with invitation-only admission policy storage, Program invitation records, membership event metadata, backup preservation, and malformed restore rejection.
 - Harden the Program Membership invitations and recovery plan after adversarial review by expanding curator-leave targeted test matching and requiring Admin-board preservation coverage.
 - Add the Program Membership invitations and recovery child implementation plan with exact storage, domain, HTTP, UI, test, review, commit, dashboard, and archive gates for Phase 5 of the product gap closure.

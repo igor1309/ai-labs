@@ -843,6 +843,24 @@ test("restoreBackup_shouldRejectMalformedProgramInvitations_onBackup", async () 
       },
       reason: "membership_conflict",
     },
+    {
+      mutate: candidate => {
+        candidate.programMembershipEvents[1] = {
+          ...candidate.programMembershipEvents[1],
+          policyPath: "payment",
+        };
+      },
+      reason: "validation_failed",
+    },
+    {
+      mutate: candidate => {
+        candidate.programMembershipEvents[1] = {
+          ...candidate.programMembershipEvents[1],
+          invitationStatus: "expired",
+        };
+      },
+      reason: "validation_failed",
+    },
   ];
 
   const reasons = cases.map(testCase => {

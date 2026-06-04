@@ -405,6 +405,45 @@ test("updateProgramInvitationStatusRecord_shouldPersistStatusAttribution_onExist
   }
 });
 
+test("updateProgramInvitationStatusRecord_shouldRejectDuplicatePendingScope_onStatusChange", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({
+        id: "invitation-b",
+        programId: "program-a",
+        targetIdentityId: "identity-b",
+        status: "accepted",
+        statusChangedByIdentityId: "identity-b",
+        statusChangedAt: "2026-06-04T10:00:00.000Z",
+      }),
+    );
+
+    assert.throws(
+      () =>
+        storage.updateProgramInvitationStatusRecord(database, {
+          id: "invitation-b",
+          status: "pending",
+          statusChangedByIdentityId: "identity-a",
+          statusChangedAt: "2026-06-04T11:00:00.000Z",
+          updatedAt: "2026-06-04T11:00:00.000Z",
+        }),
+      error => error instanceof StorageInvariantError && error.reason === "invitation_conflict",
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createProgramMembershipEventRecord_shouldPersistPolicyPathAndInvitationStatus_onMembershipEvent", () => {
   const database = makeInitializedDatabase();
 
