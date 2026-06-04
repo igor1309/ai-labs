@@ -13,7 +13,7 @@ type: spec
 
 Define the Curator Workspace-owned contract for generating, storing, reviewing, accepting, and rejecting LLM-assisted curation suggestions as draft material with provenance, provider-boundary validation, and raw-artifact redaction.
 
-This spec operationalizes CUR-11, CUR-12, CUR-13, and INT-01 from [Product Intent](../intent_learning_program_app.md) while preserving [Module Responsibility Map](../module_responsibility_map.md), [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md), [Quick Check Assessment API](quick-check-assessment-api.md), [Accepted Checks and Assessment Criteria API](accepted-checks-and-assessment-criteria-api.md), [Topic and Period Readiness Checks](topic-period-readiness-checks.md), and [Curator Coverage Gaps](curator-coverage-gaps.md). It does not add accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, scoring, external provider configuration, CLI commands, Admin UI, Student UI, analytics, reporting, deployment topology, or infrastructure port behavior.
+This spec operationalizes CUR-11, CUR-12, CUR-13, and INT-01 from [Product Intent](../intent_learning_program_app.md) while preserving [Module Responsibility Map](../module_responsibility_map.md), [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md), [Quick Check Assessment API](quick-check-assessment-api.md), [Accepted Checks and Assessment Criteria API](accepted-checks-and-assessment-criteria-api.md), [Topic and Period Readiness Checks](topic-period-readiness-checks.md), and [Curator Coverage Gaps](curator-coverage-gaps.md). It does not add accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, scoring, hard-coded provider configuration inside Curator Workspace, direct provider network calls from Curator Workspace, CLI commands, Admin UI, Student UI, analytics, reporting, deployment topology, or infrastructure port behavior.
 
 ## Public interface
 
@@ -126,7 +126,7 @@ type LlmCurationSuggestionProviderAdapter = {
 };
 ```
 
-`RedactedAcceptedNavigationContext`, `RedactedAcceptedCheckContext`, and `RedactedAcceptedReadinessContext` are curator-safe prompt-context projections. They omit answer keys unless the suggested candidate kind explicitly needs a new answer key in provider output; they always omit candidate ids, accepted-by identity ids, sessions, credentials, secrets, raw prompts, raw model responses, provider diagnostics, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
+`RedactedAcceptedNavigationContext`, `RedactedAcceptedCheckContext`, and `RedactedAcceptedReadinessContext` are curator-safe prompt-context projections. They always omit existing answer keys, candidate ids, accepted-by identity ids, sessions, credentials, secrets, raw prompts, raw model responses, provider diagnostics, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details. Provider output may propose a new answer key only inside a suggested Quick Check draft request, where candidate validation applies before storage.
 
 ### Stored suggestion shape
 
@@ -301,16 +301,19 @@ rejectLlmCurationSuggestion(input: {
 39. If materializing the draft candidate is rejected by the owning curation command, suggestion acceptance rejects with `suggestion_materialization_rejected`, keeps the suggestion in `draft_suggestion`, and creates no candidate.
 40. Successful acceptance marks the suggestion `materialized`, stores the materialized candidate kind/id and curator attribution, and returns the materialized draft candidate reference.
 41. Repeating acceptance for a materialized suggestion rejects with `llm_curation_suggestion_already_materialized`.
-42. `rejectLlmCurationSuggestion` accepts only `draft_suggestion` records.
-43. Successful rejection marks the suggestion `rejected`, records curator attribution, creates no candidate, and mutates no accepted corpus.
-44. Repeating rejection for a rejected suggestion rejects with `llm_curation_suggestion_already_rejected`.
-45. Suggestion records and accepted responses must not expose raw prompts, raw model responses, provider request payloads, provider response payloads, provider diagnostics, hidden policy instructions, provider credentials, authorization headers, cookies, CSRF tokens, session identifiers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
-46. Suggestion backup/export preserves suggestion records, status, redacted origin, suggested draft requests, supporting evidence, and materialized candidate references.
-47. Suggestion backup/export excludes raw prompts, raw model responses, provider request payloads, provider response payloads, provider diagnostics, hidden policy instructions, credentials, sessions, CSRF tokens, cookies, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
-48. Restore validates suggestion Program ownership, status values, allowed suggestion kinds, required origin fields, supported draft request shapes, materialized candidate references, and redaction constraints before importing records.
-49. Restore rejects materialized suggestions whose referenced candidate is missing, belongs to another Program, or has a mismatched candidate kind.
-50. The `/learn` Curator UI may expose suggestion generation, list, detail, accept, and reject workflows only for effective Program Curators and must render origin/provenance without protected raw artifacts.
-51. This spec does not add external provider configuration, network calls to real providers, accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, Admin UI, Student UI, CLI commands, analytics, reporting, deployment targets, infrastructure ports, or provider-run observability dashboards.
+42. Accepting a rejected suggestion rejects with `llm_curation_suggestion_already_rejected`.
+43. `rejectLlmCurationSuggestion` accepts only `draft_suggestion` records.
+44. Successful rejection marks the suggestion `rejected`, records curator attribution, creates no candidate, and mutates no accepted corpus.
+45. Repeating rejection for a rejected suggestion rejects with `llm_curation_suggestion_already_rejected`.
+46. Rejecting a materialized suggestion rejects with `llm_curation_suggestion_already_materialized`.
+47. Suggestion records and accepted responses must not expose raw prompts, raw model responses, provider request payloads, provider response payloads, provider diagnostics, hidden policy instructions, provider credentials, authorization headers, cookies, CSRF tokens, session identifiers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
+48. Suggestion backup/export preserves suggestion records, status, redacted origin, suggested draft requests, supporting evidence, and materialized candidate references.
+49. Suggestion backup/export excludes raw prompts, raw model responses, provider request payloads, provider response payloads, provider diagnostics, hidden policy instructions, credentials, sessions, CSRF tokens, cookies, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
+50. Restore validates suggestion Program ownership, status values, allowed suggestion kinds, required origin fields, supported draft request shapes, materialized candidate references, and redaction constraints before importing records.
+51. Restore rejects materialized suggestions whose referenced candidate is missing, belongs to another Program, or has a mismatched candidate kind.
+52. The `/learn` Curator UI may expose suggestion generation, list, detail, accept, and reject workflows only for effective Program Curators and must render origin/provenance without protected raw artifacts.
+53. Curator Workspace must not own hard-coded external provider configuration or make direct network calls to provider services; composition may supply adapters that satisfy the Curator Workspace-owned provider protocol.
+54. This spec does not add accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, Admin UI, Student UI, CLI commands, analytics, reporting, deployment targets, infrastructure ports, or provider-run observability dashboards.
 
 ## Product intent traceability
 
@@ -361,17 +364,19 @@ Review, acceptance, and rejection:
 25. Acceptance does not create accepted corpus, accepted checks, accepted readiness revisions, Student Workspace state, Program Membership state, Identity state, sessions, credentials, Admin authority, CSRF state, or learner-evidence target links.
 26. Materialization rejection keeps the suggestion `draft_suggestion` and creates no candidate.
 27. Repeating acceptance for a materialized suggestion rejects with `llm_curation_suggestion_already_materialized`.
-28. Rejecting a draft suggestion marks it `rejected`, records curator attribution, creates no candidate, and mutates no accepted corpus.
-29. Repeating rejection for a rejected suggestion rejects with `llm_curation_suggestion_already_rejected`.
+28. Accepting a rejected suggestion rejects with `llm_curation_suggestion_already_rejected`.
+29. Rejecting a draft suggestion marks it `rejected`, records curator attribution, creates no candidate, and mutates no accepted corpus.
+30. Repeating rejection for a rejected suggestion rejects with `llm_curation_suggestion_already_rejected`.
+31. Rejecting a materialized suggestion rejects with `llm_curation_suggestion_already_materialized`.
 
 Backup, UI, and boundaries:
 
-30. Backup/export preserves suggestion records, status, redacted origin, suggested draft requests, supporting evidence, and materialized candidate references.
-31. Backup/export excludes raw prompts, raw model responses, provider request/response payloads, provider diagnostics, hidden policy instructions, credentials, sessions, CSRF tokens, cookies, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
-32. Restore rejects malformed suggestion status, malformed origin, unsupported kinds, invalid draft requests, unsafe raw artifacts, cross-Program candidate references, missing materialized candidates, and mismatched materialized candidate kinds.
-33. HTTP responses, UI surfaces, logs, backups, and restored summaries exclude raw prompts, raw model responses, provider request/response payloads, provider diagnostics, credentials, sessions, CSRF tokens, cookies, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
-34. Browser tests cover generation with a fake provider, suggestion list/detail origin inspection, acceptance, rejection, protected-metadata redaction, and Student/Admin denial.
-35. Absence tests prove no external provider configuration, real-provider network call, accepted corpus auto-promotion, Student Workspace read/mutation, learner-state interpretation, Admin UI, Student UI, CLI, analytics, reporting, deployment target, infrastructure port, or provider-run observability dashboard is introduced.
+32. Backup/export preserves suggestion records, status, redacted origin, suggested draft requests, supporting evidence, and materialized candidate references.
+33. Backup/export excludes raw prompts, raw model responses, provider request/response payloads, provider diagnostics, hidden policy instructions, credentials, sessions, CSRF tokens, cookies, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
+34. Restore rejects malformed suggestion status, malformed origin, unsupported kinds, invalid draft requests, unsafe raw artifacts, cross-Program candidate references, missing materialized candidates, and mismatched materialized candidate kinds.
+35. HTTP responses, UI surfaces, logs, backups, and restored summaries exclude raw prompts, raw model responses, provider request/response payloads, provider diagnostics, credentials, sessions, CSRF tokens, cookies, SQL text, stack traces, filesystem paths, database URLs, and infrastructure details.
+36. Browser tests cover generation with a fake provider, suggestion list/detail origin inspection, acceptance, rejection, protected-metadata redaction, and Student/Admin denial.
+37. Absence tests prove no hard-coded external provider configuration inside Curator Workspace, direct provider network call from Curator Workspace, accepted corpus auto-promotion, Student Workspace read/mutation, learner-state interpretation, Admin UI, Student UI, CLI, analytics, reporting, deployment target, infrastructure port, or provider-run observability dashboard is introduced.
 
 ## Done criteria
 
@@ -386,4 +391,4 @@ Backup, UI, and boundaries:
 - Backup/restore preserves redacted suggestion records and validates materialized candidate references.
 - `/learn` exposes Program Curator suggestion review workflows with origin inspection and protected-metadata redaction.
 - Every behavior rule is covered by a listed test or executable browser/HTTP acceptance flow.
-- External provider configuration, real-provider network calls, accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, Admin UI, Student UI, CLI commands, analytics, reporting, deployment targets, infrastructure ports, and provider-run observability dashboards remain out of scope.
+- Hard-coded external provider configuration inside Curator Workspace, direct provider network calls from Curator Workspace, accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, Admin UI, Student UI, CLI commands, analytics, reporting, deployment targets, infrastructure ports, and provider-run observability dashboards remain out of scope.
