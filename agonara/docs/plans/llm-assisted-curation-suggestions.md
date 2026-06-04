@@ -153,7 +153,7 @@ Targeted commands:
 
 ## Phase tracker
 
-- [ ] Phase 1 - Suggestion Storage and Restore Validation
+- [x] Phase 1 - Suggestion Storage and Restore Validation
 - [ ] Phase 2 - Provider-Boundary Suggestion Generation
 - [ ] Phase 3 - Suggestion Review and Draft-Candidate Materialization
 - [ ] Phase 4 - HTTP Suggestion API
