@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-04
+
+- Agonara: refreshed `docs/loc-dashboard.html` after LLM-assisted curation suggestion closeout so summary cards, table totals, data array, and update date match `scripts/loc-dashboard.sh --sort=name` (total 214,596→220,072).
+
 ## 2026-06-03
 
 - Agonara: refreshed `docs/loc-dashboard.html` after adding the topic/period readiness spec and implementation plan so summary cards, table totals, data array, and update date match `scripts/loc-dashboard.sh --sort=name` (total 201,256→201,982).

@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Close LLM-assisted curation suggestion traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Implement Phase 5 of the LLM-assisted curation suggestions plan with `/learn` Program Curator generation, filtered review, redacted origin inspection, draft materialization, rejection, role isolation, and browser regression coverage.
 - Implement Phase 4 of the LLM-assisted curation suggestions plan with session-backed HTTP generation, listing, detail, acceptance, rejection, provider-fake production composition, redaction, and executable acceptance coverage.
 - Implement Phase 3 of the LLM-assisted curation suggestions plan with Program Curator review listing/detail, terminal rejection, and draft candidate materialization without accepted-corpus mutation.

@@ -3,7 +3,7 @@ date: 2026-06-04
 model: gpt-5
 description: "Spec: Agonara LLM-assisted curation suggestions."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -392,3 +392,25 @@ Backup, UI, and boundaries:
 - `/learn` exposes Program Curator suggestion review workflows with origin inspection and protected-metadata redaction.
 - Every behavior rule is covered by a listed test or executable browser/HTTP acceptance flow.
 - Hard-coded external provider configuration inside Curator Workspace, direct provider network calls from Curator Workspace, accepted corpus auto-promotion, Student Workspace reads, Student Workspace mutation, learner-state interpretation, Admin UI, Student UI, CLI commands, analytics, reporting, deployment targets, infrastructure ports, and provider-run observability dashboards remain out of scope.
+
+## Implementation status
+
+Implemented by [LLM-Assisted Curation Suggestions Implementation Plan](../plans/implemented/llm-assisted-curation-suggestions.md).
+
+Runtime evidence:
+
+- [Suggestion storage, backup export, and restore validation](../../src/storage.js)
+- [Curator Workspace suggestion policy, provider boundary, generation, review, and materialization](../../src/curator-workspace.js)
+- [HTTP routes and deterministic first-slice provider composition](../../src/server.js)
+- [`/learn` Program Curator suggestion UI](../../src/learn-ui.js)
+
+Verification evidence:
+
+- [Storage tests](../../tests/storage.test.js)
+- [Backup/restore tests](../../tests/backup-restore.test.js)
+- [Curator Workspace tests](../../tests/curator-workspace.test.js)
+- [HTTP API tests](../../tests/http-api.test.js)
+- [Executable HTTP acceptance tests](../../tests/executable-acceptance.test.js)
+- [Suggestion browser tests](../../tests/llm-assisted-curation-suggestions.playwright.js)
+
+The implemented first slice uses deterministic provider fakes supplied by composition. It does not add real provider credential management, direct provider network calls from Curator Workspace, provider observability dashboards, Student/Admin suggestion UI, or automatic accepted-corpus promotion. Accepting a suggestion materializes one draft candidate, and existing candidate acceptance remains the only path into accepted Program corpus.
