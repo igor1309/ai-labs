@@ -765,6 +765,56 @@ test("updateLlmCurationSuggestionStatus_shouldPersistTerminalReviewState_onExist
   }
 });
 
+test("llmCurationSuggestionStorage_shouldRejectInvalidOriginAndMaterializedKind_onExistingSuggestion", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+
+    assert.deepEqual(
+      {
+        missingOriginIdentity: captureStorageInvariantReason(() =>
+          storage.createLlmCurationSuggestionRecord(
+            database,
+            {
+              ...makeLlmCurationSuggestion({ id: "suggestion-missing-origin", programId: "program-a" }),
+              origin: {
+                ...makeLlmCurationSuggestion({ id: "suggestion-missing-origin", programId: "program-a" }).origin,
+                generatedByIdentityId: "identity-missing",
+              },
+            },
+          ),
+        ),
+        materializedKindMismatch: captureStorageInvariantReason(() =>
+          storage.materializeLlmCurationSuggestionRecord(database, {
+            suggestionId: "suggestion-a",
+            candidateKind: "quick_check_candidate",
+            candidateId: "candidate-a",
+            materializedByIdentityId: "identity-a",
+            materializedAt: "2026-06-04T12:10:00.000Z",
+            updatedAt: "2026-06-04T12:10:00.000Z",
+          }),
+        ),
+      },
+      {
+        missingOriginIdentity: "identity_not_found",
+        materializedKindMismatch: "llm_curation_suggestion_materialized_candidate_kind_mismatch",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreIdentityBackup_shouldPreserveLlmCurationSuggestions_onAcceptedBackup", () => {
   const database = makeInitializedDatabase();
   const restored = makeInitializedDatabase();
@@ -920,7 +970,7 @@ test("restoreIdentityBackup_shouldRejectMalformedLlmCurationSuggestionGraph_onBa
     ];
 
     assert.deepEqual(
-      cases.map($0 => captureStorageInvariantReason(() => storage.restoreIdentityBackup(makeInitializedDatabase(), $0.backup))),
+      cases.map($0 => captureRestoreInvariantReason($0.backup)),
       cases.map($0 => $0.reason),
     );
   } finally {
@@ -6127,6 +6177,16 @@ function seedRestoreGovernance(
     identityId,
     grantedAt: at,
   });
+}
+
+function captureRestoreInvariantReason(backup) {
+  const database = makeInitializedDatabase();
+
+  try {
+    return captureStorageInvariantReason(() => storage.restoreIdentityBackup(database, backup));
+  } finally {
+    database.close();
+  }
 }
 
 function makeAcceptedReadinessCheckEntity({ id, programId, currentRevisionId }) {

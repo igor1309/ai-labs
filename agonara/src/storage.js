@@ -2213,6 +2213,7 @@ export function createLlmCurationSuggestionRecord(
     rejectedByIdentityId,
     rejectedAt,
   });
+  assertIdentityExists(database, origin.generatedByIdentityId);
   if (materializedByIdentityId !== null) {
     assertIdentityExists(database, materializedByIdentityId);
   }
@@ -2346,6 +2347,9 @@ export function materializeLlmCurationSuggestionRecord(
   }
   if (suggestion.status !== "draft_suggestion") {
     throw new StorageInvariantError("llm_curation_suggestion_terminal");
+  }
+  if (candidateKind !== suggestion.suggestionKind) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_mismatch");
   }
   assertIdentityExists(database, materializedByIdentityId);
   assertLlmCurationSuggestionMaterializedCandidate(database, {
@@ -5037,6 +5041,9 @@ function assertLlmCurationSuggestionShape({
   }
 
   if (status === "materialized") {
+    if (materializedCandidateKind !== suggestionKind) {
+      throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_mismatch");
+    }
     if (
       !llmCurationSuggestionKinds.has(materializedCandidateKind) ||
       !isNonEmptyString(materializedCandidateId) ||
