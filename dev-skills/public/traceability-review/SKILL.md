@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.11.2"
+version: "0.11.3"
 author: Igor Malyarov
 ---
 
@@ -123,7 +123,7 @@ enumerated — so coverage is checkable).
 
 The committed reference outputs and eval fixtures are a **regression harness**,
 not a living contract — perishable snapshots pinned to the document versions
-they ran against (see `evals/README.md`).
+they ran against.
 
 ## Umbrella ledger
 
@@ -160,4 +160,4 @@ under `<project>/docs/traceability-reviews/`, and `references/agonara-case-study
 - **The same project, later:** the `inputs` document versions stamp every output.
   Re-run the pass, diff against the prior snapshot, and human-confirm whether a
   delta is a real document change or a regression — don't edit the skill to
-  satisfy a stale fixture (`evals/README.md`).
+  satisfy a stale fixture.
