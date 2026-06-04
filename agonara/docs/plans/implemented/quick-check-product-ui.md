@@ -71,7 +71,7 @@ Expected files:
 - `agonara/docs/specs/quick-check-product-ui.md` - update status and implementation status during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
 - `agonara/docs/plans/implemented/quick-check-product-ui.md` - archived phase tracker and closeout record.
-- `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 1 only after this plan is fully complete.
+- `agonara/docs/plans/implemented/agonara-product-gap-closure.md` - mark parent Phase 1 only after this plan is fully complete.
 - `docs/loc-dashboard.html` - refresh during final closeout when the implementation changes repo LOC.
 
 HTTP and shell routes:
@@ -277,7 +277,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` and verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
 - Update `agonara/docs/log.md`.
 - Mark this plan's phase tracker complete only after verified gates and commits.
-- Mark parent `agonara/docs/plans/agonara-product-gap-closure.md` Phase 1 complete only after this plan's final gates pass.
+- Mark parent `agonara/docs/plans/implemented/agonara-product-gap-closure.md` Phase 1 complete only after this plan's final gates pass.
 
 **Dependencies**: Phase 4 is complete.
 

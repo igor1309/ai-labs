@@ -14,7 +14,7 @@ Verdict: warning
 
 Why: Product Intent, Curator user stories, the Module Responsibility Map, and the Phase 7 gap-closure plan require LLM-assisted suggestions to be draft Curator Workspace material with provenance and explicit curator review. The governing spec now exists, but no suggestion storage, Curator Workspace provider boundary, provider fake, review lifecycle, HTTP route, UI surface, backup/restore behavior, tests, traceability closeout, or dashboard refresh exists for Phase 7.
 
-Location: `agonara/docs/plans/agonara-product-gap-closure.md:430`, `agonara/docs/specs/llm-assisted-curation-suggestions.md:14`, `agonara/docs/curator_user_stories.md:107`, `agonara/docs/module_responsibility_map.md:70`, `agonara/docs/intent_learning_program_app.md:181`
+Location: `agonara/docs/plans/implemented/agonara-product-gap-closure.md:430`, `agonara/docs/specs/llm-assisted-curation-suggestions.md:14`, `agonara/docs/curator_user_stories.md:107`, `agonara/docs/module_responsibility_map.md:70`, `agonara/docs/intent_learning_program_app.md:181`
 
 Fix: Implement `agonara/docs/specs/llm-assisted-curation-suggestions.md` as a Curator Workspace-owned draft suggestion workflow with provider fakes, redacted prompt context, output validation, budget checks, suggestion records, review lifecycle, draft-candidate materialization, HTTP routes, `/learn` UI, backup/restore validation, traceability closeout, and plan archive.
 
@@ -106,7 +106,7 @@ Expected files:
 - `agonara/docs/implementation-notes.md` - update current-state behavior and first-slice limits during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
 - `agonara/docs/plans/implemented/llm-assisted-curation-suggestions.md` - archived plan after completion.
-- `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 7 complete only after this plan's final gates pass.
+- `agonara/docs/plans/implemented/agonara-product-gap-closure.md` - mark parent Phase 7 complete only after this plan's final gates pass.
 - `docs/loc-dashboard.html` - refresh during final closeout after code and docs LOC changes.
 
 Provider files:
@@ -381,7 +381,7 @@ After each phase's implementation commit and any adversarial-review hardening co
 - Update INT-01 downstream traceability in `agonara/docs/intent_learning_program_app.md` with this implementation plan and LLM-assisted curation code/test/UI evidence.
 - Update `agonara/README.md`, `agonara/docs/backlog.md`, and `agonara/docs/implementation-notes.md` only where they currently describe LLM-assisted curation suggestions as missing or deferred.
 - Add a closeout entry to `agonara/docs/log.md`.
-- Mark parent Phase 7 complete in `agonara/docs/plans/agonara-product-gap-closure.md` only after all previous phases are committed and reviewed clean.
+- Mark parent Phase 7 complete in `agonara/docs/plans/implemented/agonara-product-gap-closure.md` only after all previous phases are committed and reviewed clean.
 - Refresh `docs/loc-dashboard.html` with `./scripts/loc-dashboard.sh --sort=name`.
 - Verify the LOC dashboard summary cards, table footer, `data` array, and `Last updated` line match the script output.
 - Move this plan to `agonara/docs/plans/implemented/llm-assisted-curation-suggestions.md`.

@@ -14,7 +14,7 @@ Verdict: warning
 
 Why: Product traceability keeps invitation and recovery stories deferred. Program Membership has self-join and participation checks, but controlled invitation, participant management, and exceptional recovery flows are still missing.
 
-Location: `agonara/docs/intent_learning_program_app.md:190`, `agonara/docs/backlog.md:14`, `agonara/docs/student_user_stories.md:202`, `agonara/docs/curator_user_stories.md:133`, `agonara/docs/admin_user_stories.md:151`, `agonara/docs/plans/agonara-product-gap-closure.md:71`
+Location: `agonara/docs/intent_learning_program_app.md:190`, `agonara/docs/backlog.md:14`, `agonara/docs/student_user_stories.md:202`, `agonara/docs/curator_user_stories.md:133`, `agonara/docs/admin_user_stories.md:151`, `agonara/docs/plans/implemented/agonara-product-gap-closure.md:71`
 
 Fix: Implement Program Membership invitation and recovery flows without making Admin authority the normal Program role operator.
 
@@ -107,7 +107,7 @@ Expected files:
 - `agonara/docs/implementation-notes.md` - update current-state behavior and first-slice limits during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
 - `agonara/docs/plans/implemented/program-membership-invitations-and-recovery.md` - archived plan after completion.
-- `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 5 complete only after this plan's final gates pass.
+- `agonara/docs/plans/implemented/agonara-product-gap-closure.md` - mark parent Phase 5 complete only after this plan's final gates pass.
 - `docs/loc-dashboard.html` - refresh during final closeout after code and docs LOC changes.
 
 HTTP routes:
@@ -347,7 +347,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Update `agonara/docs/implementation-notes.md` with current-state behavior and first-slice limits.
 - Update `agonara/docs/log.md` with concise outcome-focused closeout entry.
 - Update this plan's Phase tracker to mark Phase 5 complete only after final gates pass.
-- Update `agonara/docs/plans/agonara-product-gap-closure.md` to mark parent Phase 5 complete only after this plan's final gates pass.
+- Update `agonara/docs/plans/implemented/agonara-product-gap-closure.md` to mark parent Phase 5 complete only after this plan's final gates pass.
 - Run `./scripts/loc-dashboard.sh --sort=name` and refresh `docs/loc-dashboard.html`.
 - Move this plan to `agonara/docs/plans/implemented/program-membership-invitations-and-recovery.md` in the same closeout commit.
 

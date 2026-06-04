@@ -14,7 +14,7 @@ Verdict: warning
 
 Why: Product Intent and the module responsibility map expect Curator Workspace to support gap discovery while keeping draft guidance separate from accepted corpus and Student state. The governing spec now exists, but no Curator Workspace query, HTTP route, UI surface, tests, traceability closeout, or dashboard refresh exists for Phase 6.
 
-Location: `agonara/docs/plans/agonara-product-gap-closure.md:395`, `agonara/docs/specs/curator-coverage-gaps.md:14`, `agonara/docs/module_responsibility_map.md:80`, `agonara/docs/intent_learning_program_app.md:181`
+Location: `agonara/docs/plans/implemented/agonara-product-gap-closure.md:395`, `agonara/docs/specs/curator-coverage-gaps.md:14`, `agonara/docs/module_responsibility_map.md:80`, `agonara/docs/intent_learning_program_app.md:181`
 
 Fix: Implement the read-only Curator Coverage Gaps first slice from `agonara/docs/specs/curator-coverage-gaps.md`, expose it to effective Program Curators through HTTP and `/learn`, then close traceability and archive this plan.
 
@@ -110,7 +110,7 @@ Expected files:
 - `agonara/docs/implementation-notes.md` - update current-state behavior and first-slice limits during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
 - `agonara/docs/plans/implemented/curator-coverage-gaps.md` - archived plan after completion.
-- `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 6 complete only after this plan's final gates pass.
+- `agonara/docs/plans/implemented/agonara-product-gap-closure.md` - mark parent Phase 6 complete only after this plan's final gates pass.
 - `docs/loc-dashboard.html` - refresh during final closeout after code and docs LOC changes.
 
 HTTP routes:
@@ -283,7 +283,7 @@ After each phase's implementation commit and any adversarial-review hardening co
 - Update INT-01 downstream traceability in `agonara/docs/intent_learning_program_app.md` with this implementation plan and coverage-gap code/test evidence.
 - Update `agonara/README.md`, `agonara/docs/backlog.md`, and `agonara/docs/implementation-notes.md` only where they currently describe coverage gaps as missing or deferred.
 - Add a closeout entry to `agonara/docs/log.md`.
-- Mark parent Phase 6 complete in `agonara/docs/plans/agonara-product-gap-closure.md` only after all previous phases are committed and reviewed clean.
+- Mark parent Phase 6 complete in `agonara/docs/plans/implemented/agonara-product-gap-closure.md` only after all previous phases are committed and reviewed clean.
 - Refresh `docs/loc-dashboard.html` with `./scripts/loc-dashboard.sh --sort=name`.
 - Verify the LOC dashboard summary cards, table footer, `data` array, and `Last updated` line match the script output.
 - Move this plan to `agonara/docs/plans/implemented/curator-coverage-gaps.md`.

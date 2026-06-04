@@ -83,7 +83,7 @@ Expected files:
 - `agonara/docs/implementation-notes.md` - update current-state notes during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
 - `agonara/docs/plans/implemented/topic-concept-material-navigation.md` - archived plan after completion.
-- `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 2 complete only after this plan's final gates pass.
+- `agonara/docs/plans/implemented/agonara-product-gap-closure.md` - mark parent Phase 2 complete only after this plan's final gates pass.
 - `docs/loc-dashboard.html` - refresh during final closeout after code and docs LOC changes.
 
 HTTP and shell routes:
@@ -305,7 +305,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Update `agonara/docs/log.md` with the Phase 2 outcome.
 - Refresh `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` and verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
 - Mark this plan's phase tracker complete only after verified gates and commits.
-- Mark parent `agonara/docs/plans/agonara-product-gap-closure.md` Phase 2 complete only after this plan's implementation gates pass.
+- Mark parent `agonara/docs/plans/implemented/agonara-product-gap-closure.md` Phase 2 complete only after this plan's implementation gates pass.
 - Move this plan to `agonara/docs/plans/implemented/topic-concept-material-navigation.md`.
 
 **Dependencies**: Phase 4 is complete.

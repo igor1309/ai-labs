@@ -14,7 +14,7 @@ Verdict: fail
 
 Why: Product Intent accepts readiness checks for topic or period boundaries, but INT-06 is deferred and current Quick Check absence tests intentionally keep topic/period routes absent. This is required before the product can explicitly answer whether a Student is ready to continue.
 
-Location: `agonara/docs/intent_learning_program_app.md:186`, `agonara/docs/student_user_stories.md:134`, `agonara/docs/plans/agonara-product-gap-closure.md:59`, `agonara/docs/specs/quick-check-assessment-first-slice.md:341`, `agonara/tests/student-workspace.test.js:2162`
+Location: `agonara/docs/intent_learning_program_app.md:186`, `agonara/docs/student_user_stories.md:134`, `agonara/docs/plans/implemented/agonara-product-gap-closure.md:59`, `agonara/docs/specs/quick-check-assessment-first-slice.md:341`, `agonara/tests/student-workspace.test.js:2162`
 
 Fix: Specify aggregate readiness semantics separately from deterministic single-select Quick Check. Implement topic/period readiness definitions in Corpus Storage, attempts in Student Workspace, and readiness result derivation with explicit evidence links.
 
@@ -26,7 +26,7 @@ Verdict: pass
 
 Why: The implemented learner-state interpretation slice now provides owner-only read-time target summaries, weak-area summaries, and evidence detail that readiness attempts can snapshot without mutating accepted Program corpus.
 
-Location: `agonara/docs/specs/learner-state-interpretation.md:6`, `agonara/docs/specs/learner-state-interpretation.md:301`, `agonara/docs/plans/implemented/learner-state-interpretation.md:144`, `agonara/docs/plans/agonara-product-gap-closure.md:189`
+Location: `agonara/docs/specs/learner-state-interpretation.md:6`, `agonara/docs/specs/learner-state-interpretation.md:301`, `agonara/docs/plans/implemented/learner-state-interpretation.md:144`, `agonara/docs/plans/implemented/agonara-product-gap-closure.md:189`
 
 Fix: none for this plan. Build readiness on explicit learner-state reads and preserve Quick Check/open-answer semantics.
 
@@ -88,7 +88,7 @@ Expected files:
 - `agonara/docs/implementation-notes.md` - update current-state behavior and first-slice limits during closeout.
 - `agonara/docs/log.md` - record each completed phase outcome.
 - `agonara/docs/plans/implemented/topic-period-readiness-checks.md` - archived plan after completion.
-- `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 4 complete only after this plan's final gates pass.
+- `agonara/docs/plans/implemented/agonara-product-gap-closure.md` - mark parent Phase 4 complete only after this plan's final gates pass.
 - `docs/loc-dashboard.html` - refresh during final closeout after code and docs LOC changes.
 
 HTTP routes:
@@ -330,7 +330,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Update `agonara/docs/implementation-notes.md` with current-state behavior and first-slice limits.
 - Update `agonara/docs/log.md` with concise outcome-focused closeout entry.
 - Update this plan's Phase tracker to mark Phase 6 complete only after final gates pass.
-- Update `agonara/docs/plans/agonara-product-gap-closure.md` to mark Phase 4 complete only after this plan's final gates pass.
+- Update `agonara/docs/plans/implemented/agonara-product-gap-closure.md` to mark Phase 4 complete only after this plan's final gates pass.
 - Run `./scripts/loc-dashboard.sh --sort=name` and refresh `docs/loc-dashboard.html`.
 - Move this plan to `agonara/docs/plans/implemented/topic-period-readiness-checks.md` in the same closeout commit.
 
