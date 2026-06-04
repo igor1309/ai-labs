@@ -32,6 +32,32 @@ Fix: none for this plan. Implement the spec without adding persisted disposition
 
 Required tests: use the implementation phases below.
 
+## Adversarial Review Closure
+
+### Review finding - optional storage helper changes lacked targeted storage verification
+
+Verdict: warning
+
+Why: The first plan version allowed read-only `agonara/src/storage.js` helper exports if existing accepted-record reads were insufficient, but it did not add a targeted storage command or phase validation tied to that optional edit. A plan should keep verification proportional to every file it authorizes changing.
+
+Fix applied: Added a conditional `coverage storage` targeted command and Phase 1 validation requirement whenever storage helper exports or storage tests change.
+
+### Review finding - Product Intent traceability overclaimed student-story delivery
+
+Verdict: warning
+
+Why: The first plan version mapped INT-03, INT-04, INT-06, and INT-07 directly to Phase 1 without saying they are accepted-corpus inputs or boundary-protection stories. That could make a curator diagnostic look like it delivers student navigation, checking, readiness, or progress UX.
+
+Fix applied: Reworded the Product Intent traceability rows so INT-01 is the delivered curator capability, while INT-03, INT-04, INT-06, and INT-07 are protected as input/boundary constraints.
+
+### Review finding - tracker update commit rule was implicit
+
+Verdict: warning
+
+Why: The first plan version said tracker checkboxes update only after verified gates, but it did not explicitly require a committed tracker update after each green phase. Repo process gates require plan tracker updates to match completed work and be committed.
+
+Fix applied: Added an explicit tracker-update commit rule after each phase's implementation and hardening commits are green.
+
 ## Goal
 
 Implement `agonara/docs/specs/curator-coverage-gaps.md` for INT-01 so effective Program Curators can inspect read-only draft guidance about missing accepted-corpus coverage without mutating accepted Program corpus, Student Workspace state, Program Membership, Identity, target links, candidate records, accepted revisions, LLM suggestions, or domain audit/event records.
@@ -69,7 +95,7 @@ Implementation preflight: before Phase 1 and before every later phase, run `git 
 Expected files:
 
 - `agonara/src/curator-workspace.js` - new Curator Workspace read boundary for `inspectCuratorCoverageGaps`, authorization, input validation, accepted-corpus diagnostics, deterministic gap ids/order, severity filtering, and redacted report summaries.
-- `agonara/src/storage.js` - read-only helper exports only if existing accepted navigation, accepted check, learner-evidence target-link, or readiness reads are not already exposed; no schema changes or write helpers.
+- `agonara/src/storage.js` - read-only helper exports only if existing accepted navigation, accepted check, learner-evidence target-link, or readiness reads are not already exposed; no schema changes or write helpers. Any storage helper change must include targeted storage coverage.
 - `agonara/src/server.js` - session-backed `GET /programs/{programId}/coverage-gaps` route, query parsing, status mapping, redacted response, and production composition wiring.
 - `agonara/src/learn-ui.js` - `/learn` Program Curator coverage inspection UI and drill-down state.
 - `agonara/tests/curator-workspace.test.js` - Curator Workspace diagnostic calculation, authorization, filtering, deterministic ordering, redaction, and no-mutation tests.
@@ -102,6 +128,7 @@ Required UI screens and stable element ids:
 
 Targeted commands:
 
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "coverage storage" node --test --test-name-pattern "coverage|Coverage|navigation|Navigation|learner.*target|Learner.*Target|readiness|Readiness|quick.*check|Quick.*Check" agonara/tests/storage.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "coverage workspace" node --test --test-name-pattern "coverage|Coverage" agonara/tests/curator-workspace.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "coverage http" node --test --test-name-pattern "coverage|Coverage" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" npx playwright --version`
@@ -125,6 +152,8 @@ Targeted commands:
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
 
+After each phase's implementation commit and any adversarial-review hardening commit are green, update this tracker and commit the tracker-only status update before starting the next phase. Phase 4 archives the plan instead of leaving an active tracker copy.
+
 ## ADR traceability matrix
 
 | ADR / spec invariant | Phase |
@@ -138,11 +167,11 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 | Story | Phase preserving or delivering intent |
 |---|---|
-| INT-01 - Assemble program from sources | Phase 1, Phase 2, Phase 3 |
-| INT-03 - Study materials in program context | Phase 1 |
-| INT-04 - Check understanding during study | Phase 1 |
-| INT-06 - Topic-level or period-level readiness checks | Phase 1 |
-| INT-07 - Personal mastery, weak areas, and evidence | Phase 1, Phase 2, Phase 3 |
+| INT-01 - Assemble program from sources | Phase 1, Phase 2, Phase 3 deliver curator-side gap discovery as draft guidance. |
+| INT-03 - Study materials in program context | Phase 1 inspects accepted topic/material relationships as corpus coverage inputs only. |
+| INT-04 - Check understanding during study | Phase 1 inspects accepted check target links as corpus coverage inputs only. |
+| INT-06 - Topic-level or period-level readiness checks | Phase 1 inspects accepted readiness requirement evidence paths as corpus coverage inputs only. |
+| INT-07 - Personal mastery, weak areas, and evidence | Phase 1, Phase 2, Phase 3 protect Student weak areas and progress from curator coverage diagnostics. |
 
 ## Phase 1 - Curator Workspace Coverage Diagnostics
 
@@ -166,6 +195,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 **Validation**:
 
+- Conditional targeted coverage storage command if `agonara/src/storage.js` or `agonara/tests/storage.test.js` changes.
 - Targeted coverage workspace command.
 - Full Agonara tests.
 - Root build.

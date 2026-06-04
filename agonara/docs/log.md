@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden the Curator Coverage Gaps child plan after adversarial review by adding conditional storage verification, precise Product Intent traceability wording, and explicit tracker-update commit rules.
 - Add the Curator Coverage Gaps child implementation plan with exact Curator Workspace, HTTP, UI, test, review, dashboard, and archive gates for Phase 6 of the product gap closure.
 - Harden the Curator Coverage Gaps spec after adversarial review by adding INT-01 traceability, deterministic gap identity rules, and an explicit domain-state boundary for operational logging.
 - Add the Curator Coverage Gaps spec for read-only draft guidance over accepted corpus, separating curator diagnostics from Student weak-area state and accepted-corpus mutation.
