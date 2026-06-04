@@ -162,38 +162,79 @@ function createProgramShell({ database, generateId, input, now }) {
 function setProgramAdmissionPolicy({ database, generateId, input, now }) {
   const context = resolveCuratorCommand(database, input);
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "program_admission_policy_changed",
+      participationKind: "program_curator",
+      policyPath: "self_join",
+      reason: context.reason,
+      targetIdentityId: input?.actingIdentityId,
+    });
   }
   if (!supportedAdmissionPolicies.has(input?.admissionPolicy)) {
-    return rejected("validation_failed");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "program_admission_policy_changed",
+      participationKind: "program_curator",
+      policyPath: "self_join",
+      reason: "validation_failed",
+      targetIdentityId: context.actor.identity.id,
+    });
   }
 
-  const programShell = updateProgramAdmissionPolicyRecord(database, {
-    programId: context.program.id,
-    admissionPolicy: input.admissionPolicy,
-  });
-  recordMembershipEvent({
-    database,
-    generateId,
-    now,
-    eventType: "program_admission_policy_changed",
-    actorIdentityId: context.actor.identity.id,
-    targetIdentityId: context.actor.identity.id,
-    programId: context.program.id,
-    participationKind: "program_curator",
-    policyPath: input.admissionPolicy === "self_join" ? "self_join" : "curator_invitation",
-    outcome: "accepted",
-  });
+  const occurredAt = now().toISOString();
+  const programShell = database.transaction(() => {
+    const updated = updateProgramAdmissionPolicyRecord(database, {
+      programId: context.program.id,
+      admissionPolicy: input.admissionPolicy,
+    });
+    createProgramMembershipEventRecord(database, {
+      id: generateId(),
+      eventType: "program_admission_policy_changed",
+      actorIdentityId: context.actor.identity.id,
+      targetIdentityId: context.actor.identity.id,
+      programId: context.program.id,
+      participationKind: "program_curator",
+      policyPath: input.admissionPolicy === "self_join" ? "self_join" : "curator_invitation",
+      occurredAt,
+      outcome: "accepted",
+    });
+    return updated;
+  })();
   return accepted({ programShell: summarizeProgramShell(programShell) });
 }
 
 function createProgramInvitation({ database, generateId, input, now }) {
   const context = resolveCuratorCommand(database, input);
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_created",
+      participationKind: input?.participationKind,
+      policyPath: "curator_invitation",
+      reason: context.reason,
+    });
   }
   if (input?.participationKind !== "student") {
-    return rejected("unsupported_participation_kind");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_created",
+      participationKind: input?.participationKind,
+      policyPath: "curator_invitation",
+      reason: "unsupported_participation_kind",
+    });
   }
 
   const target = getIdentity(database, input?.targetIdentityId);
@@ -201,7 +242,16 @@ function createProgramInvitation({ database, generateId, input, now }) {
     return rejected("target_identity_not_found");
   }
   if (target.state !== "active") {
-    return rejected("target_identity_disabled");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_created",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      reason: "target_identity_disabled",
+    });
   }
 
   const existing = getProgramMembershipRecord(database, {
@@ -210,41 +260,70 @@ function createProgramInvitation({ database, generateId, input, now }) {
     participationKind: "student",
   });
   if (existing?.status === "active") {
-    return rejected("membership_already_active");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_created",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      reason: "membership_already_active",
+    });
   }
   if (existing?.status === "removed") {
-    return rejected("membership_removed");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_created",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      reason: "membership_removed",
+    });
   }
 
   const createdAt = now().toISOString();
   try {
-    const invitation = createProgramInvitationRecord(database, {
-      id: generateId(),
-      programId: context.program.id,
-      targetIdentityId: target.id,
-      participationKind: "student",
-      status: "pending",
-      invitedByIdentityId: context.actor.identity.id,
-      createdAt,
-      updatedAt: createdAt,
-    });
-    recordMembershipEvent({
-      database,
-      generateId,
-      now,
-      eventType: "student_invitation_created",
-      actorIdentityId: context.actor.identity.id,
-      targetIdentityId: target.id,
-      programId: context.program.id,
-      participationKind: "student",
-      policyPath: "curator_invitation",
-      invitationStatus: "pending",
-      outcome: "accepted",
-    });
+    const invitation = database.transaction(() => {
+      const created = createProgramInvitationRecord(database, {
+        id: generateId(),
+        programId: context.program.id,
+        targetIdentityId: target.id,
+        participationKind: "student",
+        status: "pending",
+        invitedByIdentityId: context.actor.identity.id,
+        createdAt,
+        updatedAt: createdAt,
+      });
+      createProgramMembershipEventRecord(database, {
+        id: generateId(),
+        eventType: "student_invitation_created",
+        actorIdentityId: context.actor.identity.id,
+        targetIdentityId: target.id,
+        programId: context.program.id,
+        participationKind: "student",
+        policyPath: "curator_invitation",
+        invitationStatus: "pending",
+        occurredAt: createdAt,
+        outcome: "accepted",
+      });
+      return created;
+    })();
     return accepted({ programInvitation: summarizeInvitation(invitation) });
   } catch (error) {
     if (error?.reason === "invitation_conflict") {
-      return rejected("invitation_conflict");
+      return rejectKnownMembershipMutation({
+        database,
+        generateId,
+        now,
+        input,
+        eventType: "student_invitation_created",
+        participationKind: "student",
+        policyPath: "curator_invitation",
+        reason: "invitation_conflict",
+      });
     }
     throw error;
   }
@@ -287,7 +366,14 @@ function listMyProgramInvitations({ database, input }) {
 function acceptProgramInvitation({ database, generateId, input, now }) {
   const context = resolveTargetInvitationCommand(database, input);
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownInvitationMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_accepted",
+      reason: context.reason,
+    });
   }
 
   const existing = getProgramMembershipRecord(database, {
@@ -296,16 +382,14 @@ function acceptProgramInvitation({ database, generateId, input, now }) {
     participationKind: "student",
   });
   if (existing?.status === "removed") {
-    recordInvitationEvent({
+    return rejectKnownInvitationMutation({
       database,
       generateId,
       now,
-      context,
+      input,
       eventType: "student_invitation_accepted",
-      outcome: "rejected",
       reason: "membership_removed",
     });
-    return rejected("membership_removed");
   }
 
   const occurredAt = now().toISOString();
@@ -376,7 +460,14 @@ function acceptProgramInvitation({ database, generateId, input, now }) {
 function declineProgramInvitation({ database, generateId, input, now }) {
   const context = resolveTargetInvitationCommand(database, input);
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownInvitationMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_declined",
+      reason: context.reason,
+    });
   }
 
   const invitation = transitionInvitation({
@@ -393,7 +484,14 @@ function declineProgramInvitation({ database, generateId, input, now }) {
 function revokeProgramInvitation({ database, generateId, input, now }) {
   const actor = resolveActiveActor(database, input?.actingIdentityId);
   if (actor.status === "rejected") {
-    return rejected(actor.reason);
+    return rejectKnownInvitationMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_revoked",
+      reason: actor.reason,
+    });
   }
   const invitation = getProgramInvitationRecord(database, input?.invitationId);
   if (!invitation) {
@@ -404,10 +502,24 @@ function revokeProgramInvitation({ database, generateId, input, now }) {
     programId: invitation.programId,
     identityId: actor.identity.id,
   })) {
-    return rejected("participation_required");
+    return rejectKnownInvitationMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_revoked",
+      reason: "participation_required",
+    });
   }
   if (invitation.status !== "pending") {
-    return rejected("invitation_not_pending");
+    return rejectKnownInvitationMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_invitation_revoked",
+      reason: "invitation_not_pending",
+    });
   }
 
   const updated = transitionInvitation({
@@ -458,10 +570,28 @@ function listProgramParticipants({ database, input }) {
 function removeProgramParticipant({ database, generateId, input, now }) {
   const context = resolveCuratorCommand(database, input);
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_membership_removed",
+      participationKind: "student",
+      policyPath: "curator_removal",
+      reason: context.reason,
+    });
   }
   if (input?.participationKind !== "student") {
-    return rejected("unsupported_participation_kind");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_membership_removed",
+      participationKind: input?.participationKind,
+      policyPath: "curator_removal",
+      reason: "unsupported_participation_kind",
+    });
   }
 
   const membership = getProgramMembershipRecord(database, {
@@ -470,39 +600,70 @@ function removeProgramParticipant({ database, generateId, input, now }) {
     participationKind: "student",
   });
   if (!membership) {
-    return rejected("membership_missing");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_membership_removed",
+      participationKind: "student",
+      policyPath: "curator_removal",
+      reason: "membership_missing",
+    });
   }
   if (membership.status === "removed") {
-    return rejected("membership_removed");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "student_membership_removed",
+      participationKind: "student",
+      policyPath: "curator_removal",
+      reason: "membership_removed",
+    });
   }
 
   const occurredAt = now().toISOString();
-  const updated = updateProgramMembershipStatus(database, {
-    programId: context.program.id,
-    identityId: membership.identityId,
-    participationKind: "student",
-    status: "removed",
-    updatedAt: occurredAt,
-  });
-  createProgramMembershipEventRecord(database, {
-    id: generateId(),
-    eventType: "student_membership_removed",
-    actorIdentityId: context.actor.identity.id,
-    targetIdentityId: membership.identityId,
-    programId: context.program.id,
-    participationKind: "student",
-    policyPath: "curator_removal",
-    resultingStatus: "removed",
-    occurredAt,
-    outcome: "accepted",
-  });
+  const updated = database.transaction(() => {
+    const changed = updateProgramMembershipStatus(database, {
+      programId: context.program.id,
+      identityId: membership.identityId,
+      participationKind: "student",
+      status: "removed",
+      updatedAt: occurredAt,
+    });
+    createProgramMembershipEventRecord(database, {
+      id: generateId(),
+      eventType: "student_membership_removed",
+      actorIdentityId: context.actor.identity.id,
+      targetIdentityId: membership.identityId,
+      programId: context.program.id,
+      participationKind: "student",
+      policyPath: "curator_removal",
+      resultingStatus: "removed",
+      occurredAt,
+      outcome: "accepted",
+    });
+    return changed;
+  })();
   return accepted({ programMembership: summarizeMembership(updated) });
 }
 
 function leaveCuratorProgram({ database, generateId, input, now }) {
   const actor = resolveActiveActor(database, input?.actingIdentityId);
   if (actor.status === "rejected") {
-    return rejected(actor.reason);
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "curator_membership_left",
+      participationKind: "program_curator",
+      policyPath: "curator_leave",
+      reason: actor.reason,
+      targetIdentityId: input?.actingIdentityId,
+    });
   }
   const program = getProgramShellRecord(database, input?.programId);
   if (!program) {
@@ -514,45 +675,97 @@ function leaveCuratorProgram({ database, generateId, input, now }) {
     participationKind: "program_curator",
   });
   if (!membership) {
-    return rejected("membership_missing");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "curator_membership_left",
+      participationKind: "program_curator",
+      policyPath: "curator_leave",
+      reason: "membership_missing",
+      targetIdentityId: actor.identity.id,
+    });
   }
   if (membership.status === "left") {
-    return rejected("membership_left");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "curator_membership_left",
+      participationKind: "program_curator",
+      policyPath: "curator_leave",
+      reason: "membership_left",
+      targetIdentityId: actor.identity.id,
+    });
   }
   if (membership.status === "removed") {
-    return rejected("membership_removed");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "curator_membership_left",
+      participationKind: "program_curator",
+      policyPath: "curator_leave",
+      reason: "membership_removed",
+      targetIdentityId: actor.identity.id,
+    });
   }
-  if (listActiveProgramCuratorIdentityIds(database, program.id).length === 1) {
-    return rejected("last_curator_required");
+  if (countEffectiveProgramCurators(database, program.id) === 1) {
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "curator_membership_left",
+      participationKind: "program_curator",
+      policyPath: "curator_leave",
+      reason: "last_curator_required",
+      targetIdentityId: actor.identity.id,
+    });
   }
 
   const occurredAt = now().toISOString();
-  const updated = updateProgramMembershipStatus(database, {
-    programId: program.id,
-    identityId: actor.identity.id,
-    participationKind: "program_curator",
-    status: "left",
-    updatedAt: occurredAt,
-  });
-  createProgramMembershipEventRecord(database, {
-    id: generateId(),
-    eventType: "curator_membership_left",
-    actorIdentityId: actor.identity.id,
-    targetIdentityId: actor.identity.id,
-    programId: program.id,
-    participationKind: "program_curator",
-    policyPath: "curator_leave",
-    resultingStatus: "left",
-    occurredAt,
-    outcome: "accepted",
-  });
+  const updated = database.transaction(() => {
+    const changed = updateProgramMembershipStatus(database, {
+      programId: program.id,
+      identityId: actor.identity.id,
+      participationKind: "program_curator",
+      status: "left",
+      updatedAt: occurredAt,
+    });
+    createProgramMembershipEventRecord(database, {
+      id: generateId(),
+      eventType: "curator_membership_left",
+      actorIdentityId: actor.identity.id,
+      targetIdentityId: actor.identity.id,
+      programId: program.id,
+      participationKind: "program_curator",
+      policyPath: "curator_leave",
+      resultingStatus: "left",
+      occurredAt,
+      outcome: "accepted",
+    });
+    return changed;
+  })();
   return accepted({ programMembership: summarizeMembership(updated) });
 }
 
 function recoverProgramMembership({ database, generateId, input, now }) {
   const context = resolveAdminMembershipCommand(database, input, input?.recoveryReason);
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "membership_exceptionally_recovered",
+      participationKind: input?.participationKind,
+      policyPath: "admin_exceptional_recovery",
+      reason: context.reason,
+    });
   }
 
   const existing = getProgramMembershipRecord(database, {
@@ -561,36 +774,39 @@ function recoverProgramMembership({ database, generateId, input, now }) {
     participationKind: input.participationKind,
   });
   const occurredAt = now().toISOString();
-  const membership = existing
-    ? updateProgramMembershipStatus(database, {
-        programId: context.program.id,
-        identityId: context.target.id,
-        participationKind: input.participationKind,
-        status: "active",
-        updatedAt: occurredAt,
-      })
-    : createProgramMembershipRecord(database, {
-        id: generateId(),
-        programId: context.program.id,
-        identityId: context.target.id,
-        participationKind: input.participationKind,
-        status: "active",
-        createdAt: occurredAt,
-        updatedAt: occurredAt,
-      });
-  createProgramMembershipEventRecord(database, {
-    id: generateId(),
-    eventType: "membership_exceptionally_recovered",
-    actorIdentityId: context.actor.identity.id,
-    targetIdentityId: context.target.id,
-    programId: context.program.id,
-    participationKind: input.participationKind,
-    policyPath: "admin_exceptional_recovery",
-    resultingStatus: "active",
-    occurredAt,
-    outcome: "accepted",
-    reason: input.recoveryReason.trim(),
-  });
+  const membership = database.transaction(() => {
+    const changed = existing
+      ? updateProgramMembershipStatus(database, {
+          programId: context.program.id,
+          identityId: context.target.id,
+          participationKind: input.participationKind,
+          status: "active",
+          updatedAt: occurredAt,
+        })
+      : createProgramMembershipRecord(database, {
+          id: generateId(),
+          programId: context.program.id,
+          identityId: context.target.id,
+          participationKind: input.participationKind,
+          status: "active",
+          createdAt: occurredAt,
+          updatedAt: occurredAt,
+        });
+    createProgramMembershipEventRecord(database, {
+      id: generateId(),
+      eventType: "membership_exceptionally_recovered",
+      actorIdentityId: context.actor.identity.id,
+      targetIdentityId: context.target.id,
+      programId: context.program.id,
+      participationKind: input.participationKind,
+      policyPath: "admin_exceptional_recovery",
+      resultingStatus: "active",
+      occurredAt,
+      outcome: "accepted",
+      reason: input.recoveryReason.trim(),
+    });
+    return changed;
+  })();
   return accepted({ programMembership: summarizeMembership(membership) });
 }
 
@@ -599,7 +815,16 @@ function revokeProgramMembership({ database, generateId, input, now }) {
     requireActiveTarget: false,
   });
   if (context.status === "rejected") {
-    return rejected(context.reason);
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "membership_exceptionally_revoked",
+      participationKind: input?.participationKind,
+      policyPath: "admin_exceptional_revocation",
+      reason: context.reason,
+    });
   }
 
   const membership = getProgramMembershipRecord(database, {
@@ -608,40 +833,70 @@ function revokeProgramMembership({ database, generateId, input, now }) {
     participationKind: input.participationKind,
   });
   if (!membership) {
-    return rejected("membership_missing");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "membership_exceptionally_revoked",
+      participationKind: input.participationKind,
+      policyPath: "admin_exceptional_revocation",
+      reason: "membership_missing",
+    });
   }
   if (membership.status === "removed") {
-    return rejected("membership_removed");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "membership_exceptionally_revoked",
+      participationKind: input.participationKind,
+      policyPath: "admin_exceptional_revocation",
+      reason: "membership_removed",
+    });
   }
   if (
     input.participationKind === "program_curator" &&
     membership.status === "active" &&
-    listActiveProgramCuratorIdentityIds(database, context.program.id).length === 1
+    countEffectiveProgramCurators(database, context.program.id) === 1
   ) {
-    return rejected("last_curator_required");
+    return rejectKnownMembershipMutation({
+      database,
+      generateId,
+      now,
+      input,
+      eventType: "membership_exceptionally_revoked",
+      participationKind: input.participationKind,
+      policyPath: "admin_exceptional_revocation",
+      reason: "last_curator_required",
+    });
   }
 
   const occurredAt = now().toISOString();
-  const updated = updateProgramMembershipStatus(database, {
-    programId: context.program.id,
-    identityId: context.target.id,
-    participationKind: input.participationKind,
-    status: "removed",
-    updatedAt: occurredAt,
-  });
-  createProgramMembershipEventRecord(database, {
-    id: generateId(),
-    eventType: "membership_exceptionally_revoked",
-    actorIdentityId: context.actor.identity.id,
-    targetIdentityId: context.target.id,
-    programId: context.program.id,
-    participationKind: input.participationKind,
-    policyPath: "admin_exceptional_revocation",
-    resultingStatus: "removed",
-    occurredAt,
-    outcome: "accepted",
-    reason: input.revocationReason.trim(),
-  });
+  const updated = database.transaction(() => {
+    const changed = updateProgramMembershipStatus(database, {
+      programId: context.program.id,
+      identityId: context.target.id,
+      participationKind: input.participationKind,
+      status: "removed",
+      updatedAt: occurredAt,
+    });
+    createProgramMembershipEventRecord(database, {
+      id: generateId(),
+      eventType: "membership_exceptionally_revoked",
+      actorIdentityId: context.actor.identity.id,
+      targetIdentityId: context.target.id,
+      programId: context.program.id,
+      participationKind: input.participationKind,
+      policyPath: "admin_exceptional_revocation",
+      resultingStatus: "removed",
+      occurredAt,
+      outcome: "accepted",
+      reason: input.revocationReason.trim(),
+    });
+    return changed;
+  })();
   return accepted({ programMembership: summarizeMembership(updated) });
 }
 
@@ -1037,8 +1292,11 @@ function resolveAdminMembershipCommand(database, input, reason, { requireActiveT
   if (!isEffectiveAdmin(database, actor.identity.id)) {
     return { status: "rejected", reason: "admin_required" };
   }
-  if (!isNonEmptyString(reason) || !supportedParticipationKinds.has(input?.participationKind)) {
+  if (!isNonEmptyString(reason)) {
     return { status: "rejected", reason: "validation_failed" };
+  }
+  if (!supportedParticipationKinds.has(input?.participationKind)) {
+    return { status: "rejected", reason: "unsupported_participation_kind" };
   }
   const program = getProgramShellRecord(database, input?.programId);
   if (!program) {
@@ -1052,6 +1310,58 @@ function resolveAdminMembershipCommand(database, input, reason, { requireActiveT
     return { status: "rejected", reason: "target_identity_disabled" };
   }
   return { status: "active", actor, program, target };
+}
+
+function rejectKnownInvitationMutation({ database, generateId, now, input, eventType, reason }) {
+  const invitation = getProgramInvitationRecord(database, input?.invitationId);
+  return rejectKnownMembershipMutation({
+    database,
+    generateId,
+    now,
+    input,
+    eventType,
+    invitationStatus: invitation?.status,
+    participationKind: invitation?.participationKind,
+    policyPath: "curator_invitation",
+    programId: invitation?.programId,
+    reason,
+    targetIdentityId: invitation?.targetIdentityId,
+  });
+}
+
+function rejectKnownMembershipMutation({
+  database,
+  generateId,
+  now,
+  input,
+  eventType,
+  invitationStatus = null,
+  participationKind,
+  policyPath,
+  programId = input?.programId,
+  reason,
+  targetIdentityId = input?.targetIdentityId,
+}) {
+  const actor = getIdentity(database, input?.actingIdentityId);
+  const program = getProgramShellRecord(database, programId);
+  const target = getIdentity(database, targetIdentityId);
+  if (actor && program && target && supportedParticipationKinds.has(participationKind)) {
+    recordMembershipEvent({
+      database,
+      generateId,
+      now,
+      eventType,
+      actorIdentityId: actor.id,
+      targetIdentityId: target.id,
+      programId: program.id,
+      participationKind,
+      policyPath,
+      invitationStatus,
+      outcome: "rejected",
+      reason,
+    });
+  }
+  return rejected(reason);
 }
 
 function transitionInvitation({ database, generateId, now, context, eventType, status }) {
@@ -1080,29 +1390,10 @@ function transitionInvitation({ database, generateId, now, context, eventType, s
   })();
 }
 
-function recordInvitationEvent({
-  database,
-  generateId,
-  now,
-  context,
-  eventType,
-  outcome,
-  reason,
-}) {
-  recordMembershipEvent({
-    database,
-    generateId,
-    now,
-    eventType,
-    actorIdentityId: context.actor.identity.id,
-    targetIdentityId: context.invitation.targetIdentityId,
-    programId: context.invitation.programId,
-    participationKind: "student",
-    policyPath: "curator_invitation",
-    invitationStatus: context.invitation.status,
-    outcome,
-    reason,
-  });
+function countEffectiveProgramCurators(database, programId) {
+  return listActiveProgramCuratorIdentityIds(database, programId).filter(
+    identityId => getIdentity(database, identityId)?.state === "active",
+  ).length;
 }
 
 function recordProgramEvent({ database, generateId, now, actorIdentityId, outcome, reason }) {

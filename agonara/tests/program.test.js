@@ -1421,6 +1421,269 @@ test("recoverAndRevokeProgramMembership_shouldRequireAdminAndRecordExceptionalTr
   }
 });
 
+test("membershipMutations_shouldRecordRejectedEvents_onKnownActorProgramAndTarget", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    commands.setProgramAdmissionPolicy({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      admissionPolicy: "unsupported",
+    });
+    commands.createProgramInvitation({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    });
+    commands.createProgramInvitation({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    });
+    commands.removeProgramParticipant({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    });
+    commands.leaveCuratorProgram({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-27T10:00:00.000Z",
+    });
+    commands.revokeProgramMembership({
+      actingIdentityId: "identity-admin",
+      programId: "program-1",
+      targetIdentityId: "identity-curator",
+      participationKind: "program_curator",
+      revocationReason: "repair invalid authority",
+    });
+
+    assert.deepEqual(
+      listProgramMembershipEventRecords(database)
+        .filter($0 => $0.outcome === "rejected")
+        .map($0 => ({
+          eventType: $0.eventType,
+          policyPath: $0.policyPath,
+          reason: $0.reason,
+        })),
+      [
+        {
+          eventType: "program_admission_policy_changed",
+          policyPath: "self_join",
+          reason: "validation_failed",
+        },
+        {
+          eventType: "student_invitation_created",
+          policyPath: "curator_invitation",
+          reason: "invitation_conflict",
+        },
+        {
+          eventType: "student_membership_removed",
+          policyPath: "curator_removal",
+          reason: "membership_missing",
+        },
+        {
+          eventType: "curator_membership_left",
+          policyPath: "curator_leave",
+          reason: "last_curator_required",
+        },
+        {
+          eventType: "membership_exceptionally_revoked",
+          policyPath: "admin_exceptional_revocation",
+          reason: "last_curator_required",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("curatorRemoval_shouldRejectLastEffectiveCurator_whenOtherActiveMembershipIdentityIsDisabled", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    createProgramMembershipRecord(database, {
+      id: "curator-membership-2",
+      programId: "program-1",
+      identityId: "identity-curator-2",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-05-27T10:00:01.000Z",
+      updatedAt: "2026-05-27T10:00:01.000Z",
+    });
+    disableIdentity(database, {
+      identityId: "identity-curator-2",
+      disabledAt: "2026-05-27T10:00:02.000Z",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-27T10:00:00.000Z",
+    });
+
+    assert.deepEqual(
+      {
+        leave: commands.leaveCuratorProgram({
+          actingIdentityId: "identity-curator",
+          programId: "program-1",
+        }),
+        revoke: commands.revokeProgramMembership({
+          actingIdentityId: "identity-admin",
+          programId: "program-1",
+          targetIdentityId: "identity-curator",
+          participationKind: "program_curator",
+          revocationReason: "repair invalid authority",
+        }),
+      },
+      {
+        leave: { status: "rejected", reason: "last_curator_required" },
+        revoke: { status: "rejected", reason: "last_curator_required" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("setProgramAdmissionPolicy_shouldRollBackPolicy_onEventWriteFailure", () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+      "membership-event-1",
+    ],
+  });
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    let failed = false;
+    try {
+      commands.setProgramAdmissionPolicy({
+        actingIdentityId: "identity-curator",
+        programId: "program-1",
+        admissionPolicy: "invitation_only",
+      });
+    } catch {
+      failed = true;
+    }
+
+    assert.deepEqual(
+      {
+        failed,
+        admissionPolicy: commands.getProgramShell({
+          actingIdentityId: "identity-curator",
+          programId: "program-1",
+        }).value.programShell.admissionPolicy,
+      },
+      { failed: true, admissionPolicy: "self_join" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramInvitation_shouldRollBackInvitation_onEventWriteFailure", () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "program-1",
+      "membership-1",
+      "program-event-1",
+      "membership-event-1",
+      "invitation-1",
+      "membership-event-1",
+    ],
+  });
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    let failed = false;
+    try {
+      commands.createProgramInvitation({
+        actingIdentityId: "identity-curator",
+        programId: "program-1",
+        targetIdentityId: "identity-student",
+        participationKind: "student",
+      });
+    } catch {
+      failed = true;
+    }
+
+    assert.deepEqual(
+      {
+        failed,
+        invitations: commands.listMyProgramInvitations({
+          actingIdentityId: "identity-student",
+        }).value.programInvitations,
+      },
+      { failed: true, invitations: [] },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recoverProgramMembership_shouldSeparateReasonValidationFromUnsupportedParticipationKind", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-27T10:00:00.000Z",
+    });
+
+    assert.deepEqual(
+      {
+        unsupported: commands.recoverProgramMembership({
+          actingIdentityId: "identity-admin",
+          programId: "program-1",
+          targetIdentityId: "identity-student",
+          participationKind: "moderator",
+          recoveryReason: "repair",
+        }),
+        blankReason: commands.recoverProgramMembership({
+          actingIdentityId: "identity-admin",
+          programId: "program-1",
+          targetIdentityId: "identity-student",
+          participationKind: "student",
+          recoveryReason: " ",
+        }),
+      },
+      {
+        unsupported: { status: "rejected", reason: "unsupported_participation_kind" },
+        blankReason: { status: "rejected", reason: "validation_failed" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 // Effective participation
 
 test("getEffectiveParticipation_shouldReturnAllowed_onActiveStudent", () => {
