@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden Phase 3 membership HTTP after adversarial review with session-before-CSRF ordering for existing Program mutations, Admin-vs-Curator invitation separation, exceptional last-curator protection, attributable Admin recovery, diagnostic-read redaction, and invitation-only self-join coverage.
 - Implement Phase 3 of the Program Membership invitations and recovery plan with session-backed invitation, participant-management, curator-leave, and exceptional Admin membership routes, strict body validation, private errors, and executable HTTP acceptance coverage.
 - Harden Phase 2 membership commands after adversarial review with attributable rejected events, atomic state/event transitions, effective last-curator protection, and distinct exceptional validation reasons.
 - Implement Phase 2 of the Program Membership invitations and recovery plan with controlled Student invitation lifecycle, participant management, curator leave, admission-policy enforcement, and reasoned exceptional Admin recovery/revocation.

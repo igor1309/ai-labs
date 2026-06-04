@@ -361,15 +361,13 @@ async function handleProgramApi({
   }
 
   if (request.method === "POST" && pathname === "/programs") {
-    const csrf = requireCsrf(request, csrfTokens);
-    if (csrf.status === "rejected") {
-      sendJson(response, httpStatusFor(csrf.reason), csrf);
-      return true;
-    }
-
-    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
-    if (session.status === "rejected") {
-      sendJson(response, httpStatusFor(session.reason), session);
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
       return true;
     }
 
@@ -615,15 +613,13 @@ async function handleProgramApi({
 
   const studentMembershipMatch = pathname.match(/^\/programs\/([^/]+)\/student-membership$/);
   if ((request.method === "POST" || request.method === "DELETE") && studentMembershipMatch) {
-    const csrf = requireCsrf(request, csrfTokens);
-    if (csrf.status === "rejected") {
-      sendJson(response, httpStatusFor(csrf.reason), csrf);
-      return true;
-    }
-
-    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
-    if (session.status === "rejected") {
-      sendJson(response, httpStatusFor(session.reason), session);
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
       return true;
     }
 

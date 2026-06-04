@@ -8827,14 +8827,32 @@ test("programInvitationRoutes_shouldPreservePrivateTargetErrorsAndCuratorAuthori
       { participationKind: "student", targetIdentityId: outsider.identityId },
       { cookie: student.cookie, csrfToken: student.csrfToken },
     );
+    const adminCreate = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: outsider.identityId },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const adminList = await getJson(`${baseUrl}/programs/${programId}/invitations`, {
+      cookie: admin.cookie,
+    });
 
     assert.deepEqual(
       {
+        adminCreate,
+        adminList,
         outsiderAccept,
         outsiderDecline,
         studentCreate,
       },
       {
+        adminCreate: {
+          body: { status: "rejected", reason: "participation_required" },
+          statusCode: 403,
+        },
+        adminList: {
+          body: { status: "rejected", reason: "participation_required" },
+          statusCode: 403,
+        },
         outsiderAccept: {
           body: { status: "rejected", reason: "invitation_not_found" },
           statusCode: 404,
@@ -8957,11 +8975,202 @@ test("programMembershipRoutes_shouldMapInvitationTransitionsValidationAndLastCur
   }
 });
 
+test("programMembershipExceptionalRoutes_shouldRequireAdminAndProtectLastCurator", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(160) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "exceptional-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "exceptional-student@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const curatorRecovery = await postJson(
+      `${baseUrl}/admin/program-memberships/recovery`,
+      {
+        participationKind: "student",
+        programId,
+        recoveryReason: "curator should not recover access",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const recovered = await postJson(
+      `${baseUrl}/admin/program-memberships/recovery`,
+      {
+        participationKind: "student",
+        programId,
+        recoveryReason: "repair access",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const lastCuratorRevocation = await postJson(
+      `${baseUrl}/admin/program-memberships/revocation`,
+      {
+        participationKind: "program_curator",
+        programId,
+        revocationReason: "invalid operational state",
+        targetIdentityId: curator.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const events = await getJson(`${baseUrl}/programs/${programId}/membership-events`, {
+      cookie: admin.cookie,
+    });
+    const recoveryEvent = events.body.value.events.find(
+      $0 => $0.eventType === "membership_exceptionally_recovered" && $0.outcome === "accepted",
+    );
+
+    assert.deepEqual(
+      {
+        curatorRecovery,
+        lastCuratorRevocation,
+        recoveredStatus: recovered.body.value?.membership.status,
+        recoveryEvent: {
+          actorIdentityId: recoveryEvent.actorIdentityId,
+          policyPath: recoveryEvent.policyPath,
+          reason: recoveryEvent.reason,
+          resultingStatus: recoveryEvent.resultingStatus,
+          targetIdentityId: recoveryEvent.targetIdentityId,
+        },
+      },
+      {
+        curatorRecovery: {
+          body: { status: "rejected", reason: "admin_required" },
+          statusCode: 403,
+        },
+        lastCuratorRevocation: {
+          body: { status: "rejected", reason: "last_curator_required" },
+          statusCode: 409,
+        },
+        recoveredStatus: "active",
+        recoveryEvent: {
+          actorIdentityId: admin.body.value.identity.id,
+          policyPath: "admin_exceptional_recovery",
+          reason: "repair access",
+          resultingStatus: "active",
+          targetIdentityId: student.identityId,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programMembershipReadRoutes_shouldAllowAdminAndRedactProtectedData", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(140) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "redaction-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "redaction-student@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    await fetchJson(`${baseUrl}/programs/${programId}/admission-policy`, {
+      body: JSON.stringify({ admissionPolicy: "invitation_only" }),
+      headers: {
+        cookie: curator.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": curator.csrfToken,
+      },
+      method: "PATCH",
+    });
+    await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const adminParticipants = await getJson(`${baseUrl}/programs/${programId}/participants`, {
+      cookie: admin.cookie,
+    });
+    const curatorInvitations = await getJson(`${baseUrl}/programs/${programId}/invitations`, {
+      cookie: curator.cookie,
+    });
+    const studentParticipants = await getJson(`${baseUrl}/programs/${programId}/participants`, {
+      cookie: student.cookie,
+    });
+    const invitationOnlySelfJoin = await postJson(
+      `${baseUrl}/programs/${programId}/student-membership`,
+      {},
+      { cookie: student.cookie, csrfToken: student.csrfToken },
+    );
+    const responseText = JSON.stringify([adminParticipants.body, curatorInvitations.body]);
+
+    assert.deepEqual(
+      {
+        adminParticipantKeys: Object.keys(adminParticipants.body.value.participants[0]).sort(),
+        curatorInvitationKeys: Object.keys(curatorInvitations.body.value.invitations[0]).sort(),
+        invitationOnlySelfJoin,
+        redaction: {
+          hasBootstrapSecret: responseText.includes("operator-secret"),
+          hasCookie: responseText.includes(admin.cookie),
+          hasCsrf: responseText.includes(admin.csrfToken),
+          hasPassword: responseText.includes("NON_SECRET_TEST_VALUE"),
+          hasSql: responseText.toLowerCase().includes("select "),
+          hasStack: responseText.includes("Error:"),
+        },
+        studentParticipants,
+      },
+      {
+        adminParticipantKeys: [
+          "identityId",
+          "participationKind",
+          "programId",
+          "status",
+          "updatedAt",
+        ],
+        curatorInvitationKeys: [
+          "createdAt",
+          "invitationId",
+          "invitedByIdentityId",
+          "participationKind",
+          "programId",
+          "status",
+          "targetIdentityId",
+          "updatedAt",
+        ],
+        invitationOnlySelfJoin: {
+          body: { status: "rejected", reason: "policy_not_satisfied" },
+          statusCode: 409,
+        },
+        redaction: {
+          hasBootstrapSecret: false,
+          hasCookie: false,
+          hasCsrf: false,
+          hasPassword: false,
+          hasSql: false,
+          hasStack: false,
+        },
+        studentParticipants: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("programMembershipMutationRoutes_shouldResolveSessionBeforeCsrf", async () => {
   const { baseUrl, close } = await listenWithIdentityAndProgram();
 
   try {
     const routes = [
+      ["POST", "/programs"],
       ["PATCH", "/programs/program-1/admission-policy"],
       ["POST", "/programs/program-1/invitations"],
       ["POST", "/program-invitations/invitation-1/acceptance"],
@@ -8969,6 +9178,8 @@ test("programMembershipMutationRoutes_shouldResolveSessionBeforeCsrf", async () 
       ["POST", "/program-invitations/invitation-1/revocation"],
       ["DELETE", "/programs/program-1/participants/student/identity-1"],
       ["DELETE", "/programs/program-1/curator-membership"],
+      ["POST", "/programs/program-1/student-membership"],
+      ["DELETE", "/programs/program-1/student-membership"],
       ["POST", "/admin/program-memberships/recovery"],
       ["POST", "/admin/program-memberships/revocation"],
     ];
