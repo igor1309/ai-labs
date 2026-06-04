@@ -59,7 +59,9 @@ baseline.
   spec/schema (2), and spec↔tests (2). Threads surfaced the cross-pass tensions
   (map-drift cluster; the confusable-concept loss + its downstream schema
   question; the deferred first-slice backlog; the intent-underspecification set).
-  *Validated qualitatively — the variance run was deferred (session limit).*
+  *Validated across 3 runs — the 20-item / 5-finding enumeration and the 15
+  open-question split reproduced exactly; the resolving-layer bucketing and
+  thread count (4/4/5) are the expected unpinned judgement wobble.*
 
 ## Methodological lessons (these are what the skill encodes)
 

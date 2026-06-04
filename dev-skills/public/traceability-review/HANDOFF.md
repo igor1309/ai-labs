@@ -29,9 +29,9 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
   authoritative per-pass outputs into one resolution-session register (enumerate
   every finding + open question, resolving-layer rollup, threads). On Agonara: 20
   items (5 findings — 4 map-adr-drift + 1 carried-with-loss, 0 fail; 15 open
-  questions). **Validated qualitatively (1 run); variance run DEFERRED (hit the
-  session subagent limit) — a future session should run the 2nd ledger pass and
-  confirm the enumeration reproduces.**
+  questions). **Validated across 3 runs** — the 20-item / 5-finding enumeration
+  and the 15 open-question split reproduced exactly; the resolving-layer bucketing
+  and thread count (4/4/5) are the expected unpinned wobble.
 - v0.5/0.6 were the **consolidation refactor** (intent-driven lean, project
   specifics lifted to the case study, evals reframed as a regression harness).
 - One reference output per pass lives in `agonara/docs/traceability-reviews/`;
@@ -78,10 +78,6 @@ left), and `references/agonara-case-study.md` (worked example + lessons).
 
 ## What's next (see TODO.md)
 
-- **Umbrella ledger variance check (immediate)** — the ledger shipped on one
-  qualitative run; its 2nd run was deferred (session subagent limit). Re-run the
-  ledger over the seven authoritative outputs and confirm the enumeration (20
-  items, 5 findings) reproduces; the threads are the expected unpinned wobble.
 - **Spec-level upward orphan check** (extension) — pass 7 covers ADR→intent; the
   spec→ADR/intent counterpart (does every spec clause trace back) is the natural
   follow-on if spec-level scope creep needs guarding.
