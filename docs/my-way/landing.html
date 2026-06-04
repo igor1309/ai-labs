@@ -270,6 +270,40 @@
   }
   .cap-label span { color: var(--warn); }
 
+  /* Traceability annotation band under the loop */
+  .trace-band {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-top: 44px;
+    padding: 14px 18px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .trace-band .trace-side {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .trace-band .trace-side .dir {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 10px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .trace-band .trace-side .rule { color: var(--text-dim); }
+  .trace-band .forward .dir  { color: var(--accent); }
+  .trace-band .backward { text-align: right; }
+  .trace-band .backward .dir { color: var(--accent-2); }
+  @media (max-width: 720px) {
+    .trace-band { flex-direction: column; gap: 12px; }
+    .trace-band .backward { text-align: left; }
+  }
+
   /* Grid */
   .grid {
     display: grid;
@@ -531,6 +565,17 @@
           <div class="cap-arrow left" aria-hidden="true">↑</div>
           <div class="cap-label">↑ <span>feedback may reshape any earlier layer — including Product Intent</span></div>
         </div>
+
+        <div class="trace-band" aria-label="Traceability invariant across the loop">
+          <div class="trace-side forward">
+            <span class="dir">▶ forward · downward</span>
+            <span class="rule">every node carries its parent forward — no loss, no contradiction — and every intent capability is owned somewhere</span>
+          </div>
+          <div class="trace-side backward">
+            <span class="dir">backward · upward ◀</span>
+            <span class="rule">every node traces back to a source intent — no orphans, no scope creep — and siblings sharing a parent do not diverge</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -714,6 +759,45 @@
         <p>Review checks that user stories remain first-class and that the artifact does not drift into vision, backlog, PRD, architecture, spec, or execution planning.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Traceability</h2>
+    <p class="lead">
+      The loop&rsquo;s promise &mdash; intent, execution, and knowledge stay aligned &mdash; is only as strong as
+      the check that verifies it. A traceability review is a consistency pass along the chain
+      (<code>intent → ADR → spec → tests</code>). Its ground truth is always the <strong>upstream node</strong>,
+      not the code &mdash; which is what separates it from drift between docs and implementation.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="label">The invariant</div>
+        <h3>No loss, no contradiction</h3>
+        <p>Each node must faithfully carry its upstream node forward &mdash; nothing dropped, nothing reversed &mdash; and artifacts that share a parent must not diverge from each other. That invariant is the alignment the loop keeps promising, stated as something checkable.</p>
+      </div>
+      <div class="card">
+        <div class="label">Forward · downward</div>
+        <h3>Allocation completeness</h3>
+        <p>Read top-down: every capability the product intent accepts must be owned by at least one module downstream, or explicitly deferred. A capability owned by no one is <em>unallocated</em> &mdash; a silent gap between what was promised and what anything is built to deliver.</p>
+      </div>
+      <div class="card">
+        <div class="label">Backward · upward</div>
+        <h3>The orphan check</h3>
+        <p>Read bottom-up: every decision must trace back to a source intent. A decision that introduces user-observable scope no intent requested &mdash; and isn&rsquo;t a derivation of one that does &mdash; is an <em>orphan</em>: scope creep, caught at the artifact instead of in shipped code.</p>
+      </div>
+      <div class="card">
+        <div class="label">The method</div>
+        <h3>Complete enumeration</h3>
+        <p>Not an impression. Every story, every owned responsibility, every capability gets one row and one verdict backed by <code>file:line</code> evidence. Completeness is load-bearing: incompleteness is exactly what makes two reviews disagree, because each then scrutinises a different subset.</p>
+      </div>
+    </div>
+    <p class="lead" style="margin-top: 28px; margin-bottom: 0;">
+      The reviewer detects and suggests the minimum fix &mdash; it never edits, merges, or closes; resolution
+      happens by revising the source artifacts. An umbrella ledger can roll every pass&rsquo;s findings into one
+      register, grouped by the layer that settles each one.
+    </p>
   </div>
 </section>
 
