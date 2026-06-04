@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Implement Phase 2 of the Program Membership invitations and recovery plan with controlled Student invitation lifecycle, participant management, curator leave, admission-policy enforcement, and reasoned exceptional Admin recovery/revocation.
 - Harden Phase 1 membership invitation storage after adversarial review by mapping pending-scope status conflicts and rejecting malformed membership event metadata during restore validation.
 - Implement Phase 1 of the Program Membership invitations and recovery plan with invitation-only admission policy storage, Program invitation records, membership event metadata, backup preservation, and malformed restore rejection.
 - Harden the Program Membership invitations and recovery plan after adversarial review by expanding curator-leave targeted test matching and requiring Admin-board preservation coverage.

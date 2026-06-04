@@ -3,6 +3,7 @@ import test from "node:test";
 import { createProgramCommands } from "../src/program.js";
 import {
   createIdentity,
+  createProgramMembershipRecord,
   disableIdentity,
   grantAdminAuthority,
   initializeIdentityStorage,
@@ -532,6 +533,7 @@ test("joinSelfJoinProgram_shouldEmitJoinedEvent_onFirstJoin", () => {
           targetIdentityId: "identity-student",
           programId: "program-1",
           participationKind: "student",
+          policyPath: "self_join",
           resultingStatus: "active",
           reason: null,
         },
@@ -613,6 +615,7 @@ test("joinSelfJoinProgram_shouldReactivateLeftMembershipAndEmitRejoinedEvent", (
           targetIdentityId: "identity-student",
           programId: "program-1",
           participationKind: "student",
+          policyPath: "self_join",
           resultingStatus: "active",
           reason: null,
         },
@@ -696,6 +699,7 @@ test("joinSelfJoinProgram_shouldRejectRemovedMembershipAndEmitRejectedEvent", ()
           targetIdentityId: "identity-student",
           programId: "program-1",
           participationKind: "student",
+          policyPath: "self_join",
           resultingStatus: null,
           reason: "membership_removed",
         },
@@ -757,6 +761,7 @@ test("joinSelfJoinProgram_shouldRejectDisabledIdentity_withIdentityDisabled", ()
           targetIdentityId: "identity-student",
           programId: "program-1",
           participationKind: "student",
+          policyPath: "self_join",
           resultingStatus: null,
           reason: "identity_disabled",
         },
@@ -1024,6 +1029,392 @@ test("leaveStudentProgram_shouldPreserveProgramShellCuratorAndHistory", () => {
         eventCount: listProgramMembershipEventRecords(database).length,
       },
       { shells: 1, curator: { allowed: true }, eventCount: 3 },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+// Controlled membership and recovery
+
+test("setProgramAdmissionPolicy_shouldChangeStudentPolicyAndBlockSelfJoin_onEffectiveCurator", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+
+    const policy = commands.setProgramAdmissionPolicy({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      admissionPolicy: "invitation_only",
+    });
+    const join = commands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: "program-1",
+    });
+
+    assert.deepEqual(
+      {
+        policy: policy.value.programShell.admissionPolicy,
+        join,
+        latestEvent: projectMembershipEvent(listProgramMembershipEventRecords(database).at(-1)),
+      },
+      {
+        policy: "invitation_only",
+        join: { status: "rejected", reason: "policy_not_satisfied" },
+        latestEvent: {
+          eventType: "student_membership_joined",
+          outcome: "rejected",
+          actorIdentityId: "identity-student",
+          targetIdentityId: "identity-student",
+          programId: "program-1",
+          participationKind: "student",
+          policyPath: "self_join",
+          resultingStatus: null,
+          reason: "policy_not_satisfied",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramInvitation_shouldCreatePendingStudentInvitation_onEffectiveCurator", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+
+    const result = commands.createProgramInvitation({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        effective: commands.getEffectiveParticipation({
+          identityId: "identity-student",
+          programId: "program-1",
+          participationKind: "student",
+        }),
+      },
+      {
+        result: {
+          status: "accepted",
+          value: {
+            programInvitation: {
+              invitationId: "program-2",
+              programId: "program-1",
+              targetIdentityId: "identity-student",
+              participationKind: "student",
+              status: "pending",
+              invitedByIdentityId: "identity-curator",
+              createdAt: "2026-05-27T10:00:00.001Z",
+              updatedAt: "2026-05-27T10:00:00.001Z",
+            },
+          },
+        },
+        effective: { allowed: false, reason: "membership_missing" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptProgramInvitation_shouldCreateStudentMembershipAndHideInvitationFromNonTarget", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    const invitation = commands.createProgramInvitation({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    }).value.programInvitation;
+
+    const hidden = commands.acceptProgramInvitation({
+      actingIdentityId: "identity-curator-2",
+      invitationId: invitation.invitationId,
+    });
+    const acceptedInvitation = commands.acceptProgramInvitation({
+      actingIdentityId: "identity-student",
+      invitationId: invitation.invitationId,
+    });
+
+    assert.deepEqual(
+      {
+        hidden,
+        invitationStatus: acceptedInvitation.value.programInvitation.status,
+        membership: acceptedInvitation.value.programMembership,
+        effective: commands.getEffectiveParticipation({
+          identityId: "identity-student",
+          programId: "program-1",
+          participationKind: "student",
+        }),
+      },
+      {
+        hidden: { status: "rejected", reason: "invitation_not_found" },
+        invitationStatus: "accepted",
+        membership: {
+          programId: "program-1",
+          identityId: "identity-student",
+          participationKind: "student",
+          status: "active",
+          updatedAt: "2026-05-27T10:00:00.003Z",
+        },
+        effective: { allowed: true },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("declineAndRevokeProgramInvitation_shouldPreservePrivateScopedLists", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    const declined = commands.createProgramInvitation({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    }).value.programInvitation;
+    commands.declineProgramInvitation({
+      actingIdentityId: "identity-student",
+      invitationId: declined.invitationId,
+    });
+    const revoked = commands.createProgramInvitation({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    }).value.programInvitation;
+    commands.revokeProgramInvitation({
+      actingIdentityId: "identity-curator",
+      invitationId: revoked.invitationId,
+    });
+
+    assert.deepEqual(
+      {
+        curator: commands
+          .listProgramInvitations({
+            actingIdentityId: "identity-curator",
+            programId: "program-1",
+          })
+          .value.programInvitations.map($0 => $0.status),
+        student: commands
+          .listMyProgramInvitations({ actingIdentityId: "identity-student" })
+          .value.programInvitations.map($0 => $0.status),
+        outsider: commands.listMyProgramInvitations({ actingIdentityId: "identity-curator-2" }).value
+          .programInvitations,
+      },
+      {
+        curator: ["declined", "revoked"],
+        student: ["declined", "revoked"],
+        outsider: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("removeProgramParticipant_shouldRemoveStudentAndBlockOrdinaryReactivation_onEffectiveCurator", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    commands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: "program-1",
+    });
+
+    const removed = commands.removeProgramParticipant({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+    });
+    const rejoin = commands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: "program-1",
+    });
+
+    assert.deepEqual(
+      {
+        removed: removed.value.programMembership.status,
+        rejoin,
+        participants: commands
+          .listProgramParticipants({
+            actingIdentityId: "identity-curator",
+            programId: "program-1",
+          })
+          .value.programParticipants.map($0 => ({
+            identityId: $0.identityId,
+            participationKind: $0.participationKind,
+            status: $0.status,
+          })),
+      },
+      {
+        removed: "removed",
+        rejoin: { status: "rejected", reason: "membership_removed" },
+        participants: [
+          {
+            identityId: "identity-curator",
+            participationKind: "program_curator",
+            status: "active",
+          },
+          {
+            identityId: "identity-student",
+            participationKind: "student",
+            status: "removed",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("leaveCuratorProgram_shouldRejectLastCuratorAndAcceptWhenAnotherActiveCuratorExists", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+
+    const lastCurator = commands.leaveCuratorProgram({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+    });
+    createProgramMembershipRecord(database, {
+      id: "curator-membership-2",
+      programId: "program-1",
+      identityId: "identity-curator-2",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-05-27T10:00:01.000Z",
+      updatedAt: "2026-05-27T10:00:01.000Z",
+    });
+    const acceptedLeave = commands.leaveCuratorProgram({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+    });
+
+    assert.deepEqual(
+      {
+        lastCurator,
+        acceptedStatus: acceptedLeave.value.programMembership.status,
+      },
+      {
+        lastCurator: { status: "rejected", reason: "last_curator_required" },
+        acceptedStatus: "left",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("recoverAndRevokeProgramMembership_shouldRequireAdminAndRecordExceptionalTransitions", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    commands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Linear Algebra",
+    });
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-27T10:00:00.000Z",
+    });
+
+    const curatorRecovery = commands.recoverProgramMembership({
+      actingIdentityId: "identity-curator",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+      recoveryReason: "repair",
+    });
+    const recovered = commands.recoverProgramMembership({
+      actingIdentityId: "identity-admin",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+      recoveryReason: "repair",
+    });
+    const revoked = commands.revokeProgramMembership({
+      actingIdentityId: "identity-admin",
+      programId: "program-1",
+      targetIdentityId: "identity-student",
+      participationKind: "student",
+      revocationReason: "invalid operational state",
+    });
+
+    assert.deepEqual(
+      {
+        curatorRecovery,
+        recovered: recovered.value.programMembership.status,
+        revoked: revoked.value.programMembership.status,
+        events: listProgramMembershipEventRecords(database)
+          .slice(-2)
+          .map(projectMembershipEvent),
+      },
+      {
+        curatorRecovery: { status: "rejected", reason: "admin_required" },
+        recovered: "active",
+        revoked: "removed",
+        events: [
+          {
+            eventType: "membership_exceptionally_recovered",
+            outcome: "accepted",
+            actorIdentityId: "identity-admin",
+            targetIdentityId: "identity-student",
+            programId: "program-1",
+            participationKind: "student",
+            policyPath: "admin_exceptional_recovery",
+            resultingStatus: "active",
+            reason: "repair",
+          },
+          {
+            eventType: "membership_exceptionally_revoked",
+            outcome: "accepted",
+            actorIdentityId: "identity-admin",
+            targetIdentityId: "identity-student",
+            programId: "program-1",
+            participationKind: "student",
+            policyPath: "admin_exceptional_revocation",
+            resultingStatus: "removed",
+            reason: "invalid operational state",
+          },
+        ],
+      },
     );
   } finally {
     database.close();
@@ -1356,7 +1747,9 @@ test("listProgramMembershipEvents_shouldNotExposeSecretsOrSessionsOrSql", () => 
       "targetIdentityId",
       "programId",
       "participationKind",
+      "policyPath",
       "resultingStatus",
+      "invitationStatus",
       "occurredAt",
       "outcome",
       "reason",
@@ -1404,15 +1797,27 @@ test("firstSliceSurface_shouldNotExposeOutOfScopeMutations", () => {
   try {
     const exposed = Object.keys(commands).sort();
     assert.deepEqual(exposed, [
+      "acceptProgramInvitation",
+      "createProgramInvitation",
       "createProgramShell",
+      "declineProgramInvitation",
       "getEffectiveParticipation",
       "getProgramShell",
       "joinSelfJoinProgram",
+      "leaveCuratorProgram",
       "leaveStudentProgram",
+      "listMyProgramInvitations",
       "listMyProgramMemberships",
       "listProgramEvents",
+      "listProgramInvitations",
       "listProgramMembershipEvents",
+      "listProgramParticipants",
       "listProgramShells",
+      "recoverProgramMembership",
+      "removeProgramParticipant",
+      "revokeProgramInvitation",
+      "revokeProgramMembership",
+      "setProgramAdmissionPolicy",
     ]);
   } finally {
     database.close();
@@ -1494,7 +1899,7 @@ function projectProgramEvent(event) {
 }
 
 function projectMembershipEvent(event) {
-  return {
+  const projection = {
     eventType: event.eventType,
     outcome: event.outcome,
     actorIdentityId: event.actorIdentityId,
@@ -1504,4 +1909,11 @@ function projectMembershipEvent(event) {
     resultingStatus: event.resultingStatus ?? null,
     reason: event.reason ?? null,
   };
+  if (event.policyPath !== null && event.policyPath !== undefined) {
+    projection.policyPath = event.policyPath;
+  }
+  if (event.invitationStatus !== null && event.invitationStatus !== undefined) {
+    projection.invitationStatus = event.invitationStatus;
+  }
+  return projection;
 }
