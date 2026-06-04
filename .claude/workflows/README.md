@@ -8,8 +8,8 @@ description: "Project workflows index"
 
 ## `/traceability-review`
 
-Runs the traceability-review skill over one module. Args: `{projectRoot, module}` (one module per run; `skillDir?` for non-sibling installs).
+Runs the traceability-review skill over one module (paths resolved via git).
 
 ```
-Run /traceability-review on {projectRoot: "<repo>/agonara", module: "Program Membership"}
+/traceability-review agonara on "Program Membership"
 ```
