@@ -235,6 +235,217 @@ test("createProgramSourceRecord_shouldPersistAndListByProgram_onExistingPrograms
   }
 });
 
+test("updateProgramAdmissionPolicyRecord_shouldPersistInvitationOnlyPolicy_onExistingProgram", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const updated = storage.updateProgramAdmissionPolicyRecord(database, {
+      programId: "program-a",
+      admissionPolicy: "invitation_only",
+    });
+
+    assert.deepEqual(
+      {
+        updated,
+        fetched: storage.getProgramShellRecord(database, "program-a"),
+      },
+      {
+        updated: {
+          id: "program-a",
+          title: "Program program-a",
+          description: null,
+          admissionPolicy: "invitation_only",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-05-28T09:00:00.000Z",
+        },
+        fetched: {
+          id: "program-a",
+          title: "Program program-a",
+          description: null,
+          admissionPolicy: "invitation_only",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-05-28T09:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramInvitationRecord_shouldPersistAndListStudentInvitations_onExistingProgramAndIdentities", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+
+    assert.deepEqual(
+      {
+        created,
+        byProgram: storage.listProgramInvitationRecords(database, { programId: "program-a" }),
+        byTarget: storage.listProgramInvitationRecords(database, { targetIdentityId: "identity-b" }),
+      },
+      {
+        created: {
+          id: "invitation-a",
+          programId: "program-a",
+          targetIdentityId: "identity-b",
+          participationKind: "student",
+          status: "pending",
+          invitedByIdentityId: "identity-a",
+          createdAt: "2026-06-04T09:00:00.000Z",
+          updatedAt: "2026-06-04T09:00:00.000Z",
+          statusChangedByIdentityId: null,
+          statusChangedAt: null,
+        },
+        byProgram: [
+          {
+            id: "invitation-a",
+            programId: "program-a",
+            targetIdentityId: "identity-b",
+            participationKind: "student",
+            status: "pending",
+            invitedByIdentityId: "identity-a",
+            createdAt: "2026-06-04T09:00:00.000Z",
+            updatedAt: "2026-06-04T09:00:00.000Z",
+            statusChangedByIdentityId: null,
+            statusChangedAt: null,
+          },
+        ],
+        byTarget: [
+          {
+            id: "invitation-a",
+            programId: "program-a",
+            targetIdentityId: "identity-b",
+            participationKind: "student",
+            status: "pending",
+            invitedByIdentityId: "identity-a",
+            createdAt: "2026-06-04T09:00:00.000Z",
+            updatedAt: "2026-06-04T09:00:00.000Z",
+            statusChangedByIdentityId: null,
+            statusChangedAt: null,
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramInvitationRecord_shouldRejectDuplicatePendingScope_onExistingPendingInvitation", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+
+    assert.throws(
+      () =>
+        storage.createProgramInvitationRecord(
+          database,
+          makeProgramInvitation({ id: "invitation-b", programId: "program-a", targetIdentityId: "identity-b" }),
+        ),
+      error => error instanceof StorageInvariantError && error.reason === "invitation_conflict",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateProgramInvitationStatusRecord_shouldPersistStatusAttribution_onExistingInvitation", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+
+    const updated = storage.updateProgramInvitationStatusRecord(database, {
+      id: "invitation-a",
+      status: "accepted",
+      statusChangedByIdentityId: "identity-b",
+      statusChangedAt: "2026-06-04T10:00:00.000Z",
+      updatedAt: "2026-06-04T10:00:00.000Z",
+    });
+
+    assert.deepEqual(updated, {
+      id: "invitation-a",
+      programId: "program-a",
+      targetIdentityId: "identity-b",
+      participationKind: "student",
+      status: "accepted",
+      invitedByIdentityId: "identity-a",
+      createdAt: "2026-06-04T09:00:00.000Z",
+      updatedAt: "2026-06-04T10:00:00.000Z",
+      statusChangedByIdentityId: "identity-b",
+      statusChangedAt: "2026-06-04T10:00:00.000Z",
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramMembershipEventRecord_shouldPersistPolicyPathAndInvitationStatus_onMembershipEvent", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createProgramMembershipEventRecord(database, {
+      id: "membership-event-a",
+      eventType: "student_invitation_accepted",
+      actorIdentityId: "identity-b",
+      targetIdentityId: "identity-b",
+      programId: "program-a",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      resultingStatus: "active",
+      invitationStatus: "accepted",
+      occurredAt: "2026-06-04T10:00:00.000Z",
+      outcome: "accepted",
+    });
+
+    assert.deepEqual(created, {
+      id: "membership-event-a",
+      eventType: "student_invitation_accepted",
+      actorIdentityId: "identity-b",
+      targetIdentityId: "identity-b",
+      programId: "program-a",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      resultingStatus: "active",
+      invitationStatus: "accepted",
+      occurredAt: "2026-06-04T10:00:00.000Z",
+      outcome: "accepted",
+      reason: null,
+    });
+  } finally {
+    database.close();
+  }
+});
+
 test("createCorpusCandidateRecord_shouldPersistAndListByProgramAndStatus_onExistingProgramSources", () => {
   const database = makeInitializedDatabase();
 
@@ -5083,6 +5294,28 @@ function makeProgramShell({ id }) {
     admissionPolicy: "self_join",
     createdByIdentityId: "identity-a",
     createdAt: "2026-05-28T09:00:00.000Z",
+  };
+}
+
+function makeProgramInvitation({
+  id,
+  programId,
+  targetIdentityId,
+  status = "pending",
+  statusChangedByIdentityId = null,
+  statusChangedAt = null,
+}) {
+  return {
+    id,
+    programId,
+    targetIdentityId,
+    participationKind: "student",
+    status,
+    invitedByIdentityId: "identity-a",
+    createdAt: "2026-06-04T09:00:00.000Z",
+    updatedAt: statusChangedAt ?? "2026-06-04T09:00:00.000Z",
+    statusChangedByIdentityId,
+    statusChangedAt,
   };
 }
 

@@ -161,7 +161,7 @@ Targeted commands:
 
 ## Phase tracker
 
-- [ ] Phase 1 - Membership Storage and Restore Validation
+- [x] Phase 1 - Membership Storage and Restore Validation
 - [ ] Phase 2 - Program Membership Commands and Queries
 - [ ] Phase 3 - HTTP Membership API
 - [ ] Phase 4 - Product UI Membership Surfaces

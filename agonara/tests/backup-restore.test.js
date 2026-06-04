@@ -319,6 +319,67 @@ test("exportBackup_shouldIncludeProgramShellsMembershipsAndEvents_onBackup", asy
   }
 });
 
+test("exportBackup_shouldIncludeProgramInvitationsAndMembershipEventMetadata_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedMembershipInvitationRecords(database);
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        invitationIds: backup.programInvitations?.map($0 => $0.id),
+        invitationStatuses: backup.programInvitations?.map($0 => $0.status),
+        eventMetadata: backup.programMembershipEvents.map($0 => ({
+          id: $0.id,
+          policyPath: $0.policyPath,
+          invitationStatus: $0.invitationStatus,
+        })),
+      },
+      {
+        invitationIds: ["invitation-1"],
+        invitationStatuses: ["accepted"],
+        eventMetadata: [
+          {
+            id: "membership-event-1",
+            policyPath: null,
+            invitationStatus: null,
+          },
+          {
+            id: "membership-event-2",
+            policyPath: "curator_invitation",
+            invitationStatus: "accepted",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("exportBackup_shouldIncludeCorpusRecords_onBackup", async () => {
   const { commands, database } = makeSUT({
     ids: [
@@ -664,6 +725,142 @@ test("restoreBackup_shouldRestoreProgramShellsMembershipsAndEvents_onAcceptedBac
     source.database.close();
     target.database.close();
   }
+});
+
+test("restoreBackup_shouldRestoreProgramInvitationsAndMembershipEventMetadata_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedMembershipInvitationRecords(source.database);
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        invitationIds: restoredBackup.programInvitations?.map($0 => $0.id),
+        invitationStatuses: restoredBackup.programInvitations?.map($0 => $0.status),
+        eventMetadata: restoredBackup.programMembershipEvents.map($0 => ({
+          id: $0.id,
+          policyPath: $0.policyPath,
+          invitationStatus: $0.invitationStatus,
+        })),
+      },
+      {
+        restoreStatus: "accepted",
+        invitationIds: ["invitation-1"],
+        invitationStatuses: ["accepted"],
+        eventMetadata: [
+          {
+            id: "membership-event-1",
+            policyPath: null,
+            invitationStatus: null,
+          },
+          {
+            id: "membership-event-2",
+            policyPath: "curator_invitation",
+            invitationStatus: "accepted",
+          },
+        ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedProgramInvitations_onBackup", async () => {
+  const backup = await makeExportedProgramInvitationBackup();
+  const cases = [
+    {
+      mutate: candidate => {
+        candidate.programShells[0] = { ...candidate.programShells[0], admissionPolicy: "approval_required" };
+      },
+      reason: "validation_failed",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations.push({ ...candidate.programInvitations[0] });
+      },
+      reason: "invitation_conflict",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = {
+          ...candidate.programInvitations[0],
+          status: "pending",
+          statusChangedByIdentityId: null,
+          statusChangedAt: null,
+        };
+        candidate.programInvitations.push({
+          ...candidate.programInvitations[0],
+          id: "invitation-2",
+          status: "pending",
+          statusChangedByIdentityId: null,
+          statusChangedAt: null,
+        });
+      },
+      reason: "invitation_conflict",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = { ...candidate.programInvitations[0], programId: "missing-program" };
+      },
+      reason: "program_not_found",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = { ...candidate.programInvitations[0], targetIdentityId: "missing-identity" };
+      },
+      reason: "identity_not_found",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = { ...candidate.programInvitations[0], participationKind: "program_curator" };
+      },
+      reason: "unsupported_participation_kind",
+    },
+    {
+      mutate: candidate => {
+        candidate.programMemberships.push({ ...candidate.programMemberships[0], id: "membership-duplicate" });
+      },
+      reason: "membership_conflict",
+    },
+  ];
+
+  const reasons = cases.map(testCase => {
+    const candidate = structuredClone(backup);
+    testCase.mutate(candidate);
+    const target = makeSUT();
+
+    try {
+      return target.commands.restoreBackup(candidate).reason;
+    } finally {
+      target.database.close();
+    }
+  });
+
+  assert.deepEqual(
+    reasons,
+    cases.map($0 => $0.reason),
+  );
 });
 
 test("restoreBackup_shouldRestoreCorpusRecords_onAcceptedBackup", async () => {
@@ -2505,6 +2702,40 @@ function seedProgramRecords(database, {
     );
 }
 
+function seedMembershipInvitationRecords(database) {
+  storage.createIdentity(database, {
+    id: "identity-student",
+    displayName: "Student",
+    state: "active",
+    createdAt: "2026-06-04T08:00:00.000Z",
+  });
+  storage.createProgramInvitationRecord(database, {
+    id: "invitation-1",
+    programId: "program-1",
+    targetIdentityId: "identity-student",
+    participationKind: "student",
+    status: "accepted",
+    invitedByIdentityId: "identity-1",
+    createdAt: "2026-06-04T09:00:00.000Z",
+    updatedAt: "2026-06-04T10:00:00.000Z",
+    statusChangedByIdentityId: "identity-student",
+    statusChangedAt: "2026-06-04T10:00:00.000Z",
+  });
+  storage.createProgramMembershipEventRecord(database, {
+    id: "membership-event-2",
+    eventType: "student_invitation_accepted",
+    actorIdentityId: "identity-student",
+    targetIdentityId: "identity-student",
+    programId: "program-1",
+    participationKind: "student",
+    policyPath: "curator_invitation",
+    resultingStatus: "active",
+    invitationStatus: "accepted",
+    occurredAt: "2026-06-04T10:00:00.000Z",
+    outcome: "accepted",
+  });
+}
+
 function seedCorpusRecords(database, { identityId, programId }) {
   database
     .prepare(
@@ -3760,6 +3991,31 @@ async function makeExportedLearnerEvidenceTargetLinkBackup() {
       identityId: "identity-1",
       programId: "program-1",
     });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedProgramInvitationBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedMembershipInvitationRecords(source.database);
 
     return source.commands.exportBackup().value.backup;
   } finally {

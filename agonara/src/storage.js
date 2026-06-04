@@ -105,7 +105,7 @@ export function initializeIdentityStorage(database) {
       id text primary key,
       title text not null,
       description text,
-      admission_policy text not null check (admission_policy in ('self_join')),
+      admission_policy text not null check (admission_policy in ('self_join', 'invitation_only')),
       created_by_identity_id text not null references identities(id),
       created_at text not null
     );
@@ -120,6 +120,23 @@ export function initializeIdentityStorage(database) {
       updated_at text not null,
       unique (program_id, identity_id, participation_kind)
     );
+
+    create table if not exists program_invitations (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      target_identity_id text not null references identities(id),
+      participation_kind text not null check (participation_kind in ('student')),
+      status text not null check (status in ('pending', 'accepted', 'declined', 'revoked')),
+      invited_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null,
+      status_changed_by_identity_id text references identities(id),
+      status_changed_at text
+    );
+
+    create unique index if not exists program_invitations_pending_scope
+      on program_invitations (program_id, target_identity_id, participation_kind)
+      where status = 'pending';
 
     create table if not exists program_events (
       id text primary key,
@@ -138,7 +155,18 @@ export function initializeIdentityStorage(database) {
       target_identity_id text not null references identities(id),
       program_id text not null references program_shells(id),
       participation_kind text not null check (participation_kind in ('student', 'program_curator')),
+      policy_path text check (
+        policy_path in (
+          'self_join',
+          'curator_invitation',
+          'curator_removal',
+          'curator_leave',
+          'admin_exceptional_recovery',
+          'admin_exceptional_revocation'
+        )
+      ),
       resulting_status text check (resulting_status in ('active', 'left', 'removed')),
+      invitation_status text check (invitation_status in ('pending', 'accepted', 'declined', 'revoked')),
       occurred_at text not null,
       outcome text not null check (outcome in ('accepted', 'rejected')),
       reason text
@@ -824,6 +852,141 @@ export function listProgramShellRecords(database) {
        order by created_at, id`,
     )
     .all();
+}
+
+export function updateProgramAdmissionPolicyRecord(database, { programId, admissionPolicy }) {
+  assertProgramShellExists(database, programId);
+  database
+    .prepare(
+      `update program_shells
+       set admission_policy = ?
+       where id = ?`,
+    )
+    .run(admissionPolicy, programId);
+
+  return getProgramShellRecord(database, programId);
+}
+
+export function createProgramInvitationRecord(
+  database,
+  {
+    id,
+    programId,
+    targetIdentityId,
+    participationKind,
+    status,
+    invitedByIdentityId,
+    createdAt,
+    updatedAt,
+    statusChangedByIdentityId = null,
+    statusChangedAt = null,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, targetIdentityId);
+  assertIdentityExists(database, invitedByIdentityId);
+  if (statusChangedByIdentityId !== null) {
+    assertIdentityExists(database, statusChangedByIdentityId);
+  }
+
+  try {
+    database
+      .prepare(
+        `insert into program_invitations (
+           id,
+           program_id,
+           target_identity_id,
+           participation_kind,
+           status,
+           invited_by_identity_id,
+           created_at,
+           updated_at,
+           status_changed_by_identity_id,
+           status_changed_at
+         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        programId,
+        targetIdentityId,
+        participationKind,
+        status,
+        invitedByIdentityId,
+        createdAt,
+        updatedAt,
+        statusChangedByIdentityId,
+        statusChangedAt,
+      );
+  } catch (error) {
+    throw mapProgramInvitationConstraintError(error);
+  }
+
+  return getProgramInvitationRecord(database, id);
+}
+
+export function updateProgramInvitationStatusRecord(
+  database,
+  { id, status, statusChangedByIdentityId, statusChangedAt, updatedAt },
+) {
+  assertIdentityExists(database, statusChangedByIdentityId);
+  database
+    .prepare(
+      `update program_invitations
+       set status = ?,
+           status_changed_by_identity_id = ?,
+           status_changed_at = ?,
+           updated_at = ?
+       where id = ?`,
+    )
+    .run(status, statusChangedByIdentityId, statusChangedAt, updatedAt, id);
+
+  return getProgramInvitationRecord(database, id);
+}
+
+export function getProgramInvitationRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_identity_id as targetIdentityId,
+              participation_kind as participationKind,
+              status,
+              invited_by_identity_id as invitedByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt,
+              status_changed_by_identity_id as statusChangedByIdentityId,
+              status_changed_at as statusChangedAt
+       from program_invitations
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ?? null;
+}
+
+export function listProgramInvitationRecords(
+  database,
+  { programId = null, targetIdentityId = null, status = null } = {},
+) {
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              target_identity_id as targetIdentityId,
+              participation_kind as participationKind,
+              status,
+              invited_by_identity_id as invitedByIdentityId,
+              created_at as createdAt,
+              updated_at as updatedAt,
+              status_changed_by_identity_id as statusChangedByIdentityId,
+              status_changed_at as statusChangedAt
+       from program_invitations
+       where (? is null or program_id = ?)
+         and (? is null or target_identity_id = ?)
+         and (? is null or status = ?)
+       order by created_at, id`,
+    )
+    .all(programId, programId, targetIdentityId, targetIdentityId, status, status);
 }
 
 export function createProgramSourceRecord(
@@ -3925,7 +4088,9 @@ export function createProgramMembershipEventRecord(
     targetIdentityId,
     programId,
     participationKind,
+    policyPath = null,
     resultingStatus = null,
+    invitationStatus = null,
     occurredAt,
     outcome,
     reason = null,
@@ -3935,8 +4100,8 @@ export function createProgramMembershipEventRecord(
     .prepare(
       `insert into program_membership_events (
          id, event_type, actor_identity_id, target_identity_id, program_id,
-         participation_kind, resulting_status, occurred_at, outcome, reason
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         participation_kind, policy_path, resulting_status, invitation_status, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -3945,7 +4110,9 @@ export function createProgramMembershipEventRecord(
       targetIdentityId,
       programId,
       participationKind,
+      policyPath,
       resultingStatus,
+      invitationStatus,
       occurredAt,
       outcome,
       reason,
@@ -3960,7 +4127,9 @@ export function getProgramMembershipEventRecord(database, id) {
       `select id, event_type as eventType, actor_identity_id as actorIdentityId,
               target_identity_id as targetIdentityId, program_id as programId,
               participation_kind as participationKind,
+              policy_path as policyPath,
               resulting_status as resultingStatus,
+              invitation_status as invitationStatus,
               occurred_at as occurredAt, outcome, reason
        from program_membership_events
        where id = ?`,
@@ -3977,7 +4146,9 @@ export function listProgramMembershipEventRecords(database, { programId = null }
         `select id, event_type as eventType, actor_identity_id as actorIdentityId,
                 target_identity_id as targetIdentityId, program_id as programId,
                 participation_kind as participationKind,
+                policy_path as policyPath,
                 resulting_status as resultingStatus,
+                invitation_status as invitationStatus,
                 occurred_at as occurredAt, outcome, reason
          from program_membership_events
          order by occurred_at, id`,
@@ -3990,7 +4161,9 @@ export function listProgramMembershipEventRecords(database, { programId = null }
       `select id, event_type as eventType, actor_identity_id as actorIdentityId,
               target_identity_id as targetIdentityId, program_id as programId,
               participation_kind as participationKind,
+              policy_path as policyPath,
               resulting_status as resultingStatus,
+              invitation_status as invitationStatus,
               occurred_at as occurredAt, outcome, reason
        from program_membership_events
        where program_id = ?
@@ -4793,6 +4966,7 @@ export function exportIdentityBackup(database) {
     auditEvents: listAuditEvents(database),
     programShells: listProgramShellRecords(database),
     programMemberships: listProgramMembershipRecords(database),
+    programInvitations: listProgramInvitationRecords(database),
     programEvents: listProgramEventRecords(database),
     programMembershipEvents: listProgramMembershipEventRecords(database),
     programSources: listProgramSourceRecords(database),
@@ -4843,6 +5017,7 @@ export function restoreIdentityBackup(database, backup) {
   assertValidAssessmentGraphInBackup(backup);
   assertValidQuickCheckGraphInBackup(backup);
   assertValidLearnerEvidenceTargetLinksInBackup(backup);
+  assertValidProgramMembershipGraphInBackup(backup);
   assertValidReadinessGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
@@ -4878,6 +5053,7 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from corpus_candidates").run();
     database.prepare("delete from program_sources").run();
     database.prepare("delete from program_membership_events").run();
+    database.prepare("delete from program_invitations").run();
     database.prepare("delete from program_memberships").run();
     database.prepare("delete from program_events").run();
     database.prepare("delete from program_shells").run();
@@ -4960,6 +5136,20 @@ export function restoreIdentityBackup(database, backup) {
          id, program_id, identity_id, participation_kind, status, created_at, updated_at
        ) values (?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertProgramInvitation = database.prepare(
+      `insert into program_invitations (
+         id,
+         program_id,
+         target_identity_id,
+         participation_kind,
+         status,
+         invited_by_identity_id,
+         created_at,
+         updated_at,
+         status_changed_by_identity_id,
+         status_changed_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
     const insertProgramEvent = database.prepare(
       `insert into program_events (
          id, event_type, actor_identity_id, program_id, occurred_at, outcome, reason
@@ -4968,8 +5158,8 @@ export function restoreIdentityBackup(database, backup) {
     const insertProgramMembershipEvent = database.prepare(
       `insert into program_membership_events (
          id, event_type, actor_identity_id, target_identity_id, program_id,
-         participation_kind, resulting_status, occurred_at, outcome, reason
-       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         participation_kind, policy_path, resulting_status, invitation_status, occurred_at, outcome, reason
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertProgramSource = database.prepare(
       `insert into program_sources (
@@ -5338,6 +5528,21 @@ export function restoreIdentityBackup(database, backup) {
       );
     }
 
+    for (const invitation of backup.programInvitations ?? []) {
+      insertProgramInvitation.run(
+        invitation.id,
+        invitation.programId,
+        invitation.targetIdentityId,
+        invitation.participationKind,
+        invitation.status,
+        invitation.invitedByIdentityId,
+        invitation.createdAt,
+        invitation.updatedAt,
+        invitation.statusChangedByIdentityId ?? null,
+        invitation.statusChangedAt ?? null,
+      );
+    }
+
     for (const event of backup.programEvents ?? []) {
       insertProgramEvent.run(
         event.id,
@@ -5358,7 +5563,9 @@ export function restoreIdentityBackup(database, backup) {
         event.targetIdentityId,
         event.programId,
         event.participationKind,
+        event.policyPath ?? null,
         event.resultingStatus ?? null,
+        event.invitationStatus ?? null,
         event.occurredAt,
         event.outcome,
         event.reason ?? null,
@@ -6331,6 +6538,18 @@ function mapCredentialConstraintError(error) {
   return error;
 }
 
+function mapProgramInvitationConstraintError(error) {
+  if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+    return new StorageInvariantError("invitation_conflict");
+  }
+
+  if (error.code === "SQLITE_CONSTRAINT_CHECK" && error.message.includes("participation_kind")) {
+    return new StorageInvariantError("unsupported_participation_kind");
+  }
+
+  return error;
+}
+
 function isValidBackupShape(backup) {
   return Boolean(
     backup &&
@@ -6361,6 +6580,61 @@ function hasActiveCuratorForEveryProgramInBackup(backup) {
       .map($0 => $0.programId),
   );
   return shells.every($0 => curatorPrograms.has($0.id));
+}
+
+function assertValidProgramMembershipGraphInBackup(backup) {
+  const identityIds = new Set((backup.identities ?? []).map($0 => $0.id));
+  const programIds = new Set((backup.programShells ?? []).map($0 => $0.id));
+  const invitationIds = new Set();
+  const pendingInvitationScopes = new Set();
+  const membershipScopes = new Set();
+
+  for (const shell of backup.programShells ?? []) {
+    if (!["self_join", "invitation_only"].includes(shell.admissionPolicy)) {
+      throw new StorageInvariantError("validation_failed");
+    }
+  }
+
+  for (const membership of backup.programMemberships ?? []) {
+    const scope = `${membership.programId}:${membership.identityId}:${membership.participationKind}`;
+    if (membershipScopes.has(scope)) {
+      throw new StorageInvariantError("membership_conflict");
+    }
+    membershipScopes.add(scope);
+  }
+
+  for (const invitation of backup.programInvitations ?? []) {
+    if (invitationIds.has(invitation.id)) {
+      throw new StorageInvariantError("invitation_conflict");
+    }
+    invitationIds.add(invitation.id);
+
+    if (!programIds.has(invitation.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+
+    if (
+      !identityIds.has(invitation.targetIdentityId) ||
+      !identityIds.has(invitation.invitedByIdentityId) ||
+      (invitation.statusChangedByIdentityId !== null &&
+        invitation.statusChangedByIdentityId !== undefined &&
+        !identityIds.has(invitation.statusChangedByIdentityId))
+    ) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    if (invitation.participationKind !== "student") {
+      throw new StorageInvariantError("unsupported_participation_kind");
+    }
+
+    if (invitation.status === "pending") {
+      const scope = `${invitation.programId}:${invitation.targetIdentityId}:${invitation.participationKind}`;
+      if (pendingInvitationScopes.has(scope)) {
+        throw new StorageInvariantError("invitation_conflict");
+      }
+      pendingInvitationScopes.add(scope);
+    }
+  }
 }
 
 function assertValidCorpusGraphInBackup(backup) {
