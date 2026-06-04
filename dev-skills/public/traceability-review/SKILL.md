@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.11.4"
+version: "0.12.0"
 author: Igor Malyarov
 ---
 
@@ -22,9 +22,7 @@ divergence between artifacts that share a parent**. The ground truth for every
 check is the **upstream node**, not the code — this is what distinguishes it
 from doc-drift (whose ground truth is the code).
 
-Validated pass by pass on Agonara — see `references/agonara-case-study.md` for
-the worked example. Treat any pass not marked *(implemented)* below as roadmap,
-not tested behavior.
+Treat any pass not marked *(implemented)* below as roadmap, not tested behavior.
 
 ## Precondition (topology)
 
@@ -49,7 +47,7 @@ project.
    *(implemented)*
 5. **ADR → spec** — per module; each ADR decision honoured by its spec. *(implemented)*
 6. **spec ↔ tests** — per module; test **names** only (no bodies, don't run
-   tests — on a trunk-only repo a merged test passes); every spec clause has a
+   tests — a merged test is already green); every spec clause has a
    named test, every test name traces to a clause. *(implemented)*
 7. **upward orphan check** — per module; the *upward* counterpart to allocation
    completeness. Every ADR decision must trace *back* to a source intent; one
@@ -127,8 +125,8 @@ A cross-cutting **aggregation** over the per-pass outputs — not a pass over so
 artifacts. It rolls every pass's `Findings` and `Open questions` into one register
 a human resolution session works from. Like every output it is a **generated,
 provenance-stamped snapshot** (regenerated when passes re-run); it is *not* a
-persistent tracker — disposition happens by editing source docs or filing Linear
-items, and resolved items drop out of the next regen.
+persistent tracker — disposition happens by editing source docs or filing
+issues, and resolved items drop out of the next regen.
 
 - **Input:** the current authoritative output per pass — exclude superseded or
   earlier runs (e.g. a whole-surface run replaced by per-module ones).
@@ -146,9 +144,8 @@ See `references/pass-notes.md` for the row columns and the link-don't-duplicate 
 
 The **portable core** is this `SKILL.md` plus `references/pass-notes.md` — the
 method, runnable on any project with the My-Way shape. The **project-bound** part
-is everything stamped to one project: the worked-example case study
-(`references/agonara-case-study.md`) and any reference outputs kept under
-`<project>/docs/traceability-reviews/`.
+is everything stamped to one project: the reference outputs and any worked
+example you keep under `<project>/docs/traceability-reviews/`.
 
 - **A new project:** keep the core, start a fresh harness. If the project has no
   module responsibility map, adapt discovery first — the map is the ownership
