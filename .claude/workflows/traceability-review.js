@@ -13,8 +13,9 @@ let A = (typeof args !== 'undefined' && args) || {}
 if (typeof A === 'string') {
   const s = A.trim()
   try { A = JSON.parse(s) } catch {
-    const m = s.match(/^(\S+)\s+on\s+['"]?(.+?)['"]?$/i)
-    A = m ? { project: m[1], module: m[2] } : { module: s }
+    // leading token is ALWAYS the project; module comes only via `on "<Module>"`
+    const m = s.match(/^(\S+)(?:\s+on\s+['"]?(.+?)['"]?\s*)?$/i)
+    A = m ? { project: m[1], module: m[2] } : {}
   }
 }
 const PROJECT = A.project || A.projectRoot || 'agonara'   // short name or absolute path; agents resolve it
