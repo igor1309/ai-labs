@@ -386,6 +386,104 @@ test("acceptance_shouldExerciseProgramMembershipApi_onHttpInstance", async () =>
   }
 });
 
+test("acceptance_shouldExerciseControlledProgramMembershipLifecycle_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const admin = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, admin, {
+        displayName: "Program Student",
+        login: "membership-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      const policy = await fetchJson(`${baseUrl}/programs/${programId}/admission-policy`, {
+        body: JSON.stringify({ admissionPolicy: "invitation_only" }),
+        headers: jsonHeaders({ cookie: admin.cookie, csrfToken: admin.body.value.csrfToken }),
+        method: "PATCH",
+      });
+      const invited = await postJson(
+        `${baseUrl}/programs/${programId}/invitations`,
+        { participationKind: "student", targetIdentityId: student.body.value.identity.id },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const invitationId = invited.body.value.invitation.invitationId;
+      const accepted = await postJson(
+        `${baseUrl}/program-invitations/${invitationId}/acceptance`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const removed = await deleteJson(
+        `${baseUrl}/programs/${programId}/participants/student/${student.body.value.identity.id}`,
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const recovered = await postJson(
+        `${baseUrl}/admin/program-memberships/recovery`,
+        {
+          participationKind: "student",
+          programId,
+          recoveryReason: "repair access",
+          targetIdentityId: student.body.value.identity.id,
+        },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const revoked = await postJson(
+        `${baseUrl}/admin/program-memberships/revocation`,
+        {
+          participationKind: "student",
+          programId,
+          revocationReason: "invalid operational state",
+          targetIdentityId: student.body.value.identity.id,
+        },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const events = await getJson(`${baseUrl}/programs/${programId}/membership-events`, {
+        cookie: admin.cookie,
+      });
+
+      assert.deepEqual(
+        {
+          accepted: accepted.body.value.membership.status,
+          eventTypes: events.body.value.events.map($0 => $0.eventType).sort(),
+          policy: policy.body.value.program.admissionPolicy,
+          recovered: recovered.body.value.membership.status,
+          removed: removed.body.value.membership.status,
+          revoked: revoked.body.value.membership.status,
+        },
+        {
+          accepted: "active",
+          eventTypes: [
+            "initial_curator_membership_created",
+            "membership_exceptionally_recovered",
+            "membership_exceptionally_revoked",
+            "program_admission_policy_changed",
+            "student_invitation_created",
+            "student_invitation_accepted",
+            "student_membership_joined",
+            "student_membership_removed",
+          ].sort(),
+          policy: "invitation_only",
+          recovered: "active",
+          removed: "removed",
+          revoked: "removed",
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 

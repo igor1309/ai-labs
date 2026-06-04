@@ -163,7 +163,7 @@ Targeted commands:
 
 - [x] Phase 1 - Membership Storage and Restore Validation
 - [x] Phase 2 - Program Membership Commands and Queries
-- [ ] Phase 3 - HTTP Membership API
+- [x] Phase 3 - HTTP Membership API
 - [ ] Phase 4 - Product UI Membership Surfaces
 - [ ] Phase 5 - Traceability, Dashboard, Archive, and Parent Closeout
 

@@ -397,6 +397,222 @@ async function handleProgramApi({
     return true;
   }
 
+  if (request.method === "GET" && pathname === "/program-invitations/me") {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const url = new URL(request.url ?? "/", "http://localhost");
+    const result = programCommands.listMyProgramInvitations({
+      actingIdentityId: session.value.identity.id,
+      status: url.searchParams.get("status") ?? undefined,
+    });
+    sendJson(response, statusForResult(result), mapProgramInvitationsResult(result));
+    return true;
+  }
+
+  const admissionPolicyMatch = pathname.match(/^\/programs\/([^/]+)\/admission-policy$/);
+  if (request.method === "PATCH" && admissionPolicyMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const body = await readRouteBody(request, ["admissionPolicy"]);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = programCommands.setProgramAdmissionPolicy({
+      actingIdentityId: session.value.identity.id,
+      admissionPolicy: body.value.admissionPolicy,
+      programId: decodeURIComponent(admissionPolicyMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramAdmissionPolicyResult(result));
+    return true;
+  }
+
+  const invitationListMatch = pathname.match(/^\/programs\/([^/]+)\/invitations$/);
+  if (invitationListMatch && (request.method === "GET" || request.method === "POST")) {
+    if (request.method === "GET") {
+      const session = resolveHttpSession({ identityCommands, request });
+      if (session.status === "rejected") {
+        sendJson(response, httpStatusFor(session.reason), session);
+        return true;
+      }
+      const url = new URL(request.url ?? "/", "http://localhost");
+      const result = programCommands.listProgramInvitations({
+        actingIdentityId: session.value.identity.id,
+        programId: decodeURIComponent(invitationListMatch[1]),
+        status: url.searchParams.get("status") ?? undefined,
+      });
+      sendJson(response, statusForResult(result), mapProgramInvitationsResult(result));
+      return true;
+    }
+
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const body = await readRouteBody(request, ["participationKind", "targetIdentityId"]);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = programCommands.createProgramInvitation({
+      actingIdentityId: session.value.identity.id,
+      participationKind: body.value.participationKind,
+      programId: decodeURIComponent(invitationListMatch[1]),
+      targetIdentityId: body.value.targetIdentityId,
+    });
+    sendJson(response, statusForResult(result), mapProgramInvitationResult(result));
+    return true;
+  }
+
+  const invitationActionMatch = pathname.match(
+    /^\/program-invitations\/([^/]+)\/(acceptance|decline|revocation)$/,
+  );
+  if (request.method === "POST" && invitationActionMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const commands = {
+      acceptance: programCommands.acceptProgramInvitation,
+      decline: programCommands.declineProgramInvitation,
+      revocation: programCommands.revokeProgramInvitation,
+    };
+    const result = commands[invitationActionMatch[2]]({
+      actingIdentityId: session.value.identity.id,
+      invitationId: decodeURIComponent(invitationActionMatch[1]),
+    });
+    const mapper = invitationActionMatch[2] === "acceptance"
+      ? mapProgramInvitationAcceptanceResult
+      : mapProgramInvitationResult;
+    sendJson(response, statusForResult(result), mapper(result));
+    return true;
+  }
+
+  const participantsMatch = pathname.match(/^\/programs\/([^/]+)\/participants$/);
+  if (request.method === "GET" && participantsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const url = new URL(request.url ?? "/", "http://localhost");
+    const result = programCommands.listProgramParticipants({
+      actingIdentityId: session.value.identity.id,
+      participationKind: url.searchParams.get("participationKind") ?? undefined,
+      programId: decodeURIComponent(participantsMatch[1]),
+      status: url.searchParams.get("status") ?? undefined,
+    });
+    sendJson(response, statusForResult(result), mapProgramParticipantsResult(result));
+    return true;
+  }
+
+  const participantRemovalMatch = pathname.match(
+    /^\/programs\/([^/]+)\/participants\/student\/([^/]+)$/,
+  );
+  if (request.method === "DELETE" && participantRemovalMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const result = programCommands.removeProgramParticipant({
+      actingIdentityId: session.value.identity.id,
+      participationKind: "student",
+      programId: decodeURIComponent(participantRemovalMatch[1]),
+      targetIdentityId: decodeURIComponent(participantRemovalMatch[2]),
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
+  const curatorLeaveMatch = pathname.match(/^\/programs\/([^/]+)\/curator-membership$/);
+  if (request.method === "DELETE" && curatorLeaveMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const result = programCommands.leaveCuratorProgram({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(curatorLeaveMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
+  const exceptionalMembershipMatch = pathname.match(
+    /^\/admin\/program-memberships\/(recovery|revocation)$/,
+  );
+  if (request.method === "POST" && exceptionalMembershipMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const reasonKey = exceptionalMembershipMatch[1] === "recovery"
+      ? "recoveryReason"
+      : "revocationReason";
+    const body = await readRouteBody(request, [
+      "participationKind",
+      "programId",
+      reasonKey,
+      "targetIdentityId",
+    ]);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const command = exceptionalMembershipMatch[1] === "recovery"
+      ? programCommands.recoverProgramMembership
+      : programCommands.revokeProgramMembership;
+    const result = command({
+      actingIdentityId: session.value.identity.id,
+      participationKind: body.value.participationKind,
+      programId: body.value.programId,
+      [reasonKey]: body.value[reasonKey],
+      targetIdentityId: body.value.targetIdentityId,
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
   const studentMembershipMatch = pathname.match(/^\/programs\/([^/]+)\/student-membership$/);
   if ((request.method === "POST" || request.method === "DELETE") && studentMembershipMatch) {
     const csrf = requireCsrf(request, csrfTokens);
@@ -2292,6 +2508,20 @@ function resolveHttpSession({ identityCommands, request }) {
   return identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
 }
 
+function requireMutationSession({ csrfTokens, identityCommands, request, response }) {
+  const session = resolveHttpSession({ identityCommands, request });
+  if (session.status === "rejected") {
+    sendJson(response, httpStatusFor(session.reason), session);
+    return null;
+  }
+  const csrf = requireCsrf(request, csrfTokens);
+  if (csrf.status === "rejected") {
+    sendJson(response, httpStatusFor(csrf.reason), csrf);
+    return null;
+  }
+  return session;
+}
+
 async function readJson(request) {
   let text = "";
   for await (const chunk of request) {
@@ -2318,6 +2548,22 @@ async function readRequiredJsonObject(request) {
     return rejected("validation_failed");
   }
   return accepted(body.value.body);
+}
+
+async function readRouteBody(request, allowedKeys) {
+  const body = await readRequiredJsonObject(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  const keys = Object.keys(body.value);
+  if (
+    keys.length !== allowedKeys.length ||
+    keys.some(key => !allowedKeys.includes(key)) ||
+    allowedKeys.some(key => typeof body.value[key] !== "string" || !body.value[key].trim())
+  ) {
+    return rejected("validation_failed");
+  }
+  return body;
 }
 
 async function readJsonBody(request) {
@@ -2456,6 +2702,49 @@ function mapProgramCreatedResult(result) {
     initialCuratorMembership: result.value.initialCuratorMembership,
     program: result.value.programShell,
   });
+}
+
+function mapProgramAdmissionPolicyResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ program: result.value.programShell });
+}
+
+function mapProgramInvitationResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ invitation: result.value.programInvitation });
+}
+
+function mapProgramInvitationsResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ invitations: result.value.programInvitations });
+}
+
+function mapProgramInvitationAcceptanceResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({
+    invitation: result.value.programInvitation,
+    membership: result.value.programMembership,
+  });
+}
+
+function mapProgramParticipantsResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ participants: result.value.programParticipants });
 }
 
 function mapProgramMembershipsResult(result) {
@@ -2752,7 +3041,9 @@ function mapProgramMembershipEvent(event) {
     targetIdentityId: event.targetIdentityId,
     programId: event.programId,
     participationKind: event.participationKind,
+    policyPath: event.policyPath,
     resultingStatus: event.resultingStatus,
+    invitationStatus: event.invitationStatus,
     occurredAt: event.occurredAt,
     outcome: event.outcome,
     reason: event.reason,
@@ -3575,6 +3866,7 @@ function httpStatusFor(reason) {
     case "criterion_revision_not_found":
     case "navigation_entity_not_found":
     case "navigation_revision_not_found":
+    case "invitation_not_found":
     case "program_not_found":
     case "quick_check_candidate_not_found":
     case "quick_check_entity_not_found":
@@ -3589,6 +3881,7 @@ function httpStatusFor(reason) {
     case "readiness_scope_not_found":
     case "revision_not_found":
     case "selected_option_not_found":
+    case "target_identity_not_found":
       return 404;
     case "accepted_entity_program_mismatch":
     case "accepted_kind_mismatch":
@@ -3604,10 +3897,14 @@ function httpStatusFor(reason) {
     case "criterion_entity_program_mismatch":
     case "idempotency_conflict":
     case "identity_already_has_credential":
+    case "invitation_conflict":
+    case "invitation_not_pending":
     case "learner_state_evidence_owner_program_mismatch":
     case "learner_state_target_program_mismatch":
     case "last_admin_removal":
+    case "last_curator_required":
     case "login_already_bound":
+    case "membership_already_active":
     case "membership_left":
     case "membership_missing":
     case "membership_removed":
@@ -3629,6 +3926,8 @@ function httpStatusFor(reason) {
     case "readiness_scope_program_mismatch":
     case "source_not_found":
     case "source_program_mismatch":
+    case "policy_not_satisfied":
+    case "target_identity_disabled":
       return 409;
     case "rate_limited":
       return 429;
