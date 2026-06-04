@@ -6,8 +6,6 @@ description: "Open task backlog and parked decisions for the traceability-review
 
 # Traceability Review — TODO
 
-> Current state lives in `HANDOFF.md`; this file is open tasks only.
-
 ## Candidates
 - **Cross-module coverage** — passes 5–7 (ADR→spec, spec↔tests, orphan check) and the umbrella ledger currently cover only Corpus Storage + Curator Workspace. Run them across the other Agonara modules (Program Membership, Student Workspace, Identity & Role Management, Assessment). Remediation the passes are ready for, not new tooling.
 - **Spec-level upward orphan check** — pass 7 covers ADR→intent (every ADR decision must trace back to a source intent); the spec→ADR/intent counterpart — does every spec clause trace back — is the natural extension if spec-level scope creep needs guarding. Vocabulary grounded in `research/orphan-requirement-allocation-completeness.md`.
