@@ -75,10 +75,10 @@ baseline.
   allocation buckets 71/67/66). Pinning rows to map `Owns` entries / intent
   story IDs stabilises the enumeration.
 - **The five allocation false-positive guards** (status / type / multi-owner /
-  pending / system-level owner) come from requirements-engineering practice —
-  grounded in `research/orphan-requirement-allocation-completeness.md`. They are
-  what stops a deferred, cross-cutting, or owned-elsewhere capability being
-  mis-flagged as unallocated.
+  pending / system-level owner) come from requirements-engineering practice — the
+  orphan / unallocated / derived-requirement vocabulary and the
+  allocation-completeness check. They are what stops a deferred, cross-cutting, or
+  owned-elsewhere capability being mis-flagged as unallocated.
 - **Deferred ≠ finding; record-owned-but-view-deferred = allocated.** Deferring
   a capability's *shape* (via a Non-Goal) does not defer its *existence*; a
   capability whose record is owned but whose presentation is a downstream
