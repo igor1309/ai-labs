@@ -629,6 +629,305 @@ test("createAssessmentCriterionCandidateRecord_shouldPersistAndListByProgramAndS
   }
 });
 
+test("llmCurationSuggestionStorage_shouldPersistDraftSuggestionsAndGenerationIdempotency_onExistingProgram", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createLlmCurationSuggestionRecord?.(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+    const generation = storage.createLlmCurationSuggestionGenerationRecord?.(
+      database,
+      {
+        id: "generation-a",
+        programId: "program-a",
+        idempotencyKey: "suggestion-key-a",
+        requestFingerprint: "fingerprint-a",
+        suggestionIds: ["suggestion-a"],
+        createdByIdentityId: "identity-a",
+        createdAt: "2026-06-04T12:00:00.000Z",
+      },
+    );
+
+    assert.deepEqual(
+      {
+        created,
+        generation,
+        listed: storage.listLlmCurationSuggestionRecords?.(database, { programId: "program-a" }),
+        foundGeneration: storage.getLlmCurationSuggestionGenerationRecord?.(database, {
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+        }),
+      },
+      {
+        created: makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+        generation: {
+          id: "generation-a",
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+          requestFingerprint: "fingerprint-a",
+          suggestionIds: ["suggestion-a"],
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-04T12:00:00.000Z",
+        },
+        listed: [makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" })],
+        foundGeneration: {
+          id: "generation-a",
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+          requestFingerprint: "fingerprint-a",
+          suggestionIds: ["suggestion-a"],
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-04T12:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateLlmCurationSuggestionStatus_shouldPersistTerminalReviewState_onExistingSuggestion", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    seedRestoreGovernance(database, { programId: "program-a" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-materialized", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-rejected", programId: "program-a" }),
+    );
+
+    const materialized = storage.materializeLlmCurationSuggestionRecord?.(database, {
+      suggestionId: "suggestion-materialized",
+      candidateKind: "navigation_candidate",
+      candidateId: "candidate-a",
+      materializedByIdentityId: "identity-a",
+      materializedAt: "2026-06-04T12:10:00.000Z",
+      updatedAt: "2026-06-04T12:10:00.000Z",
+    });
+    const rejected = storage.rejectLlmCurationSuggestionRecord?.(database, {
+      suggestionId: "suggestion-rejected",
+      rejectedByIdentityId: "identity-a",
+      rejectedAt: "2026-06-04T12:20:00.000Z",
+      updatedAt: "2026-06-04T12:20:00.000Z",
+    });
+
+    assert.deepEqual(
+      {
+        materialized: {
+          status: materialized.status,
+          materializedCandidateKind: materialized.materializedCandidateKind,
+          materializedCandidateId: materialized.materializedCandidateId,
+          materializedByIdentityId: materialized.materializedByIdentityId,
+          materializedAt: materialized.materializedAt,
+          updatedAt: materialized.updatedAt,
+        },
+        rejected: {
+          status: rejected.status,
+          rejectedByIdentityId: rejected.rejectedByIdentityId,
+          rejectedAt: rejected.rejectedAt,
+          updatedAt: rejected.updatedAt,
+        },
+      },
+      {
+        materialized: {
+          status: "materialized",
+          materializedCandidateKind: "navigation_candidate",
+          materializedCandidateId: "candidate-a",
+          materializedByIdentityId: "identity-a",
+          materializedAt: "2026-06-04T12:10:00.000Z",
+          updatedAt: "2026-06-04T12:10:00.000Z",
+        },
+        rejected: {
+          status: "rejected",
+          rejectedByIdentityId: "identity-a",
+          rejectedAt: "2026-06-04T12:20:00.000Z",
+          updatedAt: "2026-06-04T12:20:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldPreserveLlmCurationSuggestions_onAcceptedBackup", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    seedRestoreGovernance(database, { programId: "program-a" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+    storage.materializeLlmCurationSuggestionRecord(database, {
+      suggestionId: "suggestion-a",
+      candidateKind: "navigation_candidate",
+      candidateId: "candidate-a",
+      materializedByIdentityId: "identity-a",
+      materializedAt: "2026-06-04T12:10:00.000Z",
+      updatedAt: "2026-06-04T12:10:00.000Z",
+    });
+    storage.createLlmCurationSuggestionGenerationRecord(
+      database,
+      {
+        id: "generation-a",
+        programId: "program-a",
+        idempotencyKey: "suggestion-key-a",
+        requestFingerprint: "fingerprint-a",
+        suggestionIds: ["suggestion-a"],
+        createdByIdentityId: "identity-a",
+        createdAt: "2026-06-04T12:00:00.000Z",
+      },
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    storage.restoreIdentityBackup(restored, backup);
+
+    assert.deepEqual(
+      {
+        suggestion: storage.getLlmCurationSuggestionRecord(restored, "suggestion-a"),
+        generation: storage.getLlmCurationSuggestionGenerationRecord(restored, {
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+        }),
+      },
+      {
+        suggestion: {
+          ...makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+          status: "materialized",
+          materializedCandidateKind: "navigation_candidate",
+          materializedCandidateId: "candidate-a",
+          materializedByIdentityId: "identity-a",
+          materializedAt: "2026-06-04T12:10:00.000Z",
+          updatedAt: "2026-06-04T12:10:00.000Z",
+        },
+        generation: {
+          id: "generation-a",
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+          requestFingerprint: "fingerprint-a",
+          suggestionIds: ["suggestion-a"],
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-04T12:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldRejectMalformedLlmCurationSuggestionGraph_onBackup", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    seedRestoreGovernance(database, { programId: "program-a" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionGenerationRecord(
+      database,
+      {
+        id: "generation-a",
+        programId: "program-a",
+        idempotencyKey: "suggestion-key-a",
+        requestFingerprint: "fingerprint-a",
+        suggestionIds: ["suggestion-a"],
+        createdByIdentityId: "identity-a",
+        createdAt: "2026-06-04T12:00:00.000Z",
+      },
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    const cases = [
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestions: backup.llmCurationSuggestions.map($0 => ({
+            ...$0,
+            status: "accepted",
+          })),
+        },
+        reason: "llm_curation_suggestion_status_invalid",
+      },
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestions: backup.llmCurationSuggestions.map($0 => ({
+            ...$0,
+            origin: { ...$0.origin, rawPrompt: "raw prompt" },
+          })),
+        },
+        reason: "llm_curation_suggestion_raw_artifact_forbidden",
+      },
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestions: backup.llmCurationSuggestions.map($0 => ({
+            ...$0,
+            status: "materialized",
+            materializedCandidateKind: "navigation_candidate",
+            materializedCandidateId: "candidate-missing",
+            materializedByIdentityId: "identity-a",
+            materializedAt: "2026-06-04T12:10:00.000Z",
+          })),
+        },
+        reason: "llm_curation_suggestion_materialized_candidate_not_found",
+      },
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestionGenerations: [
+            ...backup.llmCurationSuggestionGenerations,
+            {
+              ...backup.llmCurationSuggestionGenerations[0],
+              id: "generation-b",
+            },
+          ],
+        },
+        reason: "llm_curation_suggestion_generation_idempotency_conflict",
+      },
+    ];
+
+    assert.deepEqual(
+      cases.map($0 => captureStorageInvariantReason(() => storage.restoreIdentityBackup(makeInitializedDatabase(), $0.backup))),
+      cases.map($0 => $0.reason),
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createAcceptedCorpusRecords_shouldPersistEntityAndCurrentRevisionLink_onExistingCandidate", () => {
   const database = makeInitializedDatabase();
 
@@ -5743,6 +6042,91 @@ function makeReadinessCheckCandidate({
     createdAt: "2026-06-03T11:00:00.000Z",
     updatedAt: "2026-06-03T11:00:00.000Z",
   };
+}
+
+function makeLlmCurationSuggestion({
+  id,
+  programId,
+  status = "draft_suggestion",
+  materializedCandidateKind = null,
+  materializedCandidateId = null,
+  materializedByIdentityId = null,
+  materializedAt = null,
+  rejectedByIdentityId = null,
+  rejectedAt = null,
+  updatedAt = "2026-06-04T12:00:00.000Z",
+}) {
+  return {
+    id,
+    programId,
+    suggestionKind: "navigation_candidate",
+    title: `Suggestion ${id}`,
+    summary: `Summary ${id}`,
+    rationale: `Rationale ${id}`,
+    suggestedDraft: {
+      candidateKind: "navigation_candidate",
+      request: {
+        candidateKind: "topic",
+        title: `Draft ${id}`,
+        body: `Draft body ${id}`,
+        sourceIds: [],
+        rationale: `Draft rationale ${id}`,
+      },
+    },
+    supportingEvidence: [
+      {
+        sourceKind: "curator_instruction",
+        sourceId: "instruction-a",
+        label: "Curator instruction",
+      },
+    ],
+    origin: {
+      suggestionPolicyId: "policy-a",
+      providerAdapterId: "provider-a",
+      outputValidatorPolicyId: "validator-a",
+      redactionPolicyId: "redaction-a",
+      sourceKinds: ["curator_instruction"],
+      sourceIds: ["instruction-a"],
+      coverageGapIds: [],
+      promptContextSummary: "Accepted corpus titles only",
+      generatedByIdentityId: "identity-a",
+      generatedAt: "2026-06-04T12:00:00.000Z",
+    },
+    status,
+    createdByIdentityId: "identity-a",
+    createdAt: "2026-06-04T12:00:00.000Z",
+    updatedAt,
+    materializedCandidateKind,
+    materializedCandidateId,
+    materializedByIdentityId,
+    materializedAt,
+    rejectedByIdentityId,
+    rejectedAt,
+  };
+}
+
+function seedRestoreGovernance(
+  database,
+  {
+    programId,
+    identityId = "identity-a",
+    membershipId = "membership-a",
+    at = "2026-06-04T12:00:00.000Z",
+  },
+) {
+  storage.createProgramMembershipRecord(database, {
+    id: membershipId,
+    programId,
+    identityId,
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: at,
+    updatedAt: at,
+  });
+  grantAdminAuthority(database, {
+    identityId,
+    grantedAt: at,
+  });
 }
 
 function makeAcceptedReadinessCheckEntity({ id, programId, currentRevisionId }) {

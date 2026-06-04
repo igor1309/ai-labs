@@ -40,6 +40,20 @@ const forbiddenEvaluatorArtifactKeys = new Set([
   "stacktrace",
 ]);
 
+const llmCurationSuggestionKinds = new Set([
+  "navigation_candidate",
+  "quick_check_candidate",
+  "assessment_criterion_candidate",
+  "open_answer_check_candidate",
+  "readiness_check_candidate",
+]);
+
+const llmCurationSuggestionStatuses = new Set([
+  "draft_suggestion",
+  "materialized",
+  "rejected",
+]);
+
 const evaluatorArtifactTextKeys = new Set([
   "cancellationreason",
   "failurereason",
@@ -387,6 +401,55 @@ export function initializeIdentityStorage(database) {
       idempotency_key text not null,
       submitted_at text not null,
       unique (program_id, student_identity_id, readiness_check_revision_id, idempotency_key)
+    );
+
+    create table if not exists llm_curation_suggestions (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      suggestion_kind text not null check (
+        suggestion_kind in (
+          'navigation_candidate',
+          'quick_check_candidate',
+          'assessment_criterion_candidate',
+          'open_answer_check_candidate',
+          'readiness_check_candidate'
+        )
+      ),
+      title text not null,
+      summary text not null,
+      rationale text not null,
+      suggested_draft_json text not null,
+      supporting_evidence_json text not null,
+      origin_json text not null,
+      status text not null check (status in ('draft_suggestion', 'materialized', 'rejected')),
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      updated_at text not null,
+      materialized_candidate_kind text check (
+        materialized_candidate_kind in (
+          'navigation_candidate',
+          'quick_check_candidate',
+          'assessment_criterion_candidate',
+          'open_answer_check_candidate',
+          'readiness_check_candidate'
+        )
+      ),
+      materialized_candidate_id text,
+      materialized_by_identity_id text references identities(id),
+      materialized_at text,
+      rejected_by_identity_id text references identities(id),
+      rejected_at text
+    );
+
+    create table if not exists llm_curation_suggestion_generations (
+      id text primary key,
+      program_id text not null references program_shells(id),
+      idempotency_key text not null,
+      request_fingerprint text not null,
+      suggestion_ids_json text not null,
+      created_by_identity_id text not null references identities(id),
+      created_at text not null,
+      unique (program_id, idempotency_key)
     );
 
     create table if not exists accepted_open_answer_check_entities (
@@ -2105,6 +2168,323 @@ export function updateReadinessCheckCandidateStatus(database, { candidateId, sta
     .run(status, updatedAt, candidateId);
 
   return getReadinessCheckCandidateRecord(database, candidateId);
+}
+
+export function createLlmCurationSuggestionRecord(
+  database,
+  {
+    id,
+    programId,
+    suggestionKind,
+    title,
+    summary,
+    rationale,
+    suggestedDraft,
+    supportingEvidence,
+    origin,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
+    materializedCandidateKind = null,
+    materializedCandidateId = null,
+    materializedByIdentityId = null,
+    materializedAt = null,
+    rejectedByIdentityId = null,
+    rejectedAt = null,
+  },
+) {
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertLlmCurationSuggestionShape({
+    programId,
+    suggestionKind,
+    title,
+    summary,
+    rationale,
+    suggestedDraft,
+    supportingEvidence,
+    origin,
+    status,
+    materializedCandidateKind,
+    materializedCandidateId,
+    materializedByIdentityId,
+    materializedAt,
+    rejectedByIdentityId,
+    rejectedAt,
+  });
+  if (materializedByIdentityId !== null) {
+    assertIdentityExists(database, materializedByIdentityId);
+  }
+  if (rejectedByIdentityId !== null) {
+    assertIdentityExists(database, rejectedByIdentityId);
+  }
+  if (status === "materialized") {
+    assertLlmCurationSuggestionMaterializedCandidate(database, {
+      programId,
+      candidateKind: materializedCandidateKind,
+      candidateId: materializedCandidateId,
+    });
+  }
+
+  database
+    .prepare(
+      `insert into llm_curation_suggestions (
+         id,
+         program_id,
+         suggestion_kind,
+         title,
+         summary,
+         rationale,
+         suggested_draft_json,
+         supporting_evidence_json,
+         origin_json,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at,
+         materialized_candidate_kind,
+         materialized_candidate_id,
+         materialized_by_identity_id,
+         materialized_at,
+         rejected_by_identity_id,
+         rejected_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      programId,
+      suggestionKind,
+      title,
+      summary,
+      rationale,
+      JSON.stringify(suggestedDraft),
+      JSON.stringify(supportingEvidence),
+      JSON.stringify(origin),
+      status,
+      createdByIdentityId,
+      createdAt,
+      updatedAt,
+      materializedCandidateKind,
+      materializedCandidateId,
+      materializedByIdentityId,
+      materializedAt,
+      rejectedByIdentityId,
+      rejectedAt,
+    );
+
+  return getLlmCurationSuggestionRecord(database, id);
+}
+
+export function getLlmCurationSuggestionRecord(database, id) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, suggestion_kind as suggestionKind,
+              title, summary, rationale, suggested_draft_json as suggestedDraftJson,
+              supporting_evidence_json as supportingEvidenceJson, origin_json as originJson,
+              status, created_by_identity_id as createdByIdentityId, created_at as createdAt,
+              updated_at as updatedAt, materialized_candidate_kind as materializedCandidateKind,
+              materialized_candidate_id as materializedCandidateId,
+              materialized_by_identity_id as materializedByIdentityId,
+              materialized_at as materializedAt,
+              rejected_by_identity_id as rejectedByIdentityId, rejected_at as rejectedAt
+       from llm_curation_suggestions
+       where id = ?`,
+    )
+    .get(id);
+
+  return row ? mapLlmCurationSuggestionRecord(row) : null;
+}
+
+export function listLlmCurationSuggestionRecords(
+  database,
+  { programId = null, status = null, suggestionKind = null } = {},
+) {
+  const filters = [];
+  const values = [];
+
+  if (programId !== null) {
+    filters.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    filters.push("status = ?");
+    values.push(status);
+  }
+  if (suggestionKind !== null) {
+    filters.push("suggestion_kind = ?");
+    values.push(suggestionKind);
+  }
+
+  const whereClause = filters.length > 0 ? `where ${filters.join(" and ")}` : "";
+  return database
+    .prepare(
+      `select id, program_id as programId, suggestion_kind as suggestionKind,
+              title, summary, rationale, suggested_draft_json as suggestedDraftJson,
+              supporting_evidence_json as supportingEvidenceJson, origin_json as originJson,
+              status, created_by_identity_id as createdByIdentityId, created_at as createdAt,
+              updated_at as updatedAt, materialized_candidate_kind as materializedCandidateKind,
+              materialized_candidate_id as materializedCandidateId,
+              materialized_by_identity_id as materializedByIdentityId,
+              materialized_at as materializedAt,
+              rejected_by_identity_id as rejectedByIdentityId, rejected_at as rejectedAt
+       from llm_curation_suggestions
+       ${whereClause}
+       order by created_at, id`,
+    )
+    .all(...values)
+    .map(mapLlmCurationSuggestionRecord);
+}
+
+export function materializeLlmCurationSuggestionRecord(
+  database,
+  { suggestionId, candidateKind, candidateId, materializedByIdentityId, materializedAt, updatedAt },
+) {
+  const suggestion = getLlmCurationSuggestionRecord(database, suggestionId);
+  if (!suggestion) {
+    throw new StorageInvariantError("llm_curation_suggestion_not_found");
+  }
+  if (suggestion.status !== "draft_suggestion") {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal");
+  }
+  assertIdentityExists(database, materializedByIdentityId);
+  assertLlmCurationSuggestionMaterializedCandidate(database, {
+    programId: suggestion.programId,
+    candidateKind,
+    candidateId,
+  });
+
+  database
+    .prepare(
+      `update llm_curation_suggestions
+       set status = 'materialized',
+           updated_at = ?,
+           materialized_candidate_kind = ?,
+           materialized_candidate_id = ?,
+           materialized_by_identity_id = ?,
+           materialized_at = ?
+       where id = ?`,
+    )
+    .run(updatedAt, candidateKind, candidateId, materializedByIdentityId, materializedAt, suggestionId);
+
+  return getLlmCurationSuggestionRecord(database, suggestionId);
+}
+
+export function rejectLlmCurationSuggestionRecord(
+  database,
+  { suggestionId, rejectedByIdentityId, rejectedAt, updatedAt },
+) {
+  const suggestion = getLlmCurationSuggestionRecord(database, suggestionId);
+  if (!suggestion) {
+    throw new StorageInvariantError("llm_curation_suggestion_not_found");
+  }
+  if (suggestion.status !== "draft_suggestion") {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal");
+  }
+  assertIdentityExists(database, rejectedByIdentityId);
+
+  database
+    .prepare(
+      `update llm_curation_suggestions
+       set status = 'rejected',
+           updated_at = ?,
+           rejected_by_identity_id = ?,
+           rejected_at = ?
+       where id = ?`,
+    )
+    .run(updatedAt, rejectedByIdentityId, rejectedAt, suggestionId);
+
+  return getLlmCurationSuggestionRecord(database, suggestionId);
+}
+
+export function createLlmCurationSuggestionGenerationRecord(
+  database,
+  { id, programId, idempotencyKey, requestFingerprint, suggestionIds, createdByIdentityId, createdAt },
+) {
+  if (!isNonEmptyString(id) || !isNonEmptyString(idempotencyKey) || !isNonEmptyString(requestFingerprint)) {
+    throw new StorageInvariantError("llm_curation_suggestion_generation_shape_invalid");
+  }
+  assertProgramShellExists(database, programId);
+  assertIdentityExists(database, createdByIdentityId);
+  assertLlmCurationSuggestionIdsBelongToProgram(database, { programId, suggestionIds });
+
+  try {
+    database
+      .prepare(
+        `insert into llm_curation_suggestion_generations (
+           id,
+           program_id,
+           idempotency_key,
+           request_fingerprint,
+           suggestion_ids_json,
+           created_by_identity_id,
+           created_at
+         ) values (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        programId,
+        idempotencyKey,
+        requestFingerprint,
+        JSON.stringify(suggestionIds),
+        createdByIdentityId,
+        createdAt,
+      );
+  } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_idempotency_conflict");
+    }
+    throw error;
+  }
+
+  return getLlmCurationSuggestionGenerationRecord(database, { programId, idempotencyKey });
+}
+
+export function getLlmCurationSuggestionGenerationRecord(database, { programId, idempotencyKey }) {
+  const row = database
+    .prepare(
+      `select id, program_id as programId, idempotency_key as idempotencyKey,
+              request_fingerprint as requestFingerprint,
+              suggestion_ids_json as suggestionIdsJson,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt
+       from llm_curation_suggestion_generations
+       where program_id = ? and idempotency_key = ?`,
+    )
+    .get(programId, idempotencyKey);
+
+  return row ? mapLlmCurationSuggestionGenerationRecord(row) : null;
+}
+
+export function listLlmCurationSuggestionGenerationRecords(database, { programId = null } = {}) {
+  if (programId !== null) {
+    return database
+      .prepare(
+        `select id, program_id as programId, idempotency_key as idempotencyKey,
+                request_fingerprint as requestFingerprint,
+                suggestion_ids_json as suggestionIdsJson,
+                created_by_identity_id as createdByIdentityId,
+                created_at as createdAt
+         from llm_curation_suggestion_generations
+         where program_id = ?
+         order by created_at, id`,
+      )
+      .all(programId)
+      .map(mapLlmCurationSuggestionGenerationRecord);
+  }
+
+  return database
+    .prepare(
+      `select id, program_id as programId, idempotency_key as idempotencyKey,
+              request_fingerprint as requestFingerprint,
+              suggestion_ids_json as suggestionIdsJson,
+              created_by_identity_id as createdByIdentityId,
+              created_at as createdAt
+       from llm_curation_suggestion_generations
+       order by created_at, id`,
+    )
+    .all()
+    .map(mapLlmCurationSuggestionGenerationRecord);
 }
 
 export function createAcceptedReadinessCheckEntityRecord(database, { id, programId, currentRevisionId }) {
@@ -4612,6 +4992,231 @@ function getReadinessEvidenceOwnerEntity(database, requirement) {
   throw new StorageInvariantError("readiness_requirement_target_kind_invalid");
 }
 
+function assertLlmCurationSuggestionShape({
+  suggestionKind,
+  title,
+  summary,
+  rationale,
+  suggestedDraft,
+  supportingEvidence,
+  origin,
+  status,
+  materializedCandidateKind,
+  materializedCandidateId,
+  materializedByIdentityId,
+  materializedAt,
+  rejectedByIdentityId,
+  rejectedAt,
+}) {
+  if (!llmCurationSuggestionKinds.has(suggestionKind)) {
+    throw new StorageInvariantError("llm_curation_suggestion_kind_invalid");
+  }
+  if (!llmCurationSuggestionStatuses.has(status)) {
+    throw new StorageInvariantError("llm_curation_suggestion_status_invalid");
+  }
+  if (!isNonEmptyString(title) || !isNonEmptyString(summary) || !isNonEmptyString(rationale)) {
+    throw new StorageInvariantError("llm_curation_suggestion_shape_invalid");
+  }
+  if (containsForbiddenLlmCurationSuggestionArtifact({ title, summary, rationale })) {
+    throw new StorageInvariantError("llm_curation_suggestion_raw_artifact_forbidden");
+  }
+  assertLlmCurationSuggestionDraft({ suggestionKind, suggestedDraft });
+  assertLlmCurationSuggestionSupportingEvidence(supportingEvidence);
+  assertLlmCurationSuggestionOrigin(origin);
+
+  if (status === "draft_suggestion") {
+    assertNoLlmCurationSuggestionTerminalFields({
+      materializedCandidateKind,
+      materializedCandidateId,
+      materializedByIdentityId,
+      materializedAt,
+      rejectedByIdentityId,
+      rejectedAt,
+    });
+    return;
+  }
+
+  if (status === "materialized") {
+    if (
+      !llmCurationSuggestionKinds.has(materializedCandidateKind) ||
+      !isNonEmptyString(materializedCandidateId) ||
+      !isNonEmptyString(materializedByIdentityId) ||
+      !isNonEmptyString(materializedAt) ||
+      rejectedByIdentityId !== null ||
+      rejectedAt !== null
+    ) {
+      throw new StorageInvariantError("llm_curation_suggestion_terminal_state_invalid");
+    }
+    return;
+  }
+
+  if (
+    materializedCandidateKind !== null ||
+    materializedCandidateId !== null ||
+    materializedByIdentityId !== null ||
+    materializedAt !== null ||
+    !isNonEmptyString(rejectedByIdentityId) ||
+    !isNonEmptyString(rejectedAt)
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal_state_invalid");
+  }
+}
+
+function assertLlmCurationSuggestionDraft({ suggestionKind, suggestedDraft }) {
+  if (
+    !suggestedDraft ||
+    typeof suggestedDraft !== "object" ||
+    Array.isArray(suggestedDraft) ||
+    suggestedDraft.candidateKind !== suggestionKind ||
+    !suggestedDraft.request ||
+    typeof suggestedDraft.request !== "object" ||
+    Array.isArray(suggestedDraft.request)
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_draft_invalid");
+  }
+  assertNoForbiddenLlmCurationSuggestionArtifact(suggestedDraft);
+}
+
+function assertLlmCurationSuggestionSupportingEvidence(supportingEvidence) {
+  if (!Array.isArray(supportingEvidence) || supportingEvidence.length === 0) {
+    throw new StorageInvariantError("llm_curation_suggestion_evidence_invalid");
+  }
+  for (const evidence of supportingEvidence) {
+    if (
+      !evidence ||
+      typeof evidence !== "object" ||
+      Array.isArray(evidence) ||
+      !isNonEmptyString(evidence.sourceKind) ||
+      !isNonEmptyString(evidence.sourceId) ||
+      !isNonEmptyString(evidence.label)
+    ) {
+      throw new StorageInvariantError("llm_curation_suggestion_evidence_invalid");
+    }
+    assertNoForbiddenLlmCurationSuggestionArtifact(evidence);
+  }
+}
+
+function assertLlmCurationSuggestionOrigin(origin) {
+  if (
+    !origin ||
+    typeof origin !== "object" ||
+    Array.isArray(origin) ||
+    !isNonEmptyString(origin.suggestionPolicyId) ||
+    !isNonEmptyString(origin.providerAdapterId) ||
+    !isNonEmptyString(origin.outputValidatorPolicyId) ||
+    !isNonEmptyString(origin.redactionPolicyId) ||
+    !Array.isArray(origin.sourceKinds) ||
+    !Array.isArray(origin.sourceIds) ||
+    !Array.isArray(origin.coverageGapIds) ||
+    !isNonEmptyString(origin.promptContextSummary) ||
+    !isNonEmptyString(origin.generatedByIdentityId) ||
+    !isNonEmptyString(origin.generatedAt)
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_origin_invalid");
+  }
+  assertNoForbiddenLlmCurationSuggestionArtifact(origin);
+}
+
+function assertNoLlmCurationSuggestionTerminalFields({
+  materializedCandidateKind,
+  materializedCandidateId,
+  materializedByIdentityId,
+  materializedAt,
+  rejectedByIdentityId,
+  rejectedAt,
+}) {
+  if (
+    materializedCandidateKind !== null ||
+    materializedCandidateId !== null ||
+    materializedByIdentityId !== null ||
+    materializedAt !== null ||
+    rejectedByIdentityId !== null ||
+    rejectedAt !== null
+  ) {
+    throw new StorageInvariantError("llm_curation_suggestion_terminal_state_invalid");
+  }
+}
+
+function assertLlmCurationSuggestionMaterializedCandidate(database, { programId, candidateKind, candidateId }) {
+  const candidate = getLlmCurationSuggestionMaterializedCandidate(database, { candidateKind, candidateId });
+  if (!candidate) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_found");
+  }
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_program_mismatch");
+  }
+  if (candidate.status !== "draft") {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_draft");
+  }
+}
+
+function getLlmCurationSuggestionMaterializedCandidate(database, { candidateKind, candidateId }) {
+  if (candidateKind === "navigation_candidate") {
+    return getCorpusCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "quick_check_candidate") {
+    return getQuickCheckCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "assessment_criterion_candidate") {
+    return getAssessmentCriterionCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "open_answer_check_candidate") {
+    return getOpenAnswerCheckCandidateRecord(database, candidateId);
+  }
+  if (candidateKind === "readiness_check_candidate") {
+    return getReadinessCheckCandidateRecord(database, candidateId);
+  }
+
+  throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_invalid");
+}
+
+function assertLlmCurationSuggestionIdsBelongToProgram(database, { programId, suggestionIds }) {
+  if (!Array.isArray(suggestionIds)) {
+    throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+  }
+  const ids = new Set();
+  for (const suggestionId of suggestionIds) {
+    if (!isNonEmptyString(suggestionId) || ids.has(suggestionId)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+    }
+    ids.add(suggestionId);
+    const suggestion = getLlmCurationSuggestionRecord(database, suggestionId);
+    if (!suggestion) {
+      throw new StorageInvariantError("llm_curation_suggestion_not_found");
+    }
+    if (suggestion.programId !== programId) {
+      throw new StorageInvariantError("llm_curation_suggestion_program_mismatch");
+    }
+  }
+}
+
+function assertNoForbiddenLlmCurationSuggestionArtifact(record) {
+  if (containsForbiddenLlmCurationSuggestionArtifact(record)) {
+    throw new StorageInvariantError("llm_curation_suggestion_raw_artifact_forbidden");
+  }
+}
+
+function containsForbiddenLlmCurationSuggestionArtifact(value, key = null) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return containsForbiddenResponseDetail(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(entry => containsForbiddenLlmCurationSuggestionArtifact(entry, key));
+  }
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  return Object.entries(value).some(
+    ([entryKey, entryValue]) =>
+      forbiddenEvaluatorArtifactKeys.has(normalizeEvaluatorArtifactKey(entryKey)) ||
+      containsForbiddenLlmCurationSuggestionArtifact(entryValue, entryKey),
+  );
+}
+
 function assertReadinessResult(result) {
   if (!["ready", "not_ready", "in_progress"].includes(result)) {
     throw new StorageInvariantError("readiness_result_invalid");
@@ -4992,6 +5597,8 @@ export function exportIdentityBackup(database) {
     acceptedReadinessCheckEntities: listAcceptedReadinessCheckEntityRecords(database),
     acceptedReadinessCheckRevisions: listAcceptedReadinessCheckRevisionRecords(database),
     readinessCheckAttempts: listReadinessCheckAttemptRecords(database),
+    llmCurationSuggestions: listLlmCurationSuggestionRecords(database),
+    llmCurationSuggestionGenerations: listLlmCurationSuggestionGenerationRecords(database),
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
     acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
@@ -5023,6 +5630,7 @@ export function restoreIdentityBackup(database, backup) {
   assertValidLearnerEvidenceTargetLinksInBackup(backup);
   assertValidProgramMembershipGraphInBackup(backup);
   assertValidReadinessGraphInBackup(backup);
+  assertValidLlmCurationSuggestionGraphInBackup(backup);
   assertValidStudentAttemptGraphInBackup(backup);
 
   database.transaction(() => {
@@ -5034,6 +5642,8 @@ export function restoreIdentityBackup(database, backup) {
     database.prepare("delete from open_answer_evaluations").run();
     database.prepare("delete from open_answer_attempts").run();
     database.prepare("delete from readiness_check_attempts").run();
+    database.prepare("delete from llm_curation_suggestion_generations").run();
+    database.prepare("delete from llm_curation_suggestions").run();
     database.prepare("delete from learner_evidence_target_links").run();
     database.prepare("delete from quick_check_attempts").run();
     database.prepare("delete from accepted_readiness_check_revisions").run();
@@ -5448,6 +6058,40 @@ export function restoreIdentityBackup(database, backup) {
          submitted_at
        ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    const insertLlmCurationSuggestion = database.prepare(
+      `insert into llm_curation_suggestions (
+         id,
+         program_id,
+         suggestion_kind,
+         title,
+         summary,
+         rationale,
+         suggested_draft_json,
+         supporting_evidence_json,
+         origin_json,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at,
+         materialized_candidate_kind,
+         materialized_candidate_id,
+         materialized_by_identity_id,
+         materialized_at,
+         rejected_by_identity_id,
+         rejected_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertLlmCurationSuggestionGeneration = database.prepare(
+      `insert into llm_curation_suggestion_generations (
+         id,
+         program_id,
+         idempotency_key,
+         request_fingerprint,
+         suggestion_ids_json,
+         created_by_identity_id,
+         created_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
+    );
     const insertOpenAnswerEvaluation = database.prepare(
       `insert into open_answer_evaluations (
          id,
@@ -5847,6 +6491,42 @@ export function restoreIdentityBackup(database, backup) {
         candidate.createdByIdentityId,
         candidate.createdAt,
         candidate.updatedAt,
+      );
+    }
+
+    for (const suggestion of backup.llmCurationSuggestions ?? []) {
+      insertLlmCurationSuggestion.run(
+        suggestion.id,
+        suggestion.programId,
+        suggestion.suggestionKind,
+        suggestion.title,
+        suggestion.summary,
+        suggestion.rationale,
+        JSON.stringify(suggestion.suggestedDraft),
+        JSON.stringify(suggestion.supportingEvidence),
+        JSON.stringify(suggestion.origin),
+        suggestion.status,
+        suggestion.createdByIdentityId,
+        suggestion.createdAt,
+        suggestion.updatedAt,
+        suggestion.materializedCandidateKind ?? null,
+        suggestion.materializedCandidateId ?? null,
+        suggestion.materializedByIdentityId ?? null,
+        suggestion.materializedAt ?? null,
+        suggestion.rejectedByIdentityId ?? null,
+        suggestion.rejectedAt ?? null,
+      );
+    }
+
+    for (const generation of backup.llmCurationSuggestionGenerations ?? []) {
+      insertLlmCurationSuggestionGeneration.run(
+        generation.id,
+        generation.programId,
+        generation.idempotencyKey,
+        generation.requestFingerprint,
+        JSON.stringify(generation.suggestionIds ?? []),
+        generation.createdByIdentityId,
+        generation.createdAt,
       );
     }
 
@@ -6256,6 +6936,42 @@ function mapReadinessCheckCandidateRecord(row) {
     createdByIdentityId: row.createdByIdentityId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function mapLlmCurationSuggestionRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    suggestionKind: row.suggestionKind,
+    title: row.title,
+    summary: row.summary,
+    rationale: row.rationale,
+    suggestedDraft: JSON.parse(row.suggestedDraftJson),
+    supportingEvidence: JSON.parse(row.supportingEvidenceJson),
+    origin: JSON.parse(row.originJson),
+    status: row.status,
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    materializedCandidateKind: row.materializedCandidateKind,
+    materializedCandidateId: row.materializedCandidateId,
+    materializedByIdentityId: row.materializedByIdentityId,
+    materializedAt: row.materializedAt,
+    rejectedByIdentityId: row.rejectedByIdentityId,
+    rejectedAt: row.rejectedAt,
+  };
+}
+
+function mapLlmCurationSuggestionGenerationRecord(row) {
+  return {
+    id: row.id,
+    programId: row.programId,
+    idempotencyKey: row.idempotencyKey,
+    requestFingerprint: row.requestFingerprint,
+    suggestionIds: JSON.parse(row.suggestionIdsJson),
+    createdByIdentityId: row.createdByIdentityId,
+    createdAt: row.createdAt,
   };
 }
 
@@ -7386,6 +8102,150 @@ function assertValidLearnerEvidenceTargetLinksInBackup(backup) {
         throw new StorageInvariantError("learner_state_target_link_idempotency_conflict");
       }
       activeScopes.add(activeScope);
+    }
+  }
+}
+
+function assertValidLlmCurationSuggestionGraphInBackup(backup) {
+  const programShellsById = new Map((backup.programShells ?? []).map($0 => [$0.id, $0]));
+  const identitiesById = new Map((backup.identities ?? []).map($0 => [$0.id, $0]));
+  const suggestionsById = new Map((backup.llmCurationSuggestions ?? []).map($0 => [$0.id, $0]));
+  const materializedCandidatesByKind = makeLlmCurationSuggestionBackupCandidateMaps(backup);
+  const generationScopes = new Set();
+
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.llmCurationSuggestions ?? [],
+    "llm_curation_suggestion_id_conflict",
+  );
+  assertBackupCollectionHasNoDuplicateIds(
+    backup.llmCurationSuggestionGenerations ?? [],
+    "llm_curation_suggestion_generation_id_conflict",
+  );
+
+  for (const suggestion of backup.llmCurationSuggestions ?? []) {
+    if (!programShellsById.has(suggestion.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (
+      !identitiesById.has(suggestion.createdByIdentityId) ||
+      !identitiesById.has(suggestion.origin?.generatedByIdentityId) ||
+      (suggestion.materializedByIdentityId !== null &&
+        suggestion.materializedByIdentityId !== undefined &&
+        !identitiesById.has(suggestion.materializedByIdentityId)) ||
+      (suggestion.rejectedByIdentityId !== null &&
+        suggestion.rejectedByIdentityId !== undefined &&
+        !identitiesById.has(suggestion.rejectedByIdentityId))
+    ) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+
+    assertLlmCurationSuggestionShape({
+      suggestionKind: suggestion.suggestionKind,
+      title: suggestion.title,
+      summary: suggestion.summary,
+      rationale: suggestion.rationale,
+      suggestedDraft: suggestion.suggestedDraft,
+      supportingEvidence: suggestion.supportingEvidence,
+      origin: suggestion.origin,
+      status: suggestion.status,
+      materializedCandidateKind: suggestion.materializedCandidateKind ?? null,
+      materializedCandidateId: suggestion.materializedCandidateId ?? null,
+      materializedByIdentityId: suggestion.materializedByIdentityId ?? null,
+      materializedAt: suggestion.materializedAt ?? null,
+      rejectedByIdentityId: suggestion.rejectedByIdentityId ?? null,
+      rejectedAt: suggestion.rejectedAt ?? null,
+    });
+
+    if (suggestion.status === "materialized") {
+      assertLlmCurationSuggestionBackupMaterializedCandidate({
+        programId: suggestion.programId,
+        candidateKind: suggestion.materializedCandidateKind,
+        candidateId: suggestion.materializedCandidateId,
+        materializedCandidatesByKind,
+      });
+    }
+  }
+
+  for (const generation of backup.llmCurationSuggestionGenerations ?? []) {
+    if (!programShellsById.has(generation.programId)) {
+      throw new StorageInvariantError("program_not_found");
+    }
+    if (!identitiesById.has(generation.createdByIdentityId)) {
+      throw new StorageInvariantError("identity_not_found");
+    }
+    if (!isNonEmptyString(generation.idempotencyKey) || !isNonEmptyString(generation.requestFingerprint)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_shape_invalid");
+    }
+    const scope = `${generation.programId}:${generation.idempotencyKey}`;
+    if (generationScopes.has(scope)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_idempotency_conflict");
+    }
+    generationScopes.add(scope);
+
+    assertLlmCurationSuggestionBackupGenerationIds({
+      programId: generation.programId,
+      suggestionIds: generation.suggestionIds,
+      suggestionsById,
+    });
+  }
+}
+
+function makeLlmCurationSuggestionBackupCandidateMaps(backup) {
+  return new Map([
+    ["navigation_candidate", new Map((backup.corpusCandidates ?? []).map($0 => [$0.id, $0]))],
+    ["quick_check_candidate", new Map((backup.quickCheckCandidates ?? []).map($0 => [$0.id, $0]))],
+    [
+      "assessment_criterion_candidate",
+      new Map((backup.assessmentCriterionCandidates ?? []).map($0 => [$0.id, $0])),
+    ],
+    ["open_answer_check_candidate", new Map((backup.openAnswerCheckCandidates ?? []).map($0 => [$0.id, $0]))],
+    ["readiness_check_candidate", new Map((backup.readinessCheckCandidates ?? []).map($0 => [$0.id, $0]))],
+  ]);
+}
+
+function assertLlmCurationSuggestionBackupMaterializedCandidate({
+  programId,
+  candidateKind,
+  candidateId,
+  materializedCandidatesByKind,
+}) {
+  const candidatesById = materializedCandidatesByKind.get(candidateKind);
+  if (!candidatesById) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_kind_invalid");
+  }
+
+  const candidate = candidatesById.get(candidateId);
+  if (!candidate) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_found");
+  }
+  if (candidate.programId !== programId) {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_program_mismatch");
+  }
+  if (candidate.status !== "draft") {
+    throw new StorageInvariantError("llm_curation_suggestion_materialized_candidate_not_draft");
+  }
+}
+
+function assertLlmCurationSuggestionBackupGenerationIds({
+  programId,
+  suggestionIds,
+  suggestionsById,
+}) {
+  if (!Array.isArray(suggestionIds)) {
+    throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+  }
+  const ids = new Set();
+  for (const suggestionId of suggestionIds) {
+    if (!isNonEmptyString(suggestionId) || ids.has(suggestionId)) {
+      throw new StorageInvariantError("llm_curation_suggestion_generation_suggestions_invalid");
+    }
+    ids.add(suggestionId);
+    const suggestion = suggestionsById.get(suggestionId);
+    if (!suggestion) {
+      throw new StorageInvariantError("llm_curation_suggestion_not_found");
+    }
+    if (suggestion.programId !== programId) {
+      throw new StorageInvariantError("llm_curation_suggestion_program_mismatch");
     }
   }
 }

@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Implement Phase 1 of the LLM-assisted curation suggestions plan with durable suggestion/generation storage, terminal review state, materialized draft-candidate references, backup export, and restore validation.
 - Harden the LLM-assisted curation suggestions child plan after adversarial review by making provider file ownership explicit and carrying browser regression gates into final closeout.
 - Add the LLM-assisted curation suggestions child implementation plan with exact storage, Curator Workspace, HTTP, UI, test, review, dashboard, and archive gates for Phase 7 of the product gap closure.
 - Harden the LLM-assisted curation suggestions spec after adversarial review by clarifying answer-key redaction, terminal suggestion transitions, and composition-owned provider adapters.
