@@ -792,6 +792,16 @@
         <h3>Complete enumeration</h3>
         <p>Not an impression. Every story, every owned responsibility, every capability gets one row and one verdict backed by <code>file:line</code> evidence. Completeness is load-bearing: incompleteness is exactly what makes two reviews disagree, because each then scrutinises a different subset.</p>
       </div>
+      <div class="card">
+        <div class="label">The final link</div>
+        <h3>Trust is banked at implementation time</h3>
+        <p>Trust in the code is earned <em>during</em> implementation &mdash; progressive disclosure, TDD, review before the merge &mdash; not granted afterward by a passing build. So a drift review run hours or months later never re-opens the code: the trust was already banked, and elapsed time does not withdraw it. The green build is the receipt; the process is what&rsquo;s trusted.</p>
+      </div>
+      <div class="card">
+        <div class="label">The proxy</div>
+        <h3>Test names are the interface</h3>
+        <p>Because the process makes test names honest, each name is a compressed <em>promise</em> of what the code does &mdash; the code&rsquo;s own self-description. That makes the names the implementation&rsquo;s only interface to the chain: you read <code>intent → ADR → spec → test names</code>, and the code hangs below, vouched for, never read. It is also why the review stays cheap where reading code and test bodies would not &mdash; and why this is a consequence of the method, not a universal rule.</p>
+      </div>
     </div>
     <p class="lead" style="margin-top: 28px; margin-bottom: 0;">
       The reviewer detects and suggests the minimum fix &mdash; it never edits, merges, or closes; resolution
