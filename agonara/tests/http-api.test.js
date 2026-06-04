@@ -10263,6 +10263,27 @@ test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailu
       makeHttpLlmSuggestionProviderAdapter({ throws: true }),
     ],
   });
+  const missingProviderHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionPolicies: [makeHttpLlmSuggestionPolicy({ providerAdapterId: "provider-missing" })],
+    llmSuggestionProviderAdapters: [],
+  });
+  const budgetFailureHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionProviderAdapters: [
+      makeHttpLlmSuggestionProviderAdapter({
+        providerUsage: { providerCalls: 2, inputTokens: 120, outputTokens: 80 },
+      }),
+    ],
+  });
+  const outputFailureHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionProviderAdapters: [
+      makeHttpLlmSuggestionProviderAdapter({
+        outputValidation: { validatorPolicyId: "validator-a", passed: false },
+      }),
+    ],
+  });
   const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
     ids: manyIds(160),
   });
@@ -10300,13 +10321,49 @@ test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailu
       `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions?status=unsupported`,
       { cookie: scenario.curator.cookie },
     );
+    const staleCoverageGap = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      {
+        ...makeHttpLlmSuggestionGenerationBody(),
+        coverageGapIds: ["coverage-gap-missing"],
+        curatorInstruction: "",
+        idempotencyKey: "llm-stale-gap-key",
+      },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const unsupportedContext = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      {
+        ...makeHttpLlmSuggestionGenerationBody(),
+        contextEntityIds: ["context-entity-missing"],
+        curatorInstruction: "",
+        idempotencyKey: "llm-context-key",
+      },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
     const created = await postJson(
       `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
       makeHttpLlmSuggestionGenerationBody(),
       { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
     );
     const suggestionId = created.body.value?.suggestions?.[0]?.suggestionId ?? "suggestion-missing";
+    const studentDetail = await getJson(`${baseUrl}/llm-curation-suggestions/${suggestionId}`, {
+      cookie: scenario.student.cookie,
+    });
+    const studentAcceptance = await postJson(
+      `${baseUrl}/llm-curation-suggestions/${suggestionId}/acceptance`,
+      {},
+      { cookie: scenario.student.cookie, csrfToken: scenario.student.csrfToken },
+    );
     const missingAcceptanceCsrf = await fetch(`${baseUrl}/llm-curation-suggestions/${suggestionId}/acceptance`, {
+      body: JSON.stringify({}),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const missingRejectionCsrf = await fetch(`${baseUrl}/llm-curation-suggestions/${suggestionId}/rejection`, {
       body: JSON.stringify({}),
       headers: {
         cookie: scenario.curator.cookie,
@@ -10329,12 +10386,47 @@ test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailu
       title: "Provider failures",
     });
     const failureProgramId = (await failureProgram.json()).value.program.programId;
+    const missingProviderSession = await bootstrapAdmin(missingProviderHarness.baseUrl);
+    const missingProviderProgram = await createProgram(missingProviderHarness.baseUrl, missingProviderSession, {
+      title: "Missing provider",
+    });
+    const missingProviderProgramId = (await missingProviderProgram.json()).value.program.programId;
+    const budgetFailureSession = await bootstrapAdmin(budgetFailureHarness.baseUrl);
+    const budgetFailureProgram = await createProgram(budgetFailureHarness.baseUrl, budgetFailureSession, {
+      title: "Budget failure",
+    });
+    const budgetFailureProgramId = (await budgetFailureProgram.json()).value.program.programId;
+    const outputFailureSession = await bootstrapAdmin(outputFailureHarness.baseUrl);
+    const outputFailureProgram = await createProgram(outputFailureHarness.baseUrl, outputFailureSession, {
+      title: "Output failure",
+    });
+    const outputFailureProgramId = (await outputFailureProgram.json()).value.program.programId;
     const providerFailure = await postJson(
       `${providerFailureHarness.baseUrl}/programs/${failureProgramId}/llm-curation-suggestions`,
       makeHttpLlmSuggestionGenerationBody(),
       { cookie: failureSession.cookie, csrfToken: failureSession.csrfToken },
     );
-    const serializedFaults = JSON.stringify([providerFailure.body]);
+    const missingProvider = await postJson(
+      `${missingProviderHarness.baseUrl}/programs/${missingProviderProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: missingProviderSession.cookie, csrfToken: missingProviderSession.csrfToken },
+    );
+    const budgetFailure = await postJson(
+      `${budgetFailureHarness.baseUrl}/programs/${budgetFailureProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: budgetFailureSession.cookie, csrfToken: budgetFailureSession.csrfToken },
+    );
+    const outputFailure = await postJson(
+      `${outputFailureHarness.baseUrl}/programs/${outputFailureProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: outputFailureSession.cookie, csrfToken: outputFailureSession.csrfToken },
+    );
+    const serializedFaults = JSON.stringify([
+      budgetFailure.body,
+      missingProvider.body,
+      outputFailure.body,
+      providerFailure.body,
+    ]);
 
     assert.deepEqual(
       {
@@ -10343,18 +10435,26 @@ test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailu
         adminGenerate: { body: adminGenerate.body, statusCode: adminGenerate.statusCode },
         invalidBody: { body: invalidBody.body, statusCode: invalidBody.statusCode },
         invalidList: { body: invalidList.body, statusCode: invalidList.statusCode },
+        budgetFailure: { body: budgetFailure.body, statusCode: budgetFailure.statusCode },
         missingAcceptanceCsrf: { body: await missingAcceptanceCsrf.json(), statusCode: missingAcceptanceCsrf.status },
         missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
         missingPolicy: { body: missingPolicy.body, statusCode: missingPolicy.statusCode },
+        missingProvider: { body: missingProvider.body, statusCode: missingProvider.statusCode },
+        missingRejectionCsrf: { body: await missingRejectionCsrf.json(), statusCode: missingRejectionCsrf.status },
         missingSession: { body: missingSession.body, statusCode: missingSession.statusCode },
+        outputFailure: { body: outputFailure.body, statusCode: outputFailure.statusCode },
         providerFailure: {
           body: providerFailure.body,
           hasLeaks: containsLlmSuggestionHttpLeaks(serializedFaults),
           statusCode: providerFailure.statusCode,
         },
         rejected: llmRejectedSuggestionProjection(rejected),
+        staleCoverageGap: { body: staleCoverageGap.body, statusCode: staleCoverageGap.statusCode },
+        studentAcceptance: { body: studentAcceptance.body, statusCode: studentAcceptance.statusCode },
+        studentDetail: { body: studentDetail.body, statusCode: studentDetail.statusCode },
         studentList: { body: studentList.body, statusCode: studentList.statusCode },
         suggestionStatuses: listLlmCurationSuggestionRecords(database).map($0 => [$0.title, $0.status]),
+        unsupportedContext: { body: unsupportedContext.body, statusCode: unsupportedContext.statusCode },
       },
       {
         acceptedCount: projectHttpAcceptedCorpusCounts(database),
@@ -10363,12 +10463,16 @@ test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailu
           statusCode: 409,
         },
         adminGenerate: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        budgetFailure: { body: { status: "rejected", reason: "provider_budget_exceeded" }, statusCode: 409 },
         invalidBody: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
         invalidList: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
         missingAcceptanceCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingPolicy: { body: { status: "rejected", reason: "suggestion_policy_not_found" }, statusCode: 404 },
+        missingProvider: { body: { status: "rejected", reason: "provider_adapter_not_found" }, statusCode: 404 },
+        missingRejectionCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
+        outputFailure: { body: { status: "rejected", reason: "provider_output_rejected" }, statusCode: 409 },
         providerFailure: {
           body: { status: "rejected", reason: "provider_execution_failed" },
           hasLeaks: false,
@@ -10378,12 +10482,19 @@ test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailu
           status: "accepted",
           suggestionStatus: "rejected",
         },
+        staleCoverageGap: { body: { status: "rejected", reason: "coverage_gap_not_found" }, statusCode: 404 },
+        studentAcceptance: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        studentDetail: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
         studentList: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
         suggestionStatuses: [["Add algebra topic", "rejected"]],
+        unsupportedContext: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
       },
     );
   } finally {
     await close();
+    await budgetFailureHarness.close();
+    await missingProviderHarness.close();
+    await outputFailureHarness.close();
     await providerFailureHarness.close();
   }
 });

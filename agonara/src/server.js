@@ -4253,6 +4253,7 @@ function httpStatusFor(reason) {
     case "learner_state_evidence_owner_not_found":
     case "learner_state_target_link_not_found":
     case "learner_state_target_not_found":
+    case "coverage_gap_not_found":
     case "coverage_gap_scope_not_found":
     case "llm_curation_suggestion_not_found":
     case "provider_adapter_not_found":
