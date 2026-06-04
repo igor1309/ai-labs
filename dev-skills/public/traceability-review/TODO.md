@@ -1,7 +1,7 @@
 ---
 date: 2026-06-04
 model: claude-opus-4-8
-description: "Next steps for the traceability-review skill: umbrella ledger variance check, possible extensions, parked decisions"
+description: "Next steps for the traceability-review skill: pipeline + ledger complete, optional extensions, parked decisions"
 ---
 
 # Traceability Review — TODO
