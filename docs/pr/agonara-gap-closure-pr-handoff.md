@@ -12,7 +12,9 @@ description: "PR handoff for the Agonara product gap closure branch."
 - Target checked: `origin/trunk` at `825834c35a95237c0515c16ad82194830338ab90`
 - Baseline before this handoff commit: `cf42cec9 archive agonara gap plan`
 
-## Suggested PR Narrative
+## Suggested Agonara PR Narrative
+
+Use this title and body for an Agonara-scoped PR. If the current mixed branch is opened as-is, broaden the title and body to cover the non-Agonara process, agent, dev-skills, oracle, and research changes, or split those changes before opening.
 
 Suggested title:
 
