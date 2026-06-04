@@ -3,7 +3,7 @@ date: 2026-06-04
 model: gpt-5
 description: "Spec: Agonara curator coverage gaps."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -177,3 +177,20 @@ type CuratorCoverageGapsRejectionReason =
 - The `/learn` Curator UI lets Program Curators inspect and drill into coverage gaps without exposing Student Workspace state or protected curator/assessment metadata.
 - Tests cover every behavior rule, including no-mutation boundaries for Corpus Storage, Student Workspace, Program Membership, Identity, target links, candidate records, accepted revisions, and LLM suggestions.
 - The first implementation slice remains read-only and does not create draft candidates, call LLM providers, or accept content into Corpus Storage.
+
+## Implementation status
+
+Implemented by [Curator Coverage Gaps Implementation Plan](../plans/implemented/curator-coverage-gaps.md).
+
+Runtime evidence:
+
+- [Curator Workspace command boundary](../../src/curator-workspace.js)
+- [HTTP API and production composition](../../src/server.js)
+- [`/learn` coverage-gap UI](../../src/learn-ui.js)
+
+Verification evidence:
+
+- [Curator Workspace tests](../../tests/curator-workspace.test.js)
+- [HTTP API tests](../../tests/http-api.test.js)
+- [Executable HTTP acceptance tests](../../tests/executable-acceptance.test.js)
+- [Coverage-gap browser tests](../../tests/curator-coverage-gaps.playwright.js)

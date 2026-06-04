@@ -18,7 +18,7 @@ Remaining storage questions:
 - Which future learning-path sequencing or recommendation records are needed beyond the implemented accepted topic/concept/material graph, and how do they stay separate from personal Student state?
 - Which invalidated learner-state cache records, if any, are worth adding beyond the implemented read-time progress and weak-area derivation?
 - Which future membership-policy variants, if any, are needed beyond implemented Student self-join and invitation-only access without turning Admin authority into a Program role?
-- Which future `/learn` UI artifacts, if any, need persisted learner-facing presentation state beyond the implemented Quick Check, navigation, learner-state, and readiness first slices?
+- Which future `/learn` UI artifacts, if any, need persisted learner-facing presentation state beyond the implemented Quick Check, navigation, learner-state, readiness, membership, and Curator coverage-gap first slices?
 
 ## Under consideration
 

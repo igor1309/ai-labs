@@ -33,12 +33,13 @@ Implemented backend, domain, and product surfaces:
 - Quick Check assessment: session-backed HTTP routes, backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, backup/restore support, and a `/learn` product UI for Curator and Student Quick Check workflows.
 - Learner-state interpretation: explicit target-link curation metadata, read-time owner-only progress and weak-area summaries, supporting-evidence target detail, HTTP routes, backup/restore preservation, and `/learn` Curator/Student learner-state UI.
 - Topic and period readiness checks: accepted readiness definitions with topic or named-period scopes, evidence-backed explicit Student readiness attempts, idempotent retry, owner-only attempt reads, backup/restore support, HTTP routes, and `/learn` Curator/Student readiness UI.
+- Curator coverage gaps: read-only Curator Workspace diagnostics over accepted Program corpus, session-backed Program Curator HTTP inspection, deterministic `draft_guidance` reports, protected redaction, and `/learn` Curator filtering and drill-down UI.
 - Admin board: a local operations board for bootstrap, sign in/out, Identity management, operational access inspection, audit event inspection, and exceptional Program Membership recovery/revocation.
 
 Still deferred or outside current product UI:
 
-- Recommendation ranking, persisted mastery models, curator coverage-gap analysis, and LLM-assisted curation suggestions still need separate specs or plans.
-- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, readiness, and membership first slices is not implemented.
+- Recommendation ranking, persisted mastery models, and LLM-assisted curation suggestions still need separate specs or plans.
+- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, readiness, membership, and coverage-gap first slices is not implemented.
 
 ## Key Separations
 
