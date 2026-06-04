@@ -716,6 +716,51 @@ export const learnUiHtml = `<!doctype html>
           </div>
         </section>
 
+        <section id="coverage-gap-section" class="panel wide-panel stack" aria-label="Curator Coverage Gaps">
+          <h2>Coverage gaps</h2>
+          <p id="coverage-gap-status" class="status" aria-live="polite">Coverage gaps not loaded.</p>
+          <div class="navigation-grid">
+            <section id="coverage-gap-curator-panel" class="stack" aria-label="Curator Coverage Gap Inspection">
+              <h3>Curator coverage</h3>
+              <form id="coverage-gap-filter-form" class="stack">
+                <div class="operation-grid">
+                  <label>
+                    Coverage scope kind
+                    <select id="coverage-gap-scope-kind-input" name="scopeKind">
+                      <option value="program">Program</option>
+                      <option value="topic">Topic</option>
+                      <option value="concept">Concept</option>
+                    </select>
+                  </label>
+                  <label>
+                    Coverage scope id
+                    <input id="coverage-gap-scope-id-input" name="scopeId" autocomplete="off">
+                  </label>
+                  <label>
+                    Minimum severity
+                    <select id="coverage-gap-minimum-severity-input" name="minimumSeverity">
+                      <option value="">All</option>
+                      <option value="info">Info</option>
+                      <option value="warning">Warning</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </label>
+                  <label>
+                    Coverage gap kinds
+                    <input id="coverage-gap-kind-filter-input" name="gapKind" autocomplete="off">
+                  </label>
+                </div>
+                <button id="refresh-coverage-gaps-button" class="secondary" data-requires-session type="submit">Refresh coverage gaps</button>
+              </form>
+              <div id="coverage-gap-summary" class="empty">No coverage gap summary loaded.</div>
+              <div id="coverage-gap-list" class="list">
+                <p class="empty">No coverage gaps loaded.</p>
+              </div>
+              <div id="coverage-gap-detail" class="empty">No coverage gap selected.</div>
+            </section>
+          </div>
+        </section>
+
         <section id="readiness-check-section" class="panel wide-panel stack" aria-label="Topic and Period Readiness">
           <h2>Readiness checks</h2>
           <div class="navigation-grid">
@@ -821,6 +866,8 @@ export const learnUiHtml = `<!doctype html>
         acceptedQuickCheck: null,
         attempts: [],
         candidates: [],
+        coverageGapReport: null,
+        coverageGaps: [],
         csrfToken: null,
         deliveries: [],
         identity: null,
@@ -843,6 +890,7 @@ export const learnUiHtml = `<!doctype html>
         selectedNavigationNode: null,
         selectedAttemptId: null,
         selectedCandidateId: null,
+        selectedCoverageGapId: null,
         selectedDelivery: null,
         selectedLearnerStateTarget: null,
         selectedReadinessAttemptId: null,
@@ -862,6 +910,15 @@ export const learnUiHtml = `<!doctype html>
         candidateForm: document.querySelector("#quick-check-candidate-form"),
         candidateList: document.querySelector("#quick-check-candidate-list"),
         candidateStatusFilter: document.querySelector("#quick-check-candidate-status-filter"),
+        coverageGapDetail: document.querySelector("#coverage-gap-detail"),
+        coverageGapFilterForm: document.querySelector("#coverage-gap-filter-form"),
+        coverageGapKindFilterInput: document.querySelector("#coverage-gap-kind-filter-input"),
+        coverageGapList: document.querySelector("#coverage-gap-list"),
+        coverageGapMinimumSeverityInput: document.querySelector("#coverage-gap-minimum-severity-input"),
+        coverageGapScopeIdInput: document.querySelector("#coverage-gap-scope-id-input"),
+        coverageGapScopeKindInput: document.querySelector("#coverage-gap-scope-kind-input"),
+        coverageGapStatus: document.querySelector("#coverage-gap-status"),
+        coverageGapSummary: document.querySelector("#coverage-gap-summary"),
         curatorModeTab: document.querySelector("#curator-mode-tab"),
         curationDetail: document.querySelector("#quick-check-curation-detail"),
         deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
@@ -1022,9 +1079,15 @@ export const learnUiHtml = `<!doctype html>
 
       elements.programIdInput.addEventListener("input", () => {
         state.programId = elements.programIdInput.value.trim();
+        clearCoverageGapSurfaces();
         clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
+      });
+
+      elements.coverageGapFilterForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        await refreshCoverageGaps();
       });
 
       elements.membershipAdmissionPolicyForm.addEventListener("submit", async event => {
@@ -1408,6 +1471,16 @@ export const learnUiHtml = `<!doctype html>
         void openLearnerStateTarget(button.dataset.targetKind, button.dataset.targetId);
       });
 
+      elements.coverageGapList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action='open-coverage-gap']");
+        if (!button) {
+          return;
+        }
+        state.selectedCoverageGapId = button.dataset.gapId;
+        const gap = state.coverageGaps.find($0 => $0.gapId === state.selectedCoverageGapId) ?? null;
+        renderCoverageGapDetail(gap);
+      });
+
       elements.candidateList.addEventListener("click", event => {
         const button = event.target.closest("button[data-candidate-id]");
         if (!button) {
@@ -1657,6 +1730,7 @@ export const learnUiHtml = `<!doctype html>
         if (sessionChanged) {
           state.programId = "";
           elements.programIdInput.value = "";
+          clearCoverageGapSurfaces();
           clearMembershipSurfaces();
           clearLearnerStateSurfaces();
           clearReadinessSurfaces();
@@ -1673,9 +1747,11 @@ export const learnUiHtml = `<!doctype html>
         state.pendingReadinessAttemptKey = null;
         state.programId = "";
         state.selectedAttemptId = null;
+        state.selectedCoverageGapId = null;
         state.selectedReadinessAttemptId = null;
         elements.programIdInput.value = "";
         elements.signinStatus.textContent = "";
+        clearCoverageGapSurfaces();
         clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
@@ -2114,6 +2190,129 @@ export const learnUiHtml = `<!doctype html>
       function canUseProgramApi() {
         state.programId = elements.programIdInput.value.trim();
         return Boolean(state.identity && state.programId);
+      }
+
+      function clearCoverageGapSurfaces() {
+        state.coverageGapReport = null;
+        state.coverageGaps = [];
+        state.selectedCoverageGapId = null;
+        renderCoverageGapReport();
+        renderCoverageGapDetail(null);
+        elements.coverageGapStatus.textContent = "Coverage gaps not loaded.";
+      }
+
+      async function refreshCoverageGaps() {
+        if (!canUseProgramApi()) {
+          elements.coverageGapStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const query = coverageGapQuery();
+        const suffix = query.size ? "?" + query.toString() : "";
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/coverage-gaps" + suffix,
+        );
+        if (result.status === "accepted") {
+          state.coverageGapReport = result.value.report;
+          state.coverageGaps = result.value.report.gaps;
+          state.selectedCoverageGapId = null;
+          renderCoverageGapReport();
+          renderCoverageGapDetail(null);
+          elements.coverageGapStatus.textContent = "Coverage gaps loaded.";
+          return;
+        }
+        state.coverageGapReport = null;
+        state.coverageGaps = [];
+        state.selectedCoverageGapId = null;
+        renderCoverageGapReport();
+        renderCoverageGapDetail(null);
+        elements.coverageGapStatus.textContent = "Coverage gaps unavailable.";
+      }
+
+      function coverageGapQuery() {
+        const query = new URLSearchParams();
+        const scopeKind = elements.coverageGapScopeKindInput.value;
+        if (scopeKind) {
+          query.set("scopeKind", scopeKind);
+        }
+        const scopeId = elements.coverageGapScopeIdInput.value.trim();
+        if (scopeKind !== "program" && scopeId) {
+          query.set("scopeId", scopeId);
+        }
+        if (elements.coverageGapMinimumSeverityInput.value) {
+          query.set("minimumSeverity", elements.coverageGapMinimumSeverityInput.value);
+        }
+        for (const gapKind of splitIdList(elements.coverageGapKindFilterInput.value)) {
+          query.append("gapKind", gapKind);
+        }
+        return query;
+      }
+
+      function renderCoverageGapReport() {
+        const report = state.coverageGapReport;
+        if (!report) {
+          elements.coverageGapSummary.textContent = "No coverage gap summary loaded.";
+          renderCoverageGapList();
+          return;
+        }
+        const severities = coverageGapSeverityCounts(report.gaps);
+        elements.coverageGapSummary.textContent = [
+          "Scope " + report.scopeKind,
+          report.scopeId ? "Scope id " + report.scopeId : "",
+          "Gaps " + report.gaps.length,
+          "Critical " + severities.critical,
+          "Warning " + severities.warning,
+          "Info " + severities.info,
+        ].filter(Boolean).join("\\n");
+        renderCoverageGapList();
+      }
+
+      function coverageGapSeverityCounts(gaps) {
+        return gaps.reduce(
+          (counts, gap) => ({
+            ...counts,
+            [gap.severity]: counts[gap.severity] + 1,
+          }),
+          { critical: 0, info: 0, warning: 0 },
+        );
+      }
+
+      function renderCoverageGapList() {
+        if (state.coverageGaps.length === 0) {
+          elements.coverageGapList.innerHTML = '<p class="empty">No coverage gaps loaded.</p>';
+          return;
+        }
+        elements.coverageGapList.innerHTML = "";
+        for (const gap of state.coverageGaps) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.action = "open-coverage-gap";
+          button.dataset.gapId = gap.gapId;
+          button.textContent = [
+            gap.severity,
+            gap.gapKind,
+            gap.targetKind,
+            gap.targetTitle,
+            gap.status,
+          ].join(" ");
+          elements.coverageGapList.append(button);
+        }
+      }
+
+      function renderCoverageGapDetail(gap) {
+        if (!gap) {
+          elements.coverageGapDetail.textContent = "No coverage gap selected.";
+          return;
+        }
+        elements.coverageGapDetail.textContent = [
+          gap.title,
+          gap.description,
+          "Severity " + gap.severity,
+          "Status " + gap.status,
+          "Target " + gap.targetKind + " " + gap.targetTitle,
+          "Gap kind " + gap.gapKind,
+          "Source " + gap.sourceKind,
+          "Accepted evidence paths " + gap.acceptedEvidencePathCount,
+        ].join("\\n");
       }
 
       function clearLearnerStateSurfaces() {
