@@ -3,7 +3,7 @@ date: 2026-06-03
 model: gpt-5
 description: "Spec: Agonara topic and period readiness checks."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,20 @@ type: spec
 ## Goal
 
 Define the Corpus-owned contract for accepted topic and period readiness check definitions, and the Student Workspace-owned contract for explicit Student readiness attempts whose results are derived from learner-state evidence without mutating accepted Program corpus or raw assessment attempts.
+
+## Implementation status
+
+Implemented in the Topic and Period Readiness Checks plan:
+
+- Plan archive: [Topic and Period Readiness Checks Implementation Plan](../plans/implemented/topic-period-readiness-checks.md)
+- Storage and backup/restore coverage: [storage.test.js](../../tests/storage.test.js), [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Corpus/domain coverage: [corpus.test.js](../../tests/corpus.test.js), [corpus-executable-acceptance.test.js](../../tests/corpus-executable-acceptance.test.js)
+- Student Workspace coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- HTTP and executable acceptance coverage: [http-api.test.js](../../tests/http-api.test.js), [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Browser coverage: [topic-period-readiness-checks.playwright.js](../../tests/topic-period-readiness-checks.playwright.js)
+- Runtime surfaces: [Corpus domain service](../../src/corpus.js), [Student Workspace domain service](../../src/student-workspace.js), [HTTP adapter](../../src/server.js), [`/learn` product UI](../../src/learn-ui.js)
+
+The implemented first slice supports accepted topic/period readiness definitions, explicit owning-Student readiness attempts, owner-only attempt reads, idempotent retry, evidence-backed requirement snapshots, backup/restore preservation, and `/learn` Curator/Student workflows. It does not implement grades, recommendations, analytics, certification, schedules, notifications, classroom reporting, persisted mastery models, or automatic promotion decisions.
 
 ## Public interface
 
@@ -232,11 +246,6 @@ listReadinessCheckDeliveries(input: {
   scopeKind?: ReadinessScopeKind;
 }) -> ListReadinessCheckDeliveriesResult
 
-getReadinessCheckDelivery(input: {
-  actingIdentityId: IdentityId;
-  revisionId: AcceptedReadinessCheckRevisionId;
-}) -> GetReadinessCheckDeliveryResult
-
 listReadinessCheckAttempts(input: {
   actingIdentityId: IdentityId;
   programId: ProgramId;
@@ -260,8 +269,7 @@ Candidate queries and curation revision reads require effective `Program Curator
 | `POST` | `/readiness-checks/candidates/{candidateId}/acceptance` | Program Curator session and CSRF header | `AcceptedResult<{ acceptedReadinessCheck: AcceptedReadinessCheckSummary }>` |
 | `POST` | `/readiness-checks/candidates/{candidateId}/rejection` | Program Curator session and CSRF header | `AcceptedResult<{ readinessCheckCandidate: ReadinessCheckCandidateSummary }>` |
 | `GET` | `/readiness-checks/revisions/{revisionId}/curation` | Program Curator session | `AcceptedResult<{ acceptedReadinessCheck: AcceptedReadinessCheckCurationSummary }>` |
-| `GET` | `/programs/{programId}/readiness-checks` | Student session | `AcceptedResult<{ readinessCheckDeliveries: ReadinessCheckDelivery[] }>` |
-| `GET` | `/readiness-checks/revisions/{revisionId}` | Student session | `AcceptedResult<{ readinessCheckDelivery: ReadinessCheckDelivery }>` |
+| `GET` | `/programs/{programId}/readiness-checks` | Student session | `AcceptedResult<{ readinessChecks: ReadinessCheckDelivery[] }>` |
 | `POST` | `/programs/{programId}/readiness-check-attempts` | Student session, CSRF header, and idempotency key | `AcceptedResult<{ readinessCheckAttempt: ReadinessCheckAttemptSummary }>` |
 | `GET` | `/programs/{programId}/readiness-check-attempts` | Student session | `AcceptedResult<{ readinessCheckAttempts: ReadinessCheckAttemptSummary[] }>` |
 | `GET` | `/readiness-check-attempts/{attemptId}` | Owning Student session | `AcceptedResult<{ readinessCheckAttempt: ReadinessCheckAttemptSummary }>` |
@@ -274,15 +282,19 @@ type ReadinessCheckRejectionReason =
   | "admin_or_curator_required"
   | "participation_required"
   | "program_not_found"
-  | "readiness_check_candidate_not_found"
-  | "readiness_check_candidate_not_draft"
-  | "readiness_check_revision_not_found"
-  | "readiness_check_attempt_not_found"
+  | "readiness_candidate_not_found"
+  | "readiness_candidate_already_accepted"
+  | "readiness_candidate_already_rejected"
+  | "readiness_entity_not_found"
+  | "readiness_entity_program_mismatch"
+  | "readiness_revision_not_found"
+  | "readiness_revision_program_mismatch"
   | "readiness_scope_not_found"
   | "readiness_scope_program_mismatch"
-  | "readiness_requirement_not_found"
+  | "readiness_requirement_target_not_found"
+  | "readiness_requirement_id_conflict"
   | "readiness_requirement_program_mismatch"
-  | "idempotency_key_required"
+  | "attempt_not_found"
   | "idempotency_conflict"
   | "validation_failed";
 ```

@@ -32,12 +32,13 @@ Implemented backend and domain surfaces:
 - Student Workspace open answers: Student submission, idempotency, owner-only attempt detail/list reads, evaluation status/evidence reads, evaluator orchestration, worker execution, and backup/restore support.
 - Quick Check assessment: session-backed HTTP routes, backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, backup/restore support, and a `/learn` product UI for Curator and Student Quick Check workflows.
 - Learner-state interpretation: explicit target-link curation metadata, read-time owner-only progress and weak-area summaries, supporting-evidence target detail, HTTP routes, backup/restore preservation, and `/learn` Curator/Student learner-state UI.
+- Topic and period readiness checks: accepted readiness definitions with topic or named-period scopes, evidence-backed explicit Student readiness attempts, idempotent retry, owner-only attempt reads, backup/restore support, HTTP routes, and `/learn` Curator/Student readiness UI.
 - Admin board: a local operations board for bootstrap, sign in/out, Identity management, operational access inspection, and audit event inspection.
 
 Still deferred or backend-only:
 
-- Topic-level or period-level checks, readiness decisions, recommendations, persisted mastery models, curator coverage-gap analysis, LLM-assisted curation suggestions, and membership invitation/recovery flows still need separate specs or plans.
-- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, and learner-state first slices is not implemented.
+- Recommendation ranking, persisted mastery models, curator coverage-gap analysis, LLM-assisted curation suggestions, and membership invitation/recovery flows still need separate specs or plans.
+- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, and readiness first slices is not implemented.
 
 ## Key Separations
 
