@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden the Program Membership invitations and recovery plan after adversarial review by expanding curator-leave targeted test matching and requiring Admin-board preservation coverage.
 - Add the Program Membership invitations and recovery child implementation plan with exact storage, domain, HTTP, UI, test, review, commit, dashboard, and archive gates for Phase 5 of the product gap closure.
 - Start parent Phase 5 of the Agonara product gap closure plan with a Program Membership invitations and recovery spec that keeps ordinary curator/student participation flows separate from exceptional Admin recovery.
 - Close the topic and period readiness checks plan with implemented spec status, Product Intent traceability, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.

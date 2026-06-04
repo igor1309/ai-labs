@@ -32,6 +32,24 @@ Fix: none for this plan. Implement the spec without widening policy, invitation,
 
 Required tests: use the implementation phases below.
 
+## Adversarial Review Closure
+
+### Review finding - targeted membership commands could miss curator-leave tests
+
+Verdict: warning
+
+Why: The first plan version used `curator leave|Curator leave` in the targeted `--test-name-pattern` commands. Existing Agonara tests use function-style names such as `leaveCuratorProgram_should...`, so a future targeted run could skip curator-leave tests unless those tests also contain broader membership terms.
+
+Fix applied: Expanded every targeted membership command and final gate regex to include `leaveCurator|LeaveCurator`.
+
+### Review finding - Admin-board preservation was implicit after adding `/admin` membership controls
+
+Verdict: warning
+
+Why: Phase 4 changes `agonara/src/admin-ui.js` for exceptional membership recovery/revocation, but the first plan version only required membership-specific `/admin` browser coverage. Existing Admin-board identity and authority workflows must remain usable after adding membership controls.
+
+Fix applied: Added explicit Admin-board preservation coverage to Phase 4 key work and validation.
+
 ## Goal
 
 Implement `agonara/docs/specs/program-membership-invitations-and-recovery.md` for STU-22, STU-23, CUR-14 through CUR-18, ADM-13, and ADM-14 so Program Membership supports controlled Student invitations, participant management, curator leave, and exceptional Admin recovery/revocation with attribution and without mutating Student Workspace or accepted Program corpus state.
@@ -126,10 +144,10 @@ Required UI screens and stable element ids:
 
 Targeted commands:
 
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership storage" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/storage.test.js`
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership domain" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/program.test.js`
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership http" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership backup restore" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/backup-restore.test.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership storage" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/storage.test.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership domain" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/program.test.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership http" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership backup restore" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/backup-restore.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" npx playwright --version`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership browser" npx playwright test agonara/tests/program-membership-invitations-and-recovery.playwright.js --config agonara/playwright.config.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "quick check product ui browser" npx playwright test agonara/tests/quick-check-product-ui.playwright.js --config agonara/playwright.config.js`
@@ -289,6 +307,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Add RED Playwright tests proving invitation and participant UI does not render Student Workspace progress, answers, feedback, learner-state evidence, readiness attempts, sessions, CSRF tokens, SQL, stack traces, filesystem paths, database URLs, or operational details.
 - Add RED Playwright tests for Admin exceptional recovery/revocation controls with required reasons, attribution, last-curator protection, and event inspection.
 - Add RED Playwright tests proving Admin recovery controls are absent from `/learn` Curator/Student panels and ordinary invitation controls are absent from `/admin` recovery-only surfaces.
+- Add RED Playwright or executable HTTP regression coverage proving existing Admin-board bootstrap, sign-in, identity list, Admin grant/revoke, and audit inspection workflows remain usable after membership controls are added.
 - Add RED layout and accessible-name tests for desktop/mobile and existing `/learn` Quick Check, navigation, learner-state, and readiness workflow preservation.
 - Implement `/learn` membership UI in `agonara/src/learn-ui.js` using the stable ids in this plan.
 - Implement `/admin` exceptional membership controls in `agonara/src/admin-ui.js` using the stable ids in this plan.
@@ -305,6 +324,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 - Learner-state browser regression command.
 - Readiness browser regression command.
 - Targeted membership HTTP command if route assumptions change.
+- Admin-board executable HTTP regression coverage if existing `/admin` browser workflow coverage is not added.
 - Full Agonara tests.
 - Root build.
 - `git diff --check`.
@@ -362,7 +382,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 
 ## Final closeout
 
-Final gates: `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership storage" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/storage.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership domain" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/program.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership http" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership backup restore" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|curator leave|Curator leave" agonara/tests/backup-restore.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership browser" npx playwright test agonara/tests/program-membership-invitations-and-recovery.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "quick check product ui browser" npx playwright test agonara/tests/quick-check-product-ui.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "navigation browser" npx playwright test agonara/tests/topic-concept-material-navigation.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "learner state browser" npx playwright test agonara/tests/learner-state-interpretation.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "readiness browser" npx playwright test agonara/tests/topic-period-readiness-checks.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`; `./scripts/loc-dashboard.sh --sort=name`; docs/front-matter/required-section/link checks; `git diff --check`
+Final gates: `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership storage" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/storage.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership domain" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/program.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership http" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership backup restore" node --test --test-name-pattern "membership|Membership|invitation|Invitation|recovery|Recovery|leaveCurator|LeaveCurator|curator leave|Curator leave" agonara/tests/backup-restore.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership browser" npx playwright test agonara/tests/program-membership-invitations-and-recovery.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "quick check product ui browser" npx playwright test agonara/tests/quick-check-product-ui.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "navigation browser" npx playwright test agonara/tests/topic-concept-material-navigation.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "learner state browser" npx playwright test agonara/tests/learner-state-interpretation.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "readiness browser" npx playwright test agonara/tests/topic-period-readiness-checks.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`; `./scripts/loc-dashboard.sh --sort=name`; docs/front-matter/required-section/link checks; `git diff --check`
 Archive plan: move to `agonara/docs/plans/implemented/program-membership-invitations-and-recovery.md`
 Commit archive move: yes
 Push/PR: follow push policy
