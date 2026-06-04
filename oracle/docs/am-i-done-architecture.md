@@ -33,8 +33,8 @@ Toy app: a one-shot quiz for questions like “I’m a software developer — is
 ### Implementation policy (locked)
 - UI stack (v1): vanilla JavaScript (no framework dependency required for the initial one-shot flow).
 - API routing (v1+): frontend calls same-origin `POST /api/outlook`.
-- Locale (v1): always send `en-US`.
-- Locale (v2 target): auto-detect locale from browser/runtime environment, with fallback to `en-US`.
+- Locale (current): send raw browser locale with `schemaVersion: "2"`.
+- Locale fallback: backend resolves effective locale from browser/runtime environment, with fallback to English.
 
 ### State
 - `idle`
@@ -140,7 +140,7 @@ Responsibilities:
 Treat caching as two independent layers:
 
 1) Normalization cache
-- Key: `(rawProfessionNormalized, locale?)`
+- Key: `(cacheVersion, rawProfessionNormalized, locale?)`
 - Value: normalizer output (canonical label or clarification).
 - Also store a synonym mapping for observability: raw → canonical.
 

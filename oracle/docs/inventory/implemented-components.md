@@ -28,18 +28,18 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Public API:
 - `professionNormalizer.normalize(input) -> Promise<NormalizerResult>` (configured singleton)
 - `configureProfessionNormalizer({ cache, modelClient }) -> void`
-- `createProfessionNormalizer({ cache, modelClient }) -> { normalize(...) }`
+- `createProfessionNormalizer({ cache, cacheVersion, modelClient }) -> { normalize(...) }`
 - `normalizeProfession(profession) -> string` (trim + collapse whitespace)
 - Owned protocol shapes:
 - `NormalizerCache.read(key)`, `NormalizerCache.write(key, value)`
 - `NormalizerModelClient.normalize({ locale, profession })`
 - Cache key policy:
-- `normalizer:${locale}:${normalizedProfession}`
+- `normalizer:${cacheVersion}:${locale}:${normalizedProfession}`
 - Wiring point:
 - Created per request in assembler via `createProfessionNormalizer({...})` inside `makeWorkerFetch(...)`.
 - Tests:
 - `oracle/packages/profession-normalizer/tests/profession-normalizer.test.js`
-- Asserts dependency validation, configured singleton delegation, cache hit/miss behavior, cache keying, normalization helper behavior, clarification-result passthrough.
+- Asserts dependency validation, configured singleton delegation, cache hit/miss behavior, cache keying, cache-version partitioning, normalization helper behavior, clarification-result passthrough.
 
 #### `profession-outlook` (module)
 - Source: `oracle/packages/profession-outlook/src/profession-outlook.js`
@@ -152,39 +152,39 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - `oracle/packages/worker-api/tests/cloudflare-kv-json-cache-adapter.test.js`
 - Asserts dependency validation, miss/hit/invalid JSON behavior, serialized writes.
 
-#### `createOpenRouterNormalizerModelClient`
-- Source: `oracle/packages/worker-api/src/openrouter-normalizer-model-client-adapter.js`
+#### `createLlmNormalizerModelClient`
+- Source: `oracle/packages/worker-api/src/llm-normalizer-model-client-adapter.js`
 - Public API:
-- `createOpenRouterNormalizerModelClient({ apiKey, baseUrl, httpClient, model, timeoutMs, telemetry?, requestId?, schemaVersion?, llmCallAccumulator? }) -> { normalize(input) }`
+- `createLlmNormalizerModelClient({ apiKey, endpointUrl, httpClient, model, timeoutMs, telemetry?, requestId?, schemaVersion?, llmCallAccumulator? }) -> { normalize(input) }`
 - External dependency:
-- OpenRouter HTTP endpoint `/api/v1/chat/completions`.
+- LLM-compatible chat-completions endpoint.
 - Behavior:
 - Sends strict JSON response-format request.
 - Uses system + user prompt including `profession`, `locale`.
 - Parses and validates result shape for clarification/canonical variants.
 - Aborts on timeout, throws explicit timeout/http/schema errors.
 - Wiring point:
-- Instantiated by assembler with `OPENROUTER_API_KEY`, `NORMALIZER_MODEL`, `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`.
+- Instantiated by assembler with `LLM_API_KEY`, `NORMALIZER_MODEL`, `LLM_ENDPOINT_URL`, `LLM_TIMEOUT_MS`.
 - Tests:
-- `oracle/packages/worker-api/tests/openrouter-normalizer-model-client-adapter.test.js`
-- Asserts dependency validation, request payload config propagation, JSON parsing, schema validation failures, OpenRouter non-OK error mapping, timeout behavior.
+- `oracle/packages/worker-api/tests/llm-normalizer-model-client-adapter.test.js`
+- Asserts dependency validation, request payload config propagation, JSON parsing, schema validation failures, LLM non-OK error mapping, timeout behavior.
 
-#### `createOpenRouterOutlookModelClient`
-- Source: `oracle/packages/worker-api/src/openrouter-outlook-model-client-adapter.js`
+#### `createLlmOutlookModelClient`
+- Source: `oracle/packages/worker-api/src/llm-outlook-model-client-adapter.js`
 - Public API:
-- `createOpenRouterOutlookModelClient({ apiKey, baseUrl, httpClient, model, timeoutMs, telemetry?, requestId?, llmCallAccumulator? }) -> { generate(input) }`
+- `createLlmOutlookModelClient({ apiKey, endpointUrl, httpClient, model, timeoutMs, telemetry?, requestId?, llmCallAccumulator? }) -> { generate(input) }`
 - External dependency:
-- OpenRouter HTTP endpoint `/api/v1/chat/completions`.
+- LLM-compatible chat-completions endpoint.
 - Behavior:
 - Sends strict JSON response-format request.
 - Includes canonical profession/locale/schemaVersion/promptVersion/hints in user prompt.
 - Validates fixed `OutlookAnswer` shape.
 - Aborts on timeout, throws explicit timeout/http/schema errors.
 - Wiring point:
-- Instantiated by assembler with `OPENROUTER_API_KEY`, `OUTLOOK_MODEL`, `OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`.
+- Instantiated by assembler with `LLM_API_KEY`, `OUTLOOK_MODEL`, `LLM_ENDPOINT_URL`, `LLM_TIMEOUT_MS`.
 - Tests:
-- `oracle/packages/worker-api/tests/openrouter-outlook-model-client-adapter.test.js`
-- Asserts dependency validation, prompt + payload content, schema checks, JSON-only enforcement, OpenRouter error mapping, timeout behavior.
+- `oracle/packages/worker-api/tests/llm-outlook-model-client-adapter.test.js`
+- Asserts dependency validation, prompt + payload content, schema checks, JSON-only enforcement, LLM error mapping, timeout behavior.
 
 #### `createPopularityCountersStore` (D1 adapter)
 - Source: `oracle/packages/worker-api/src/popularity-counters-store.js`
@@ -228,8 +228,8 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 - Resolves prod-only Analytics Engine telemetry (no-op in non-prod).
 - Builds adapters and modules, wires composition handler, wraps with entrypoint router.
 - Default config:
-- `OPENROUTER_BASE_URL`: `https://openrouter.ai`
-- `OPENROUTER_TIMEOUT_MS`: `10000`
+- `LLM_ENDPOINT_URL`: `https://nomos.enoa.ai/v1/chat/completions`
+- `LLM_TIMEOUT_MS`: `10000`
 - `PROMPT_VERSION`: `"2"`
 - Tests:
 - `oracle/apps/am-i-done-api/tests/worker-fetch-assembler.test.js`
@@ -276,12 +276,12 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 | `DB` | Yes | `createPopularityCountersStore`, `createRawInputCountersStore` | D1 canonical/raw counters persistence |
 | `ENVIRONMENT` | Yes | Assembler + telemetry wiring | Enables prod-only telemetry (`prod|preview|dev`) |
 | `TELEMETRY_DATASET` | Yes (prod-only) | `createAnalyticsEngineTelemetry` | Workers Analytics Engine dataset binding |
-| `OPENROUTER_API_KEY` | Yes | Both OpenRouter adapters | Auth for model calls |
+| `LLM_API_KEY` | Yes | Both LLM adapters | Auth for model calls |
 | `PROMPT_VERSION` | No (defaults to `"2"`) | `createProfessionOutlookService` via assembler config | Cache/prompt versioning |
-| `NORMALIZER_MODEL` | Yes | OpenRouter normalizer adapter | Model selection |
-| `OUTLOOK_MODEL` | Yes | OpenRouter outlook adapter | Model selection |
-| `OPENROUTER_BASE_URL` | No | Both OpenRouter adapters | Endpoint override |
-| `OPENROUTER_TIMEOUT_MS` | No | Both OpenRouter adapters | Timeout tuning |
+| `NORMALIZER_MODEL` | Yes | LLM normalizer adapter | Model selection |
+| `OUTLOOK_MODEL` | Yes | LLM outlook adapter | Model selection |
+| `LLM_ENDPOINT_URL` | No | Both LLM adapters | Endpoint override |
+| `LLM_TIMEOUT_MS` | No | Both LLM adapters | Timeout tuning |
 
 ## Test inventory and execution
 - Full suite command: `./scripts/run_silent.sh "tests" npm test`
@@ -303,13 +303,13 @@ description: "Inventory of implemented modules, adapters, wiring points, tests, 
 ## Ready-to-assemble checklist
 - [x] Module-owned protocols are defined in their owning modules (`profession-normalizer`, `profession-outlook`).
 - [x] Worker-owned components (`requestGuard`, composition handler, entrypoint router) are implemented and tested.
-- [x] Cloudflare adapters (KV, D1, OpenRouter) are implemented and assembler-wired.
+- [x] Cloudflare adapters (KV, D1, LLM) are implemented and assembler-wired.
 - [x] App entrypoint delegates to assembler-generated fetch.
 - [x] `PopularityTracker` behavior from architecture is implemented (increment counters on every request, including clarification/cache-hit paths).
-- [ ] Cloudflare secret `OPENROUTER_API_KEY` must be provisioned in target environment.
+- [ ] Cloudflare secret `LLM_API_KEY` must be provisioned in target environment.
 - [ ] D1 migrations (`oracle/apps/am-i-done-api/migrations/0001_init.sql`, `oracle/apps/am-i-done-api/migrations/0002_raw_input_counters.sql`) must be applied in target environment.
 - [ ] Required runtime vars (`ENVIRONMENT`, `NORMALIZER_MODEL`, `OUTLOOK_MODEL`) must be set in target environment.
-- [ ] Optional runtime overrides (`OPENROUTER_BASE_URL`, `OPENROUTER_TIMEOUT_MS`, `PROMPT_VERSION`) should be explicitly set per deployment policy.
+- [ ] Optional runtime overrides (`LLM_ENDPOINT_URL`, `LLM_TIMEOUT_MS`, `PROMPT_VERSION`) should be explicitly set per deployment policy.
 - [ ] Telemetry (prod-only): Analytics Engine dataset `TELEMETRY_DATASET` must be bound and provisioned in production.
 
 ## References

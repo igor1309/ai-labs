@@ -1,13 +1,13 @@
 ---
 date: 2026-02-21
 model: gpt-5.2
-description: "Spec: OpenRouter adapter implementing profession-outlook model client interface"
+description: "Spec: LLM adapter implementing profession-outlook model client interface"
 ---
 
-# Spec: OpenRouter Outlook Model Client Adapter (v1)
+# Spec: LLM Outlook Model Client Adapter (v1)
 
 ## Goal
-Implement the `profession-outlook` module-owned `OutlookModelClient.generate(...)` protocol by calling OpenRouter.
+Implement the `profession-outlook` module-owned `OutlookModelClient.generate(...)` protocol by calling the configured LLM endpoint.
 
 This adapter is produced by the Worker assembler.
 
@@ -26,7 +26,7 @@ Output:
 
 ## Configuration (assembler-provided)
 Required:
-- `OPENROUTER_API_KEY` secret
+- `LLM_API_KEY` secret
 - `model` identifier (string)
 - timeout (ms)
 
@@ -63,4 +63,3 @@ Using an HTTP client spy:
 
 ## Done criteria
 - Adapter implements the protocol and is covered by tests.
-

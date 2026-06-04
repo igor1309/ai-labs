@@ -1,6 +1,6 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
+date: 2026-06-01
+model: claude-opus-4-8
 description: "Title and body template for dashboard-sync-agent's PR. Single stable branch (dashboard-sync/daily); body is force-updated each run that produces drift."
 ---
 
@@ -55,6 +55,17 @@ Source: `dashboard-sync-agent/agent/agent.md` v<version> on
 ```
 
 The `<version>` token is the version line from the front matter of `agent.md`. The `<commit>` token is the trunk commit the agent ran against (recorded by the cron wrapper before invocation).
+
+## Mechanics
+
+Pass the title and body to `gh` via a file — never via an inline heredoc or `$(cat <<'EOF' … )` command substitution. The body is multi-line Markdown with tables, backticks, and `$`-like tokens; when assigned to a shell variable through the tool layer the heredoc collapses to a single line, never terminates, and the command fails. A failed `body=$(cat <<'EOF' … )` line in the run report is the signature of this anti-pattern; if you produce one, switch to `--body-file`.
+
+Instead:
+
+1. Render the body and write it to a temp file with the `write` tool (for example `/tmp/dashboard-sync-pr-body.md`).
+2. Create or update the PR with `--body-file`:
+   - New PR: `gh pr create --repo igor1309/ai-labs --head dashboard-sync/daily --base trunk --title "<title>" --body-file /tmp/dashboard-sync-pr-body.md`
+   - Existing PR: `gh pr edit <number> --repo igor1309/ai-labs --title "<title>" --body-file /tmp/dashboard-sync-pr-body.md`
 
 ## Update behavior
 

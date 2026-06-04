@@ -1,30 +1,21 @@
 # AGENTS
 
+> **Progressive disclosure.** This is a discovery doc — read each referenced `.agents/` file or skill when its topic is in scope, and any file marked "read at session start" up front.
+
 ## Disabled skills
 
 `pfw-*` skills (Point-Free) are not used in this repo. Never invoke any `pfw-*` skill.
 
+## Session start
+
+At the first message of a session, before exploring the repo or acting, consult the
+`using-dev-skills` skill to pick the ladder and invoke the matching skill. This is the
+default, not optional.
+
 ## Collaboration preferences
 
-- Latest direct user instruction is the highest-priority source of truth for current scope.
-- If the user narrows scope or corrects direction, immediately stop the previous plan and follow the new scope.
-- Before making changes, restate the requested scope in one sentence and execute only that scope.
-- Follow the written plan/docs as the source of truth; do not invent steps or rename phases.
-- Make small, reviewable changes. Stop after each step for human review only when the active plan declares `human-review-gated`; otherwise auto-continue after green gates and local commit.
-- Add tests alongside changes, not later.
-- Always run tests on code changes.
-- Require scope-appropriate verification before declaring completion.
-- Full test/build gates are required for code, config, dependency, CI, release, or generated-artifact changes.
-- Docs-only changes do not require test/build runs unless the docs change executable examples, generated outputs, CI/release behavior, or package/tooling configuration.
-- For docs-only changes, verify Markdown structure, required front matter, required sections, links/references when relevant, and git diff scope.
-- Require scope-appropriate verification for each phase step before moving to the next step.
-- Commit only when tests are passing for the current branch state.
-- `trunk` is a protected branch. Never commit or push directly to `trunk`. All changes must go through a PR from a dedicated branch.
-- PR merge strategy: use merge commit (`--merge`), never squash. Always use `--auto --delete-branch` flags.
-- Protocols are owned by their client and MUST live in the same module. A protocol without its client is a violation.
-- Keep scope minimal and explicit; avoid scope creep.
-- Tests must cover reasonable edge cases for new or changed behavior.
-- Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
+Always-on behavioral rules — **read at session start**. See
+[`.agents/collaboration-preferences.md`](.agents/collaboration-preferences.md).
 
 ## PR CI Watch
 
@@ -41,32 +32,18 @@ Use the `spec-writing` skill. See `dev-skills/public/spec-writing/SKILL.md`.
 
 ## README Components Table
 
-The `## Components` table in `README.md` lists every component with its type and one-line description. Keep it current:
-
-- Add a row when a new component (product, service, MCP tool, observability) is introduced.
-- Update the Type or Description when a component's role changes.
-- Remove the row when a component is deleted from the repo.
+Keep the `## Components` table in `README.md` current — see
+[`.agents/doc-maintenance.md`](.agents/doc-maintenance.md) when adding, changing, or removing a component.
 
 ## New Project Checklist
 
-When a new top-level project directory is added (or an existing one is renamed/removed), update all of the following in the same change set:
-
-- `scripts/loc-dashboard.sh`: add the project to the `ROW PROJECTS` header comment, the per-project `for proj in ...` loop, and the `known` list in `check_project_drift`.
-- `README.md` `## Components` table: add a row with type and one-line description.
-- `docs/loc-dashboard.html`: add a `product reveal` card under `## Components` and a corresponding entry in the `data` array used by the chart.
-- `<project>/docs/log.md`: seed a project log with an initial entry (project established, scope, initial artifacts).
-- `docs/log.md`: add a top-level entry summarizing the landing.
-- `release-units.config.toml` (only if the project ships a release unit).
-- Per-project CI workflow (`<project>-core.yml`) per the "Per-Project CI Isolation" section, only if the project has tests/build to run.
+When a top-level project directory is added, renamed, or removed, follow the checklist in
+[`.agents/new-project-checklist.md`](.agents/new-project-checklist.md).
 
 ## Log
 
-- Log entries are in reverse chronological order (newest first).
-- Update the relevant log for each meaningful change set before pushing:
-  - repo-level changes: `docs/log.md`
-  - project-level changes: `<project>/docs/log.md` (for example, `oracle/docs/log.md`)
-  - if both scopes are changed, update both logs
-- Keep log entries concise and outcome-focused; don’t copy commit messages verbatim.
+Update the relevant log for each meaningful change set before pushing — see
+[`.agents/doc-maintenance.md`](.agents/doc-maintenance.md) for log locations and conventions.
 
 ## Strict TDD Mode
 
@@ -76,32 +53,17 @@ Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
 
 Use the `process-gates` skill. See `dev-skills/public/process-gates/SKILL.md`.
 
-Repo-specific details:
+Verification commands (always-on):
 - Pre-commit/pre-push verification for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
 - Swift-only scopes: `swift test` / `swift build`.
-- Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
-- Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
-- Worktree convention: `worktrees/<slug>` with branch `<slug>`.
-- Implementation plans must follow `docs/my-way/05-implementation-plan/structure.md`. Required sections are `Goal`, `Execution mode`, `Execution lock`, `Scope guardrails`, phases/tasks, `Done criteria`, and `Final closeout`.
-- Missing required implementation-plan sections are a fail, not a style warning. Do not substitute scattered equivalent bullets for required headings.
-- Implementation plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
-- Default preferred execution mode is `auto-continue` unless the plan explicitly says `human-review-gated`.
-- Completed plans move to the relevant `implemented/` directory as the final closeout step. The move (`git mv docs/plans/<name>.md docs/plans/implemented/<name>.md`) ships in the **same PR as the implementation**, not as a follow-up PR — the merge is the moment the plan becomes implemented, so trunk never sees a state where the implementation is in but the plan still sits in `docs/plans/` as "to do".
-- Before committing or opening a PR for implementation-plan changes, run adversarial review against the implementation-plan review skill and mandatory structure. Fix fail/warn findings before committing or opening the PR.
-- PR titles and bodies for plan/implementation PRs must be derived from the plan goal, scope, source artifacts, verification gates, and changed docs/code. Do not use a vague commit-summary title or body when a plan provides better context.
-- Before opening a PR after substantial implementation or documentation movement, refresh `docs/loc-dashboard.html` from `./scripts/loc-dashboard.sh --sort=name` and verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
+
+For plan authoring, archiving, and PR procedures, see [`.agents/process-gates.md`](.agents/process-gates.md) — read when planning, implementing, or opening a PR.
 
 ## Release Process
 
 Use the `release-process` skill. See `dev-skills/public/release-process/SKILL.md`.
 
-Repo-specific details:
-- Governed by ADR-000 through ADR-006 (`docs/adr/release/`).
-- Config: `release-units.config.toml`; manifest: `release-units.toml`; generator: `scripts/release/generate-manifest.js`.
-- CI trigger: `.github/workflows/release-unit.yml`. Release detection: `detect-releases.js`; tag creation: `create-tags.js`.
-- Pre-push gate for Node/TypeScript: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`.
-- Smoke model: `vars.OPENROUTER_CI_MODEL` and `secrets.OPENROUTER_API_KEY`.
-- Legacy coexistence: the existing `v*` tag namespace (`.github/workflows/release.yml`, Oracle-specific) coexists with the new `<basename>_v*` namespace. The legacy workflow is not modified; migration is deferred.
+For repo-specific release config, CI triggers, gates, and legacy coexistence, see [`.agents/release-process.md`](.agents/release-process.md) — read when doing release work.
 
 ## ADR Governance
 
@@ -113,12 +75,8 @@ Use the `protocol-owned-by-client` skill. See `dev-skills/public/protocol-owned-
 
 ## Per-Project CI Isolation
 
-When adding a new project with its own dependencies, create a dedicated `<project>-core.yml` CI workflow. Do not modify another project's workflow to install cross-project deps or run cross-project tests.
-
-- Each `<project>-core.yml` installs only its own deps and runs only its own test glob.
-- `ci.yml` dispatches to per-project workflows based on path-filter change detection; together the per-project workflows cover all tests from all projects.
-- The release pipeline (`release.yml`) installs all deps, runs the full `npm test` suite, and adds e2e tests on top.
-- When a new project causes failures in repo-wide tests (e.g. label compliance scanning all compose files), the fix is legitimate but must be called out explicitly as a cross-project integration concern — not silently bundled into the project's commit.
+When adding a new project with its own dependencies, create a dedicated `<project>-core.yml` CI workflow — see
+[`.agents/per-project-ci-isolation.md`](.agents/per-project-ci-isolation.md).
 
 ## Nomos API Keys
 

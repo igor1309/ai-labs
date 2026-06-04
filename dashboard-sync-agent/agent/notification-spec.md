@@ -1,6 +1,6 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
+date: 2026-06-01
+model: claude-opus-4-8
 description: "Telegram notification format for dashboard-sync-agent. The cron wrapper applies this spec; the agent itself does not send Telegram messages."
 ---
 
@@ -21,9 +21,19 @@ A run with `Surfaces in error` ≥ 1 always posts (regardless of mode and drift 
 
 ## Channel
 
-Single Telegram chat: `54589373` (maintainer DM with the agent's bot, the same chat allowlisted in `openclaw.json` `channels.telegram.accounts.dashboardsync.allowFrom`).
+Shared bot `@igor1309_ai_labs_bot` (OpenClaw account `ai-labs`), posting into the forum supergroup `-1003954520541`, topic `#dashboard-sync` (`message_thread_id` 6). This replaces the retired per-agent `dashboardsync` bot and maintainer DM `54589373` (account and bot deleted; see `docs/log.md`, 2026-06-01). The live cron wrapper on the VPS is the source of truth for the token and thread id; these values are recorded here so the spec is not stale.
+
+## Rendering
+
+These rules are mandatory; a run that posts anything else to Telegram is a defect.
+
+- **Never post the agent's raw run report.** The report (per `report-format.md`) is Markdown — `##` headers and a `| Surface | Status | … |` per-surface table — which Telegram does not render and which reads as noise. The runtime parses the report's fields and emits only the compact formats below. Forwarding the report verbatim (headers, tables, PR-body footer, tool-call traces) is the bug this section exists to prevent.
+- **Send as plain text.** Post with no Telegram parse mode (no Markdown, no MarkdownV2, no HTML). The compact formats contain no markup, so literal `#`, `|`, `*`, or backticks must never appear in a posted message. Because no parse mode is set, message text needs no escaping.
+- **One message per run.** A single message in the compact format, not a stream of lines or the multi-section report.
 
 ## Message formats
+
+The `·` separators and leading `· ` bullets below are literal plain-text characters, not Markdown. Each block is the entire message body.
 
 ### Drift summary
 
