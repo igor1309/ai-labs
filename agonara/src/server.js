@@ -99,6 +99,7 @@ export function createServer({
 
       if (identityCommands && curatorWorkspaceCommands) {
         const handled = await handleCuratorWorkspaceApi({
+          csrfTokens,
           curatorWorkspaceCommands,
           identityCommands,
           pathname,
@@ -766,6 +767,7 @@ async function handleProgramApi({
 }
 
 async function handleCuratorWorkspaceApi({
+  csrfTokens,
   curatorWorkspaceCommands,
   identityCommands,
   pathname,
@@ -773,6 +775,128 @@ async function handleCuratorWorkspaceApi({
   response,
 }) {
   const coverageGapsMatch = pathname.match(/^\/programs\/([^/]+)\/coverage-gaps$/);
+  const llmSuggestionsMatch = pathname.match(/^\/programs\/([^/]+)\/llm-curation-suggestions$/);
+  const llmSuggestionDetailMatch = pathname.match(/^\/llm-curation-suggestions\/([^/]+)$/);
+  const llmSuggestionAcceptanceMatch = pathname.match(
+    /^\/llm-curation-suggestions\/([^/]+)\/acceptance$/,
+  );
+  const llmSuggestionRejectionMatch = pathname.match(
+    /^\/llm-curation-suggestions\/([^/]+)\/rejection$/,
+  );
+
+  if (request.method === "POST" && llmSuggestionsMatch) {
+    const session = requireMutationSession({ csrfTokens, identityCommands, request, response });
+    if (!session) {
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const generation = parseLlmSuggestionGenerationBody(body.value);
+    if (generation.status === "rejected") {
+      sendJson(response, 400, generation);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.generateLlmCurationSuggestions({
+      actingIdentityId: session.value.identity.id,
+      allowedSuggestionKinds: generation.value.allowedSuggestionKinds,
+      contextEntityIds: generation.value.contextEntityIds,
+      coverageGapIds: generation.value.coverageGapIds,
+      curatorInstruction: generation.value.curatorInstruction,
+      idempotencyKey: generation.value.idempotencyKey,
+      maxSuggestions: generation.value.maxSuggestions,
+      programId: decodeURIComponent(llmSuggestionsMatch[1]),
+      suggestionPolicyId: generation.value.suggestionPolicyId,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && llmSuggestionsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const query = parseLlmSuggestionListQuery(request);
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.listLlmCurationSuggestions({
+      actingIdentityId: session.value.identity.id,
+      cursor: query.value.cursor,
+      limit: query.value.limit,
+      programId: decodeURIComponent(llmSuggestionsMatch[1]),
+      status: query.value.status,
+      suggestionKind: query.value.suggestionKind,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && llmSuggestionDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.getLlmCurationSuggestion({
+      actingIdentityId: session.value.identity.id,
+      suggestionId: decodeURIComponent(llmSuggestionDetailMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "POST" && llmSuggestionAcceptanceMatch) {
+    const session = requireMutationSession({ csrfTokens, identityCommands, request, response });
+    if (!session) {
+      return true;
+    }
+
+    const body = await readEmptyJsonObjectBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.acceptLlmCurationSuggestion({
+      actingIdentityId: session.value.identity.id,
+      suggestionId: decodeURIComponent(llmSuggestionAcceptanceMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "POST" && llmSuggestionRejectionMatch) {
+    const session = requireMutationSession({ csrfTokens, identityCommands, request, response });
+    if (!session) {
+      return true;
+    }
+
+    const body = await readEmptyJsonObjectBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.rejectLlmCurationSuggestion({
+      actingIdentityId: session.value.identity.id,
+      suggestionId: decodeURIComponent(llmSuggestionRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
   if (request.method === "GET" && coverageGapsMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2468,6 +2592,8 @@ export function startServer({
     corpusCommands,
     database,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    llmSuggestionPolicies: [makeDefaultLlmSuggestionPolicy()],
+    llmSuggestionProviderAdapters: [makeDefaultLlmSuggestionProviderAdapter()],
     now,
   });
   const server = createServer({
@@ -2486,6 +2612,63 @@ export function startServer({
   });
   server.listen(Number(port), host);
   return server;
+}
+
+function makeDefaultLlmSuggestionPolicy() {
+  return {
+    suggestionPolicyId: "default-deterministic-policy",
+    providerAdapterId: "default-deterministic-provider",
+    outputValidatorPolicyId: "default-deterministic-validator",
+    redactionPolicyId: "default-redaction",
+    allowedSuggestionKinds: ["navigation_candidate"],
+    promptInputPolicy: {
+      includeAcceptedNavigationContext: true,
+      includeAcceptedCheckContext: true,
+      includeReadinessContext: true,
+      includeCoverageGapContext: true,
+      includeStudentWorkspaceState: false,
+    },
+    budgetPolicy: { maxProviderCalls: 1, maxInputTokens: 4000, maxOutputTokens: 800 },
+    rawArtifactPolicy: "none",
+  };
+}
+
+function makeDefaultLlmSuggestionProviderAdapter() {
+  return {
+    providerAdapterId: "default-deterministic-provider",
+    suggest: () => ({
+      suggestions: [
+        {
+          suggestionKind: "navigation_candidate",
+          title: "Draft topic suggestion",
+          summary: "Create one draft topic candidate for curator review.",
+          rationale: "The redacted accepted program context leaves room for one curator-reviewed topic draft.",
+          suggestedDraft: {
+            candidateKind: "navigation_candidate",
+            request: {
+              candidateKind: "topic",
+              title: "Draft topic suggestion",
+              body: "Draft topic suggestion body",
+              sourceIds: [],
+              rationale: "Draft candidate rationale",
+            },
+          },
+          supportingEvidence: [
+            {
+              sourceKind: "curator_instruction",
+              sourceId: "curator-instruction",
+              label: "Curator instruction",
+            },
+          ],
+        },
+      ],
+      outputValidation: {
+        validatorPolicyId: "default-deterministic-validator",
+        passed: true,
+      },
+      providerUsage: { providerCalls: 1, inputTokens: 120, outputTokens: 80 },
+    }),
+  };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -3317,6 +3500,89 @@ function parseReadinessCheckAttemptListFilters(request) {
   return accepted({ readinessCheckRevisionId: readinessCheckRevisionId ?? undefined });
 }
 
+function parseLlmSuggestionListQuery(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const status = url.searchParams.get("status");
+  const suggestionKind = url.searchParams.get("suggestionKind");
+  const limit = url.searchParams.get("limit");
+  const cursor = url.searchParams.get("cursor");
+  if (
+    (status !== null && !["draft_suggestion", "materialized", "rejected"].includes(status)) ||
+    (suggestionKind !== null &&
+      ![
+        "assessment_criterion_candidate",
+        "navigation_candidate",
+        "open_answer_check_candidate",
+        "quick_check_candidate",
+        "readiness_check_candidate",
+      ].includes(suggestionKind)) ||
+    (cursor !== null && !isNonEmptyRequestText(cursor))
+  ) {
+    return rejected("validation_failed");
+  }
+
+  const parsedLimit = limit === null ? undefined : Number(limit);
+  if (parsedLimit !== undefined && (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 50)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    cursor: cursor ?? undefined,
+    limit: parsedLimit,
+    status: status ?? undefined,
+    suggestionKind: suggestionKind ?? undefined,
+  });
+}
+
+function parseLlmSuggestionGenerationBody(body) {
+  if (
+    !hasOnlyKeys(body, [
+      "allowedSuggestionKinds",
+      "contextEntityIds",
+      "coverageGapIds",
+      "curatorInstruction",
+      "idempotencyKey",
+      "maxSuggestions",
+      "suggestionPolicyId",
+    ]) ||
+    !isNonEmptyRequestText(body.suggestionPolicyId) ||
+    !isNonEmptyRequestText(body.idempotencyKey) ||
+    !Number.isInteger(body.maxSuggestions)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  if (
+    (body.curatorInstruction !== undefined && typeof body.curatorInstruction !== "string") ||
+    (body.coverageGapIds !== undefined && !isValidRequestTextArray(body.coverageGapIds)) ||
+    (body.contextEntityIds !== undefined && !isValidRequestTextArray(body.contextEntityIds)) ||
+    (body.allowedSuggestionKinds !== undefined && !isValidRequestTextArray(body.allowedSuggestionKinds))
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    allowedSuggestionKinds: body.allowedSuggestionKinds,
+    contextEntityIds: body.contextEntityIds,
+    coverageGapIds: body.coverageGapIds,
+    curatorInstruction: body.curatorInstruction,
+    idempotencyKey: body.idempotencyKey,
+    maxSuggestions: body.maxSuggestions,
+    suggestionPolicyId: body.suggestionPolicyId,
+  });
+}
+
+async function readEmptyJsonObjectBody(request) {
+  const body = await readRequiredJsonObject(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (Object.keys(body.value).length !== 0) {
+    return rejected("validation_failed");
+  }
+  return accepted({});
+}
+
 function parseSubmitOpenAnswerAttemptBody(body) {
   if (
     Object.keys(body).length !== 2 ||
@@ -3516,6 +3782,10 @@ function isValidLearnerStateTargetLinkBody(body) {
 
 function hasOnlyKeys(body, allowedKeys) {
   return Object.keys(body).every($0 => allowedKeys.includes($0));
+}
+
+function isValidRequestTextArray(value) {
+  return Array.isArray(value) && value.every(isNonEmptyRequestText);
 }
 
 function paginateList({ generateToken, items, limit, listCursors, offset, routeKey }) {
@@ -3984,6 +4254,9 @@ function httpStatusFor(reason) {
     case "learner_state_target_link_not_found":
     case "learner_state_target_not_found":
     case "coverage_gap_scope_not_found":
+    case "llm_curation_suggestion_not_found":
+    case "provider_adapter_not_found":
+    case "suggestion_policy_not_found":
     case "readiness_candidate_not_found":
     case "readiness_entity_not_found":
     case "readiness_requirement_target_not_found":
@@ -4038,6 +4311,13 @@ function httpStatusFor(reason) {
     case "source_not_found":
     case "source_program_mismatch":
     case "policy_not_satisfied":
+    case "llm_curation_suggestion_already_materialized":
+    case "llm_curation_suggestion_already_rejected":
+    case "provider_budget_exceeded":
+    case "provider_execution_failed":
+    case "provider_output_rejected":
+    case "suggestion_materialization_rejected":
+    case "suggestion_rejection_failed":
     case "target_identity_disabled":
       return 409;
     case "rate_limited":
