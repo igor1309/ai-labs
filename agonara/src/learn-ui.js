@@ -827,6 +827,7 @@ export const learnUiHtml = `<!doctype html>
         invitations: [],
         learnerState: null,
         learnerStateTargetLinks: [],
+        membershipContextVersion: 0,
         myInvitations: [],
         mode: "curator",
         navigation: null,
@@ -1032,11 +1033,15 @@ export const learnUiHtml = `<!doctype html>
           elements.membershipAdmissionPolicyStatus.textContent = "Sign in and set a Program id first.";
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/admission-policy", {
           body: { admissionPolicy: elements.membershipAdmissionPolicyInput.value },
           csrf: true,
           method: "PATCH",
         });
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipAdmissionPolicyStatus.textContent = result.status === "accepted"
           ? "Admission policy saved"
           : membershipMessage(result);
@@ -1048,6 +1053,7 @@ export const learnUiHtml = `<!doctype html>
           elements.membershipInvitationStatus.textContent = "Sign in and set a Program id first.";
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/invitations", {
           body: {
             participationKind: "student",
@@ -1056,6 +1062,9 @@ export const learnUiHtml = `<!doctype html>
           csrf: true,
           method: "POST",
         });
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipInvitationStatus.textContent = result.status === "accepted"
           ? "Invitation created"
           : membershipMessage(result);
@@ -1070,10 +1079,14 @@ export const learnUiHtml = `<!doctype html>
         if (!canUseProgramApi() || !confirm("Stop curating this Program?")) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/curator-membership", {
           csrf: true,
           method: "DELETE",
         });
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipCuratorLeaveStatus.textContent = result.status === "accepted"
           ? "Curator membership left"
           : membershipMessage(result);
@@ -1088,10 +1101,14 @@ export const learnUiHtml = `<!doctype html>
           elements.membershipStudentStatus.textContent = "Sign in and set a Program id first.";
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/student-membership", {
           csrf: true,
           method: "POST",
         });
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipStudentStatus.textContent = result.status === "accepted"
           ? "Program joined"
           : membershipMessage(result);
@@ -1102,10 +1119,14 @@ export const learnUiHtml = `<!doctype html>
         if (!button || !confirm("Revoke this invitation?")) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson(
           "/program-invitations/" + encodeURIComponent(button.dataset.invitationId) + "/revocation",
           { body: {}, csrf: true, method: "POST" },
         );
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipInvitationStatus.textContent = result.status === "accepted"
           ? "Invitation revoked"
           : membershipMessage(result);
@@ -1117,11 +1138,15 @@ export const learnUiHtml = `<!doctype html>
         if (!button || !confirm("Remove this Student from the Program?")) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson(
           "/programs/" + encodeURIComponent(state.programId) + "/participants/student/" +
             encodeURIComponent(button.dataset.identityId),
           { csrf: true, method: "DELETE" },
         );
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipParticipantActionStatus.textContent = result.status === "accepted"
           ? "Student removed"
           : membershipMessage(result);
@@ -1133,11 +1158,15 @@ export const learnUiHtml = `<!doctype html>
         if (!button || !["accept-program-invitation", "decline-program-invitation"].includes(button.dataset.action)) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const action = button.dataset.action === "accept-program-invitation" ? "acceptance" : "decline";
         const result = await requestJson(
           "/program-invitations/" + encodeURIComponent(button.dataset.invitationId) + "/" + action,
           { body: {}, csrf: true, method: "POST" },
         );
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         elements.membershipMyInvitationStatus.textContent = result.status === "accepted"
           ? action === "acceptance" ? "Invitation accepted" : "Invitation declined"
           : membershipMessage(result);
@@ -1624,6 +1653,14 @@ export const learnUiHtml = `<!doctype html>
       });
 
       function acceptSession(value) {
+        const sessionChanged = state.identity?.id !== value.identity.id || state.csrfToken !== value.csrfToken;
+        if (sessionChanged) {
+          state.programId = "";
+          elements.programIdInput.value = "";
+          clearMembershipSurfaces();
+          clearLearnerStateSurfaces();
+          clearReadinessSurfaces();
+        }
         state.csrfToken = value.csrfToken;
         state.identity = value.identity;
         renderSession();
@@ -1896,11 +1933,15 @@ export const learnUiHtml = `<!doctype html>
         if (!canUseProgramApi()) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const status = elements.membershipInvitationStatusFilter.value;
         const query = status ? "?status=" + encodeURIComponent(status) : "";
         const result = await requestJson(
           "/programs/" + encodeURIComponent(state.programId) + "/invitations" + query,
         );
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         state.invitations = result.status === "accepted" ? result.value.invitations : [];
         renderMembershipInvitations();
         if (result.status !== "accepted") {
@@ -1936,6 +1977,7 @@ export const learnUiHtml = `<!doctype html>
         if (!canUseProgramApi()) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const query = new URLSearchParams();
         if (elements.membershipParticipantKindFilter.value) {
           query.set("participationKind", elements.membershipParticipantKindFilter.value);
@@ -1947,6 +1989,9 @@ export const learnUiHtml = `<!doctype html>
         const result = await requestJson(
           "/programs/" + encodeURIComponent(state.programId) + "/participants" + suffix,
         );
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         state.participants = result.status === "accepted" ? result.value.participants : [];
         renderMembershipParticipants();
         if (result.status !== "accepted") {
@@ -1985,7 +2030,11 @@ export const learnUiHtml = `<!doctype html>
         if (!state.identity) {
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/program-invitations/me");
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         state.myInvitations = result.status === "accepted" ? result.value.invitations : [];
         renderMembershipMyInvitations();
         if (result.status !== "accepted") {
@@ -2046,6 +2095,7 @@ export const learnUiHtml = `<!doctype html>
       }
 
       function clearMembershipSurfaces() {
+        state.membershipContextVersion += 1;
         state.invitations = [];
         state.myInvitations = [];
         state.participants = [];
@@ -2055,6 +2105,7 @@ export const learnUiHtml = `<!doctype html>
         elements.membershipAdmissionPolicyStatus.textContent = "";
         elements.membershipCuratorLeaveStatus.textContent = "";
         elements.membershipInvitationStatus.textContent = "";
+        elements.membershipInvitationTargetInput.value = "";
         elements.membershipMyInvitationStatus.textContent = "";
         elements.membershipParticipantActionStatus.textContent = "";
         elements.membershipStudentStatus.textContent = "";

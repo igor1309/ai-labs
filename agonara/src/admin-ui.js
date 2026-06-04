@@ -444,7 +444,7 @@ export const adminBoardHtml = `<!doctype html>
               <textarea id="program-membership-recovery-reason-input" name="recoveryReason" required></textarea>
             </label>
             <button type="submit">Recover membership</button>
-            <p class="status" id="program-membership-recovery-status"></p>
+            <p class="status" id="program-membership-recovery-status" aria-live="polite"></p>
           </form>
 
           <form class="surface stack" id="program-membership-revocation-form" autocomplete="off">
@@ -469,7 +469,7 @@ export const adminBoardHtml = `<!doctype html>
               <textarea id="program-membership-revocation-reason-input" name="revocationReason" required></textarea>
             </label>
             <button class="danger" type="submit">Revoke membership</button>
-            <p class="status" id="program-membership-revocation-status"></p>
+            <p class="status" id="program-membership-revocation-status" aria-live="polite"></p>
           </form>
         </div>
         <div class="actions">
@@ -491,7 +491,7 @@ export const adminBoardHtml = `<!doctype html>
             <tbody id="program-membership-event-list"></tbody>
           </table>
         </div>
-        <p class="status" id="program-membership-event-status"></p>
+        <p class="status" id="program-membership-event-status" aria-live="polite"></p>
       </section>
 
       <section class="surface stack" id="audit-events-panel">
@@ -524,6 +524,7 @@ export const adminBoardHtml = `<!doctype html>
         csrfToken: null,
         identity: null,
         identities: [],
+        membershipContextVersion: 0,
         membershipProgramId: null
       };
       const elements = {
@@ -547,8 +548,10 @@ export const adminBoardHtml = `<!doctype html>
         membershipEventList: document.querySelector("#program-membership-event-list"),
         membershipEventStatus: document.querySelector("#program-membership-event-status"),
         membershipRecoveryForm: document.querySelector("#program-membership-recovery-form"),
+        membershipRecoveryProgramIdInput: document.querySelector("#program-membership-recovery-program-id-input"),
         membershipRecoveryStatus: document.querySelector("#program-membership-recovery-status"),
         membershipRevocationForm: document.querySelector("#program-membership-revocation-form"),
+        membershipRevocationProgramIdInput: document.querySelector("#program-membership-revocation-program-id-input"),
         membershipRevocationStatus: document.querySelector("#program-membership-revocation-status"),
         operationalAccessSummary: document.querySelector("#operational-access-summary"),
         refreshAuditEventsButton: document.querySelector("#refresh-audit-events-button"),
@@ -607,11 +610,15 @@ export const adminBoardHtml = `<!doctype html>
       elements.membershipRecoveryForm.addEventListener("submit", async event => {
         event.preventDefault();
         const body = Object.fromEntries(new FormData(elements.membershipRecoveryForm));
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/admin/program-memberships/recovery", {
           body,
           csrf: true,
           method: "POST"
         });
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         state.membershipProgramId = body.programId;
         renderStatus(elements.membershipRecoveryStatus, result);
         await refreshMembershipEvents();
@@ -623,15 +630,34 @@ export const adminBoardHtml = `<!doctype html>
           return;
         }
         const body = Object.fromEntries(new FormData(elements.membershipRevocationForm));
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/admin/program-memberships/revocation", {
           body,
           csrf: true,
           method: "POST"
         });
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         state.membershipProgramId = body.programId;
         renderStatus(elements.membershipRevocationStatus, result);
         await refreshMembershipEvents();
       });
+
+      for (const input of [elements.membershipRecoveryProgramIdInput, elements.membershipRevocationProgramIdInput]) {
+        input.addEventListener("input", () => {
+          const programId = input.value.trim() || null;
+          if (programId === state.membershipProgramId) {
+            return;
+          }
+          state.membershipContextVersion += 1;
+          state.membershipProgramId = programId;
+          elements.membershipEventList.textContent = "";
+          elements.membershipEventStatus.textContent = "";
+          elements.membershipRecoveryStatus.textContent = "";
+          elements.membershipRevocationStatus.textContent = "";
+        });
+      }
 
       elements.identityList.addEventListener("click", async event => {
         const button = event.target.closest("button[data-action]");
@@ -737,6 +763,7 @@ export const adminBoardHtml = `<!doctype html>
       }
 
       function setSignedOut() {
+        state.membershipContextVersion += 1;
         state.csrfToken = null;
         state.identity = null;
         state.identities = [];
@@ -744,7 +771,9 @@ export const adminBoardHtml = `<!doctype html>
         elements.auditEventList.textContent = "";
         elements.membershipEventList.textContent = "";
         elements.membershipEventStatus.textContent = "";
+        elements.membershipRecoveryForm.reset();
         elements.membershipRecoveryStatus.textContent = "";
+        elements.membershipRevocationForm.reset();
         elements.membershipRevocationStatus.textContent = "";
         elements.membershipAdminPanel.classList.add("hidden");
         elements.sessionActions.classList.add("hidden");
@@ -767,6 +796,7 @@ export const adminBoardHtml = `<!doctype html>
       }
 
       function setSignedIn(value) {
+        state.membershipContextVersion += 1;
         state.csrfToken = value.csrfToken;
         state.identity = value.identity;
         elements.membershipAdminPanel.classList.toggle("hidden", !value.identity.isAdmin);
@@ -852,7 +882,11 @@ export const adminBoardHtml = `<!doctype html>
           elements.membershipEventStatus.dataset.tone = "rejected";
           return;
         }
+        const contextVersion = state.membershipContextVersion;
         const result = await requestJson("/programs/" + encodeURIComponent(programId) + "/membership-events");
+        if (contextVersion !== state.membershipContextVersion) {
+          return;
+        }
         if (result.status !== "accepted") {
           renderStatus(elements.membershipEventStatus, result);
           return;

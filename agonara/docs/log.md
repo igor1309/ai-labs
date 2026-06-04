@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden Phase 4 membership product UI after adversarial review with stale-response guards across Program, identity, and session changes; cleared membership form inputs; accessible Admin feedback; edited-Program event context; and explicit Admin redaction coverage.
 - Implement Phase 4 of the Program Membership invitations and recovery plan with role-isolated `/learn` invitation, participant, admission-policy, self-join, and curator-leave workflows plus Admin-only exceptional recovery, revocation, and membership-event inspection.
 - Harden Phase 3 membership HTTP after adversarial review with session-before-CSRF ordering for existing Program mutations, Admin-vs-Curator invitation separation, exceptional last-curator protection, attributable Admin recovery, diagnostic-read redaction, and invitation-only self-join coverage.
 - Implement Phase 3 of the Program Membership invitations and recovery plan with session-backed invitation, participant-management, curator-leave, and exceptional Admin membership routes, strict body validation, private errors, and executable HTTP acceptance coverage.

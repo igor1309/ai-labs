@@ -34,6 +34,26 @@ test("membershipUiShell_shouldSeparateOrdinaryAndExceptionalControls", async ({ 
   }
 });
 
+test("membershipAdminUi_shouldAnnounceMembershipActionFeedback", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await page.goto(`${harness.baseUrl}/admin`);
+
+    const statusElementsWithoutLiveFeedback = await page.locator([
+      "#program-membership-recovery-status",
+      "#program-membership-revocation-status",
+      "#program-membership-event-status",
+    ].join(", ")).evaluateAll(elements => elements
+      .filter(element => element.getAttribute("aria-live") !== "polite")
+      .map(element => element.id));
+
+    expect(statusElementsWithoutLiveFeedback).toEqual([]);
+  } finally {
+    await harness.close();
+  }
+});
+
 test("membershipLearnUi_shouldInviteAcceptListAndRemoveStudent", async ({ page }) => {
   const harness = await startMembershipHarness();
 
@@ -98,6 +118,7 @@ test("membershipAdminUi_shouldRecoverRevokeAndInspectEvents", async ({ page }) =
     await expect(page.locator("#program-membership-event-list")).toContainText("repair access");
     await expect(page.locator("#program-membership-event-list")).toContainText("membership_exceptionally_revoked");
     await expect(page.locator("#program-membership-event-list")).toContainText("invalid operational state");
+    expect(await membershipForbiddenText(page, "#program-membership-admin-panel")).toEqual([]);
   } finally {
     await harness.close();
   }
@@ -111,6 +132,108 @@ test("membershipAdminUi_shouldHideExceptionalControlsFromNonAdmin", async ({ pag
 
     await expect(page.locator("#session-panel")).toBeVisible();
     await expect(page.locator("#program-membership-admin-panel")).toBeHidden();
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipAdminUi_shouldClearExceptionalInputsAfterLogout", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await signInAdmin(page, harness.baseUrl, harness.admin);
+    await page.locator("#program-membership-recovery-program-id-input").fill(harness.programId);
+    await page.locator("#program-membership-recovery-target-id-input").fill(harness.student.identityId);
+    await page.locator("#program-membership-recovery-reason-input").fill("repair access");
+    await page.locator("#program-membership-revocation-program-id-input").fill(harness.programId);
+    await page.locator("#program-membership-revocation-target-id-input").fill(harness.student.identityId);
+    await page.locator("#program-membership-revocation-reason-input").fill("invalid state");
+
+    await page.locator("#logout-button").click();
+
+    const retainedValues = await page.locator("#program-membership-admin-panel input, #program-membership-admin-panel textarea")
+      .evaluateAll(elements => elements.map(element => element.value).filter(Boolean));
+    expect(retainedValues).toEqual([]);
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipAdminUi_shouldIgnoreMembershipEventsResponseAfterLogout", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await recoverMembership(harness.baseUrl, harness.admin, {
+      participationKind: "student",
+      programId: harness.programId,
+      recoveryReason: "repair access",
+      targetIdentityId: harness.student.identityId,
+    });
+    await signInAdmin(page, harness.baseUrl, harness.admin);
+    await page.locator("#program-membership-recovery-program-id-input").fill(harness.programId);
+
+    const delayedResponse = await delayRouteResponse(page, `**/programs/${harness.programId}/membership-events`);
+
+    await page.locator("#refresh-program-membership-events-button").click();
+    await delayedResponse.observed;
+    await page.locator("#logout-button").click();
+    delayedResponse.release();
+    await delayedResponse.processed;
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    await expect(page.locator("#program-membership-admin-panel")).toBeHidden();
+    await expect(page.locator("#program-membership-event-list")).toHaveText("");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipAdminUi_shouldIgnoreRecoveryResponseAfterLogout", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await signInAdmin(page, harness.baseUrl, harness.admin);
+    await page.locator("#program-membership-recovery-program-id-input").fill(harness.programId);
+    await page.locator("#program-membership-recovery-target-id-input").fill(harness.student.identityId);
+    await page.locator("#program-membership-recovery-reason-input").fill("repair access");
+
+    const delayedResponse = await delayRouteResponse(page, "**/admin/program-memberships/recovery");
+
+    await page.locator("#program-membership-recovery-form").getByRole("button", { name: "Recover membership" }).click();
+    await delayedResponse.observed;
+    await page.locator("#logout-button").click();
+    delayedResponse.release();
+    await delayedResponse.processed;
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    await expect(page.locator("#program-membership-recovery-status")).toHaveText("");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipAdminUi_shouldRefreshEventsForEditedProgram", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await recoverMembership(harness.baseUrl, harness.admin, {
+      participationKind: "student",
+      programId: harness.singleCuratorProgramId,
+      recoveryReason: "single curator program recovery",
+      targetIdentityId: harness.student.identityId,
+    });
+    await signInAdmin(page, harness.baseUrl, harness.admin);
+    await page.locator("#program-membership-recovery-program-id-input").fill(harness.programId);
+    await page.locator("#program-membership-recovery-target-id-input").fill(harness.student.identityId);
+    await page.locator("#program-membership-recovery-reason-input").fill("primary program recovery");
+    await page.locator("#program-membership-recovery-form").getByRole("button", { name: "Recover membership" }).click();
+    await expect(page.locator("#program-membership-event-list")).toContainText("primary program recovery");
+
+    await page.locator("#program-membership-recovery-program-id-input").fill(harness.singleCuratorProgramId);
+    await expect(page.locator("#program-membership-recovery-status")).toHaveText("");
+    await page.locator("#refresh-program-membership-events-button").click();
+
+    await expect(page.locator("#program-membership-event-list")).toContainText("single curator program recovery");
   } finally {
     await harness.close();
   }
@@ -130,8 +253,11 @@ test("membershipLearnUi_shouldRevokeDeclineLeaveAndClearPrivateContext", async (
 
     await page.locator("#program-invitation-target-input").fill(harness.otherStudent.identityId);
     await page.locator("#create-program-invitation-button").click();
+    await expect(page.locator("#program-invitation-status")).toHaveText("Invitation created");
+    await page.locator("#program-invitation-target-input").fill(harness.student.identityId);
     await page.locator("#logout-button").click();
     await expect(page.locator("#program-id-input")).toHaveValue("");
+    await expect(page.locator("#program-invitation-target-input")).toHaveValue("");
     await signIn(page, harness.baseUrl, harness.otherStudent);
     await page.locator("#student-mode-tab").click();
     await page.locator("#refresh-my-program-invitations-button").click();
@@ -149,6 +275,77 @@ test("membershipLearnUi_shouldRevokeDeclineLeaveAndClearPrivateContext", async (
     await expect(page.locator("#program-invitation-list")).toHaveText("No invitations loaded.");
     await expect(page.locator("#program-participant-list")).toHaveText("No participants loaded.");
     expect(await membershipForbiddenText(page, "#program-membership-section")).toEqual([]);
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipLearnUi_shouldClearMembershipContextWhenIdentityChanges", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await signIn(page, harness.baseUrl, harness.curator);
+    await page.locator("#program-id-input").fill(harness.programId);
+    await page.locator("#program-invitation-target-input").fill(harness.student.identityId);
+    await page.locator("#create-program-invitation-button").click();
+    await expect(page.locator("#program-invitation-list")).toContainText(harness.student.identityId);
+
+    await page.locator("#signin-form input[name='login']").fill(harness.student.login);
+    await page.locator("#signin-form input[name='password']").fill(harness.student.password);
+    await page.locator("#signin-form").getByRole("button", { name: "Sign in" }).click();
+    await expect(page.locator("#session-summary")).toContainText("Membership Student");
+
+    await expect(page.locator("#program-id-input")).toHaveValue("");
+    await expect(page.locator("#program-invitation-list")).toHaveText("No invitations loaded.");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipLearnUi_shouldIgnoreInvitationResponseAfterProgramChanges", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await signIn(page, harness.baseUrl, harness.curator);
+    await page.locator("#program-id-input").fill(harness.programId);
+    await page.locator("#program-invitation-target-input").fill(harness.student.identityId);
+    await page.locator("#create-program-invitation-button").click();
+    await expect(page.locator("#program-invitation-list")).toContainText(harness.student.identityId);
+
+    const delayedResponse = await delayRouteResponse(page, `**/programs/${harness.programId}/invitations*`, "GET");
+
+    await page.locator("#refresh-program-invitations-button").click();
+    await delayedResponse.observed;
+    await page.locator("#program-id-input").fill(harness.singleCuratorProgramId);
+    delayedResponse.release();
+    await delayedResponse.processed;
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    await expect(page.locator("#program-invitation-list")).toHaveText("No invitations loaded.");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("membershipLearnUi_shouldIgnoreInvitationActionResponseAfterLogout", async ({ page }) => {
+  const harness = await startMembershipHarness();
+
+  try {
+    await signIn(page, harness.baseUrl, harness.curator);
+    await page.locator("#program-id-input").fill(harness.programId);
+    await page.locator("#program-invitation-target-input").fill(harness.student.identityId);
+
+    const delayedResponse = await delayRouteResponse(page, `**/programs/${harness.programId}/invitations`, "POST");
+
+    await page.locator("#create-program-invitation-button").click();
+    await delayedResponse.observed;
+    await page.locator("#logout-button").click();
+    delayedResponse.release();
+    await delayedResponse.processed;
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    await expect(page.locator("#program-invitation-target-input")).toHaveValue("");
+    await expect(page.locator("#program-invitation-status")).toHaveText("");
   } finally {
     await harness.close();
   }
@@ -289,6 +486,37 @@ async function membershipForbiddenText(page, selector) {
       .filter($0 => $0.test(text))
       .map($0 => String($0));
   }, forbiddenPatterns);
+}
+
+async function delayRouteResponse(page, url, method = null) {
+  let releaseResponse;
+  let responseDelivered;
+  let responseReady;
+  const responseReleased = new Promise(resolve => {
+    releaseResponse = resolve;
+  });
+  const observed = new Promise(resolve => {
+    responseReady = resolve;
+  });
+  const processed = new Promise(resolve => {
+    responseDelivered = resolve;
+  });
+  await page.route(url, async route => {
+    if (method && route.request().method() !== method) {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    responseReady();
+    await responseReleased;
+    await route.fulfill({ response });
+    responseDelivered();
+  });
+  return {
+    observed,
+    processed,
+    release: releaseResponse,
+  };
 }
 
 async function signIn(page, baseUrl, session) {
