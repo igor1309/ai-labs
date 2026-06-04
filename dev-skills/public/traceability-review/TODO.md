@@ -11,6 +11,6 @@ description: "Open task backlog and parked decisions for the traceability-review
 - **Spec-level upward orphan check** — pass 7 covers ADR→intent (every ADR decision must trace back to a source intent); the spec→ADR/intent counterpart — does every spec clause trace back — is the natural extension if spec-level scope creep needs guarding. Vocabulary grounded in `research/orphan-requirement-allocation-completeness.md`.
 
 ## Parked
-- **Publishing workflow** — when merging to trunk: `marketplace.json` + `plugin.json` bump, log entry, PR (per `dev-skills/.claude/CLAUDE.md`). Decide public vs internal.
+- **Publishing workflow** — when merging to trunk: `marketplace.json` + `plugin.json` bump, log entry, PR (per `dev-skills/.claude/CLAUDE.md`).
 - **Hosting / triggering** — single vs multi agent; where it runs in anger.
 - **CUR-13 refinement** — distinguish acceptance-time provenance from pre-acceptance visibility (the passes stably classify it allocated/carried; an arguable under-flag).
