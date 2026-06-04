@@ -144,7 +144,10 @@ async function coverageGapForbiddenText(page) {
     /postgres:\/\//i,
   ];
   return page.locator("#coverage-gap-section").evaluate((element, patterns) => {
-    const text = element.textContent ?? "";
+    const attributeText = Array.from(element.querySelectorAll("*"))
+      .flatMap($0 => Array.from($0.attributes).map(attribute => attribute.value))
+      .join(" ");
+    const text = [element.textContent ?? "", attributeText].join(" ");
     return patterns
       .map($0 => new RegExp($0.source, $0.flags))
       .filter($0 => $0.test(text))
@@ -271,6 +274,7 @@ async function startCoverageGapHarness() {
     login: "admin-only@example.test",
     password: "admin password",
   });
+  await grantAdmin(baseUrl, bootstrap, admin.identityId);
   await joinStudentProgram(baseUrl, student, programId);
 
   return {
@@ -381,9 +385,18 @@ async function createIdentitySession(baseUrl, session, { displayName, login, pas
     cookie: loginResponse.headers.get("set-cookie"),
     csrfToken: loginBody.value.csrfToken,
     displayName,
+    identityId: identityBody.value.id,
     login,
     password,
   };
+}
+
+async function grantAdmin(baseUrl, session, identityId) {
+  await fetch(`${baseUrl}/identity/identities/${identityId}/admin`, {
+    body: JSON.stringify({}),
+    headers: jsonHeaders(session),
+    method: "POST",
+  });
 }
 
 async function joinStudentProgram(baseUrl, session, programId) {

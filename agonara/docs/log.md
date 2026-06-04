@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden Phase 3 coverage UI after adversarial review by removing source-derived gap ids from DOM attributes and proving Admin-only denial with a real Admin identity.
 - Implement Phase 3 of the Curator Coverage Gaps plan with `/learn` Program Curator filtering, report refresh, list and drill-down surfaces, browser redaction checks, unauthorized-session coverage, and existing workflow preservation.
 - Harden Phase 2 coverage HTTP after adversarial review by hiding cross-Program scope mismatches behind `coverage_gap_scope_not_found`.
 - Implement Phase 2 of the Curator Coverage Gaps plan with a session-backed Program Curator HTTP route, query filtering, private status mapping, redacted report responses, and production composition coverage.

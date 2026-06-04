@@ -890,7 +890,7 @@ export const learnUiHtml = `<!doctype html>
         selectedNavigationNode: null,
         selectedAttemptId: null,
         selectedCandidateId: null,
-        selectedCoverageGapId: null,
+        selectedCoverageGapIndex: null,
         selectedDelivery: null,
         selectedLearnerStateTarget: null,
         selectedReadinessAttemptId: null,
@@ -1476,8 +1476,8 @@ export const learnUiHtml = `<!doctype html>
         if (!button) {
           return;
         }
-        state.selectedCoverageGapId = button.dataset.gapId;
-        const gap = state.coverageGaps.find($0 => $0.gapId === state.selectedCoverageGapId) ?? null;
+        state.selectedCoverageGapIndex = Number(button.dataset.gapIndex);
+        const gap = state.coverageGaps[state.selectedCoverageGapIndex] ?? null;
         renderCoverageGapDetail(gap);
       });
 
@@ -1747,7 +1747,7 @@ export const learnUiHtml = `<!doctype html>
         state.pendingReadinessAttemptKey = null;
         state.programId = "";
         state.selectedAttemptId = null;
-        state.selectedCoverageGapId = null;
+        state.selectedCoverageGapIndex = null;
         state.selectedReadinessAttemptId = null;
         elements.programIdInput.value = "";
         elements.signinStatus.textContent = "";
@@ -2195,7 +2195,7 @@ export const learnUiHtml = `<!doctype html>
       function clearCoverageGapSurfaces() {
         state.coverageGapReport = null;
         state.coverageGaps = [];
-        state.selectedCoverageGapId = null;
+        state.selectedCoverageGapIndex = null;
         renderCoverageGapReport();
         renderCoverageGapDetail(null);
         elements.coverageGapStatus.textContent = "Coverage gaps not loaded.";
@@ -2214,7 +2214,7 @@ export const learnUiHtml = `<!doctype html>
         if (result.status === "accepted") {
           state.coverageGapReport = result.value.report;
           state.coverageGaps = result.value.report.gaps;
-          state.selectedCoverageGapId = null;
+          state.selectedCoverageGapIndex = null;
           renderCoverageGapReport();
           renderCoverageGapDetail(null);
           elements.coverageGapStatus.textContent = "Coverage gaps loaded.";
@@ -2222,7 +2222,7 @@ export const learnUiHtml = `<!doctype html>
         }
         state.coverageGapReport = null;
         state.coverageGaps = [];
-        state.selectedCoverageGapId = null;
+        state.selectedCoverageGapIndex = null;
         renderCoverageGapReport();
         renderCoverageGapDetail(null);
         elements.coverageGapStatus.textContent = "Coverage gaps unavailable.";
@@ -2282,11 +2282,11 @@ export const learnUiHtml = `<!doctype html>
           return;
         }
         elements.coverageGapList.innerHTML = "";
-        for (const gap of state.coverageGaps) {
+        state.coverageGaps.forEach((gap, index) => {
           const button = document.createElement("button");
           button.type = "button";
           button.dataset.action = "open-coverage-gap";
-          button.dataset.gapId = gap.gapId;
+          button.dataset.gapIndex = String(index);
           button.textContent = [
             gap.severity,
             gap.gapKind,
@@ -2295,7 +2295,7 @@ export const learnUiHtml = `<!doctype html>
             gap.status,
           ].join(" ");
           elements.coverageGapList.append(button);
-        }
+        });
       }
 
       function renderCoverageGapDetail(gap) {
