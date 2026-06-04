@@ -32,6 +32,24 @@ Fix: none for this plan. Implement the spec without adding hard-coded external p
 
 Required tests: use the implementation phases below.
 
+## Adversarial Review Closure
+
+### Review finding - provider file ownership was implicit
+
+Verdict: warning
+
+Why: The first plan version listed `agonara/src/curator-workspace.js` and `agonara/src/server.js` as provider-boundary files, but it did not explicitly say no separate provider module or provider configuration file is in scope. Phase 7 requires exact Curator Workspace/provider files before implementation, and implicit provider file ownership could invite unplanned external-provider wiring.
+
+Fix applied: Added an explicit provider-file note to the exact implementation inventory: the provider protocol and deterministic fake live in `agonara/src/curator-workspace.js`, production composition wires only that deterministic fake through `agonara/src/server.js`, and no separate provider source/configuration file is in scope for this implementation plan.
+
+### Review finding - final closeout omitted browser regression gates
+
+Verdict: warning
+
+Why: Phase 5 requires Quick Check, navigation, coverage-gap, readiness, and membership browser regression commands to prove the new `/learn` panel preserves existing workflows. The first plan version listed those commands in Phase 5, but the final closeout gates only repeated the LLM suggestion browser command.
+
+Fix applied: Added the Phase 5 browser regression commands to Phase 6 validation and the final closeout gates.
+
 ## Goal
 
 Implement `agonara/docs/specs/llm-assisted-curation-suggestions.md` for CUR-11, CUR-12, CUR-13, and INT-01 so effective Program Curators can generate, inspect, accept, and reject LLM-assisted draft suggestions with redacted provenance and provider-boundary validation, while accepted Program corpus remains behind existing draft-candidate acceptance rules.
@@ -90,6 +108,12 @@ Expected files:
 - `agonara/docs/plans/implemented/llm-assisted-curation-suggestions.md` - archived plan after completion.
 - `agonara/docs/plans/agonara-product-gap-closure.md` - mark parent Phase 7 complete only after this plan's final gates pass.
 - `docs/loc-dashboard.html` - refresh during final closeout after code and docs LOC changes.
+
+Provider files:
+
+- The provider adapter protocol and deterministic first-slice provider fake live in `agonara/src/curator-workspace.js`.
+- Production composition wires only that deterministic first-slice provider fake through `agonara/src/server.js`.
+- No separate provider source file, provider configuration file, provider credentials file, provider SDK wrapper, external-provider network adapter, or provider observability file is in scope for this implementation plan.
 
 HTTP routes:
 
@@ -373,6 +397,11 @@ After each phase's implementation commit and any adversarial-review hardening co
 - Targeted LLM suggestion workspace command.
 - Targeted LLM suggestion HTTP command.
 - LLM suggestion browser command.
+- Quick Check product UI browser regression command.
+- Navigation browser regression command.
+- Coverage browser regression command.
+- Readiness browser regression command.
+- Membership browser regression command.
 - Full Agonara tests.
 - Root build.
 - `git diff --check`.
@@ -401,7 +430,7 @@ After each phase's implementation commit and any adversarial-review hardening co
 
 ## Final closeout
 
-Final gates: `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion storage" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation|backup|restore" agonara/tests/storage.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion backup restore" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation|backup|restore" agonara/tests/backup-restore.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion workspace" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation" agonara/tests/curator-workspace.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion http" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion browser" npx playwright test agonara/tests/llm-assisted-curation-suggestions.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`; Markdown/front-matter/link checks for touched docs; `./scripts/loc-dashboard.sh --sort=name`; `git diff --check`
+Final gates: `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion storage" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation|backup|restore" agonara/tests/storage.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion backup restore" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation|backup|restore" agonara/tests/backup-restore.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion workspace" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation" agonara/tests/curator-workspace.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion http" node --test --test-name-pattern "llm|LLM|suggestion|Suggestion|provider|Provider|curation|Curation" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "llm suggestion browser" npx playwright test agonara/tests/llm-assisted-curation-suggestions.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "quick check product ui browser" npx playwright test agonara/tests/quick-check-product-ui.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "navigation browser" npx playwright test agonara/tests/topic-concept-material-navigation.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "coverage browser" npx playwright test agonara/tests/curator-coverage-gaps.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "readiness browser" npx playwright test agonara/tests/topic-period-readiness-checks.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "membership browser" npx playwright test agonara/tests/program-membership-invitations-and-recovery.playwright.js --config agonara/playwright.config.js`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`; `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`; Markdown/front-matter/link checks for touched docs; `./scripts/loc-dashboard.sh --sort=name`; `git diff --check`
 LOC dashboard: refresh `docs/loc-dashboard.html` with `./scripts/loc-dashboard.sh --sort=name`, then verify the summary cards, table footer, `data` array, and `Last updated` line match the script output.
 Archive plan: move to `agonara/docs/plans/implemented/llm-assisted-curation-suggestions.md`
 Commit archive move: yes
