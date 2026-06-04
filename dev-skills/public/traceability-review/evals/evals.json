@@ -125,6 +125,24 @@
         "Only the two ADRs, the four intent files, and the responsibility map are read; no specs, plans, code, tests, or prior review outputs are read, and no source document is edited.",
         "The Inspected section confirms ADR-010 and ADR-009 (decisions enumerated), the four intent files, and the responsibility map were read."
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "Generate the umbrella ledger for agonara — aggregate the per-pass traceability-review outputs into one resolution-session register.",
+      "expected_output": "A single Markdown register that enumerates every finding and open question across the seven authoritative per-pass outputs (one row each), excluding the superseded whole-surface intent→ADR run, with 5 findings (0 fail, 5 warning: one intent→ADR carried-with-loss plus four ADR×ADR map-adr-drift) and ~15 open questions, plus a deterministic resolving-layer rollup and a threads view that names the map-drift cluster as the resolution session's first move — introducing no new finding.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by umbrella-ledger.",
+        "The front-matter includes skill: traceability-review, a skill_version, scope: umbrella ledger — agonara, mechanism: umbrella-ledger, and an inputs list naming the seven aggregated per-pass output files.",
+        "The ledger aggregates the current authoritative output per pass and EXCLUDES the superseded whole-surface intent→ADR run (2026-06-03T1050Z-intent-adr.md), recording that exclusion with its reason in the Inspected section.",
+        "The Ledger section is a complete enumeration: one row per finding and one row per open question across all seven outputs (about 20 items), each row pinned to (pass, item-id) with columns covering source, kind (finding/open-question), severity, type, subject, resolving layer, and a one-line summary.",
+        "There are exactly 5 findings — 0 fail and 5 warning: one intent→ADR carried-with-loss (the confusable/related-concept relation, INT-02/STU-07, not named in ADR-010) and four ADR×ADR map-adr-drift (accepted Program shell, quick-check answer keys, student-facing delivery projection, evaluator orchestration).",
+        "The ledger introduces NO new finding or open question — every row traces to an item already present in a source output; the ledger only indexes and groups.",
+        "Each row links to its source output and item id and does NOT re-quote the source evidence (link-don't-duplicate).",
+        "A deterministic Resolving-layer rollup groups every item by the layer that settles it (map revision, ADR, intent, spec/schema, spec↔tests), and the per-layer counts sum to the total item count.",
+        "A Threads view groups items that are the same tension across passes, and the map-drift cluster (the four map-adr-drift findings plus the map-revision-timing open question) is identified as the recommended first move because one map revision clears them all.",
+        "The exact thread set and the precise open-question count are left to judgement — the eval pins the enumeration, the 5 findings, and the rollup, not the thread groupings or an exact open-question number.",
+        "No source document or per-pass output is edited; the only artifact created is the single ledger file."
+      ]
     }
   ]
 }
