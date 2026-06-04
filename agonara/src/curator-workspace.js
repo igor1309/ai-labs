@@ -39,6 +39,20 @@ const llmCurationSuggestionKinds = new Set([
   "open_answer_check_candidate",
   "readiness_check_candidate",
 ]);
+const forbiddenLlmSuggestionArtifactPatterns = [
+  /\bauthorization\b/i,
+  /\bcookie\b/i,
+  /\bcsrf\b/i,
+  /\bdatabase-url\b/i,
+  /\bpostgres:\/\//i,
+  /\bprovider diagnostics\b/i,
+  /\braw\s+model\b/i,
+  /\braw\s+prompt\b/i,
+  /\bselect\s+\*/i,
+  /\bsession\b/i,
+  /\bstack\s+trace\b/i,
+  /\/tmp\b/i,
+];
 const severityRank = new Map([
   ["critical", 3],
   ["warning", 2],
@@ -167,46 +181,54 @@ function generateLlmCurationSuggestions({
   }
 
   const generatedAt = now().toISOString();
-  const suggestionRecords = [];
-  for (const providerSuggestion of providerOutput.suggestions) {
-    const suggestionRecord = createLlmCurationSuggestionRecord(database, {
-      id: generateId(),
-      programId: authorization.value.program.id,
-      suggestionKind: providerSuggestion.suggestionKind,
-      title: providerSuggestion.title,
-      summary: providerSuggestion.summary,
-      rationale: providerSuggestion.rationale,
-      suggestedDraft: providerSuggestion.suggestedDraft,
-      supportingEvidence: providerSuggestion.supportingEvidence,
-      origin: {
-        suggestionPolicyId: policy.suggestionPolicyId,
-        providerAdapterId: policy.providerAdapterId,
-        outputValidatorPolicyId: policy.outputValidatorPolicyId,
-        redactionPolicyId: policy.redactionPolicyId,
-        sourceKinds: summarizeLlmSuggestionSourceKinds({ context: context.value, request: request.value }),
-        sourceIds: summarizeLlmSuggestionSourceIds(context.value),
-        coverageGapIds: context.value.coverageGaps.map($0 => $0.gapId),
-        promptContextSummary: summarizeLlmSuggestionPromptContext(context.value),
-        generatedByIdentityId: authorization.value.identity.id,
-        generatedAt,
-      },
-      status: "draft_suggestion",
-      createdByIdentityId: authorization.value.identity.id,
-      createdAt: generatedAt,
-      updatedAt: generatedAt,
-    });
-    suggestionRecords.push(suggestionRecord);
-  }
+  let suggestionRecords;
+  try {
+    suggestionRecords = database.transaction(() => {
+      const suggestionRecords = [];
+      for (const providerSuggestion of providerOutput.suggestions) {
+        const suggestionRecord = createLlmCurationSuggestionRecord(database, {
+          id: generateId(),
+          programId: authorization.value.program.id,
+          suggestionKind: providerSuggestion.suggestionKind,
+          title: providerSuggestion.title,
+          summary: providerSuggestion.summary,
+          rationale: providerSuggestion.rationale,
+          suggestedDraft: providerSuggestion.suggestedDraft,
+          supportingEvidence: providerSuggestion.supportingEvidence,
+          origin: {
+            suggestionPolicyId: policy.suggestionPolicyId,
+            providerAdapterId: policy.providerAdapterId,
+            outputValidatorPolicyId: policy.outputValidatorPolicyId,
+            redactionPolicyId: policy.redactionPolicyId,
+            sourceKinds: summarizeLlmSuggestionSourceKinds({ context: context.value, request: request.value }),
+            sourceIds: summarizeLlmSuggestionSourceIds(context.value),
+            coverageGapIds: context.value.coverageGaps.map($0 => $0.gapId),
+            promptContextSummary: summarizeLlmSuggestionPromptContext(context.value),
+            generatedByIdentityId: authorization.value.identity.id,
+            generatedAt,
+          },
+          status: "draft_suggestion",
+          createdByIdentityId: authorization.value.identity.id,
+          createdAt: generatedAt,
+          updatedAt: generatedAt,
+        });
+        suggestionRecords.push(suggestionRecord);
+      }
 
-  createLlmCurationSuggestionGenerationRecord(database, {
-    id: generateId(),
-    programId: authorization.value.program.id,
-    idempotencyKey: request.value.idempotencyKey,
-    requestFingerprint,
-    suggestionIds: suggestionRecords.map($0 => $0.id),
-    createdByIdentityId: authorization.value.identity.id,
-    createdAt: generatedAt,
-  });
+      createLlmCurationSuggestionGenerationRecord(database, {
+        id: generateId(),
+        programId: authorization.value.program.id,
+        idempotencyKey: request.value.idempotencyKey,
+        requestFingerprint,
+        suggestionIds: suggestionRecords.map($0 => $0.id),
+        createdByIdentityId: authorization.value.identity.id,
+        createdAt: generatedAt,
+      });
+      return suggestionRecords;
+    })();
+  } catch {
+    return rejected("provider_output_rejected");
+  }
 
   return accepted({
     suggestions: suggestionRecords.map(summarizeLlmCurationSuggestion),
@@ -308,7 +330,8 @@ function isValidLlmSuggestionPolicy(policy) {
     policy.allowedSuggestionKinds.length > 0 &&
     policy.allowedSuggestionKinds.every($0 => llmCurationSuggestionKinds.has($0)) &&
     policy.rawArtifactPolicy === "none" &&
-    isValidLlmSuggestionPromptInputPolicy(policy.promptInputPolicy)
+    isValidLlmSuggestionPromptInputPolicy(policy.promptInputPolicy) &&
+    isValidLlmSuggestionBudgetPolicy(policy.budgetPolicy ?? {})
   );
 }
 
@@ -321,6 +344,22 @@ function isValidLlmSuggestionPromptInputPolicy(promptInputPolicy) {
     typeof promptInputPolicy.includeReadinessContext === "boolean" &&
     typeof promptInputPolicy.includeCoverageGapContext === "boolean" &&
     promptInputPolicy.includeStudentWorkspaceState === false
+  );
+}
+
+function isValidLlmSuggestionBudgetPolicy(budgetPolicy) {
+  return (
+    budgetPolicy &&
+    typeof budgetPolicy === "object" &&
+    !Array.isArray(budgetPolicy) &&
+    [
+      budgetPolicy.maxProviderCalls,
+      budgetPolicy.maxInputTokens,
+      budgetPolicy.maxOutputTokens,
+      budgetPolicy.maxEstimatedCostMinorUnits,
+    ]
+      .filter($0 => $0 !== undefined)
+      .every($0 => Number.isInteger($0) && $0 >= 0)
   );
 }
 
@@ -496,7 +535,7 @@ function isWithinLlmSuggestionBudget({ policy, providerOutput }) {
     if (budget[budgetKey] === undefined || usage[usageKey] === undefined) {
       return true;
     }
-    return Number.isInteger(usage[usageKey]) && usage[usageKey] <= budget[budgetKey];
+    return Number.isInteger(usage[usageKey]) && usage[usageKey] >= 0 && usage[usageKey] <= budget[budgetKey];
   });
 }
 
@@ -527,7 +566,8 @@ function isValidLlmSuggestionProviderSuggestion({ allowedSuggestionKinds, sugges
     Array.isArray(suggestion.supportingEvidence) &&
     suggestion.supportingEvidence.length > 0 &&
     suggestion.supportingEvidence.every(isValidLlmSuggestionSupportingEvidence) &&
-    isValidLlmSuggestionDraft({ suggestionKind: suggestion.suggestionKind, suggestedDraft: suggestion.suggestedDraft })
+    isValidLlmSuggestionDraft({ suggestionKind: suggestion.suggestionKind, suggestedDraft: suggestion.suggestedDraft }) &&
+    !containsForbiddenLlmSuggestionArtifact(suggestion)
   );
 }
 
@@ -564,7 +604,9 @@ function isValidLlmSuggestionDraft({ suggestionKind, suggestedDraft }) {
       isNonEmptyText(suggestedDraft.request.prompt) &&
       Array.isArray(suggestedDraft.request.options) &&
       suggestedDraft.request.options.length >= 2 &&
-      Number.isInteger(suggestedDraft.request.answerKeyIndex)
+      Number.isInteger(suggestedDraft.request.answerKeyIndex) &&
+      suggestedDraft.request.answerKeyIndex >= 0 &&
+      suggestedDraft.request.answerKeyIndex < suggestedDraft.request.options.length
     );
   }
   if (suggestionKind === "assessment_criterion_candidate") {
@@ -587,6 +629,26 @@ function isValidLlmSuggestionDraft({ suggestionKind, suggestedDraft }) {
     );
   }
   return false;
+}
+
+function containsForbiddenLlmSuggestionArtifact(value) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return forbiddenLlmSuggestionArtifactPatterns.some($0 => $0.test(value));
+  }
+  if (Array.isArray(value)) {
+    return value.some(containsForbiddenLlmSuggestionArtifact);
+  }
+  if (typeof value !== "object") {
+    return false;
+  }
+  return Object.entries(value).some(
+    ([key, entryValue]) =>
+      forbiddenLlmSuggestionArtifactPatterns.some($0 => $0.test(key)) ||
+      containsForbiddenLlmSuggestionArtifact(entryValue),
+  );
 }
 
 function summarizeLlmSuggestionSourceKinds({ context, request }) {

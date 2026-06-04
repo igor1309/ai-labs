@@ -319,6 +319,10 @@ test("generateLlmCurationSuggestions_shouldRejectUnauthorizedAndInvalidProviderB
         missingPolicy: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
           suggestionPolicyId: "policy-missing",
         })),
+        staleCoverageGap: commands.generateLlmCurationSuggestions?.(makeLlmSuggestionRequest({
+          coverageGapIds: ["coverage-gap-missing"],
+          curatorInstruction: "",
+        })),
       },
       {
         unknown: { status: "rejected", reason: "identity_not_active" },
@@ -328,6 +332,7 @@ test("generateLlmCurationSuggestions_shouldRejectUnauthorizedAndInvalidProviderB
         invalidMax: { status: "rejected", reason: "validation_failed" },
         emptyContext: { status: "rejected", reason: "validation_failed" },
         missingPolicy: { status: "rejected", reason: "suggestion_policy_not_found" },
+        staleCoverageGap: { status: "rejected", reason: "coverage_gap_not_found" },
       },
     );
   } finally {
@@ -450,6 +455,61 @@ test("generateLlmCurationSuggestions_shouldCreateRedactedDraftSuggestionsAndRepl
   }
 });
 
+test("generateLlmCurationSuggestions_shouldRejectMalformedPoliciesAndConflictingRetries", () => {
+  const providerRequests = [];
+  const malformedPolicy = makeLlmSuggestionPolicy({
+    rawArtifactPolicy: "store_raw",
+  });
+  const malformedPolicySUT = makeSUT({
+    llmSuggestionPolicies: [malformedPolicy],
+  });
+  const retrySUT = makeSUT({
+    generateId: makeIdGenerator("retry-llm-id"),
+    llmSuggestionProviderAdapters: [
+      makeLlmSuggestionProviderAdapter({ providerRequests }),
+    ],
+  });
+
+  try {
+    seedCoverageCorpus(malformedPolicySUT.database, { programId: "program-a" });
+    seedCoverageCorpus(retrySUT.database, { programId: "program-a" });
+    const created = retrySUT.commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest());
+    const conflicting = retrySUT.commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest({
+      curatorInstruction: "Suggest a different safe draft topic.",
+    }));
+
+    assert.deepEqual(
+      {
+        malformedPolicy: malformedPolicySUT.commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest()),
+        created: projectLlmSuggestionResult(created),
+        conflicting,
+        providerCallCount: providerRequests.length,
+        storedSuggestionCount: listLlmCurationSuggestionRecords(retrySUT.database).length,
+      },
+      {
+        malformedPolicy: { status: "rejected", reason: "validation_failed" },
+        created: {
+          status: "accepted",
+          suggestions: [
+            {
+              suggestionId: "retry-llm-id-2",
+              status: "draft_suggestion",
+              suggestionKind: "navigation_candidate",
+              title: "Add algebra topic",
+            },
+          ],
+        },
+        conflicting: { status: "rejected", reason: "validation_failed" },
+        providerCallCount: 1,
+        storedSuggestionCount: 1,
+      },
+    );
+  } finally {
+    malformedPolicySUT.database.close();
+    retrySUT.database.close();
+  }
+});
+
 test("generateLlmCurationSuggestions_shouldRejectUnsafeProviderOutputWithoutMutation", () => {
   const cases = [
     {
@@ -499,6 +559,18 @@ test("generateLlmCurationSuggestions_shouldRejectUnsafeProviderOutputWithoutMuta
         }),
       ],
       input: makeLlmSuggestionRequest(),
+    },
+    {
+      reason: "provider_output_rejected",
+      adapters: [
+        makeLlmSuggestionProviderAdapter({
+          suggestions: [
+            makeProviderSuggestion({ title: "Valid first suggestion" }),
+            makeProviderSuggestion({ title: "raw prompt leaked in title" }),
+          ],
+        }),
+      ],
+      input: makeLlmSuggestionRequest({ maxSuggestions: 2 }),
     },
   ];
 
