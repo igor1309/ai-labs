@@ -2460,16 +2460,18 @@ export function startServer({
     database,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
   });
+  const corpusCommands = createCorpusCommands({
+    database,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+  });
   const curatorWorkspaceCommands = createCuratorWorkspaceCommands({
+    corpusCommands,
     database,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
     now,
   });
   const server = createServer({
-    corpusCommands: createCorpusCommands({
-      database,
-      getEffectiveParticipation: programCommands.getEffectiveParticipation,
-    }),
+    corpusCommands,
     curatorWorkspaceCommands,
     identityCommands: createIdentityCommands({
       bootstrapSecret,

@@ -599,6 +599,201 @@ test("generateLlmCurationSuggestions_shouldRejectUnsafeProviderOutputWithoutMuta
   );
 });
 
+test("reviewLlmCurationSuggestions_shouldListAndInspectProgramScopedRedactedSuggestions", () => {
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("review-llm-id"),
+  });
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+    seedCuratorProgram(database, { programId: "program-b" });
+    const created = commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest());
+    const suggestionId = created.value.suggestions[0].suggestionId;
+    commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest({
+      idempotencyKey: "llm-suggestion-key-b",
+    }));
+    commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest({
+      idempotencyKey: "llm-suggestion-key-cross",
+      programId: "program-b",
+    }));
+
+    assert.deepEqual(
+      {
+        listed: projectLlmSuggestionList(commands.listLlmCurationSuggestions?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+          limit: 1,
+        })),
+        detail: projectLlmSuggestionDetail(commands.getLlmCurationSuggestion?.({
+          actingIdentityId: "identity-curator",
+          suggestionId,
+        })),
+        studentDetail: commands.getLlmCurationSuggestion?.({
+          actingIdentityId: "identity-student",
+          suggestionId,
+        }),
+      },
+      {
+        listed: {
+          nextCursor: "review-llm-id-5",
+          suggestions: [
+            ["review-llm-id-5", "draft_suggestion", "navigation_candidate", "Add algebra topic"],
+          ],
+          status: "accepted",
+        },
+        detail: {
+          containsForbiddenDetail: false,
+          status: "accepted",
+          suggestion: {
+            suggestionId,
+            status: "draft_suggestion",
+            suggestionKind: "navigation_candidate",
+            title: "Add algebra topic",
+          },
+        },
+        studentDetail: { status: "rejected", reason: "program_curator_required" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptLlmCurationSuggestion_shouldMaterializeOneDraftCandidateWithoutAcceptedCorpusMutation", () => {
+  const providerSuggestions = [
+    makeProviderSuggestion({
+      suggestionKind: "navigation_candidate",
+      title: "Draft navigation topic",
+    }),
+    makeProviderSuggestion({
+      suggestionKind: "quick_check_candidate",
+      title: "Draft quick check",
+      suggestedDraft: {
+        candidateKind: "quick_check_candidate",
+        request: {
+          checkKind: "single_select_quick_check",
+          title: "Draft quick check",
+          prompt: "Which statement is true?",
+          options: ["Correct new option", "Distractor option"],
+          answerKeyIndex: 0,
+          sourceIds: [],
+          rationale: "Draft quick rationale",
+        },
+      },
+    }),
+  ];
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("accept-llm-id"),
+    llmSuggestionPolicies: [
+      makeLlmSuggestionPolicy({
+        allowedSuggestionKinds: ["navigation_candidate", "quick_check_candidate"],
+      }),
+    ],
+    llmSuggestionProviderAdapters: [
+      makeLlmSuggestionProviderAdapter({
+        suggestions: providerSuggestions,
+      }),
+    ],
+  });
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+    const created = commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest({
+      allowedSuggestionKinds: ["navigation_candidate", "quick_check_candidate"],
+      maxSuggestions: 2,
+    }));
+    const before = snapshotAdjacentState(database);
+    const navigationAcceptance = commands.acceptLlmCurationSuggestion?.({
+      actingIdentityId: "identity-curator",
+      suggestionId: created.value.suggestions[0].suggestionId,
+    });
+    const quickCheckAcceptance = commands.acceptLlmCurationSuggestion?.({
+      actingIdentityId: "identity-curator",
+      suggestionId: created.value.suggestions[1].suggestionId,
+    });
+
+    assert.deepEqual(
+      {
+        navigationAcceptance: projectAcceptedLlmSuggestion(navigationAcceptance),
+        quickCheckAcceptance: projectAcceptedLlmSuggestion(quickCheckAcceptance),
+        candidateState: projectMaterializedCandidateState(database),
+        acceptedCounts: projectAcceptedCounts(snapshotAdjacentState(database)),
+        beforeAcceptedCounts: projectAcceptedCounts(before),
+      },
+      {
+        navigationAcceptance: {
+          candidateKind: "navigation_candidate",
+          candidateId: "corpus-id-1",
+          status: "accepted",
+          suggestionStatus: "materialized",
+        },
+        quickCheckAcceptance: {
+          candidateKind: "quick_check_candidate",
+          candidateId: "corpus-id-3",
+          status: "accepted",
+          suggestionStatus: "materialized",
+        },
+        candidateState: {
+          corpusCandidates: [["corpus-id-1", "draft"]],
+          quickCheckCandidates: [["corpus-id-3", "draft"]],
+        },
+        acceptedCounts: projectAcceptedCounts(before),
+        beforeAcceptedCounts: projectAcceptedCounts(before),
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("rejectLlmCurationSuggestion_shouldPersistTerminalStateWithoutMaterialization", () => {
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("reject-llm-id"),
+  });
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+    const created = commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest());
+    const suggestionId = created.value.suggestions[0].suggestionId;
+    const before = snapshotAdjacentState(database);
+    const rejected = commands.rejectLlmCurationSuggestion?.({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+    const repeated = commands.rejectLlmCurationSuggestion?.({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+    const acceptedAfterReject = commands.acceptLlmCurationSuggestion?.({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+
+    assert.deepEqual(
+      {
+        rejected: projectRejectedLlmSuggestion(rejected),
+        repeated,
+        acceptedAfterReject,
+        adjacentBefore: before,
+        adjacentAfter: snapshotAdjacentState(database),
+      },
+      {
+        rejected: {
+          status: "accepted",
+          suggestionStatus: "rejected",
+          rejectedByIdentityId: "identity-curator",
+        },
+        repeated: { status: "rejected", reason: "llm_curation_suggestion_already_rejected" },
+        acceptedAfterReject: { status: "rejected", reason: "llm_curation_suggestion_already_rejected" },
+        adjacentBefore: before,
+        adjacentAfter: before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 function makeSUT({
   generateId = makeIdGenerator("llm-id"),
   llmSuggestionPolicies = [makeLlmSuggestionPolicy()],
@@ -634,6 +829,7 @@ function makeSUT({
     now,
   });
   const commands = createCuratorWorkspaceCommands({
+    corpusCommands,
     database,
     generateId,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
@@ -986,22 +1182,23 @@ function makeProviderSuggestion({
   suggestionKind = "navigation_candidate",
   title = "Add algebra topic",
   summary = "Create a topic draft for algebra.",
+  suggestedDraft = {
+    candidateKind: suggestionKind,
+    request: {
+      candidateKind: "topic",
+      title,
+      body: `${title} body`,
+      sourceIds: [],
+      rationale: "Draft candidate rationale",
+    },
+  },
 } = {}) {
   return {
     suggestionKind,
     title,
     summary,
     rationale: "The accepted program has a missing topic evidence path.",
-    suggestedDraft: {
-      candidateKind: suggestionKind,
-      request: {
-        candidateKind: "topic",
-        title,
-        body: `${title} body`,
-        sourceIds: [],
-        rationale: "Draft candidate rationale",
-      },
-    },
+    suggestedDraft,
     supportingEvidence: [
       {
         sourceKind: "curator_instruction",
@@ -1072,6 +1269,75 @@ function projectLlmSuggestionResult(result) {
   };
 }
 
+function projectLlmSuggestionList(result) {
+  return {
+    nextCursor: result?.value?.nextCursor,
+    status: result?.status,
+    suggestions: result?.value?.suggestions.map($0 => [
+      $0.suggestionId,
+      $0.status,
+      $0.suggestionKind,
+      $0.title,
+    ]),
+  };
+}
+
+function projectLlmSuggestionDetail(result) {
+  const suggestion = result?.value?.suggestion;
+  return {
+    containsForbiddenDetail: containsLlmSuggestionReviewForbiddenDetail(result),
+    status: result?.status,
+    suggestion: suggestion
+      ? {
+          suggestionId: suggestion.suggestionId,
+          status: suggestion.status,
+          suggestionKind: suggestion.suggestionKind,
+          title: suggestion.title,
+        }
+      : null,
+  };
+}
+
+function projectAcceptedLlmSuggestion(result) {
+  return {
+    candidateKind: result?.value?.materializedCandidate.candidateKind,
+    candidateId: result?.value?.materializedCandidate.candidateId,
+    status: result?.status,
+    suggestionStatus: result?.value?.suggestion.status,
+  };
+}
+
+function projectRejectedLlmSuggestion(result) {
+  return {
+    status: result?.status,
+    suggestionStatus: result?.value?.suggestion.status,
+    rejectedByIdentityId: result?.value?.suggestion.rejectedByIdentityId,
+  };
+}
+
+function projectMaterializedCandidateState(database) {
+  return {
+    corpusCandidates: listCorpusCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+    quickCheckCandidates: listQuickCheckCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+  };
+}
+
+function projectAcceptedCounts(snapshot) {
+  return {
+    acceptedAssessmentCriterionEntities: snapshot.acceptedAssessmentCriterionEntities,
+    acceptedCorpusEntities: snapshot.acceptedCorpusEntities,
+    acceptedNavigationRelationships: snapshot.acceptedNavigationRelationships,
+    acceptedOpenAnswerCheckEntities: snapshot.acceptedOpenAnswerCheckEntities,
+    acceptedQuickCheckEntities: snapshot.acceptedQuickCheckEntities,
+    acceptedReadinessCheckEntities: snapshot.acceptedReadinessCheckEntities,
+    readinessAttempts: snapshot.readinessAttempts,
+  };
+}
+
 function projectStoredLlmSuggestion(suggestion) {
   return {
     id: suggestion.id,
@@ -1082,6 +1348,33 @@ function projectStoredLlmSuggestion(suggestion) {
     suggestionKind: suggestion.suggestionKind,
     title: suggestion.title,
   };
+}
+
+function containsLlmSuggestionReviewForbiddenDetail(value) {
+  const serialized = JSON.stringify(value)?.toLowerCase() ?? "";
+  return [
+    "acceptedbyidentityid",
+    "acceptedfromcandidateid",
+    "answerkeyoptionid",
+    "authorization",
+    "cookie",
+    "correct option",
+    "csrf",
+    "database-url",
+    "idempotency",
+    "incorrect option",
+    "passwordhash",
+    "postgres://",
+    "provider diagnostics",
+    "raw model",
+    "raw prompt",
+    "secret",
+    "select ",
+    "session",
+    "stack",
+    "submitted",
+    "/tmp",
+  ].some($0 => serialized.includes($0));
 }
 
 function projectGaps(gaps) {

@@ -227,6 +227,7 @@ async function startCoverageGapHarness() {
     now,
   });
   const curatorWorkspaceCommands = createCuratorWorkspaceCommands({
+    corpusCommands,
     database,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
     now,

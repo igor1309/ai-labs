@@ -18,6 +18,9 @@ import {
   listAcceptedQuickCheckEntityRecords,
   listAcceptedReadinessCheckEntityRecords,
   listLearnerEvidenceTargetLinkRecords,
+  listLlmCurationSuggestionRecords,
+  materializeLlmCurationSuggestionRecord,
+  rejectLlmCurationSuggestionRecord,
 } from "./storage.js";
 
 const coverageGapKinds = new Set([
@@ -38,6 +41,11 @@ const llmCurationSuggestionKinds = new Set([
   "assessment_criterion_candidate",
   "open_answer_check_candidate",
   "readiness_check_candidate",
+]);
+const llmCurationSuggestionStatuses = new Set([
+  "draft_suggestion",
+  "materialized",
+  "rejected",
 ]);
 const forbiddenLlmSuggestionArtifactPatterns = [
   /\bauthorization\b/i,
@@ -60,6 +68,7 @@ const severityRank = new Map([
 ]);
 
 export function createCuratorWorkspaceCommands({
+  corpusCommands = null,
   database,
   generateId = () => crypto.randomUUID(),
   getEffectiveParticipation,
@@ -68,6 +77,14 @@ export function createCuratorWorkspaceCommands({
   now,
 }) {
   return {
+    acceptLlmCurationSuggestion: input =>
+      acceptLlmCurationSuggestion({
+        corpusCommands,
+        database,
+        getEffectiveParticipation,
+        input,
+        now,
+      }),
     generateLlmCurationSuggestions: input =>
       generateLlmCurationSuggestions({
         database,
@@ -78,9 +95,181 @@ export function createCuratorWorkspaceCommands({
         llmSuggestionProviderAdapters,
         now,
       }),
+    getLlmCurationSuggestion: input =>
+      getLlmCurationSuggestion({
+        database,
+        getEffectiveParticipation,
+        input,
+      }),
     inspectCuratorCoverageGaps: input =>
       inspectCuratorCoverageGaps({ database, getEffectiveParticipation, input, now }),
+    listLlmCurationSuggestions: input =>
+      listLlmCurationSuggestions({
+        database,
+        getEffectiveParticipation,
+        input,
+      }),
+    rejectLlmCurationSuggestion: input =>
+      rejectLlmCurationSuggestion({
+        database,
+        getEffectiveParticipation,
+        input,
+        now,
+      }),
   };
+}
+
+function acceptLlmCurationSuggestion({
+  corpusCommands,
+  database,
+  getEffectiveParticipation,
+  input,
+  now,
+}) {
+  const suggestion = getLlmCurationSuggestionRecord(database, input?.suggestionId);
+  if (!suggestion) {
+    return rejected("llm_curation_suggestion_not_found");
+  }
+
+  const authorization = authorizeProgramCurator({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: suggestion.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const terminalStatus = rejectTerminalLlmSuggestion(suggestion);
+  if (terminalStatus.status === "rejected") {
+    return terminalStatus;
+  }
+  if (!corpusCommands) {
+    return rejected("suggestion_materialization_rejected");
+  }
+
+  try {
+    return database.transaction(() => {
+      const materializedCandidate = materializeSuggestedDraft({
+        actingIdentityId: authorization.value.identity.id,
+        corpusCommands,
+        programId: suggestion.programId,
+        suggestion,
+      });
+      if (materializedCandidate.status === "rejected") {
+        return materializedCandidate;
+      }
+
+      const occurredAt = now().toISOString();
+      const materializedSuggestion = materializeLlmCurationSuggestionRecord(database, {
+        suggestionId: suggestion.id,
+        candidateKind: materializedCandidate.value.candidateKind,
+        candidateId: materializedCandidate.value.candidateId,
+        materializedByIdentityId: authorization.value.identity.id,
+        materializedAt: occurredAt,
+        updatedAt: occurredAt,
+      });
+
+      return accepted({
+        materializedCandidate: materializedCandidate.value,
+        suggestion: summarizeLlmCurationSuggestion(materializedSuggestion),
+      });
+    })();
+  } catch {
+    return rejected("suggestion_materialization_rejected");
+  }
+}
+
+function getLlmCurationSuggestion({ database, getEffectiveParticipation, input }) {
+  const suggestion = getLlmCurationSuggestionRecord(database, input?.suggestionId);
+  if (!suggestion) {
+    return rejected("llm_curation_suggestion_not_found");
+  }
+
+  const authorization = authorizeProgramCurator({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: suggestion.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  return accepted({ suggestion: summarizeLlmCurationSuggestionDetail(suggestion) });
+}
+
+function listLlmCurationSuggestions({ database, getEffectiveParticipation, input }) {
+  const authorization = authorizeProgramCurator({ database, getEffectiveParticipation, input });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const filters = validateLlmSuggestionReviewFilters(input);
+  if (filters.status === "rejected") {
+    return filters;
+  }
+
+  const suggestions = listLlmCurationSuggestionRecords(database, {
+    programId: authorization.value.program.id,
+    status: filters.value.status,
+    suggestionKind: filters.value.suggestionKind,
+  }).sort((left, right) => {
+    const createdAtDifference = right.createdAt.localeCompare(left.createdAt);
+    if (createdAtDifference !== 0) {
+      return createdAtDifference;
+    }
+    return right.id.localeCompare(left.id);
+  });
+  const cursorIndex = filters.value.cursor
+    ? suggestions.findIndex($0 => $0.id === filters.value.cursor)
+    : -1;
+  if (filters.value.cursor && cursorIndex === -1) {
+    return rejected("validation_failed");
+  }
+
+  const startIndex = cursorIndex === -1 ? 0 : cursorIndex + 1;
+  const page = suggestions.slice(startIndex, startIndex + filters.value.limit);
+  const hasNextPage = suggestions.length > startIndex + page.length;
+
+  return accepted({
+    suggestions: page.map(summarizeLlmCurationSuggestion),
+    ...(hasNextPage ? { nextCursor: page.at(-1).id } : {}),
+  });
+}
+
+function rejectLlmCurationSuggestion({ database, getEffectiveParticipation, input, now }) {
+  const suggestion = getLlmCurationSuggestionRecord(database, input?.suggestionId);
+  if (!suggestion) {
+    return rejected("llm_curation_suggestion_not_found");
+  }
+
+  const authorization = authorizeProgramCurator({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: suggestion.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const terminalStatus = rejectTerminalLlmSuggestion(suggestion);
+  if (terminalStatus.status === "rejected") {
+    return terminalStatus;
+  }
+
+  try {
+    const occurredAt = now().toISOString();
+    const rejectedSuggestion = rejectLlmCurationSuggestionRecord(database, {
+      suggestionId: suggestion.id,
+      rejectedByIdentityId: authorization.value.identity.id,
+      rejectedAt: occurredAt,
+      updatedAt: occurredAt,
+    });
+
+    return accepted({ suggestion: summarizeLlmCurationSuggestion(rejectedSuggestion) });
+  } catch {
+    return rejected("suggestion_rejection_failed");
+  }
 }
 
 function generateLlmCurationSuggestions({
@@ -277,6 +466,100 @@ function inspectCuratorCoverageGaps({ database, getEffectiveParticipation, input
       gaps,
     },
   });
+}
+
+function validateLlmSuggestionReviewFilters(input) {
+  const limit = input?.limit ?? 50;
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 50 ||
+    (input?.cursor !== undefined && !isNonEmptyText(input.cursor)) ||
+    (input?.status !== undefined && !llmCurationSuggestionStatuses.has(input.status)) ||
+    (input?.suggestionKind !== undefined && !llmCurationSuggestionKinds.has(input.suggestionKind))
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    cursor: input?.cursor,
+    limit,
+    status: input?.status ?? null,
+    suggestionKind: input?.suggestionKind ?? null,
+  });
+}
+
+function materializeSuggestedDraft({ actingIdentityId, corpusCommands, programId, suggestion }) {
+  const request = {
+    ...suggestion.suggestedDraft.request,
+    actingIdentityId,
+    programId,
+  };
+  const result = createSuggestedDraftCandidate({
+    corpusCommands,
+    request,
+    suggestionKind: suggestion.suggestionKind,
+  });
+  if (result.status === "rejected") {
+    return rejected("suggestion_materialization_rejected");
+  }
+
+  const candidateId = extractMaterializedCandidateId({
+    result,
+    suggestionKind: suggestion.suggestionKind,
+  });
+  if (!candidateId) {
+    return rejected("suggestion_materialization_rejected");
+  }
+
+  return accepted({
+    candidateId,
+    candidateKind: suggestion.suggestionKind,
+  });
+}
+
+function createSuggestedDraftCandidate({ corpusCommands, request, suggestionKind }) {
+  switch (suggestionKind) {
+    case "assessment_criterion_candidate":
+      return corpusCommands.createAssessmentCriterionCandidate(request);
+    case "navigation_candidate":
+      return corpusCommands.createNavigationCandidate(request);
+    case "open_answer_check_candidate":
+      return corpusCommands.createOpenAnswerCheckCandidate(request);
+    case "quick_check_candidate":
+      return corpusCommands.createQuickCheckCandidate(request);
+    case "readiness_check_candidate":
+      return corpusCommands.createReadinessCheckCandidate(request);
+    default:
+      return rejected("validation_failed");
+  }
+}
+
+function extractMaterializedCandidateId({ result, suggestionKind }) {
+  switch (suggestionKind) {
+    case "assessment_criterion_candidate":
+      return result.value.assessmentCriterionCandidate.candidateId;
+    case "navigation_candidate":
+      return result.value.navigationCandidate.candidateId;
+    case "open_answer_check_candidate":
+      return result.value.openAnswerCheckCandidate.candidateId;
+    case "quick_check_candidate":
+      return result.value.quickCheckCandidate.candidateId;
+    case "readiness_check_candidate":
+      return result.value.readinessCheckCandidate.candidateId;
+    default:
+      return null;
+  }
+}
+
+function rejectTerminalLlmSuggestion(suggestion) {
+  if (suggestion.status === "materialized") {
+    return rejected("llm_curation_suggestion_already_materialized");
+  }
+  if (suggestion.status === "rejected") {
+    return rejected("llm_curation_suggestion_already_rejected");
+  }
+  return accepted({});
 }
 
 function validateLlmSuggestionGenerationRequest(input) {
@@ -708,6 +991,15 @@ function summarizeLlmCurationSuggestion(suggestion) {
       : {}),
     createdAt: suggestion.createdAt,
     updatedAt: suggestion.updatedAt,
+  };
+}
+
+function summarizeLlmCurationSuggestionDetail(suggestion) {
+  return {
+    ...summarizeLlmCurationSuggestion(suggestion),
+    rationale: suggestion.rationale,
+    suggestedDraft: suggestion.suggestedDraft,
+    supportingEvidence: suggestion.supportingEvidence,
   };
 }
 

@@ -11481,6 +11481,12 @@ async function listenWithIdentityProgramCorpusAndCuratorWorkspace({ ids = defaul
     generateId,
     now,
   });
+  const corpusCommands = createCorpusCommands({
+    database,
+    generateId,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    now,
+  });
   const server = createServer({
     identityCommands: createIdentityCommands({
       bootstrapSecret: "operator-secret",
@@ -11489,13 +11495,9 @@ async function listenWithIdentityProgramCorpusAndCuratorWorkspace({ ids = defaul
       now,
     }),
     programCommands,
-    corpusCommands: createCorpusCommands({
-      database,
-      generateId,
-      getEffectiveParticipation: programCommands.getEffectiveParticipation,
-      now,
-    }),
+    corpusCommands,
     curatorWorkspaceCommands: createCuratorWorkspaceCommands({
+      corpusCommands,
       database,
       getEffectiveParticipation: programCommands.getEffectiveParticipation,
       now,
