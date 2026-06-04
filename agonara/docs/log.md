@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Implement Phase 5 of the LLM-assisted curation suggestions plan with `/learn` Program Curator generation, filtered review, redacted origin inspection, draft materialization, rejection, role isolation, and browser regression coverage.
 - Implement Phase 4 of the LLM-assisted curation suggestions plan with session-backed HTTP generation, listing, detail, acceptance, rejection, provider-fake production composition, redaction, and executable acceptance coverage.
 - Implement Phase 3 of the LLM-assisted curation suggestions plan with Program Curator review listing/detail, terminal rejection, and draft candidate materialization without accepted-corpus mutation.
 - Implement Phase 2 of the LLM-assisted curation suggestions plan with Curator Workspace provider-fake generation, redacted prompt context, policy/output/budget validation, idempotent replay, and no adjacent-domain mutation.

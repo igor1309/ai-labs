@@ -761,6 +761,92 @@ export const learnUiHtml = `<!doctype html>
           </div>
         </section>
 
+        <section id="llm-curation-suggestion-section" class="panel wide-panel stack" aria-label="LLM Curation Suggestions">
+          <h2>LLM suggestions</h2>
+          <div class="navigation-grid">
+            <section id="llm-curation-suggestion-curator-panel" class="stack" aria-label="Curator LLM Suggestion Review">
+              <h3>Curator suggestions</h3>
+              <form id="llm-curation-suggestion-generation-form" class="stack">
+                <div class="operation-grid">
+                  <label>
+                    Suggestion policy id
+                    <input id="llm-curation-suggestion-policy-input" name="suggestionPolicyId" value="default-deterministic-policy" autocomplete="off">
+                  </label>
+                  <label>
+                    Generation kind
+                    <select id="llm-curation-suggestion-kind-input" name="suggestionKind">
+                      <option value="">Policy allowed kinds</option>
+                      <option value="navigation_candidate">Navigation candidate</option>
+                      <option value="quick_check_candidate">Quick Check candidate</option>
+                      <option value="assessment_criterion_candidate">Assessment criterion candidate</option>
+                      <option value="open_answer_check_candidate">Open-answer check candidate</option>
+                      <option value="readiness_check_candidate">Readiness check candidate</option>
+                    </select>
+                  </label>
+                  <label>
+                    Max suggestions
+                    <input id="llm-curation-suggestion-max-input" name="maxSuggestions" type="number" min="1" max="20" value="2">
+                  </label>
+                  <label>
+                    Coverage gap ids
+                    <input id="llm-curation-suggestion-coverage-gap-ids-input" name="coverageGapIds" autocomplete="off">
+                  </label>
+                </div>
+                <label>
+                  Context entity ids
+                  <input id="llm-curation-suggestion-context-entity-ids-input" name="contextEntityIds" autocomplete="off">
+                </label>
+                <label>
+                  Curator instruction
+                  <textarea id="llm-curation-suggestion-instruction-input" name="curatorInstruction">Suggest one safe draft topic.</textarea>
+                </label>
+                <button id="generate-llm-curation-suggestions-button" type="submit" data-requires-session>Generate suggestions</button>
+                <p id="llm-curation-suggestion-generation-status" class="status" aria-live="polite"></p>
+              </form>
+              <form id="llm-curation-suggestion-filter-form" class="stack">
+                <div class="operation-grid">
+                  <label>
+                    Review state
+                    <select id="llm-curation-suggestion-status-filter" name="status">
+                      <option value="draft_suggestion">Draft suggestion</option>
+                      <option value="materialized">Materialized</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+                  <label>
+                    Suggestion kind
+                    <select id="llm-curation-suggestion-kind-filter" name="suggestionKind">
+                      <option value="">All kinds</option>
+                      <option value="navigation_candidate">Navigation candidate</option>
+                      <option value="quick_check_candidate">Quick Check candidate</option>
+                      <option value="assessment_criterion_candidate">Assessment criterion candidate</option>
+                      <option value="open_answer_check_candidate">Open-answer check candidate</option>
+                      <option value="readiness_check_candidate">Readiness check candidate</option>
+                    </select>
+                  </label>
+                </div>
+                <button id="refresh-llm-curation-suggestions-button" class="secondary" data-requires-session type="submit">Refresh suggestions</button>
+                <p id="llm-curation-suggestion-list-status" class="status" aria-live="polite">Suggestions not loaded.</p>
+              </form>
+              <div id="llm-curation-suggestion-list" class="list">
+                <p class="empty">No LLM suggestions loaded.</p>
+              </div>
+            </section>
+
+            <section id="llm-curation-suggestion-detail" class="stack" aria-label="LLM Suggestion Detail">
+              <h3>Suggestion detail</h3>
+              <div id="llm-curation-suggestion-origin" class="empty">No suggestion selected.</div>
+              <div id="llm-curation-suggestion-supporting-evidence" class="empty">No supporting evidence loaded.</div>
+              <div id="llm-curation-suggestion-draft-preview" class="empty">No draft preview loaded.</div>
+              <div class="actions">
+                <button data-action="accept-llm-curation-suggestion" data-requires-session class="secondary" type="button" disabled>Materialize draft</button>
+                <button data-action="reject-llm-curation-suggestion" data-requires-session class="danger" type="button" disabled>Dismiss suggestion</button>
+              </div>
+              <p id="llm-curation-suggestion-review-status" class="status" aria-live="polite"></p>
+            </section>
+          </div>
+        </section>
+
         <section id="readiness-check-section" class="panel wide-panel stack" aria-label="Topic and Period Readiness">
           <h2>Readiness checks</h2>
           <div class="navigation-grid">
@@ -874,6 +960,7 @@ export const learnUiHtml = `<!doctype html>
         invitations: [],
         learnerState: null,
         learnerStateTargetLinks: [],
+        llmSuggestions: [],
         membershipContextVersion: 0,
         myInvitations: [],
         mode: "curator",
@@ -893,6 +980,8 @@ export const learnUiHtml = `<!doctype html>
         selectedCoverageGapIndex: null,
         selectedDelivery: null,
         selectedLearnerStateTarget: null,
+        selectedLlmSuggestion: null,
+        selectedLlmSuggestionId: null,
         selectedReadinessAttemptId: null,
         selectedReadinessCandidateId: null,
         selectedReadinessCheck: null,
@@ -962,6 +1051,26 @@ export const learnUiHtml = `<!doctype html>
         learnerStateTargetLinkStatus: document.querySelector("#learner-state-target-link-status"),
         learnerStateTopicList: document.querySelector("#learner-state-topic-list"),
         learnerStateWeakAreaList: document.querySelector("#learner-state-weak-area-list"),
+        llmSuggestionAcceptButton: document.querySelector("[data-action='accept-llm-curation-suggestion']"),
+        llmSuggestionContextEntityIdsInput: document.querySelector("#llm-curation-suggestion-context-entity-ids-input"),
+        llmSuggestionCoverageGapIdsInput: document.querySelector("#llm-curation-suggestion-coverage-gap-ids-input"),
+        llmSuggestionDetail: document.querySelector("#llm-curation-suggestion-detail"),
+        llmSuggestionDraftPreview: document.querySelector("#llm-curation-suggestion-draft-preview"),
+        llmSuggestionFilterForm: document.querySelector("#llm-curation-suggestion-filter-form"),
+        llmSuggestionGenerationForm: document.querySelector("#llm-curation-suggestion-generation-form"),
+        llmSuggestionGenerationStatus: document.querySelector("#llm-curation-suggestion-generation-status"),
+        llmSuggestionInstructionInput: document.querySelector("#llm-curation-suggestion-instruction-input"),
+        llmSuggestionKindFilter: document.querySelector("#llm-curation-suggestion-kind-filter"),
+        llmSuggestionKindInput: document.querySelector("#llm-curation-suggestion-kind-input"),
+        llmSuggestionList: document.querySelector("#llm-curation-suggestion-list"),
+        llmSuggestionListStatus: document.querySelector("#llm-curation-suggestion-list-status"),
+        llmSuggestionMaxInput: document.querySelector("#llm-curation-suggestion-max-input"),
+        llmSuggestionOrigin: document.querySelector("#llm-curation-suggestion-origin"),
+        llmSuggestionPolicyInput: document.querySelector("#llm-curation-suggestion-policy-input"),
+        llmSuggestionRejectButton: document.querySelector("[data-action='reject-llm-curation-suggestion']"),
+        llmSuggestionReviewStatus: document.querySelector("#llm-curation-suggestion-review-status"),
+        llmSuggestionStatusFilter: document.querySelector("#llm-curation-suggestion-status-filter"),
+        llmSuggestionSupportingEvidence: document.querySelector("#llm-curation-suggestion-supporting-evidence"),
         navigationActionStatus: document.querySelector("#navigation-candidate-action-status"),
         navigationBodyInput: document.querySelector("#navigation-body-input"),
         navigationCandidateForm: document.querySelector("#navigation-candidate-form"),
@@ -1080,6 +1189,7 @@ export const learnUiHtml = `<!doctype html>
       elements.programIdInput.addEventListener("input", () => {
         state.programId = elements.programIdInput.value.trim();
         clearCoverageGapSurfaces();
+        clearLlmSuggestionSurfaces();
         clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
@@ -1088,6 +1198,16 @@ export const learnUiHtml = `<!doctype html>
       elements.coverageGapFilterForm.addEventListener("submit", async event => {
         event.preventDefault();
         await refreshCoverageGaps();
+      });
+
+      elements.llmSuggestionGenerationForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        await generateLlmSuggestions();
+      });
+
+      elements.llmSuggestionFilterForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        await refreshLlmSuggestions();
       });
 
       elements.membershipAdmissionPolicyForm.addEventListener("submit", async event => {
@@ -1481,6 +1601,14 @@ export const learnUiHtml = `<!doctype html>
         renderCoverageGapDetail(gap);
       });
 
+      elements.llmSuggestionList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action='open-llm-curation-suggestion']");
+        if (!button) {
+          return;
+        }
+        void openLlmSuggestion(button.dataset.suggestionId);
+      });
+
       elements.candidateList.addEventListener("click", event => {
         const button = event.target.closest("button[data-candidate-id]");
         if (!button) {
@@ -1509,6 +1637,52 @@ export const learnUiHtml = `<!doctype html>
         state.selectedNavigationCandidateId = button.dataset.navigationCandidateId;
         const candidate = state.navigationCandidates.find($0 => $0.candidateId === state.selectedNavigationCandidateId);
         renderNavigationCandidateStatus(candidate ? "Selected " + candidate.title : "Selected candidate unavailable");
+      });
+
+      elements.llmSuggestionAcceptButton.addEventListener("click", async () => {
+        if (!state.selectedLlmSuggestionId) {
+          renderLlmSuggestionReviewStatus("Select a suggestion first.");
+          return;
+        }
+        const result = await requestJson(
+          "/llm-curation-suggestions/" + encodeURIComponent(state.selectedLlmSuggestionId) + "/acceptance",
+          {
+            body: {},
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          state.selectedLlmSuggestion = result.value.suggestion;
+          renderLlmSuggestionDetail(result.value.suggestion);
+          renderLlmSuggestionReviewStatus("Materialized draft " + result.value.suggestion.materializedCandidate.candidateKind + ".");
+          await refreshLlmSuggestions();
+          return;
+        }
+        renderLlmSuggestionReviewStatus("Suggestion review unavailable.");
+      });
+
+      elements.llmSuggestionRejectButton.addEventListener("click", async () => {
+        if (!state.selectedLlmSuggestionId) {
+          renderLlmSuggestionReviewStatus("Select a suggestion first.");
+          return;
+        }
+        const result = await requestJson(
+          "/llm-curation-suggestions/" + encodeURIComponent(state.selectedLlmSuggestionId) + "/rejection",
+          {
+            body: {},
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          state.selectedLlmSuggestion = result.value.suggestion;
+          renderLlmSuggestionDetail(result.value.suggestion);
+          renderLlmSuggestionReviewStatus("Suggestion rejected.");
+          await refreshLlmSuggestions();
+          return;
+        }
+        renderLlmSuggestionReviewStatus("Suggestion review unavailable.");
       });
 
       elements.acceptQuickCheckButton.addEventListener("click", async () => {
@@ -1731,6 +1905,7 @@ export const learnUiHtml = `<!doctype html>
           state.programId = "";
           elements.programIdInput.value = "";
           clearCoverageGapSurfaces();
+          clearLlmSuggestionSurfaces();
           clearMembershipSurfaces();
           clearLearnerStateSurfaces();
           clearReadinessSurfaces();
@@ -1748,10 +1923,13 @@ export const learnUiHtml = `<!doctype html>
         state.programId = "";
         state.selectedAttemptId = null;
         state.selectedCoverageGapIndex = null;
+        state.selectedLlmSuggestion = null;
+        state.selectedLlmSuggestionId = null;
         state.selectedReadinessAttemptId = null;
         elements.programIdInput.value = "";
         elements.signinStatus.textContent = "";
         clearCoverageGapSurfaces();
+        clearLlmSuggestionSurfaces();
         clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
@@ -2313,6 +2491,192 @@ export const learnUiHtml = `<!doctype html>
           "Source " + gap.sourceKind,
           "Accepted evidence paths " + gap.acceptedEvidencePathCount,
         ].join("\\n");
+      }
+
+      function clearLlmSuggestionSurfaces() {
+        state.llmSuggestions = [];
+        state.selectedLlmSuggestion = null;
+        state.selectedLlmSuggestionId = null;
+        renderLlmSuggestionList();
+        renderLlmSuggestionDetail(null);
+        elements.llmSuggestionGenerationStatus.textContent = "";
+        elements.llmSuggestionListStatus.textContent = "Suggestions not loaded.";
+        renderLlmSuggestionReviewStatus("");
+      }
+
+      async function generateLlmSuggestions() {
+        if (!canUseProgramApi()) {
+          elements.llmSuggestionGenerationStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const suggestionKind = elements.llmSuggestionKindInput.value;
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/llm-curation-suggestions",
+          {
+            body: {
+              ...(suggestionKind ? { allowedSuggestionKinds: [suggestionKind] } : {}),
+              contextEntityIds: splitIdList(elements.llmSuggestionContextEntityIdsInput.value),
+              coverageGapIds: splitIdList(elements.llmSuggestionCoverageGapIdsInput.value),
+              curatorInstruction: elements.llmSuggestionInstructionInput.value.trim(),
+              idempotencyKey: createBrowserId(),
+              maxSuggestions: Number(elements.llmSuggestionMaxInput.value),
+              suggestionPolicyId: elements.llmSuggestionPolicyInput.value.trim(),
+            },
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          state.llmSuggestions = result.value.suggestions;
+          state.selectedLlmSuggestion = null;
+          state.selectedLlmSuggestionId = null;
+          renderLlmSuggestionList();
+          renderLlmSuggestionDetail(null);
+          elements.llmSuggestionGenerationStatus.textContent = "Generated " + result.value.suggestions.length + " suggestions.";
+          elements.llmSuggestionListStatus.textContent = "Suggestions loaded.";
+          return;
+        }
+        state.llmSuggestions = [];
+        renderLlmSuggestionList();
+        renderLlmSuggestionDetail(null);
+        elements.llmSuggestionGenerationStatus.textContent = "Suggestions unavailable.";
+      }
+
+      async function refreshLlmSuggestions() {
+        if (!canUseProgramApi()) {
+          elements.llmSuggestionListStatus.textContent = "Sign in and set a Program id first.";
+          return;
+        }
+        const query = new URLSearchParams();
+        query.set("status", elements.llmSuggestionStatusFilter.value);
+        if (elements.llmSuggestionKindFilter.value) {
+          query.set("suggestionKind", elements.llmSuggestionKindFilter.value);
+        }
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/llm-curation-suggestions?" + query.toString(),
+        );
+        if (result.status === "accepted") {
+          state.llmSuggestions = result.value.suggestions;
+          renderLlmSuggestionList();
+          elements.llmSuggestionListStatus.textContent = "Suggestions loaded.";
+          return;
+        }
+        state.llmSuggestions = [];
+        renderLlmSuggestionList();
+        renderLlmSuggestionDetail(null);
+        elements.llmSuggestionListStatus.textContent = "Suggestions unavailable.";
+      }
+
+      function renderLlmSuggestionList() {
+        elements.llmSuggestionList.innerHTML = "";
+        if (state.llmSuggestions.length === 0) {
+          elements.llmSuggestionList.innerHTML = '<p class="empty">No LLM suggestions loaded.</p>';
+          return;
+        }
+        for (const suggestion of state.llmSuggestions) {
+          const button = document.createElement("button");
+          button.dataset.action = "open-llm-curation-suggestion";
+          button.dataset.suggestionId = suggestion.suggestionId;
+          button.type = "button";
+          button.textContent = [
+            suggestion.title,
+            suggestion.status,
+            suggestion.suggestionKind,
+          ].join(" ");
+          elements.llmSuggestionList.append(button);
+        }
+      }
+
+      async function openLlmSuggestion(suggestionId) {
+        if (!suggestionId) {
+          renderLlmSuggestionDetail(null);
+          return;
+        }
+        const result = await requestJson("/llm-curation-suggestions/" + encodeURIComponent(suggestionId));
+        if (result.status !== "accepted") {
+          state.selectedLlmSuggestion = null;
+          state.selectedLlmSuggestionId = null;
+          renderLlmSuggestionDetail(null);
+          renderLlmSuggestionReviewStatus("Suggestion unavailable.");
+          return;
+        }
+        state.selectedLlmSuggestion = result.value.suggestion;
+        state.selectedLlmSuggestionId = result.value.suggestion.suggestionId;
+        renderLlmSuggestionDetail(result.value.suggestion);
+        renderLlmSuggestionReviewStatus("Suggestion loaded.");
+      }
+
+      function renderLlmSuggestionDetail(suggestion) {
+        const isDraft = suggestion?.status === "draft_suggestion";
+        elements.llmSuggestionAcceptButton.disabled = !isDraft;
+        elements.llmSuggestionRejectButton.disabled = !isDraft;
+        if (!suggestion) {
+          elements.llmSuggestionOrigin.textContent = "No suggestion selected.";
+          elements.llmSuggestionSupportingEvidence.textContent = "No supporting evidence loaded.";
+          elements.llmSuggestionDraftPreview.textContent = "No draft preview loaded.";
+          return;
+        }
+        elements.llmSuggestionOrigin.textContent = llmSuggestionOriginText(suggestion);
+        elements.llmSuggestionSupportingEvidence.textContent = llmSuggestionSupportingEvidenceText(suggestion.supportingEvidence ?? []);
+        elements.llmSuggestionDraftPreview.textContent = llmSuggestionDraftPreviewText(suggestion);
+      }
+
+      function llmSuggestionOriginText(suggestion) {
+        const origin = suggestion.origin ?? {};
+        return [
+          suggestion.title,
+          suggestion.summary,
+          "Status " + suggestion.status,
+          "Kind " + suggestion.suggestionKind,
+          origin.suggestionPolicyId ? "Policy " + origin.suggestionPolicyId : "",
+          origin.outputValidatorPolicyId ? "Validator " + origin.outputValidatorPolicyId : "",
+          origin.redactionPolicyId ? "Redaction " + origin.redactionPolicyId : "",
+          Array.isArray(origin.sourceKinds) && origin.sourceKinds.length > 0
+            ? "Sources " + origin.sourceKinds.map(llmSuggestionSourceKindText).join(", ")
+            : "",
+          Array.isArray(origin.coverageGapIds) ? "Coverage gaps " + origin.coverageGapIds.length : "",
+          origin.promptContextSummary ? "Context " + origin.promptContextSummary : "",
+          origin.generatedAt ? "Generated " + origin.generatedAt : "",
+          suggestion.materializedCandidate ? "Draft reference " + suggestion.materializedCandidate.candidateKind : "",
+          suggestion.rejectedAt ? "Rejected " + suggestion.rejectedAt : "",
+        ].filter(Boolean).join("\\n");
+      }
+
+      function llmSuggestionSupportingEvidenceText(supportingEvidence) {
+        if (supportingEvidence.length === 0) {
+          return "No supporting evidence loaded.";
+        }
+        return supportingEvidence
+          .map($0 => [$0.label, $0.sourceKind].filter(Boolean).join(" "))
+          .join("\\n");
+      }
+
+      function llmSuggestionSourceKindText(sourceKind) {
+        const labels = {
+          accepted_corpus_context: "accepted program context",
+          coverage_gap: "coverage gap",
+          curator_instruction: "curator instruction",
+        };
+        return labels[sourceKind] ?? "redacted source";
+      }
+
+      function llmSuggestionDraftPreviewText(suggestion) {
+        const draft = suggestion.suggestedDraft ?? {};
+        const request = draft.request ?? {};
+        return [
+          "Draft kind " + (draft.candidateKind ?? suggestion.suggestionKind),
+          request.candidateKind ? "Navigation kind " + request.candidateKind : "",
+          request.checkKind ? "Check kind " + request.checkKind : "",
+          request.title ? "Title " + request.title : "",
+          request.prompt ? "Prompt " + request.prompt : "",
+          request.body ? "Body " + request.body : "",
+          request.rationale ? "Rationale " + request.rationale : "",
+          Array.isArray(request.options) ? "Options " + request.options.join(", ") : "",
+        ].filter(Boolean).join("\\n");
+      }
+
+      function renderLlmSuggestionReviewStatus(message) {
+        elements.llmSuggestionReviewStatus.textContent = message;
       }
 
       function clearLearnerStateSurfaces() {
