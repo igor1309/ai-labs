@@ -632,6 +632,103 @@ export const learnUiHtml = `<!doctype html>
             </section>
           </div>
         </section>
+
+        <section id="readiness-check-section" class="panel wide-panel stack" aria-label="Topic and Period Readiness">
+          <h2>Readiness checks</h2>
+          <div class="navigation-grid">
+            <section id="readiness-check-curator-panel" class="stack" aria-label="Curator Readiness Checks">
+              <h3>Curator readiness</h3>
+              <div class="actions">
+                <label>
+                  Readiness candidate state
+                  <select id="readiness-check-candidate-status-filter">
+                    <option value="draft">Draft</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+                <button id="refresh-readiness-check-candidates-button" class="secondary" data-requires-session type="button">Refresh</button>
+              </div>
+              <div id="readiness-check-candidate-list" class="list">
+                <p class="empty">No readiness candidates loaded.</p>
+              </div>
+              <form id="readiness-check-candidate-form" class="stack">
+                <label>
+                  Readiness title
+                  <input id="readiness-check-title-input" name="title">
+                </label>
+                <div class="operation-grid">
+                  <label>
+                    Readiness scope
+                    <select id="readiness-check-scope-kind-input" name="scopeKind">
+                      <option value="topic">Topic</option>
+                      <option value="period">Period</option>
+                    </select>
+                  </label>
+                  <label>
+                    Topic entity id
+                    <input id="readiness-check-topic-id-input" name="topicEntityId" autocomplete="off">
+                  </label>
+                  <label>
+                    Period title
+                    <input id="readiness-check-period-title-input" name="periodTitle">
+                  </label>
+                  <label>
+                    Period topic ids
+                    <input id="readiness-check-period-topic-ids-input" name="periodTopicIds" autocomplete="off">
+                  </label>
+                </div>
+                <label>
+                  Readiness requirements JSON
+                  <textarea id="readiness-check-requirements-input" name="requirements"></textarea>
+                </label>
+                <label>
+                  Readiness source ids
+                  <input id="readiness-check-source-ids-input" name="sourceIds" autocomplete="off">
+                </label>
+                <label>
+                  Readiness rationale
+                  <textarea id="readiness-check-rationale-input" name="rationale"></textarea>
+                </label>
+                <div class="actions">
+                  <button type="submit" data-requires-session>Save readiness</button>
+                  <button data-action="accept-readiness-check-candidate" data-requires-session class="secondary" type="button">Approve readiness</button>
+                  <button data-action="reject-readiness-check-candidate" data-requires-session class="danger" type="button">Decline readiness</button>
+                  <button data-action="read-readiness-check-curation" data-requires-session class="secondary" type="button">Review readiness</button>
+                </div>
+                <p id="readiness-check-candidate-action-status" class="status" aria-live="polite"></p>
+              </form>
+              <div id="readiness-check-curation-detail" class="empty"></div>
+            </section>
+
+            <section id="readiness-check-student-panel" class="stack" aria-label="Student Readiness Checks">
+              <h3>Student readiness</h3>
+              <button id="refresh-readiness-checks-button" class="secondary" data-requires-session type="button">Refresh readiness</button>
+              <div id="readiness-check-delivery-list" class="list">
+                <p class="empty">No readiness checks loaded.</p>
+              </div>
+              <button data-action="open-readiness-check-delivery" data-requires-session class="secondary" type="button">Open readiness</button>
+              <div id="readiness-check-delivery-detail" class="empty"></div>
+              <form id="readiness-check-submit-form" class="stack">
+                <button type="submit" data-requires-session>Submit readiness</button>
+                <p id="readiness-check-submit-status" class="status" aria-live="polite"></p>
+              </form>
+              <div id="readiness-check-attempt-list" class="list">
+                <p class="empty">No readiness attempts loaded.</p>
+              </div>
+              <label>
+                Readiness attempt id
+                <input id="readiness-check-attempt-id-input" autocomplete="off">
+              </label>
+              <button data-action="open-readiness-check-attempt" data-requires-session class="secondary" type="button">Open readiness attempt</button>
+              <div id="readiness-check-attempt-detail" class="empty"></div>
+              <div id="readiness-check-requirement-result-list" class="list">
+                <p class="empty">No readiness requirement results loaded.</p>
+              </div>
+              <div id="readiness-check-evidence-detail" class="empty">No readiness evidence selected.</div>
+            </section>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -650,13 +747,21 @@ export const learnUiHtml = `<!doctype html>
         navigation: null,
         navigationCandidates: [],
         pendingQuickCheckAttemptKey: null,
+        pendingReadinessAttemptKey: null,
         programId: "",
+        readinessAttempts: [],
+        readinessCandidates: [],
+        readinessChecks: [],
         selectedNavigationCandidateId: null,
         selectedNavigationNode: null,
         selectedAttemptId: null,
         selectedCandidateId: null,
         selectedDelivery: null,
         selectedLearnerStateTarget: null,
+        selectedReadinessAttemptId: null,
+        selectedReadinessCandidateId: null,
+        selectedReadinessCheck: null,
+        selectedReadinessRevisionId: null,
         selectedRevisionId: null,
       };
 
@@ -718,12 +823,39 @@ export const learnUiHtml = `<!doctype html>
         programIdInput: document.querySelector("#program-id-input"),
         quickCheckActions: Array.from(document.querySelectorAll("[data-requires-session]")),
         readQuickCheckCurationButton: document.querySelector("[data-action='read-quick-check-curation']"),
+        readReadinessCheckCurationButton: document.querySelector("[data-action='read-readiness-check-curation']"),
+        readinessCheckAcceptButton: document.querySelector("[data-action='accept-readiness-check-candidate']"),
+        readinessCheckAttemptDetail: document.querySelector("#readiness-check-attempt-detail"),
+        readinessCheckAttemptIdInput: document.querySelector("#readiness-check-attempt-id-input"),
+        readinessCheckAttemptList: document.querySelector("#readiness-check-attempt-list"),
+        readinessCheckCandidateActionStatus: document.querySelector("#readiness-check-candidate-action-status"),
+        readinessCheckCandidateForm: document.querySelector("#readiness-check-candidate-form"),
+        readinessCheckCandidateList: document.querySelector("#readiness-check-candidate-list"),
+        readinessCheckCandidateStatusFilter: document.querySelector("#readiness-check-candidate-status-filter"),
+        readinessCheckCurationDetail: document.querySelector("#readiness-check-curation-detail"),
+        readinessCheckDeliveryDetail: document.querySelector("#readiness-check-delivery-detail"),
+        readinessCheckDeliveryList: document.querySelector("#readiness-check-delivery-list"),
+        readinessCheckEvidenceDetail: document.querySelector("#readiness-check-evidence-detail"),
+        readinessCheckPeriodTitleInput: document.querySelector("#readiness-check-period-title-input"),
+        readinessCheckPeriodTopicIdsInput: document.querySelector("#readiness-check-period-topic-ids-input"),
+        readinessCheckRejectButton: document.querySelector("[data-action='reject-readiness-check-candidate']"),
+        readinessCheckRequirementResultList: document.querySelector("#readiness-check-requirement-result-list"),
+        readinessCheckRequirementsInput: document.querySelector("#readiness-check-requirements-input"),
+        readinessCheckRationaleInput: document.querySelector("#readiness-check-rationale-input"),
+        readinessCheckScopeKindInput: document.querySelector("#readiness-check-scope-kind-input"),
+        readinessCheckSourceIdsInput: document.querySelector("#readiness-check-source-ids-input"),
+        readinessCheckSubmitForm: document.querySelector("#readiness-check-submit-form"),
+        readinessCheckSubmitStatus: document.querySelector("#readiness-check-submit-status"),
+        readinessCheckTitleInput: document.querySelector("#readiness-check-title-input"),
+        readinessCheckTopicIdInput: document.querySelector("#readiness-check-topic-id-input"),
         rejectQuickCheckButton: document.querySelector("[data-action='reject-quick-check']"),
         refreshCandidatesButton: document.querySelector("#refresh-candidates-button"),
         refreshLearnerStateButton: document.querySelector("#refresh-learner-state-button"),
         refreshLearnerStateTargetLinksButton: document.querySelector("#refresh-learner-state-target-links-button"),
         refreshNavigationButton: document.querySelector("#refresh-navigation-button"),
         refreshNavigationCandidatesButton: document.querySelector("#refresh-navigation-candidates-button"),
+        refreshReadinessCheckCandidatesButton: document.querySelector("#refresh-readiness-check-candidates-button"),
+        refreshReadinessChecksButton: document.querySelector("#refresh-readiness-checks-button"),
         refreshSessionButton: document.querySelector("#refresh-session-button"),
         sessionSummary: document.querySelector("#session-summary"),
         signinForm: document.querySelector("#signin-form"),
@@ -781,6 +913,7 @@ export const learnUiHtml = `<!doctype html>
       elements.programIdInput.addEventListener("input", () => {
         state.programId = elements.programIdInput.value.trim();
         clearLearnerStateSurfaces();
+        clearReadinessSurfaces();
       });
 
       elements.candidateForm.addEventListener("submit", async event => {
@@ -862,6 +995,31 @@ export const learnUiHtml = `<!doctype html>
         renderLearnerStateTargetLinkStatus("Target link save failed");
       });
 
+      elements.readinessCheckCandidateForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!canUseProgramApi()) {
+          renderReadinessCandidateStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const body = readinessCandidateInput();
+        if (!body) {
+          renderReadinessCandidateStatus("Readiness input is invalid.");
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/readiness-checks/candidates", {
+          body,
+          csrf: true,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          state.selectedReadinessCandidateId = result.value.readinessCheckCandidate.candidateId;
+          await refreshReadinessCandidates();
+          renderReadinessCandidateStatus("Created " + result.value.readinessCheckCandidate.title);
+          return;
+        }
+        renderReadinessCandidateStatus("Create failed");
+      });
+
       elements.curatorModeTab.addEventListener("click", () => {
         setMode("curator");
       });
@@ -876,6 +1034,14 @@ export const learnUiHtml = `<!doctype html>
           return;
         }
         void selectDelivery(button.dataset.revisionId);
+      });
+
+      elements.readinessCheckDeliveryList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-readiness-revision-id]");
+        if (!button) {
+          return;
+        }
+        selectReadinessCheck(button.dataset.readinessRevisionId);
       });
 
       elements.answerForm.addEventListener("submit", async event => {
@@ -913,6 +1079,33 @@ export const learnUiHtml = `<!doctype html>
         elements.submitStatus.textContent = "Submission failed";
       });
 
+      elements.readinessCheckSubmitForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!state.selectedReadinessCheck) {
+          elements.readinessCheckSubmitStatus.textContent = "Open a readiness check first";
+          return;
+        }
+        if (!state.pendingReadinessAttemptKey) {
+          state.pendingReadinessAttemptKey = createBrowserId();
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/readiness-check-attempts", {
+          body: {
+            readinessCheckRevisionId: state.selectedReadinessCheck.revisionId,
+          },
+          csrf: true,
+          idempotencyKey: state.pendingReadinessAttemptKey,
+          method: "POST",
+        });
+        if (result.status === "accepted") {
+          state.selectedReadinessAttemptId = result.value.readinessCheckAttempt.attemptId;
+          elements.readinessCheckSubmitStatus.textContent = "Readiness attempt submitted";
+          renderReadinessAttemptDetail(result.value.readinessCheckAttempt);
+          await refreshReadinessAttempts();
+          return;
+        }
+        elements.readinessCheckSubmitStatus.textContent = "Readiness submission failed";
+      });
+
       elements.refreshCandidatesButton.addEventListener("click", async () => {
         await refreshCandidates();
       });
@@ -931,6 +1124,15 @@ export const learnUiHtml = `<!doctype html>
 
       elements.refreshLearnerStateTargetLinksButton.addEventListener("click", async () => {
         await refreshLearnerStateTargetLinks();
+      });
+
+      elements.refreshReadinessCheckCandidatesButton.addEventListener("click", async () => {
+        await refreshReadinessCandidates();
+      });
+
+      elements.refreshReadinessChecksButton.addEventListener("click", async () => {
+        await refreshReadinessChecks();
+        await refreshReadinessAttempts();
       });
 
       elements.learnerStateTargetLinkList.addEventListener("click", event => {
@@ -957,6 +1159,16 @@ export const learnUiHtml = `<!doctype html>
         state.selectedCandidateId = button.dataset.candidateId;
         const candidate = state.candidates.find($0 => $0.candidateId === state.selectedCandidateId);
         renderCurationStatus(candidate ? "Selected " + candidate.title : "Selected candidate unavailable");
+      });
+
+      elements.readinessCheckCandidateList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-readiness-candidate-id]");
+        if (!button) {
+          return;
+        }
+        state.selectedReadinessCandidateId = button.dataset.readinessCandidateId;
+        const candidate = state.readinessCandidates.find($0 => $0.candidateId === state.selectedReadinessCandidateId);
+        renderReadinessCandidateStatus(candidate ? "Selected " + candidate.title : "Selected readiness candidate unavailable");
       });
 
       elements.navigationCandidateList.addEventListener("click", event => {
@@ -987,6 +1199,28 @@ export const learnUiHtml = `<!doctype html>
           return;
         }
         renderCurationStatus("Accept failed");
+      });
+
+      elements.readinessCheckAcceptButton.addEventListener("click", async () => {
+        if (!state.selectedReadinessCandidateId) {
+          renderReadinessCandidateStatus("Select a readiness candidate first.");
+          return;
+        }
+        const result = await requestJson(
+          "/readiness-checks/candidates/" + encodeURIComponent(state.selectedReadinessCandidateId) + "/acceptance",
+          {
+            body: {},
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          state.selectedReadinessRevisionId = result.value.acceptedReadinessCheck.revisionId;
+          renderReadinessCandidateStatus("Accepted " + result.value.acceptedReadinessCheck.title);
+          await refreshReadinessCandidates();
+          return;
+        }
+        renderReadinessCandidateStatus("Accept failed");
       });
 
       elements.openNavigationCandidateAcceptButton.addEventListener("click", async () => {
@@ -1028,6 +1262,27 @@ export const learnUiHtml = `<!doctype html>
         renderCurationStatus("Reject failed");
       });
 
+      elements.readinessCheckRejectButton.addEventListener("click", async () => {
+        if (!state.selectedReadinessCandidateId) {
+          renderReadinessCandidateStatus("Select a readiness candidate first.");
+          return;
+        }
+        const result = await requestJson(
+          "/readiness-checks/candidates/" + encodeURIComponent(state.selectedReadinessCandidateId) + "/rejection",
+          {
+            body: {},
+            csrf: true,
+            method: "POST",
+          },
+        );
+        if (result.status === "accepted") {
+          renderReadinessCandidateStatus("Rejected " + result.value.readinessCheckCandidate.title);
+          await refreshReadinessCandidates();
+          return;
+        }
+        renderReadinessCandidateStatus("Reject failed");
+      });
+
       elements.openNavigationCandidateRejectButton.addEventListener("click", async () => {
         if (!state.selectedNavigationCandidateId) {
           renderNavigationCandidateStatus("Select a navigation candidate first.");
@@ -1063,6 +1318,19 @@ export const learnUiHtml = `<!doctype html>
         renderCurationStatus("Inspection failed");
       });
 
+      elements.readReadinessCheckCurationButton.addEventListener("click", async () => {
+        if (!state.selectedReadinessRevisionId) {
+          renderReadinessCandidateStatus("Accept a readiness candidate before inspection.");
+          return;
+        }
+        const result = await requestJson("/readiness-checks/revisions/" + encodeURIComponent(state.selectedReadinessRevisionId) + "/curation");
+        if (result.status === "accepted") {
+          renderAcceptedReadinessCheck(result.value.acceptedReadinessCheck);
+          return;
+        }
+        renderReadinessCandidateStatus("Inspection failed");
+      });
+
       elements.navigationStudentPanel.addEventListener("click", event => {
         const nodeButton = event.target.closest("button[data-action='open-navigation-node']");
         if (nodeButton) {
@@ -1085,12 +1353,46 @@ export const learnUiHtml = `<!doctype html>
         void openAttemptDetail();
       });
 
+      elements.readinessCheckAttemptList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-readiness-attempt-id]");
+        if (!button) {
+          return;
+        }
+        state.selectedReadinessAttemptId = button.dataset.readinessAttemptId;
+        elements.readinessCheckAttemptIdInput.value = state.selectedReadinessAttemptId;
+        void openReadinessAttemptDetail();
+      });
+
+      elements.readinessCheckRequirementResultList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action='open-readiness-evidence-target']");
+        if (!button) {
+          return;
+        }
+        void openReadinessEvidenceTarget(button.dataset.targetKind, button.dataset.targetId);
+      });
+
       elements.openQuickCheckAttemptButton.addEventListener("click", async () => {
         const requestedAttemptId = elements.attemptIdInput.value.trim();
         if (requestedAttemptId) {
           state.selectedAttemptId = requestedAttemptId;
         }
         await openAttemptDetail();
+      });
+
+      document.querySelector("[data-action='open-readiness-check-delivery']").addEventListener("click", () => {
+        if (!state.selectedReadinessCheck) {
+          elements.readinessCheckDeliveryDetail.textContent = "Readiness check unavailable";
+          return;
+        }
+        renderReadinessCheckDeliveryDetail(state.selectedReadinessCheck);
+      });
+
+      document.querySelector("[data-action='open-readiness-check-attempt']").addEventListener("click", async () => {
+        const requestedAttemptId = elements.readinessCheckAttemptIdInput.value.trim();
+        if (requestedAttemptId) {
+          state.selectedReadinessAttemptId = requestedAttemptId;
+        }
+        await openReadinessAttemptDetail();
       });
 
       function acceptSession(value) {
@@ -1103,9 +1405,12 @@ export const learnUiHtml = `<!doctype html>
         state.csrfToken = null;
         state.identity = null;
         state.pendingQuickCheckAttemptKey = null;
+        state.pendingReadinessAttemptKey = null;
         state.selectedAttemptId = null;
+        state.selectedReadinessAttemptId = null;
         elements.signinStatus.textContent = "";
         clearLearnerStateSurfaces();
+        clearReadinessSurfaces();
         renderSession();
       }
 
@@ -1240,6 +1545,105 @@ export const learnUiHtml = `<!doctype html>
         elements.navigationActionStatus.textContent = message;
       }
 
+      function readinessCandidateInput() {
+        const requirements = parseReadinessRequirements(elements.readinessCheckRequirementsInput.value.trim());
+        if (requirements === null) {
+          return null;
+        }
+        const scope = readinessScopeInput();
+        if (!scope) {
+          return null;
+        }
+        const body = {
+          requirements,
+          scope,
+          sourceIds: splitIdList(elements.readinessCheckSourceIdsInput.value),
+          title: elements.readinessCheckTitleInput.value.trim(),
+        };
+        addOptionalText(body, "rationale", elements.readinessCheckRationaleInput.value);
+        return body;
+      }
+
+      function readinessScopeInput() {
+        if (elements.readinessCheckScopeKindInput.value === "period") {
+          return {
+            scopeKind: "period",
+            title: elements.readinessCheckPeriodTitleInput.value.trim(),
+            topicEntityIds: splitIdList(elements.readinessCheckPeriodTopicIdsInput.value),
+          };
+        }
+        return {
+          scopeKind: "topic",
+          topicEntityId: elements.readinessCheckTopicIdInput.value.trim(),
+        };
+      }
+
+      function parseReadinessRequirements(value) {
+        if (!value) {
+          return null;
+        }
+        try {
+          const parsed = JSON.parse(value);
+          if (!Array.isArray(parsed)) {
+            return null;
+          }
+          return parsed.map($0 => ({
+            requiredLevel: $0.requiredLevel,
+            targetId: $0.targetId,
+            targetKind: $0.targetKind,
+          }));
+        } catch {
+          return null;
+        }
+      }
+
+      async function refreshReadinessCandidates() {
+        if (!canUseProgramApi()) {
+          renderReadinessCandidateStatus("Sign in and set a Program id first.");
+          return;
+        }
+        const status = elements.readinessCheckCandidateStatusFilter.value;
+        const result = await requestJson(
+          "/programs/" + encodeURIComponent(state.programId) + "/readiness-checks/candidates?status=" + encodeURIComponent(status),
+        );
+        if (result.status === "accepted") {
+          state.readinessCandidates = result.value.readinessCheckCandidates;
+          renderReadinessCandidateList();
+          return;
+        }
+        state.readinessCandidates = [];
+        renderReadinessCandidateList();
+        renderReadinessCandidateStatus("Refresh failed");
+      }
+
+      function renderReadinessCandidateList() {
+        if (state.readinessCandidates.length === 0) {
+          elements.readinessCheckCandidateList.innerHTML = '<p class="empty">No readiness candidates loaded.</p>';
+          return;
+        }
+        elements.readinessCheckCandidateList.innerHTML = "";
+        for (const candidate of state.readinessCandidates) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.readinessCandidateId = candidate.candidateId;
+          button.textContent = candidate.title + " " + candidate.status;
+          elements.readinessCheckCandidateList.append(button);
+        }
+      }
+
+      function renderAcceptedReadinessCheck(readinessCheck) {
+        elements.readinessCheckCurationDetail.textContent = [
+          readinessCheck.title,
+          readinessScopeText(readinessCheck.scope),
+          ...readinessCheck.requirements.map(readinessRequirementText),
+        ].join("\\n");
+      }
+
+      function renderReadinessCandidateStatus(message) {
+        elements.readinessCheckCandidateActionStatus.textContent = message;
+        elements.readinessCheckCurationDetail.textContent = message;
+      }
+
       function renderAcceptedQuickCheck(quickCheck) {
         const answer = quickCheck.options.find($0 => $0.optionId === quickCheck.answerKeyOptionId);
         const lines = [
@@ -1271,6 +1675,21 @@ export const learnUiHtml = `<!doctype html>
         renderLearnerStateTargetDetail(null);
         elements.learnerStateStatus.textContent = "Learner state not loaded.";
         elements.learnerStateTargetLinkStatus.textContent = "";
+      }
+
+      function clearReadinessSurfaces() {
+        state.pendingReadinessAttemptKey = null;
+        state.readinessAttempts = [];
+        state.readinessChecks = [];
+        state.selectedReadinessAttemptId = null;
+        state.selectedReadinessCheck = null;
+        renderReadinessCheckDeliveryList();
+        renderReadinessAttemptList();
+        renderReadinessCheckDeliveryDetail(null);
+        renderReadinessAttemptDetail(null);
+        renderReadinessRequirementResults([]);
+        elements.readinessCheckEvidenceDetail.textContent = "No readiness evidence selected.";
+        elements.readinessCheckSubmitStatus.textContent = "";
       }
 
       async function refreshLearnerStateTargetLinks() {
@@ -1655,6 +2074,188 @@ export const learnUiHtml = `<!doctype html>
         }));
       }
 
+      async function refreshReadinessChecks() {
+        if (!canUseProgramApi()) {
+          return;
+        }
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/readiness-checks");
+        if (result.status === "accepted") {
+          state.readinessChecks = result.value.readinessChecks;
+          renderReadinessCheckDeliveryList();
+          return;
+        }
+        state.readinessChecks = [];
+        renderReadinessCheckDeliveryList();
+      }
+
+      function renderReadinessCheckDeliveryList() {
+        if (state.readinessChecks.length === 0) {
+          elements.readinessCheckDeliveryList.innerHTML = '<p class="empty">No readiness checks loaded.</p>';
+          return;
+        }
+        elements.readinessCheckDeliveryList.innerHTML = "";
+        for (const readinessCheck of state.readinessChecks) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.readinessRevisionId = readinessCheck.revisionId;
+          button.textContent = readinessCheck.title;
+          elements.readinessCheckDeliveryList.append(button);
+        }
+      }
+
+      function selectReadinessCheck(revisionId) {
+        const readinessCheck = state.readinessChecks.find($0 => $0.revisionId === revisionId) ?? null;
+        state.selectedReadinessCheck = readinessCheck;
+        state.pendingReadinessAttemptKey = null;
+        renderReadinessCheckDeliveryDetail(readinessCheck);
+      }
+
+      function renderReadinessCheckDeliveryDetail(readinessCheck) {
+        if (!readinessCheck) {
+          elements.readinessCheckDeliveryDetail.textContent = "No readiness check selected.";
+          return;
+        }
+        elements.readinessCheckDeliveryDetail.textContent = [
+          readinessCheck.title,
+          readinessScopeText(readinessCheck.scope),
+          ...readinessCheck.requirements.map(readinessRequirementText),
+        ].join("\\n");
+      }
+
+      async function refreshReadinessAttempts() {
+        if (!canUseProgramApi()) {
+          return;
+        }
+        const query = state.selectedReadinessCheck
+          ? "?readinessCheckRevisionId=" + encodeURIComponent(state.selectedReadinessCheck.revisionId)
+          : "";
+        const result = await requestJson("/programs/" + encodeURIComponent(state.programId) + "/readiness-check-attempts" + query);
+        if (result.status === "accepted") {
+          state.readinessAttempts = result.value.readinessCheckAttempts;
+          renderReadinessAttemptList();
+          return;
+        }
+        state.readinessAttempts = [];
+        renderReadinessAttemptList();
+      }
+
+      function renderReadinessAttemptList() {
+        if (state.readinessAttempts.length === 0) {
+          elements.readinessCheckAttemptList.innerHTML = '<p class="empty">No readiness attempts loaded.</p>';
+          return;
+        }
+        elements.readinessCheckAttemptList.innerHTML = "";
+        for (const attempt of state.readinessAttempts) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.readinessAttemptId = attempt.attemptId;
+          const readinessCheck = readinessCheckForRevision(attempt.readinessCheckRevisionId);
+          button.textContent = (readinessCheck ? readinessCheck.title : "Readiness attempt") + " " + attempt.result;
+          elements.readinessCheckAttemptList.append(button);
+        }
+      }
+
+      async function openReadinessAttemptDetail() {
+        if (!state.selectedReadinessAttemptId) {
+          renderReadinessAttemptDetail(null, "Readiness attempt unavailable");
+          return;
+        }
+        const result = await requestJson("/readiness-check-attempts/" + encodeURIComponent(state.selectedReadinessAttemptId));
+        if (result.status !== "accepted") {
+          renderReadinessAttemptDetail(null, "Readiness attempt unavailable");
+          return;
+        }
+        renderReadinessAttemptDetail(result.value.readinessCheckAttempt);
+      }
+
+      function renderReadinessAttemptDetail(attempt, unavailableText = "No readiness attempt selected.") {
+        if (!attempt) {
+          elements.readinessCheckAttemptDetail.removeAttribute("data-readiness-attempt-id");
+          elements.readinessCheckAttemptDetail.textContent = unavailableText;
+          renderReadinessRequirementResults([]);
+          return;
+        }
+        elements.readinessCheckAttemptDetail.dataset.readinessAttemptId = attempt.attemptId;
+        const readinessCheck = readinessCheckForRevision(attempt.readinessCheckRevisionId);
+        elements.readinessCheckAttemptDetail.textContent = [
+          readinessCheck ? readinessCheck.title : "Readiness attempt",
+          "Result " + attempt.result,
+          "Submitted " + attempt.submittedAt,
+        ].join("\\n");
+        renderReadinessRequirementResults(attempt.requirementResults);
+      }
+
+      function renderReadinessRequirementResults(requirementResults) {
+        if (requirementResults.length === 0) {
+          elements.readinessCheckRequirementResultList.innerHTML = '<p class="empty">No readiness requirement results loaded.</p>';
+          return;
+        }
+        elements.readinessCheckRequirementResultList.innerHTML = "";
+        for (const requirement of requirementResults) {
+          const row = document.createElement("div");
+          row.className = "detail-section";
+          const summary = document.createElement("p");
+          summary.textContent = [
+            readinessRequirementText(requirement),
+            "Observed " + requirement.observedLevel,
+            "Result " + requirement.result,
+          ].join("\\n");
+          const button = document.createElement("button");
+          button.className = "secondary";
+          button.dataset.action = "open-readiness-evidence-target";
+          button.dataset.targetKind = requirement.targetKind;
+          button.dataset.targetId = requirement.targetId;
+          button.type = "button";
+          button.textContent = "Open readiness evidence " + requirement.targetKind;
+          row.append(summary, button);
+          elements.readinessCheckRequirementResultList.append(row);
+        }
+      }
+
+      async function openReadinessEvidenceTarget(targetKind, targetId) {
+        const result = await requestJson(
+          "/learner-state/targets/" + encodeURIComponent(targetKind) + "/" + encodeURIComponent(targetId),
+        );
+        if (result.status !== "accepted") {
+          elements.readinessCheckEvidenceDetail.textContent = "Readiness evidence unavailable";
+          return;
+        }
+        const target = result.value.learnerStateTarget;
+        const lines = [
+          target.title,
+          target.targetKind,
+          target.level,
+          "Evidence " + target.evidenceCount,
+          ...target.evidence.map($0 => [$0.sourceKind, $0.signal, $0.title, $0.summary].filter(Boolean).join(" ")),
+        ];
+        elements.readinessCheckEvidenceDetail.textContent = lines.join("\\n");
+      }
+
+      function readinessCheckForRevision(revisionId) {
+        if (state.selectedReadinessCheck?.revisionId === revisionId) {
+          return state.selectedReadinessCheck;
+        }
+        return state.readinessChecks.find($0 => $0.revisionId === revisionId) ?? null;
+      }
+
+      function readinessScopeText(scope) {
+        if (!scope) {
+          return "Scope unavailable";
+        }
+        if (scope.scopeKind === "period") {
+          return "period " + scope.title + " topics " + scope.topicEntityIds.join(", ");
+        }
+        return "topic " + scope.topicEntityId;
+      }
+
+      function readinessRequirementText(requirement) {
+        return [
+          requirement.targetKind,
+          requirement.targetId,
+          "required " + requirement.requiredLevel,
+        ].join(" ");
+      }
+
       function setMode(mode) {
         state.mode = mode;
         elements.curatorModeTab.setAttribute("aria-selected", mode === "curator" ? "true" : "false");
@@ -1664,6 +2265,8 @@ export const learnUiHtml = `<!doctype html>
           void refreshAttempts();
           void refreshLearnerState();
           void refreshNavigation();
+          void refreshReadinessChecks();
+          void refreshReadinessAttempts();
         }
       }
 

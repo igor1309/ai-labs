@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-04
+
+- Implement Phase 5 of the topic and period readiness checks plan with `/learn` readiness curation controls, Student delivery and explicit readiness attempt workflows, idempotent retry, owner-only attempt detail, evidence drill-down, redaction checks, and Quick Check/navigation/learner-state browser regression coverage.
+
 ## 2026-06-03
 
 - Implement Phase 4 of the topic and period readiness checks plan with session-backed HTTP curation routes, Student delivery and attempt routes, CSRF/idempotency gates, owner-only attempt reads, status mapping, and student-safe redaction coverage.
