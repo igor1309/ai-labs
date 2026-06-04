@@ -1,0 +1,148 @@
+{
+  "skill_name": "traceability-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a traceability review of the agonara intent layer (intent×intent — cross-role and inside-role slices).",
+      "expected_output": "A single Markdown findings file under agonara/docs/traceability-reviews/ that reports the intent layer as clean (0 cross-role and 0 inside-role findings), backs that verdict with cited interlocking evidence, enumerates every story per file, and logs exactly the two known tensions as routed open questions rather than findings.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by the intent layer-pair (e.g. 2026-06-03T1007Z-intent.md).",
+        "The file front-matter includes skill: traceability-review, a skill_version, scope naming the intent×intent layer-pair and the agonara project, and slices [cross-role, inside-role].",
+        "The front-matter inputs list the four intent-layer files (intent_learning_program_app.md, admin_user_stories.md, curator_user_stories.md, student_user_stories.md) each with its document version read from that file's own front-matter.",
+        "The Summary reports 0 cross-role findings and 0 inside-role findings (a clean verdict).",
+        "The clean verdict is supported by positive evidence: the cross-role section cites the interlocking corpus/student-state and membership-authority boundary passages with file:line, rather than merely asserting cleanliness.",
+        "The Inspected section enumerates all story IDs per file: INT-01 through INT-07, ADM-01 through ADM-15, CUR-01 through CUR-18, and STU-01 through STU-23.",
+        "An open question records the curator membership operation-vs-policy tension (CUR-14/CUR-17 perform invite/remove while the curator boundary disclaims defining membership policy) and routes it to a downstream layer (intent→ADR, e.g. ADR-006) instead of reporting it as a finding.",
+        "An open question records the self-join vs invitation join-mode taxonomy ambiguity (STU-18 vs STU-22), noting the product intent itself already flags it as open, instead of reporting it as a finding.",
+        "The reviewer reads only the four intent-layer files and does not read ADRs, specs, implementation plans, code, or tests.",
+        "The reviewer makes no edits to any source document, opens no PR, and creates no file other than the single findings file.",
+        "No false-positive findings are manufactured — in particular the Russian/English language difference between the product intent and the story bodies is not reported as a contradiction."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run an intent → ADR traceability review of the agonara Corpus Storage + Curator Workspace module using the per-module deterministic coverage matrix.",
+      "expected_output": "A complete per-module coverage matrix (~22 capability rows) for Corpus Storage + Curator Workspace — each row verdict-tagged with ADR evidence — with findings derived mechanically: 0 contradictions, CUR-09 and CUR-13 carried with cited ADR lines, and the INT-02/STU-07 confusing-neighbors concept-relation flagged as a finding (loss or uncovered).",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by intent-adr and the module (e.g. 2026-06-03T1127Z-intent-adr-corpus-curator.md).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the intent → ADR layer-pair, agonara, and the module Corpus Storage + Curator Workspace, mechanism: deterministic-coverage-matrix, and an inputs list giving the intent files with versions, ADR-010 and ADR-009 with status, and the module responsibility map.",
+        "A coverage matrix is the primary artifact: roughly 20-24 rows, one per owned capability, each carrying an explicit verdict (carried, deferred, uncovered, carried-with-loss, or contradicted) and either an ADR file:line evidence quote or 'none'.",
+        "The enumerated capabilities include the curation stories CUR-01 through CUR-13 (and exclude CUR-14 through CUR-18 as Program Membership) plus the corpus-content capabilities INT-01..INT-03, the accepted-content slices of INT-04..INT-06, and STU-06/STU-07/STU-09/STU-10.",
+        "There are 0 contradicted rows (no fidelity fail).",
+        "CUR-09 (coverage-gap discovery) is classified carried, citing ADR-010:52 (gap analysis owned by Curator Workspace) and/or ADR-010:76 (coverage gaps live outside accepted corpus until acceptance).",
+        "CUR-13 (pre-acceptance suggestion origin) is classified carried, citing ADR-010:80 (acceptance preserves provenance to source/candidate/draft/LLM-suggestion/rationale) and/or ADR-010:56.",
+        "The INT-02/STU-07 confusing-neighbors concept-relation is flagged as a finding — either carried-with-loss or uncovered — and is NOT marked carried and NOT treated as deferred, quoting the intent commitment (intent_learning_program_app.md:115 / student_user_stories.md:80) and ADR-010's closed accepted-entity enumeration (adr-010:48 / :75).",
+        "Every finding corresponds to a non-clean matrix row and every row has a verdict; no finding is reported that is not a matrix row, and no false positive is made (an explicitly deferred capability or an implementation detail the intent left open is not flagged).",
+        "Cross-module seam gaps (a capability owned by no single module, e.g. program discovery) are NOT reported here, since they belong to the cross-module ADR × ADR pass.",
+        "The Inspected section confirms ADR-010 and ADR-009 and the four intent files and the responsibility map were read."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run an ADR × ADR cross-module compatibility traceability review of the agonara ADRs.",
+      "expected_output": "An ownership matrix (one row per map Owns entry) plus a cross-module contract register over the 16 accepted ADRs and the responsibility map, finding the architecture cross-module compatible (0 double-ownership, 0 contract inconsistency, 0 boundary violation) with map-adr-drift the only finding category — including the accepted Program shell (ADR-009) not named in the map's Corpus Storage Owns cell.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by adr-adr-crossmodule.",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the ADR × ADR layer-pair and agonara, checks listing double-ownership / boundary-violation / contract-consistency / map-adr-drift, mechanism: ownership-matrix + contract-register, and an inputs list giving the module responsibility map with version and all 16 ADRs with status.",
+        "An ownership matrix is produced with one row per responsibility from the map's Owns columns, each row carrying the map owner, the ADR(s) that decide it with file:line, and a verdict (single-owner, double-ownership, or map-adr-drift).",
+        "A cross-module contract register is produced, each row naming a contract with its provider ADR (file:line) and consumer ADR(s) (file:line) and a verdict (consistent, inconsistent, or boundary-violation).",
+        "There are 0 double-ownership rows in the ownership matrix.",
+        "The contract register has 0 inconsistent and 0 boundary-violation rows (every cross-module contract is consistent).",
+        "There are 0 fail findings, and the only finding category present is map-adr-drift (warning).",
+        "A map-adr-drift finding flags that the accepted Program shell owned by Corpus Storage per ADR-009 (adr-009:44) is not named in the map's Corpus Storage Owns cell (module_responsibility_map.md:68).",
+        "The identified shared contracts include at least the effective-participation authorization contract (provider ADR-007, consumed by Student/Curator/Admin) and the curator-acceptance boundary (ADR-010), each verdict consistent with provider and consumer file:line.",
+        "No intents, specs, plans, code, or tests are read, and seam coverage (a capability owned by no module) is explicitly noted as out of scope for this pass.",
+        "The Inspected section confirms the responsibility map and all 16 ADRs (adr-001 through adr-016) were read."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run the allocation-completeness pass on agonara — is every intent capability owned by at least one module?",
+      "expected_output": "A complete global allocation matrix (one row per intent capability) over the intent layer, responsibility map, and 16 ADRs, finding the architecture allocation-complete (0 unallocated capabilities), with the program-discovery capabilities STU-01/02/03 classified allocated and the suppression rules preventing false positives (deferred-mechanics and cross-cutting concerns not flagged).",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by intent-allocation.",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming allocation completeness and agonara, mechanism: global-allocation-matrix, a suppression_rules list, and an inputs list giving the four intent files with versions, the responsibility map with version, and all 16 ADRs with status.",
+        "An allocation matrix is the primary artifact: one row per intent capability covering INT-01..07, ADM-01..15, CUR-01..18, STU-01..23 plus cross-cutting concerns, each row carrying owner(s) with module + ADR/map file:line (or none), an owner_count, and a verdict (allocated, cross-cutting-allocated, deferred, pending, or UNALLOCATED).",
+        "There are 0 UNALLOCATED rows (the architecture is allocation-complete).",
+        "STU-01 (see available programs) is classified allocated, owned by Corpus Storage's accepted Program shell (ADR-009).",
+        "STU-02 (see started programs) is classified allocated, owned by Program Membership (membership status / effective participation, ADR-005/ADR-007).",
+        "STU-03 (preview coverage) is classified allocated, owned by Corpus Storage (accepted-content read / answer-key-excluding delivery projection, ADR-010/ADR-016).",
+        "The suppression rules prevent false positives: a cross-cutting concern with no dedicated ADR (e.g. Product Analytics) is resolved via a system-level owner in the map rather than flagged UNALLOCATED, and a capability whose owner is explicit but whose mechanics are deferred by ADR Non-Goals (e.g. CUR-09 gap analysis owned by Curator Workspace) is allocated, not a finding.",
+        "ADRs are treated as authoritative over the provisional responsibility map for ownership, and an ADR Non-Goal is the authority for a deferred verdict.",
+        "No false UNALLOCATED finding is made — a deferred, cross-cutting, or owner-explicit capability is never flagged as owned-by-nobody.",
+        "The Inspected section confirms the four intent files, the responsibility map, and all 16 ADRs were read."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Run the ADR → spec pass on the agonara Corpus Storage + Curator Workspace module — does the spec honour every ADR-010 decision?",
+      "expected_output": "A complete per-decision matrix over ADR-010 and its two corpus-acceptance specs, finding the specs faithful (0 contradicted, 0 missing) with the broad content-kind set correctly classified deferred (not missing) under the ADR's narrow-first-implementation allowance.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by adr-spec and the module (corpus-curator).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the ADR → spec pass, the Corpus Storage + Curator Workspace module, and agonara, mechanism: per-decision matrix, and an inputs list giving adr-010 (status) and both corpus-storage-and-curator-acceptance specs (api + first-slice) with version/status.",
+        "The matrix is the primary artifact: one row per ADR-010 decision / rule / invariant (pinned to the ADR's own Decision and Rules sections), each row carrying a verdict (honoured, contradicted, missing, or deferred) and either a spec file:line evidence citation or 'none'.",
+        "There are 0 contradicted rows (no fail).",
+        "There are 0 missing rows, so 0 findings total.",
+        "Honoured rows cite concrete spec evidence with file:line (e.g. the 'draft rejection MUST NOT delete accepted corpus' invariant at adr-010:85 maps to a first-slice spec rule).",
+        "The broad content-kind set (ADR-010 at :48/:75 owns topics, concepts, definitions, principles, material references, source metadata, accepted assessment items, and criteria) where the first slice realizes only topic/concept is classified deferred (not missing), citing adr-010:102 (narrow first implementation) and/or Non-Goal adr-010:109, and routed as an open question for a later spec slice — not reported as a gap.",
+        "Admin recovery (R23, adr-010:87 'later ADR-defined exceptional flow') and the later-ADR extension clause (adr-010:88) are classified deferred, not findings.",
+        "Findings are derived mechanically from the matrix and no false positive is made — a narrowing authorized by an ADR Non-Goal or first-slice scoping line is deferred, never flagged missing.",
+        "The Inspected section confirms ADR-010 and both corpus-storage-and-curator-acceptance specs were read."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Run the spec ↔ tests pass on the agonara Corpus Storage + Curator Workspace module — does every spec clause have a named test, and does every test name trace to a clause?",
+      "expected_output": "A bidirectional coverage matrix (spec clauses ↔ test names) for the module, built from test titles only (no bodies, tests not run) with the test scope discovered across the whole suite, finding coverage clean (no orphan tests; negative-guarantee verifiability noted as an open question, not a forced untested finding).",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by spec-tests and the module (corpus-curator).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the spec ↔ tests pass / the Corpus Storage + Curator Workspace module / agonara, a mechanism noting bidirectional coverage by names only, and an inputs list giving both corpus-storage-and-curator-acceptance specs and the test files used.",
+        "Spec clauses are enumerated from BOTH specs (first-slice + API) as the clause set.",
+        "The test scope is discovered across the whole test suite (not a single hand-listed file): corpus/curator-relevant titles are drawn from wherever they live — domain corpus*.test.js, API http-api.test.js, backup-restore.test.js, executable-acceptance — and titles for other modules are classified out-of-scope, not orphan.",
+        "Coverage is bidirectional: a Spec->test table (each clause -> covering test name or untested) and a Test->spec table (each in-scope test name -> traced clause or orphan).",
+        "Only test NAMES are used (describe/it/test titles, e.g. grep-extracted); test bodies are not analyzed and the tests are NOT run.",
+        "There are 0 orphan tests (every in-scope test name traces to a clause).",
+        "Forward coverage is essentially complete (clauses covered by named tests) with no contradicted/false-coverage rows.",
+        "A negative or does-not guarantee clause that no test names is treated as an open question (names-only cannot confirm an absence), not a forced untested finding.",
+        "A clean result is backed by the completed bidirectional tables, not asserted, and the Inspected section lists the specs and test files consulted."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Run the upward orphan check on the agonara Corpus Storage + Curator Workspace module — does every ADR-010 and ADR-009 decision trace back to a source intent, or is any unrequested scope creep?",
+      "expected_output": "A complete upward-trace matrix (one row per ADR-010 and ADR-009 Decision sentence and Rules/Invariants bullet) over the two ADRs and the intent layer, finding 0 orphans — every decision traced to an accepted intent or classified as a legitimate derived/carried-shape decision — with the parent-less-looking decisions (Program shell + operator-visible metadata, self-join admission default, stable accepted revisions, acceptance attribution/event emission) caught by the suppression guards and the genuinely intent-deferred specifics routed as open questions rather than flagged ORPHAN.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by orphan and the layer/module (e.g. 2026-06-03T1928Z-orphan-adr-intent-corpus-curator.md).",
+        "The front-matter includes skill: traceability-review, a skill_version, scope naming the upward orphan check / ADR → intent / the Corpus Storage + Curator Workspace module / agonara, mechanism: upward-trace-matrix, a suppression_rules list, and an inputs list giving adr-010 and adr-009 with status, the four intent files with versions, and the responsibility map with version.",
+        "An upward-trace matrix is the primary artifact: one row per ADR-010 and ADR-009 Decision sentence and Rules/Invariants bullet (pinned to the ADRs' own units — Executive Summary, Context, Consequences, and Non-Goals are NOT enumerated as rows, and rules are neither sub-split nor folded), each row carrying a verdict (traced, derived, carried-shape, or ORPHAN) and a cited parent: an intent ID file:line for traced, the derivation/elaboration parent, or 'none — ORPHAN'.",
+        "There are 0 ORPHAN rows — the module is orphan-free.",
+        "The verdict is backed by the completed matrix with both sides cited (intent file:line and adr file:line), not asserted; the row total is reported as approximate (ADR prose decisions carry no stable IDs) and the eval does NOT require an exact row number.",
+        "The Program shell decisions (ADR-009: a minimal accepted Program record with a stable identifier and operator-visible metadata) are NOT flagged ORPHAN — classified derived or carried-shape because CUR-01/INT-01 commit that a program exists and the shell is the minimal stable scope the intent left to design, with the operator-visible-metadata clause routed as an open question (resolving layer: intent).",
+        "The self-join admission default (ADR-009) is NOT flagged ORPHAN — classified carried-shape of STU-18 (which commits self-join's existence), with the specific default routed as an open question because the intent explicitly leaves admission policy open.",
+        "Stable accepted revisions and addressability (ADR-010) are NOT flagged ORPHAN — classified derived/carried-shape because CUR-10 and INT-07 require that corpus evolution not erase student history, which the revision mechanism honours.",
+        "Acceptance attribution, provenance, atomicity, and event-emission rules are NOT flagged ORPHAN — classified derived as internal integrity/provenance primitives serving traced acceptance and membership decisions (and ADM-15 audit), never user-observable scope creep.",
+        "No false-positive ORPHAN is manufactured: a decision with a derivation chain to a traced decision or a system-level need, or one elaborating an intent-left-open capability, is derived/carried-shape, not ORPHAN; the derived-vs-orphan disposition is left to judgement (the eval does not pin the traced/derived split).",
+        "Only the two ADRs, the four intent files, and the responsibility map are read; no specs, plans, code, tests, or prior review outputs are read, and no source document is edited.",
+        "The Inspected section confirms ADR-010 and ADR-009 (decisions enumerated), the four intent files, and the responsibility map were read."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Generate the umbrella ledger for agonara — aggregate the per-pass traceability-review outputs into one resolution-session register.",
+      "expected_output": "A single Markdown register that enumerates every finding and open question across the seven authoritative per-pass outputs (one row each), excluding the superseded whole-surface intent→ADR run, with 5 findings (0 fail, 5 warning: one intent→ADR carried-with-loss plus four ADR×ADR map-adr-drift) and ~15 open questions, plus a deterministic resolving-layer rollup and a threads view that names the map-drift cluster as the resolution session's first move — introducing no new finding.",
+      "expectations": [
+        "The output is a single new Markdown file under agonara/docs/traceability-reviews/ whose name is a UTC timestamp followed by umbrella-ledger.",
+        "The front-matter includes skill: traceability-review, a skill_version, scope: umbrella ledger — agonara, mechanism: umbrella-ledger, and an inputs list naming the seven aggregated per-pass output files.",
+        "The ledger aggregates the current authoritative output per pass and EXCLUDES the superseded whole-surface intent→ADR run (2026-06-03T1050Z-intent-adr.md), recording that exclusion with its reason in the Inspected section.",
+        "The Ledger section is a complete enumeration: one row per finding and one row per open question across all seven outputs (about 20 items), each row pinned to (pass, item-id) with columns covering source, kind (finding/open-question), severity, type, subject, resolving layer, and a one-line summary.",
+        "There are exactly 5 findings — 0 fail and 5 warning: one intent→ADR carried-with-loss (the confusable/related-concept relation, INT-02/STU-07, not named in ADR-010) and four ADR×ADR map-adr-drift (accepted Program shell, quick-check answer keys, student-facing delivery projection, evaluator orchestration).",
+        "The ledger introduces NO new finding or open question — every row traces to an item already present in a source output; the ledger only indexes and groups.",
+        "Each row links to its source output and item id and does NOT re-quote the source evidence (link-don't-duplicate).",
+        "A deterministic Resolving-layer rollup groups every item by the layer that settles it (map revision, ADR, intent, spec/schema, spec↔tests), and the per-layer counts sum to the total item count.",
+        "A Threads view groups items that are the same tension across passes, and the map-drift cluster (the four map-adr-drift findings plus the map-revision-timing open question) is identified as the recommended first move because one map revision clears them all.",
+        "The exact thread set and the precise open-question count are left to judgement — the eval pins the enumeration, the 5 findings, and the rollup, not the thread groupings or an exact open-question number.",
+        "No source document or per-pass output is edited; the only artifact created is the single ledger file."
+      ]
+    }
+  ]
+}
