@@ -1,5 +1,5 @@
 ---
-date: 2026-06-02
+date: 2026-06-04
 model: claude-opus-4-8
 description: "Immediate TODO for the .agents folder — decide whether its files become skills"
 ---
@@ -29,4 +29,6 @@ topic, whether it should become:
 ## Output
 
 A short decision note (per candidate: skill / doc / rule, with one-line rationale)
-that drives the next change set. Until then this folder holds no topic files.
+that drives the next change set. An initial set of topic docs already exists; the
+remaining triage covers the inline sections still in the root `CLAUDE.md`,
+`migrate-to-skills/guides/`, and `research/`.
