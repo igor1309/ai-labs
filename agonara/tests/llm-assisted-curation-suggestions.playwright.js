@@ -13,6 +13,8 @@ test("llmSuggestionUiCurator_shouldGenerateInspectAcceptAndReject_withRedactedOr
   try {
     await signIn(page, harness.baseUrl);
     await page.locator("#program-id-input").fill(harness.programId);
+    await expect(page.locator("[data-action='accept-llm-curation-suggestion']")).toBeDisabled();
+    await expect(page.locator("[data-action='reject-llm-curation-suggestion']")).toBeDisabled();
     await page.locator("#llm-curation-suggestion-policy-input").fill("policy-a");
     await page.locator("#llm-curation-suggestion-instruction-input").fill("Suggest one safe draft topic.");
     await page.locator("#generate-llm-curation-suggestions-button").click();
@@ -38,6 +40,7 @@ test("llmSuggestionUiCurator_shouldGenerateInspectAcceptAndReject_withRedactedOr
     await expect(page.locator("#llm-curation-suggestion-review-status")).toContainText("Materialized draft navigation_candidate");
     await expect(page.locator("[data-action='accept-llm-curation-suggestion']")).toBeDisabled();
     await expect(page.locator("[data-action='reject-llm-curation-suggestion']")).toBeDisabled();
+    expect(await llmSuggestionForbiddenText(page)).toEqual([]);
     await page.locator("#refresh-navigation-button").click();
     await expect(page.locator("#program-navigation-summary")).not.toContainText("Draft LLM topic");
     await page.locator("#refresh-navigation-candidates-button").click();
@@ -51,6 +54,7 @@ test("llmSuggestionUiCurator_shouldGenerateInspectAcceptAndReject_withRedactedOr
     await expect(page.locator("#llm-curation-suggestion-review-status")).toHaveText("Suggestion rejected.");
     await expect(page.locator("[data-action='accept-llm-curation-suggestion']")).toBeDisabled();
     await expect(page.locator("[data-action='reject-llm-curation-suggestion']")).toBeDisabled();
+    expect(await llmSuggestionForbiddenText(page)).toEqual([]);
   } finally {
     await harness.close();
   }
@@ -67,6 +71,9 @@ test("llmSuggestionUiAuthorization_shouldDenyStudentAndAdminOnlySessions", async
     await page.locator("#refresh-llm-curation-suggestions-button").click();
     await expect(page.locator("#llm-curation-suggestion-list-status")).toHaveText("Suggestions unavailable.");
     await expect(page.locator("#llm-curation-suggestion-list")).toContainText("No LLM suggestions loaded.");
+    await expect(page.locator("[data-action='open-llm-curation-suggestion']")).toHaveCount(0);
+    await expect(page.locator("[data-action='accept-llm-curation-suggestion']")).toBeDisabled();
+    await expect(page.locator("[data-action='reject-llm-curation-suggestion']")).toBeDisabled();
 
     await page.locator("#logout-button").click();
     await signIn(page, harness.baseUrl, harness.admin.login, harness.admin.password);
@@ -75,6 +82,9 @@ test("llmSuggestionUiAuthorization_shouldDenyStudentAndAdminOnlySessions", async
     await expect(page.locator("#llm-curation-suggestion-generation-status")).toHaveText("Suggestions unavailable.");
     await page.locator("#refresh-llm-curation-suggestions-button").click();
     await expect(page.locator("#llm-curation-suggestion-list-status")).toHaveText("Suggestions unavailable.");
+    await expect(page.locator("[data-action='open-llm-curation-suggestion']")).toHaveCount(0);
+    await expect(page.locator("[data-action='accept-llm-curation-suggestion']")).toBeDisabled();
+    await expect(page.locator("[data-action='reject-llm-curation-suggestion']")).toBeDisabled();
   } finally {
     await harness.close();
   }
