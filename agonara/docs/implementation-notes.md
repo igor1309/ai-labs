@@ -161,13 +161,13 @@ The original Identity and Operations first slice has been extended by later back
 - Quick Check assessment has HTTP, backend/domain, storage, and `/learn` product UI support for Curator candidate management, Student delivery reads, immutable attempts, matched evidence, idempotent retries, owner-only reads, protected answer keys, and backup/restore validation.
 - Learner-state interpretation derives progress, weak-area, and evidence summaries at read time from accepted checks, Student evidence, explicit active learner evidence target links, and accepted navigation relationships. Target-link curation is Program Curator-owned Corpus metadata; learner-state summary and target-detail reads are owner-only Student Workspace reads exposed through HTTP and `/learn`.
 - Topic and period readiness checks are accepted Program corpus definitions with topic or named-period scopes. Owning Students explicitly submit readiness attempts whose results snapshot learner-state requirement evidence at submission time; HTTP and `/learn` surfaces support Curator curation, Student delivery, idempotent retry, owner-only attempt reads, and evidence drill-down.
-- Program Membership invitations and recovery support Student-only invitation creation, acceptance, decline, and revocation; participant listing; Student removal; curator leave with last-curator protection; Admin-only exceptional recovery/revocation with required reasons; membership event inspection; backup/restore preservation; and role-separated `/learn` and `/admin` surfaces.
+- Program Membership invitations and recovery support Student-targeted invitation creation, acceptance, decline, and revocation; participant listing; Student removal; curator leave with last-curator protection; Admin-only exceptional recovery/revocation with required reasons; membership event inspection; backup/restore preservation; and role-separated `/learn` and `/admin` surfaces.
 
 The production server entrypoint now composes Identity, Program, Corpus, and Student Workspace command boundaries against the configured SQLite database. Operational completion tracing is emitted from a common HTTP response boundary so accepted, rejected, and faulted Identity, Program, Corpus, Student Workspace, health, and diagnostics routes share request correlation without logging request bodies, cookies, CSRF tokens, idempotency keys, SQL, provider details, or raw evaluator artifacts.
 
 ## Deferred Runtime State
 
-Current backend/domain support does not imply a complete product UI:
+Current backend, domain, and first-slice UI support does not imply a complete product UI:
 
 - Recommendation ranking, persisted mastery models, curator coverage-gap analysis, and LLM-assisted curation suggestions still need separate downstream artifacts.
 - The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, and membership Student/Curator product slices. Broader Student and Curator product screens remain outside the current runtime.
