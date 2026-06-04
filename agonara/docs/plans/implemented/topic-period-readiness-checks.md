@@ -100,7 +100,6 @@ HTTP routes:
 - `POST /readiness-checks/candidates/{candidateId}/rejection`
 - `GET /readiness-checks/revisions/{revisionId}/curation`
 - `GET /programs/{programId}/readiness-checks`
-- `GET /readiness-checks/revisions/{revisionId}`
 - `POST /programs/{programId}/readiness-check-attempts`
 - `GET /programs/{programId}/readiness-check-attempts`
 - `GET /readiness-check-attempts/{attemptId}`
