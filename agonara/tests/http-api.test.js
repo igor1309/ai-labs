@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { createCorpusCommands } from "../src/corpus.js";
+import { createCuratorWorkspaceCommands } from "../src/curator-workspace.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
-import { createServer } from "../src/server.js";
+import { createServer, startServer } from "../src/server.js";
 import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
 import {
   initializeIdentityStorage,
@@ -14,13 +17,17 @@ import {
   listAcceptedCorpusRevisionRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedOpenAnswerCheckRevisionRecords,
+  listAcceptedQuickCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusEventRecords,
+  listLlmCurationSuggestionRecords,
   listOpenAnswerAttemptRecords,
   listOpenAnswerCheckCandidateRecords,
   listProgramMembershipEventRecords,
   listProgramMembershipRecords,
   listProgramSourceRecords,
+  listQuickCheckCandidateRecords,
+  listReadinessCheckAttemptRecords,
   openIdentityDatabase,
   updateProgramMembershipStatus,
 } from "../src/storage.js";
@@ -34,7 +41,7 @@ test("identityBootstrap_shouldSetCookieAndHideSessionId_onAcceptedBootstrap", as
         bootstrapSecret: "operator-secret",
         displayName: "Root Admin",
         login: "admin@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -60,6 +67,99 @@ test("identityBootstrap_shouldSetCookieAndHideSessionId_onAcceptedBootstrap", as
         isAdmin: true,
         hasCsrfToken: true,
       },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckProductUiLearnRoute_shouldServeShell_onGetLearn", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/learn`);
+    const html = await response.text();
+
+    assert.deepEqual(
+      {
+        contentType: response.headers.get("content-type"),
+        hasLearnApp: html.includes('id="learn-app"'),
+        statusCode: response.status,
+        title: html.includes("<title>Agonara Learn</title>"),
+      },
+      {
+        contentType: "text/html; charset=utf-8",
+        hasLearnApp: true,
+        statusCode: 200,
+        title: true,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckProductUiLearnRoute_shouldHideRuntimeSecrets_onGetLearn", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const response = await fetch(`${baseUrl}/learn`);
+    const html = await response.text();
+    const forbiddenFragments = [
+      "operator-secret",
+      "NON_SECRET_TEST_VALUE",
+      "session-1",
+      "agonara_session=",
+      "password_hash",
+      "acceptedFromCandidateId",
+      "DATABASE_URL",
+      "better-sqlite3",
+      "/Users/",
+      "internal_error",
+    ];
+
+    assert.deepEqual(
+      {
+        leaks: forbiddenFragments.filter($0 => html.includes($0)),
+        statusCode: response.status,
+      },
+      {
+        leaks: [],
+        statusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckProductUiLearnRoute_shouldKeepOutOfScopeRoutesAbsent", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const responses = await Promise.all([
+      fetch(`${baseUrl}/learn/quick-check-topic-attempts`),
+      fetch(`${baseUrl}/learn/quick-check-period-attempts`),
+      fetch(`${baseUrl}/learn/progress`),
+      fetch(`${baseUrl}/learn/weak-areas`),
+      fetch(`${baseUrl}/learn/provider/jobs`),
+      fetch(`${baseUrl}/learn/worker/jobs`),
+      fetch(`${baseUrl}/learn/queue/jobs`),
+      fetch(`${baseUrl}/learn/human-review/jobs`),
+    ]);
+    const rejectedRoutes = await Promise.all(
+      responses.map(async response => ({
+        body: await response.json(),
+        statusCode: response.status,
+      })),
+    );
+
+    assert.deepEqual(
+      rejectedRoutes,
+      Array.from({ length: 8 }, () => ({
+        body: { status: "rejected", reason: "not_found" },
+        statusCode: 404,
+      })),
     );
   } finally {
     await close();
@@ -455,6 +555,207 @@ test("openAnswerAttemptRoutes_shouldMapStudentWorkspaceRejections_toHttpStatuses
         statusCode,
         body: { status: "rejected", reason },
       })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCandidateRoutes_shouldRejectMissingSession_withSessionNotFound", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
+
+  try {
+    const response = await fetch(`${baseUrl}/programs/program-1/quick-checks/candidates`, {
+      body: JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Yes", "No"],
+        prompt: "Does the invariant hold?",
+        title: "Invariant check",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        body: await response.json(),
+      },
+      {
+        statusCode: 401,
+        body: { status: "rejected", reason: "session_not_found" },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCandidateRoutes_shouldRejectMissingAndInvalidCsrf_beforeMutation", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      createQuickCheckCandidate: () => {
+        throw new Error("quick check candidate command should not run before CSRF passes");
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      {},
+      { "x-agonara-csrf": "wrong-token" },
+    ];
+    const results = [];
+    for (const headers of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/quick-checks/candidates`, {
+        body: JSON.stringify({
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Yes", "No"],
+          prompt: "Does the invariant hold?",
+          title: "Invariant check",
+        }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          ...headers,
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      [
+        {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_required" },
+        },
+        {
+          statusCode: 403,
+          body: { status: "rejected", reason: "csrf_invalid" },
+        },
+      ],
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckAttemptRoutes_shouldRejectMissingMalformedIdempotencyHeader_beforeSubmission", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    studentWorkspaceCommandsOverride: {
+      submitQuickCheckAttempt: () => {
+        throw new Error("quick check attempt command should not run before idempotency passes");
+      },
+    },
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const cases = [
+      {},
+      { "x-agonara-idempotency-key": "   " },
+    ];
+    const results = [];
+    for (const headers of cases) {
+      const response = await fetch(`${baseUrl}/programs/program-1/quick-check-attempts`, {
+        body: JSON.stringify({
+          checkRevisionId: "quick-check-revision-1",
+          selectedOptionId: "option-1",
+        }),
+        headers: {
+          cookie: bootstrap.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": bootstrap.csrfToken,
+          ...headers,
+        },
+        method: "POST",
+      });
+      results.push({
+        statusCode: response.status,
+        body: await response.json(),
+      });
+    }
+
+    assert.deepEqual(
+      results,
+      cases.map(() => ({
+        statusCode: 400,
+        body: { status: "rejected", reason: "validation_failed" },
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCandidateRoutes_shouldRedactFaultResponsesAndLogs", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    corpusCommandsOverride: {
+      createQuickCheckCandidate: () => {
+        throw new Error(
+          "answer-key-secret session-1 csrf-token-1 idempotency-key cookie sql stack /tmp/db.sqlite postgres://db",
+        );
+      },
+    },
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const response = await fetch(`${baseUrl}/programs/program-1/quick-checks/candidates`, {
+      body: JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Yes", "No"],
+        prompt: "Does the invariant hold?",
+        title: "Invariant check",
+      }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "quick-check-fault-log",
+      },
+      method: "POST",
+    });
+    const logEvent = logEvents.find($0 => $0.requestId === "quick-check-fault-log");
+
+    assert.deepEqual(
+      {
+        statusCode: response.status,
+        responseRequestId: response.headers.get("x-request-id"),
+        body: await response.json(),
+        log: {
+          errorKind: logEvent?.errorKind,
+          hasSensitiveDetail: hasSensitiveCompletionLogDetail(logEvent),
+          operation: logEvent?.operation,
+          outcome: logEvent?.outcome,
+          requestId: logEvent?.requestId,
+          severity: logEvent?.severity,
+        },
+      },
+      {
+        statusCode: 500,
+        responseRequestId: "quick-check-fault-log",
+        body: { status: "fault", reason: "internal_error" },
+        log: {
+          errorKind: "unexpected",
+          hasSensitiveDetail: false,
+          operation: "POST /programs/program-1/quick-checks/candidates",
+          outcome: "fault",
+          requestId: "quick-check-fault-log",
+          severity: "error",
+        },
+      },
     );
   } finally {
     await close();
@@ -1868,7 +2169,6 @@ test("studentWorkspaceOpenAnswerAttemptHttpAcceptance_shouldKeepOutOfScopeRoutes
       ["GET", `/mastery/open-answer-attempts/${submittedAttempt.attemptId}`],
       ["GET", `/weak-areas/open-answer-attempts/${submittedAttempt.attemptId}`],
       ["GET", `/progress/open-answer-attempts/${submittedAttempt.attemptId}`],
-      ["GET", `/quick-check-attempts/${submittedAttempt.attemptId}`],
       ["GET", `/topic-attempts/${submittedAttempt.attemptId}`],
       ["GET", `/period-attempts/${submittedAttempt.attemptId}`],
       ["GET", `/grading/open-answer-attempts/${submittedAttempt.attemptId}`],
@@ -2111,6 +2411,1069 @@ test("assessmentCriterionRejection_shouldRejectDraftCandidate_onCuratorSession",
         },
         statusCode: 200,
       },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCandidates_shouldCreateAndListDraftCandidate_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(30) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const createdSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "textbook",
+      title: "Linear Algebra Done Right",
+    });
+    const sourceId = (await createdSource.json()).value.programSource.sourceId;
+    const createdCandidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 1,
+      checkKind: "single_select_quick_check",
+      options: ["A set with addition only", "A set closed under addition and scalar multiplication"],
+      prompt: "Which statement describes a vector space?",
+      sourceIds: [sourceId],
+      title: "Vector-space definition",
+    });
+    const listedCandidates = await fetch(
+      `${baseUrl}/programs/${programId}/quick-checks/candidates?status=draft`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+
+    assert.deepEqual(
+      {
+        created: quickCheckCandidateProjection(await createdCandidate.json()),
+        createdStatusCode: createdCandidate.status,
+        listed: quickCheckCandidateListProjection(await listedCandidates.json()),
+        listedStatusCode: listedCandidates.status,
+      },
+      {
+        created: {
+          answerKeyText: "A set closed under addition and scalar multiplication",
+          checkKind: "single_select_quick_check",
+          optionTexts: ["A set with addition only", "A set closed under addition and scalar multiplication"],
+          programId,
+          prompt: "Which statement describes a vector space?",
+          sourceIds: [sourceId],
+          status: "draft",
+          title: "Vector-space definition",
+        },
+        createdStatusCode: 200,
+        listed: ["Vector-space definition"],
+        listedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckAcceptanceAndRejection_shouldExposeCuratorRevisionAndRejectedCandidate", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const firstCandidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 0,
+      checkKind: "single_select_quick_check",
+      options: ["Closure under addition", "Finite dimension"],
+      prompt: "Which property is required for a vector space?",
+      title: "Closure check",
+    });
+    const firstCandidateId = (await firstCandidate.json()).value.quickCheckCandidate.candidateId;
+    const firstAccepted = await acceptQuickCheckCandidate(baseUrl, bootstrap, firstCandidateId, {});
+    const acceptedQuickCheck = (await firstAccepted.json()).value.acceptedQuickCheck;
+    const curationRevision = await fetch(
+      `${baseUrl}/quick-checks/revisions/${acceptedQuickCheck.revisionId}/curation`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+    const rejectedCandidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 1,
+      checkKind: "single_select_quick_check",
+      options: ["No closure", "Closure under scalar multiplication"],
+      prompt: "Which property is also required?",
+      title: "Scalar closure check",
+    });
+    const rejectedCandidateId = (await rejectedCandidate.json()).value.quickCheckCandidate.candidateId;
+    const rejected = await rejectQuickCheckCandidate(baseUrl, bootstrap, rejectedCandidateId);
+
+    assert.deepEqual(
+      {
+        accepted: acceptedQuickCheckForCurationProjection({ status: "accepted", value: { acceptedQuickCheck } }),
+        acceptedStatusCode: firstAccepted.status,
+        curation: acceptedQuickCheckForCurationProjection(await curationRevision.json()),
+        curationStatusCode: curationRevision.status,
+        rejected: quickCheckCandidateProjection(await rejected.json()),
+        rejectedStatusCode: rejected.status,
+      },
+      {
+        accepted: {
+          acceptedFromCandidateId: firstCandidateId,
+          answerKeyText: "Closure under addition",
+          optionTexts: ["Closure under addition", "Finite dimension"],
+          programId,
+          prompt: "Which property is required for a vector space?",
+          title: "Closure check",
+        },
+        acceptedStatusCode: 200,
+        curation: {
+          acceptedFromCandidateId: firstCandidateId,
+          answerKeyText: "Closure under addition",
+          optionTexts: ["Closure under addition", "Finite dimension"],
+          programId,
+          prompt: "Which property is required for a vector space?",
+          title: "Closure check",
+        },
+        curationStatusCode: 200,
+        rejected: {
+          answerKeyText: "Closure under scalar multiplication",
+          checkKind: "single_select_quick_check",
+          optionTexts: ["No closure", "Closure under scalar multiplication"],
+          programId,
+          prompt: "Which property is also required?",
+          sourceIds: [],
+          status: "rejected",
+          title: "Scalar closure check",
+        },
+        rejectedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-check-curator@example.test",
+    });
+    const outsider = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Outsider",
+      login: "quick-check-outsider@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    const route = `/programs/${programId}/quick-checks/candidates`;
+    const candidate = await createQuickCheckCandidate(baseUrl, curator, programId, {
+      answerKeyOptionIndex: 0,
+      checkKind: "single_select_quick_check",
+      options: ["Closed", "Open"],
+      prompt: "Which property is required?",
+      title: "Closure check",
+    });
+    const candidateId = (await candidate.json()).value.quickCheckCandidate.candidateId;
+    const mutationRoutes = [
+      route,
+      `/quick-checks/candidates/${candidateId}/acceptance`,
+      `/quick-checks/candidates/${candidateId}/rejection`,
+    ];
+    const missingSessionResponses = [];
+    const invalidSessionResponses = [];
+    for (const mutationRoute of mutationRoutes) {
+      const response = await fetch(`${baseUrl}${mutationRoute}`, {
+        body: mutationRoute === route ? JSON.stringify({
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed", "Open"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        }) : undefined,
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      missingSessionResponses.push({ body: await response.json(), statusCode: response.status });
+      const invalidSession = await fetch(`${baseUrl}${mutationRoute}`, {
+        body: mutationRoute === route ? JSON.stringify({
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed", "Open"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        }) : undefined,
+        headers: {
+          cookie: "agonara_session=session-missing",
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      invalidSessionResponses.push({ body: await invalidSession.json(), statusCode: invalidSession.status });
+    }
+    const invalidBodies = [
+      undefined,
+      "not valid json{{{",
+      JSON.stringify([]),
+      JSON.stringify({}),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        extra: true,
+        options: ["Closed", "Open"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "open_answer",
+        options: ["Closed", "Open"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Closed"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 2,
+        checkKind: "single_select_quick_check",
+        options: ["Closed", "Open"],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+      JSON.stringify({
+        answerKeyOptionIndex: 0,
+        checkKind: "single_select_quick_check",
+        options: ["Closed", " closed "],
+        prompt: "Which property is required?",
+        title: "Closure check",
+      }),
+    ];
+    const invalidResponses = [];
+    for (const body of invalidBodies) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        body,
+        headers: {
+          cookie: curator.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": curator.csrfToken,
+        },
+        method: "POST",
+      });
+      invalidResponses.push({ body: await response.json(), statusCode: response.status });
+    }
+    const unauthorizedResponses = [];
+    for (const session of [bootstrap, outsider]) {
+      const response = await fetch(`${baseUrl}${route}`, { headers: { cookie: session.cookie } });
+      unauthorizedResponses.push({ body: await response.json(), statusCode: response.status });
+    }
+    const unknownProgram = await fetch(`${baseUrl}/programs/program-missing/quick-checks/candidates`, {
+      headers: { cookie: curator.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        invalidResponses,
+        invalidSessionResponses,
+        missingSessionResponses,
+        unauthorizedResponses,
+        unknownProgram: { body: await unknownProgram.json(), statusCode: unknownProgram.status },
+      },
+      {
+        invalidResponses: invalidBodies.map(() => ({
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        })),
+        invalidSessionResponses: mutationRoutes.map(() => ({
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
+        })),
+        missingSessionResponses: mutationRoutes.map(() => ({
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
+        })),
+        unauthorizedResponses: [
+          {
+            body: { status: "rejected", reason: "admin_or_curator_required" },
+            statusCode: 403,
+          },
+          {
+            body: { status: "rejected", reason: "admin_or_curator_required" },
+            statusCode: 403,
+          },
+        ],
+        unknownProgram: {
+          body: { status: "rejected", reason: "program_not_found" },
+          statusCode: 404,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckDeliveries_shouldListAndReturnStudentSafeRevision_onEffectiveStudent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "delivery-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "delivery-student@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+      answerKeyOptionIndex: 1,
+      options: ["Only addition", "Addition and scalar multiplication"],
+      prompt: "Which statement describes a vector space?",
+      title: "Vector-space definition",
+    });
+    const list = await fetch(`${baseUrl}/programs/${programId}/quick-checks`, {
+      headers: { cookie: student.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/quick-checks/revisions/${acceptedQuickCheck.revisionId}`, {
+      headers: { cookie: student.cookie },
+    });
+    const serializedStudentResponses = JSON.stringify([await list.clone().json(), await detail.clone().json()]);
+
+    assert.deepEqual(
+      {
+        detail: quickCheckDeliveryProjection(await detail.json()),
+        detailStatusCode: detail.status,
+        hasStudentLeaks: containsQuickCheckStudentDeliveryLeaks(serializedStudentResponses),
+        list: quickCheckDeliveryListProjection(await list.json()),
+        listStatusCode: list.status,
+      },
+      {
+        detail: {
+          checkKind: "single_select_quick_check",
+          optionTexts: ["Only addition", "Addition and scalar multiplication"],
+          programId,
+          prompt: "Which statement describes a vector space?",
+          title: "Vector-space definition",
+        },
+        detailStatusCode: 200,
+        hasStudentLeaks: false,
+        list: ["Vector-space definition"],
+        listStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckDeliveries_shouldRejectNonStudentsUnknownsAndCursorScopeMismatch", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "delivery-curator-denied@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "delivery-student-denied@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    await createAcceptedQuickCheck(baseUrl, curator, programId, { title: "First check" });
+    await createAcceptedQuickCheck(baseUrl, curator, programId, { title: "Second check" });
+    const firstPage = await fetch(`${baseUrl}/programs/${programId}/quick-checks/candidates?limit=1`, {
+      headers: { cookie: curator.cookie },
+    });
+    const firstPageBody = await firstPage.json();
+    const cursorScopeMismatch = await fetch(
+      `${baseUrl}/programs/${programId}/quick-checks?cursor=${firstPageBody.value.nextCursor}`,
+      { headers: { cookie: student.cookie } },
+    );
+    const responses = [
+      await getHttpResponse(baseUrl, `/programs/${programId}/quick-checks`, curator),
+      await getHttpResponse(baseUrl, `/programs/program-missing/quick-checks`, student),
+      await getHttpResponse(baseUrl, "/quick-checks/revisions/revision-missing", student),
+      { body: await cursorScopeMismatch.json(), statusCode: cursorScopeMismatch.status },
+    ];
+
+    assert.deepEqual(
+      responses,
+      [
+        {
+          body: { status: "rejected", reason: "participation_required" },
+          statusCode: 403,
+        },
+        {
+          body: { status: "rejected", reason: "program_not_found" },
+          statusCode: 404,
+        },
+        {
+          body: { status: "rejected", reason: "quick_check_revision_not_found" },
+          statusCode: 404,
+        },
+        {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+      ],
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckAttempts_shouldSubmitRetryReadAndListOwnerAttempt_onEffectiveStudent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-attempt-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-attempt-student@example.test",
+    });
+    const otherStudent = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Other Student",
+      login: "quick-attempt-other@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    await joinStudentProgram(baseUrl, otherStudent, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+      answerKeyOptionIndex: 0,
+      options: ["Closed under addition", "Has a basis"],
+      prompt: "Which property is required?",
+      title: "Closure check",
+    });
+    const submitted = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+      },
+      "quick-attempt-key-1",
+    );
+    const submittedBody = await submitted.json();
+    const attemptId = submittedBody.value.quickCheckAttempt.attemptId;
+    const retry = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+      },
+      "quick-attempt-key-1",
+    );
+    const conflict = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.options.find($0 => $0.optionId !== acceptedQuickCheck.answerKeyOptionId)
+          .optionId,
+      },
+      "quick-attempt-key-1",
+    );
+    const detail = await getHttpResponse(baseUrl, `/quick-check-attempts/${attemptId}`, student);
+    const nonOwnerCallers = [otherStudent, curator, bootstrap];
+    const nonOwners = [];
+    for (const caller of nonOwnerCallers) {
+      nonOwners.push(await getHttpResponse(baseUrl, `/quick-check-attempts/${attemptId}`, caller));
+    }
+    const listed = await listQuickCheckAttempts(
+      baseUrl,
+      student,
+      programId,
+      `checkRevisionId=${acceptedQuickCheck.revisionId}`,
+    );
+    const serializedStudentResponses = JSON.stringify([
+      submittedBody,
+      await retry.clone().json(),
+      detail.body,
+      listed.body,
+    ]);
+
+    assert.deepEqual(
+      {
+        conflict: { body: await conflict.json(), statusCode: conflict.status },
+        detail: { body: quickCheckAttemptResponseProjection(detail.body), statusCode: detail.statusCode },
+        hasStudentLeaks: containsQuickCheckAttemptLeaks(serializedStudentResponses),
+        listed: { body: quickCheckAttemptListProjection(listed.body), statusCode: listed.statusCode },
+        nonOwners,
+        retry: quickCheckAttemptResponseProjection(await retry.json()),
+        retryStatusCode: retry.status,
+        submitted: quickCheckAttemptResponseProjection(submittedBody),
+        submittedStatusCode: submitted.status,
+      },
+      {
+        conflict: {
+          body: { status: "rejected", reason: "idempotency_conflict" },
+          statusCode: 409,
+        },
+        detail: {
+          body: {
+            attemptId,
+            checkRevisionId: acceptedQuickCheck.revisionId,
+            matched: true,
+            programId,
+            selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+            status: "accepted",
+            studentIdentityId: student.identityId,
+          },
+          statusCode: 200,
+        },
+        hasStudentLeaks: false,
+        listed: {
+          body: {
+            attempts: [
+              {
+                attemptId,
+                checkRevisionId: acceptedQuickCheck.revisionId,
+                matched: true,
+                programId,
+                selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+                studentIdentityId: student.identityId,
+              },
+            ],
+            hasNextCursor: false,
+            status: "accepted",
+          },
+          statusCode: 200,
+        },
+        nonOwners: nonOwnerCallers.map(() => ({
+          body: { status: "rejected", reason: "attempt_not_found" },
+          statusCode: 404,
+        })),
+        retry: {
+          attemptId,
+          checkRevisionId: acceptedQuickCheck.revisionId,
+          matched: true,
+          programId,
+          selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+          status: "accepted",
+          studentIdentityId: student.identityId,
+        },
+        retryStatusCode: 200,
+        submitted: {
+          attemptId,
+          checkRevisionId: acceptedQuickCheck.revisionId,
+          matched: true,
+          programId,
+          selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+          status: "accepted",
+          studentIdentityId: student.identityId,
+        },
+        submittedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("quickCheckAttempts_shouldRejectInvalidReadsAndListQueries", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(80),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-attempt-denied-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-attempt-denied-student@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId);
+    const firstPage = await listQuickCheckAttempts(baseUrl, student, programId, "limit=1");
+    const candidateCursor = await fetch(`${baseUrl}/programs/${programId}/quick-checks/candidates?limit=1`, {
+      headers: { cookie: curator.cookie },
+    });
+    const candidateCursorBody = await candidateCursor.json();
+    const responses = [
+      await getHttpResponse(baseUrl, "/quick-check-attempts/attempt-missing", student),
+      await listQuickCheckAttempts(baseUrl, curator, programId),
+      await listQuickCheckAttempts(baseUrl, student, "program-missing"),
+      await listQuickCheckAttempts(baseUrl, student, programId, "checkRevisionId= "),
+      await listQuickCheckAttempts(baseUrl, student, programId, "checkRevisionId=revision-missing"),
+      await listQuickCheckAttempts(
+        baseUrl,
+        student,
+        programId,
+        `cursor=${candidateCursorBody.value.nextCursor}`,
+      ),
+      await listQuickCheckAttempts(baseUrl, student, programId, "limit=0"),
+    ];
+
+    assert.deepEqual(
+      {
+        firstPage,
+        responses,
+      },
+      {
+        firstPage: {
+          body: { status: "accepted", value: { quickCheckAttempts: [] } },
+          statusCode: 200,
+        },
+        responses: [
+          {
+            body: { status: "rejected", reason: "attempt_not_found" },
+            statusCode: 404,
+          },
+          {
+            body: { status: "rejected", reason: "participation_required" },
+            statusCode: 403,
+          },
+          {
+            body: { status: "rejected", reason: "program_not_found" },
+            statusCode: 404,
+          },
+          {
+            body: { status: "rejected", reason: "validation_failed" },
+            statusCode: 400,
+          },
+          {
+            body: { status: "rejected", reason: "quick_check_revision_not_found" },
+            statusCode: 404,
+          },
+          {
+            body: { status: "rejected", reason: "validation_failed" },
+            statusCode: 400,
+          },
+          {
+            body: { status: "rejected", reason: "validation_failed" },
+            statusCode: 400,
+          },
+        ],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("readinessHttpAcceptance_shouldCurateDeliverSubmitRetryReadListAndRedact", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(180),
+  });
+
+  try {
+    const scenario = await createReadinessHttpScenario(baseUrl);
+    const created = await createReadinessCheckCandidate(baseUrl, scenario.curator, scenario.programId, {
+      rationale: "Curator-only rationale.",
+      requirements: [{
+        requiredLevel: "on_track",
+        targetId: scenario.acceptedQuickCheck.entityId,
+        targetKind: "quick_check",
+      }],
+      scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+      title: "Topic readiness",
+    });
+    const createdBody = await created.json();
+    assert.equal(created.status, 200);
+    const candidateId = createdBody.value.readinessCheckCandidate.candidateId;
+    const listedCandidates = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks/candidates`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+    const accepted = await acceptReadinessCheckCandidate(baseUrl, scenario.curator, candidateId, {});
+    const acceptedBody = await accepted.json();
+    const curation = await getHttpResponse(
+      baseUrl,
+      `/readiness-checks/revisions/${acceptedBody.value.acceptedReadinessCheck.revisionId}/curation`,
+      scenario.curator,
+    );
+    const deliveries = await getHttpResponse(baseUrl, `/programs/${scenario.programId}/readiness-checks`, scenario.student);
+    await submitQuickCheckAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedQuickCheck.revisionId,
+        selectedOptionId: scenario.acceptedQuickCheck.answerKeyOptionId,
+      },
+      "readiness-quick-key",
+    );
+    const submitted = await submitReadinessCheckAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      { readinessCheckRevisionId: acceptedBody.value.acceptedReadinessCheck.revisionId },
+      "readiness-attempt-key",
+    );
+    const submittedBody = await submitted.json();
+    const retry = await submitReadinessCheckAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      { readinessCheckRevisionId: acceptedBody.value.acceptedReadinessCheck.revisionId },
+      "readiness-attempt-key",
+    );
+    const attemptId = submittedBody.value.readinessCheckAttempt.attemptId;
+    const detail = await getHttpResponse(baseUrl, `/readiness-check-attempts/${attemptId}`, scenario.student);
+    const listedAttempts = await listReadinessCheckAttempts(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      `readinessCheckRevisionId=${acceptedBody.value.acceptedReadinessCheck.revisionId}`,
+    );
+    const nonOwnerDetail = await getHttpResponse(baseUrl, `/readiness-check-attempts/${attemptId}`, scenario.otherStudent);
+    const serializedStudentResponses = JSON.stringify([
+      deliveries.body,
+      submittedBody,
+      await retry.clone().json(),
+      detail.body,
+      listedAttempts.body,
+    ]);
+
+    assert.deepEqual(
+      {
+        accepted: readinessCurationProjection(acceptedBody, accepted.status),
+        attemptCount: listReadinessCheckAttemptRecords(database).length,
+        curation: readinessCurationProjection(curation.body, curation.statusCode),
+        deliveries: readinessDeliveryListProjection(deliveries.body, deliveries.statusCode),
+        detail: readinessAttemptProjection(detail.body, detail.statusCode),
+        hasStudentLeaks: containsReadinessStudentHttpLeaks(serializedStudentResponses),
+        listedAttempts: readinessAttemptListProjection(listedAttempts.body, listedAttempts.statusCode),
+        listedCandidates: readinessCandidateListProjection(await listedCandidates.json(), listedCandidates.status),
+        nonOwnerDetail,
+        retry: readinessAttemptProjection(await retry.json(), retry.status),
+        submitted: readinessAttemptProjection(submittedBody, submitted.status),
+      },
+      {
+        accepted: {
+          requirementTargets: [["quick_check", scenario.acceptedQuickCheck.entityId, "on_track"]],
+          statusCode: 200,
+          title: "Topic readiness",
+        },
+        attemptCount: 1,
+        curation: {
+          requirementTargets: [["quick_check", scenario.acceptedQuickCheck.entityId, "on_track"]],
+          statusCode: 200,
+          title: "Topic readiness",
+        },
+        deliveries: {
+          checks: [{
+            requirementTargets: [["quick_check", scenario.acceptedQuickCheck.entityId, "on_track"]],
+            title: "Topic readiness",
+          }],
+          statusCode: 200,
+        },
+        detail: {
+          result: "ready",
+          status: "accepted",
+          statusCode: 200,
+        },
+        hasStudentLeaks: false,
+        listedAttempts: {
+          attempts: [[attemptId, "ready"]],
+          status: "accepted",
+          statusCode: 200,
+        },
+        listedCandidates: {
+          statuses: ["draft"],
+          statusCode: 200,
+          titles: ["Topic readiness"],
+        },
+        nonOwnerDetail: {
+          body: { status: "rejected", reason: "attempt_not_found" },
+          statusCode: 404,
+        },
+        retry: {
+          result: "ready",
+          status: "accepted",
+          statusCode: 200,
+        },
+        submitted: {
+          result: "ready",
+          status: "accepted",
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("readinessHttpRoutes_shouldEnforceSessionCsrfIdempotencyValidationAndStatusMapping", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(130),
+  });
+  const conflictHarness = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(20),
+    studentWorkspaceCommandsOverride: {
+      submitReadinessCheckAttempt: () => ({ status: "rejected", reason: "idempotency_conflict" }),
+    },
+  });
+  const faultHarness = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(20),
+    studentWorkspaceCommandsOverride: {
+      submitReadinessCheckAttempt: () => {
+        throw new Error(
+          "session-1 csrf-token-1 readiness-conflict-key cookie authorization raw prompt raw model provider diagnostics sql stack /tmp/db.sqlite postgres://db",
+        );
+      },
+    },
+  });
+
+  try {
+    const scenario = await createReadinessHttpScenario(baseUrl);
+    const missingSessionDelivery = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks`);
+    const invalidCandidate = await createReadinessCheckCandidate(baseUrl, scenario.curator, scenario.programId, {
+      requirements: [],
+      scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+      title: "Invalid readiness",
+    });
+    const missingCsrfCandidate = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks/candidates`, {
+      body: JSON.stringify({
+        requirements: [{
+          requiredLevel: "on_track",
+          targetId: scenario.acceptedQuickCheck.entityId,
+          targetKind: "quick_check",
+        }],
+        scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+        title: "Missing csrf readiness",
+      }),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const studentCandidate = await createReadinessCheckCandidate(baseUrl, scenario.student, scenario.programId, {
+      requirements: [{
+        requiredLevel: "on_track",
+        targetId: scenario.acceptedQuickCheck.entityId,
+        targetKind: "quick_check",
+      }],
+      scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+      title: "Student readiness",
+    });
+    const validCandidate = await createReadinessCheckCandidate(baseUrl, scenario.curator, scenario.programId, {
+      requirements: [{
+        requiredLevel: "on_track",
+        targetId: scenario.acceptedQuickCheck.entityId,
+        targetKind: "quick_check",
+      }],
+      scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+      title: "Accepted readiness",
+    });
+    assert.equal(validCandidate.status, 200);
+    const candidateId = (await validCandidate.json()).value.readinessCheckCandidate.candidateId;
+    const missingAcceptCsrf = await fetch(`${baseUrl}/readiness-checks/candidates/${candidateId}/acceptance`, {
+      body: JSON.stringify({}),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const rejected = await rejectReadinessCheckCandidate(baseUrl, scenario.curator, candidateId, {});
+    const acceptRejected = await acceptReadinessCheckCandidate(baseUrl, scenario.curator, candidateId, {});
+    const noIdempotency = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-check-attempts`, {
+      body: JSON.stringify({ readinessCheckRevisionId: "readiness-revision-missing" }),
+      headers: {
+        cookie: scenario.student.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": scenario.student.csrfToken,
+      },
+      method: "POST",
+    });
+    const invalidAttemptBody = await submitReadinessCheckAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      { readinessCheckRevisionId: "" },
+      "invalid-readiness-attempt-key",
+    );
+    const conflictSession = await bootstrapAdmin(conflictHarness.baseUrl);
+    const idempotencyConflict = await submitReadinessCheckAttempt(
+      conflictHarness.baseUrl,
+      conflictSession,
+      "program-1",
+      { readinessCheckRevisionId: "readiness-revision-1" },
+      "readiness-conflict-key",
+    );
+    const faultSession = await bootstrapAdmin(faultHarness.baseUrl);
+    const fault = await submitReadinessCheckAttempt(
+      faultHarness.baseUrl,
+      faultSession,
+      "program-1",
+      { readinessCheckRevisionId: "readiness-revision-1" },
+      "readiness-fault-key",
+    );
+    const faultBody = await fault.json();
+
+    assert.deepEqual(
+      {
+        acceptRejected: { body: await acceptRejected.json(), statusCode: acceptRejected.status },
+        fault: {
+          body: faultBody,
+          hasLeaks: containsReadinessFaultLeaks(JSON.stringify(faultBody)),
+          statusCode: fault.status,
+        },
+        idempotencyConflict: {
+          body: await idempotencyConflict.json(),
+          statusCode: idempotencyConflict.status,
+        },
+        invalidAttemptBody: { body: await invalidAttemptBody.json(), statusCode: invalidAttemptBody.status },
+        invalidCandidate: { body: await invalidCandidate.json(), statusCode: invalidCandidate.status },
+        missingAcceptCsrf: { body: await missingAcceptCsrf.json(), statusCode: missingAcceptCsrf.status },
+        missingCsrfCandidate: { body: await missingCsrfCandidate.json(), statusCode: missingCsrfCandidate.status },
+        missingSessionDelivery: {
+          body: await missingSessionDelivery.json(),
+          statusCode: missingSessionDelivery.status,
+        },
+        noIdempotency: { body: await noIdempotency.json(), statusCode: noIdempotency.status },
+        rejected: { status: (await rejected.json()).value.readinessCheckCandidate.status, statusCode: rejected.status },
+        studentCandidate: { body: await studentCandidate.json(), statusCode: studentCandidate.status },
+      },
+      {
+        acceptRejected: {
+          body: { status: "rejected", reason: "readiness_candidate_already_rejected" },
+          statusCode: 409,
+        },
+        fault: {
+          body: { status: "fault", reason: "internal_error" },
+          hasLeaks: false,
+          statusCode: 500,
+        },
+        idempotencyConflict: {
+          body: { status: "rejected", reason: "idempotency_conflict" },
+          statusCode: 409,
+        },
+        invalidAttemptBody: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        invalidCandidate: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        missingAcceptCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        missingCsrfCandidate: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        missingSessionDelivery: {
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
+        },
+        noIdempotency: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        rejected: { status: "rejected", statusCode: 200 },
+        studentCandidate: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+      },
+    );
+  } finally {
+    await close();
+    await conflictHarness.close();
+    await faultHarness.close();
+  }
+});
+
+test("quickCheckHttpAcceptance_shouldKeepOutOfScopeRoutesAbsent", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(60),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-absence-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-absence-student@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId);
+    const submitted = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+      },
+      "quick-absence-key",
+    );
+    const attemptId = (await submitted.json()).value.quickCheckAttempt.attemptId;
+    const absentRoutes = [
+      ["GET", "/quick-check-ui"],
+      ["GET", `/programs/${programId}/quick-checks/randomized`],
+      ["POST", `/programs/${programId}/quick-checks/multiple-select-attempts`],
+      ["GET", `/programs/${programId}/quick-check-topic-attempts`],
+      ["GET", `/programs/${programId}/quick-check-period-attempts`],
+      ["GET", `/quick-check-mastery/${attemptId}`],
+      ["GET", `/quick-check-weak-areas/${attemptId}`],
+      ["GET", `/quick-check-progress/${attemptId}`],
+      ["GET", `/quick-check-grading/${attemptId}`],
+      ["GET", "/quick-check-provider/jobs"],
+      ["GET", "/quick-check-worker/jobs"],
+      ["GET", "/quick-check-queue/jobs"],
+      ["GET", "/quick-check-human-review/jobs"],
+    ];
+    const responses = [];
+    for (const [method, route] of absentRoutes) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        body: method === "POST" ? JSON.stringify({}) : undefined,
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/json",
+          "x-agonara-csrf": student.csrfToken,
+        },
+        method,
+      });
+      responses.push({
+        body: await response.json(),
+        method,
+        route,
+        statusCode: response.status,
+      });
+    }
+
+    assert.deepEqual(
+      responses,
+      absentRoutes.map(([method, route]) => ({
+        body: { status: "rejected", reason: "not_found" },
+        method,
+        route,
+        statusCode: 404,
+      })),
     );
   } finally {
     await close();
@@ -2843,7 +4206,7 @@ test("assessmentRoutes_shouldRedactFaultResponses", async () => {
       listAcceptedOpenAnswerChecks: () => {
         throw new Error(
           "authorization='bearer token' csrf='csrf-secret' cookie='session-1' " +
-          "password='correct horse battery staple' sql='select * from secrets' " +
+          "password='NON_SECRET_TEST_VALUE' sql='select * from secrets' " +
           "path='/Users/operator/private' database='file:agonara.sqlite'",
         );
       },
@@ -5045,6 +6408,264 @@ test("acceptedCorpusRevisionGet_shouldRejectUnknownAndUnauthorizedCallers", asyn
   }
 });
 
+test("navigationCandidatesHttp_shouldCreateListAcceptRejectAndPaginate_onCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: manyIds(120),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "article",
+      title: "Program source",
+    });
+    const first = await createNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Vector spaces",
+    });
+    const second = await createNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "concept",
+      title: "Basis",
+    });
+    const firstCandidateId = (await first.json()).value.navigationCandidate.candidateId;
+    const secondCandidateId = (await second.json()).value.navigationCandidate.candidateId;
+    const firstPage = await fetch(`${baseUrl}/programs/${programId}/navigation-candidates?status=draft&limit=1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const firstPageBody = await firstPage.json();
+    const secondPage = await fetch(
+      `${baseUrl}/programs/${programId}/navigation-candidates?status=draft&cursor=${firstPageBody.value.nextCursor}`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+    const acceptedResponse = await acceptNavigationCandidate(baseUrl, bootstrap, firstCandidateId, {});
+    const rejectedResponse = await rejectNavigationCandidate(baseUrl, bootstrap, secondCandidateId, {});
+    const acceptedList = await fetch(`${baseUrl}/programs/${programId}/navigation-candidates?status=accepted`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const rejectedList = await fetch(`${baseUrl}/programs/${programId}/navigation-candidates?status=rejected`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        acceptedKind: (await acceptedResponse.json()).value.navigationChange.acceptedCorpus.acceptedKind,
+        acceptedListTitles: (await acceptedList.json()).value.navigationCandidates.map($0 => $0.title),
+        acceptedStatusCode: acceptedResponse.status,
+        createStatusCodes: [first.status, second.status],
+        firstPage: navigationCandidateListProjection(firstPageBody, firstPage.status),
+        rejectedListTitles: (await rejectedList.json()).value.navigationCandidates.map($0 => $0.title),
+        rejectedStatus: (await rejectedResponse.json()).value.navigationCandidate.status,
+        secondPage: navigationCandidateListProjection(await secondPage.json(), secondPage.status),
+      },
+      {
+        acceptedKind: "topic",
+        acceptedListTitles: ["Vector spaces"],
+        acceptedStatusCode: 200,
+        createStatusCodes: [200, 200],
+        firstPage: {
+          hasNextCursor: true,
+          statusCode: 200,
+          titles: ["Vector spaces"],
+        },
+        rejectedListTitles: ["Basis"],
+        rejectedStatus: "rejected",
+        secondPage: {
+          statusCode: 200,
+          titles: ["Basis"],
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("navigationReadsHttp_shouldReturnStudentSafeGraphAndHistoricalRevision_onAcceptedNavigation", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: manyIds(160),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "navigation-student@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Vector spaces",
+    });
+    await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      targetEntityId: topic.entityId,
+      title: "Vector spaces current",
+    });
+    const concept = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+      title: "Basis",
+    });
+    await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "material_reference",
+      locator: "https://example.test/basis",
+      materialReferenceKind: "article",
+      relationshipDrafts: [
+        {
+          relationshipKind: "concept_uses_material",
+          fromEntityId: concept.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+      title: "Basis reading",
+    });
+
+    const navigation = await getHttpResponse(baseUrl, `/programs/${programId}/navigation`, student);
+    const detail = await getHttpResponse(baseUrl, `/navigation/entities/${concept.entityId}`, student);
+    const historical = await getHttpResponse(baseUrl, `/navigation/revisions/${topic.revisionId}`, student);
+
+    assert.deepEqual(
+      {
+        detail: navigationNodeProjection(detail.body, detail.statusCode),
+        forbiddenLeak: containsNavigationForbiddenHttpDetail([navigation.body, detail.body, historical.body]),
+        historical: historical.body,
+        navigation: navigationSummaryProjection(navigation.body, navigation.statusCode),
+      },
+      {
+        detail: {
+          incomingKinds: ["topic_includes_concept"],
+          outgoingKinds: ["concept_uses_material"],
+          statusCode: 200,
+          title: "Basis",
+        },
+        forbiddenLeak: false,
+        historical: {
+          status: "accepted",
+          value: {
+            navigationRevision: {
+              acceptedKind: "topic",
+              entityId: topic.entityId,
+              isCurrentRevision: false,
+              programId,
+              revisionId: topic.revisionId,
+              title: "Vector spaces",
+            },
+          },
+        },
+        navigation: {
+          statusCode: 200,
+          topics: ["Vector spaces current"],
+          ungroupedConcepts: [],
+          ungroupedMaterials: [],
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: manyIds(100),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "navigation-auth-student@example.test",
+    });
+    const outsider = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Outsider",
+      login: "navigation-auth-outsider@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedTopic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Vector spaces",
+    });
+
+    const missingSession = await fetch(`${baseUrl}/programs/${programId}/navigation-candidates`);
+    const missingCsrf = await fetch(`${baseUrl}/programs/${programId}/navigation-candidates`, {
+      body: JSON.stringify({ candidateKind: "topic", title: "Rejected" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const invalidCsrf = await fetch(`${baseUrl}/navigation-candidates/${acceptedTopic.acceptedFromCandidateId}/rejection`, {
+      body: JSON.stringify({}),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": "wrong-token",
+      },
+      method: "POST",
+    });
+    const studentMutation = await createNavigationCandidate(baseUrl, student, programId, {
+      candidateKind: "topic",
+      title: "Student draft",
+    });
+    const malformedRelationshipDraft = await createNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "relationship_update",
+      relationshipDrafts: [
+        {
+          relationshipKind: 1,
+          fromEntityId: acceptedTopic.entityId,
+          toEntityId: acceptedTopic.entityId,
+        },
+      ],
+      title: "Malformed relationship draft",
+    });
+    const outsiderRead = await fetch(`${baseUrl}/programs/${programId}/navigation`, {
+      headers: { cookie: outsider.cookie },
+    });
+    const missingEntity = await fetch(`${baseUrl}/navigation/entities/entity-missing`, {
+      headers: { cookie: student.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        invalidCsrf: { body: await invalidCsrf.json(), statusCode: invalidCsrf.status },
+        malformedRelationshipDraft: {
+          body: await malformedRelationshipDraft.json(),
+          statusCode: malformedRelationshipDraft.status,
+        },
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        missingEntity: { body: await missingEntity.json(), statusCode: missingEntity.status },
+        missingSession: { body: await missingSession.json(), statusCode: missingSession.status },
+        outsiderRead: { body: await outsiderRead.json(), statusCode: outsiderRead.status },
+        studentMutation: { body: await studentMutation.json(), statusCode: studentMutation.status },
+      },
+      {
+        invalidCsrf: { body: { status: "rejected", reason: "csrf_invalid" }, statusCode: 403 },
+        malformedRelationshipDraft: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+        missingCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
+        missingEntity: { body: { status: "rejected", reason: "navigation_entity_not_found" }, statusCode: 404 },
+        missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
+        outsiderRead: { body: { status: "rejected", reason: "participation_required" }, statusCode: 403 },
+        studentMutation: { body: { status: "rejected", reason: "admin_or_curator_required" }, statusCode: 403 },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusEventsList_shouldRejectNonCuratorCallers", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(40),
@@ -5236,7 +6857,7 @@ test("corpusEventsList_shouldDefaultLimitRejectInvalidQueriesAndRedactCursor", a
           hasCsrf: defaultText.includes(bootstrap.csrfToken),
           hasDatabaseUrl: defaultText.includes("file:"),
           hasFilesystemPath: defaultText.includes("/Users/"),
-          hasPassword: defaultText.includes("correct horse battery staple"),
+          hasPassword: defaultText.includes("NON_SECRET_TEST_VALUE"),
           hasSession: defaultText.includes("session-1"),
           hasSql: defaultText.toLowerCase().includes("select "),
           hasStack: defaultText.includes("Error:"),
@@ -5296,7 +6917,7 @@ test("corpusEventsList_shouldRedactFaultResponses", async () => {
         throw new Error(
           "select session_id from sessions where cookie='agonara_session=session-1' " +
             "authorization='bearer token' csrf='csrf-secret' " +
-            "secret='operator-secret' password='correct horse battery staple' " +
+            "secret='operator-secret' password='NON_SECRET_TEST_VALUE' " +
             "database='file:/Users/igormalyarov/agonara.db'",
         );
       },
@@ -5322,7 +6943,7 @@ test("corpusEventsList_shouldRedactFaultResponses", async () => {
           hasCsrf: text.includes(bootstrap.csrfToken),
           hasDatabaseUrl: text.includes("file:"),
           hasFilesystemPath: text.includes("/Users/"),
-          hasPassword: text.includes("correct horse battery staple"),
+          hasPassword: text.includes("NON_SECRET_TEST_VALUE"),
           hasSession: text.includes("session-1"),
           hasSql: text.toLowerCase().includes("select "),
           hasStack: text.includes("Error:"),
@@ -5714,7 +7335,7 @@ test("programShellRoutes_shouldNotExposeSessionCsrfOrCredentialSecrets", async (
     assert.deepEqual(
       {
         leaksCsrf: responseText.includes(bootstrap.csrfToken),
-        leaksPassword: responseText.includes("correct horse battery staple"),
+        leaksPassword: responseText.includes("NON_SECRET_TEST_VALUE"),
         leaksPasswordHash: responseText.includes("scrypt$"),
         leaksSession: responseText.includes(bootstrap.cookie.replace("agonara_session=", "")),
       },
@@ -6313,7 +7934,7 @@ test("effectiveParticipation_shouldRequireAdminOrCurator_forOtherIdentity", asyn
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6325,7 +7946,7 @@ test("effectiveParticipation_shouldRequireAdminOrCurator_forOtherIdentity", asyn
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6424,7 +8045,7 @@ test("effectiveParticipation_shouldAllowNonAdminCurator_forOtherIdentity", async
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6436,7 +8057,7 @@ test("effectiveParticipation_shouldAllowNonAdminCurator_forOtherIdentity", async
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6621,7 +8242,7 @@ test("programEventRoutes_shouldRejectOrdinaryCallers", async () => {
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6633,7 +8254,7 @@ test("programEventRoutes_shouldRejectOrdinaryCallers", async () => {
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6717,7 +8338,7 @@ test("programEventRoutes_shouldAcceptAdminAndNonAdminCurator_forKnownPrograms", 
     await fetch(`${baseUrl}/identity/identities/${secondIdentityId}/local-password`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         cookie: bootstrap.cookie,
@@ -6729,7 +8350,7 @@ test("programEventRoutes_shouldAcceptAdminAndNonAdminCurator_forKnownPrograms", 
     const secondLogin = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "second@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -6946,6 +8567,7 @@ test("programEventRoutes_shouldPaginateScopedEvents", async () => {
                   occurredAt: "2026-05-27T10:00:00.000Z",
                   outcome: "accepted",
                   participationKind: "student",
+                  policyPath: "self_join",
                   programId: "program-1",
                   programMembershipEventId: "membership-event-4",
                   resultingStatus: "active",
@@ -7025,7 +8647,7 @@ test("programEventRoutes_shouldRejectInvalidQueriesAndRedactResponses", async ()
           hasBootstrapSecret: validText.includes("operator-secret"),
           hasCookie: validText.includes("cookie"),
           hasCsrf: validText.includes(bootstrap.csrfToken),
-          hasPassword: validText.includes("correct horse battery staple"),
+          hasPassword: validText.includes("NON_SECRET_TEST_VALUE"),
           hasSession: validText.includes("session-1"),
           hasSql: validText.toLowerCase().includes("select "),
           hasStack: validText.includes("Error:"),
@@ -7062,6 +8684,544 @@ test("programEventRoutes_shouldRejectInvalidQueriesAndRedactResponses", async ()
         unscopedMembershipEvents: 404,
         unscopedProgramEvents: 404,
         validStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programMembershipControlRoutes_shouldExerciseControlledInvitationAndRecoveryLifecycle", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(120) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "membership-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "membership-student@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const policy = await fetchJson(`${baseUrl}/programs/${programId}/admission-policy`, {
+      body: JSON.stringify({ admissionPolicy: "invitation_only" }),
+      headers: {
+        cookie: curator.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": curator.csrfToken,
+      },
+      method: "PATCH",
+    });
+    const createdInvitation = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const invitationId = createdInvitation.body.value?.invitation.invitationId;
+    const curatorInvitations = await getJson(`${baseUrl}/programs/${programId}/invitations?status=pending`, {
+      cookie: curator.cookie,
+    });
+    const studentInvitations = await getJson(`${baseUrl}/program-invitations/me?status=pending`, {
+      cookie: student.cookie,
+    });
+    const accepted = await postJson(
+      `${baseUrl}/program-invitations/${invitationId}/acceptance`,
+      {},
+      { cookie: student.cookie, csrfToken: student.csrfToken },
+    );
+    const participants = await getJson(`${baseUrl}/programs/${programId}/participants`, {
+      cookie: curator.cookie,
+    });
+    const removed = await deleteJson(
+      `${baseUrl}/programs/${programId}/participants/student/${student.identityId}`,
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const recovered = await postJson(
+      `${baseUrl}/admin/program-memberships/recovery`,
+      {
+        participationKind: "student",
+        programId,
+        recoveryReason: "repair access",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const revoked = await postJson(
+      `${baseUrl}/admin/program-memberships/revocation`,
+      {
+        participationKind: "student",
+        programId,
+        revocationReason: "invalid operational state",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+
+    assert.deepEqual(
+      {
+        accepted: {
+          invitationStatus: accepted.body.value?.invitation.status,
+          membershipStatus: accepted.body.value?.membership.status,
+          statusCode: accepted.statusCode,
+        },
+        curatorInvitationIds: curatorInvitations.body.value?.invitations.map($0 => $0.invitationId),
+        participantKinds: participants.body.value?.participants.map($0 => $0.participationKind),
+        policy: policy.body.value?.program.admissionPolicy,
+        recovered: recovered.body.value?.membership.status,
+        removed: removed.body.value?.membership.status,
+        revoked: revoked.body.value?.membership.status,
+        studentInvitationIds: studentInvitations.body.value?.invitations.map($0 => $0.invitationId),
+      },
+      {
+        accepted: { invitationStatus: "accepted", membershipStatus: "active", statusCode: 200 },
+        curatorInvitationIds: [invitationId],
+        participantKinds: ["program_curator", "student"],
+        policy: "invitation_only",
+        recovered: "active",
+        removed: "removed",
+        revoked: "removed",
+        studentInvitationIds: [invitationId],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programInvitationRoutes_shouldPreservePrivateTargetErrorsAndCuratorAuthorization", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(100) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "private-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "private-student@example.test",
+    });
+    const outsider = await createIdentitySession(baseUrl, admin, {
+      displayName: "Outsider",
+      login: "private-outsider@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const invitation = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const invitationId = invitation.body.value.invitation.invitationId;
+    const outsiderAccept = await postJson(
+      `${baseUrl}/program-invitations/${invitationId}/acceptance`,
+      {},
+      { cookie: outsider.cookie, csrfToken: outsider.csrfToken },
+    );
+    const outsiderDecline = await postJson(
+      `${baseUrl}/program-invitations/${invitationId}/decline`,
+      {},
+      { cookie: outsider.cookie, csrfToken: outsider.csrfToken },
+    );
+    const studentCreate = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: outsider.identityId },
+      { cookie: student.cookie, csrfToken: student.csrfToken },
+    );
+    const adminCreate = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: outsider.identityId },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const adminList = await getJson(`${baseUrl}/programs/${programId}/invitations`, {
+      cookie: admin.cookie,
+    });
+
+    assert.deepEqual(
+      {
+        adminCreate,
+        adminList,
+        outsiderAccept,
+        outsiderDecline,
+        studentCreate,
+      },
+      {
+        adminCreate: {
+          body: { status: "rejected", reason: "participation_required" },
+          statusCode: 403,
+        },
+        adminList: {
+          body: { status: "rejected", reason: "participation_required" },
+          statusCode: 403,
+        },
+        outsiderAccept: {
+          body: { status: "rejected", reason: "invitation_not_found" },
+          statusCode: 404,
+        },
+        outsiderDecline: {
+          body: { status: "rejected", reason: "invitation_not_found" },
+          statusCode: 404,
+        },
+        studentCreate: {
+          body: { status: "rejected", reason: "participation_required" },
+          statusCode: 403,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programMembershipRoutes_shouldMapInvitationTransitionsValidationAndLastCuratorConflict", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(120) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "transition-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "transition-student@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const firstInvitation = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const declined = await postJson(
+      `${baseUrl}/program-invitations/${firstInvitation.body.value.invitation.invitationId}/decline`,
+      {},
+      { cookie: student.cookie, csrfToken: student.csrfToken },
+    );
+    const secondInvitation = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const revoked = await postJson(
+      `${baseUrl}/program-invitations/${secondInvitation.body.value.invitation.invitationId}/revocation`,
+      {},
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const lastCurator = await deleteJson(`${baseUrl}/programs/${programId}/curator-membership`, {
+      cookie: curator.cookie,
+      csrfToken: curator.csrfToken,
+    });
+    const malformedInvitation = await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const unexpectedActionBody = await postJson(
+      `${baseUrl}/program-invitations/${secondInvitation.body.value.invitation.invitationId}/revocation`,
+      { unexpected: true },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const invalidFilter = await getJson(`${baseUrl}/programs/${programId}/participants?status=unknown`, {
+      cookie: curator.cookie,
+    });
+    const blankRecoveryReason = await postJson(
+      `${baseUrl}/admin/program-memberships/recovery`,
+      {
+        participationKind: "student",
+        programId,
+        recoveryReason: " ",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+
+    assert.deepEqual(
+      {
+        blankRecoveryReason,
+        declined: declined.body.value?.invitation.status,
+        invalidFilter,
+        lastCurator,
+        malformedInvitation,
+        revoked: revoked.body.value?.invitation.status,
+        unexpectedActionBody,
+      },
+      {
+        blankRecoveryReason: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        declined: "declined",
+        invalidFilter: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        lastCurator: {
+          body: { status: "rejected", reason: "last_curator_required" },
+          statusCode: 409,
+        },
+        malformedInvitation: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        revoked: "revoked",
+        unexpectedActionBody: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programMembershipExceptionalRoutes_shouldRequireAdminAndProtectLastCurator", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(160) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "exceptional-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "exceptional-student@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const curatorRecovery = await postJson(
+      `${baseUrl}/admin/program-memberships/recovery`,
+      {
+        participationKind: "student",
+        programId,
+        recoveryReason: "curator should not recover access",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const recovered = await postJson(
+      `${baseUrl}/admin/program-memberships/recovery`,
+      {
+        participationKind: "student",
+        programId,
+        recoveryReason: "repair access",
+        targetIdentityId: student.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const lastCuratorRevocation = await postJson(
+      `${baseUrl}/admin/program-memberships/revocation`,
+      {
+        participationKind: "program_curator",
+        programId,
+        revocationReason: "invalid operational state",
+        targetIdentityId: curator.identityId,
+      },
+      { cookie: admin.cookie, csrfToken: admin.csrfToken },
+    );
+    const events = await getJson(`${baseUrl}/programs/${programId}/membership-events`, {
+      cookie: admin.cookie,
+    });
+    const recoveryEvent = events.body.value.events.find(
+      $0 => $0.eventType === "membership_exceptionally_recovered" && $0.outcome === "accepted",
+    );
+
+    assert.deepEqual(
+      {
+        curatorRecovery,
+        lastCuratorRevocation,
+        recoveredStatus: recovered.body.value?.membership.status,
+        recoveryEvent: {
+          actorIdentityId: recoveryEvent.actorIdentityId,
+          policyPath: recoveryEvent.policyPath,
+          reason: recoveryEvent.reason,
+          resultingStatus: recoveryEvent.resultingStatus,
+          targetIdentityId: recoveryEvent.targetIdentityId,
+        },
+      },
+      {
+        curatorRecovery: {
+          body: { status: "rejected", reason: "admin_required" },
+          statusCode: 403,
+        },
+        lastCuratorRevocation: {
+          body: { status: "rejected", reason: "last_curator_required" },
+          statusCode: 409,
+        },
+        recoveredStatus: "active",
+        recoveryEvent: {
+          actorIdentityId: admin.body.value.identity.id,
+          policyPath: "admin_exceptional_recovery",
+          reason: "repair access",
+          resultingStatus: "active",
+          targetIdentityId: student.identityId,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programMembershipReadRoutes_shouldAllowAdminAndRedactProtectedData", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram({ ids: manyIds(140) });
+
+  try {
+    const admin = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Curator",
+      login: "redaction-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, admin, {
+      displayName: "Program Student",
+      login: "redaction-student@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    await fetchJson(`${baseUrl}/programs/${programId}/admission-policy`, {
+      body: JSON.stringify({ admissionPolicy: "invitation_only" }),
+      headers: {
+        cookie: curator.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": curator.csrfToken,
+      },
+      method: "PATCH",
+    });
+    await postJson(
+      `${baseUrl}/programs/${programId}/invitations`,
+      { participationKind: "student", targetIdentityId: student.identityId },
+      { cookie: curator.cookie, csrfToken: curator.csrfToken },
+    );
+    const adminParticipants = await getJson(`${baseUrl}/programs/${programId}/participants`, {
+      cookie: admin.cookie,
+    });
+    const curatorInvitations = await getJson(`${baseUrl}/programs/${programId}/invitations`, {
+      cookie: curator.cookie,
+    });
+    const studentParticipants = await getJson(`${baseUrl}/programs/${programId}/participants`, {
+      cookie: student.cookie,
+    });
+    const invitationOnlySelfJoin = await postJson(
+      `${baseUrl}/programs/${programId}/student-membership`,
+      {},
+      { cookie: student.cookie, csrfToken: student.csrfToken },
+    );
+    const responseText = JSON.stringify([adminParticipants.body, curatorInvitations.body]);
+
+    assert.deepEqual(
+      {
+        adminParticipantKeys: Object.keys(adminParticipants.body.value.participants[0]).sort(),
+        curatorInvitationKeys: Object.keys(curatorInvitations.body.value.invitations[0]).sort(),
+        invitationOnlySelfJoin,
+        redaction: {
+          hasBootstrapSecret: responseText.includes("operator-secret"),
+          hasCookie: responseText.includes(admin.cookie),
+          hasCsrf: responseText.includes(admin.csrfToken),
+          hasPassword: responseText.includes("NON_SECRET_TEST_VALUE"),
+          hasSql: responseText.toLowerCase().includes("select "),
+          hasStack: responseText.includes("Error:"),
+        },
+        studentParticipants,
+      },
+      {
+        adminParticipantKeys: [
+          "identityId",
+          "participationKind",
+          "programId",
+          "status",
+          "updatedAt",
+        ],
+        curatorInvitationKeys: [
+          "createdAt",
+          "invitationId",
+          "invitedByIdentityId",
+          "participationKind",
+          "programId",
+          "status",
+          "targetIdentityId",
+          "updatedAt",
+        ],
+        invitationOnlySelfJoin: {
+          body: { status: "rejected", reason: "policy_not_satisfied" },
+          statusCode: 409,
+        },
+        redaction: {
+          hasBootstrapSecret: false,
+          hasCookie: false,
+          hasCsrf: false,
+          hasPassword: false,
+          hasSql: false,
+          hasStack: false,
+        },
+        studentParticipants: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("programMembershipMutationRoutes_shouldResolveSessionBeforeCsrf", async () => {
+  const { baseUrl, close } = await listenWithIdentityAndProgram();
+
+  try {
+    const routes = [
+      ["POST", "/programs"],
+      ["PATCH", "/programs/program-1/admission-policy"],
+      ["POST", "/programs/program-1/invitations"],
+      ["POST", "/program-invitations/invitation-1/acceptance"],
+      ["POST", "/program-invitations/invitation-1/decline"],
+      ["POST", "/program-invitations/invitation-1/revocation"],
+      ["DELETE", "/programs/program-1/participants/student/identity-1"],
+      ["DELETE", "/programs/program-1/curator-membership"],
+      ["POST", "/programs/program-1/student-membership"],
+      ["DELETE", "/programs/program-1/student-membership"],
+      ["POST", "/admin/program-memberships/recovery"],
+      ["POST", "/admin/program-memberships/revocation"],
+    ];
+    const invalidSessionResponses = [];
+    for (const [method, path] of routes) {
+      const response = await fetchJson(`${baseUrl}${path}`, {
+        headers: {
+          cookie: "agonara_session=unknown-session",
+          "content-type": "application/json",
+        },
+        method,
+      });
+      invalidSessionResponses.push(response);
+    }
+    const admin = await bootstrapAdmin(baseUrl);
+    const missingCsrfResponses = [];
+    for (const [method, path] of routes) {
+      const response = await fetchJson(`${baseUrl}${path}`, {
+        headers: {
+          cookie: admin.cookie,
+          "content-type": "application/json",
+        },
+        method,
+      });
+      missingCsrfResponses.push(response);
+    }
+
+    assert.deepEqual(
+      { invalidSessionResponses, missingCsrfResponses },
+      {
+        invalidSessionResponses: routes.map(() => ({
+          body: { status: "rejected", reason: "session_not_found" },
+          statusCode: 401,
+        })),
+        missingCsrfResponses: routes.map(() => ({
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        })),
       },
     );
   } finally {
@@ -7110,7 +9270,7 @@ test("adminBoard_shouldExposeSessionControls_withoutSensitiveRuntimeValues", asy
         hasLoginForm: body.includes('id="login-form"'),
         hasSessionPanel: body.includes('id="session-panel"'),
         hasLogoutButton: body.includes('id="logout-button"'),
-        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasPasswordValue: body.includes("NON_SECRET_TEST_VALUE"),
         hasBootstrapSecret: body.includes("operator-secret"),
         hasSessionCookieName: body.includes("agonara_session"),
       },
@@ -7145,7 +9305,7 @@ test("adminBoard_shouldExposeIdentityOperationControls_withoutSensitiveRuntimeVa
         hasDisableAction: body.includes('data-action="disable"'),
         hasGrantAdminAction: body.includes('data-action="grant-admin"'),
         hasRevokeAdminAction: body.includes('data-action="revoke-admin"'),
-        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasPasswordValue: body.includes("NON_SECRET_TEST_VALUE"),
         hasBootstrapSecret: body.includes("operator-secret"),
         hasSessionCookieName: body.includes("agonara_session"),
       },
@@ -7180,7 +9340,7 @@ test("adminBoard_shouldExposeAuditEventInspection_withoutSensitiveRuntimeValues"
         hasAuditList: body.includes('id="audit-event-list"'),
         hasRefreshAuditButton: body.includes('id="refresh-audit-events-button"'),
         hasTargetSessionHeader: body.includes("targetSessionId"),
-        hasPasswordValue: body.includes("correct horse battery staple"),
+        hasPasswordValue: body.includes("NON_SECRET_TEST_VALUE"),
         hasBootstrapSecret: body.includes("operator-secret"),
         hasSessionCookieName: body.includes("agonara_session"),
       },
@@ -7231,7 +9391,7 @@ test("identityBootstrap_shouldSetSecureCookie_onForwardedHttps", async () => {
         bootstrapSecret: "operator-secret",
         displayName: "Root Admin",
         login: "admin@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: {
         "content-type": "application/json",
@@ -7254,7 +9414,7 @@ test("identitySessions_shouldSetCookieAndHideSessionId_onAcceptedLogin", async (
     const response = await fetch(`${baseUrl}/identity/sessions`, {
       body: JSON.stringify({
         login: "admin@example.test",
-        password: "correct horse battery staple",
+        password: "NON_SECRET_TEST_VALUE",
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -7344,7 +9504,7 @@ test("identitySessions_shouldRateLimit_onRepeatedInvalidCredentials", async () =
       response = await fetch(`${baseUrl}/identity/sessions`, {
         body: JSON.stringify({
           login: "admin@example.test",
-          password: "wrong horse battery staple",
+          password: "NON_SECRET_REJECTED_VALUE",
         }),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -7435,6 +9595,140 @@ test("identityAdminEndpoints_shouldCreateIdentityAndListAudit_onAdminSession", a
   }
 });
 
+test("startServer_shouldExposeStudentWorkspaceOpenAnswerRoutes_onProductionComposition", async () => {
+  const databaseDirectory = mkdtempSync(join(tmpdir(), "agonara-production-composition-"));
+  const databasePath = join(databaseDirectory, "agonara.sqlite");
+  const server = startServer({
+    bootstrapSecret: "operator-secret",
+    databasePath,
+    host: "127.0.0.1",
+    log: () => {},
+    port: "0",
+  });
+  const baseUrl = await baseUrlForStartedServer(server);
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const submission = await submitOpenAnswerAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedCheck.revisionId,
+        submittedAnswer: "Production composition answer.",
+      },
+      "production-composition-key",
+    );
+    const submissionBody = await submission.json();
+    const attemptId = submissionBody.value?.attempt?.attemptId;
+    const detail = await fetch(`${baseUrl}/open-answer-attempts/${attemptId}`, {
+      headers: { cookie: scenario.student.cookie },
+    });
+    const list = await fetch(`${baseUrl}/programs/${scenario.programId}/open-answer-attempts`, {
+      headers: { cookie: scenario.student.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        detailStatusCode: detail.status,
+        listStatusCode: list.status,
+        listedAttemptIds: (await list.json()).value?.attempts.map($0 => $0.attemptId),
+        submissionStatus: submissionBody.status,
+        submissionStatusCode: submission.status,
+      },
+      {
+        detailStatusCode: 200,
+        listStatusCode: 200,
+        listedAttemptIds: [attemptId],
+        submissionStatus: "accepted",
+        submissionStatusCode: 200,
+      },
+    );
+  } finally {
+    await close(server);
+    rmSync(databaseDirectory, { force: true, recursive: true });
+  }
+});
+
+test("startServer_shouldExposeQuickCheckRoutes_onProductionComposition", async () => {
+  const databaseDirectory = mkdtempSync(join(tmpdir(), "agonara-quick-check-composition-"));
+  const databasePath = join(databaseDirectory, "agonara.sqlite");
+  const server = startServer({
+    bootstrapSecret: "operator-secret",
+    databasePath,
+    host: "127.0.0.1",
+    log: () => {},
+    port: "0",
+  });
+  const baseUrl = await baseUrlForStartedServer(server);
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const curator = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Curator",
+      login: "quick-production-curator@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-production-student@example.test",
+    });
+    const program = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+      answerKeyOptionIndex: 0,
+      options: ["Closed under addition", "Only finite dimension"],
+      prompt: "Which property is required?",
+      title: "Closure check",
+    });
+    const deliveries = await fetch(`${baseUrl}/programs/${programId}/quick-checks`, {
+      headers: { cookie: student.cookie },
+    });
+    const submission = await submitQuickCheckAttempt(
+      baseUrl,
+      student,
+      programId,
+      {
+        checkRevisionId: acceptedQuickCheck.revisionId,
+        selectedOptionId: acceptedQuickCheck.answerKeyOptionId,
+      },
+      "quick-production-key",
+    );
+    const submissionBody = await submission.json();
+    const attemptId = submissionBody.value.quickCheckAttempt.attemptId;
+    const detail = await fetch(`${baseUrl}/quick-check-attempts/${attemptId}`, {
+      headers: { cookie: student.cookie },
+    });
+    const attempts = await fetch(`${baseUrl}/programs/${programId}/quick-check-attempts`, {
+      headers: { cookie: student.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        attemptIds: (await attempts.json()).value.quickCheckAttempts.map($0 => $0.attemptId),
+        attemptsStatusCode: attempts.status,
+        deliveryTitles: (await deliveries.json()).value.quickCheckDeliveries.map($0 => $0.title),
+        deliveriesStatusCode: deliveries.status,
+        detailStatusCode: detail.status,
+        submissionStatus: submissionBody.status,
+        submissionStatusCode: submission.status,
+      },
+      {
+        attemptIds: [attemptId],
+        attemptsStatusCode: 200,
+        deliveryTitles: ["Closure check"],
+        deliveriesStatusCode: 200,
+        detailStatusCode: 200,
+        submissionStatus: "accepted",
+        submissionStatusCode: 200,
+      },
+    );
+  } finally {
+    await close(server);
+    rmSync(databaseDirectory, { force: true, recursive: true });
+  }
+});
+
 test("operationsDiagnostics_shouldAcceptAdminSession_onActiveAdmin", async () => {
   const { baseUrl, close } = await listenWithIdentity();
 
@@ -7449,12 +9743,22 @@ test("operationsDiagnostics_shouldAcceptAdminSession_onActiveAdmin", async () =>
       {
         statusCode: response.status,
         bodyStatus: body.status,
-        component: body.value.components[0].component,
+        checkName: body.checks[0].name,
+        checkStatus: body.checks[0].status,
+        hasGeneratedAt: typeof body.generatedAt === "string",
+        observedAt: body.checks[0].observedAt,
+        requestId: body.requestId,
+        responseRequestId: response.headers.get("x-request-id"),
       },
       {
         statusCode: 200,
-        bodyStatus: "accepted",
-        component: "identity",
+        bodyStatus: "ok",
+        checkName: "identity",
+        checkStatus: "ok",
+        hasGeneratedAt: true,
+        observedAt: body.generatedAt,
+        requestId: response.headers.get("x-request-id"),
+        responseRequestId: body.requestId,
       },
     );
   } finally {
@@ -7462,13 +9766,923 @@ test("operationsDiagnostics_shouldAcceptAdminSession_onActiveAdmin", async () =>
   }
 });
 
+test("learnerStateTargetLinkRoutes_shouldRequireCuratorSessionAndCsrf", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(120),
+  });
+
+  try {
+    const scenario = await createLearnerStateHttpScenario(baseUrl);
+    const createBody = {
+      evidenceOwnerEntityId: scenario.acceptedQuickCheck.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      targetId: scenario.topic.entityId,
+      targetKind: "topic",
+    };
+    const missingSessionList = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+    );
+    const missingCsrfCreate = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      createBody,
+      { cookie: scenario.curator.cookie },
+    );
+    const studentCreate = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      createBody,
+      { cookie: scenario.student.cookie, csrfToken: scenario.student.csrfToken },
+    );
+    const malformedCreate = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { ...createBody, targetKind: "quick_check" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const unsupportedEvidenceOwnerKind = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { ...createBody, evidenceOwnerKind: "accepted_navigation_entity" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const missingEvidenceOwner = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { ...createBody, evidenceOwnerEntityId: "quick-check-missing" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const created = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      createBody,
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const duplicate = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      createBody,
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const listedBeforeDelete = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { cookie: scenario.curator.cookie },
+    );
+    const linkId = created.body.value?.learnerStateTargetLink.linkId ?? "missing-link";
+    const missingCsrfDelete = await deleteJson(`${baseUrl}/learner-state-target-links/${linkId}`, {
+      cookie: scenario.curator.cookie,
+    });
+    const deleted = await deleteJson(`${baseUrl}/learner-state-target-links/${linkId}`, {
+      cookie: scenario.curator.cookie,
+      csrfToken: scenario.curator.csrfToken,
+    });
+    const listedAfterDelete = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/learner-state-target-links`,
+      { cookie: scenario.curator.cookie },
+    );
+
+    assert.deepEqual(
+      {
+        created: learnerStateTargetLinkResponseProjection(created),
+        deleted: learnerStateTargetLinkResponseProjection(deleted),
+        duplicateLinkId: duplicate.body.value?.learnerStateTargetLink.linkId,
+        listedAfterDelete: learnerStateTargetLinkListProjection(listedAfterDelete),
+        listedBeforeDelete: learnerStateTargetLinkListProjection(listedBeforeDelete),
+        malformedCreate: { body: malformedCreate.body, statusCode: malformedCreate.statusCode },
+        missingEvidenceOwner: { body: missingEvidenceOwner.body, statusCode: missingEvidenceOwner.statusCode },
+        missingCsrfCreate: { body: missingCsrfCreate.body, statusCode: missingCsrfCreate.statusCode },
+        missingCsrfDelete: { body: missingCsrfDelete.body, statusCode: missingCsrfDelete.statusCode },
+        missingSessionList: { body: missingSessionList.body, statusCode: missingSessionList.statusCode },
+        studentCreate: { body: studentCreate.body, statusCode: studentCreate.statusCode },
+        unsupportedEvidenceOwnerKind: {
+          body: unsupportedEvidenceOwnerKind.body,
+          statusCode: unsupportedEvidenceOwnerKind.statusCode,
+        },
+      },
+      {
+        created: {
+          evidenceOwnerKind: "accepted_quick_check",
+          status: "accepted",
+          statusCode: 200,
+          targetKind: "topic",
+        },
+        deleted: {
+          evidenceOwnerKind: "accepted_quick_check",
+          status: "accepted",
+          statusCode: 200,
+          targetKind: "topic",
+        },
+        duplicateLinkId: linkId,
+        listedAfterDelete: { linkCount: 0, status: "accepted", statusCode: 200 },
+        listedBeforeDelete: { linkCount: 1, status: "accepted", statusCode: 200 },
+        malformedCreate: { body: { status: "rejected", reason: "learner_state_target_not_found" }, statusCode: 404 },
+        missingEvidenceOwner: {
+          body: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+          statusCode: 404,
+        },
+        missingCsrfCreate: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
+        missingCsrfDelete: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
+        missingSessionList: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
+        studentCreate: { body: { status: "rejected", reason: "admin_or_curator_required" }, statusCode: 403 },
+        unsupportedEvidenceOwnerKind: {
+          body: { status: "rejected", reason: "learner_state_evidence_owner_not_found" },
+          statusCode: 404,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("learnerStateRoutes_shouldReturnOwnerSummaryTargetDetailAndRedactProtectedFields", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(140),
+  });
+
+  try {
+    const scenario = await createLearnerStateHttpScenario(baseUrl);
+    await createLearnerStateTargetLink(baseUrl, scenario.curator, scenario.programId, {
+      evidenceOwnerEntityId: scenario.acceptedQuickCheck.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      targetId: scenario.topic.entityId,
+      targetKind: "topic",
+    });
+    await submitQuickCheckAttempt(
+      baseUrl,
+      scenario.student,
+      scenario.programId,
+      {
+        checkRevisionId: scenario.acceptedQuickCheck.revisionId,
+        selectedOptionId: scenario.acceptedQuickCheck.answerKeyOptionId,
+      },
+      "learner-state-quick-key",
+    );
+
+    const summary = await getJson(`${baseUrl}/programs/${scenario.programId}/learner-state`, {
+      cookie: scenario.student.cookie,
+    });
+    const detail = await getJson(
+      `${baseUrl}/learner-state/targets/topic/${scenario.topic.entityId}`,
+      { cookie: scenario.student.cookie },
+    );
+    const serialized = JSON.stringify([summary.body, detail.body]);
+
+    assert.deepEqual(
+      {
+        detail: learnerStateTargetDetailProjection(detail),
+        leaks: containsLearnerStateProtectedHttpDetail(serialized),
+        summary: learnerStateProgramSummaryProjection(summary),
+      },
+      {
+        detail: {
+          evidenceKinds: ["quick_check_attempt"],
+          evidenceSignals: ["positive"],
+          level: "on_track",
+          status: "accepted",
+          statusCode: 200,
+          targetKind: "topic",
+        },
+        leaks: false,
+        summary: {
+          level: "on_track",
+          status: "accepted",
+          statusCode: 200,
+          topicLevels: ["on_track"],
+          weakAreaCount: 0,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("learnerStateRoutes_shouldHideUnavailableTargetsAndRejectUnauthorizedReaders", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(120),
+  });
+
+  try {
+    const scenario = await createLearnerStateHttpScenario(baseUrl);
+    const curatorSummary = await getJson(`${baseUrl}/programs/${scenario.programId}/learner-state`, {
+      cookie: scenario.curator.cookie,
+    });
+    const curatorDetail = await getJson(
+      `${baseUrl}/learner-state/targets/topic/${scenario.topic.entityId}`,
+      { cookie: scenario.curator.cookie },
+    );
+    const unsupportedTarget = await getJson(
+      `${baseUrl}/learner-state/targets/definition/${scenario.topic.entityId}`,
+      { cookie: scenario.student.cookie },
+    );
+    const missingTarget = await getJson(`${baseUrl}/learner-state/targets/topic/target-missing`, {
+      cookie: scenario.student.cookie,
+    });
+    const missingSessionSummary = await getJson(`${baseUrl}/programs/${scenario.programId}/learner-state`);
+
+    assert.deepEqual(
+      {
+        curatorDetail: { body: curatorDetail.body, statusCode: curatorDetail.statusCode },
+        curatorSummary: { body: curatorSummary.body, statusCode: curatorSummary.statusCode },
+        missingSessionSummary: { body: missingSessionSummary.body, statusCode: missingSessionSummary.statusCode },
+        missingTarget: { body: missingTarget.body, statusCode: missingTarget.statusCode },
+        unsupportedTarget: { body: unsupportedTarget.body, statusCode: unsupportedTarget.statusCode },
+      },
+      {
+        curatorDetail: {
+          body: { status: "rejected", reason: "learner_state_target_not_found" },
+          statusCode: 404,
+        },
+        curatorSummary: { body: { status: "rejected", reason: "participation_required" }, statusCode: 403 },
+        missingSessionSummary: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
+        missingTarget: {
+          body: { status: "rejected", reason: "learner_state_target_not_found" },
+          statusCode: 404,
+        },
+        unsupportedTarget: {
+          body: { status: "rejected", reason: "learner_state_target_not_found" },
+          statusCode: 404,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("coverageGapsHttp_shouldReturnFilteredRedactedReport_onProgramCuratorSession", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(120),
+  });
+
+  try {
+    const scenario = await createCoverageGapsHttpScenario(baseUrl);
+    const programReport = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/coverage-gaps?minimumSeverity=warning&gapKind=topic_without_checks&gapKind=check_without_target_links`,
+      { cookie: scenario.curator.cookie },
+    );
+    const topicReport = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/coverage-gaps?scopeKind=topic&scopeId=${scenario.topic.entityId}&minimumSeverity=critical`,
+      { cookie: scenario.curator.cookie },
+    );
+    const serialized = JSON.stringify([programReport.body, topicReport.body]);
+
+    assert.deepEqual(
+      {
+        leaks: containsCoverageGapProtectedHttpDetail(serialized),
+        programReport: coverageGapReportProjection(programReport),
+        topicReport: coverageGapReportProjection(topicReport),
+      },
+      {
+        leaks: false,
+        programReport: {
+          gaps: [
+            ["critical", "topic_without_checks", "topic", "Vector spaces", "draft_guidance"],
+            ["warning", "check_without_target_links", "quick_check", "Closure check", "draft_guidance"],
+          ],
+          scopeId: undefined,
+          scopeKind: "program",
+          status: "accepted",
+          statusCode: 200,
+        },
+        topicReport: {
+          gaps: [["critical", "topic_without_checks", "topic", "Vector spaces", "draft_guidance"]],
+          scopeId: scenario.topic.entityId,
+          scopeKind: "topic",
+          status: "accepted",
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("coverageGapsHttp_shouldEnforceSessionCuratorValidationAndPrivateErrors", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(120),
+  });
+
+  try {
+    const scenario = await createCoverageGapsHttpScenario(baseUrl);
+    const missingSession = await getJson(`${baseUrl}/programs/${scenario.programId}/coverage-gaps`);
+    const studentRead = await getJson(`${baseUrl}/programs/${scenario.programId}/coverage-gaps`, {
+      cookie: scenario.student.cookie,
+    });
+    const adminOnlyRead = await getJson(`${baseUrl}/programs/${scenario.programId}/coverage-gaps`, {
+      cookie: scenario.bootstrap.cookie,
+    });
+    const invalidGapKind = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/coverage-gaps?gapKind=unsupported_gap`,
+      { cookie: scenario.curator.cookie },
+    );
+    const programScopeId = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/coverage-gaps?scopeKind=program&scopeId=${scenario.topic.entityId}`,
+      { cookie: scenario.curator.cookie },
+    );
+    const otherProgram = await createProgram(baseUrl, scenario.curator, { title: "Real Analysis" });
+    const otherProgramId = (await otherProgram.json()).value.program.programId;
+    const crossProgramScope = await getJson(
+      `${baseUrl}/programs/${otherProgramId}/coverage-gaps?scopeKind=topic&scopeId=${scenario.topic.entityId}`,
+      { cookie: scenario.curator.cookie },
+    );
+    const missingScope = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/coverage-gaps?scopeKind=topic&scopeId=topic-missing`,
+      { cookie: scenario.curator.cookie },
+    );
+
+    assert.deepEqual(
+      {
+        adminOnlyRead: { body: adminOnlyRead.body, statusCode: adminOnlyRead.statusCode },
+        crossProgramScope: { body: crossProgramScope.body, statusCode: crossProgramScope.statusCode },
+        invalidGapKind: { body: invalidGapKind.body, statusCode: invalidGapKind.statusCode },
+        missingScope: { body: missingScope.body, statusCode: missingScope.statusCode },
+        missingSession: { body: missingSession.body, statusCode: missingSession.statusCode },
+        programScopeId: { body: programScopeId.body, statusCode: programScopeId.statusCode },
+        studentRead: { body: studentRead.body, statusCode: studentRead.statusCode },
+      },
+      {
+        adminOnlyRead: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        crossProgramScope: {
+          body: { status: "rejected", reason: "coverage_gap_scope_not_found" },
+          statusCode: 404,
+        },
+        invalidGapKind: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+        missingScope: { body: { status: "rejected", reason: "coverage_gap_scope_not_found" }, statusCode: 404 },
+        missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
+        programScopeId: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+        studentRead: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("llmCurationSuggestionsHttp_shouldGenerateReviewAcceptRejectAndRedact_onProgramCuratorSession", async () => {
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(180),
+    llmSuggestionPolicies: [
+      makeHttpLlmSuggestionPolicy({
+        allowedSuggestionKinds: ["navigation_candidate", "quick_check_candidate"],
+      }),
+    ],
+    llmSuggestionProviderAdapters: [
+      makeHttpLlmSuggestionProviderAdapter({
+        suggestions: [
+          makeHttpProviderSuggestion({
+            suggestionKind: "navigation_candidate",
+            title: "Draft LLM topic",
+          }),
+          makeHttpProviderSuggestion({
+            suggestionKind: "quick_check_candidate",
+            title: "Draft LLM quick check",
+            suggestedDraft: {
+              candidateKind: "quick_check_candidate",
+              request: {
+                answerKeyIndex: 0,
+                checkKind: "single_select_quick_check",
+                options: ["Closure under addition", "Only finite dimension"],
+                prompt: "Which statement is required?",
+                rationale: "Draft quick-check rationale",
+                sourceIds: [],
+                title: "Draft LLM quick check",
+              },
+            },
+          }),
+        ],
+      }),
+    ],
+  });
+
+  try {
+    const scenario = await createLlmSuggestionHttpScenario(baseUrl);
+    const acceptedCountsBefore = projectHttpAcceptedCorpusCounts(database);
+    const generated = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      {
+        allowedSuggestionKinds: ["navigation_candidate", "quick_check_candidate"],
+        curatorInstruction: "Suggest one topic and one check.",
+        idempotencyKey: "llm-http-key",
+        maxSuggestions: 2,
+        suggestionPolicyId: "policy-a",
+      },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const firstPage = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions?limit=1`,
+      { cookie: scenario.curator.cookie },
+    );
+    const secondPage = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions?cursor=${firstPage.body.value?.nextCursor ?? "cursor-missing"}`,
+      { cookie: scenario.curator.cookie },
+    );
+    const navigationSuggestionId = generated.body.value.suggestions[0].suggestionId;
+    const quickCheckSuggestionId = generated.body.value.suggestions[1].suggestionId;
+    const detail = await getJson(`${baseUrl}/llm-curation-suggestions/${navigationSuggestionId}`, {
+      cookie: scenario.curator.cookie,
+    });
+    const accepted = await postJson(
+      `${baseUrl}/llm-curation-suggestions/${navigationSuggestionId}/acceptance`,
+      {},
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const rejected = await postJson(
+      `${baseUrl}/llm-curation-suggestions/${quickCheckSuggestionId}/rejection`,
+      {},
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const serialized = JSON.stringify([
+      generated.body,
+      firstPage.body,
+      secondPage.body,
+      detail.body,
+      accepted.body,
+      rejected.body,
+    ]);
+
+    assert.deepEqual(
+      {
+        accepted: llmAcceptedSuggestionProjection(accepted),
+        acceptedCountsAfter: projectHttpAcceptedCorpusCounts(database),
+        acceptedCountsBefore,
+        detail: llmSuggestionDetailProjection(detail),
+        firstPageHasCursor: typeof firstPage.body.value.nextCursor === "string",
+        generated: llmSuggestionListProjection(generated),
+        leaks: containsLlmSuggestionHttpLeaks(serialized),
+        listedPageStatusCodes: [firstPage.statusCode, secondPage.statusCode],
+        listedPageStatuses: [firstPage.body.status, secondPage.body.status],
+        listedPageTitles: [
+          ...llmSuggestionListProjection(firstPage).suggestions,
+          ...llmSuggestionListProjection(secondPage).suggestions,
+        ].map($0 => $0[2]).sort(),
+        quickCheckDrafts: listQuickCheckCandidateRecords(database)
+          .filter($0 => $0.status === "draft")
+          .map($0 => $0.title),
+        rejected: llmRejectedSuggestionProjection(rejected),
+      },
+      {
+        accepted: {
+          candidateKind: "navigation_candidate",
+          status: "accepted",
+          suggestionStatus: "materialized",
+        },
+        acceptedCountsAfter: acceptedCountsBefore,
+        acceptedCountsBefore,
+        detail: {
+          containsForbiddenDetail: false,
+          status: "accepted",
+          statusCode: 200,
+          suggestion: ["draft_suggestion", "navigation_candidate", "Draft LLM topic"],
+        },
+        firstPageHasCursor: true,
+        generated: {
+          nextCursor: undefined,
+          status: "accepted",
+          statusCode: 200,
+          suggestions: [
+            ["draft_suggestion", "navigation_candidate", "Draft LLM topic"],
+            ["draft_suggestion", "quick_check_candidate", "Draft LLM quick check"],
+          ],
+        },
+        leaks: false,
+        listedPageStatusCodes: [200, 200],
+        listedPageStatuses: ["accepted", "accepted"],
+        listedPageTitles: ["Draft LLM quick check", "Draft LLM topic"],
+        quickCheckDrafts: [],
+        rejected: {
+          status: "accepted",
+          suggestionStatus: "rejected",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("llmCurationSuggestionsHttp_shouldEnforceSessionCsrfValidationProviderFailuresAndTerminalStates", async () => {
+  const providerFailureHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionProviderAdapters: [
+      makeHttpLlmSuggestionProviderAdapter({ throws: true }),
+    ],
+  });
+  const missingProviderHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionPolicies: [makeHttpLlmSuggestionPolicy({ providerAdapterId: "provider-missing" })],
+    llmSuggestionProviderAdapters: [],
+  });
+  const budgetFailureHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionProviderAdapters: [
+      makeHttpLlmSuggestionProviderAdapter({
+        providerUsage: { providerCalls: 2, inputTokens: 120, outputTokens: 80 },
+      }),
+    ],
+  });
+  const outputFailureHarness = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(40),
+    llmSuggestionProviderAdapters: [
+      makeHttpLlmSuggestionProviderAdapter({
+        outputValidation: { validatorPolicyId: "validator-a", passed: false },
+      }),
+    ],
+  });
+  const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndCuratorWorkspace({
+    ids: manyIds(160),
+  });
+
+  try {
+    const scenario = await createLlmSuggestionHttpScenario(baseUrl);
+    const missingSession = await getJson(`${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`);
+    const studentList = await getJson(`${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`, {
+      cookie: scenario.student.cookie,
+    });
+    const adminGenerate = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: scenario.bootstrap.cookie, csrfToken: scenario.bootstrap.csrfToken },
+    );
+    const missingCsrf = await fetch(`${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`, {
+      body: JSON.stringify(makeHttpLlmSuggestionGenerationBody()),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const invalidBody = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      { suggestionPolicyId: "" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const missingPolicy = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      { ...makeHttpLlmSuggestionGenerationBody(), suggestionPolicyId: "policy-missing" },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const invalidList = await getJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions?status=unsupported`,
+      { cookie: scenario.curator.cookie },
+    );
+    const staleCoverageGap = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      {
+        ...makeHttpLlmSuggestionGenerationBody(),
+        coverageGapIds: ["coverage-gap-missing"],
+        curatorInstruction: "",
+        idempotencyKey: "llm-stale-gap-key",
+      },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const unsupportedContext = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      {
+        ...makeHttpLlmSuggestionGenerationBody(),
+        contextEntityIds: ["context-entity-missing"],
+        curatorInstruction: "",
+        idempotencyKey: "llm-context-key",
+      },
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const created = await postJson(
+      `${baseUrl}/programs/${scenario.programId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const suggestionId = created.body.value?.suggestions?.[0]?.suggestionId ?? "suggestion-missing";
+    const studentDetail = await getJson(`${baseUrl}/llm-curation-suggestions/${suggestionId}`, {
+      cookie: scenario.student.cookie,
+    });
+    const studentAcceptance = await postJson(
+      `${baseUrl}/llm-curation-suggestions/${suggestionId}/acceptance`,
+      {},
+      { cookie: scenario.student.cookie, csrfToken: scenario.student.csrfToken },
+    );
+    const missingAcceptanceCsrf = await fetch(`${baseUrl}/llm-curation-suggestions/${suggestionId}/acceptance`, {
+      body: JSON.stringify({}),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const missingRejectionCsrf = await fetch(`${baseUrl}/llm-curation-suggestions/${suggestionId}/rejection`, {
+      body: JSON.stringify({}),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const rejected = await postJson(
+      `${baseUrl}/llm-curation-suggestions/${suggestionId}/rejection`,
+      {},
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const acceptRejected = await postJson(
+      `${baseUrl}/llm-curation-suggestions/${suggestionId}/acceptance`,
+      {},
+      { cookie: scenario.curator.cookie, csrfToken: scenario.curator.csrfToken },
+    );
+    const failureSession = await bootstrapAdmin(providerFailureHarness.baseUrl);
+    const failureProgram = await createProgram(providerFailureHarness.baseUrl, failureSession, {
+      title: "Provider failures",
+    });
+    const failureProgramId = (await failureProgram.json()).value.program.programId;
+    const missingProviderSession = await bootstrapAdmin(missingProviderHarness.baseUrl);
+    const missingProviderProgram = await createProgram(missingProviderHarness.baseUrl, missingProviderSession, {
+      title: "Missing provider",
+    });
+    const missingProviderProgramId = (await missingProviderProgram.json()).value.program.programId;
+    const budgetFailureSession = await bootstrapAdmin(budgetFailureHarness.baseUrl);
+    const budgetFailureProgram = await createProgram(budgetFailureHarness.baseUrl, budgetFailureSession, {
+      title: "Budget failure",
+    });
+    const budgetFailureProgramId = (await budgetFailureProgram.json()).value.program.programId;
+    const outputFailureSession = await bootstrapAdmin(outputFailureHarness.baseUrl);
+    const outputFailureProgram = await createProgram(outputFailureHarness.baseUrl, outputFailureSession, {
+      title: "Output failure",
+    });
+    const outputFailureProgramId = (await outputFailureProgram.json()).value.program.programId;
+    const providerFailure = await postJson(
+      `${providerFailureHarness.baseUrl}/programs/${failureProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: failureSession.cookie, csrfToken: failureSession.csrfToken },
+    );
+    const missingProvider = await postJson(
+      `${missingProviderHarness.baseUrl}/programs/${missingProviderProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: missingProviderSession.cookie, csrfToken: missingProviderSession.csrfToken },
+    );
+    const budgetFailure = await postJson(
+      `${budgetFailureHarness.baseUrl}/programs/${budgetFailureProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: budgetFailureSession.cookie, csrfToken: budgetFailureSession.csrfToken },
+    );
+    const outputFailure = await postJson(
+      `${outputFailureHarness.baseUrl}/programs/${outputFailureProgramId}/llm-curation-suggestions`,
+      makeHttpLlmSuggestionGenerationBody(),
+      { cookie: outputFailureSession.cookie, csrfToken: outputFailureSession.csrfToken },
+    );
+    const serializedFaults = JSON.stringify([
+      budgetFailure.body,
+      missingProvider.body,
+      outputFailure.body,
+      providerFailure.body,
+    ]);
+
+    assert.deepEqual(
+      {
+        acceptedCount: projectHttpAcceptedCorpusCounts(database),
+        acceptRejected: { body: acceptRejected.body, statusCode: acceptRejected.statusCode },
+        adminGenerate: { body: adminGenerate.body, statusCode: adminGenerate.statusCode },
+        invalidBody: { body: invalidBody.body, statusCode: invalidBody.statusCode },
+        invalidList: { body: invalidList.body, statusCode: invalidList.statusCode },
+        budgetFailure: { body: budgetFailure.body, statusCode: budgetFailure.statusCode },
+        missingAcceptanceCsrf: { body: await missingAcceptanceCsrf.json(), statusCode: missingAcceptanceCsrf.status },
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        missingPolicy: { body: missingPolicy.body, statusCode: missingPolicy.statusCode },
+        missingProvider: { body: missingProvider.body, statusCode: missingProvider.statusCode },
+        missingRejectionCsrf: { body: await missingRejectionCsrf.json(), statusCode: missingRejectionCsrf.status },
+        missingSession: { body: missingSession.body, statusCode: missingSession.statusCode },
+        outputFailure: { body: outputFailure.body, statusCode: outputFailure.statusCode },
+        providerFailure: {
+          body: providerFailure.body,
+          hasLeaks: containsLlmSuggestionHttpLeaks(serializedFaults),
+          statusCode: providerFailure.statusCode,
+        },
+        rejected: llmRejectedSuggestionProjection(rejected),
+        staleCoverageGap: { body: staleCoverageGap.body, statusCode: staleCoverageGap.statusCode },
+        studentAcceptance: { body: studentAcceptance.body, statusCode: studentAcceptance.statusCode },
+        studentDetail: { body: studentDetail.body, statusCode: studentDetail.statusCode },
+        studentList: { body: studentList.body, statusCode: studentList.statusCode },
+        suggestionStatuses: listLlmCurationSuggestionRecords(database).map($0 => [$0.title, $0.status]),
+        unsupportedContext: { body: unsupportedContext.body, statusCode: unsupportedContext.statusCode },
+      },
+      {
+        acceptedCount: projectHttpAcceptedCorpusCounts(database),
+        acceptRejected: {
+          body: { status: "rejected", reason: "llm_curation_suggestion_already_rejected" },
+          statusCode: 409,
+        },
+        adminGenerate: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        budgetFailure: { body: { status: "rejected", reason: "provider_budget_exceeded" }, statusCode: 409 },
+        invalidBody: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+        invalidList: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+        missingAcceptanceCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
+        missingCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
+        missingPolicy: { body: { status: "rejected", reason: "suggestion_policy_not_found" }, statusCode: 404 },
+        missingProvider: { body: { status: "rejected", reason: "provider_adapter_not_found" }, statusCode: 404 },
+        missingRejectionCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
+        missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
+        outputFailure: { body: { status: "rejected", reason: "provider_output_rejected" }, statusCode: 409 },
+        providerFailure: {
+          body: { status: "rejected", reason: "provider_execution_failed" },
+          hasLeaks: false,
+          statusCode: 409,
+        },
+        rejected: {
+          status: "accepted",
+          suggestionStatus: "rejected",
+        },
+        staleCoverageGap: { body: { status: "rejected", reason: "coverage_gap_not_found" }, statusCode: 404 },
+        studentAcceptance: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        studentDetail: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        studentList: { body: { status: "rejected", reason: "program_curator_required" }, statusCode: 403 },
+        suggestionStatuses: [["Add algebra topic", "rejected"]],
+        unsupportedContext: { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      },
+    );
+  } finally {
+    await close();
+    await budgetFailureHarness.close();
+    await missingProviderHarness.close();
+    await outputFailureHarness.close();
+    await providerFailureHarness.close();
+  }
+});
+
+test("httpApiRoutes_shouldEmitCompletionLogs_onAcceptedRequests", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(60),
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const requests = [
+      {
+        expectedOperation: "GET /identity/session",
+        fetch: () => fetch(`${baseUrl}/identity/session`, {
+          headers: {
+            cookie: scenario.student.cookie,
+            "x-request-id": "identity-log",
+          },
+        }),
+        requestId: "identity-log",
+      },
+      {
+        expectedOperation: "GET /programs",
+        fetch: () => fetch(`${baseUrl}/programs`, {
+          headers: {
+            cookie: scenario.student.cookie,
+            "x-request-id": "program-log",
+          },
+        }),
+        requestId: "program-log",
+      },
+      {
+        expectedOperation: `GET /programs/${scenario.programId}/open-answer-checks`,
+        fetch: () => fetch(`${baseUrl}/programs/${scenario.programId}/open-answer-checks`, {
+          headers: {
+            cookie: scenario.student.cookie,
+            "x-request-id": "corpus-log",
+          },
+        }),
+        requestId: "corpus-log",
+      },
+      {
+        expectedOperation: `GET /programs/${scenario.programId}/open-answer-attempts`,
+        fetch: () => fetch(`${baseUrl}/programs/${scenario.programId}/open-answer-attempts`, {
+          headers: {
+            cookie: scenario.student.cookie,
+            "x-request-id": "student-workspace-log",
+          },
+        }),
+        requestId: "student-workspace-log",
+      },
+    ];
+    for (const request of requests) {
+      await request.fetch();
+    }
+
+    assert.deepEqual(
+      projectCompletionLogs(logEvents, requests),
+      requests.map($0 => ({
+        hasSensitiveDetail: false,
+        operation: $0.expectedOperation,
+        outcome: "accepted",
+        requestId: $0.requestId,
+        severity: "info",
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("httpApiRoutes_shouldEmitCompletionLogs_onRejectedRequests", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(60),
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const scenario = await createStudentAttemptApiScenario(baseUrl);
+    const requests = [
+      {
+        expectedOperation: "POST /identity/sessions",
+        fetch: () => fetch(`${baseUrl}/identity/sessions`, {
+          body: JSON.stringify({
+            login: "student@example.test",
+            password: "NON_SECRET_INVALID_VALUE",
+          }),
+          headers: {
+            "content-type": "application/json",
+            "x-request-id": "identity-rejected-log",
+          },
+          method: "POST",
+        }),
+        reason: "invalid_credentials",
+        requestId: "identity-rejected-log",
+      },
+      {
+        expectedOperation: "GET /programs",
+        fetch: () => fetch(`${baseUrl}/programs`, {
+          headers: { "x-request-id": "program-rejected-log" },
+        }),
+        reason: "session_not_found",
+        requestId: "program-rejected-log",
+      },
+      {
+        expectedOperation: "/programs/program-missing/open-answer-checks",
+        fetch: () => fetch(`${baseUrl}/programs/program-missing/open-answer-checks`, {
+          headers: {
+            cookie: scenario.student.cookie,
+            "x-request-id": "corpus-rejected-log",
+          },
+        }),
+        reason: "program_not_found",
+        requestId: "corpus-rejected-log",
+      },
+      {
+        expectedOperation: `/programs/${scenario.programId}/open-answer-attempts`,
+        fetch: () => fetch(`${baseUrl}/programs/${scenario.programId}/open-answer-attempts?limit=abc`, {
+          headers: {
+            cookie: scenario.student.cookie,
+            "x-request-id": "student-workspace-rejected-log",
+          },
+        }),
+        reason: "validation_failed",
+        requestId: "student-workspace-rejected-log",
+      },
+    ];
+    for (const request of requests) {
+      await request.fetch();
+    }
+
+    assert.deepEqual(
+      projectCompletionLogs(logEvents, requests),
+      requests.map($0 => ({
+        hasSensitiveDetail: false,
+        operation: $0.expectedOperation.startsWith("GET ") || $0.expectedOperation.startsWith("POST ")
+          ? $0.expectedOperation
+          : `GET ${$0.expectedOperation}`,
+        outcome: "rejected",
+        reason: $0.reason,
+        requestId: $0.requestId,
+        severity: "warning",
+      })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+function projectCompletionLogs(logEvents, requests) {
+  const requestIds = new Set(requests.map($0 => $0.requestId));
+  return logEvents
+    .filter($0 => requestIds.has($0.requestId))
+    .map($0 => ({
+      hasSensitiveDetail: hasSensitiveCompletionLogDetail($0),
+      operation: $0.operation,
+      outcome: $0.outcome,
+      ...($0.reason === undefined ? {} : { reason: $0.reason }),
+      requestId: $0.requestId,
+      severity: $0.severity,
+    }));
+}
+
+function hasSensitiveCompletionLogDetail(event) {
+  const serialized = JSON.stringify(event);
+  return [
+    "agonara_session",
+    "NON_SECRET_TEST_VALUE",
+    "raw model",
+    "raw prompt",
+    "stack",
+    "NON_SECRET_INVALID_VALUE",
+    "x-agonara-csrf",
+    "x-agonara-idempotency-key",
+  ].some($0 => serialized.includes($0));
+}
+
 async function bootstrapAdmin(baseUrl) {
   const response = await fetch(`${baseUrl}/identity/bootstrap/admin`, {
     body: JSON.stringify({
       bootstrapSecret: "operator-secret",
       displayName: "Root Admin",
       login: "admin@example.test",
-      password: "correct horse battery staple",
+      password: "NON_SECRET_TEST_VALUE",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -7495,7 +10709,7 @@ async function createIdentitySession(baseUrl, bootstrap, { displayName, login })
   await fetch(`${baseUrl}/identity/identities/${identityId}/local-password`, {
     body: JSON.stringify({
       login,
-      password: "correct horse battery staple",
+      password: "NON_SECRET_TEST_VALUE",
     }),
     headers: {
       cookie: bootstrap.cookie,
@@ -7507,7 +10721,7 @@ async function createIdentitySession(baseUrl, bootstrap, { displayName, login })
   const loginResponse = await fetch(`${baseUrl}/identity/sessions`, {
     body: JSON.stringify({
       login,
-      password: "correct horse battery staple",
+      password: "NON_SECRET_TEST_VALUE",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -7547,6 +10761,18 @@ async function createProgramSource(baseUrl, session, programId, body) {
 
 async function createCorpusCandidate(baseUrl, session, programId, body) {
   return fetch(`${baseUrl}/programs/${programId}/corpus-candidates`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function createNavigationCandidate(baseUrl, session, programId, body) {
+  return fetch(`${baseUrl}/programs/${programId}/navigation-candidates`, {
     body: JSON.stringify(body),
     headers: {
       cookie: session.cookie,
@@ -7629,6 +10855,78 @@ async function rejectOpenAnswerCheckCandidate(baseUrl, session, candidateId, bod
   });
 }
 
+async function createQuickCheckCandidate(baseUrl, session, programId, body) {
+  return fetch(`${baseUrl}/programs/${programId}/quick-checks/candidates`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function acceptQuickCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/quick-checks/candidates/${candidateId}/acceptance`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function rejectQuickCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/quick-checks/candidates/${candidateId}/rejection`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function createReadinessCheckCandidate(baseUrl, session, programId, body) {
+  return fetch(`${baseUrl}/programs/${programId}/readiness-checks/candidates`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function acceptReadinessCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/readiness-checks/candidates/${candidateId}/acceptance`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function rejectReadinessCheckCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/readiness-checks/candidates/${candidateId}/rejection`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
   const { targetEntityId, ...candidateBody } = body;
   const candidate = await createCorpusCandidate(baseUrl, session, programId, candidateBody);
@@ -7640,6 +10938,55 @@ async function createAcceptedCandidate(baseUrl, session, programId, body) {
     targetEntityId === undefined ? {} : { targetEntityId },
   );
   return (await acceptedResponse.json()).value.acceptedCorpus;
+}
+
+async function getJson(url, { cookie = null } = {}) {
+  return fetchJson(url, {
+    headers: cookie ? { cookie } : {},
+  });
+}
+
+async function postJson(url, body, { cookie = null, csrfToken = null } = {}) {
+  return fetchJson(url, {
+    body: JSON.stringify(body),
+    headers: {
+      ...(cookie ? { cookie } : {}),
+      "content-type": "application/json",
+      ...(csrfToken ? { "x-agonara-csrf": csrfToken } : {}),
+    },
+    method: "POST",
+  });
+}
+
+async function deleteJson(url, { cookie = null, csrfToken = null } = {}) {
+  return fetchJson(url, {
+    headers: {
+      ...(cookie ? { cookie } : {}),
+      ...(csrfToken ? { "x-agonara-csrf": csrfToken } : {}),
+    },
+    method: "DELETE",
+  });
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, options);
+  return {
+    body: await response.json(),
+    statusCode: response.status,
+  };
+}
+
+async function createAcceptedNavigationCandidate(baseUrl, session, programId, body) {
+  const { targetEntityId, ...candidateBody } = body;
+  const candidate = await createNavigationCandidate(baseUrl, session, programId, candidateBody);
+  const candidateId = (await candidate.json()).value.navigationCandidate.candidateId;
+  const acceptedResponse = await acceptNavigationCandidate(
+    baseUrl,
+    session,
+    candidateId,
+    targetEntityId === undefined ? {} : { targetEntityId },
+  );
+  return (await acceptedResponse.json()).value.navigationChange.acceptedCorpus;
 }
 
 async function acceptCorpusCandidate(baseUrl, session, candidateId, body) {
@@ -7654,8 +11001,32 @@ async function acceptCorpusCandidate(baseUrl, session, candidateId, body) {
   });
 }
 
+async function acceptNavigationCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/navigation-candidates/${candidateId}/acceptance`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
 async function rejectCorpusCandidate(baseUrl, session, candidateId, body) {
   return fetch(`${baseUrl}/corpus-candidates/${candidateId}/rejection`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "POST",
+  });
+}
+
+async function rejectNavigationCandidate(baseUrl, session, candidateId, body) {
+  return fetch(`${baseUrl}/navigation-candidates/${candidateId}/rejection`, {
     body: body === undefined ? undefined : JSON.stringify(body),
     headers: {
       cookie: session.cookie,
@@ -7704,6 +11075,213 @@ async function createStudentAttemptApiScenario(baseUrl) {
   return { acceptedCheck, bootstrap, curator, programId, student };
 }
 
+async function createReadinessHttpScenario(baseUrl) {
+  const bootstrap = await bootstrapAdmin(baseUrl);
+  const curator = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Curator",
+    login: "readiness-curator@example.test",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Student",
+    login: "readiness-student@example.test",
+  });
+  const otherStudent = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Other Student",
+    login: "readiness-other-student@example.test",
+  });
+  const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+  const programId = (await createdProgram.json()).value.program.programId;
+  await joinStudentProgram(baseUrl, student, programId);
+  await joinStudentProgram(baseUrl, otherStudent, programId);
+  const topic = await createAcceptedNavigationCandidate(baseUrl, curator, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+    answerKeyOptionIndex: 0,
+    options: ["Closed under addition", "Only finite dimension"],
+    title: "Closure check",
+  });
+
+  return { acceptedQuickCheck, bootstrap, curator, otherStudent, programId, student, topic };
+}
+
+async function createLearnerStateHttpScenario(baseUrl) {
+  const bootstrap = await bootstrapAdmin(baseUrl);
+  const curator = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Curator",
+    login: "learner-state-curator@example.test",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Student",
+    login: "learner-state-student@example.test",
+  });
+  const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+  const programId = (await createdProgram.json()).value.program.programId;
+  await joinStudentProgram(baseUrl, student, programId);
+  const topic = await createAcceptedNavigationCandidate(baseUrl, curator, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+    answerKeyOptionIndex: 0,
+    options: ["Closed under addition", "Only finite dimension"],
+    title: "Closure check",
+  });
+
+  return { acceptedQuickCheck, bootstrap, curator, programId, student, topic };
+}
+
+async function createCoverageGapsHttpScenario(baseUrl) {
+  const bootstrap = await bootstrapAdmin(baseUrl);
+  const curator = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Coverage Curator",
+    login: "coverage-curator@example.test",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Coverage Student",
+    login: "coverage-student@example.test",
+  });
+  const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+  const programId = (await createdProgram.json()).value.program.programId;
+  await joinStudentProgram(baseUrl, student, programId);
+  const topic = await createAcceptedNavigationCandidate(baseUrl, curator, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+    answerKeyOptionIndex: 0,
+    options: ["Closed under addition", "Only finite dimension"],
+    title: "Closure check",
+  });
+
+  return { acceptedQuickCheck, bootstrap, curator, programId, student, topic };
+}
+
+async function createLlmSuggestionHttpScenario(baseUrl) {
+  const bootstrap = await bootstrapAdmin(baseUrl);
+  const curator = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "LLM Curator",
+    login: "llm-curator@example.test",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "LLM Student",
+    login: "llm-student@example.test",
+  });
+  const createdProgram = await createProgram(baseUrl, curator, { title: "Linear Algebra" });
+  const programId = (await createdProgram.json()).value.program.programId;
+  await joinStudentProgram(baseUrl, student, programId);
+  const topic = await createAcceptedNavigationCandidate(baseUrl, curator, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, curator, programId, {
+    answerKeyOptionIndex: 0,
+    options: ["Closed under addition", "Only finite dimension"],
+    title: "Closure check",
+  });
+
+  return { acceptedQuickCheck, bootstrap, curator, programId, student, topic };
+}
+
+function makeHttpLlmSuggestionPolicy({
+  allowedSuggestionKinds = ["navigation_candidate"],
+  budgetPolicy = { maxProviderCalls: 1, maxInputTokens: 4000, maxOutputTokens: 800 },
+  outputValidatorPolicyId = "validator-a",
+  providerAdapterId = "provider-a",
+  rawArtifactPolicy = "none",
+  redactionPolicyId = "redaction-a",
+  suggestionPolicyId = "policy-a",
+} = {}) {
+  return {
+    suggestionPolicyId,
+    providerAdapterId,
+    outputValidatorPolicyId,
+    redactionPolicyId,
+    allowedSuggestionKinds,
+    promptInputPolicy: {
+      includeAcceptedNavigationContext: true,
+      includeAcceptedCheckContext: true,
+      includeReadinessContext: true,
+      includeCoverageGapContext: true,
+      includeStudentWorkspaceState: false,
+    },
+    budgetPolicy,
+    rawArtifactPolicy,
+  };
+}
+
+function makeHttpLlmSuggestionProviderAdapter({
+  outputValidation = { validatorPolicyId: "validator-a", passed: true },
+  providerAdapterId = "provider-a",
+  providerUsage = { providerCalls: 1, inputTokens: 120, outputTokens: 80 },
+  suggestions = [makeHttpProviderSuggestion()],
+  throws = false,
+} = {}) {
+  return {
+    providerAdapterId,
+    suggest: () => {
+      if (throws) {
+        throw new Error(
+          "authorization cookie csrf raw prompt raw model provider diagnostics select * stack /tmp/db.sqlite postgres://db",
+        );
+      }
+      return {
+        suggestions,
+        outputValidation,
+        providerUsage,
+      };
+    },
+  };
+}
+
+function makeHttpProviderSuggestion({
+  suggestionKind = "navigation_candidate",
+  title = "Add algebra topic",
+  summary = "Create a topic draft for algebra.",
+  suggestedDraft = {
+    candidateKind: suggestionKind,
+    request: {
+      body: `${title} body`,
+      candidateKind: "topic",
+      rationale: "Draft candidate rationale",
+      sourceIds: [],
+      title,
+    },
+  },
+} = {}) {
+  return {
+    suggestionKind,
+    title,
+    summary,
+    rationale: "The accepted program has a missing topic evidence path.",
+    suggestedDraft,
+    supportingEvidence: [
+      {
+        label: "Curator instruction",
+        sourceId: "curator-instruction",
+        sourceKind: "curator_instruction",
+      },
+    ],
+  };
+}
+
+function makeHttpLlmSuggestionGenerationBody() {
+  return {
+    curatorInstruction: "Suggest one draft topic.",
+    idempotencyKey: "llm-http-key",
+    maxSuggestions: 1,
+    suggestionPolicyId: "policy-a",
+  };
+}
+
+async function createLearnerStateTargetLink(baseUrl, session, programId, body) {
+  return postJson(`${baseUrl}/programs/${programId}/learner-state-target-links`, body, {
+    cookie: session.cookie,
+    csrfToken: session.csrfToken,
+  });
+}
+
 async function createAcceptedOpenAnswerCheck(
   baseUrl,
   session,
@@ -7738,8 +11316,57 @@ async function createAcceptedOpenAnswerCheck(
   return (await acceptedCheck.json()).value.acceptedOpenAnswerCheck;
 }
 
+async function createAcceptedQuickCheck(
+  baseUrl,
+  session,
+  programId,
+  {
+    answerKeyOptionIndex = 0,
+    options = ["Closed under addition", "Only finite dimension"],
+    prompt = "Which property is required for a vector space?",
+    title = "Closure check",
+  } = {},
+) {
+  const candidate = await createQuickCheckCandidate(baseUrl, session, programId, {
+    answerKeyOptionIndex,
+    checkKind: "single_select_quick_check",
+    options,
+    prompt,
+    title,
+  });
+  const candidateId = (await candidate.json()).value.quickCheckCandidate.candidateId;
+  const acceptedQuickCheck = await acceptQuickCheckCandidate(baseUrl, session, candidateId, {});
+  return (await acceptedQuickCheck.json()).value.acceptedQuickCheck;
+}
+
 async function submitOpenAnswerAttempt(baseUrl, session, programId, body, idempotencyKey) {
   return fetch(`${baseUrl}/programs/${programId}/open-answer-attempts`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+      "x-agonara-idempotency-key": idempotencyKey,
+    },
+    method: "POST",
+  });
+}
+
+async function submitQuickCheckAttempt(baseUrl, session, programId, body, idempotencyKey) {
+  return fetch(`${baseUrl}/programs/${programId}/quick-check-attempts`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+      "x-agonara-idempotency-key": idempotencyKey,
+    },
+    method: "POST",
+  });
+}
+
+async function submitReadinessCheckAttempt(baseUrl, session, programId, body, idempotencyKey) {
+  return fetch(`${baseUrl}/programs/${programId}/readiness-check-attempts`, {
     body: JSON.stringify(body),
     headers: {
       cookie: session.cookie,
@@ -7777,6 +11404,22 @@ async function listOpenAnswerAttempts(baseUrl, session, programId, query = "") {
   return { body: await response.json(), statusCode: response.status };
 }
 
+async function listQuickCheckAttempts(baseUrl, session, programId, query = "") {
+  const separator = query ? "?" : "";
+  const response = await fetch(`${baseUrl}/programs/${programId}/quick-check-attempts${separator}${query}`, {
+    headers: { cookie: session.cookie },
+  });
+  return { body: await response.json(), statusCode: response.status };
+}
+
+async function listReadinessCheckAttempts(baseUrl, session, programId, query = "") {
+  const separator = query ? "?" : "";
+  const response = await fetch(`${baseUrl}/programs/${programId}/readiness-check-attempts${separator}${query}`, {
+    headers: { cookie: session.cookie },
+  });
+  return { body: await response.json(), statusCode: response.status };
+}
+
 function openAnswerAttemptResponseProjection(body) {
   const attempt = body.value?.attempt;
   return {
@@ -7806,6 +11449,199 @@ function openAnswerAttemptListProjection(body) {
     })),
     hasNextCursor: typeof body.value?.nextCursor === "string",
   };
+}
+
+function quickCheckAttemptResponseProjection(body) {
+  const attempt = body.value?.quickCheckAttempt;
+  return {
+    status: body.status,
+    attemptId: attempt?.attemptId,
+    programId: attempt?.programId,
+    studentIdentityId: attempt?.studentIdentityId,
+    checkRevisionId: attempt?.checkRevisionId,
+    selectedOptionId: attempt?.selectedOptionId,
+    matched: attempt?.matched,
+  };
+}
+
+function quickCheckAttemptListProjection(body) {
+  return {
+    status: body.status,
+    attempts: (body.value?.quickCheckAttempts ?? []).map($0 => ({
+      attemptId: $0.attemptId,
+      programId: $0.programId,
+      studentIdentityId: $0.studentIdentityId,
+      checkRevisionId: $0.checkRevisionId,
+      selectedOptionId: $0.selectedOptionId,
+      matched: $0.matched,
+    })),
+    hasNextCursor: typeof body.value?.nextCursor === "string",
+  };
+}
+
+function readinessCandidateListProjection(body, statusCode) {
+  return {
+    statusCode,
+    statuses: body.value?.readinessCheckCandidates?.map($0 => $0.status) ?? [],
+    titles: body.value?.readinessCheckCandidates?.map($0 => $0.title) ?? [],
+  };
+}
+
+function readinessCurationProjection(body, statusCode) {
+  const readinessCheck = body.value?.acceptedReadinessCheck;
+  return {
+    requirementTargets: readinessCheck?.requirements?.map($0 => [
+      $0.targetKind,
+      $0.targetId,
+      $0.requiredLevel,
+    ]),
+    statusCode,
+    title: readinessCheck?.title,
+  };
+}
+
+function readinessDeliveryListProjection(body, statusCode) {
+  return {
+    checks: body.value?.readinessChecks?.map($0 => ({
+      requirementTargets: $0.requirements.map(requirement => [
+        requirement.targetKind,
+        requirement.targetId,
+        requirement.requiredLevel,
+      ]),
+      title: $0.title,
+    })) ?? [],
+    statusCode,
+  };
+}
+
+function readinessAttemptProjection(body, statusCode) {
+  const attempt = body.value?.readinessCheckAttempt;
+  return {
+    result: attempt?.result,
+    status: body.status,
+    statusCode,
+  };
+}
+
+function readinessAttemptListProjection(body, statusCode) {
+  return {
+    attempts: body.value?.readinessCheckAttempts?.map($0 => [$0.attemptId, $0.result]) ?? [],
+    status: body.status,
+    statusCode,
+  };
+}
+
+function learnerStateTargetLinkResponseProjection(response) {
+  const link = response.body.value?.learnerStateTargetLink;
+  return {
+    status: response.body.status,
+    statusCode: response.statusCode,
+    targetKind: link?.targetKind,
+    evidenceOwnerKind: link?.evidenceOwnerKind,
+  };
+}
+
+function learnerStateTargetLinkListProjection(response) {
+  return {
+    status: response.body.status,
+    statusCode: response.statusCode,
+    linkCount: response.body.value?.learnerStateTargetLinks.length,
+  };
+}
+
+function learnerStateProgramSummaryProjection(response) {
+  const learnerState = response.body.value?.learnerState;
+  return {
+    status: response.body.status,
+    statusCode: response.statusCode,
+    level: learnerState?.level,
+    topicLevels: learnerState?.topics.map($0 => $0.level),
+    weakAreaCount: learnerState?.weakAreas.length,
+  };
+}
+
+function learnerStateTargetDetailProjection(response) {
+  const target = response.body.value?.learnerStateTarget;
+  return {
+    status: response.body.status,
+    statusCode: response.statusCode,
+    targetKind: target?.targetKind,
+    level: target?.level,
+    evidenceKinds: target?.evidence.map($0 => $0.sourceKind),
+    evidenceSignals: target?.evidence.map($0 => $0.signal),
+  };
+}
+
+function containsLearnerStateProtectedHttpDetail(serialized) {
+  return [
+    "answerKey",
+    "answer_key",
+    "acceptedFromCandidateId",
+    "candidateId",
+    "createdByIdentityId",
+    "curator rationale",
+    "idempotency",
+    "learner-state-quick-key",
+    "session-1",
+    "csrf-token",
+    "cookie",
+    "authorization",
+    "raw prompt",
+    "raw model",
+    "evaluator diagnostics",
+    "select ",
+    "stack",
+    "postgres://",
+    "/tmp/",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsQuickCheckAttemptLeaks(serialized) {
+  return [
+    "answerKey",
+    "answer_key",
+    "acceptedFromCandidateId",
+    "candidateId",
+    "correct",
+    "idempotency",
+    "quick-attempt-key",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsReadinessStudentHttpLeaks(serialized) {
+  return [
+    "acceptedByIdentityId",
+    "acceptedFromCandidateId",
+    "answerKey",
+    "candidateId",
+    "correct",
+    "csrf",
+    "Curator-only rationale",
+    "idempotency",
+    "readiness-attempt-key",
+    "readiness-quick-key",
+    "rationale",
+    "session-",
+    "sourceIds",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsReadinessFaultLeaks(serialized) {
+  return [
+    "authorization",
+    "cookie",
+    "csrf-token-1",
+    "postgres://db",
+    "provider diagnostics",
+    "raw model",
+    "raw prompt",
+    "readiness-fault-key",
+    "select ",
+    "session-1",
+    "sql",
+    "stack",
+    "/tmp/db.sqlite",
+  ].some($0 => serialized.includes($0));
 }
 
 function openAnswerAttemptListCursorProjection(body) {
@@ -7998,7 +11834,7 @@ function adjacentAttemptSubmissionState(database) {
   };
 }
 
-async function listenWithIdentity({ ids = defaultIds() } = {}) {
+async function listenWithIdentity({ ids = defaultIds(), log = () => {} } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
   const server = createServer({
@@ -8008,7 +11844,7 @@ async function listenWithIdentity({ ids = defaultIds() } = {}) {
       generateId: makeIdGenerator(ids),
       now: () => new Date("2026-05-27T10:00:00.000Z"),
     }),
-    log: () => {},
+    log,
   });
   const baseUrl = await listen(server);
   return {
@@ -8020,7 +11856,7 @@ async function listenWithIdentity({ ids = defaultIds() } = {}) {
   };
 }
 
-async function listenWithIdentityAndProgram({ ids = defaultIds() } = {}) {
+async function listenWithIdentityAndProgram({ ids = defaultIds(), log = () => {} } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
   const now = () => new Date("2026-05-27T10:00:00.000Z");
@@ -8037,7 +11873,7 @@ async function listenWithIdentityAndProgram({ ids = defaultIds() } = {}) {
       generateId,
       now,
     }),
-    log: () => {},
+    log,
   });
   const baseUrl = await listen(server);
   return {
@@ -8053,6 +11889,7 @@ async function listenWithIdentityAndProgram({ ids = defaultIds() } = {}) {
 async function listenWithIdentityProgramAndCorpus({
   corpusCommandsOverride = null,
   ids = defaultIds(),
+  log = () => {},
 } = {}) {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -8077,7 +11914,7 @@ async function listenWithIdentityProgramAndCorpus({
       getEffectiveParticipation: programCommands.getEffectiveParticipation,
       now,
     }),
-    log: () => {},
+    log,
   });
   const baseUrl = await listen(server);
   return {
@@ -8092,6 +11929,7 @@ async function listenWithIdentityProgramAndCorpus({
 
 async function listenWithIdentityProgramCorpusAndStudentWorkspace({
   ids = defaultIds(),
+  log = () => {},
   studentWorkspaceCommandsOverride = null,
 } = {}) {
   const database = openIdentityDatabase();
@@ -8124,7 +11962,7 @@ async function listenWithIdentityProgramCorpusAndStudentWorkspace({
       now,
     }),
     studentWorkspaceCommands,
-    log: () => {},
+    log,
   });
   const baseUrl = await listen(server);
   return {
@@ -8135,6 +11973,57 @@ async function listenWithIdentityProgramCorpusAndStudentWorkspace({
     },
     database,
     studentWorkspaceCommands,
+  };
+}
+
+async function listenWithIdentityProgramCorpusAndCuratorWorkspace({
+  ids = defaultIds(),
+  llmSuggestionPolicies = [makeHttpLlmSuggestionPolicy()],
+  llmSuggestionProviderAdapters = [makeHttpLlmSuggestionProviderAdapter()],
+  log = () => {},
+} = {}) {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-05-27T10:00:00.000Z");
+  const generateId = makeIdGenerator(ids);
+  const programCommands = createProgramCommands({
+    database,
+    generateId,
+    now,
+  });
+  const corpusCommands = createCorpusCommands({
+    database,
+    generateId,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    now,
+  });
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands,
+    corpusCommands,
+    curatorWorkspaceCommands: createCuratorWorkspaceCommands({
+      corpusCommands,
+      database,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+      llmSuggestionPolicies,
+      llmSuggestionProviderAdapters,
+      now,
+    }),
+    log,
+  });
+  const baseUrl = await listen(server);
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    database,
   };
 }
 
@@ -8161,6 +12050,172 @@ function acceptedCorpusListProjection(body, statusCode) {
     titles: body.value?.acceptedCorpus?.map($0 => $0.title) ?? [],
     ...(body.value?.nextCursor ? { hasNextCursor: typeof body.value.nextCursor === "string" } : {}),
   };
+}
+
+function navigationCandidateListProjection(body, statusCode) {
+  return {
+    statusCode,
+    titles: body.value?.navigationCandidates?.map($0 => $0.title) ?? [],
+    ...(body.value?.nextCursor ? { hasNextCursor: typeof body.value.nextCursor === "string" } : {}),
+  };
+}
+
+function navigationSummaryProjection(body, statusCode) {
+  return {
+    statusCode,
+    topics: body.value?.navigation?.topics.map($0 => $0.title) ?? [],
+    ungroupedConcepts: body.value?.navigation?.ungroupedConcepts.map($0 => $0.title) ?? [],
+    ungroupedMaterials: body.value?.navigation?.ungroupedMaterials.map($0 => $0.title) ?? [],
+  };
+}
+
+function navigationNodeProjection(body, statusCode) {
+  return {
+    incomingKinds: body.value?.navigationNode?.relationships.incoming.map($0 => $0.relationshipKind) ?? [],
+    outgoingKinds: body.value?.navigationNode?.relationships.outgoing.map($0 => $0.relationshipKind) ?? [],
+    statusCode,
+    title: body.value?.navigationNode?.title,
+  };
+}
+
+function containsNavigationForbiddenHttpDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "sourceids",
+    "acceptedfromcandidateid",
+    "acceptedbyidentityid",
+    "acceptedat",
+    "rationale",
+    "candidateid",
+    "createdbyidentityid",
+    "relationshipdrafts",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "select ",
+    "stack",
+    "/tmp",
+    "postgres://",
+    "database-url",
+  ].some($0 => serialized.includes($0));
+}
+
+function coverageGapReportProjection(response) {
+  const report = response.body.value?.report;
+  return {
+    gaps: report?.gaps.map($0 => [$0.severity, $0.gapKind, $0.targetKind, $0.targetTitle, $0.status]) ?? [],
+    scopeId: report?.scopeId,
+    scopeKind: report?.scopeKind,
+    status: response.body.status,
+    statusCode: response.statusCode,
+  };
+}
+
+function containsCoverageGapProtectedHttpDetail(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "answerkey",
+    "acceptedfromcandidateid",
+    "acceptedbyidentityid",
+    "candidateid",
+    "createdbyidentityid",
+    "rationale",
+    "idempotency",
+    "selectedoptionid",
+    "submittedanswer",
+    "feedback",
+    "coverage-curator@example.test",
+    "session",
+    "csrf",
+    "cookie",
+    "authorization",
+    "raw prompt",
+    "raw model",
+    "provider",
+    "select ",
+    "stack",
+    "/tmp",
+    "postgres://",
+    "database-url",
+  ].some($0 => serialized.includes($0));
+}
+
+function llmSuggestionListProjection(response) {
+  return {
+    nextCursor: response.body.value?.nextCursor,
+    status: response.body.status,
+    statusCode: response.statusCode,
+    suggestions: response.body.value?.suggestions.map($0 => [
+      $0.status,
+      $0.suggestionKind,
+      $0.title,
+    ]) ?? [],
+  };
+}
+
+function llmSuggestionDetailProjection(response) {
+  const suggestion = response.body.value?.suggestion;
+  return {
+    containsForbiddenDetail: containsLlmSuggestionHttpLeaks(response.body),
+    status: response.body.status,
+    statusCode: response.statusCode,
+    suggestion: suggestion
+      ? [
+          suggestion.status,
+          suggestion.suggestionKind,
+          suggestion.title,
+        ]
+      : null,
+  };
+}
+
+function llmAcceptedSuggestionProjection(response) {
+  return {
+    candidateKind: response.body.value?.materializedCandidate.candidateKind,
+    status: response.body.status,
+    suggestionStatus: response.body.value?.suggestion.status,
+  };
+}
+
+function llmRejectedSuggestionProjection(response) {
+  return {
+    status: response.body.status,
+    suggestionStatus: response.body.value?.suggestion.status,
+  };
+}
+
+function projectHttpAcceptedCorpusCounts(database) {
+  return {
+    acceptedAssessmentCriteria: listAcceptedAssessmentCriterionEntityRecords(database).length,
+    acceptedCorpus: listAcceptedCorpusEntityRecords(database).length,
+    acceptedOpenAnswerChecks: listAcceptedOpenAnswerCheckEntityRecords(database).length,
+    acceptedQuickChecks: listAcceptedQuickCheckEntityRecords(database).length,
+  };
+}
+
+function containsLlmSuggestionHttpLeaks(values) {
+  const serialized = JSON.stringify(values).toLowerCase();
+  return [
+    "acceptedbyidentityid",
+    "acceptedfromcandidateid",
+    "answerkeyoptionid",
+    "authorization",
+    "cookie",
+    "csrf",
+    "database-url",
+    "idempotency",
+    "postgres://",
+    "provider diagnostics",
+    "raw model",
+    "raw prompt",
+    "secret",
+    "select *",
+    "session-",
+    "stack",
+    "submitted",
+    "/tmp",
+  ].some($0 => serialized.includes($0));
 }
 
 function assessmentCriterionCandidateProjection(body) {
@@ -8204,6 +12259,25 @@ function openAnswerCheckCandidateListProjection(body) {
   return body.value?.openAnswerCheckCandidates?.map($0 => $0.title) ?? [];
 }
 
+function quickCheckCandidateProjection(body) {
+  const candidate = body.value?.quickCheckCandidate;
+  const answerKeyOption = candidate?.options?.find($0 => $0.optionId === candidate.answerKeyOptionId);
+  return {
+    answerKeyText: answerKeyOption?.text,
+    checkKind: candidate?.checkKind,
+    optionTexts: candidate?.options?.map($0 => $0.text),
+    programId: candidate?.programId,
+    prompt: candidate?.prompt,
+    sourceIds: candidate?.sourceIds,
+    status: candidate?.status,
+    title: candidate?.title,
+  };
+}
+
+function quickCheckCandidateListProjection(body) {
+  return body.value?.quickCheckCandidates?.map($0 => $0.title) ?? [];
+}
+
 function acceptedOpenAnswerCheckProjection(body) {
   const check = body.value?.acceptedOpenAnswerCheck;
   return {
@@ -8212,6 +12286,48 @@ function acceptedOpenAnswerCheckProjection(body) {
     programId: check?.programId,
     title: check?.title,
   };
+}
+
+function acceptedQuickCheckForCurationProjection(body) {
+  const quickCheck = body.value?.acceptedQuickCheck;
+  const answerKeyOption = quickCheck?.options?.find($0 => $0.optionId === quickCheck.answerKeyOptionId);
+  return {
+    acceptedFromCandidateId: quickCheck?.acceptedFromCandidateId,
+    answerKeyText: answerKeyOption?.text,
+    optionTexts: quickCheck?.options?.map($0 => $0.text),
+    programId: quickCheck?.programId,
+    prompt: quickCheck?.prompt,
+    title: quickCheck?.title,
+  };
+}
+
+function quickCheckDeliveryProjection(body) {
+  const delivery = body.value?.quickCheckDelivery;
+  return {
+    checkKind: delivery?.checkKind,
+    optionTexts: delivery?.options?.map($0 => $0.text),
+    programId: delivery?.programId,
+    prompt: delivery?.prompt,
+    title: delivery?.title,
+  };
+}
+
+function quickCheckDeliveryListProjection(body) {
+  return body.value?.quickCheckDeliveries?.map($0 => $0.title) ?? [];
+}
+
+function containsQuickCheckStudentDeliveryLeaks(serialized) {
+  return [
+    "answerKey",
+    "answer_key",
+    "acceptedFromCandidateId",
+    "candidateId",
+    "acceptedByIdentityId",
+    "acceptedAt",
+    "rationale",
+    "correct",
+    "idempotency",
+  ].some($0 => serialized.includes($0));
 }
 
 function acceptedOpenAnswerCheckListProjection(body) {
@@ -8246,6 +12362,25 @@ function listen(server) {
       server.off("error", reject);
       const address = server.address();
       resolve(`http://127.0.0.1:${address.port}`);
+    });
+  });
+}
+
+function baseUrlForStartedServer(server) {
+  return new Promise((resolve, reject) => {
+    const resolveAddress = () => {
+      const address = server.address();
+      resolve(`http://127.0.0.1:${address.port}`);
+    };
+    server.once("error", reject);
+    if (server.listening) {
+      server.off("error", reject);
+      resolveAddress();
+      return;
+    }
+    server.once("listening", () => {
+      server.off("error", reject);
+      resolveAddress();
     });
   });
 }

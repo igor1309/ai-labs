@@ -386,6 +386,104 @@ test("acceptance_shouldExerciseProgramMembershipApi_onHttpInstance", async () =>
   }
 });
 
+test("acceptance_shouldExerciseControlledProgramMembershipLifecycle_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const admin = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, admin, {
+        displayName: "Program Student",
+        login: "membership-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      const policy = await fetchJson(`${baseUrl}/programs/${programId}/admission-policy`, {
+        body: JSON.stringify({ admissionPolicy: "invitation_only" }),
+        headers: jsonHeaders({ cookie: admin.cookie, csrfToken: admin.body.value.csrfToken }),
+        method: "PATCH",
+      });
+      const invited = await postJson(
+        `${baseUrl}/programs/${programId}/invitations`,
+        { participationKind: "student", targetIdentityId: student.body.value.identity.id },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const invitationId = invited.body.value.invitation.invitationId;
+      const accepted = await postJson(
+        `${baseUrl}/program-invitations/${invitationId}/acceptance`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const removed = await deleteJson(
+        `${baseUrl}/programs/${programId}/participants/student/${student.body.value.identity.id}`,
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const recovered = await postJson(
+        `${baseUrl}/admin/program-memberships/recovery`,
+        {
+          participationKind: "student",
+          programId,
+          recoveryReason: "repair access",
+          targetIdentityId: student.body.value.identity.id,
+        },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const revoked = await postJson(
+        `${baseUrl}/admin/program-memberships/revocation`,
+        {
+          participationKind: "student",
+          programId,
+          revocationReason: "invalid operational state",
+          targetIdentityId: student.body.value.identity.id,
+        },
+        { cookie: admin.cookie, csrfToken: admin.body.value.csrfToken },
+      );
+      const events = await getJson(`${baseUrl}/programs/${programId}/membership-events`, {
+        cookie: admin.cookie,
+      });
+
+      assert.deepEqual(
+        {
+          accepted: accepted.body.value.membership.status,
+          eventTypes: events.body.value.events.map($0 => $0.eventType).sort(),
+          policy: policy.body.value.program.admissionPolicy,
+          recovered: recovered.body.value.membership.status,
+          removed: removed.body.value.membership.status,
+          revoked: revoked.body.value.membership.status,
+        },
+        {
+          accepted: "active",
+          eventTypes: [
+            "initial_curator_membership_created",
+            "membership_exceptionally_recovered",
+            "membership_exceptionally_revoked",
+            "program_admission_policy_changed",
+            "student_invitation_created",
+            "student_invitation_accepted",
+            "student_membership_joined",
+            "student_membership_removed",
+          ].sort(),
+          policy: "invitation_only",
+          recovered: "active",
+          removed: "removed",
+          revoked: "removed",
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 
@@ -627,6 +725,393 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
   }
 });
 
+test("acceptance_shouldExerciseNavigationApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "navigation-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { description: "Foundations", title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        { candidateKind: "topic", title: "Vector spaces" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topicAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topic = topicAccepted.body.value.navigationChange.acceptedCorpus;
+      const conceptCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        {
+          candidateKind: "concept",
+          relationshipDrafts: [
+            {
+              relationshipKind: "topic_includes_concept",
+              fromEntityId: topic.entityId,
+              toCandidateRef: "self",
+            },
+          ],
+          title: "Basis",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const conceptAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${conceptCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const concept = conceptAccepted.body.value.navigationChange.acceptedCorpus;
+      const materialCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        {
+          candidateKind: "material_reference",
+          locator: "https://example.test/basis",
+          materialReferenceKind: "article",
+          relationshipDrafts: [
+            {
+              relationshipKind: "concept_uses_material",
+              fromEntityId: concept.entityId,
+              toCandidateRef: "self",
+            },
+          ],
+          title: "Basis reading",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const materialAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${materialCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const candidateList = await getJson(`${baseUrl}/programs/${programId}/navigation-candidates?status=accepted`, {
+        cookie: bootstrap.cookie,
+      });
+      const navigation = await getJson(`${baseUrl}/programs/${programId}/navigation`, {
+        cookie: student.cookie,
+      });
+      const conceptDetail = await getJson(`${baseUrl}/navigation/entities/${concept.entityId}`, {
+        cookie: student.cookie,
+      });
+      const historicalRevision = await getJson(`${baseUrl}/navigation/revisions/${topic.revisionId}`, {
+        cookie: student.cookie,
+      });
+      const serializedStudentReads = JSON.stringify([navigation.body, conceptDetail.body, historicalRevision.body]);
+
+      assert.deepEqual(
+        {
+          candidateTitles: candidateList.body.value.navigationCandidates.map($0 => $0.title),
+          conceptIncomingKinds: conceptDetail.body.value.navigationNode.relationships.incoming.map($0 => $0.relationshipKind),
+          conceptOutgoingKinds: conceptDetail.body.value.navigationNode.relationships.outgoing.map($0 => $0.relationshipKind),
+          historicalTitle: historicalRevision.body.value.navigationRevision.title,
+          httpStatusCodes: {
+            candidateList: candidateList.statusCode,
+            conceptAccepted: conceptAccepted.statusCode,
+            conceptDetail: conceptDetail.statusCode,
+            created: created.statusCode,
+            historicalRevision: historicalRevision.statusCode,
+            materialAccepted: materialAccepted.statusCode,
+            materialCandidate: materialCandidate.statusCode,
+            navigation: navigation.statusCode,
+            topicAccepted: topicAccepted.statusCode,
+            topicCandidate: topicCandidate.statusCode,
+          },
+          leaksCandidateMetadata: [
+            "acceptedFromCandidateId",
+            "sourceIds",
+            "acceptedByIdentityId",
+            "acceptedAt",
+            "relationshipDrafts",
+          ].some($0 => serializedStudentReads.includes($0)),
+          materialKind: materialAccepted.body.value.navigationChange.acceptedCorpus.acceptedKind,
+          topicTitles: navigation.body.value.navigation.topics.map($0 => $0.title),
+        },
+        {
+          candidateTitles: ["Vector spaces", "Basis", "Basis reading"],
+          conceptIncomingKinds: ["topic_includes_concept"],
+          conceptOutgoingKinds: ["concept_uses_material"],
+          historicalTitle: "Vector spaces",
+          httpStatusCodes: {
+            candidateList: 200,
+            conceptAccepted: 200,
+            conceptDetail: 200,
+            created: 200,
+            historicalRevision: 200,
+            materialAccepted: 200,
+            materialCandidate: 200,
+            navigation: 200,
+            topicAccepted: 200,
+            topicCandidate: 200,
+          },
+          leaksCandidateMetadata: false,
+          materialKind: "material_reference",
+          topicTitles: ["Vector spaces"],
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
+test("acceptance_shouldExerciseLearnerStateApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "learner-state-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        { candidateKind: "topic", title: "Vector spaces" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topicAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const topic = topicAccepted.body.value.navigationChange.acceptedCorpus;
+      const quickCheckCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/quick-checks/candidates`,
+        {
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed under addition", "Only finite dimension"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const quickCheckAccepted = await postJson(
+        `${baseUrl}/quick-checks/candidates/${quickCheckCandidate.body.value.quickCheckCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const quickCheck = quickCheckAccepted.body.value.acceptedQuickCheck;
+      const link = await postJson(
+        `${baseUrl}/programs/${programId}/learner-state-target-links`,
+        {
+          evidenceOwnerEntityId: quickCheck.entityId,
+          evidenceOwnerKind: "accepted_quick_check",
+          targetId: topic.entityId,
+          targetKind: "topic",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJsonWithIdempotency(
+        `${baseUrl}/programs/${programId}/quick-check-attempts`,
+        {
+          checkRevisionId: quickCheck.revisionId,
+          selectedOptionId: quickCheck.answerKeyOptionId,
+        },
+        "learner-state-http-attempt",
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const summary = await getJson(`${baseUrl}/programs/${programId}/learner-state`, {
+        cookie: student.cookie,
+      });
+      const detail = await getJson(`${baseUrl}/learner-state/targets/topic/${topic.entityId}`, {
+        cookie: student.cookie,
+      });
+      const curatorDetail = await getJson(`${baseUrl}/learner-state/targets/topic/${topic.entityId}`, {
+        cookie: bootstrap.cookie,
+      });
+      const serialized = JSON.stringify([summary.body, detail.body]);
+
+      assert.deepEqual(
+        {
+          detailEvidenceKinds: detail.body.value?.learnerStateTarget.evidence.map($0 => $0.sourceKind),
+          detailLevel: detail.body.value?.learnerStateTarget.level,
+          httpStatusCodes: {
+            curatorDetail: curatorDetail.statusCode,
+            detail: detail.statusCode,
+            link: link.statusCode,
+            summary: summary.statusCode,
+          },
+          linkTargetKind: link.body.value?.learnerStateTargetLink.targetKind,
+          redaction: [
+            "answerKey",
+            "candidateId",
+            "acceptedFromCandidateId",
+            "createdByIdentityId",
+            "learner-state-http-attempt",
+            "csrf",
+            "session",
+            "raw prompt",
+            "raw model",
+          ].some($0 => serialized.includes($0)),
+          summaryLevel: summary.body.value?.learnerState.level,
+          topicLevels: summary.body.value?.learnerState.topics.map($0 => $0.level),
+          unauthorizedDetail: curatorDetail.body,
+        },
+        {
+          detailEvidenceKinds: ["quick_check_attempt"],
+          detailLevel: "on_track",
+          httpStatusCodes: {
+            curatorDetail: 404,
+            detail: 200,
+            link: 200,
+            summary: 200,
+          },
+          linkTargetKind: "topic",
+          redaction: false,
+          summaryLevel: "on_track",
+          topicLevels: ["on_track"],
+          unauthorizedDetail: { status: "rejected", reason: "learner_state_target_not_found" },
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
+test("acceptance_shouldExerciseCuratorCoverageGapsApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const curator = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Curator",
+        login: "coverage-curator@example.test",
+      });
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "coverage-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        { candidateKind: "topic", title: "Vector spaces" },
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const topicAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const quickCheckCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/quick-checks/candidates`,
+        {
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed under addition", "Only finite dimension"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        },
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const quickCheckAccepted = await postJson(
+        `${baseUrl}/quick-checks/candidates/${quickCheckCandidate.body.value.quickCheckCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const report = await getJson(
+        `${baseUrl}/programs/${programId}/coverage-gaps?minimumSeverity=warning&gapKind=topic_without_checks&gapKind=check_without_target_links`,
+        { cookie: curator.cookie },
+      );
+      const studentRead = await getJson(`${baseUrl}/programs/${programId}/coverage-gaps`, {
+        cookie: student.cookie,
+      });
+      const serialized = JSON.stringify(report.body);
+
+      assert.deepEqual(
+        {
+          acceptedKinds: [
+            topicAccepted.body.value.navigationChange.acceptedCorpus.acceptedKind,
+            quickCheckAccepted.body.value.acceptedQuickCheck.checkKind,
+          ],
+          gapKinds: report.body.value?.report.gaps.map($0 => $0.gapKind),
+          redaction: [
+            "answerKey",
+            "candidateId",
+            "acceptedFromCandidateId",
+            "acceptedByIdentityId",
+            "coverage-curator@example.test",
+            "csrf",
+            "session",
+            "raw prompt",
+            "raw model",
+          ].some($0 => serialized.includes($0)),
+          reportStatus: report.statusCode,
+          reportTargetTitles: report.body.value?.report.gaps.map($0 => $0.targetTitle),
+          studentRead: { body: studentRead.body, statusCode: studentRead.statusCode },
+        },
+        {
+          acceptedKinds: ["topic", "single_select_quick_check"],
+          gapKinds: ["topic_without_checks", "check_without_target_links"],
+          redaction: false,
+          reportStatus: 200,
+          reportTargetTitles: ["Vector spaces", "Closure check"],
+          studentRead: {
+            body: { status: "rejected", reason: "program_curator_required" },
+            statusCode: 403,
+          },
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 
@@ -791,6 +1276,119 @@ test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => 
   }
 });
 
+test("acceptance_shouldExerciseLlmCurationSuggestionsThroughHttp_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const createdProgram = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const programId = createdProgram.body.value.program.programId;
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        {
+          body: "Vector spaces body",
+          candidateKind: "topic",
+          title: "Vector spaces",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const generated = await postJson(
+        `${baseUrl}/programs/${programId}/llm-curation-suggestions`,
+        {
+          curatorInstruction: "Suggest one draft topic.",
+          idempotencyKey: "acceptance-llm-key-a",
+          maxSuggestions: 1,
+          suggestionPolicyId: "default-deterministic-policy",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const suggestionId = generated.body.value.suggestions[0].suggestionId;
+      const detail = await getJson(`${baseUrl}/llm-curation-suggestions/${suggestionId}`, {
+        cookie: bootstrap.cookie,
+      });
+      const accepted = await postJson(
+        `${baseUrl}/llm-curation-suggestions/${suggestionId}/acceptance`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const draftCandidates = await getJson(`${baseUrl}/programs/${programId}/navigation-candidates?status=draft`, {
+        cookie: bootstrap.cookie,
+      });
+      const acceptedCorpus = await getJson(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+        cookie: bootstrap.cookie,
+      });
+      const generatedForRejection = await postJson(
+        `${baseUrl}/programs/${programId}/llm-curation-suggestions`,
+        {
+          curatorInstruction: "Suggest another draft topic.",
+          idempotencyKey: "acceptance-llm-key-b",
+          maxSuggestions: 1,
+          suggestionPolicyId: "default-deterministic-policy",
+        },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const rejected = await postJson(
+        `${baseUrl}/llm-curation-suggestions/${generatedForRejection.body.value.suggestions[0].suggestionId}/rejection`,
+        {},
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const responseText = JSON.stringify({
+        accepted: accepted.body,
+        detail: detail.body,
+        generated: generated.body,
+        rejected: rejected.body,
+      }).toLowerCase();
+
+      assert.deepEqual(
+        {
+          acceptedCorpusTitles: acceptedCorpus.body.value.acceptedCorpus.map($0 => $0.title),
+          acceptedSuggestionStatus: accepted.body.value.suggestion.status,
+          detailSuggestionKind: detail.body.value.suggestion.suggestionKind,
+          draftCandidateTitles: draftCandidates.body.value.navigationCandidates.map($0 => $0.title),
+          generatedStatus: generated.statusCode,
+          leaksProtectedArtifact: [
+            "authorization",
+            "cookie",
+            "csrf",
+            "raw prompt",
+            "raw model",
+            "provider diagnostics",
+            "postgres://",
+            "/tmp",
+          ].some($0 => responseText.includes($0)),
+          rejectedSuggestionStatus: rejected.body.value.suggestion.status,
+        },
+        {
+          acceptedCorpusTitles: ["Vector spaces"],
+          acceptedSuggestionStatus: "materialized",
+          detailSuggestionKind: "navigation_candidate",
+          draftCandidateTitles: ["Draft topic suggestion"],
+          generatedStatus: 200,
+          leaksProtectedArtifact: false,
+          rejectedSuggestionStatus: "rejected",
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldRateLimitLoginAndCorrelateHealthRequest_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 
@@ -918,6 +1516,17 @@ async function postJson(url, body, { cookie = null, csrfToken = null } = {}) {
   return await fetchJson(url, {
     body: JSON.stringify(body),
     headers: jsonHeaders({ cookie, csrfToken }),
+    method: "POST",
+  });
+}
+
+async function postJsonWithIdempotency(url, body, idempotencyKey, { cookie = null, csrfToken = null } = {}) {
+  return await fetchJson(url, {
+    body: JSON.stringify(body),
+    headers: {
+      ...jsonHeaders({ cookie, csrfToken }),
+      "x-agonara-idempotency-key": idempotencyKey,
+    },
     method: "POST",
   });
 }

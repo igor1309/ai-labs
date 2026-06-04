@@ -235,6 +235,256 @@ test("createProgramSourceRecord_shouldPersistAndListByProgram_onExistingPrograms
   }
 });
 
+test("updateProgramAdmissionPolicyRecord_shouldPersistInvitationOnlyPolicy_onExistingProgram", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const updated = storage.updateProgramAdmissionPolicyRecord(database, {
+      programId: "program-a",
+      admissionPolicy: "invitation_only",
+    });
+
+    assert.deepEqual(
+      {
+        updated,
+        fetched: storage.getProgramShellRecord(database, "program-a"),
+      },
+      {
+        updated: {
+          id: "program-a",
+          title: "Program program-a",
+          description: null,
+          admissionPolicy: "invitation_only",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-05-28T09:00:00.000Z",
+        },
+        fetched: {
+          id: "program-a",
+          title: "Program program-a",
+          description: null,
+          admissionPolicy: "invitation_only",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-05-28T09:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramInvitationRecord_shouldPersistAndListStudentInvitations_onExistingProgramAndIdentities", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+
+    assert.deepEqual(
+      {
+        created,
+        byProgram: storage.listProgramInvitationRecords(database, { programId: "program-a" }),
+        byTarget: storage.listProgramInvitationRecords(database, { targetIdentityId: "identity-b" }),
+      },
+      {
+        created: {
+          id: "invitation-a",
+          programId: "program-a",
+          targetIdentityId: "identity-b",
+          participationKind: "student",
+          status: "pending",
+          invitedByIdentityId: "identity-a",
+          createdAt: "2026-06-04T09:00:00.000Z",
+          updatedAt: "2026-06-04T09:00:00.000Z",
+          statusChangedByIdentityId: null,
+          statusChangedAt: null,
+        },
+        byProgram: [
+          {
+            id: "invitation-a",
+            programId: "program-a",
+            targetIdentityId: "identity-b",
+            participationKind: "student",
+            status: "pending",
+            invitedByIdentityId: "identity-a",
+            createdAt: "2026-06-04T09:00:00.000Z",
+            updatedAt: "2026-06-04T09:00:00.000Z",
+            statusChangedByIdentityId: null,
+            statusChangedAt: null,
+          },
+        ],
+        byTarget: [
+          {
+            id: "invitation-a",
+            programId: "program-a",
+            targetIdentityId: "identity-b",
+            participationKind: "student",
+            status: "pending",
+            invitedByIdentityId: "identity-a",
+            createdAt: "2026-06-04T09:00:00.000Z",
+            updatedAt: "2026-06-04T09:00:00.000Z",
+            statusChangedByIdentityId: null,
+            statusChangedAt: null,
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramInvitationRecord_shouldRejectDuplicatePendingScope_onExistingPendingInvitation", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+
+    assert.throws(
+      () =>
+        storage.createProgramInvitationRecord(
+          database,
+          makeProgramInvitation({ id: "invitation-b", programId: "program-a", targetIdentityId: "identity-b" }),
+        ),
+      error => error instanceof StorageInvariantError && error.reason === "invitation_conflict",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateProgramInvitationStatusRecord_shouldPersistStatusAttribution_onExistingInvitation", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+
+    const updated = storage.updateProgramInvitationStatusRecord(database, {
+      id: "invitation-a",
+      status: "accepted",
+      statusChangedByIdentityId: "identity-b",
+      statusChangedAt: "2026-06-04T10:00:00.000Z",
+      updatedAt: "2026-06-04T10:00:00.000Z",
+    });
+
+    assert.deepEqual(updated, {
+      id: "invitation-a",
+      programId: "program-a",
+      targetIdentityId: "identity-b",
+      participationKind: "student",
+      status: "accepted",
+      invitedByIdentityId: "identity-a",
+      createdAt: "2026-06-04T09:00:00.000Z",
+      updatedAt: "2026-06-04T10:00:00.000Z",
+      statusChangedByIdentityId: "identity-b",
+      statusChangedAt: "2026-06-04T10:00:00.000Z",
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("updateProgramInvitationStatusRecord_shouldRejectDuplicatePendingScope_onStatusChange", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({ id: "invitation-a", programId: "program-a", targetIdentityId: "identity-b" }),
+    );
+    storage.createProgramInvitationRecord(
+      database,
+      makeProgramInvitation({
+        id: "invitation-b",
+        programId: "program-a",
+        targetIdentityId: "identity-b",
+        status: "accepted",
+        statusChangedByIdentityId: "identity-b",
+        statusChangedAt: "2026-06-04T10:00:00.000Z",
+      }),
+    );
+
+    assert.throws(
+      () =>
+        storage.updateProgramInvitationStatusRecord(database, {
+          id: "invitation-b",
+          status: "pending",
+          statusChangedByIdentityId: "identity-a",
+          statusChangedAt: "2026-06-04T11:00:00.000Z",
+          updatedAt: "2026-06-04T11:00:00.000Z",
+        }),
+      error => error instanceof StorageInvariantError && error.reason === "invitation_conflict",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createProgramMembershipEventRecord_shouldPersistPolicyPathAndInvitationStatus_onMembershipEvent", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    createIdentity(database, makeIdentity("identity-b"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createProgramMembershipEventRecord(database, {
+      id: "membership-event-a",
+      eventType: "student_invitation_accepted",
+      actorIdentityId: "identity-b",
+      targetIdentityId: "identity-b",
+      programId: "program-a",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      resultingStatus: "active",
+      invitationStatus: "accepted",
+      occurredAt: "2026-06-04T10:00:00.000Z",
+      outcome: "accepted",
+    });
+
+    assert.deepEqual(created, {
+      id: "membership-event-a",
+      eventType: "student_invitation_accepted",
+      actorIdentityId: "identity-b",
+      targetIdentityId: "identity-b",
+      programId: "program-a",
+      participationKind: "student",
+      policyPath: "curator_invitation",
+      resultingStatus: "active",
+      invitationStatus: "accepted",
+      occurredAt: "2026-06-04T10:00:00.000Z",
+      outcome: "accepted",
+      reason: null,
+    });
+  } finally {
+    database.close();
+  }
+});
+
 test("createCorpusCandidateRecord_shouldPersistAndListByProgramAndStatus_onExistingProgramSources", () => {
   const database = makeInitializedDatabase();
 
@@ -379,6 +629,355 @@ test("createAssessmentCriterionCandidateRecord_shouldPersistAndListByProgramAndS
   }
 });
 
+test("llmCurationSuggestionStorage_shouldPersistDraftSuggestionsAndGenerationIdempotency_onExistingProgram", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createLlmCurationSuggestionRecord?.(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+    const generation = storage.createLlmCurationSuggestionGenerationRecord?.(
+      database,
+      {
+        id: "generation-a",
+        programId: "program-a",
+        idempotencyKey: "suggestion-key-a",
+        requestFingerprint: "fingerprint-a",
+        suggestionIds: ["suggestion-a"],
+        createdByIdentityId: "identity-a",
+        createdAt: "2026-06-04T12:00:00.000Z",
+      },
+    );
+
+    assert.deepEqual(
+      {
+        created,
+        generation,
+        listed: storage.listLlmCurationSuggestionRecords?.(database, { programId: "program-a" }),
+        foundGeneration: storage.getLlmCurationSuggestionGenerationRecord?.(database, {
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+        }),
+      },
+      {
+        created: makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+        generation: {
+          id: "generation-a",
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+          requestFingerprint: "fingerprint-a",
+          suggestionIds: ["suggestion-a"],
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-04T12:00:00.000Z",
+        },
+        listed: [makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" })],
+        foundGeneration: {
+          id: "generation-a",
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+          requestFingerprint: "fingerprint-a",
+          suggestionIds: ["suggestion-a"],
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-04T12:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("updateLlmCurationSuggestionStatus_shouldPersistTerminalReviewState_onExistingSuggestion", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    seedRestoreGovernance(database, { programId: "program-a" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-materialized", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-rejected", programId: "program-a" }),
+    );
+
+    const materialized = storage.materializeLlmCurationSuggestionRecord?.(database, {
+      suggestionId: "suggestion-materialized",
+      candidateKind: "navigation_candidate",
+      candidateId: "candidate-a",
+      materializedByIdentityId: "identity-a",
+      materializedAt: "2026-06-04T12:10:00.000Z",
+      updatedAt: "2026-06-04T12:10:00.000Z",
+    });
+    const rejected = storage.rejectLlmCurationSuggestionRecord?.(database, {
+      suggestionId: "suggestion-rejected",
+      rejectedByIdentityId: "identity-a",
+      rejectedAt: "2026-06-04T12:20:00.000Z",
+      updatedAt: "2026-06-04T12:20:00.000Z",
+    });
+
+    assert.deepEqual(
+      {
+        materialized: {
+          status: materialized.status,
+          materializedCandidateKind: materialized.materializedCandidateKind,
+          materializedCandidateId: materialized.materializedCandidateId,
+          materializedByIdentityId: materialized.materializedByIdentityId,
+          materializedAt: materialized.materializedAt,
+          updatedAt: materialized.updatedAt,
+        },
+        rejected: {
+          status: rejected.status,
+          rejectedByIdentityId: rejected.rejectedByIdentityId,
+          rejectedAt: rejected.rejectedAt,
+          updatedAt: rejected.updatedAt,
+        },
+      },
+      {
+        materialized: {
+          status: "materialized",
+          materializedCandidateKind: "navigation_candidate",
+          materializedCandidateId: "candidate-a",
+          materializedByIdentityId: "identity-a",
+          materializedAt: "2026-06-04T12:10:00.000Z",
+          updatedAt: "2026-06-04T12:10:00.000Z",
+        },
+        rejected: {
+          status: "rejected",
+          rejectedByIdentityId: "identity-a",
+          rejectedAt: "2026-06-04T12:20:00.000Z",
+          updatedAt: "2026-06-04T12:20:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("llmCurationSuggestionStorage_shouldRejectInvalidOriginAndMaterializedKind_onExistingSuggestion", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+
+    assert.deepEqual(
+      {
+        missingOriginIdentity: captureStorageInvariantReason(() =>
+          storage.createLlmCurationSuggestionRecord(
+            database,
+            {
+              ...makeLlmCurationSuggestion({ id: "suggestion-missing-origin", programId: "program-a" }),
+              origin: {
+                ...makeLlmCurationSuggestion({ id: "suggestion-missing-origin", programId: "program-a" }).origin,
+                generatedByIdentityId: "identity-missing",
+              },
+            },
+          ),
+        ),
+        materializedKindMismatch: captureStorageInvariantReason(() =>
+          storage.materializeLlmCurationSuggestionRecord(database, {
+            suggestionId: "suggestion-a",
+            candidateKind: "quick_check_candidate",
+            candidateId: "candidate-a",
+            materializedByIdentityId: "identity-a",
+            materializedAt: "2026-06-04T12:10:00.000Z",
+            updatedAt: "2026-06-04T12:10:00.000Z",
+          }),
+        ),
+      },
+      {
+        missingOriginIdentity: "identity_not_found",
+        materializedKindMismatch: "llm_curation_suggestion_materialized_candidate_kind_mismatch",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldPreserveLlmCurationSuggestions_onAcceptedBackup", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    seedRestoreGovernance(database, { programId: "program-a" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+    storage.materializeLlmCurationSuggestionRecord(database, {
+      suggestionId: "suggestion-a",
+      candidateKind: "navigation_candidate",
+      candidateId: "candidate-a",
+      materializedByIdentityId: "identity-a",
+      materializedAt: "2026-06-04T12:10:00.000Z",
+      updatedAt: "2026-06-04T12:10:00.000Z",
+    });
+    storage.createLlmCurationSuggestionGenerationRecord(
+      database,
+      {
+        id: "generation-a",
+        programId: "program-a",
+        idempotencyKey: "suggestion-key-a",
+        requestFingerprint: "fingerprint-a",
+        suggestionIds: ["suggestion-a"],
+        createdByIdentityId: "identity-a",
+        createdAt: "2026-06-04T12:00:00.000Z",
+      },
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    storage.restoreIdentityBackup(restored, backup);
+
+    assert.deepEqual(
+      {
+        suggestion: storage.getLlmCurationSuggestionRecord(restored, "suggestion-a"),
+        generation: storage.getLlmCurationSuggestionGenerationRecord(restored, {
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+        }),
+      },
+      {
+        suggestion: {
+          ...makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+          status: "materialized",
+          materializedCandidateKind: "navigation_candidate",
+          materializedCandidateId: "candidate-a",
+          materializedByIdentityId: "identity-a",
+          materializedAt: "2026-06-04T12:10:00.000Z",
+          updatedAt: "2026-06-04T12:10:00.000Z",
+        },
+        generation: {
+          id: "generation-a",
+          programId: "program-a",
+          idempotencyKey: "suggestion-key-a",
+          requestFingerprint: "fingerprint-a",
+          suggestionIds: ["suggestion-a"],
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-04T12:00:00.000Z",
+        },
+      },
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldRejectMalformedLlmCurationSuggestionGraph_onBackup", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    seedRestoreGovernance(database, { programId: "program-a" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({ id: "candidate-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionRecord(
+      database,
+      makeLlmCurationSuggestion({ id: "suggestion-a", programId: "program-a" }),
+    );
+    storage.createLlmCurationSuggestionGenerationRecord(
+      database,
+      {
+        id: "generation-a",
+        programId: "program-a",
+        idempotencyKey: "suggestion-key-a",
+        requestFingerprint: "fingerprint-a",
+        suggestionIds: ["suggestion-a"],
+        createdByIdentityId: "identity-a",
+        createdAt: "2026-06-04T12:00:00.000Z",
+      },
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    const cases = [
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestions: backup.llmCurationSuggestions.map($0 => ({
+            ...$0,
+            status: "accepted",
+          })),
+        },
+        reason: "llm_curation_suggestion_status_invalid",
+      },
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestions: backup.llmCurationSuggestions.map($0 => ({
+            ...$0,
+            origin: { ...$0.origin, rawPrompt: "raw prompt" },
+          })),
+        },
+        reason: "llm_curation_suggestion_raw_artifact_forbidden",
+      },
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestions: backup.llmCurationSuggestions.map($0 => ({
+            ...$0,
+            status: "materialized",
+            materializedCandidateKind: "navigation_candidate",
+            materializedCandidateId: "candidate-missing",
+            materializedByIdentityId: "identity-a",
+            materializedAt: "2026-06-04T12:10:00.000Z",
+          })),
+        },
+        reason: "llm_curation_suggestion_materialized_candidate_not_found",
+      },
+      {
+        backup: {
+          ...backup,
+          llmCurationSuggestionGenerations: [
+            ...backup.llmCurationSuggestionGenerations,
+            {
+              ...backup.llmCurationSuggestionGenerations[0],
+              id: "generation-b",
+            },
+          ],
+        },
+        reason: "llm_curation_suggestion_generation_idempotency_conflict",
+      },
+    ];
+
+    assert.deepEqual(
+      cases.map($0 => captureRestoreInvariantReason($0.backup)),
+      cases.map($0 => $0.reason),
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createAcceptedCorpusRecords_shouldPersistEntityAndCurrentRevisionLink_onExistingCandidate", () => {
   const database = makeInitializedDatabase();
 
@@ -437,6 +1036,293 @@ test("createAcceptedCorpusRecords_shouldPersistEntityAndCurrentRevisionLink_onEx
             currentRevisionId: "revision-a",
           },
         ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedCorpusRecords_shouldPersistNavigationKindsAndMaterialMetadata_onExistingCandidates", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+
+    for (const acceptedKind of ["topic", "concept", "definition", "principle", "material_reference"]) {
+      storage.createCorpusCandidateRecord(
+        database,
+        makeCorpusCandidate({
+          id: `candidate-${acceptedKind}`,
+          programId: "program-a",
+          sourceIds: ["source-a"],
+          status: "accepted",
+          candidateKind: acceptedKind,
+        }),
+      );
+      storage.createAcceptedCorpusEntityRecord(
+        database,
+        makeAcceptedCorpusEntity({
+          id: `entity-${acceptedKind}`,
+          programId: "program-a",
+          acceptedKind,
+          currentRevisionId: `revision-${acceptedKind}`,
+        }),
+      );
+      storage.createAcceptedCorpusRevisionRecord(
+        database,
+        makeAcceptedCorpusRevision({
+          id: `revision-${acceptedKind}`,
+          entityId: `entity-${acceptedKind}`,
+          programId: "program-a",
+          acceptedFromCandidateId: `candidate-${acceptedKind}`,
+          acceptedKind,
+          materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+          locator: acceptedKind === "material_reference" ? "https://example.test/material" : null,
+          citation: acceptedKind === "material_reference" ? "Example citation" : null,
+        }),
+      );
+    }
+
+    assert.deepEqual(
+      storage.listAcceptedCorpusRevisionRecords(database)
+        .map($0 => ({
+          acceptedKind: $0.acceptedKind,
+          materialReferenceKind: $0.materialReferenceKind ?? null,
+          locator: $0.locator ?? null,
+          citation: $0.citation ?? null,
+        }))
+        .sort((left, right) => left.acceptedKind.localeCompare(right.acceptedKind)),
+      [
+        { acceptedKind: "concept", materialReferenceKind: null, locator: null, citation: null },
+        { acceptedKind: "definition", materialReferenceKind: null, locator: null, citation: null },
+        {
+          acceptedKind: "material_reference",
+          materialReferenceKind: "article",
+          locator: "https://example.test/material",
+          citation: "Example citation",
+        },
+        { acceptedKind: "principle", materialReferenceKind: null, locator: null, citation: null },
+        { acceptedKind: "topic", materialReferenceKind: null, locator: null, citation: null },
+      ],
+    );
+    assert.deepEqual(
+      {
+        nonMaterialMetadata: captureStorageReason(() =>
+          storage.createAcceptedCorpusRevisionRecord(
+            database,
+            makeAcceptedCorpusRevision({
+              id: "revision-topic-invalid-material",
+              entityId: "entity-topic",
+              programId: "program-a",
+              acceptedFromCandidateId: "candidate-topic",
+              acceptedKind: "topic",
+              materialReferenceKind: "article",
+            }),
+          ),
+        ),
+        missingMaterialMetadata: captureStorageReason(() =>
+          storage.createAcceptedCorpusRevisionRecord(
+            database,
+            makeAcceptedCorpusRevision({
+              id: "revision-material-invalid",
+              entityId: "entity-material_reference",
+              programId: "program-a",
+              acceptedFromCandidateId: "candidate-material_reference",
+              acceptedKind: "material_reference",
+            }),
+          ),
+        ),
+      },
+      {
+        nonMaterialMetadata: "accepted_material_reference_invalid",
+        missingMaterialMetadata: "accepted_material_reference_invalid",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedNavigationRelationshipRecords_shouldPersistValidRelationshipsAndRejectWrongEndpointKinds_onAcceptedNavigationEntities", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "definition" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "principle" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "material_reference" });
+    storage.createCorpusCandidateRecord(
+      database,
+      makeCorpusCandidate({
+        id: "candidate-relationship",
+        programId: "program-a",
+        candidateKind: "relationship_update",
+        status: "accepted",
+      }),
+    );
+
+    const relationship = storage.createAcceptedNavigationRelationshipRecord(database, {
+      id: "relationship-topic-concept",
+      programId: "program-a",
+      relationshipKind: "topic_includes_concept",
+      fromEntityId: "entity-topic",
+      toEntityId: "entity-concept",
+      currentRevisionId: "relationship-revision-topic-concept",
+    });
+    const revision = storage.createAcceptedNavigationRelationshipRevisionRecord(
+      database,
+      makeAcceptedNavigationRelationshipRevision({
+        id: "relationship-revision-topic-concept",
+        relationshipId: "relationship-topic-concept",
+        relationshipKind: "topic_includes_concept",
+        fromEntityId: "entity-topic",
+        fromRevisionId: "revision-topic",
+        fromKind: "topic",
+        toEntityId: "entity-concept",
+        toRevisionId: "revision-concept",
+        toKind: "concept",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        relationship,
+        revision,
+        listed: storage.listAcceptedNavigationRelationshipRevisionRecords(database).map($0 => ({
+          relationshipKind: $0.relationshipKind,
+          fromKind: $0.fromKind,
+          toKind: $0.toKind,
+          sourceIds: $0.sourceIds,
+        })),
+        wrongEndpoint: captureStorageReason(() =>
+          storage.createAcceptedNavigationRelationshipRecord(database, {
+            id: "relationship-wrong",
+            programId: "program-a",
+            relationshipKind: "topic_includes_concept",
+            fromEntityId: "entity-concept",
+            toEntityId: "entity-topic",
+            currentRevisionId: "relationship-revision-wrong",
+          }),
+        ),
+      },
+      {
+        relationship: {
+          id: "relationship-topic-concept",
+          programId: "program-a",
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: "entity-topic",
+          toEntityId: "entity-concept",
+          currentRevisionId: "relationship-revision-topic-concept",
+        },
+        revision: {
+          id: "relationship-revision-topic-concept",
+          relationshipId: "relationship-topic-concept",
+          programId: "program-a",
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: "entity-topic",
+          fromRevisionId: "revision-topic",
+          fromKind: "topic",
+          toEntityId: "entity-concept",
+          toRevisionId: "revision-concept",
+          toKind: "concept",
+          label: "Relationship relationship-revision-topic-concept",
+          sourceIds: ["source-a"],
+          acceptedFromCandidateId: "candidate-relationship",
+          acceptedByIdentityId: "identity-a",
+          acceptedAt: "2026-06-03T10:00:00.000Z",
+        },
+        listed: [
+          {
+            relationshipKind: "topic_includes_concept",
+            fromKind: "topic",
+            toKind: "concept",
+            sourceIds: ["source-a"],
+          },
+        ],
+        wrongEndpoint: "navigation_relationship_endpoint_kind_mismatch",
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedNavigationRelationshipRecords_shouldRejectCrossProgramEndpointsAndPrerequisiteCycles_onAcceptedNavigationEntities", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-b" }));
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-a", programId: "program-a" }),
+    );
+    storage.createProgramSourceRecord(
+      database,
+      makeProgramSource({ id: "source-b", programId: "program-b" }),
+    );
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-a", programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-b", programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-c", programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-other", programId: "program-b" });
+
+    storage.createAcceptedNavigationRelationshipRecord(database, {
+      id: "relationship-a-b",
+      programId: "program-a",
+      relationshipKind: "concept_prerequisite",
+      fromEntityId: "entity-concept-a",
+      toEntityId: "entity-concept-b",
+      currentRevisionId: "relationship-revision-a-b",
+    });
+    storage.createAcceptedNavigationRelationshipRecord(database, {
+      id: "relationship-b-c",
+      programId: "program-a",
+      relationshipKind: "concept_prerequisite",
+      fromEntityId: "entity-concept-b",
+      toEntityId: "entity-concept-c",
+      currentRevisionId: "relationship-revision-b-c",
+    });
+
+    assert.deepEqual(
+      {
+        crossProgram: captureStorageReason(() =>
+          storage.createAcceptedNavigationRelationshipRecord(database, {
+            id: "relationship-cross-program",
+            programId: "program-a",
+            relationshipKind: "concept_prerequisite",
+            fromEntityId: "entity-concept-a",
+            toEntityId: "entity-concept-other",
+            currentRevisionId: "relationship-revision-cross-program",
+          }),
+        ),
+        cycle: captureStorageReason(() =>
+          storage.createAcceptedNavigationRelationshipRecord(database, {
+            id: "relationship-c-a",
+            programId: "program-a",
+            relationshipKind: "concept_prerequisite",
+            fromEntityId: "entity-concept-c",
+            toEntityId: "entity-concept-a",
+            currentRevisionId: "relationship-revision-c-a",
+          }),
+        ),
+      },
+      {
+        crossProgram: "navigation_relationship_program_mismatch",
+        cycle: "navigation_prerequisite_cycle",
       },
     );
   } finally {
@@ -1314,6 +2200,377 @@ test("createQuickCheckCandidateRecord_shouldPersistOptionsAnswerKeyAndListByProg
   }
 });
 
+test("createLearnerEvidenceTargetLinkRecord_shouldPersistIdempotentActiveLinksAndSoftDelete_onExistingProgram", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    const created = storage.createLearnerEvidenceTargetLinkRecord?.(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+    const duplicate = storage.createLearnerEvidenceTargetLinkRecord?.(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-duplicate",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+    const deleted = storage.deleteLearnerEvidenceTargetLinkRecord?.(database, {
+      id: "target-link-a",
+      updatedAt: "2026-06-03T11:00:00.000Z",
+    });
+    const recreated = storage.createLearnerEvidenceTargetLinkRecord?.(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-b",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+        createdAt: "2026-06-03T11:01:00.000Z",
+        updatedAt: "2026-06-03T11:01:00.000Z",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        created,
+        duplicate,
+        deleted,
+        recreated,
+        listed: storage.listLearnerEvidenceTargetLinkRecords?.(database, { programId: "program-a" }),
+        allLinks: storage.listLearnerEvidenceTargetLinkRecords?.(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }),
+      },
+      {
+        created: {
+          id: "target-link-a",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "active",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T10:00:00.000Z",
+          updatedAt: "2026-06-03T10:00:00.000Z",
+        },
+        duplicate: {
+          id: "target-link-a",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "active",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T10:00:00.000Z",
+          updatedAt: "2026-06-03T10:00:00.000Z",
+        },
+        deleted: {
+          id: "target-link-a",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "deleted",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T10:00:00.000Z",
+          updatedAt: "2026-06-03T11:00:00.000Z",
+        },
+        recreated: {
+          id: "target-link-b",
+          programId: "program-a",
+          targetKind: "topic",
+          targetId: "entity-topic-a",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-a",
+          status: "active",
+          createdByIdentityId: "identity-a",
+          createdAt: "2026-06-03T11:01:00.000Z",
+          updatedAt: "2026-06-03T11:01:00.000Z",
+        },
+        listed: [
+          {
+            id: "target-link-b",
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: "entity-topic-a",
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: "quick-check-entity-a",
+            status: "active",
+            createdByIdentityId: "identity-a",
+            createdAt: "2026-06-03T11:01:00.000Z",
+            updatedAt: "2026-06-03T11:01:00.000Z",
+          },
+        ],
+        allLinks: [
+          {
+            id: "target-link-a",
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: "entity-topic-a",
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: "quick-check-entity-a",
+            status: "deleted",
+            createdByIdentityId: "identity-a",
+            createdAt: "2026-06-03T10:00:00.000Z",
+            updatedAt: "2026-06-03T11:00:00.000Z",
+          },
+          {
+            id: "target-link-b",
+            programId: "program-a",
+            targetKind: "topic",
+            targetId: "entity-topic-a",
+            evidenceOwnerKind: "accepted_quick_check",
+            evidenceOwnerEntityId: "quick-check-entity-a",
+            status: "active",
+            createdByIdentityId: "identity-a",
+            createdAt: "2026-06-03T11:01:00.000Z",
+            updatedAt: "2026-06-03T11:01:00.000Z",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldPreserveLearnerEvidenceTargetLinks_onAcceptedBackup", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedQuickCheck(database, { programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    seedAcceptedLearnerStateTargetLinkCrossProgramReferences(database);
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-03T09:00:00.000Z",
+      updatedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.createLearnerEvidenceTargetLinkRecord(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+    storage.deleteLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-a",
+      updatedAt: "2026-06-03T11:00:00.000Z",
+    });
+    storage.createLearnerEvidenceTargetLinkRecord(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-b",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+        createdAt: "2026-06-03T11:01:00.000Z",
+        updatedAt: "2026-06-03T11:01:00.000Z",
+      }),
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    storage.restoreIdentityBackup(restored, backup);
+
+    assert.deepEqual(
+      {
+        exported: backup.learnerEvidenceTargetLinks?.map($0 => ({
+          id: $0.id,
+          status: $0.status,
+        })),
+        restored: storage
+          .listLearnerEvidenceTargetLinkRecords(restored, {
+            programId: "program-a",
+            includeDeleted: true,
+          })
+          .map($0 => ({
+            id: $0.id,
+            status: $0.status,
+          })),
+      },
+      {
+        exported: [
+          { id: "target-link-a", status: "deleted" },
+          { id: "target-link-b", status: "active" },
+        ],
+        restored: [
+          { id: "target-link-a", status: "deleted" },
+          { id: "target-link-b", status: "active" },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
+test("restoreIdentityBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBackup", () => {
+  const database = makeInitializedDatabase();
+  const restored = makeInitializedDatabase();
+
+  try {
+    seedAcceptedQuickCheck(database, { programId: "program-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    seedAcceptedLearnerStateTargetLinkCrossProgramReferences(database);
+    storage.createProgramMembershipRecord(database, {
+      id: "membership-a",
+      programId: "program-a",
+      identityId: "identity-a",
+      participationKind: "program_curator",
+      status: "active",
+      createdAt: "2026-06-03T09:00:00.000Z",
+      updatedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.grantAdminAuthority(database, {
+      identityId: "identity-a",
+      grantedAt: "2026-06-03T09:00:00.000Z",
+    });
+    storage.createLearnerEvidenceTargetLinkRecord(
+      database,
+      makeLearnerEvidenceTargetLink({
+        id: "target-link-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        evidenceOwnerKind: "accepted_quick_check",
+        evidenceOwnerEntityId: "quick-check-entity-a",
+      }),
+    );
+
+    const backup = storage.exportIdentityBackup(database);
+    const cases = [
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            programId: "missing-program",
+          };
+        },
+        reason: "program_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            createdByIdentityId: "missing-identity",
+          };
+        },
+        reason: "identity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetKind: "program",
+          };
+        },
+        reason: "learner_state_target_kind_invalid",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetId: "missing-target",
+          };
+        },
+        reason: "accepted_entity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetId: "entity-topic-b",
+          };
+        },
+        reason: "learner_state_target_program_mismatch",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            evidenceOwnerEntityId: "missing-quick-check",
+          };
+        },
+        reason: "quick_check_entity_not_found",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks[0] = {
+            ...candidate.learnerEvidenceTargetLinks[0],
+            evidenceOwnerEntityId: "quick-check-entity-b",
+          };
+        },
+        reason: "learner_state_evidence_owner_program_mismatch",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks.push({
+            ...candidate.learnerEvidenceTargetLinks[0],
+            id: "target-link-duplicate",
+          });
+        },
+        reason: "learner_state_target_link_idempotency_conflict",
+      },
+      {
+        mutate: candidate => {
+          candidate.learnerEvidenceTargetLinks.push({
+            ...candidate.learnerEvidenceTargetLinks[0],
+            targetId: "entity-topic-b",
+          });
+        },
+        reason: "learner_state_target_link_id_conflict",
+      },
+    ];
+
+    assert.deepEqual(
+      cases.map(testCase => {
+        const candidateBackup = structuredClone(backup);
+        testCase.mutate(candidateBackup);
+        const reason = captureStorageInvariantReason(() =>
+          storage.restoreIdentityBackup(restored, candidateBackup),
+        );
+        assert.deepEqual(storage.listLearnerEvidenceTargetLinkRecords(restored), []);
+        return reason;
+      }),
+      cases.map($0 => $0.reason),
+    );
+  } finally {
+    database.close();
+    restored.close();
+  }
+});
+
 test("createAcceptedQuickCheckRecords_shouldPersistEntityCurrentRevisionAndHistoricalOptions_onExistingCandidate", () => {
   const database = makeInitializedDatabase();
 
@@ -1577,6 +2834,304 @@ test("createQuickCheckAttemptRecord_shouldPersistImmutableAttemptReferences_onEx
           submittedAt: "2026-06-02T11:20:00.000Z",
         },
         listed: ["quick-check-attempt-a"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createReadinessCheckCandidateRecord_shouldPersistTopicAndPeriodScopes_onExistingProgramSources", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+    storage.createProgramSourceRecord(database, makeProgramSource({ id: "source-a", programId: "program-a" }));
+    seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a" });
+    seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-a" });
+
+    const topicCandidate = storage.createReadinessCheckCandidateRecord?.(
+      database,
+      makeReadinessCheckCandidate({
+        id: "readiness-candidate-topic",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+      }),
+    );
+    const periodCandidate = storage.createReadinessCheckCandidateRecord?.(
+      database,
+      makeReadinessCheckCandidate({
+        id: "readiness-candidate-period",
+        programId: "program-a",
+        scope: {
+          scopeKind: "period",
+          title: "First algebra period",
+          topicEntityIds: ["entity-topic-a"],
+        },
+        sourceIds: ["source-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        topicCandidate,
+        periodCandidate,
+        listed: storage.listReadinessCheckCandidateRecords?.(database, {
+          programId: "program-a",
+          status: "draft",
+        }).map($0 => $0.id),
+      },
+      {
+        topicCandidate: makeReadinessCheckCandidate({
+          id: "readiness-candidate-topic",
+          programId: "program-a",
+          sourceIds: ["source-a"],
+        }),
+        periodCandidate: makeReadinessCheckCandidate({
+          id: "readiness-candidate-period",
+          programId: "program-a",
+          scope: {
+            scopeKind: "period",
+            title: "First algebra period",
+            topicEntityIds: ["entity-topic-a"],
+          },
+          sourceIds: ["source-a"],
+        }),
+        listed: ["readiness-candidate-period", "readiness-candidate-topic"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createAcceptedReadinessCheckRecords_shouldPreserveHistoricalRevisions_onReplacement", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedReadinessCheck(database, { programId: "program-a" });
+    storage.createReadinessCheckCandidateRecord(
+      database,
+      makeReadinessCheckCandidate({
+        id: "readiness-candidate-replacement",
+        programId: "program-a",
+        sourceIds: ["source-a"],
+        status: "accepted",
+      }),
+    );
+    storage.createAcceptedReadinessCheckRevisionRecord(
+      database,
+      makeAcceptedReadinessCheckRevision({
+        id: "readiness-revision-replacement",
+        entityId: "readiness-entity-a",
+        programId: "program-a",
+        acceptedFromCandidateId: "readiness-candidate-replacement",
+        sourceIds: ["source-a"],
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        updatedEntity: storage.updateAcceptedReadinessCheckEntityCurrentRevision?.(database, {
+          entityId: "readiness-entity-a",
+          currentRevisionId: "readiness-revision-replacement",
+        }),
+        historicalRevision: storage.getAcceptedReadinessCheckRevisionRecord?.(
+          database,
+          "readiness-revision-a",
+        ),
+        revisionIds: storage.listAcceptedReadinessCheckRevisionRecords?.(database).map($0 => $0.id),
+      },
+      {
+        updatedEntity: {
+          id: "readiness-entity-a",
+          programId: "program-a",
+          currentRevisionId: "readiness-revision-replacement",
+        },
+        historicalRevision: makeAcceptedReadinessCheckRevision({
+          id: "readiness-revision-a",
+          entityId: "readiness-entity-a",
+          programId: "program-a",
+          acceptedFromCandidateId: "readiness-candidate-a",
+          sourceIds: ["source-a"],
+        }),
+        revisionIds: ["readiness-revision-a", "readiness-revision-replacement"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createReadinessCheckAttemptRecord_shouldPersistRequirementSnapshotsAndIdempotency_onAcceptedRevision", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedReadinessCheck(database, { programId: "program-a" });
+
+    const original = storage.createReadinessCheckAttemptRecord?.(
+      database,
+      makeReadinessCheckAttempt({
+        id: "readiness-attempt-a",
+        programId: "program-a",
+        studentIdentityId: "identity-a",
+        readinessCheckRevisionId: "readiness-revision-a",
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        original,
+        equivalentRetry: storage.createReadinessCheckAttemptRecord?.(
+          database,
+          makeReadinessCheckAttempt({
+            id: "readiness-attempt-b",
+            programId: "program-a",
+            studentIdentityId: "identity-a",
+            readinessCheckRevisionId: "readiness-revision-a",
+          }),
+        ),
+        conflict: captureStorageInvariantReason(() =>
+          storage.createReadinessCheckAttemptRecord(
+            database,
+            makeReadinessCheckAttempt({
+              id: "readiness-attempt-c",
+              programId: "program-a",
+              studentIdentityId: "identity-a",
+              readinessCheckRevisionId: "readiness-revision-a",
+              result: "not_ready",
+              requirementResults: [
+                {
+                  requirementId: "requirement-a",
+                  targetKind: "topic",
+                  targetId: "entity-topic-a",
+                  title: "Topic A",
+                  requiredLevel: "on_track",
+                  observedLevel: "developing",
+                  evidenceCount: 1,
+                  result: "not_ready",
+                },
+                {
+                  requirementId: "requirement-b",
+                  targetKind: "concept",
+                  targetId: "entity-concept-a",
+                  title: "Concept A",
+                  requiredLevel: "developing",
+                  observedLevel: "developing",
+                  evidenceCount: 1,
+                  result: "ready",
+                },
+              ],
+            }),
+          ),
+        ),
+        listed: storage.listReadinessCheckAttemptRecords?.(database, {
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+        }).map($0 => $0.id),
+      },
+      {
+        original: makeReadinessCheckAttempt({
+          id: "readiness-attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          readinessCheckRevisionId: "readiness-revision-a",
+        }),
+        equivalentRetry: makeReadinessCheckAttempt({
+          id: "readiness-attempt-a",
+          programId: "program-a",
+          studentIdentityId: "identity-a",
+          readinessCheckRevisionId: "readiness-revision-a",
+        }),
+        conflict: "readiness_attempt_idempotency_conflict",
+        listed: ["readiness-attempt-a"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("createReadinessCheckAttemptRecord_shouldRejectResultMismatches_onInconsistentSnapshots", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    seedAcceptedReadinessCheck(database, { programId: "program-a" });
+
+    assert.deepEqual(
+      {
+        requirementResultMismatch: captureStorageInvariantReason(() =>
+          storage.createReadinessCheckAttemptRecord(
+            database,
+            makeReadinessCheckAttempt({
+              id: "readiness-attempt-mismatched-requirement",
+              programId: "program-a",
+              studentIdentityId: "identity-a",
+              readinessCheckRevisionId: "readiness-revision-a",
+              requirementResults: [
+                {
+                  requirementId: "requirement-a",
+                  targetKind: "topic",
+                  targetId: "entity-topic-a",
+                  title: "Topic A",
+                  requiredLevel: "on_track",
+                  observedLevel: "no_evidence",
+                  evidenceCount: 0,
+                  result: "ready",
+                },
+                {
+                  requirementId: "requirement-b",
+                  targetKind: "concept",
+                  targetId: "entity-concept-a",
+                  title: "Concept A",
+                  requiredLevel: "developing",
+                  observedLevel: "developing",
+                  evidenceCount: 1,
+                  result: "ready",
+                },
+              ],
+            }),
+          ),
+        ),
+        attemptResultMismatch: captureStorageInvariantReason(() =>
+          storage.createReadinessCheckAttemptRecord(
+            database,
+            makeReadinessCheckAttempt({
+              id: "readiness-attempt-mismatched-attempt",
+              programId: "program-a",
+              studentIdentityId: "identity-a",
+              readinessCheckRevisionId: "readiness-revision-a",
+              result: "in_progress",
+              requirementResults: [
+                {
+                  requirementId: "requirement-a",
+                  targetKind: "topic",
+                  targetId: "entity-topic-a",
+                  title: "Topic A",
+                  requiredLevel: "on_track",
+                  observedLevel: "needs_attention",
+                  evidenceCount: 1,
+                  result: "not_ready",
+                },
+                {
+                  requirementId: "requirement-b",
+                  targetKind: "concept",
+                  targetId: "entity-concept-a",
+                  title: "Concept A",
+                  requiredLevel: "developing",
+                  observedLevel: "in_progress",
+                  evidenceCount: 1,
+                  result: "in_progress",
+                },
+              ],
+            }),
+          ),
+        ),
+      },
+      {
+        requirementResultMismatch: "readiness_requirement_result_mismatch",
+        attemptResultMismatch: "readiness_attempt_result_mismatch",
       },
     );
   } finally {
@@ -4130,6 +5685,28 @@ function makeProgramShell({ id }) {
   };
 }
 
+function makeProgramInvitation({
+  id,
+  programId,
+  targetIdentityId,
+  status = "pending",
+  statusChangedByIdentityId = null,
+  statusChangedAt = null,
+}) {
+  return {
+    id,
+    programId,
+    targetIdentityId,
+    participationKind: "student",
+    status,
+    invitedByIdentityId: "identity-a",
+    createdAt: "2026-06-04T09:00:00.000Z",
+    updatedAt: statusChangedAt ?? "2026-06-04T09:00:00.000Z",
+    statusChangedByIdentityId,
+    statusChangedAt,
+  };
+}
+
 function makeProgramSource({ id, programId, title = `Source ${id}` }) {
   return {
     id,
@@ -4143,11 +5720,11 @@ function makeProgramSource({ id, programId, title = `Source ${id}` }) {
   };
 }
 
-function makeCorpusCandidate({ id, programId, sourceIds = [], status = "draft" }) {
+function makeCorpusCandidate({ id, programId, candidateKind = "topic", sourceIds = [], status = "draft" }) {
   return {
     id,
     programId,
-    candidateKind: "topic",
+    candidateKind,
     title: `Candidate ${id}`,
     body: `Body ${id}`,
     sourceIds,
@@ -4174,29 +5751,174 @@ function makeAssessmentCriterionCandidate({ id, programId, sourceIds = [], statu
   };
 }
 
-function makeAcceptedCorpusEntity({ id, programId, currentRevisionId }) {
+function makeAcceptedCorpusEntity({ id, programId, acceptedKind = "topic", currentRevisionId }) {
   return {
     id,
     programId,
-    acceptedKind: "topic",
+    acceptedKind,
     currentRevisionId,
   };
 }
 
-function makeAcceptedCorpusRevision({ id, entityId, programId }) {
+function makeAcceptedCorpusRevision({
+  id,
+  entityId,
+  programId,
+  acceptedKind = "topic",
+  acceptedFromCandidateId = "candidate-a",
+  sourceIds = ["source-a"],
+  materialReferenceKind = null,
+  locator = null,
+  citation = null,
+}) {
   return {
     id,
     entityId,
     programId,
-    acceptedKind: "topic",
+    acceptedKind,
     title: `Accepted ${id}`,
     body: `Accepted body ${id}`,
-    acceptedFromCandidateId: "candidate-a",
-    sourceIds: ["source-a"],
+    acceptedFromCandidateId,
+    sourceIds,
     rationale: `Accepted rationale ${id}`,
     acceptedByIdentityId: "identity-a",
     acceptedAt: "2026-05-28T10:20:00.000Z",
+    materialReferenceKind,
+    locator,
+    citation,
   };
+}
+
+function seedAcceptedNavigationEntity(database, {
+  acceptedKind,
+  entityId = acceptedKind,
+  programId = "program-a",
+  sourceId = programId === "program-a" ? "source-a" : "source-b",
+}) {
+  storage.createCorpusCandidateRecord(
+    database,
+    makeCorpusCandidate({
+      id: `candidate-${entityId}`,
+      programId,
+      sourceIds: [sourceId],
+      status: "accepted",
+      candidateKind: acceptedKind,
+    }),
+  );
+  storage.createAcceptedCorpusEntityRecord(
+    database,
+    makeAcceptedCorpusEntity({
+      id: `entity-${entityId}`,
+      programId,
+      acceptedKind,
+      currentRevisionId: `revision-${entityId}`,
+    }),
+  );
+  return storage.createAcceptedCorpusRevisionRecord(
+    database,
+    makeAcceptedCorpusRevision({
+      id: `revision-${entityId}`,
+      entityId: `entity-${entityId}`,
+      programId,
+      acceptedFromCandidateId: `candidate-${entityId}`,
+      acceptedKind,
+      materialReferenceKind: acceptedKind === "material_reference" ? "article" : null,
+      locator: acceptedKind === "material_reference" ? "https://example.test/material" : null,
+      citation: acceptedKind === "material_reference" ? "Example citation" : null,
+      sourceIds: [sourceId],
+    }),
+  );
+}
+
+function seedAcceptedLearnerStateTargetLinkCrossProgramReferences(database) {
+  storage.createProgramShellRecord(database, makeProgramShell({ id: "program-b" }));
+  storage.createProgramMembershipRecord(database, {
+    id: "membership-b",
+    programId: "program-b",
+    identityId: "identity-a",
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-03T09:00:00.000Z",
+  });
+  storage.createProgramSourceRecord(database, makeProgramSource({ id: "source-b", programId: "program-b" }));
+  seedAcceptedNavigationEntity(database, {
+    acceptedKind: "topic",
+    entityId: "topic-b",
+    programId: "program-b",
+    sourceId: "source-b",
+  });
+  storage.createQuickCheckCandidateRecord(
+    database,
+    makeQuickCheckCandidate({
+      id: "quick-check-candidate-b",
+      programId: "program-b",
+      sourceIds: ["source-b"],
+      status: "accepted",
+    }),
+  );
+  storage.createAcceptedQuickCheckEntityRecord(
+    database,
+    makeAcceptedQuickCheckEntity({
+      id: "quick-check-entity-b",
+      programId: "program-b",
+      currentRevisionId: "quick-check-revision-b",
+    }),
+  );
+  storage.createAcceptedQuickCheckRevisionRecord(
+    database,
+    makeAcceptedQuickCheckRevision({
+      id: "quick-check-revision-b",
+      entityId: "quick-check-entity-b",
+      programId: "program-b",
+      acceptedFromCandidateId: "quick-check-candidate-b",
+      sourceIds: ["source-b"],
+    }),
+  );
+}
+
+function makeAcceptedNavigationRelationshipRevision({
+  id,
+  relationshipId,
+  programId = "program-a",
+  relationshipKind,
+  fromEntityId,
+  fromRevisionId,
+  fromKind,
+  toEntityId,
+  toRevisionId,
+  toKind,
+  sourceIds = ["source-a"],
+}) {
+  return {
+    id,
+    relationshipId,
+    programId,
+    relationshipKind,
+    fromEntityId,
+    fromRevisionId,
+    fromKind,
+    toEntityId,
+    toRevisionId,
+    toKind,
+    label: `Relationship ${id}`,
+    sourceIds,
+    acceptedFromCandidateId: "candidate-relationship",
+    acceptedByIdentityId: "identity-a",
+    acceptedAt: "2026-06-03T10:00:00.000Z",
+  };
+}
+
+function captureStorageReason(action) {
+  try {
+    action();
+  } catch (error) {
+    if (error instanceof StorageInvariantError) {
+      return error.reason;
+    }
+    throw error;
+  }
+  return null;
 }
 
 function makeAcceptedAssessmentCriterionEntity({ id, programId, currentRevisionId }) {
@@ -4334,6 +6056,247 @@ function makeQuickCheckAttempt({
     matched,
     idempotencyKey,
     submittedAt: "2026-06-02T11:20:00.000Z",
+  };
+}
+
+function makeReadinessCheckCandidate({
+  id,
+  programId,
+  scope = { scopeKind: "topic", topicEntityId: "entity-topic-a" },
+  sourceIds = [],
+  status = "draft",
+}) {
+  return {
+    id,
+    programId,
+    title: `Readiness check ${id}`,
+    scope,
+    requirements: [
+      {
+        requirementId: "requirement-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        requiredLevel: "on_track",
+      },
+      {
+        requirementId: "requirement-b",
+        targetKind: "concept",
+        targetId: "entity-concept-a",
+        requiredLevel: "developing",
+      },
+    ],
+    sourceIds,
+    rationale: `Readiness rationale ${id}`,
+    status,
+    createdByIdentityId: "identity-a",
+    createdAt: "2026-06-03T11:00:00.000Z",
+    updatedAt: "2026-06-03T11:00:00.000Z",
+  };
+}
+
+function makeLlmCurationSuggestion({
+  id,
+  programId,
+  status = "draft_suggestion",
+  materializedCandidateKind = null,
+  materializedCandidateId = null,
+  materializedByIdentityId = null,
+  materializedAt = null,
+  rejectedByIdentityId = null,
+  rejectedAt = null,
+  updatedAt = "2026-06-04T12:00:00.000Z",
+}) {
+  return {
+    id,
+    programId,
+    suggestionKind: "navigation_candidate",
+    title: `Suggestion ${id}`,
+    summary: `Summary ${id}`,
+    rationale: `Rationale ${id}`,
+    suggestedDraft: {
+      candidateKind: "navigation_candidate",
+      request: {
+        candidateKind: "topic",
+        title: `Draft ${id}`,
+        body: `Draft body ${id}`,
+        sourceIds: [],
+        rationale: `Draft rationale ${id}`,
+      },
+    },
+    supportingEvidence: [
+      {
+        sourceKind: "curator_instruction",
+        sourceId: "instruction-a",
+        label: "Curator instruction",
+      },
+    ],
+    origin: {
+      suggestionPolicyId: "policy-a",
+      providerAdapterId: "provider-a",
+      outputValidatorPolicyId: "validator-a",
+      redactionPolicyId: "redaction-a",
+      sourceKinds: ["curator_instruction"],
+      sourceIds: ["instruction-a"],
+      coverageGapIds: [],
+      promptContextSummary: "Accepted corpus titles only",
+      generatedByIdentityId: "identity-a",
+      generatedAt: "2026-06-04T12:00:00.000Z",
+    },
+    status,
+    createdByIdentityId: "identity-a",
+    createdAt: "2026-06-04T12:00:00.000Z",
+    updatedAt,
+    materializedCandidateKind,
+    materializedCandidateId,
+    materializedByIdentityId,
+    materializedAt,
+    rejectedByIdentityId,
+    rejectedAt,
+  };
+}
+
+function seedRestoreGovernance(
+  database,
+  {
+    programId,
+    identityId = "identity-a",
+    membershipId = "membership-a",
+    at = "2026-06-04T12:00:00.000Z",
+  },
+) {
+  storage.createProgramMembershipRecord(database, {
+    id: membershipId,
+    programId,
+    identityId,
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: at,
+    updatedAt: at,
+  });
+  grantAdminAuthority(database, {
+    identityId,
+    grantedAt: at,
+  });
+}
+
+function captureRestoreInvariantReason(backup) {
+  const database = makeInitializedDatabase();
+
+  try {
+    return captureStorageInvariantReason(() => storage.restoreIdentityBackup(database, backup));
+  } finally {
+    database.close();
+  }
+}
+
+function makeAcceptedReadinessCheckEntity({ id, programId, currentRevisionId }) {
+  return {
+    id,
+    programId,
+    currentRevisionId,
+  };
+}
+
+function makeAcceptedReadinessCheckRevision({
+  id,
+  entityId,
+  programId,
+  acceptedFromCandidateId = "readiness-candidate-a",
+  sourceIds = ["source-a"],
+}) {
+  return {
+    id,
+    entityId,
+    programId,
+    title: `Accepted readiness check ${id}`,
+    scope: { scopeKind: "topic", topicEntityId: "entity-topic-a" },
+    requirements: [
+      {
+        requirementId: "requirement-a",
+        targetKind: "topic",
+        targetId: "entity-topic-a",
+        requiredLevel: "on_track",
+      },
+      {
+        requirementId: "requirement-b",
+        targetKind: "concept",
+        targetId: "entity-concept-a",
+        requiredLevel: "developing",
+      },
+    ],
+    sourceIds,
+    rationale: `Accepted readiness rationale ${id}`,
+    acceptedFromCandidateId,
+    acceptedByIdentityId: "identity-a",
+    acceptedAt: "2026-06-03T11:10:00.000Z",
+  };
+}
+
+function makeReadinessCheckAttempt({
+  id,
+  programId,
+  studentIdentityId,
+  readinessCheckRevisionId,
+  result = "ready",
+  requirementResults = [
+    {
+      requirementId: "requirement-a",
+      targetKind: "topic",
+      targetId: "entity-topic-a",
+      title: "Topic A",
+      requiredLevel: "on_track",
+      observedLevel: "on_track",
+      evidenceCount: 2,
+      result: "ready",
+    },
+    {
+      requirementId: "requirement-b",
+      targetKind: "concept",
+      targetId: "entity-concept-a",
+      title: "Concept A",
+      requiredLevel: "developing",
+      observedLevel: "developing",
+      evidenceCount: 1,
+      result: "ready",
+    },
+  ],
+  idempotencyKey = "idempotency-readiness",
+}) {
+  return {
+    id,
+    programId,
+    studentIdentityId,
+    readinessCheckRevisionId,
+    result,
+    requirementResults,
+    idempotencyKey,
+    submittedAt: "2026-06-03T11:20:00.000Z",
+  };
+}
+
+function makeLearnerEvidenceTargetLink({
+  id,
+  programId = "program-a",
+  targetKind,
+  targetId,
+  evidenceOwnerKind,
+  evidenceOwnerEntityId,
+  status = "active",
+  createdByIdentityId = "identity-a",
+  createdAt = "2026-06-03T10:00:00.000Z",
+  updatedAt = "2026-06-03T10:00:00.000Z",
+}) {
+  return {
+    id,
+    programId,
+    targetKind,
+    targetId,
+    evidenceOwnerKind,
+    evidenceOwnerEntityId,
+    status,
+    createdByIdentityId,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -4614,6 +6577,7 @@ function seedAcceptedQuickCheck(database, { programId }) {
       id: "quick-check-candidate-a",
       programId,
       sourceIds: ["source-a"],
+      status: "accepted",
     }),
   );
   storage.createAcceptedQuickCheckEntityRecord(
@@ -4631,6 +6595,41 @@ function seedAcceptedQuickCheck(database, { programId }) {
       entityId: "quick-check-entity-a",
       programId,
       acceptedFromCandidateId: "quick-check-candidate-a",
+      sourceIds: ["source-a"],
+    }),
+  );
+}
+
+function seedAcceptedReadinessCheck(database, { programId }) {
+  createIdentity(database, makeIdentity("identity-a"));
+  storage.createProgramShellRecord(database, makeProgramShell({ id: programId }));
+  storage.createProgramSourceRecord(database, makeProgramSource({ id: "source-a", programId }));
+  seedAcceptedNavigationEntity(database, { acceptedKind: "topic", entityId: "topic-a", programId });
+  seedAcceptedNavigationEntity(database, { acceptedKind: "concept", entityId: "concept-a", programId });
+  storage.createReadinessCheckCandidateRecord(
+    database,
+    makeReadinessCheckCandidate({
+      id: "readiness-candidate-a",
+      programId,
+      sourceIds: ["source-a"],
+      status: "accepted",
+    }),
+  );
+  storage.createAcceptedReadinessCheckEntityRecord(
+    database,
+    makeAcceptedReadinessCheckEntity({
+      id: "readiness-entity-a",
+      programId,
+      currentRevisionId: "readiness-revision-a",
+    }),
+  );
+  storage.createAcceptedReadinessCheckRevisionRecord(
+    database,
+    makeAcceptedReadinessCheckRevision({
+      id: "readiness-revision-a",
+      entityId: "readiness-entity-a",
+      programId,
+      acceptedFromCandidateId: "readiness-candidate-a",
       sourceIds: ["source-a"],
     }),
   );

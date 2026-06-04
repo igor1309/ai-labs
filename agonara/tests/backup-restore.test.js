@@ -4,6 +4,7 @@ import { createCorpusCommands } from "../src/corpus.js";
 import { createIdentityCommands } from "../src/identity.js";
 import { createProgramCommands } from "../src/program.js";
 import { createStudentWorkspaceCommands } from "../src/student-workspace.js";
+import * as storage from "../src/storage.js";
 import {
   countEffectiveAdmins,
   getLocalPasswordCredentialByLogin,
@@ -318,6 +319,67 @@ test("exportBackup_shouldIncludeProgramShellsMembershipsAndEvents_onBackup", asy
   }
 });
 
+test("exportBackup_shouldIncludeProgramInvitationsAndMembershipEventMetadata_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedMembershipInvitationRecords(database);
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        invitationIds: backup.programInvitations?.map($0 => $0.id),
+        invitationStatuses: backup.programInvitations?.map($0 => $0.status),
+        eventMetadata: backup.programMembershipEvents.map($0 => ({
+          id: $0.id,
+          policyPath: $0.policyPath,
+          invitationStatus: $0.invitationStatus,
+        })),
+      },
+      {
+        invitationIds: ["invitation-1"],
+        invitationStatuses: ["accepted"],
+        eventMetadata: [
+          {
+            id: "membership-event-1",
+            policyPath: null,
+            invitationStatus: null,
+          },
+          {
+            id: "membership-event-2",
+            policyPath: "curator_invitation",
+            invitationStatus: "accepted",
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("exportBackup_shouldIncludeCorpusRecords_onBackup", async () => {
   const { commands, database } = makeSUT({
     ids: [
@@ -361,6 +423,51 @@ test("exportBackup_shouldIncludeCorpusRecords_onBackup", async () => {
         entityIds: ["entity-1"],
         revisionIds: ["revision-1"],
         eventTypes: ["corpus_candidate_accepted"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("exportBackup_shouldIncludeNavigationRelationshipRecords_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        relationshipIds: backup.acceptedNavigationRelationships?.map($0 => $0.id),
+        relationshipRevisionIds: backup.acceptedNavigationRelationshipRevisions?.map($0 => $0.id),
+      },
+      {
+        relationshipIds: ["relationship-1"],
+        relationshipRevisionIds: ["relationship-revision-1"],
       },
     );
   } finally {
@@ -618,6 +725,160 @@ test("restoreBackup_shouldRestoreProgramShellsMembershipsAndEvents_onAcceptedBac
     source.database.close();
     target.database.close();
   }
+});
+
+test("restoreBackup_shouldRestoreProgramInvitationsAndMembershipEventMetadata_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedMembershipInvitationRecords(source.database);
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        invitationIds: restoredBackup.programInvitations?.map($0 => $0.id),
+        invitationStatuses: restoredBackup.programInvitations?.map($0 => $0.status),
+        eventMetadata: restoredBackup.programMembershipEvents.map($0 => ({
+          id: $0.id,
+          policyPath: $0.policyPath,
+          invitationStatus: $0.invitationStatus,
+        })),
+      },
+      {
+        restoreStatus: "accepted",
+        invitationIds: ["invitation-1"],
+        invitationStatuses: ["accepted"],
+        eventMetadata: [
+          {
+            id: "membership-event-1",
+            policyPath: null,
+            invitationStatus: null,
+          },
+          {
+            id: "membership-event-2",
+            policyPath: "curator_invitation",
+            invitationStatus: "accepted",
+          },
+        ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedProgramInvitations_onBackup", async () => {
+  const backup = await makeExportedProgramInvitationBackup();
+  const cases = [
+    {
+      mutate: candidate => {
+        candidate.programShells[0] = { ...candidate.programShells[0], admissionPolicy: "approval_required" };
+      },
+      reason: "validation_failed",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations.push({ ...candidate.programInvitations[0] });
+      },
+      reason: "invitation_conflict",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = {
+          ...candidate.programInvitations[0],
+          status: "pending",
+          statusChangedByIdentityId: null,
+          statusChangedAt: null,
+        };
+        candidate.programInvitations.push({
+          ...candidate.programInvitations[0],
+          id: "invitation-2",
+          status: "pending",
+          statusChangedByIdentityId: null,
+          statusChangedAt: null,
+        });
+      },
+      reason: "invitation_conflict",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = { ...candidate.programInvitations[0], programId: "missing-program" };
+      },
+      reason: "program_not_found",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = { ...candidate.programInvitations[0], targetIdentityId: "missing-identity" };
+      },
+      reason: "identity_not_found",
+    },
+    {
+      mutate: candidate => {
+        candidate.programInvitations[0] = { ...candidate.programInvitations[0], participationKind: "program_curator" };
+      },
+      reason: "unsupported_participation_kind",
+    },
+    {
+      mutate: candidate => {
+        candidate.programMemberships.push({ ...candidate.programMemberships[0], id: "membership-duplicate" });
+      },
+      reason: "membership_conflict",
+    },
+    {
+      mutate: candidate => {
+        candidate.programMembershipEvents[1] = {
+          ...candidate.programMembershipEvents[1],
+          policyPath: "payment",
+        };
+      },
+      reason: "validation_failed",
+    },
+    {
+      mutate: candidate => {
+        candidate.programMembershipEvents[1] = {
+          ...candidate.programMembershipEvents[1],
+          invitationStatus: "expired",
+        };
+      },
+      reason: "validation_failed",
+    },
+  ];
+
+  const reasons = cases.map(testCase => {
+    const candidate = structuredClone(backup);
+    testCase.mutate(candidate);
+    const target = makeSUT();
+
+    try {
+      return target.commands.restoreBackup(candidate).reason;
+    } finally {
+      target.database.close();
+    }
+  });
+
+  assert.deepEqual(
+    reasons,
+    cases.map($0 => $0.reason),
+  );
 });
 
 test("restoreBackup_shouldRestoreCorpusRecords_onAcceptedBackup", async () => {
@@ -884,6 +1145,70 @@ test("exportBackup_shouldIncludeQuickCheckGraphAndAttempts_onBackup", async () =
   }
 });
 
+test("exportBackup_shouldIncludeLearnerEvidenceTargetLinks_onBackup", async () => {
+  const { commands, database } = makeSUT({
+    ids: [
+      "identity-1",
+      "credential-1",
+      "session-1",
+      "audit-1",
+    ],
+  });
+
+  try {
+    await commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(database, { programId: "program-1" });
+    seedCorpusRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(database, { identityId: "identity-1", programId: "program-1" });
+    seedLearnerEvidenceTargetLinkRecords(database, { identityId: "identity-1", programId: "program-1" });
+
+    const backup = commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      backup.learnerEvidenceTargetLinks?.map($0 => ({
+        id: $0.id,
+        targetKind: $0.targetKind,
+        targetId: $0.targetId,
+        evidenceOwnerKind: $0.evidenceOwnerKind,
+        evidenceOwnerEntityId: $0.evidenceOwnerEntityId,
+        status: $0.status,
+      })),
+      [
+        {
+          id: "learner-target-link-deleted",
+          targetKind: "topic",
+          targetId: "entity-1",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-existing",
+          status: "deleted",
+        },
+        {
+          id: "learner-target-link-active",
+          targetKind: "topic",
+          targetId: "entity-1",
+          evidenceOwnerKind: "accepted_quick_check",
+          evidenceOwnerEntityId: "quick-check-entity-existing",
+          status: "active",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("restoreBackup_shouldRestoreQuickCheckGraphAndKeepStudentReadsRedacted_onAcceptedBackup", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -957,6 +1282,57 @@ test("restoreBackup_shouldRestoreQuickCheckGraphAndKeepStudentReadsRedacted_onAc
   }
 });
 
+test("restoreBackup_shouldRestoreLearnerEvidenceTargetLinks_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedLearnerEvidenceTargetLinkRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        targetLinks: restoredBackup.learnerEvidenceTargetLinks.map($0 => ({
+          id: $0.id,
+          status: $0.status,
+        })),
+      },
+      {
+        restoreStatus: "accepted",
+        targetLinks: [
+          { id: "learner-target-link-deleted", status: "deleted" },
+          { id: "learner-target-link-active", status: "active" },
+        ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldPreserveHistoricalQuickCheckAttemptAndIdempotency_onReplacementRevision", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -1018,6 +1394,110 @@ test("restoreBackup_shouldPreserveHistoricalQuickCheckAttemptAndIdempotency_onRe
     );
   } finally {
     source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRestoreReadinessRecordsAndHistoricalSnapshots_onAcceptedBackup", async () => {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+  const target = makeSUT();
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedReadinessStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    const restoreResult = target.commands.restoreBackup(source.commands.exportBackup().value.backup);
+    const restoredBackup = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        restoreStatus: restoreResult.status,
+        candidateIds: restoredBackup.readinessCheckCandidates?.map($0 => $0.id),
+        entityIds: restoredBackup.acceptedReadinessCheckEntities?.map($0 => $0.id),
+        revisionIds: restoredBackup.acceptedReadinessCheckRevisions?.map($0 => $0.id),
+        attemptSnapshots: restoredBackup.readinessCheckAttempts?.map(projectReadinessAttemptBackupRecord),
+      },
+      {
+        restoreStatus: "accepted",
+        candidateIds: ["readiness-candidate-existing"],
+        entityIds: ["readiness-entity-existing"],
+        revisionIds: ["readiness-revision-existing"],
+        attemptSnapshots: [
+          {
+            id: "readiness-attempt-existing",
+            programId: "program-1",
+            studentIdentityId: "identity-student",
+            readinessCheckRevisionId: "readiness-revision-existing",
+            result: "ready",
+            requirementIds: ["readiness-requirement-topic", "readiness-requirement-concept"],
+            idempotencyKey: "idempotency-readiness-existing",
+          },
+        ],
+      },
+    );
+  } finally {
+    source.database.close();
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedReadinessGraphs_onInvalidScopeRevisionAndIdempotency", async () => {
+  const backup = await makeExportedReadinessBackup();
+  const target = makeSUT();
+
+  try {
+    const cases = [
+      {
+        mutate: candidate => {
+          candidate.acceptedReadinessCheckRevisions = [];
+        },
+        expectedReason: "readiness_revision_not_found",
+      },
+      {
+        mutate: candidate => {
+          addCrossProgramReadinessTargetBackupRecords(candidate);
+          candidate.readinessCheckCandidates[0] = {
+            ...candidate.readinessCheckCandidates[0],
+            scope: { scopeKind: "topic", topicEntityId: "entity-cross-program" },
+          };
+        },
+        expectedReason: "readiness_scope_program_mismatch",
+      },
+      {
+        mutate: candidate => {
+          candidate.readinessCheckAttempts.push({
+            ...candidate.readinessCheckAttempts[0],
+            id: "readiness-attempt-duplicate",
+          });
+        },
+        expectedReason: "readiness_attempt_idempotency_conflict",
+      },
+    ];
+
+    assert.deepEqual(
+      cases.map(testCase => {
+        const candidateBackup = structuredClone(backup);
+        testCase.mutate(candidateBackup);
+        return target.commands.restoreBackup(candidateBackup).reason;
+      }),
+      cases.map($0 => $0.expectedReason),
+    );
+  } finally {
     target.database.close();
   }
 });
@@ -1916,6 +2396,213 @@ test("restoreBackup_shouldRejectAcceptedCorpusRevisionWithCrossProgramSource_onB
   }
 });
 
+test("restoreBackup_shouldRejectNavigationRelationshipRevisionWithWrongEndpointKind_onBackup", async () => {
+  const backup = await makeExportedNavigationBackup();
+  const target = makeSUT();
+
+  try {
+    backup.acceptedNavigationRelationshipRevisions[0] = {
+      ...backup.acceptedNavigationRelationshipRevisions[0],
+      toKind: "topic",
+    };
+
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(result, {
+      status: "rejected",
+      reason: "navigation_relationship_endpoint_kind_mismatch",
+    });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedNavigationRelationshipGraphs_onBackup", async () => {
+  const invalidBackups = [
+    {
+      mutate: value => {
+        value.acceptedNavigationRelationships[0] = {
+          ...value.acceptedNavigationRelationships[0],
+          currentRevisionId: "missing-relationship-revision",
+        };
+      },
+      expectedReason: "navigation_relationship_revision_not_found",
+    },
+    {
+      mutate: value => {
+        value.acceptedNavigationRelationships = [];
+      },
+      expectedReason: "navigation_relationship_not_found",
+    },
+    {
+      mutate: value => {
+        value.acceptedNavigationRelationships[0] = {
+          ...value.acceptedNavigationRelationships[0],
+          programId: "program-b",
+        };
+      },
+      expectedReason: "navigation_relationship_program_mismatch",
+    },
+    {
+      mutate: value => {
+        value.corpusCandidates[0] = {
+          ...value.corpusCandidates[0],
+          candidateKind: "concept",
+        };
+        value.acceptedCorpusEntities[0] = {
+          ...value.acceptedCorpusEntities[0],
+          acceptedKind: "concept",
+        };
+        value.acceptedCorpusRevisions[0] = {
+          ...value.acceptedCorpusRevisions[0],
+          acceptedKind: "concept",
+        };
+        value.acceptedNavigationRelationships[0] = {
+          ...value.acceptedNavigationRelationships[0],
+          relationshipKind: "concept_prerequisite",
+        };
+        value.acceptedNavigationRelationshipRevisions[0] = {
+          ...value.acceptedNavigationRelationshipRevisions[0],
+          relationshipKind: "concept_prerequisite",
+          fromKind: "concept",
+        };
+        value.acceptedNavigationRelationships.push({
+          id: "relationship-2",
+          programId: "program-1",
+          relationshipKind: "concept_prerequisite",
+          fromEntityId: "entity-2",
+          toEntityId: "entity-1",
+          currentRevisionId: "relationship-revision-2",
+        });
+        value.acceptedNavigationRelationshipRevisions.push({
+          id: "relationship-revision-2",
+          relationshipId: "relationship-2",
+          programId: "program-1",
+          relationshipKind: "concept_prerequisite",
+          fromEntityId: "entity-2",
+          fromRevisionId: "revision-2",
+          fromKind: "concept",
+          toEntityId: "entity-1",
+          toRevisionId: "revision-1",
+          toKind: "concept",
+          label: "Reverse prerequisite",
+          sourceIds: ["source-1"],
+          acceptedFromCandidateId: "candidate-relationship",
+          acceptedByIdentityId: "identity-1",
+          acceptedAt: "2026-05-27T10:13:00.000Z",
+        });
+      },
+      expectedReason: "navigation_prerequisite_cycle",
+    },
+  ];
+
+  for (const invalidBackup of invalidBackups) {
+    const backup = await makeExportedNavigationBackup();
+    const target = makeSUT();
+
+    try {
+      invalidBackup.mutate(backup);
+
+      const result = target.commands.restoreBackup(backup);
+
+      assert.deepEqual(result, {
+        status: "rejected",
+        reason: invalidBackup.expectedReason,
+      });
+    } finally {
+      target.database.close();
+    }
+  }
+});
+
+test("restoreBackup_shouldRejectMalformedLearnerEvidenceTargetLinks_onBackup", async () => {
+  const invalidBackups = [
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          targetKind: "program",
+        };
+      },
+      expectedReason: "learner_state_target_kind_invalid",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          targetId: "missing-target",
+        };
+      },
+      expectedReason: "accepted_entity_not_found",
+    },
+    {
+      mutate: value => {
+        addCrossProgramLearnerStateTargetLinkBackupRecords(value);
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          targetId: "entity-cross-program",
+        };
+      },
+      expectedReason: "learner_state_target_program_mismatch",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          evidenceOwnerEntityId: "missing-quick-check",
+        };
+      },
+      expectedReason: "quick_check_entity_not_found",
+    },
+    {
+      mutate: value => {
+        addCrossProgramLearnerStateTargetLinkBackupRecords(value);
+        value.learnerEvidenceTargetLinks[0] = {
+          ...value.learnerEvidenceTargetLinks[0],
+          evidenceOwnerEntityId: "quick-check-entity-cross-program",
+        };
+      },
+      expectedReason: "learner_state_evidence_owner_program_mismatch",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks.push({
+          ...value.learnerEvidenceTargetLinks[1],
+          id: "learner-target-link-duplicate",
+        });
+      },
+      expectedReason: "learner_state_target_link_idempotency_conflict",
+    },
+    {
+      mutate: value => {
+        value.learnerEvidenceTargetLinks.push({
+          ...value.learnerEvidenceTargetLinks[1],
+          targetId: "entity-1",
+        });
+      },
+      expectedReason: "learner_state_target_link_id_conflict",
+    },
+  ];
+
+  for (const invalidBackup of invalidBackups) {
+    const backup = await makeExportedLearnerEvidenceTargetLinkBackup();
+    const target = makeSUT();
+
+    try {
+      invalidBackup.mutate(backup);
+
+      const result = target.commands.restoreBackup(backup);
+
+      assert.deepEqual(result, {
+        status: "rejected",
+        reason: invalidBackup.expectedReason,
+      });
+    } finally {
+      target.database.close();
+    }
+  }
+});
+
 test("restoreBackup_shouldRejectMalformedQuickCheckGraphs_onBackup", async () => {
   const backup = await makeExportedQuickCheckBackup();
   const invalidBackups = [
@@ -2033,6 +2720,40 @@ function seedProgramRecords(database, {
     );
 }
 
+function seedMembershipInvitationRecords(database) {
+  storage.createIdentity(database, {
+    id: "identity-student",
+    displayName: "Student",
+    state: "active",
+    createdAt: "2026-06-04T08:00:00.000Z",
+  });
+  storage.createProgramInvitationRecord(database, {
+    id: "invitation-1",
+    programId: "program-1",
+    targetIdentityId: "identity-student",
+    participationKind: "student",
+    status: "accepted",
+    invitedByIdentityId: "identity-1",
+    createdAt: "2026-06-04T09:00:00.000Z",
+    updatedAt: "2026-06-04T10:00:00.000Z",
+    statusChangedByIdentityId: "identity-student",
+    statusChangedAt: "2026-06-04T10:00:00.000Z",
+  });
+  storage.createProgramMembershipEventRecord(database, {
+    id: "membership-event-2",
+    eventType: "student_invitation_accepted",
+    actorIdentityId: "identity-student",
+    targetIdentityId: "identity-student",
+    programId: "program-1",
+    participationKind: "student",
+    policyPath: "curator_invitation",
+    resultingStatus: "active",
+    invitationStatus: "accepted",
+    occurredAt: "2026-06-04T10:00:00.000Z",
+    outcome: "accepted",
+  });
+}
+
 function seedCorpusRecords(database, { identityId, programId }) {
   database
     .prepare(
@@ -2112,6 +2833,108 @@ function seedCorpusRecords(database, { identityId, programId }) {
       "2026-05-27T10:06:00.000Z",
       "accepted",
       null,
+    );
+}
+
+function seedNavigationRelationshipRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into corpus_candidates (
+         id, program_id, candidate_kind, title, body, source_ids_json, rationale, status,
+         created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "candidate-2",
+      programId,
+      "concept",
+      "Concept Candidate",
+      "Concept Body",
+      JSON.stringify(["source-1"]),
+      "Concept Rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:07:00.000Z",
+      "2026-05-27T10:08:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into corpus_candidates (
+         id, program_id, candidate_kind, title, body, source_ids_json, rationale, status,
+         created_by_identity_id, created_at, updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "candidate-relationship",
+      programId,
+      "relationship_update",
+      "Relationship Candidate",
+      "Relationship Body",
+      JSON.stringify(["source-1"]),
+      "Relationship Rationale",
+      "accepted",
+      identityId,
+      "2026-05-27T10:09:00.000Z",
+      "2026-05-27T10:10:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_corpus_entities (
+         id, program_id, accepted_kind, current_revision_id
+       ) values (?, ?, ?, ?)`,
+    )
+    .run("entity-2", programId, "concept", "revision-2");
+  database
+    .prepare(
+      `insert into accepted_corpus_revisions (
+         id, entity_id, program_id, accepted_kind, title, body, accepted_from_candidate_id,
+         source_ids_json, rationale, accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "revision-2",
+      "entity-2",
+      programId,
+      "concept",
+      "Accepted Concept",
+      "Accepted Concept Body",
+      "candidate-2",
+      JSON.stringify(["source-1"]),
+      "Concept Rationale",
+      identityId,
+      "2026-05-27T10:11:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into accepted_navigation_relationships (
+         id, program_id, relationship_kind, from_entity_id, to_entity_id, current_revision_id
+       ) values (?, ?, ?, ?, ?, ?)`,
+    )
+    .run("relationship-1", programId, "topic_includes_concept", "entity-1", "entity-2", "relationship-revision-1");
+  database
+    .prepare(
+      `insert into accepted_navigation_relationship_revisions (
+         id, relationship_id, program_id, relationship_kind, from_entity_id, from_revision_id, from_kind,
+         to_entity_id, to_revision_id, to_kind, label, source_ids_json, accepted_from_candidate_id,
+         accepted_by_identity_id, accepted_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "relationship-revision-1",
+      "relationship-1",
+      programId,
+      "topic_includes_concept",
+      "entity-1",
+      "revision-1",
+      "topic",
+      "entity-2",
+      "revision-2",
+      "concept",
+      "Topic concept link",
+      JSON.stringify(["source-1"]),
+      "candidate-relationship",
+      identityId,
+      "2026-05-27T10:12:00.000Z",
     );
 }
 
@@ -2236,6 +3059,342 @@ function seedQuickCheckStorageRecords(database, { identityId, programId }) {
       "idempotency-quick-check-existing",
       "2026-05-27T10:10:00.000Z",
     );
+}
+
+function seedLearnerEvidenceTargetLinkRecords(database, { identityId, programId }) {
+  database
+    .prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "learner-target-link-deleted",
+      programId,
+      "topic",
+      "entity-1",
+      "accepted_quick_check",
+      "quick-check-entity-existing",
+      "deleted",
+      identityId,
+      "2026-06-03T10:00:00.000Z",
+      "2026-06-03T10:01:00.000Z",
+    );
+  database
+    .prepare(
+      `insert into learner_evidence_target_links (
+         id,
+         program_id,
+         target_kind,
+         target_id,
+         evidence_owner_kind,
+         evidence_owner_entity_id,
+         status,
+         created_by_identity_id,
+         created_at,
+         updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "learner-target-link-active",
+      programId,
+      "topic",
+      "entity-1",
+      "accepted_quick_check",
+      "quick-check-entity-existing",
+      "active",
+      identityId,
+      "2026-06-03T10:02:00.000Z",
+      "2026-06-03T10:02:00.000Z",
+    );
+}
+
+function seedReadinessStorageRecords(database, { identityId, programId }) {
+  storage.createReadinessCheckCandidateRecord?.(
+    database,
+    {
+      id: "readiness-candidate-existing",
+      programId,
+      title: "Topic readiness",
+      scope: { scopeKind: "topic", topicEntityId: "entity-1" },
+      requirements: [
+        {
+          requirementId: "readiness-requirement-topic",
+          targetKind: "topic",
+          targetId: "entity-1",
+          requiredLevel: "on_track",
+        },
+        {
+          requirementId: "readiness-requirement-concept",
+          targetKind: "concept",
+          targetId: "entity-2",
+          requiredLevel: "developing",
+        },
+      ],
+      sourceIds: ["source-1"],
+      rationale: "Readiness rationale",
+      status: "accepted",
+      createdByIdentityId: identityId,
+      createdAt: "2026-06-03T11:00:00.000Z",
+      updatedAt: "2026-06-03T11:00:00.000Z",
+    },
+  );
+  storage.createAcceptedReadinessCheckEntityRecord?.(
+    database,
+    {
+      id: "readiness-entity-existing",
+      programId,
+      currentRevisionId: "readiness-revision-existing",
+    },
+  );
+  storage.createAcceptedReadinessCheckRevisionRecord?.(
+    database,
+    {
+      id: "readiness-revision-existing",
+      entityId: "readiness-entity-existing",
+      programId,
+      title: "Accepted topic readiness",
+      scope: { scopeKind: "topic", topicEntityId: "entity-1" },
+      requirements: [
+        {
+          requirementId: "readiness-requirement-topic",
+          targetKind: "topic",
+          targetId: "entity-1",
+          requiredLevel: "on_track",
+        },
+        {
+          requirementId: "readiness-requirement-concept",
+          targetKind: "concept",
+          targetId: "entity-2",
+          requiredLevel: "developing",
+        },
+      ],
+      sourceIds: ["source-1"],
+      rationale: "Accepted readiness rationale",
+      acceptedFromCandidateId: "readiness-candidate-existing",
+      acceptedByIdentityId: identityId,
+      acceptedAt: "2026-06-03T11:10:00.000Z",
+    },
+  );
+  storage.createReadinessCheckAttemptRecord?.(
+    database,
+    {
+      id: "readiness-attempt-existing",
+      programId,
+      studentIdentityId: "identity-student",
+      readinessCheckRevisionId: "readiness-revision-existing",
+      result: "ready",
+      requirementResults: [
+        {
+          requirementId: "readiness-requirement-topic",
+          targetKind: "topic",
+          targetId: "entity-1",
+          title: "Accepted",
+          requiredLevel: "on_track",
+          observedLevel: "on_track",
+          evidenceCount: 2,
+          result: "ready",
+        },
+        {
+          requirementId: "readiness-requirement-concept",
+          targetKind: "concept",
+          targetId: "entity-2",
+          title: "Accepted Concept",
+          requiredLevel: "developing",
+          observedLevel: "developing",
+          evidenceCount: 1,
+          result: "ready",
+        },
+      ],
+      idempotencyKey: "idempotency-readiness-existing",
+      submittedAt: "2026-06-03T11:20:00.000Z",
+    },
+  );
+}
+
+function addCrossProgramReadinessTargetBackupRecords(backup) {
+  backup.programShells.push({
+    id: "program-cross",
+    title: "Cross Program",
+    description: null,
+    admissionPolicy: "self_join",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programMemberships.push({
+    id: "membership-cross",
+    programId: "program-cross",
+    identityId: "identity-1",
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programSources.push({
+    id: "source-cross",
+    programId: "program-cross",
+    sourceKind: "article",
+    title: "Cross source",
+    locator: "https://example.test/cross",
+    citation: "Cross citation",
+    recordedByIdentityId: "identity-1",
+    recordedAt: "2026-06-03T09:01:00.000Z",
+  });
+  backup.corpusCandidates.push({
+    id: "candidate-cross",
+    programId: "program-cross",
+    candidateKind: "topic",
+    title: "Cross topic candidate",
+    body: "Cross topic body",
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:02:00.000Z",
+    updatedAt: "2026-06-03T09:02:00.000Z",
+  });
+  backup.acceptedCorpusEntities.push({
+    id: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    currentRevisionId: "revision-cross-program",
+  });
+  backup.acceptedCorpusRevisions.push({
+    id: "revision-cross-program",
+    entityId: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    title: "Cross topic",
+    body: "Cross topic body",
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    acceptedFromCandidateId: "candidate-cross",
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: "2026-06-03T09:03:00.000Z",
+  });
+}
+
+function addCrossProgramLearnerStateTargetLinkBackupRecords(backup) {
+  backup.programShells.push({
+    id: "program-cross",
+    title: "Cross Program",
+    description: null,
+    admissionPolicy: "self_join",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programMemberships.push({
+    id: "membership-cross",
+    programId: "program-cross",
+    identityId: "identity-1",
+    participationKind: "program_curator",
+    status: "active",
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-03T09:00:00.000Z",
+  });
+  backup.programSources.push({
+    id: "source-cross",
+    programId: "program-cross",
+    sourceKind: "article",
+    title: "Cross source",
+    locator: "https://example.test/cross",
+    citation: "Cross citation",
+    recordedByIdentityId: "identity-1",
+    recordedAt: "2026-06-03T09:01:00.000Z",
+  });
+  backup.corpusCandidates.push({
+    id: "candidate-cross",
+    programId: "program-cross",
+    candidateKind: "topic",
+    title: "Cross topic candidate",
+    body: "Cross topic body",
+    materialReferenceKind: null,
+    locator: null,
+    citation: null,
+    relationshipDrafts: [],
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:02:00.000Z",
+    updatedAt: "2026-06-03T09:02:00.000Z",
+  });
+  backup.acceptedCorpusEntities.push({
+    id: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    currentRevisionId: "revision-cross-program",
+  });
+  backup.acceptedCorpusRevisions.push({
+    id: "revision-cross-program",
+    entityId: "entity-cross-program",
+    programId: "program-cross",
+    acceptedKind: "topic",
+    title: "Cross topic",
+    body: "Cross topic body",
+    acceptedFromCandidateId: "candidate-cross",
+    sourceIds: ["source-cross"],
+    rationale: "Cross rationale",
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: "2026-06-03T09:03:00.000Z",
+  });
+  backup.quickCheckCandidates.push({
+    id: "quick-check-candidate-cross",
+    programId: "program-cross",
+    checkKind: "single_select_quick_check",
+    title: "Cross quick check",
+    prompt: "Cross prompt",
+    options: [
+      { id: "quick-check-candidate-cross-option-a", text: "Cross option A" },
+      { id: "quick-check-candidate-cross-option-b", text: "Cross option B" },
+    ],
+    answerKeyOptionId: "quick-check-candidate-cross-option-a",
+    sourceIds: ["source-cross"],
+    rationale: "Cross quick rationale",
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: "2026-06-03T09:04:00.000Z",
+    updatedAt: "2026-06-03T09:04:00.000Z",
+  });
+  backup.acceptedQuickCheckEntities.push({
+    id: "quick-check-entity-cross-program",
+    programId: "program-cross",
+    currentRevisionId: "quick-check-revision-cross-program",
+  });
+  backup.acceptedQuickCheckRevisions.push({
+    id: "quick-check-revision-cross-program",
+    entityId: "quick-check-entity-cross-program",
+    programId: "program-cross",
+    checkKind: "single_select_quick_check",
+    title: "Accepted cross quick check",
+    prompt: "Accepted cross prompt",
+    options: [
+      { id: "quick-check-revision-cross-program-option-a", text: "Cross revision option A" },
+      { id: "quick-check-revision-cross-program-option-b", text: "Cross revision option B" },
+    ],
+    answerKeyOptionId: "quick-check-revision-cross-program-option-a",
+    acceptedFromCandidateId: "quick-check-candidate-cross",
+    sourceIds: ["source-cross"],
+    rationale: "Accepted cross quick rationale",
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: "2026-06-03T09:05:00.000Z",
+  });
 }
 
 function seedQuickCheckReplacementRevision(database, { identityId, programId }) {
@@ -2667,6 +3826,18 @@ function projectQuickCheckAttemptBackupRecord(attempt) {
   };
 }
 
+function projectReadinessAttemptBackupRecord(attempt) {
+  return {
+    id: attempt.id,
+    programId: attempt.programId,
+    studentIdentityId: attempt.studentIdentityId,
+    readinessCheckRevisionId: attempt.readinessCheckRevisionId,
+    result: attempt.result,
+    requirementIds: attempt.requirementResults.map($0 => $0.requirementId),
+    idempotencyKey: attempt.idempotencyKey,
+  };
+}
+
 function projectQuickCheckAttemptSummary(attempt) {
   return {
     attemptId: attempt.attemptId,
@@ -2761,6 +3932,32 @@ async function makeExportedCorpusBackup() {
   }
 }
 
+async function makeExportedNavigationBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
 async function makeExportedQuickCheckBackup() {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
 
@@ -2781,6 +3978,90 @@ async function makeExportedQuickCheckBackup() {
     seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
     seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedLearnerEvidenceTargetLinkBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedQuickCheckStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedLearnerEvidenceTargetLinkRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+    });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedProgramInvitationBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedMembershipInvitationRecords(source.database);
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedReadinessBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedQuickCheckStudentIdentityAndMembership(source.database, { programId: "program-1" });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedNavigationRelationshipRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    seedReadinessStorageRecords(source.database, { identityId: "identity-1", programId: "program-1" });
 
     return source.commands.exportBackup().value.backup;
   } finally {

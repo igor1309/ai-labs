@@ -3,14 +3,18 @@ import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
 import { createCorpusCommands } from "./corpus.js";
+import { createCuratorWorkspaceCommands } from "./curator-workspace.js";
 import { createIdentityCommands } from "./identity.js";
+import { learnUiHtml } from "./learn-ui.js";
 import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
+import { createStudentWorkspaceCommands } from "./student-workspace.js";
 
 export function createServer({
   generateToken = randomUUID,
   healthCheck = () => "ok",
   corpusCommands = null,
+  curatorWorkspaceCommands = null,
   identityCommands = null,
   log = logToStdout,
   now = () => new Date(),
@@ -25,11 +29,24 @@ export function createServer({
   return http.createServer(async (request, response) => {
     const requestId = getRequestId(request);
     const pathname = getPathname(request);
+    const operation = `${request.method} ${pathname}`;
     response.setHeader("x-request-id", requestId);
+    response.once("finish", () => {
+      logCompletion(log, now, {
+        operation,
+        requestId,
+        ...(response.agonaraCompletionLog ?? completionLogForBody(response.statusCode, null)),
+      });
+    });
 
     try {
       if (request.method === "GET" && pathname === "/admin") {
         sendHtml(response, 200, adminBoardHtml);
+        return;
+      }
+
+      if (request.method === "GET" && pathname === "/learn") {
+        sendHtml(response, 200, learnUiHtml);
         return;
       }
 
@@ -80,6 +97,20 @@ export function createServer({
         }
       }
 
+      if (identityCommands && curatorWorkspaceCommands) {
+        const handled = await handleCuratorWorkspaceApi({
+          csrfTokens,
+          curatorWorkspaceCommands,
+          identityCommands,
+          pathname,
+          request,
+          response,
+        });
+        if (handled) {
+          return;
+        }
+      }
+
       if (identityCommands && studentWorkspaceCommands) {
         const handled = await handleStudentWorkspaceApi({
           csrfTokens,
@@ -98,12 +129,6 @@ export function createServer({
 
       if (request.method === "GET" && pathname === "/operations/health") {
         const status = healthCheck();
-        logCompletion(log, now, {
-          severity: "info",
-          operation: "GET /operations/health",
-          requestId,
-          outcome: "accepted",
-        });
         sendJson(response, 200, {
           status,
           checkedAt: now().toISOString(),
@@ -117,29 +142,16 @@ export function createServer({
           const sessionId = getSessionCookie(request);
           const diagnosticsAccess = identityCommands.listIdentities({ actingSessionId: sessionId });
           if (diagnosticsAccess.status === "accepted") {
-            logCompletion(log, now, {
-              severity: "info",
-              operation: "GET /operations/diagnostics",
-              requestId,
-              outcome: "accepted",
-            });
+            const generatedAt = now().toISOString();
             sendJson(response, 200, {
-              status: "accepted",
-              value: {
-                checkedAt: now().toISOString(),
-                components: [{ component: "identity", status: "ok" }],
-              },
+              status: "ok",
+              generatedAt,
+              requestId,
+              checks: [{ name: "identity", status: "ok", observedAt: generatedAt }],
             });
             return;
           }
 
-          logCompletion(log, now, {
-            severity: "warning",
-            operation: "GET /operations/diagnostics",
-            requestId,
-            outcome: "rejected",
-            reason: diagnosticsAccess.reason,
-          });
           sendJson(response, httpStatusFor(diagnosticsAccess.reason), {
             status: "rejected",
             reason: diagnosticsAccess.reason,
@@ -147,26 +159,12 @@ export function createServer({
           return;
         }
 
-        logCompletion(log, now, {
-          severity: "warning",
-          operation: "GET /operations/diagnostics",
-          requestId,
-          outcome: "rejected",
-          reason: "session_not_found",
-        });
         sendJson(response, 401, { status: "rejected", reason: "session_not_found" });
         return;
       }
 
       sendJson(response, 404, { status: "rejected", reason: "not_found" });
     } catch {
-      logCompletion(log, now, {
-        severity: "error",
-        operation: `${request.method} ${pathname}`,
-        requestId,
-        outcome: "fault",
-        errorKind: "unexpected",
-      });
       sendJson(response, 500, { status: "fault", reason: "internal_error" });
     }
   });
@@ -379,15 +377,13 @@ async function handleProgramApi({
   }
 
   if (request.method === "POST" && pathname === "/programs") {
-    const csrf = requireCsrf(request, csrfTokens);
-    if (csrf.status === "rejected") {
-      sendJson(response, httpStatusFor(csrf.reason), csrf);
-      return true;
-    }
-
-    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
-    if (session.status === "rejected") {
-      sendJson(response, httpStatusFor(session.reason), session);
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
       return true;
     }
 
@@ -415,17 +411,231 @@ async function handleProgramApi({
     return true;
   }
 
-  const studentMembershipMatch = pathname.match(/^\/programs\/([^/]+)\/student-membership$/);
-  if ((request.method === "POST" || request.method === "DELETE") && studentMembershipMatch) {
-    const csrf = requireCsrf(request, csrfTokens);
-    if (csrf.status === "rejected") {
-      sendJson(response, httpStatusFor(csrf.reason), csrf);
+  if (request.method === "GET" && pathname === "/program-invitations/me") {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const url = new URL(request.url ?? "/", "http://localhost");
+    const result = programCommands.listMyProgramInvitations({
+      actingIdentityId: session.value.identity.id,
+      status: url.searchParams.get("status") ?? undefined,
+    });
+    sendJson(response, statusForResult(result), mapProgramInvitationsResult(result));
+    return true;
+  }
+
+  const admissionPolicyMatch = pathname.match(/^\/programs\/([^/]+)\/admission-policy$/);
+  if (request.method === "PATCH" && admissionPolicyMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const body = await readRouteBody(request, ["admissionPolicy"]);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = programCommands.setProgramAdmissionPolicy({
+      actingIdentityId: session.value.identity.id,
+      admissionPolicy: body.value.admissionPolicy,
+      programId: decodeURIComponent(admissionPolicyMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramAdmissionPolicyResult(result));
+    return true;
+  }
+
+  const invitationListMatch = pathname.match(/^\/programs\/([^/]+)\/invitations$/);
+  if (invitationListMatch && (request.method === "GET" || request.method === "POST")) {
+    if (request.method === "GET") {
+      const session = resolveHttpSession({ identityCommands, request });
+      if (session.status === "rejected") {
+        sendJson(response, httpStatusFor(session.reason), session);
+        return true;
+      }
+      const url = new URL(request.url ?? "/", "http://localhost");
+      const result = programCommands.listProgramInvitations({
+        actingIdentityId: session.value.identity.id,
+        programId: decodeURIComponent(invitationListMatch[1]),
+        status: url.searchParams.get("status") ?? undefined,
+      });
+      sendJson(response, statusForResult(result), mapProgramInvitationsResult(result));
       return true;
     }
 
-    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const body = await readRouteBody(request, ["participationKind", "targetIdentityId"]);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = programCommands.createProgramInvitation({
+      actingIdentityId: session.value.identity.id,
+      participationKind: body.value.participationKind,
+      programId: decodeURIComponent(invitationListMatch[1]),
+      targetIdentityId: body.value.targetIdentityId,
+    });
+    sendJson(response, statusForResult(result), mapProgramInvitationResult(result));
+    return true;
+  }
+
+  const invitationActionMatch = pathname.match(
+    /^\/program-invitations\/([^/]+)\/(acceptance|decline|revocation)$/,
+  );
+  if (request.method === "POST" && invitationActionMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const commands = {
+      acceptance: programCommands.acceptProgramInvitation,
+      decline: programCommands.declineProgramInvitation,
+      revocation: programCommands.revokeProgramInvitation,
+    };
+    const result = commands[invitationActionMatch[2]]({
+      actingIdentityId: session.value.identity.id,
+      invitationId: decodeURIComponent(invitationActionMatch[1]),
+    });
+    const mapper = invitationActionMatch[2] === "acceptance"
+      ? mapProgramInvitationAcceptanceResult
+      : mapProgramInvitationResult;
+    sendJson(response, statusForResult(result), mapper(result));
+    return true;
+  }
+
+  const participantsMatch = pathname.match(/^\/programs\/([^/]+)\/participants$/);
+  if (request.method === "GET" && participantsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
       sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const url = new URL(request.url ?? "/", "http://localhost");
+    const result = programCommands.listProgramParticipants({
+      actingIdentityId: session.value.identity.id,
+      participationKind: url.searchParams.get("participationKind") ?? undefined,
+      programId: decodeURIComponent(participantsMatch[1]),
+      status: url.searchParams.get("status") ?? undefined,
+    });
+    sendJson(response, statusForResult(result), mapProgramParticipantsResult(result));
+    return true;
+  }
+
+  const participantRemovalMatch = pathname.match(
+    /^\/programs\/([^/]+)\/participants\/student\/([^/]+)$/,
+  );
+  if (request.method === "DELETE" && participantRemovalMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const result = programCommands.removeProgramParticipant({
+      actingIdentityId: session.value.identity.id,
+      participationKind: "student",
+      programId: decodeURIComponent(participantRemovalMatch[1]),
+      targetIdentityId: decodeURIComponent(participantRemovalMatch[2]),
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
+  const curatorLeaveMatch = pathname.match(/^\/programs\/([^/]+)\/curator-membership$/);
+  if (request.method === "DELETE" && curatorLeaveMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const result = programCommands.leaveCuratorProgram({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(curatorLeaveMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
+  const exceptionalMembershipMatch = pathname.match(
+    /^\/admin\/program-memberships\/(recovery|revocation)$/,
+  );
+  if (request.method === "POST" && exceptionalMembershipMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
+      return true;
+    }
+    const reasonKey = exceptionalMembershipMatch[1] === "recovery"
+      ? "recoveryReason"
+      : "revocationReason";
+    const body = await readRouteBody(request, [
+      "participationKind",
+      "programId",
+      reasonKey,
+      "targetIdentityId",
+    ]);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const command = exceptionalMembershipMatch[1] === "recovery"
+      ? programCommands.recoverProgramMembership
+      : programCommands.revokeProgramMembership;
+    const result = command({
+      actingIdentityId: session.value.identity.id,
+      participationKind: body.value.participationKind,
+      programId: body.value.programId,
+      [reasonKey]: body.value[reasonKey],
+      targetIdentityId: body.value.targetIdentityId,
+    });
+    sendJson(response, statusForResult(result), mapProgramMembershipResult(result));
+    return true;
+  }
+
+  const studentMembershipMatch = pathname.match(/^\/programs\/([^/]+)\/student-membership$/);
+  if ((request.method === "POST" || request.method === "DELETE") && studentMembershipMatch) {
+    const session = requireMutationSession({
+      csrfTokens,
+      identityCommands,
+      request,
+      response,
+    });
+    if (!session) {
       return true;
     }
 
@@ -556,6 +766,166 @@ async function handleProgramApi({
   return false;
 }
 
+async function handleCuratorWorkspaceApi({
+  csrfTokens,
+  curatorWorkspaceCommands,
+  identityCommands,
+  pathname,
+  request,
+  response,
+}) {
+  const coverageGapsMatch = pathname.match(/^\/programs\/([^/]+)\/coverage-gaps$/);
+  const llmSuggestionsMatch = pathname.match(/^\/programs\/([^/]+)\/llm-curation-suggestions$/);
+  const llmSuggestionDetailMatch = pathname.match(/^\/llm-curation-suggestions\/([^/]+)$/);
+  const llmSuggestionAcceptanceMatch = pathname.match(
+    /^\/llm-curation-suggestions\/([^/]+)\/acceptance$/,
+  );
+  const llmSuggestionRejectionMatch = pathname.match(
+    /^\/llm-curation-suggestions\/([^/]+)\/rejection$/,
+  );
+
+  if (request.method === "POST" && llmSuggestionsMatch) {
+    const session = requireMutationSession({ csrfTokens, identityCommands, request, response });
+    if (!session) {
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const generation = parseLlmSuggestionGenerationBody(body.value);
+    if (generation.status === "rejected") {
+      sendJson(response, 400, generation);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.generateLlmCurationSuggestions({
+      actingIdentityId: session.value.identity.id,
+      allowedSuggestionKinds: generation.value.allowedSuggestionKinds,
+      contextEntityIds: generation.value.contextEntityIds,
+      coverageGapIds: generation.value.coverageGapIds,
+      curatorInstruction: generation.value.curatorInstruction,
+      idempotencyKey: generation.value.idempotencyKey,
+      maxSuggestions: generation.value.maxSuggestions,
+      programId: decodeURIComponent(llmSuggestionsMatch[1]),
+      suggestionPolicyId: generation.value.suggestionPolicyId,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && llmSuggestionsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const query = parseLlmSuggestionListQuery(request);
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.listLlmCurationSuggestions({
+      actingIdentityId: session.value.identity.id,
+      cursor: query.value.cursor,
+      limit: query.value.limit,
+      programId: decodeURIComponent(llmSuggestionsMatch[1]),
+      status: query.value.status,
+      suggestionKind: query.value.suggestionKind,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && llmSuggestionDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.getLlmCurationSuggestion({
+      actingIdentityId: session.value.identity.id,
+      suggestionId: decodeURIComponent(llmSuggestionDetailMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "POST" && llmSuggestionAcceptanceMatch) {
+    const session = requireMutationSession({ csrfTokens, identityCommands, request, response });
+    if (!session) {
+      return true;
+    }
+
+    const body = await readEmptyJsonObjectBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.acceptLlmCurationSuggestion({
+      actingIdentityId: session.value.identity.id,
+      suggestionId: decodeURIComponent(llmSuggestionAcceptanceMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "POST" && llmSuggestionRejectionMatch) {
+    const session = requireMutationSession({ csrfTokens, identityCommands, request, response });
+    if (!session) {
+      return true;
+    }
+
+    const body = await readEmptyJsonObjectBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.rejectLlmCurationSuggestion({
+      actingIdentityId: session.value.identity.id,
+      suggestionId: decodeURIComponent(llmSuggestionRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && coverageGapsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseCoverageGapFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.inspectCuratorCoverageGaps({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(coverageGapsMatch[1]),
+      gapKinds: filters.value.gapKinds,
+      minimumSeverity: filters.value.minimumSeverity,
+      scopeId: filters.value.scopeId,
+      scopeKind: filters.value.scopeKind,
+    });
+    const mappedResult = mapCoverageGapReportResult(result);
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  return false;
+}
+
 async function handleStudentWorkspaceApi({
   csrfTokens,
   generateToken,
@@ -568,6 +938,273 @@ async function handleStudentWorkspaceApi({
 }) {
   const attemptsMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-attempts$/);
   const attemptDetailMatch = pathname.match(/^\/open-answer-attempts\/([^/]+)$/);
+  const quickCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/quick-check-attempts$/);
+  const quickCheckAttemptDetailMatch = pathname.match(/^\/quick-check-attempts\/([^/]+)$/);
+  const readinessCheckDeliveriesMatch = pathname.match(/^\/programs\/([^/]+)\/readiness-checks$/);
+  const readinessCheckAttemptsMatch = pathname.match(/^\/programs\/([^/]+)\/readiness-check-attempts$/);
+  const readinessCheckAttemptDetailMatch = pathname.match(/^\/readiness-check-attempts\/([^/]+)$/);
+  const learnerStateProgramMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state$/);
+  const learnerStateTargetMatch = pathname.match(/^\/learner-state\/targets\/([^/]+)\/([^/]+)$/);
+  if (request.method === "GET" && learnerStateProgramMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getLearnerStateProgramSummary({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(learnerStateProgramMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateProgramResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && learnerStateTargetMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getLearnerStateTargetDetail({
+      actingIdentityId: session.value.identity.id,
+      targetKind: decodeURIComponent(learnerStateTargetMatch[1]),
+      targetId: decodeURIComponent(learnerStateTargetMatch[2]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckAttemptDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getQuickCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      attemptId: decodeURIComponent(quickCheckAttemptDetailMatch[1]),
+    });
+    const mappedResult = mapQuickCheckAttemptDetailResult(result);
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckAttemptDetailMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.getReadinessCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      attemptId: decodeURIComponent(readinessCheckAttemptDetailMatch[1]),
+    });
+    const mappedResult = mapReadinessCheckAttemptDetailResult(result);
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckDeliveriesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(readinessCheckDeliveriesMatch[1]);
+    const routeKey = `readiness-check-deliveries:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listReadinessCheckDeliveries({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapReadinessCheckDeliveryListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseReadinessCheckAttemptListFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const programId = decodeURIComponent(readinessCheckAttemptsMatch[1]);
+    const routeKey = JSON.stringify([
+      "student-readiness-check-attempts",
+      session.value.identity.id,
+      programId,
+      filters.value.readinessCheckRevisionId ?? "all",
+    ]);
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listReadinessCheckAttempts({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      readinessCheckRevisionId: filters.value.readinessCheckRevisionId,
+    });
+    const mappedResult = mapReadinessCheckAttemptListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && readinessCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const idempotencyKey = parseAttemptIdempotencyKey(request);
+    if (idempotencyKey.status === "rejected") {
+      sendJson(response, 400, idempotencyKey);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const submission = parseSubmitReadinessCheckAttemptBody(body.value);
+    if (submission.status === "rejected") {
+      sendJson(response, 400, submission);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.submitReadinessCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      idempotencyKey: idempotencyKey.value,
+      programId: decodeURIComponent(readinessCheckAttemptsMatch[1]),
+      readinessCheckRevisionId: submission.value.readinessCheckRevisionId,
+    });
+    sendJson(response, statusForResult(result), mapReadinessCheckAttemptResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseQuickCheckAttemptListFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const programId = decodeURIComponent(quickCheckAttemptsMatch[1]);
+    const routeKey = JSON.stringify([
+      "student-quick-check-attempts",
+      session.value.identity.id,
+      programId,
+      filters.value.checkRevisionId ?? "all",
+    ]);
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.listQuickCheckAttempts({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: filters.value.checkRevisionId,
+      programId,
+    });
+    const mappedResult = mapQuickCheckAttemptListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && quickCheckAttemptsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const idempotencyKey = parseAttemptIdempotencyKey(request);
+    if (idempotencyKey.status === "rejected") {
+      sendJson(response, 400, idempotencyKey);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const submission = parseSubmitQuickCheckAttemptBody(body.value);
+    if (submission.status === "rejected") {
+      sendJson(response, 400, submission);
+      return true;
+    }
+
+    const result = studentWorkspaceCommands.submitQuickCheckAttempt({
+      actingIdentityId: session.value.identity.id,
+      checkRevisionId: submission.value.checkRevisionId,
+      idempotencyKey: idempotencyKey.value,
+      programId: decodeURIComponent(quickCheckAttemptsMatch[1]),
+      selectedOptionId: submission.value.selectedOptionId,
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckAttemptResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && attemptDetailMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -684,10 +1321,16 @@ async function handleCorpusApi({
 }) {
   const sourcesMatch = pathname.match(/^\/programs\/([^/]+)\/sources$/);
   const candidatesMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-candidates$/);
+  const navigationCandidatesMatch = pathname.match(/^\/programs\/([^/]+)\/navigation-candidates$/);
+  const programNavigationMatch = pathname.match(/^\/programs\/([^/]+)\/navigation$/);
   const acceptedCorpusMatch = pathname.match(/^\/programs\/([^/]+)\/accepted-corpus$/);
   const corpusEventsMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-events$/);
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
+  const navigationCandidateAcceptanceMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/acceptance$/);
+  const navigationCandidateRejectionMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/rejection$/);
+  const navigationEntityMatch = pathname.match(/^\/navigation\/entities\/([^/]+)$/);
+  const navigationRevisionMatch = pathname.match(/^\/navigation\/revisions\/([^/]+)$/);
   const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
   const acceptedAssessmentCriteriaMatch = pathname.match(/^\/programs\/([^/]+)\/assessment-criteria$/);
   const assessmentCriterionCandidatesMatch = pathname.match(
@@ -715,6 +1358,426 @@ async function handleCorpusApi({
   const acceptedOpenAnswerCheckRevisionMatch = pathname.match(
     /^\/open-answer-checks\/revisions\/([^/]+)$/,
   );
+  const quickCheckDeliveriesMatch = pathname.match(/^\/programs\/([^/]+)\/quick-checks$/);
+  const quickCheckDeliveryRevisionMatch = pathname.match(/^\/quick-checks\/revisions\/([^/]+)$/);
+  const quickCheckCandidatesMatch = pathname.match(
+    /^\/programs\/([^/]+)\/quick-checks\/candidates$/,
+  );
+  const quickCheckAcceptanceMatch = pathname.match(
+    /^\/quick-checks\/candidates\/([^/]+)\/acceptance$/,
+  );
+  const quickCheckRejectionMatch = pathname.match(
+    /^\/quick-checks\/candidates\/([^/]+)\/rejection$/,
+  );
+  const acceptedQuickCheckCurationRevisionMatch = pathname.match(
+    /^\/quick-checks\/revisions\/([^/]+)\/curation$/,
+  );
+  const readinessCheckCandidatesMatch = pathname.match(
+    /^\/programs\/([^/]+)\/readiness-checks\/candidates$/,
+  );
+  const readinessCheckAcceptanceMatch = pathname.match(
+    /^\/readiness-checks\/candidates\/([^/]+)\/acceptance$/,
+  );
+  const readinessCheckRejectionMatch = pathname.match(
+    /^\/readiness-checks\/candidates\/([^/]+)\/rejection$/,
+  );
+  const acceptedReadinessCheckCurationRevisionMatch = pathname.match(
+    /^\/readiness-checks\/revisions\/([^/]+)\/curation$/,
+  );
+  const learnerStateTargetLinksMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state-target-links$/);
+  const learnerStateTargetLinkMatch = pathname.match(/^\/learner-state-target-links\/([^/]+)$/);
+  if (request.method === "GET" && learnerStateTargetLinksMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.listLearnerEvidenceTargetLinks({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(learnerStateTargetLinksMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetLinkListResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && learnerStateTargetLinksMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidLearnerStateTargetLinkBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createLearnerEvidenceTargetLink({
+      actingIdentityId: session.value.identity.id,
+      evidenceOwnerEntityId: body.value.evidenceOwnerEntityId,
+      evidenceOwnerKind: body.value.evidenceOwnerKind,
+      programId: decodeURIComponent(learnerStateTargetLinksMatch[1]),
+      targetId: body.value.targetId,
+      targetKind: body.value.targetKind,
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetLinkResult(result));
+    return true;
+  }
+
+  if (request.method === "DELETE" && learnerStateTargetLinkMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: session.value.identity.id,
+      linkId: decodeURIComponent(learnerStateTargetLinkMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapLearnerStateTargetLinkResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckDeliveriesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(quickCheckDeliveriesMatch[1]);
+    const routeKey = `quick-check-deliveries:${programId}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listQuickCheckDeliveries({
+      actingIdentityId: session.value.identity.id,
+      programId,
+    });
+    const mappedResult = mapQuickCheckDeliveryListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckDeliveryRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getQuickCheckDelivery({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(quickCheckDeliveryRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckDeliveryResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(quickCheckCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `quick-check-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listQuickCheckCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapQuickCheckCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(readinessCheckCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `readiness-check-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listReadinessCheckCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapReadinessCheckCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && quickCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidQuickCheckCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createQuickCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      answerKeyIndex: body.value.answerKeyOptionIndex,
+      checkKind: body.value.checkKind,
+      options: body.value.options,
+      programId: decodeURIComponent(quickCheckCandidatesMatch[1]),
+      prompt: body.value.prompt,
+      rationale: body.value.rationale,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && readinessCheckCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidReadinessCheckCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createReadinessCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(readinessCheckCandidatesMatch[1]),
+      rationale: body.value.rationale,
+      requirements: body.value.requirements,
+      scope: body.value.scope,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapReadinessCheckCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedQuickCheckCurationRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedQuickCheckRevisionForCuration({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedQuickCheckCurationRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedQuickCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && acceptedReadinessCheckCurationRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getAcceptedReadinessCheckRevisionForCuration({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(acceptedReadinessCheckCurationRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapAcceptedReadinessCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && quickCheckAcceptanceMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptQuickCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(quickCheckAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapAcceptedQuickCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && readinessCheckAcceptanceMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptReadinessCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(readinessCheckAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapAcceptedReadinessCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && quickCheckRejectionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectQuickCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(quickCheckRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapQuickCheckCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "POST" && readinessCheckRejectionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectReadinessCheckCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(readinessCheckRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapReadinessCheckCandidateResult(result));
+    return true;
+  }
+
   if (request.method === "GET" && assessmentCriterionCandidatesMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -906,6 +1969,124 @@ async function handleCorpusApi({
       routeKey,
     });
     sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "GET" && navigationCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const programId = decodeURIComponent(navigationCandidatesMatch[1]);
+    const status = parseCorpusCandidateStatus(request);
+    if (status.status === "rejected") {
+      sendJson(response, 400, status);
+      return true;
+    }
+
+    const routeKey = `navigation-candidates:${programId}:${status.value ?? "all"}`;
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
+    const result = corpusCommands.listNavigationCandidates({
+      actingIdentityId: session.value.identity.id,
+      programId,
+      status: status.value ?? undefined,
+    });
+    const mappedResult = mapNavigationCandidateListResult({
+      generateToken,
+      listCursors,
+      query: query.value,
+      result,
+      routeKey,
+    });
+    sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "POST" && navigationCandidatesMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected" || !isValidNavigationCandidateBody(body.value)) {
+      sendJson(response, 400, rejected("validation_failed"));
+      return true;
+    }
+
+    const result = corpusCommands.createNavigationCandidate({
+      actingIdentityId: session.value.identity.id,
+      body: body.value.body,
+      candidateKind: body.value.candidateKind,
+      citation: body.value.citation,
+      locator: body.value.locator,
+      materialReferenceKind: body.value.materialReferenceKind,
+      programId: decodeURIComponent(navigationCandidatesMatch[1]),
+      rationale: body.value.rationale,
+      relationshipDrafts: body.value.relationshipDrafts,
+      sourceIds: body.value.sourceIds,
+      title: body.value.title,
+    });
+    sendJson(response, statusForResult(result), mapNavigationCandidateResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && programNavigationMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.listProgramNavigation({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(programNavigationMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapProgramNavigationResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && navigationEntityMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getNavigationEntity({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(navigationEntityMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapNavigationEntityResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && navigationRevisionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.getNavigationRevision({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(navigationRevisionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapNavigationRevisionResult(result));
     return true;
   }
 
@@ -1297,6 +2478,34 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "POST" && navigationCandidateAcceptanceMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readAcceptanceBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.acceptNavigationCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(navigationCandidateAcceptanceMatch[1]),
+      targetEntityId: body.value.targetEntityId,
+    });
+    sendJson(response, statusForResult(result), mapNavigationChangeResult(result));
+    return true;
+  }
+
   if (request.method === "POST" && candidateRejectionMatch) {
     const csrf = requireCsrf(request, csrfTokens);
     if (csrf.status === "rejected") {
@@ -1324,6 +2533,33 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "POST" && navigationCandidateRejectionMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+
+    const body = await readRejectionBody(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+
+    const result = corpusCommands.rejectNavigationCandidate({
+      actingIdentityId: session.value.identity.id,
+      candidateId: decodeURIComponent(navigationCandidateRejectionMatch[1]),
+    });
+    sendJson(response, statusForResult(result), mapNavigationCandidateResult(result));
+    return true;
+  }
+
   return false;
 }
 
@@ -1340,19 +2576,35 @@ export function startServer({
 
   const database = openIdentityDatabase(databasePath);
   initializeIdentityStorage(database);
+  const now = () => new Date();
   const programCommands = createProgramCommands({
     database,
   });
+  const studentWorkspaceCommands = createStudentWorkspaceCommands({
+    database,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+  });
+  const corpusCommands = createCorpusCommands({
+    database,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+  });
+  const curatorWorkspaceCommands = createCuratorWorkspaceCommands({
+    corpusCommands,
+    database,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    llmSuggestionPolicies: [makeDefaultLlmSuggestionPolicy()],
+    llmSuggestionProviderAdapters: [makeDefaultLlmSuggestionProviderAdapter()],
+    now,
+  });
   const server = createServer({
-    corpusCommands: createCorpusCommands({
-      database,
-      getEffectiveParticipation: programCommands.getEffectiveParticipation,
-    }),
+    corpusCommands,
+    curatorWorkspaceCommands,
     identityCommands: createIdentityCommands({
       bootstrapSecret,
       database,
     }),
     programCommands,
+    studentWorkspaceCommands,
     log,
   });
   server.on("close", () => {
@@ -1360,6 +2612,63 @@ export function startServer({
   });
   server.listen(Number(port), host);
   return server;
+}
+
+function makeDefaultLlmSuggestionPolicy() {
+  return {
+    suggestionPolicyId: "default-deterministic-policy",
+    providerAdapterId: "default-deterministic-provider",
+    outputValidatorPolicyId: "default-deterministic-validator",
+    redactionPolicyId: "default-redaction",
+    allowedSuggestionKinds: ["navigation_candidate"],
+    promptInputPolicy: {
+      includeAcceptedNavigationContext: true,
+      includeAcceptedCheckContext: true,
+      includeReadinessContext: true,
+      includeCoverageGapContext: true,
+      includeStudentWorkspaceState: false,
+    },
+    budgetPolicy: { maxProviderCalls: 1, maxInputTokens: 4000, maxOutputTokens: 800 },
+    rawArtifactPolicy: "none",
+  };
+}
+
+function makeDefaultLlmSuggestionProviderAdapter() {
+  return {
+    providerAdapterId: "default-deterministic-provider",
+    suggest: () => ({
+      suggestions: [
+        {
+          suggestionKind: "navigation_candidate",
+          title: "Draft topic suggestion",
+          summary: "Create one draft topic candidate for curator review.",
+          rationale: "The redacted accepted program context leaves room for one curator-reviewed topic draft.",
+          suggestedDraft: {
+            candidateKind: "navigation_candidate",
+            request: {
+              candidateKind: "topic",
+              title: "Draft topic suggestion",
+              body: "Draft topic suggestion body",
+              sourceIds: [],
+              rationale: "Draft candidate rationale",
+            },
+          },
+          supportingEvidence: [
+            {
+              sourceKind: "curator_instruction",
+              sourceId: "curator-instruction",
+              label: "Curator instruction",
+            },
+          ],
+        },
+      ],
+      outputValidation: {
+        validatorPolicyId: "default-deterministic-validator",
+        passed: true,
+      },
+      providerUsage: { providerCalls: 1, inputTokens: 120, outputTokens: 80 },
+    }),
+  };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -1383,13 +2692,36 @@ function isValidRequestId(requestId) {
 }
 
 function sendJson(response, statusCode, body, headers = {}) {
+  response.agonaraCompletionLog = completionLogForBody(statusCode, body);
   response.writeHead(statusCode, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(body));
 }
 
 function sendHtml(response, statusCode, body) {
+  response.agonaraCompletionLog = completionLogForBody(statusCode, null);
   response.writeHead(statusCode, { "content-type": "text/html; charset=utf-8" });
   response.end(body);
+}
+
+function completionLogForBody(statusCode, body) {
+  if (body?.status === "fault" || statusCode >= 500) {
+    return {
+      severity: "error",
+      outcome: "fault",
+      errorKind: "unexpected",
+    };
+  }
+  if (body?.status === "rejected" || statusCode >= 400) {
+    return {
+      severity: "warning",
+      outcome: "rejected",
+      reason: body?.reason ?? "http_error",
+    };
+  }
+  return {
+    severity: "info",
+    outcome: "accepted",
+  };
 }
 
 function logCompletion(log, now, event) {
@@ -1414,6 +2746,20 @@ function rejected(reason) {
 
 function resolveHttpSession({ identityCommands, request }) {
   return identityCommands.resolveSession({ sessionId: getSessionCookie(request) });
+}
+
+function requireMutationSession({ csrfTokens, identityCommands, request, response }) {
+  const session = resolveHttpSession({ identityCommands, request });
+  if (session.status === "rejected") {
+    sendJson(response, httpStatusFor(session.reason), session);
+    return null;
+  }
+  const csrf = requireCsrf(request, csrfTokens);
+  if (csrf.status === "rejected") {
+    sendJson(response, httpStatusFor(csrf.reason), csrf);
+    return null;
+  }
+  return session;
 }
 
 async function readJson(request) {
@@ -1442,6 +2788,22 @@ async function readRequiredJsonObject(request) {
     return rejected("validation_failed");
   }
   return accepted(body.value.body);
+}
+
+async function readRouteBody(request, allowedKeys) {
+  const body = await readRequiredJsonObject(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  const keys = Object.keys(body.value);
+  if (
+    keys.length !== allowedKeys.length ||
+    keys.some(key => !allowedKeys.includes(key)) ||
+    allowedKeys.some(key => typeof body.value[key] !== "string" || !body.value[key].trim())
+  ) {
+    return rejected("validation_failed");
+  }
+  return body;
 }
 
 async function readJsonBody(request) {
@@ -1582,6 +2944,49 @@ function mapProgramCreatedResult(result) {
   });
 }
 
+function mapProgramAdmissionPolicyResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ program: result.value.programShell });
+}
+
+function mapProgramInvitationResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ invitation: result.value.programInvitation });
+}
+
+function mapProgramInvitationsResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ invitations: result.value.programInvitations });
+}
+
+function mapProgramInvitationAcceptanceResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({
+    invitation: result.value.programInvitation,
+    membership: result.value.programMembership,
+  });
+}
+
+function mapProgramParticipantsResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ participants: result.value.programParticipants });
+}
+
 function mapProgramMembershipsResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -1614,6 +3019,46 @@ function mapCorpusCandidateResult(result) {
   return accepted({ corpusCandidate: result.value.corpusCandidate });
 }
 
+function mapNavigationCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationCandidate: result.value.navigationCandidate });
+}
+
+function mapNavigationChangeResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationChange: result.value.navigationChange });
+}
+
+function mapProgramNavigationResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigation: result.value.navigation });
+}
+
+function mapNavigationEntityResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationNode: result.value.navigationNode });
+}
+
+function mapNavigationRevisionResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ navigationRevision: result.value.navigationRevision });
+}
+
 function mapAssessmentCriterionCandidateResult(result) {
   if (result.status === "rejected") {
     return result;
@@ -1628,6 +3073,82 @@ function mapOpenAnswerCheckCandidateResult(result) {
   }
 
   return accepted({ openAnswerCheckCandidate: result.value.openAnswerCheckCandidate });
+}
+
+function mapQuickCheckCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ quickCheckCandidate: result.value.quickCheckCandidate });
+}
+
+function mapReadinessCheckCandidateResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ readinessCheckCandidate: result.value.readinessCheckCandidate });
+}
+
+function mapQuickCheckAttemptResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
+}
+
+function mapReadinessCheckAttemptResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ readinessCheckAttempt: result.value.readinessCheckAttempt });
+}
+
+function mapQuickCheckAttemptDetailResult(result) {
+  if (result.status === "rejected") {
+    return result.reason === "participation_required"
+      ? rejected("attempt_not_found")
+      : result;
+  }
+
+  return accepted({ quickCheckAttempt: result.value.quickCheckAttempt });
+}
+
+function mapReadinessCheckAttemptDetailResult(result) {
+  if (result.status === "rejected") {
+    return result.reason === "participation_required"
+      ? rejected("attempt_not_found")
+      : result;
+  }
+
+  return accepted({ readinessCheckAttempt: result.value.readinessCheckAttempt });
+}
+
+function mapAcceptedQuickCheckResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ acceptedQuickCheck: result.value.acceptedQuickCheck });
+}
+
+function mapAcceptedReadinessCheckResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ acceptedReadinessCheck: result.value.acceptedReadinessCheck });
+}
+
+function mapQuickCheckDeliveryResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ quickCheckDelivery: result.value.quickCheckDelivery });
 }
 
 function mapAcceptedCorpusResult(result) {
@@ -1652,6 +3173,49 @@ function mapAcceptedOpenAnswerCheckResult(result) {
   }
 
   return accepted({ acceptedOpenAnswerCheck: result.value.acceptedOpenAnswerCheck });
+}
+
+function mapLearnerStateTargetLinkResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerStateTargetLink: result.value.learnerEvidenceTargetLink });
+}
+
+function mapLearnerStateTargetLinkListResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerStateTargetLinks: result.value.learnerEvidenceTargetLinks });
+}
+
+function mapLearnerStateProgramResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerState: result.value.learnerState });
+}
+
+function mapLearnerStateTargetResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ learnerStateTarget: result.value.learnerStateTarget });
+}
+
+function mapCoverageGapReportResult(result) {
+  if (result.status === "rejected") {
+    if (result.reason === "coverage_gap_scope_program_mismatch") {
+      return rejected("coverage_gap_scope_not_found");
+    }
+    return result;
+  }
+
+  return accepted({ report: result.value.report });
 }
 
 function mapCorpusEventListResult({ generateToken, listCursors, query, result, routeKey }) {
@@ -1728,11 +3292,53 @@ function mapProgramMembershipEvent(event) {
     targetIdentityId: event.targetIdentityId,
     programId: event.programId,
     participationKind: event.participationKind,
+    policyPath: event.policyPath,
     resultingStatus: event.resultingStatus,
+    invitationStatus: event.invitationStatus,
     occurredAt: event.occurredAt,
     outcome: event.outcome,
     reason: event.reason,
   };
+}
+
+function parseCoverageGapFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const scopeKind = parseOptionalQueryText(url.searchParams.get("scopeKind"));
+  if (scopeKind.status === "rejected") {
+    return scopeKind;
+  }
+  const scopeId = parseOptionalQueryText(url.searchParams.get("scopeId"));
+  if (scopeId.status === "rejected") {
+    return scopeId;
+  }
+  const minimumSeverity = parseOptionalQueryText(url.searchParams.get("minimumSeverity"));
+  if (minimumSeverity.status === "rejected") {
+    return minimumSeverity;
+  }
+  const gapKinds = [];
+  for (const gapKind of url.searchParams.getAll("gapKind")) {
+    if (!gapKind.trim()) {
+      return rejected("validation_failed");
+    }
+    gapKinds.push(gapKind);
+  }
+
+  return accepted({
+    gapKinds,
+    minimumSeverity: minimumSeverity.value,
+    scopeId: scopeId.value,
+    scopeKind: scopeKind.value,
+  });
+}
+
+function parseOptionalQueryText(value) {
+  if (value === null) {
+    return accepted(undefined);
+  }
+  if (!value.trim()) {
+    return rejected("validation_failed");
+  }
+  return accepted(value);
 }
 
 function parseEventQuery({ eventCursors, request, routeKey }) {
@@ -1874,6 +3480,109 @@ function parseOpenAnswerAttemptListFilters(request) {
   });
 }
 
+function parseQuickCheckAttemptListFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const checkRevisionId = url.searchParams.get("checkRevisionId");
+  if (checkRevisionId !== null && !isNonEmptyRequestText(checkRevisionId)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ checkRevisionId: checkRevisionId ?? undefined });
+}
+
+function parseReadinessCheckAttemptListFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const readinessCheckRevisionId = url.searchParams.get("readinessCheckRevisionId");
+  if (readinessCheckRevisionId !== null && !isNonEmptyRequestText(readinessCheckRevisionId)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ readinessCheckRevisionId: readinessCheckRevisionId ?? undefined });
+}
+
+function parseLlmSuggestionListQuery(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const status = url.searchParams.get("status");
+  const suggestionKind = url.searchParams.get("suggestionKind");
+  const limit = url.searchParams.get("limit");
+  const cursor = url.searchParams.get("cursor");
+  if (
+    (status !== null && !["draft_suggestion", "materialized", "rejected"].includes(status)) ||
+    (suggestionKind !== null &&
+      ![
+        "assessment_criterion_candidate",
+        "navigation_candidate",
+        "open_answer_check_candidate",
+        "quick_check_candidate",
+        "readiness_check_candidate",
+      ].includes(suggestionKind)) ||
+    (cursor !== null && !isNonEmptyRequestText(cursor))
+  ) {
+    return rejected("validation_failed");
+  }
+
+  const parsedLimit = limit === null ? undefined : Number(limit);
+  if (parsedLimit !== undefined && (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 50)) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    cursor: cursor ?? undefined,
+    limit: parsedLimit,
+    status: status ?? undefined,
+    suggestionKind: suggestionKind ?? undefined,
+  });
+}
+
+function parseLlmSuggestionGenerationBody(body) {
+  if (
+    !hasOnlyKeys(body, [
+      "allowedSuggestionKinds",
+      "contextEntityIds",
+      "coverageGapIds",
+      "curatorInstruction",
+      "idempotencyKey",
+      "maxSuggestions",
+      "suggestionPolicyId",
+    ]) ||
+    !isNonEmptyRequestText(body.suggestionPolicyId) ||
+    !isNonEmptyRequestText(body.idempotencyKey) ||
+    !Number.isInteger(body.maxSuggestions)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  if (
+    (body.curatorInstruction !== undefined && typeof body.curatorInstruction !== "string") ||
+    (body.coverageGapIds !== undefined && !isValidRequestTextArray(body.coverageGapIds)) ||
+    (body.contextEntityIds !== undefined && !isValidRequestTextArray(body.contextEntityIds)) ||
+    (body.allowedSuggestionKinds !== undefined && !isValidRequestTextArray(body.allowedSuggestionKinds))
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    allowedSuggestionKinds: body.allowedSuggestionKinds,
+    contextEntityIds: body.contextEntityIds,
+    coverageGapIds: body.coverageGapIds,
+    curatorInstruction: body.curatorInstruction,
+    idempotencyKey: body.idempotencyKey,
+    maxSuggestions: body.maxSuggestions,
+    suggestionPolicyId: body.suggestionPolicyId,
+  });
+}
+
+async function readEmptyJsonObjectBody(request) {
+  const body = await readRequiredJsonObject(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (Object.keys(body.value).length !== 0) {
+    return rejected("validation_failed");
+  }
+  return accepted({});
+}
+
 function parseSubmitOpenAnswerAttemptBody(body) {
   if (
     Object.keys(body).length !== 2 ||
@@ -1890,6 +3599,34 @@ function parseSubmitOpenAnswerAttemptBody(body) {
   });
 }
 
+function parseSubmitQuickCheckAttemptBody(body) {
+  if (
+    Object.keys(body).length !== 2 ||
+    !hasOnlyKeys(body, ["checkRevisionId", "selectedOptionId"]) ||
+    !isNonEmptyRequestText(body.checkRevisionId) ||
+    !isNonEmptyRequestText(body.selectedOptionId)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({
+    checkRevisionId: body.checkRevisionId,
+    selectedOptionId: body.selectedOptionId,
+  });
+}
+
+function parseSubmitReadinessCheckAttemptBody(body) {
+  if (
+    Object.keys(body).length !== 1 ||
+    !hasOnlyKeys(body, ["readinessCheckRevisionId"]) ||
+    !isNonEmptyRequestText(body.readinessCheckRevisionId)
+  ) {
+    return rejected("validation_failed");
+  }
+
+  return accepted({ readinessCheckRevisionId: body.readinessCheckRevisionId });
+}
+
 function isNonEmptyRequestText(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -1897,6 +3634,52 @@ function isNonEmptyRequestText(value) {
 function isValidCandidateSourceIds(sourceIds) {
   return sourceIds === undefined ||
     (Array.isArray(sourceIds) && sourceIds.every($0 => typeof $0 === "string"));
+}
+
+function isValidNavigationCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "body",
+    "candidateKind",
+    "citation",
+    "locator",
+    "materialReferenceKind",
+    "rationale",
+    "relationshipDrafts",
+    "sourceIds",
+    "title",
+  ]) &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    isValidNavigationRelationshipDrafts(body.relationshipDrafts);
+}
+
+function isValidNavigationRelationshipDrafts(relationshipDrafts) {
+  return relationshipDrafts === undefined ||
+    (
+      Array.isArray(relationshipDrafts) &&
+      relationshipDrafts.every($0 =>
+        typeof $0 === "object" &&
+        $0 !== null &&
+        !Array.isArray($0) &&
+        hasOnlyKeys($0, [
+          "fromCandidateRef",
+          "fromEntityId",
+          "label",
+          "rationale",
+          "relationshipKind",
+          "sourceIds",
+          "toCandidateRef",
+          "toEntityId",
+        ]) &&
+        ($0.fromCandidateRef === undefined || $0.fromCandidateRef === "self") &&
+        ($0.toCandidateRef === undefined || $0.toCandidateRef === "self") &&
+        ($0.relationshipKind === undefined || typeof $0.relationshipKind === "string") &&
+        ($0.fromEntityId === undefined || typeof $0.fromEntityId === "string") &&
+        ($0.toEntityId === undefined || typeof $0.toEntityId === "string") &&
+        ($0.label === undefined || typeof $0.label === "string") &&
+        ($0.rationale === undefined || typeof $0.rationale === "string") &&
+        isValidCandidateSourceIds($0.sourceIds),
+      )
+    );
 }
 
 function isValidAssessmentCriterionCandidateBody(body) {
@@ -1919,8 +3702,90 @@ function isValidOpenAnswerCheckCandidateBody(body) {
     body.criterionEntityIds.every($0 => typeof $0 === "string");
 }
 
+function isValidQuickCheckCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "answerKeyOptionIndex",
+    "checkKind",
+    "options",
+    "prompt",
+    "rationale",
+    "sourceIds",
+    "title",
+  ]) &&
+    body.checkKind === "single_select_quick_check" &&
+    isNonEmptyRequestText(body.title) &&
+    isNonEmptyRequestText(body.prompt) &&
+    (body.rationale === undefined || typeof body.rationale === "string") &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    Array.isArray(body.options) &&
+    body.options.length >= 2 &&
+    body.options.every(isNonEmptyRequestText) &&
+    Number.isInteger(body.answerKeyOptionIndex) &&
+    body.answerKeyOptionIndex >= 0 &&
+    body.answerKeyOptionIndex < body.options.length;
+}
+
+function isValidReadinessCheckCandidateBody(body) {
+  return hasOnlyKeys(body, [
+    "rationale",
+    "requirements",
+    "scope",
+    "sourceIds",
+    "title",
+  ]) &&
+    isNonEmptyRequestText(body.title) &&
+    (body.rationale === undefined || typeof body.rationale === "string") &&
+    isValidCandidateSourceIds(body.sourceIds) &&
+    isValidReadinessScopeBody(body.scope) &&
+    Array.isArray(body.requirements) &&
+    body.requirements.length > 0 &&
+    body.requirements.every(isValidReadinessRequirementBody);
+}
+
+function isValidReadinessScopeBody(scope) {
+  if (scope?.scopeKind === "topic") {
+    return hasOnlyKeys(scope, ["scopeKind", "topicEntityId"]) &&
+      isNonEmptyRequestText(scope.topicEntityId);
+  }
+  if (scope?.scopeKind === "period") {
+    return hasOnlyKeys(scope, ["scopeKind", "title", "topicEntityIds"]) &&
+      isNonEmptyRequestText(scope.title) &&
+      Array.isArray(scope.topicEntityIds) &&
+      scope.topicEntityIds.length > 0 &&
+      scope.topicEntityIds.every(isNonEmptyRequestText);
+  }
+  return false;
+}
+
+function isValidReadinessRequirementBody(requirement) {
+  return requirement !== null &&
+    typeof requirement === "object" &&
+    !Array.isArray(requirement) &&
+    hasOnlyKeys(requirement, ["requiredLevel", "targetId", "targetKind"]) &&
+    isNonEmptyRequestText(requirement.targetKind) &&
+    isNonEmptyRequestText(requirement.targetId) &&
+    isNonEmptyRequestText(requirement.requiredLevel);
+}
+
+function isValidLearnerStateTargetLinkBody(body) {
+  return hasOnlyKeys(body, [
+    "evidenceOwnerEntityId",
+    "evidenceOwnerKind",
+    "targetId",
+    "targetKind",
+  ]) &&
+    isNonEmptyRequestText(body.evidenceOwnerEntityId) &&
+    isNonEmptyRequestText(body.evidenceOwnerKind) &&
+    isNonEmptyRequestText(body.targetId) &&
+    isNonEmptyRequestText(body.targetKind);
+}
+
 function hasOnlyKeys(body, allowedKeys) {
   return Object.keys(body).every($0 => allowedKeys.includes($0));
+}
+
+function isValidRequestTextArray(value) {
+  return Array.isArray(value) && value.every(isNonEmptyRequestText);
 }
 
 function paginateList({ generateToken, items, limit, listCursors, offset, routeKey }) {
@@ -1986,6 +3851,29 @@ function mapCorpusCandidateListResult({ generateToken, listCursors, query, resul
   });
 }
 
+function mapNavigationCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.navigationCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    navigationCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function mapAssessmentCriterionCandidateListResult({
   generateToken,
   listCursors,
@@ -2040,6 +3928,98 @@ function mapOpenAnswerCheckCandidateListResult({
 
   return accepted({
     openAnswerCheckCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapQuickCheckCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.quickCheckCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    quickCheckCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapReadinessCheckCandidateListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.readinessCheckCandidates,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    readinessCheckCandidates: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapQuickCheckDeliveryListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.quickCheckDeliveries,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    quickCheckDeliveries: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapReadinessCheckDeliveryListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.readinessChecks,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    readinessChecks: page.value.items,
     nextCursor: page.value.nextCursor,
   });
 }
@@ -2136,6 +4116,52 @@ function mapOpenAnswerAttemptListResult({ generateToken, listCursors, query, res
   });
 }
 
+function mapQuickCheckAttemptListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.quickCheckAttempts,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    quickCheckAttempts: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
+function mapReadinessCheckAttemptListResult({ generateToken, listCursors, query, result, routeKey }) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  const page = paginateList({
+    generateToken,
+    items: result.value.readinessCheckAttempts,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
+  return accepted({
+    readinessCheckAttempts: page.value.items,
+    nextCursor: page.value.nextCursor,
+  });
+}
+
 function createCsrfToken(csrfTokens, generateToken, sessionId) {
   const csrfToken = generateToken();
   csrfTokens.set(sessionId, csrfToken);
@@ -2205,6 +4231,7 @@ function httpStatusFor(reason) {
     case "identity_disabled":
     case "identity_not_active":
     case "participation_required":
+    case "program_curator_required":
       return 403;
     case "identity_not_found":
     case "accepted_entity_not_found":
@@ -2216,8 +4243,29 @@ function httpStatusFor(reason) {
     case "criterion_candidate_not_found":
     case "criterion_entity_not_found":
     case "criterion_revision_not_found":
+    case "navigation_entity_not_found":
+    case "navigation_revision_not_found":
+    case "invitation_not_found":
     case "program_not_found":
+    case "quick_check_candidate_not_found":
+    case "quick_check_entity_not_found":
+    case "quick_check_revision_not_found":
+    case "learner_state_evidence_owner_not_found":
+    case "learner_state_target_link_not_found":
+    case "learner_state_target_not_found":
+    case "coverage_gap_not_found":
+    case "coverage_gap_scope_not_found":
+    case "llm_curation_suggestion_not_found":
+    case "provider_adapter_not_found":
+    case "suggestion_policy_not_found":
+    case "readiness_candidate_not_found":
+    case "readiness_entity_not_found":
+    case "readiness_requirement_target_not_found":
+    case "readiness_revision_not_found":
+    case "readiness_scope_not_found":
     case "revision_not_found":
+    case "selected_option_not_found":
+    case "target_identity_not_found":
       return 404;
     case "accepted_entity_program_mismatch":
     case "accepted_kind_mismatch":
@@ -2231,16 +4279,47 @@ function httpStatusFor(reason) {
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
+    case "coverage_gap_scope_program_mismatch":
     case "idempotency_conflict":
     case "identity_already_has_credential":
+    case "invitation_conflict":
+    case "invitation_not_pending":
+    case "learner_state_evidence_owner_program_mismatch":
+    case "learner_state_target_program_mismatch":
     case "last_admin_removal":
+    case "last_curator_required":
     case "login_already_bound":
+    case "membership_already_active":
     case "membership_left":
     case "membership_missing":
     case "membership_removed":
+    case "navigation_prerequisite_cycle":
+    case "navigation_relationship_endpoint_kind_mismatch":
+    case "navigation_relationship_program_mismatch":
+    case "navigation_relationship_self_reference":
     case "program_creation_incomplete":
+    case "quick_check_candidate_already_accepted":
+    case "quick_check_candidate_already_rejected":
+    case "quick_check_entity_program_mismatch":
+    case "quick_check_revision_program_mismatch":
+    case "readiness_candidate_already_accepted":
+    case "readiness_candidate_already_rejected":
+    case "readiness_entity_program_mismatch":
+    case "readiness_requirement_id_conflict":
+    case "readiness_requirement_program_mismatch":
+    case "readiness_revision_program_mismatch":
+    case "readiness_scope_program_mismatch":
     case "source_not_found":
     case "source_program_mismatch":
+    case "policy_not_satisfied":
+    case "llm_curation_suggestion_already_materialized":
+    case "llm_curation_suggestion_already_rejected":
+    case "provider_budget_exceeded":
+    case "provider_execution_failed":
+    case "provider_output_rejected":
+    case "suggestion_materialization_rejected":
+    case "suggestion_rejection_failed":
+    case "target_identity_disabled":
       return 409;
     case "rate_limited":
       return 429;
