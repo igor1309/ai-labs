@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Start parent Phase 5 of the Agonara product gap closure plan with a Program Membership invitations and recovery spec that keeps ordinary curator/student participation flows separate from exceptional Admin recovery.
 - Close the topic and period readiness checks plan with implemented spec status, Product Intent traceability, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Implement Phase 5 of the topic and period readiness checks plan with `/learn` readiness curation controls, Student delivery and explicit readiness attempt workflows, idempotent retry, owner-only attempt detail, evidence drill-down, redaction checks, and Quick Check/navigation/learner-state browser regression coverage.
 
