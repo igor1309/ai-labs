@@ -9,7 +9,7 @@ version: 0.0.4
 
 ## Storage ownership
 
-Storage is no longer wholly deferred. The implemented SQLite substrate now persists Identity, Admin authority, sessions, audit events, Program shells, Program Memberships, Program events, Corpus sources and accepted revisions, accepted topic/concept/material navigation graphs, accepted assessment criteria, accepted open-answer checks, Student Workspace open-answer attempts/evaluation state, evaluator orchestration records, Quick Check accepted revisions, protected answer keys, Quick Check attempts, accepted readiness definitions, explicit readiness attempts, and backup/restore graphs.
+Storage is no longer wholly deferred. The implemented SQLite substrate now persists Identity, Admin authority, sessions, audit events, Program shells, Program Memberships, Program invitations, Program membership events, Corpus sources and accepted revisions, accepted topic/concept/material navigation graphs, accepted assessment criteria, accepted open-answer checks, Student Workspace open-answer attempts/evaluation state, evaluator orchestration records, Quick Check accepted revisions, protected answer keys, Quick Check attempts, accepted readiness definitions, explicit readiness attempts, and backup/restore graphs.
 
 Storage must still be derived from module responsibilities, not specified as an independent axis.
 
@@ -17,7 +17,7 @@ Remaining storage questions:
 
 - Which future learning-path sequencing or recommendation records are needed beyond the implemented accepted topic/concept/material graph, and how do they stay separate from personal Student state?
 - Which invalidated learner-state cache records, if any, are worth adding beyond the implemented read-time progress and weak-area derivation?
-- What invitation, recovery, and membership-policy history is needed for multi-user Program access without turning Admin authority into a Program role?
+- Which future membership-policy variants, if any, are needed beyond implemented Student self-join and invitation-only access without turning Admin authority into a Program role?
 - Which future `/learn` UI artifacts, if any, need persisted learner-facing presentation state beyond the implemented Quick Check, navigation, learner-state, and readiness first slices?
 
 ## Under consideration

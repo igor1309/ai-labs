@@ -188,7 +188,7 @@ Preflight check: [x] done
 - [x] Phase 2 - Topic, Concept, and Material Navigation
 - [x] Phase 3 - Learner-State Interpretation
 - [x] Phase 4 - Topic-Level and Period-Level Checks
-- [ ] Phase 5 - Program Membership Invitations and Recovery
+- [x] Phase 5 - Program Membership Invitations and Recovery
 - [ ] Phase 6 - Curator Coverage Gaps
 - [ ] Phase 7 - LLM-Assisted Curation Suggestions
 

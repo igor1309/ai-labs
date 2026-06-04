@@ -25,7 +25,7 @@ Helps curators assemble and maintain learning programs from trusted sources, whi
 Implemented backend and domain surfaces:
 
 - Identity and Operations: first-Admin bootstrap, local-password login, server-side sessions, Admin identity operations, audit reads, health, diagnostics, request correlation, completion logs, backup, and restore.
-- Program Shell and Membership: Program creation, Student self-join/leave/rejoin, effective participation checks, Program event reads, and Program Membership event reads.
+- Program Shell and Membership: Program creation, Student self-join/leave/rejoin, Student invitation lifecycle, participant listing, Student removal, curator leave, Admin exceptional recovery/revocation, effective participation checks, Program event reads, and Program Membership event reads.
 - Corpus curation: Program sources, Corpus candidates, acceptance/rejection, accepted corpus revisions, Corpus event reads, and backup/restore support.
 - Topic, concept, and material navigation: accepted topics, concepts, definitions, principles, material references, accepted relationships, historical revisions, curator navigation candidate routes, student-safe traversal routes, backup/restore validation, and `/learn` Curator/Student navigation UI.
 - Accepted checks and criteria: assessment criteria, open-answer checks, accepted revisions, and curator/student/admin read separation.
@@ -33,12 +33,12 @@ Implemented backend and domain surfaces:
 - Quick Check assessment: session-backed HTTP routes, backend/domain and storage support for candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, backup/restore support, and a `/learn` product UI for Curator and Student Quick Check workflows.
 - Learner-state interpretation: explicit target-link curation metadata, read-time owner-only progress and weak-area summaries, supporting-evidence target detail, HTTP routes, backup/restore preservation, and `/learn` Curator/Student learner-state UI.
 - Topic and period readiness checks: accepted readiness definitions with topic or named-period scopes, evidence-backed explicit Student readiness attempts, idempotent retry, owner-only attempt reads, backup/restore support, HTTP routes, and `/learn` Curator/Student readiness UI.
-- Admin board: a local operations board for bootstrap, sign in/out, Identity management, operational access inspection, and audit event inspection.
+- Admin board: a local operations board for bootstrap, sign in/out, Identity management, operational access inspection, audit event inspection, and exceptional Program Membership recovery/revocation.
 
 Still deferred or backend-only:
 
-- Recommendation ranking, persisted mastery models, curator coverage-gap analysis, LLM-assisted curation suggestions, and membership invitation/recovery flows still need separate specs or plans.
-- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, and readiness first slices is not implemented.
+- Recommendation ranking, persisted mastery models, curator coverage-gap analysis, and LLM-assisted curation suggestions still need separate specs or plans.
+- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, readiness, and membership first slices is not implemented.
 
 ## Key Separations
 

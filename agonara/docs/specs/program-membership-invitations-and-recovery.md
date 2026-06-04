@@ -3,7 +3,7 @@ date: 2026-06-04
 model: gpt-5
 description: "Spec: Agonara Program Membership invitations, participant management, and exceptional recovery."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,19 @@ type: spec
 ## Goal
 
 Define the Program Membership contract for Student invitations, participant visibility, Student removal, curator leave, and exceptional Admin recovery or revocation while preserving Program Membership as the sole owner of Program participation lifecycle.
+
+## Implementation status
+
+Implemented in the Program Membership Invitations and Recovery plan:
+
+- Plan archive: [Program Membership Invitations and Recovery Implementation Plan](../plans/implemented/program-membership-invitations-and-recovery.md)
+- Storage and backup/restore coverage: [storage.test.js](../../tests/storage.test.js), [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Program Membership domain coverage: [program.test.js](../../tests/program.test.js)
+- HTTP and executable acceptance coverage: [http-api.test.js](../../tests/http-api.test.js), [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Browser coverage: [program-membership-invitations-and-recovery.playwright.js](../../tests/program-membership-invitations-and-recovery.playwright.js)
+- Runtime surfaces: [Program domain service](../../src/program.js), [HTTP adapter](../../src/server.js), [`/learn` product UI](../../src/learn-ui.js), [`/admin` operations UI](../../src/admin-ui.js), [Storage backup/restore](../../src/storage.js)
+
+The implemented first slice supports Student-only invitation lifecycle, Student self-join rejection for invitation-only Programs, participant listing, Student removal, curator leave with last-curator protection, Admin-only exceptional recovery/revocation with required reasons, membership event inspection, backup/restore preservation, and role-separated `/learn` and `/admin` workflows. It does not implement payment, cohorts, organizations, external email delivery, notifications, invitation expiry, ownership transfer, curator invitations, resource-level permissions, recommendation ranking, analytics, LLM/provider calls, or Admin as a normal Program participation operator.
 
 ## Public interface
 
