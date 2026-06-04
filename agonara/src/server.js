@@ -3,6 +3,7 @@ import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
 import { createCorpusCommands } from "./corpus.js";
+import { createCuratorWorkspaceCommands } from "./curator-workspace.js";
 import { createIdentityCommands } from "./identity.js";
 import { learnUiHtml } from "./learn-ui.js";
 import { createProgramCommands } from "./program.js";
@@ -13,6 +14,7 @@ export function createServer({
   generateToken = randomUUID,
   healthCheck = () => "ok",
   corpusCommands = null,
+  curatorWorkspaceCommands = null,
   identityCommands = null,
   log = logToStdout,
   now = () => new Date(),
@@ -86,6 +88,19 @@ export function createServer({
           generateToken,
           identityCommands,
           listCursors,
+          pathname,
+          request,
+          response,
+        });
+        if (handled) {
+          return;
+        }
+      }
+
+      if (identityCommands && curatorWorkspaceCommands) {
+        const handled = await handleCuratorWorkspaceApi({
+          curatorWorkspaceCommands,
+          identityCommands,
           pathname,
           request,
           response,
@@ -744,6 +759,42 @@ async function handleProgramApi({
       programId: decodeURIComponent(programMatch[1]),
     });
     sendJson(response, statusForResult(result), mapProgramShellResult(result));
+    return true;
+  }
+
+  return false;
+}
+
+async function handleCuratorWorkspaceApi({
+  curatorWorkspaceCommands,
+  identityCommands,
+  pathname,
+  request,
+  response,
+}) {
+  const coverageGapsMatch = pathname.match(/^\/programs\/([^/]+)\/coverage-gaps$/);
+  if (request.method === "GET" && coverageGapsMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const filters = parseCoverageGapFilters(request);
+    if (filters.status === "rejected") {
+      sendJson(response, 400, filters);
+      return true;
+    }
+
+    const result = curatorWorkspaceCommands.inspectCuratorCoverageGaps({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(coverageGapsMatch[1]),
+      gapKinds: filters.value.gapKinds,
+      minimumSeverity: filters.value.minimumSeverity,
+      scopeId: filters.value.scopeId,
+      scopeKind: filters.value.scopeKind,
+    });
+    sendJson(response, statusForResult(result), mapCoverageGapReportResult(result));
     return true;
   }
 
@@ -2400,6 +2451,7 @@ export function startServer({
 
   const database = openIdentityDatabase(databasePath);
   initializeIdentityStorage(database);
+  const now = () => new Date();
   const programCommands = createProgramCommands({
     database,
   });
@@ -2407,11 +2459,17 @@ export function startServer({
     database,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
   });
+  const curatorWorkspaceCommands = createCuratorWorkspaceCommands({
+    database,
+    getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    now,
+  });
   const server = createServer({
     corpusCommands: createCorpusCommands({
       database,
       getEffectiveParticipation: programCommands.getEffectiveParticipation,
     }),
+    curatorWorkspaceCommands,
     identityCommands: createIdentityCommands({
       bootstrapSecret,
       database,
@@ -2963,6 +3021,14 @@ function mapLearnerStateTargetResult(result) {
   return accepted({ learnerStateTarget: result.value.learnerStateTarget });
 }
 
+function mapCoverageGapReportResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({ report: result.value.report });
+}
+
 function mapCorpusEventListResult({ generateToken, listCursors, query, result, routeKey }) {
   if (result.status === "rejected") {
     return result;
@@ -3044,6 +3110,46 @@ function mapProgramMembershipEvent(event) {
     outcome: event.outcome,
     reason: event.reason,
   };
+}
+
+function parseCoverageGapFilters(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const scopeKind = parseOptionalQueryText(url.searchParams.get("scopeKind"));
+  if (scopeKind.status === "rejected") {
+    return scopeKind;
+  }
+  const scopeId = parseOptionalQueryText(url.searchParams.get("scopeId"));
+  if (scopeId.status === "rejected") {
+    return scopeId;
+  }
+  const minimumSeverity = parseOptionalQueryText(url.searchParams.get("minimumSeverity"));
+  if (minimumSeverity.status === "rejected") {
+    return minimumSeverity;
+  }
+  const gapKinds = [];
+  for (const gapKind of url.searchParams.getAll("gapKind")) {
+    if (!gapKind.trim()) {
+      return rejected("validation_failed");
+    }
+    gapKinds.push(gapKind);
+  }
+
+  return accepted({
+    gapKinds,
+    minimumSeverity: minimumSeverity.value,
+    scopeId: scopeId.value,
+    scopeKind: scopeKind.value,
+  });
+}
+
+function parseOptionalQueryText(value) {
+  if (value === null) {
+    return accepted(undefined);
+  }
+  if (!value.trim()) {
+    return rejected("validation_failed");
+  }
+  return accepted(value);
 }
 
 function parseEventQuery({ eventCursors, request, routeKey }) {
@@ -3849,6 +3955,7 @@ function httpStatusFor(reason) {
     case "identity_disabled":
     case "identity_not_active":
     case "participation_required":
+    case "program_curator_required":
       return 403;
     case "identity_not_found":
     case "accepted_entity_not_found":
@@ -3870,6 +3977,7 @@ function httpStatusFor(reason) {
     case "learner_state_evidence_owner_not_found":
     case "learner_state_target_link_not_found":
     case "learner_state_target_not_found":
+    case "coverage_gap_scope_not_found":
     case "readiness_candidate_not_found":
     case "readiness_entity_not_found":
     case "readiness_requirement_target_not_found":
@@ -3891,6 +3999,7 @@ function httpStatusFor(reason) {
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
+    case "coverage_gap_scope_program_mismatch":
     case "idempotency_conflict":
     case "identity_already_has_credential":
     case "invitation_conflict":

@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Implement Phase 2 of the Curator Coverage Gaps plan with a session-backed Program Curator HTTP route, query filtering, private status mapping, redacted report responses, and production composition coverage.
 - Harden Phase 1 coverage diagnostics after adversarial review by explicitly testing unlinked Quick Check, open-answer check, and assessment-criterion coverage gaps.
 - Implement Phase 1 of the Curator Coverage Gaps plan with a read-only Curator Workspace diagnostic query, deterministic accepted-corpus coverage gaps, Program Curator authorization, filtering, redaction, and no-mutation coverage.
 - Harden the Curator Coverage Gaps child plan after adversarial review by adding conditional storage verification, precise Product Intent traceability wording, and explicit tracker-update commit rules.

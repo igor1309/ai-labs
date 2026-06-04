@@ -1007,6 +1007,111 @@ test("acceptance_shouldExerciseLearnerStateApi_onHttpInstance", async () => {
   }
 });
 
+test("acceptance_shouldExerciseCuratorCoverageGapsApi_onHttpInstance", async () => {
+  const workspace = makeWorkspace();
+
+  try {
+    const dbPath = join(workspace, "agonara.sqlite");
+    const { baseUrl, close } = await startHttp(dbPath);
+
+    try {
+      const bootstrap = await bootstrapHttp(baseUrl);
+      const curator = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Curator",
+        login: "coverage-curator@example.test",
+      });
+      const student = await createHttpIdentitySession(baseUrl, bootstrap, {
+        displayName: "Program Student",
+        login: "coverage-student@example.test",
+      });
+      const created = await postJson(
+        `${baseUrl}/programs`,
+        { title: "Linear Algebra" },
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const programId = created.body.value.program.programId;
+      await postJson(
+        `${baseUrl}/programs/${programId}/student-membership`,
+        {},
+        { cookie: student.cookie, csrfToken: student.body.value.csrfToken },
+      );
+      const topicCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/navigation-candidates`,
+        { candidateKind: "topic", title: "Vector spaces" },
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const topicAccepted = await postJson(
+        `${baseUrl}/navigation-candidates/${topicCandidate.body.value.navigationCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const quickCheckCandidate = await postJson(
+        `${baseUrl}/programs/${programId}/quick-checks/candidates`,
+        {
+          answerKeyOptionIndex: 0,
+          checkKind: "single_select_quick_check",
+          options: ["Closed under addition", "Only finite dimension"],
+          prompt: "Which property is required?",
+          title: "Closure check",
+        },
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const quickCheckAccepted = await postJson(
+        `${baseUrl}/quick-checks/candidates/${quickCheckCandidate.body.value.quickCheckCandidate.candidateId}/acceptance`,
+        {},
+        { cookie: curator.cookie, csrfToken: curator.body.value.csrfToken },
+      );
+      const report = await getJson(
+        `${baseUrl}/programs/${programId}/coverage-gaps?minimumSeverity=warning&gapKind=topic_without_checks&gapKind=check_without_target_links`,
+        { cookie: curator.cookie },
+      );
+      const studentRead = await getJson(`${baseUrl}/programs/${programId}/coverage-gaps`, {
+        cookie: student.cookie,
+      });
+      const serialized = JSON.stringify(report.body);
+
+      assert.deepEqual(
+        {
+          acceptedKinds: [
+            topicAccepted.body.value.navigationChange.acceptedCorpus.acceptedKind,
+            quickCheckAccepted.body.value.acceptedQuickCheck.checkKind,
+          ],
+          gapKinds: report.body.value?.report.gaps.map($0 => $0.gapKind),
+          redaction: [
+            "answerKey",
+            "candidateId",
+            "acceptedFromCandidateId",
+            "acceptedByIdentityId",
+            "coverage-curator@example.test",
+            "csrf",
+            "session",
+            "raw prompt",
+            "raw model",
+          ].some($0 => serialized.includes($0)),
+          reportStatus: report.statusCode,
+          reportTargetTitles: report.body.value?.report.gaps.map($0 => $0.targetTitle),
+          studentRead: { body: studentRead.body, statusCode: studentRead.statusCode },
+        },
+        {
+          acceptedKinds: ["topic", "single_select_quick_check"],
+          gapKinds: ["topic_without_checks", "check_without_target_links"],
+          redaction: false,
+          reportStatus: 200,
+          reportTargetTitles: ["Vector spaces", "Closure check"],
+          studentRead: {
+            body: { status: "rejected", reason: "program_curator_required" },
+            statusCode: 403,
+          },
+        },
+      );
+    } finally {
+      await close();
+    }
+  } finally {
+    removeWorkspace(workspace);
+  }
+});
+
 test("acceptance_shouldExerciseAssessmentCorpusApi_onHttpInstance", async () => {
   const workspace = makeWorkspace();
 
