@@ -45,6 +45,10 @@ When a top-level project directory is added, renamed, or removed, follow the che
 Update the relevant log for each meaningful change set before pushing — see
 [`.agents/doc-maintenance.md`](.agents/doc-maintenance.md) for log locations and conventions.
 
+`TODO.md`/backlog files hold **forward tasks only** — never session status,
+done-markers, per-item progress, or findings. Completed work drops out of the
+list; its record lives in git history, the produced artifacts, and the log.
+
 ## Strict TDD Mode
 
 Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
