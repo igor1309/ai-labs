@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Add the Curator Coverage Gaps spec for read-only draft guidance over accepted corpus, separating curator diagnostics from Student weak-area state and accepted-corpus mutation.
 - Close Program Membership invitations and recovery traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Harden Phase 4 membership product UI after adversarial review with stale-response guards across Program, identity, and session changes; cleared membership form inputs; accessible Admin feedback; edited-Program event context; and explicit Admin redaction coverage.
 - Implement Phase 4 of the Program Membership invitations and recovery plan with role-isolated `/learn` invitation, participant, admission-policy, self-join, and curator-leave workflows plus Admin-only exceptional recovery, revocation, and membership-event inspection.
