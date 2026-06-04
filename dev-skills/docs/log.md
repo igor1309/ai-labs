@@ -4,6 +4,14 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-06-04
+
+- Published two skills (marketplace v1.51.0). **traceability-review v0.12.0** — a requirements-traceability consistency review across the My-Way pipeline (intent → ADR → spec → tests) plus cross-cutting passes: seven passes (intent×intent, intent→ADR, ADR×ADR, allocation completeness, ADR→spec, spec↔tests, upward orphan check) and an umbrella ledger that rolls every pass's findings + open questions into one resolution-session register. Each pass is a forced-complete matrix whose stable parts are pinned by evals and whose residual disposition call is left to judgement; developed and validated on Agonara. Refactored to progressive disclosure (per-pass mechanics in `references/pass-notes.md`) and split into a portable core (SKILL.md + references) vs a project-bound dev harness (evals/, the Agonara case study) that `.publishignore` keeps out of the shipped skill — the published SKILL.md references nothing dev-only. **handoff v0.3.1** — compacts a conversation into a throwaway resume doc in the OS temp dir (deterministic per-project path, artifacts referenced not copied, secrets redacted), deliberately not a committed, drift-prone repo file. Supporting changes: `.publishignore` now also excludes `evals/` and `HANDOFF.md`; the skill-refactor discipline lives in skill-review v1.2.0.
+
+## 2026-06-03
+
+- Grounding-discipline pass across three skills: cold-start-checkpoint v1.2.0 adds Step 4 (read every doc a handoff/ADR/research/plan references before any live/external tool use); adr-governance v1.1.0 adds review Dimension V "Mechanism Feasibility" — each asserted mechanism must cite a command/doc/code showing it is achievable on the target system before acceptance (mirrored into the release-domain ADR-Review-Process); using-dev-skills v1.0.2 makes consulting the ladder the explicit session-start default, reinforced by an always-on rule in collaboration-preferences and a CLAUDE.md pointer. All three target the same failure mode — stating conclusions before grounding them against the cheapest source of truth. Marketplace v1.50.0.
+
 ## 2026-05-28
 
 - discuss v1.2.0 and intake v1.5.0: require one mandatory counter-argument sentence after any stated lean. Targets the "balanced essay" failure mode without reverting to the menu-of-options anti-pattern both skills already prohibit — Claude must still pick a side, but now name what would flip the pick. In `intake`, scoped to Open Questions only so it doesn't conflict with the "no solution design" hard rule. Marketplace v1.49.0.

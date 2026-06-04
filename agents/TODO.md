@@ -79,9 +79,8 @@ fault, but `runs.sqlite` stayed ~9 h stale while a 10-minute cron succeeded, and
 behavior/version gap. Not doctor-fixable, no config gate.
 
 This blocks consolidating run observability onto the ledger (ties to §1). Until it
-resolves, the orchestrator (ADR-001 §7 amendment) relies on the wrapper's
-**fail-closed Telegram notification + log + per-scope state** for observability
-instead (cron run history does not apply to the `/etc/cron.d` wrapper).
+resolves, the cron-based agents rely on their wrappers' **fail-closed Telegram
+notification + log** for observability instead.
 
 ### Watch
 
@@ -90,8 +89,8 @@ instead (cron run history does not apply to the `/etc/cron.d` wrapper).
 - Recheck procedure: trigger one isolated cron/agent run, then
   `openclaw tasks list --json` + `openclaw tasks maintenance --json`; compare the
   `~/.openclaw/tasks/runs.sqlite` mtime against the run time.
-- If it populates: file/close the upstream issue note, and reconsider moving
-  observability from cron run history onto the ledger (revisit ADR-001 §7).
+- If it populates: file/close the upstream issue note, and reconsider consolidating
+  run observability onto the ledger (ties to §1).
 - If still empty: bump the next check another 2 weeks and consider filing an
   upstream issue with the §4 evidence; record the live observation in `inventory`
   `vps/OpenClaw/migration.md`.

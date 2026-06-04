@@ -14,10 +14,9 @@ The agent emits exactly one report per run, in Markdown. The shape is fixed so t
 # Doc Drift Report
 
 - Run mode: <manual | scheduled>
-- Scope: <scope id> (a key in `agents/doc-drift-agent/agent/scope-registry.json`)
 - Run timestamp (UTC): <YYYY-MM-DD HH:MM>
 - Repo commit: <short SHA> (<branch>)
-- Documents inspected: <count> (in the active scope)
+- READMEs inspected: <count>
 - Findings: <count>
 - Fix PRs opened: <count of new PRs>
 - Already tracked: <count of findings already covered by an open [doc-drift] PR>

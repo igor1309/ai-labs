@@ -75,7 +75,7 @@ Follow-up refinement (optional, later):
 
 ## Caching behavior
 ### Cache key
-`normalizer:${locale}:${normalizedProfession}`
+`normalizer:${cacheVersion}:${locale}:${normalizedProfession}`
 
 ### Hit/miss behavior
 1. Read cache.
@@ -94,7 +94,8 @@ If its cache/model client throws, the error is propagated to the caller (composi
 Using spies:
 - On cache hit: does not call model client; returns cached result.
 - On cache miss: calls model client with normalized profession; writes cache; returns model result.
-- Cache key uses locale + normalized profession.
+- Cache key uses cache version + locale + normalized profession.
+- Different cache versions partition otherwise identical profession/locale inputs.
 - `null` and `undefined` cache reads are both treated as miss.
 
 ### Pure helper tests

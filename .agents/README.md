@@ -16,8 +16,8 @@ Rationale and the patterns this folder follows are documented in
 
 ## Status
 
-Scaffold only. No topic files exist yet. The file set is intentionally deferred to
-the analysis step below.
+Topic files now exist. This folder is the active progressive-disclosure home for
+repository-specific agent docs.
 
 ## Immediate TODO
 
