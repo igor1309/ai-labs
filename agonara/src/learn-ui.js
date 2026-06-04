@@ -1680,14 +1680,21 @@ export const learnUiHtml = `<!doctype html>
       function clearReadinessSurfaces() {
         state.pendingReadinessAttemptKey = null;
         state.readinessAttempts = [];
+        state.readinessCandidates = [];
         state.readinessChecks = [];
         state.selectedReadinessAttemptId = null;
+        state.selectedReadinessCandidateId = null;
         state.selectedReadinessCheck = null;
+        state.selectedReadinessRevisionId = null;
+        renderReadinessCandidateList();
         renderReadinessCheckDeliveryList();
         renderReadinessAttemptList();
         renderReadinessCheckDeliveryDetail(null);
         renderReadinessAttemptDetail(null);
         renderReadinessRequirementResults([]);
+        elements.readinessCheckAttemptIdInput.value = "";
+        elements.readinessCheckCandidateActionStatus.textContent = "";
+        elements.readinessCheckCurationDetail.textContent = "No readiness curation selected.";
         elements.readinessCheckEvidenceDetail.textContent = "No readiness evidence selected.";
         elements.readinessCheckSubmitStatus.textContent = "";
       }

@@ -35,6 +35,11 @@ test("readinessCurator_shouldCreateListAcceptRejectInspectAndHideStudentState", 
     await expect(page.locator("#readiness-check-curation-detail")).toContainText("on_track");
     await expect(page.locator("#readiness-check-curator-panel")).not.toContainText("quick_check_attempt");
 
+    await page.locator("#program-id-input").fill("other-program");
+    await expect(page.locator("#readiness-check-candidate-list")).toContainText("No readiness candidates loaded.");
+    await expect(page.locator("#readiness-check-curation-detail")).not.toContainText("Topic readiness");
+    await page.locator("#program-id-input").fill(harness.programId);
+
     await createReadinessCandidateFromUi(page, {
       periodTitle: "Period 1",
       requirements: [{
