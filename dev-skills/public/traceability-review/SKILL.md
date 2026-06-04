@@ -9,7 +9,7 @@ description: >
   sharing a parent do not diverge. NOT for code-vs-documentation drift
   (use doc-drift-audit for that). The reviewer detects and suggests
   fixes; it never edits, PRs, merges, or closes anything.
-version: "0.11.3"
+version: "0.11.4"
 author: Igor Malyarov
 ---
 
@@ -121,10 +121,6 @@ core auditable artifact), `Findings` (derived from the non-clean rows, full
 evidence), `Open questions` (tagged), and `Inspected` (files, versions, the IDs
 enumerated — so coverage is checkable).
 
-The committed reference outputs and eval fixtures are a **regression harness**,
-not a living contract — perishable snapshots pinned to the document versions
-they ran against.
-
 ## Umbrella ledger
 
 A cross-cutting **aggregation** over the per-pass outputs — not a pass over source
@@ -149,9 +145,10 @@ See `references/pass-notes.md` for the row columns and the link-don't-duplicate 
 ## Reuse
 
 The **portable core** is this `SKILL.md` plus `references/pass-notes.md` — the
-method, runnable on any project with the My-Way shape. The **project-bound
-harness** is everything stamped to one project: `evals/`, the reference outputs
-under `<project>/docs/traceability-reviews/`, and `references/agonara-case-study.md`.
+method, runnable on any project with the My-Way shape. The **project-bound** part
+is everything stamped to one project: the worked-example case study
+(`references/agonara-case-study.md`) and any reference outputs kept under
+`<project>/docs/traceability-reviews/`.
 
 - **A new project:** keep the core, start a fresh harness. If the project has no
   module responsibility map, adapt discovery first — the map is the ownership
@@ -160,4 +157,4 @@ under `<project>/docs/traceability-reviews/`, and `references/agonara-case-study
 - **The same project, later:** the `inputs` document versions stamp every output.
   Re-run the pass, diff against the prior snapshot, and human-confirm whether a
   delta is a real document change or a regression — don't edit the skill to
-  satisfy a stale fixture.
+  satisfy a stale prior output.
