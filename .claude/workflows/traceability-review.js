@@ -27,10 +27,13 @@ const RESOLVE = 'Resolve paths first: REPO = `git rev-parse --show-toplevel`. PR
 const SCOPE_SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: {
+    precondition: { type: 'object', additionalProperties: false,
+      properties: { adrs: { type: 'boolean' }, specs: { type: 'boolean' }, map: { type: 'boolean' } },
+      required: ['adrs', 'specs', 'map'] },
     modules: { type: 'array', items: { type: 'object', additionalProperties: false,
       properties: { name: { type: 'string' }, rows: { type: 'integer' } }, required: ['name', 'rows'] } },
     totalRows: { type: 'integer' },
-  }, required: ['modules', 'totalRows'],
+  }, required: ['precondition', 'modules', 'totalRows'],
 }
 
 const MATRIX_SCHEMA = {
@@ -63,9 +66,20 @@ const LEDGER_SCHEMA = {
 phase('Scope')
 log('Scoping ' + PROJECT + (MODULE ? ' / ' + MODULE : ' (whole)'))
 const scope = await agent(
-  RESOLVE + '\n\nList this project\'s modules and CHEAPLY estimate each one\'s size — do NOT extract full text or run passes. Read the module responsibility map under PROJECT_DIR/docs/ to get the module list; for each module count (grep -c, not extraction): ADR Decision/Rules bullets in its ADRs + behavior clauses in its specs + relevant test titles. Return { modules: [{name, rows}], totalRows } where rows = that sum. If the project is a single module, return just that one.',
+  RESOLVE + '\n\nFIRST check the My-Way precondition (cheap, ls/test only): does PROJECT_DIR/docs/adr/ exist with ADR .md files? does PROJECT_DIR/docs/specs/ exist? does a module responsibility map exist under PROJECT_DIR/docs/? Report precondition:{adrs,specs,map} booleans. If adrs OR specs is false, return modules:[] and totalRows:0 — do NOT fabricate modules.\nIf the precondition holds: list the project\'s modules and CHEAPLY estimate each one\'s size — do NOT extract full text or run passes. Read the module responsibility map to get the module list; for each module count (grep -c, not extraction): ADR Decision/Rules bullets + spec behavior clauses + relevant test titles. Return { precondition, modules: [{name, rows}], totalRows } where rows = that sum; a single-module project returns just that one.',
   { label: 'scope', phase: 'Scope', schema: SCOPE_SCHEMA }
 )
+
+// --- precondition short-circuit: bail cheaply if the project isn't My-Way-shaped
+const pc = scope.precondition || {}
+if (!pc.adrs || !pc.specs) {
+  const missing = [!pc.adrs && 'docs/adr/', !pc.specs && 'docs/specs/', !pc.map && 'module responsibility map'].filter(Boolean)
+  return {
+    project: PROJECT, status: 'precondition-not-met',
+    message: PROJECT + ' is not My-Way-shaped — missing: ' + missing.join(', ') + '. Author ADRs + specs before a traceability review (the skill traces ADR -> spec -> tests; with no upstream there is nothing to trace).',
+    precondition: pc,
+  }
+}
 
 // --- gate: pick the run target, or refuse a too-big whole-project run --------
 const norm = (x) => String(x || '').trim().toLowerCase()
