@@ -85,6 +85,8 @@ type CoverageGapReport = {
 
 `acceptedEvidencePathCount` counts active accepted-corpus links or accepted check definitions that can produce learner-state evidence for the diagnostic target. It does not count Student evidence or attempts.
 
+`gapId` is deterministic from `programId`, `gapKind`, `targetKind`, `targetId`, and sorted `sourceIds`. `generatedAt` and `detectedAt` are the current inspection timestamp for the read-time report and are not persisted lifecycle fields.
+
 ### Query
 
 ```ts
@@ -135,20 +137,21 @@ type CuratorCoverageGapsRejectionReason =
 8. Concept scope rejects when the scoped target is missing, is not an accepted concept, or belongs to another Program.
 9. The report considers only current accepted navigation entities, current accepted navigation relationships, current accepted Quick Check revisions, current accepted open-answer check or criterion revisions, current accepted readiness check revisions, and active learner-evidence target links.
 10. The report must not read or derive from Student Workspace attempts, readiness attempts, learner-state summaries, weak areas, progress labels, feedback, evaluator evidence, or learning sessions.
-11. The report must not mutate Corpus Storage, Student Workspace, Program Membership, Identity, operational logs, candidate records, accepted revisions, target links, or LLM suggestion records.
+11. The report must not mutate Corpus Storage, Student Workspace, Program Membership, Identity, candidate records, accepted revisions, target links, LLM suggestion records, or domain audit/event records.
 12. Every gap uses `status: "draft_guidance"`. A coverage gap is diagnostic guidance for a curator; it is not an accepted corpus record, a draft content candidate, an LLM suggestion, or a Student weak-area label.
-13. `topic_without_concepts` is reported for an accepted topic with no current accepted `topic_includes_concept` relationship.
-14. `topic_without_materials` is reported for an accepted topic with no current accepted `topic_uses_material` relationship.
-15. `concept_without_materials` is reported for an accepted concept with no current accepted `concept_uses_material` relationship.
-16. `topic_without_checks` is reported for an accepted topic with zero active learner-evidence target links from an accepted check or accepted assessment criterion.
-17. `concept_without_checks` is reported for an accepted concept with zero active learner-evidence target links from an accepted check or accepted assessment criterion.
-18. `check_without_target_links` is reported for each current accepted Quick Check, open-answer check, or assessment criterion with no active learner-evidence target link to a topic, concept, or material reference.
-19. `readiness_requirement_without_evidence_path` is reported for each current accepted readiness requirement whose target is not backed by an active learner-evidence target link or by a current accepted check or criterion that can contribute evidence to that target.
-20. Severity is deterministic: missing checks or missing readiness evidence paths are `critical`; missing topic/concept material links or check target links are `warning`; missing topic concept links are `info`.
-21. `minimumSeverity` filters by `critical` > `warning` > `info`.
-22. Output ordering is deterministic: severity descending, then `targetTitle` ascending, then `targetId` ascending with missing ids last, then `gapKind` ascending.
-23. Student-safe and curator-safe redaction rules both apply to HTTP output. The report must omit answer keys, correctness metadata, candidate ids, accepted-by identity ids, curator rationale, idempotency keys, submitted answers, feedback, evaluator leases, provider diagnostics, raw prompts, raw model responses, sessions, CSRF tokens, cookies, SQL text, filesystem paths, database URLs, provider credentials, stack traces, and infrastructure details.
-24. Unknown `scopeKind`, unknown `gapKind`, invalid `minimumSeverity`, empty required ids, duplicate invalid filters, or malformed query values reject with `validation_failed`.
+13. Coverage-gap inspection may emit normal operational access logs only when they follow the repository's operational redaction rules and do not store coverage-gap domain state.
+14. `topic_without_concepts` is reported for an accepted topic with no current accepted `topic_includes_concept` relationship.
+15. `topic_without_materials` is reported for an accepted topic with no current accepted `topic_uses_material` relationship.
+16. `concept_without_materials` is reported for an accepted concept with no current accepted `concept_uses_material` relationship.
+17. `topic_without_checks` is reported for an accepted topic with zero active learner-evidence target links from an accepted check or accepted assessment criterion.
+18. `concept_without_checks` is reported for an accepted concept with zero active learner-evidence target links from an accepted check or accepted assessment criterion.
+19. `check_without_target_links` is reported for each current accepted Quick Check, open-answer check, or assessment criterion with no active learner-evidence target link to a topic, concept, or material reference.
+20. `readiness_requirement_without_evidence_path` is reported for each current accepted readiness requirement whose target is not backed by an active learner-evidence target link or by a current accepted check or criterion that can contribute evidence to that target.
+21. Severity is deterministic: missing checks or missing readiness evidence paths are `critical`; missing topic/concept material links or check target links are `warning`; missing topic concept links are `info`.
+22. `minimumSeverity` filters by `critical` > `warning` > `info`.
+23. Output ordering is deterministic: severity descending, then `targetTitle` ascending, then `targetId` ascending with missing ids last, then `gapKind` ascending.
+24. Student-safe and curator-safe redaction rules both apply to HTTP output. The report must omit answer keys, correctness metadata, candidate ids, accepted-by identity ids, curator rationale, idempotency keys, submitted answers, feedback, evaluator leases, provider diagnostics, raw prompts, raw model responses, sessions, CSRF tokens, cookies, SQL text, filesystem paths, database URLs, provider credentials, stack traces, and infrastructure details.
+25. Unknown `scopeKind`, unknown `gapKind`, invalid `minimumSeverity`, empty required ids, duplicate invalid filters, or malformed query values reject with `validation_failed`.
 
 ## Tests (required)
 
@@ -162,10 +165,10 @@ type CuratorCoverageGapsRejectionReason =
 8. Accepted Quick Checks, open-answer checks, and assessment criteria without target links report `check_without_target_links`.
 9. Accepted readiness requirements without an accepted evidence path report `readiness_requirement_without_evidence_path`.
 10. Coverage-gap inspection does not read or mutate Student Workspace attempts, progress, weak areas, readiness attempts, feedback, or evaluator evidence.
-11. Coverage-gap inspection does not mutate Corpus Storage, Program Membership, Identity, target links, candidate records, accepted revisions, LLM suggestions, or operational logs.
+11. Coverage-gap inspection does not mutate Corpus Storage, Program Membership, Identity, target links, candidate records, accepted revisions, LLM suggestions, or domain audit/event records.
 12. HTTP output omits answer keys, candidate ids, accepted-by identity ids, curator rationale, idempotency keys, submitted answers, feedback, sessions, CSRF tokens, provider data, and infrastructure details.
 13. `minimumSeverity`, repeated `gapKind`, and scope filters produce deterministic filtered reports.
-14. Output ordering is deterministic for equal severities and stable across repeated reads of unchanged accepted corpus.
+14. Gap ids, non-time report fields, and output ordering are stable across repeated reads of unchanged accepted corpus.
 
 ## Done criteria
 

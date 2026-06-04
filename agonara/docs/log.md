@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Harden the Curator Coverage Gaps spec after adversarial review by adding INT-01 traceability, deterministic gap identity rules, and an explicit domain-state boundary for operational logging.
 - Add the Curator Coverage Gaps spec for read-only draft guidance over accepted corpus, separating curator diagnostics from Student weak-area state and accepted-corpus mutation.
 - Close Program Membership invitations and recovery traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout, archive placement, and LOC dashboard refresh.
 - Harden Phase 4 membership product UI after adversarial review with stale-response guards across Program, identity, and session changes; cleared membership form inputs; accessible Admin feedback; edited-Program event context; and explicit Admin redaction coverage.
