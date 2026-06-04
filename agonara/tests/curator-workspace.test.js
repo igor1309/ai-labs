@@ -18,11 +18,13 @@ import {
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedQuickCheckEntityRecords,
   listAcceptedReadinessCheckEntityRecords,
+  listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
   listCorpusEventRecords,
   listLearnerEvidenceTargetLinkRecords,
   listLlmCurationSuggestionGenerationRecords,
   listLlmCurationSuggestionRecords,
+  listOpenAnswerCheckCandidateRecords,
   listProgramMembershipRecords,
   listQuickCheckAttemptRecords,
   listQuickCheckCandidateRecords,
@@ -746,6 +748,256 @@ test("acceptLlmCurationSuggestion_shouldMaterializeOneDraftCandidateWithoutAccep
   }
 });
 
+test("acceptLlmCurationSuggestion_shouldMaterializeAssessmentOpenAnswerAndReadinessDraftCandidates", () => {
+  const providerSuggestions = [];
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("accept-more-llm-id"),
+    llmSuggestionPolicies: [
+      makeLlmSuggestionPolicy({
+        allowedSuggestionKinds: [
+          "assessment_criterion_candidate",
+          "open_answer_check_candidate",
+          "readiness_check_candidate",
+        ],
+      }),
+    ],
+    llmSuggestionProviderAdapters: [
+      makeLlmSuggestionProviderAdapter({
+        suggestions: providerSuggestions,
+      }),
+    ],
+  });
+
+  try {
+    const corpus = seedCoverageCorpus(database, { programId: "program-a" });
+    providerSuggestions.push(
+      makeProviderSuggestion({
+        suggestionKind: "assessment_criterion_candidate",
+        title: "Draft assessment criterion",
+        suggestedDraft: {
+          candidateKind: "assessment_criterion_candidate",
+          request: {
+            title: "Draft assessment criterion",
+            body: "Explain the criterion.",
+            sourceIds: [],
+            rationale: "Draft assessment rationale",
+          },
+        },
+      }),
+      makeProviderSuggestion({
+        suggestionKind: "open_answer_check_candidate",
+        title: "Draft open answer",
+        suggestedDraft: {
+          candidateKind: "open_answer_check_candidate",
+          request: {
+            checkKind: "open_answer",
+            title: "Draft open answer",
+            prompt: "Explain the idea.",
+            criterionEntityIds: [corpus.orphanCriterion.entityId],
+            sourceIds: [],
+            rationale: "Draft open-answer rationale",
+          },
+        },
+      }),
+      makeProviderSuggestion({
+        suggestionKind: "readiness_check_candidate",
+        title: "Draft readiness check",
+        suggestedDraft: {
+          candidateKind: "readiness_check_candidate",
+          request: {
+            title: "Draft readiness check",
+            scope: { scopeKind: "topic", topicEntityId: corpus.topic.entityId },
+            requirements: [
+              {
+                targetKind: "concept",
+                targetId: corpus.concept.entityId,
+                requiredLevel: "on_track",
+              },
+            ],
+            sourceIds: [],
+            rationale: "Draft readiness rationale",
+          },
+        },
+      }),
+    );
+    const created = commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest({
+      allowedSuggestionKinds: [
+        "assessment_criterion_candidate",
+        "open_answer_check_candidate",
+        "readiness_check_candidate",
+      ],
+      maxSuggestions: 3,
+    }));
+
+    const accepted = created.value.suggestions.map($0 =>
+      commands.acceptLlmCurationSuggestion({
+        actingIdentityId: "identity-curator",
+        suggestionId: $0.suggestionId,
+      }),
+    );
+
+    assert.deepEqual(
+      {
+        accepted: accepted.map(projectAcceptedLlmSuggestion),
+        draftCandidates: projectAllDraftCandidateState(database),
+      },
+      {
+        accepted: [
+          {
+            candidateKind: "assessment_criterion_candidate",
+            candidateId: "corpus-id-1",
+            status: "accepted",
+            suggestionStatus: "materialized",
+          },
+          {
+            candidateKind: "open_answer_check_candidate",
+            candidateId: "corpus-id-2",
+            status: "accepted",
+            suggestionStatus: "materialized",
+          },
+          {
+            candidateKind: "readiness_check_candidate",
+            candidateId: "corpus-id-3",
+            status: "accepted",
+            suggestionStatus: "materialized",
+          },
+        ],
+        draftCandidates: {
+          assessmentCriterionCandidates: [["corpus-id-1", "draft"]],
+          corpusCandidates: [],
+          openAnswerCheckCandidates: [["corpus-id-2", "draft"]],
+          quickCheckCandidates: [],
+          readinessCheckCandidates: [["corpus-id-3", "draft"]],
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptLlmCurationSuggestion_shouldKeepSuggestionDraftAndCreateNoCandidate_onMaterializationFailure", () => {
+  const providerSuggestions = [
+    makeProviderSuggestion({
+      suggestionKind: "open_answer_check_candidate",
+      title: "Invalid draft open answer",
+      suggestedDraft: {
+        candidateKind: "open_answer_check_candidate",
+        request: {
+          checkKind: "open_answer",
+          title: "Invalid draft open answer",
+          prompt: "Explain the idea.",
+          criterionEntityIds: [],
+          sourceIds: [],
+          rationale: "Invalid draft rationale",
+        },
+      },
+    }),
+  ];
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("fail-materialize-llm-id"),
+    llmSuggestionPolicies: [
+      makeLlmSuggestionPolicy({
+        allowedSuggestionKinds: ["open_answer_check_candidate"],
+      }),
+    ],
+    llmSuggestionProviderAdapters: [
+      makeLlmSuggestionProviderAdapter({
+        suggestions: providerSuggestions,
+      }),
+    ],
+  });
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+    const created = commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest({
+      allowedSuggestionKinds: ["open_answer_check_candidate"],
+    }));
+    const suggestionId = created.value.suggestions[0].suggestionId;
+    const result = commands.acceptLlmCurationSuggestion({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        detail: projectLlmSuggestionDetail(commands.getLlmCurationSuggestion({
+          actingIdentityId: "identity-curator",
+          suggestionId,
+        })),
+        draftCandidates: projectAllDraftCandidateState(database),
+      },
+      {
+        result: { status: "rejected", reason: "suggestion_materialization_rejected" },
+        detail: {
+          containsForbiddenDetail: false,
+          status: "accepted",
+          suggestion: {
+            suggestionId,
+            status: "draft_suggestion",
+            suggestionKind: "open_answer_check_candidate",
+            title: "Invalid draft open answer",
+          },
+        },
+        draftCandidates: {
+          assessmentCriterionCandidates: [],
+          corpusCandidates: [],
+          openAnswerCheckCandidates: [],
+          quickCheckCandidates: [],
+          readinessCheckCandidates: [],
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptLlmCurationSuggestion_shouldRejectRepeatedAcceptanceAndMaterializedRejection", () => {
+  const { commands, database } = makeSUT({
+    generateId: makeIdGenerator("terminal-llm-id"),
+  });
+
+  try {
+    seedCoverageCorpus(database, { programId: "program-a" });
+    const created = commands.generateLlmCurationSuggestions(makeLlmSuggestionRequest());
+    const suggestionId = created.value.suggestions[0].suggestionId;
+    const accepted = commands.acceptLlmCurationSuggestion({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+    const repeatedAcceptance = commands.acceptLlmCurationSuggestion({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+    const rejectedAfterMaterialization = commands.rejectLlmCurationSuggestion({
+      actingIdentityId: "identity-curator",
+      suggestionId,
+    });
+
+    assert.deepEqual(
+      {
+        accepted: projectAcceptedLlmSuggestion(accepted),
+        repeatedAcceptance,
+        rejectedAfterMaterialization,
+      },
+      {
+        accepted: {
+          candidateKind: "navigation_candidate",
+          candidateId: "corpus-id-1",
+          status: "accepted",
+          suggestionStatus: "materialized",
+        },
+        repeatedAcceptance: { status: "rejected", reason: "llm_curation_suggestion_already_materialized" },
+        rejectedAfterMaterialization: { status: "rejected", reason: "llm_curation_suggestion_already_materialized" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("rejectLlmCurationSuggestion_shouldPersistTerminalStateWithoutMaterialization", () => {
   const { commands, database } = makeSUT({
     generateId: makeIdGenerator("reject-llm-id"),
@@ -1321,6 +1573,26 @@ function projectMaterializedCandidateState(database) {
       .filter($0 => $0.status === "draft")
       .map($0 => [$0.id, $0.status]),
     quickCheckCandidates: listQuickCheckCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+  };
+}
+
+function projectAllDraftCandidateState(database) {
+  return {
+    assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+    corpusCandidates: listCorpusCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+    openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+    quickCheckCandidates: listQuickCheckCandidateRecords(database)
+      .filter($0 => $0.status === "draft")
+      .map($0 => [$0.id, $0.status]),
+    readinessCheckCandidates: listReadinessCheckCandidateRecords(database)
       .filter($0 => $0.status === "draft")
       .map($0 => [$0.id, $0.status]),
   };
