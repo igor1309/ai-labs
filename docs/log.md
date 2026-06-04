@@ -2,6 +2,7 @@
 
 ## 2026-06-04
 
+- Agonara: prepared a PR handoff for the gap-closure branch with suggested PR title/body, verification matrix, merge-policy notes, and an explicit mixed-branch scope risk against `origin/trunk`.
 - Agonara: refreshed `docs/loc-dashboard.html` after LLM-assisted curation suggestion closeout so summary cards, table totals, data array, and update date match `scripts/loc-dashboard.sh --sort=name` (total 214,596→220,072).
 
 ## 2026-06-03
