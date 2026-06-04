@@ -6,9 +6,49 @@ description: "Open task backlog and parked decisions for the traceability-review
 
 # Traceability Review — TODO
 
+## Approach (direction)
+- The skill is the product; the Agonara pipeline is the eval corpus, not a
+  deliverable. Concrete findings matter only as evidence the method reasons well.
+- Run each pass as an experiment. The payload is method behaviour fed back into
+  `SKILL.md` / `references/` — a wobble is as valuable as a finding.
+- Evals are **evaluated, not matched to the letter.** Judge whether the method
+  reasoned soundly and reproduced *in spirit* — the verdict, the borderline calls,
+  the row-generation discipline — not whether counts or prose match a golden file.
+  Generative systems are non-deterministic; a fixed 100% outcome is neither the bar
+  nor a proof the skill works on a different project.
+- Don't chase breadth, depth, or completeness for its own sake. Run a module/shape
+  only when it stresses the method in a new way; coverage is not a correctness guarantee.
+- Lineage: a principled sibling to doc-drift-audit — ground truth is the upstream
+  pipeline node, not the code.
+
+## Workflow machinery
+The skill runs as a dynamic workflow — `.claude/workflows/traceability-review.js` (+ `README.md`);
+invoke `/traceability-review <project> [on "<Module>"]`. Open work:
+- Calibrate the spec↔tests pass: route negative/"does-not" guarantees to open questions, not
+  findings; reconcile its internal covered/untested counts.
+- Stabilise module identity across scope runs (scope re-segments and renames each run) — return
+  stable ids, or stop keying the gate on agent-named module names.
+- Make scope's per-module row estimate trustworthy or stop relying on it (it returned 0 for a
+  ~99-row module).
+- Settle schema vs markdown for pass output: large matrices have flaked StructuredOutput while a
+  larger run did not — diagnose before choosing.
+- Verify the precondition short-circuit against a project with no ADRs/specs.
+- Decide whether to freeze `evals/traceability-reviews/` outputs as `evals.json` regression fixtures.
+
 ## Candidates
-- **Cross-module coverage** — passes 5–7 (ADR→spec, spec↔tests, orphan check) and the umbrella ledger currently cover only Corpus Storage + Curator Workspace. Run them across the other Agonara modules (Program Membership, Student Workspace, Identity & Role Management, Assessment). Remediation the passes are ready for, not new tooling.
-- **Spec-level upward orphan check** — pass 7 covers ADR→intent (every ADR decision must trace back to a source intent); the spec→ADR/intent counterpart — does every spec clause trace back — is the natural extension if spec-level scope creep needs guarding. Vocabulary grounded in `research/orphan-requirement-allocation-completeness.md`.
+- **Spec-level upward orphan check** — the active skill-development thread. Pass 7
+  covers ADR→intent (every ADR decision traces back to a source intent); the
+  spec→ADR/intent counterpart — does every spec clause trace back — is the natural
+  extension if spec-level scope creep needs guarding. New SKILL content (version bump
+  + `references/pass-notes.md` + publishing). Vocabulary grounded in
+  `research/orphan-requirement-allocation-completeness.md`.
+- **Further corpus experiments (optional, method-stress only)** — additional Agonara
+  modules are worth running only for the new stress their *shape* puts on the method,
+  not for coverage: **Assessment** 6/7 exercises dual ownership (one spec realizing
+  both Corpus-side and Student-side of an ADR); **Student Workspace** exercises scale +
+  async + 5-spec fan-out against the completeness invariant and the per-cluster split.
+  Outputs are kept under the skill's `evals/traceability-reviews/` (no SKILL bump);
+  evaluate the run, fold any wobble back into the skill, don't diff against a fixture.
 
 ## Parked
 - **Publishing workflow** — when merging to trunk: `marketplace.json` + `plugin.json` bump, log entry, PR (per `dev-skills/.claude/CLAUDE.md`).

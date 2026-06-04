@@ -11,7 +11,7 @@ these findings are a snapshot at the document versions noted in each reference
 output; they go stale as Agonara evolves. Re-run a pass and re-confirm via the
 human loop rather than trusting this doc as current state.
 
-The actual matrices/registers live in `agonara/docs/traceability-reviews/`; the
+The actual matrices/registers live in `evals/traceability-reviews/`; the
 eval fixtures (`evals/evals.json`) freeze these as the skill's regression
 baseline.
 
