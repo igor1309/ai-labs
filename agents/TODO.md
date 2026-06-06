@@ -66,31 +66,15 @@ Today an agent is triggered by `@`-mentioning the bot in its topic with an instr
 - [ ] Decide A vs B (A preferred for a deliberate trigger).
 - [ ] If A: add the `customCommands` menu entry + update each agent's system prompt to handle `/run`.
 
-## 4. Watch: tasks/TaskFlow ledger not populating on the VPS
+## 4. Blocked dependency: OpenClaw tasks/TaskFlow ledger
 
-The OpenClaw **tasks / TaskFlow ledger** records nothing on the live unit
-(`107.172.143.196`, OpenClaw `2026.5.28`), for any run type tested — foreground
-`openclaw agent`, the in-gateway `lobster` tool, or cron-dispatched isolated
-turns. Evidence and full diagnosis: `agents/research/phase4-substrate-spike-findings.md` §4.
-The docs say cron and CLI runs **should** create task records; the machinery
-exists (`task_runs` table, `recordTask`, cron files wired) and `doctor` finds no
-fault, but `runs.sqlite` stayed ~9 h stale while a 10-minute cron succeeded, and
-`tasks maintenance` is all-zeros. Root cause undetermined; likely a `2026.5.x`
-behavior/version gap. Not doctor-fixable, no config gate.
+Do not build ai-labs agent run observability on the OpenClaw tasks/TaskFlow
+ledger until the inventory repo confirms that ledger populates on the live
+OpenClaw VPS.
 
-This blocks consolidating run observability onto the ledger (ties to §1). Until it
-resolves, the cron-based agents rely on their wrappers' **fail-closed Telegram
-notification + log** for observability instead.
+Current repo consequence: the cron-based agents rely on wrapper-level
+fail-closed Telegram/log/check-in signals for observability (ties to §1).
 
-### Watch
-
-- **Next check: 2026-06-16** (~2 weeks). Re-verify on the then-current OpenClaw
-  version whether the ledger populates.
-- Recheck procedure: trigger one isolated cron/agent run, then
-  `openclaw tasks list --json` + `openclaw tasks maintenance --json`; compare the
-  `~/.openclaw/tasks/runs.sqlite` mtime against the run time.
-- If it populates: file/close the upstream issue note, and reconsider consolidating
-  run observability onto the ledger (ties to §1).
-- If still empty: bump the next check another 2 weeks and consider filing an
-  upstream issue with the §4 evidence; record the live observation in `inventory`
-  `vps/OpenClaw/migration.md`.
+Historical ai-labs design evidence: `agents/research/phase4-substrate-spike-findings.md`
+§4. Live OpenClaw diagnosis, versions, storage paths, and recheck schedule are
+owned by the inventory repo (`vps/OpenClaw/log.md` and `vps/OpenClaw/CLAUDE.md`).
