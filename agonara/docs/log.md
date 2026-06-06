@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-07
+
+- Make Agonara Learn dark by default with a top-right persisted dark/light switcher and focused UI contract coverage.
+
 ## 2026-06-06
 
 - Provision Agonara GitHub deploy secrets from the inventory-backed RackNerd VPS target: `AGONARA_VPS_HOST=172.245.246.108`, `AGONARA_VPS_USER=root`, and the verified local agent SSH key, leaving trunk-only readiness as the remaining preflight blocker on this branch.
