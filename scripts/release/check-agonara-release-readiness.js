@@ -113,6 +113,9 @@ function runReadinessChecks() {
   ])) {
     throw new Error('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source');
   }
+  const prodJob = getWorkflowJob(workflow, 'deploy-agonara-prod');
+  checkWorkflowHealthGate(stagingJob, 'agonara-staging');
+  checkWorkflowHealthGate(prodJob, 'agonara');
   checks.push('release workflow');
 
   checkLockedReleaseInstall(version, workflow);
@@ -228,6 +231,13 @@ function checkDeployHealthGate(scriptPath) {
   const healthGatePattern = /fetch\("http:\/\/127\.0\.0\.1:8080\/operations\/health"\)\.then\(response => \{ if \(!response\.ok\) process\.exit\(1\); return response\.json\(\); \}\)\.then\(health => \{ if \(health\.status !== "ok" \|\| health\.version !== process\.env\.EXPECTED_VERSION\) process\.exit\(1\); \}\)/;
   if (!healthGatePattern.test(script)) {
     throw new Error(`${scriptPath} must health-gate HTTP success, status ok, and expected version from JSON`);
+  }
+}
+
+function checkWorkflowHealthGate(workflowJob, containerName) {
+  const healthGate = `docker exec -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'`;
+  if (!workflowJob.includes(healthGate)) {
+    throw new Error('release-unit.yml must health-gate Agonara workflow version checks on HTTP success before parsing JSON');
   }
 }
 

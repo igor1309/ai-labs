@@ -157,6 +157,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source'));
   });
 
+  it('fails when workflow version checks parse health JSON without HTTP success', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowHealthGate('agonara'),
+        'docker exec -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => response.json()).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))\'',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must health-gate Agonara workflow version checks on HTTP success before parsing JSON'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
@@ -366,12 +380,18 @@ function validReleaseWorkflow() {
     '        script: rm -rf /tmp/agonara-deploy',
     '      - name: Copy source files to VPS',
     '        source: "agonara/package-lock.json"',
+    workflowHealthGate('agonara-staging'),
     '  deploy-agonara-prod:',
     "      && needs.deploy-agonara-staging.result == 'success'",
     "      && needs.deploy-agonara-prod.result == 'success'",
     '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
     '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
+    workflowHealthGate('agonara'),
   ].join('\n');
+}
+
+function workflowHealthGate(containerName) {
+  return `docker exec -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'`;
 }
 
 function validCiWorkflow() {
