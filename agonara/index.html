@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agonara — Structured Learning Program Environment</title>
+<style>
+  :root {
+    --bg:       #141413;
+    --bg-2:     #1e1d1b;
+    --surface:  #232220;
+    --surface-2:#2b2925;
+    --rule:     #3a3732;
+    --rule-2:   #4a463f;
+    --text:     #f4f2ed;
+    --text-2:   #d6d0c4;
+    --text-3:   #a39c90;
+    --accent:   #d97757;
+    --accent-2: #e89479;
+    --student:  #6fb89a;
+    --curator:  #b994e0;
+    --admin:    #d97757;
+    --corpus:   #d9a657;
+    --membership:#7aa2c2;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter",
+                 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Hero */
+  header.hero {
+    padding: 112px 24px 72px;
+    text-align: center;
+    background:
+      radial-gradient(900px 380px at 50% -120px, rgba(217, 119, 87, 0.18) 0%, transparent 65%),
+      var(--bg);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark {
+    display: inline-block;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 24px;
+  }
+  h1.title {
+    font-size: clamp(48px, 7vw, 96px);
+    margin: 0 0 16px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .anchor {
+    max-width: 720px;
+    margin: 0 auto;
+    font-size: clamp(17px, 2vw, 20px);
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+  .agon {
+    margin: 40px auto 0;
+    max-width: 640px;
+    font-size: 14px;
+    color: var(--text-3);
+    line-height: 1.7;
+  }
+  .agon strong { color: var(--text-2); font-weight: 600; }
+  .agon em { color: var(--accent-2); font-style: normal; }
+  .hero-meta {
+    margin-top: 32px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    background: var(--surface);
+    font-family: var(--mono);
+  }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+  /* Nav */
+  nav.toc {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(20, 20, 19, 0.85);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 10;
+  }
+  nav.toc a {
+    padding: 8px 14px;
+    text-decoration: none;
+    color: var(--text-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    font-size: 13px;
+    background: var(--surface);
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  nav.toc a:hover {
+    color: var(--text);
+    border-color: var(--text-3);
+    background: var(--surface-2);
+    text-decoration: none;
+  }
+
+  /* Layout */
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  section { padding: 64px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 80px; }
+  section:last-of-type { border-bottom: none; }
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  h2.section-title {
+    font-size: clamp(26px, 4vw, 38px);
+    margin: 0 0 14px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .lede {
+    max-width: 760px;
+    color: var(--text-2);
+    font-size: 16px;
+    margin: 0 0 36px;
+  }
+
+  /* Generic card grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+  .card:hover { border-color: var(--rule-2); background: var(--bg-2); transform: translateY(-2px); }
+  .card .kicker {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-3);
+  }
+  .card h3 { font-size: 16px; margin: 0; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+
+  /* Module cards with role colors */
+  .module { border-left: 2px solid var(--rule-2); }
+  .module.corpus     { border-left-color: var(--corpus); }
+  .module.membership { border-left-color: var(--membership); }
+  .module.curator    { border-left-color: var(--curator); }
+  .module.student    { border-left-color: var(--student); }
+  .module.identity   { border-left-color: var(--admin); }
+  .module .kicker.corpus     { color: var(--corpus); }
+  .module .kicker.membership { color: var(--membership); }
+  .module .kicker.curator    { color: var(--curator); }
+  .module .kicker.student    { color: var(--student); }
+  .module .kicker.identity   { color: var(--accent-2); }
+  .owns {
+    margin-top: 4px;
+    font-size: 12.5px;
+    color: var(--text-3);
+    line-height: 1.5;
+  }
+  .owns b { color: var(--text-2); font-weight: 600; }
+
+  /* Separation columns */
+  .separations {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 720px) { .separations { grid-template-columns: 1fr; } }
+  .sep-row {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .sep-row h3 { margin: 0 0 6px; font-size: 15px; color: var(--text); font-weight: 600; }
+  .sep-row p { margin: 0; color: var(--text-2); font-size: 13.5px; }
+  .sep-row .vs {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  /* Capability list */
+  .caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  .cap {
+    display: flex;
+    gap: 12px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  .cap .badge {
+    flex: 0 0 auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--rule-2);
+    border-radius: 6px;
+    padding: 3px 7px;
+    height: fit-content;
+    white-space: nowrap;
+  }
+  .cap .body h4 { margin: 0 0 4px; font-size: 14.5px; color: var(--text); font-weight: 600; }
+  .cap .body p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+  /* Surfaces */
+  .surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .surface-card {
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .surface-card .route {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent-2);
+    margin-bottom: 8px;
+  }
+  .surface-card h3 { margin: 0 0 6px; font-size: 15px; color: var(--text); }
+  .surface-card p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+  /* Stack chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    padding: 9px 14px;
+  }
+  .chip span { color: var(--text-3); }
+
+  /* Deep-dive callout */
+  .callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    background:
+      radial-gradient(600px 200px at 100% 0%, rgba(217, 119, 87, 0.12) 0%, transparent 70%),
+      var(--bg-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 14px;
+    padding: 32px 34px;
+  }
+  .callout .copy { max-width: 620px; }
+  .callout h2 { margin: 0 0 8px; font-size: 24px; color: var(--text); letter-spacing: -0.01em; }
+  .callout p { margin: 0; color: var(--text-2); font-size: 15px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #1a120e;
+    font-weight: 600;
+    font-size: 15px;
+    border: 1px solid var(--accent);
+    white-space: nowrap;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .btn:hover { background: var(--accent-2); transform: translateY(-1px); text-decoration: none; }
+
+  /* Doc links */
+  .links { display: flex; flex-wrap: wrap; gap: 12px; }
+  .doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 14px;
+    background: var(--surface);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .doc-link:hover { color: var(--text); border-color: var(--text-3); text-decoration: none; }
+  .doc-link code { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 32px 24px 64px;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12.5px;
+  }
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="mark">Agon · Contest · Discipline · Mastery</div>
+  <h1 class="title">Agonara</h1>
+  <p class="anchor">
+    An API-first structured learning program environment built around curated programs,
+    progression, evidence of mastery, and agent-ready backend contracts.
+  </p>
+  <p class="agon">
+    From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
+    Curators assemble programs from trusted sources; learners move through them with
+    clear sequence, checkpoints, and evidence of understanding.
+    <strong>AI assists, but does not own the curriculum.</strong>
+  </p>
+  <div class="hero-meta">
+    <span class="pill"><span class="dot"></span>Private self-hosted instance <span style="color:var(--text-3)">· target</span></span>
+    <span class="pill"><span class="dot"></span>Node.js 22 · SQLite</span>
+    <span class="pill"><span class="dot"></span>API-first · human UI · agent-ready</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#idea">Core idea</a>
+  <a href="#modules">Modules</a>
+  <a href="#implemented">Implemented</a>
+  <a href="#surfaces">Surfaces</a>
+  <a href="#stack">Stack</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#docs">Docs</a>
+</nav>
+
+<main>
+
+<!-- CORE IDEA -->
+<section id="idea">
+  <p class="eyebrow">The core idea</p>
+  <h2 class="section-title">Separate what is owned by whom</h2>
+  <p class="lede">
+    Agonara keeps the shared program corpus, personal learning state, participation,
+    and operational authority in distinct ownership boundaries — so each can evolve
+    independently without collapsing into one shared product-state blob.
+  </p>
+  <div class="separations">
+    <div class="sep-row">
+      <span class="vs">CORPUS · vs · STATE</span>
+      <h3>Program corpus is curator-owned</h3>
+      <p>Topics, concepts, materials, checks, and criteria belong to the curator. A learner's answers never mutate them.</p>
+    </div>
+    <div class="sep-row">
+      <span class="vs">STATE · vs · CORPUS</span>
+      <h3>Student state is learner-owned</h3>
+      <p>Attempts, evaluations, progress, and weak areas belong to the learner and are read owner-only.</p>
+    </div>
+    <div class="sep-row">
+      <span class="vs">DRAFT · vs · ACCEPTED</span>
+      <h3>LLM output is assistant material</h3>
+      <p>Generated suggestions stay draft until a human curator explicitly accepts them into the corpus.</p>
+    </div>
+    <div class="sep-row">
+      <span class="vs">PARTICIPATION · vs · IDENTITY</span>
+      <h3>Membership is separate from identity</h3>
+      <p>Program participation lifecycle and policy are owned apart from identity, credentials, and Admin authority.</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODULES -->
+<section id="modules">
+  <p class="eyebrow">Architecture at a glance</p>
+  <h2 class="section-title">Five module boundaries</h2>
+  <p class="lede">
+    The domain is split into five modules with explicit ownership. Other modules ask
+    for <em>effective participation</em> decisions rather than reading each other's policy internals.
+  </p>
+  <div class="grid">
+    <div class="card module corpus">
+      <span class="kicker corpus">Corpus Storage</span>
+      <h3>Accepted program corpus</h3>
+      <p>The single home for content curators have explicitly accepted.</p>
+      <div class="owns"><b>Owns:</b> programs, topics, concepts, definitions, principles, accepted checks, criteria, material references, source metadata.</div>
+    </div>
+    <div class="card module membership">
+      <span class="kicker membership">Program Membership</span>
+      <h3>Participation lifecycle</h3>
+      <p>Join, leave, rejoin, invitations, participant visibility, and effective-participation decisions.</p>
+      <div class="owns"><b>Owns:</b> membership status &amp; policy, invitation lifecycle, exceptional recovery hooks.</div>
+    </div>
+    <div class="card module curator">
+      <span class="kicker curator">Curator Workspace</span>
+      <h3>Assemble &amp; accept content</h3>
+      <p>Research, draft, refine, and accept program content — including LLM-assisted suggestions and coverage-gap diagnostics.</p>
+      <div class="owns"><b>Owns:</b> sources, candidate topics/concepts/materials/checks, draft criteria, curator decisions.</div>
+    </div>
+    <div class="card module student">
+      <span class="kicker student">Student Workspace</span>
+      <h3>Personal learning state</h3>
+      <p>Progression inside joined programs, with assessment execution and progress interpretation embedded.</p>
+      <div class="owns"><b>Owns:</b> answers, attempts, evaluation evidence, mastery, weak areas, learner-state interpretation.</div>
+    </div>
+    <div class="card module identity">
+      <span class="kicker identity">Identity &amp; Role Management</span>
+      <h3>Identity &amp; operational authority</h3>
+      <p>The stable subject of ownership plus operational primitives.</p>
+      <div class="owns"><b>Owns:</b> internal identities, credential bindings, Admin role, role invariants, access recovery.</div>
+    </div>
+    <div class="card module">
+      <span class="kicker">Cross-cutting</span>
+      <h3>Operational concerns</h3>
+      <p>Logging, observability, health/diagnostics, request correlation, and backup/restore cut across modules without owning their state.</p>
+      <div class="owns"><b>Covers:</b> audit reads, completion logs, health, diagnostics, full backup &amp; restore.</div>
+    </div>
+  </div>
+</section>
+
+<!-- IMPLEMENTED -->
+<section id="implemented">
+  <p class="eyebrow">Current implementation snapshot</p>
+  <h2 class="section-title">What is implemented today</h2>
+  <p class="lede">
+    Backend, domain, and product surfaces shipped as vertical slices. Each slice carries
+    storage, domain commands, session-backed HTTP routes, backup/restore, and — where noted — a <code>/learn</code> product UI.
+  </p>
+  <div class="caps">
+    <div class="cap">
+      <span class="badge">Identity</span>
+      <div class="body"><h4>Identity &amp; Operations</h4>
+        <p>First-Admin bootstrap, local-password login, server-side sessions, Admin identity ops, audit reads, health, diagnostics, request correlation, completion logs, backup &amp; restore.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Membership</span>
+      <div class="body"><h4>Program Shell &amp; Membership</h4>
+        <p>Program creation, Student self-join/leave/rejoin, invitation lifecycle, participant listing, Student removal, curator leave, Admin exceptional recovery/revocation, effective-participation checks, event reads.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Corpus</span>
+      <div class="body"><h4>Corpus Curation</h4>
+        <p>Program sources, corpus candidates, acceptance/rejection, accepted corpus revisions, corpus event reads, and backup/restore support.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Navigation</span>
+      <div class="body"><h4>Topic / Concept / Material</h4>
+        <p>Accepted topics, concepts, definitions, principles, material references, relationships, historical revisions, curator candidate routes, student-safe traversal, and a <code>/learn</code> navigation UI.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Checks</span>
+      <div class="body"><h4>Accepted Checks &amp; Criteria</h4>
+        <p>Assessment criteria, open-answer checks, accepted revisions, and curator / student / admin read separation.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Student</span>
+      <div class="body"><h4>Open-Answer Workspace</h4>
+        <p>Student submission, idempotency, owner-only attempt detail/list reads, evaluation status/evidence reads, evaluator orchestration, worker execution, and backup/restore support.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Assessment</span>
+      <div class="body"><h4>Quick Check</h4>
+        <p>Session-backed routes, candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, and a <code>/learn</code> Curator/Student UI.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Student</span>
+      <div class="body"><h4>Learner-State Interpretation</h4>
+        <p>Explicit target-link curation metadata, read-time owner-only progress and weak-area summaries, supporting-evidence target detail, and a <code>/learn</code> learner-state UI.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Assessment</span>
+      <div class="body"><h4>Readiness Checks</h4>
+        <p>Topic- or named-period readiness definitions, evidence-backed explicit Student readiness attempts, idempotent retry, owner-only attempt reads, and a <code>/learn</code> readiness UI.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Curator</span>
+      <div class="body"><h4>Coverage Gaps</h4>
+        <p>Read-only Curator Workspace diagnostics over accepted corpus, deterministic <code>draft_guidance</code> reports, protected redaction, and a <code>/learn</code> filtering / drill-down UI.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Curator · LLM</span>
+      <div class="body"><h4>LLM-Assisted Suggestions</h4>
+        <p>Curator Workspace-owned deterministic-provider slice for redacted draft suggestions, origin inspection, accept/reject review, draft materialization without accepted-corpus promotion, and a <code>/learn</code> review UI.</p></div>
+    </div>
+    <div class="cap">
+      <span class="badge">Admin</span>
+      <div class="body"><h4>Admin Board</h4>
+        <p>A local operations board for bootstrap, sign in/out, Identity management, operational access inspection, audit inspection, and exceptional membership recovery/revocation.</p></div>
+    </div>
+  </div>
+  <p class="lede" style="margin-top:32px;">
+    <strong style="color:var(--text-2)">Deferred:</strong> recommendation ranking and persisted mastery models still
+    need separate specs; student- and curator-facing product UI beyond the shipped <code>/learn</code> slices is not yet implemented.
+  </p>
+</section>
+
+<!-- SURFACES -->
+<section id="surfaces">
+  <p class="eyebrow">Product surfaces</p>
+  <h2 class="section-title">How humans and agents reach it</h2>
+  <p class="lede">
+    Agonara exposes product behavior through backend contracts first. Browser UIs,
+    operator commands, and future Agonara agent skills can work through the same
+    program, corpus, membership, assessment, and learner-state APIs.
+  </p>
+  <div class="surfaces">
+    <div class="surface-card">
+      <div class="route">GET /learn</div>
+      <h3>Learner &amp; Curator UI</h3>
+      <p>Navigation, Quick Check, learner-state, readiness, membership, coverage-gap, and LLM-suggestion workflows for Students and Program Curators.</p>
+    </div>
+    <div class="surface-card">
+      <div class="route">GET /admin</div>
+      <h3>Admin Board</h3>
+      <p>Operations board for bootstrap, sign in/out, identity management, access &amp; audit inspection, and exceptional membership recovery.</p>
+    </div>
+    <div class="surface-card">
+      <div class="route">/identity · /programs · …</div>
+      <h3>HTTP API</h3>
+      <p>Server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses across all domain slices.</p>
+    </div>
+    <div class="surface-card">
+      <div class="route">$ agonara</div>
+      <h3>Operator CLI</h3>
+      <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
+    </div>
+    <div class="surface-card">
+      <div class="route">planned client</div>
+      <h3>Future Agent Skill Set</h3>
+      <p>Agent clients should be able to curate draft material, inspect coverage gaps, prepare checks, and navigate learner evidence through the same backend contracts.</p>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section id="stack">
+  <p class="eyebrow">Stack</p>
+  <h2 class="section-title">Built for a private instance</h2>
+  <p class="lede">Small, self-hostable, and recoverable — runs the same in a container or locally for development. The dockerized private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).</p>
+  <div class="chips">
+    <span class="chip">Node.js <span>22</span></span>
+    <span class="chip">better-sqlite3 <span>^11.8</span></span>
+    <span class="chip">API-first HTTP <span>backend</span></span>
+    <span class="chip">CSRF <span>protection</span></span>
+    <span class="chip">Request <span>correlation</span></span>
+    <span class="chip">Operator <span>CLI</span></span>
+    <span class="chip">Docker <span>+ Compose</span></span>
+    <span class="chip">Backup <span>/ restore</span></span>
+  </div>
+</section>
+
+<!-- ARCHITECTURE CALLOUT (progressive disclosure) -->
+<section id="architecture">
+  <div class="callout">
+    <div class="copy">
+      <p class="eyebrow" style="margin-bottom:10px;">Go deeper</p>
+      <h2>Architecture &amp; module boundaries</h2>
+      <p>
+        Module responsibility map, ownership rules, roles &amp; membership, source layout,
+        runtime &amp; storage, deployment shape, and the ADR index — one click deeper.
+      </p>
+    </div>
+    <a class="btn" href="architecture.html">Read the architecture →</a>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section id="docs">
+  <p class="eyebrow">Documentation</p>
+  <h2 class="section-title">Explore further</h2>
+  <div class="links">
+    <a class="doc-link" href="architecture.html">Architecture <code>architecture.html</code></a>
+    <a class="doc-link" href="docs/intent/user-stories.html">User Stories <code>docs/intent/user-stories.html</code></a>
+    <a class="doc-link" href="README.md">Overview <code>README.md</code></a>
+    <a class="doc-link" href="docs/demos.md">Demos <code>docs/demos.md</code></a>
+    <a class="doc-link" href="docs/module_responsibility_map.md">Responsibility Map <code>docs/module_responsibility_map.md</code></a>
+    <a class="doc-link" href="docs/adr/">ADRs <code>docs/adr/</code></a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Agonara · Structured learning program environment</span>
+  <span class="sep">·</span>
+  <span>Curated programs · progression · evidence of mastery</span>
+  <span class="sep">·</span>
+  <span>2026-06-06</span>
+</footer>
+
+</body>
+</html>

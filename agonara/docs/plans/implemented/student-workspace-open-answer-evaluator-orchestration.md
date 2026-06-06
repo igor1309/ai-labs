@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer evaluat
 
 Deliver the Agonara v0.0.1 Student Workspace domain contract for scheduling, claiming, renewing, retrying, cancelling, timing out, and completing open-answer evaluator work.
 
-This plan implements [Student Workspace Open-Answer Evaluator Orchestration](../../specs/student-workspace-open-answer-evaluator-orchestration.md) and [ADR-014](../../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring HTTP mutation routes, provider calls, queues, UI, and deployment topology.
+This plan implements [Student Workspace Open-Answer Evaluator Orchestration](../../specs/student-workspace-open-answer-evaluator-orchestration.md) and [ADR-014](../../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent/intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring HTTP mutation routes, provider calls, queues, UI, and deployment topology.
 
 ## Execution mode
 

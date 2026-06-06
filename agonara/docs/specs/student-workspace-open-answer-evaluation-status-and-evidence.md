@@ -13,7 +13,7 @@ type: spec
 
 Define the Agonara v0.0.1 Student Workspace contract for explicit open-answer evaluation status and internal evaluator evidence while keeping final feedback Student Workspace-owned.
 
-This spec operationalizes [ADR-013](../adr/adr-013-student-workspace-open-answer-evaluation-governance.md), extends the internal evaluation lifecycle from [Student Workspace Open-Answer Attempt First Slice](student-workspace-open-answer-attempt-first-slice.md), and preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md). It does not add public HTTP evaluation mutation routes, LLM provider calls, human review workflow, UI, mastery, weak-area, progress, next-step, grading, or analytics behavior.
+This spec operationalizes [ADR-013](../adr/adr-013-student-workspace-open-answer-evaluation-governance.md), extends the internal evaluation lifecycle from [Student Workspace Open-Answer Attempt First Slice](student-workspace-open-answer-attempt-first-slice.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluation mutation routes, LLM provider calls, human review workflow, UI, mastery, weak-area, progress, next-step, grading, or analytics behavior.
 
 ## Public interface
 

@@ -13,7 +13,7 @@ type: spec
 
 Define the Agonara v0.0.1 Student Workspace domain contract for scheduling, claiming, retrying, cancelling, timing out, and completing open-answer evaluator work.
 
-This spec operationalizes [ADR-014](../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md), extends [Student Workspace Open-Answer Evaluation Status and Evidence](student-workspace-open-answer-evaluation-status-and-evidence.md), and preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md). It does not add public HTTP evaluation mutation routes, queue technology, LLM provider calls, prompt construction, human review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
+This spec operationalizes [ADR-014](../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md), extends [Student Workspace Open-Answer Evaluation Status and Evidence](student-workspace-open-answer-evaluation-status-and-evidence.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluation mutation routes, queue technology, LLM provider calls, prompt construction, human review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
 
 ## Public interface
 

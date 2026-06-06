@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Insights &mdash; Weekly Claude Code Usage Reports</title>
+<style>
+  :root {
+    --bg: #101115;
+    --bg-2: #17191f;
+    --surface: #1e222b;
+    --surface-2: #262b36;
+    --rule: #303746;
+    --rule-2: #465062;
+    --text: #f1f4f8;
+    --text-2: #cbd3df;
+    --text-3: #8f9bac;
+    --accent: #8b83ff;
+    --accent-2: #4ecf8f;
+    --accent-3: #f6b35b;
+    --telegram: #54a9eb;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    padding: 112px 24px 72px;
+    text-align: center;
+    background:
+      radial-gradient(780px 360px at 50% -120px, rgba(139, 131, 255, 0.18) 0%, transparent 64%),
+      linear-gradient(180deg, rgba(78, 207, 143, 0.08), transparent 54%),
+      var(--bg);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .mark {
+    display: inline-block;
+    margin-bottom: 24px;
+    color: var(--text-3);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  h1.title {
+    margin: 0 0 16px;
+    color: var(--text);
+    font-size: clamp(44px, 7vw, 88px);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  .anchor {
+    max-width: 780px;
+    margin: 0 auto;
+    color: var(--text-2);
+    font-size: clamp(17px, 2vw, 20px);
+    line-height: 1.55;
+  }
+
+  .thesis {
+    max-width: 690px;
+    margin: 40px auto 0;
+    color: var(--text-3);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .thesis strong { color: var(--text-2); font-weight: 600; }
+  .thesis em { color: var(--accent-3); font-style: normal; }
+
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 32px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+
+  .pill .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(16, 17, 21, 0.86);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  nav.toc a {
+    padding: 8px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 13px;
+  }
+
+  nav.toc a:hover {
+    border-color: var(--text-3);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  section {
+    padding: 64px 0;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 80px;
+  }
+
+  section:last-of-type { border-bottom: none; }
+
+  .eyebrow {
+    margin: 0 0 12px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  h2.section-title {
+    margin: 0 0 14px;
+    color: var(--text);
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .lede {
+    max-width: 760px;
+    margin: 0 0 36px;
+    color: var(--text-2);
+    font-size: 16px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px 22px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--surface);
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+
+  .card:hover {
+    border-color: var(--rule-2);
+    background: var(--bg-2);
+    transform: translateY(-2px);
+  }
+
+  .card .kicker {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .card h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .card p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .card.local { border-left: 2px solid var(--accent); }
+  .card.store { border-left: 2px solid var(--accent-2); }
+  .card.notify { border-left: 2px solid var(--telegram); }
+  .card.compare { border-left: 2px solid var(--accent-3); }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pipeline-step {
+    min-height: 138px;
+    padding: 18px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+
+  .pipeline-step .number {
+    color: var(--accent-3);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .pipeline-step h3 {
+    margin: 8px 0 6px;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  .pipeline-step p {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .pipeline { grid-template-columns: 1fr; }
+    .pipeline-step { min-height: auto; }
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .metric {
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+
+  .metric .label {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .metric .value {
+    margin-top: 8px;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .chip {
+    padding: 9px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .chip span { color: var(--text-3); }
+
+  .callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 32px 34px;
+    border: 1px solid var(--rule-2);
+    border-radius: 14px;
+    background:
+      radial-gradient(600px 220px at 100% 0%, rgba(84, 169, 235, 0.12) 0%, transparent 72%),
+      var(--bg-2);
+  }
+
+  .callout .copy { max-width: 620px; }
+  .callout h2 { margin: 0 0 8px; color: var(--text); font-size: 24px; letter-spacing: -0.01em; }
+  .callout p { margin: 0; color: var(--text-2); font-size: 15px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: var(--accent);
+    color: #0b0d12;
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background .15s ease, transform .15s ease;
+  }
+
+  .btn:hover {
+    background: #aaa4ff;
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+
+  .links { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 14px;
+  }
+
+  .doc-link:hover {
+    border-color: var(--text-3);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .doc-link code { color: var(--text-3); font-family: var(--mono); font-size: 12px; }
+
+  footer {
+    padding: 32px 24px 64px;
+    border-top: 1px solid var(--rule);
+    color: var(--text-3);
+    text-align: center;
+    font-size: 12.5px;
+  }
+
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+
+  @media (max-width: 640px) {
+    header.hero { padding: 88px 18px 56px; }
+    main { padding: 18px; }
+    section { padding: 48px 0; }
+    .callout { padding: 24px; }
+    .btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="mark">Sessions &middot; Friction &middot; Outcomes &middot; Telegram</div>
+  <h1 class="title">Claude Insights</h1>
+  <p class="anchor">
+    Weekly Claude Code usage reports from local session data, delivered through Supabase and Telegram.
+  </p>
+  <p class="thesis">
+    Claude Insights turns local usage artifacts into a recurring engineering feedback loop:
+    session volume, code churn, tools, goals, friction points, outcomes, and narrative summaries.
+    <strong>The output is a compact report you can query later from Telegram.</strong>
+  </p>
+  <div class="hero-meta">
+    <span class="pill"><span class="dot"></span><code>~/.claude/usage-data</code> source</span>
+    <span class="pill"><span class="dot"></span>Supabase storage</span>
+    <span class="pill"><span class="dot"></span>Telegram bot summaries</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#idea">Core idea</a>
+  <a href="#pipeline">Pipeline</a>
+  <a href="#metrics">Metrics</a>
+  <a href="#stack">Stack</a>
+  <a href="#docs">Docs</a>
+</nav>
+
+<main>
+  <section id="idea">
+    <p class="eyebrow">Core idea</p>
+    <h2 class="section-title">Usage data becomes a weekly operating signal.</h2>
+    <p class="lede">
+      The project aggregates Claude Code session records, extracts the narrative parts of the
+      local insights report, persists the snapshot, and sends a Telegram notification when a new
+      weekly summary lands.
+    </p>
+    <div class="grid">
+      <article class="card local">
+        <span class="kicker">Input</span>
+        <h3>Local session artifacts</h3>
+        <p>Reads Claude usage facets and session metadata from the local machine, plus cached narrative sections from the insights report.</p>
+      </article>
+      <article class="card store">
+        <span class="kicker">Store</span>
+        <h3>Supabase snapshot history</h3>
+        <p>Writes weekly summaries to a persistent table so reports can be fetched, compared, and retained over time.</p>
+      </article>
+      <article class="card notify">
+        <span class="kicker">Delivery</span>
+        <h3>Telegram report surface</h3>
+        <p>A bot posts new summaries and answers commands for the latest report and trend comparisons.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <p class="eyebrow">Pipeline</p>
+    <h2 class="section-title">A small weekly path from disk to chat.</h2>
+    <div class="pipeline">
+      <article class="pipeline-step">
+        <span class="number">01</span>
+        <h3>Collect</h3>
+        <p>Aggregate local Claude Code usage JSON for a date window.</p>
+      </article>
+      <article class="pipeline-step">
+        <span class="number">02</span>
+        <h3>Summarize</h3>
+        <p>Include narrative sections from the local insights HTML report.</p>
+      </article>
+      <article class="pipeline-step">
+        <span class="number">03</span>
+        <h3>Persist</h3>
+        <p>Push the weekly JSON snapshot to the Supabase `claude_insights` table.</p>
+      </article>
+      <article class="pipeline-step">
+        <span class="number">04</span>
+        <h3>Notify</h3>
+        <p>A database webhook calls the Edge Function that sends the Telegram message.</p>
+      </article>
+      <article class="pipeline-step">
+        <span class="number">05</span>
+        <h3>Compare</h3>
+        <p>The bot can fetch stored snapshots and ask Nomos for trend analysis.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="metrics">
+    <p class="eyebrow">Metrics</p>
+    <h2 class="section-title">The report tracks work shape, not just volume.</h2>
+    <p class="lede">
+      Claude Insights keeps quantitative counters and qualitative narrative in the same snapshot,
+      so a weekly report can explain both what happened and where the workflow needs attention.
+    </p>
+    <div class="metric-grid">
+      <div class="metric"><div class="label">Sessions</div><div class="value">count + duration</div></div>
+      <div class="metric"><div class="label">Code</div><div class="value">churn + commits</div></div>
+      <div class="metric"><div class="label">Tools</div><div class="value">usage counts</div></div>
+      <div class="metric"><div class="label">Goals</div><div class="value">work themes</div></div>
+      <div class="metric"><div class="label">Friction</div><div class="value">failure points</div></div>
+      <div class="metric"><div class="label">Outcomes</div><div class="value">helpfulness</div></div>
+    </div>
+  </section>
+
+  <section id="stack">
+    <p class="eyebrow">Stack</p>
+    <h2 class="section-title">Local collector, hosted notification edge.</h2>
+    <p class="lede">
+      The project combines a Python collector, Supabase storage and Edge Functions, Telegram delivery,
+      and Nomos-backed comparison analysis.
+    </p>
+    <div class="chips">
+      <span class="chip">Python <span>collector</span></span>
+      <span class="chip">Supabase <span>database</span></span>
+      <span class="chip">Edge Functions <span>webhook + bot</span></span>
+      <span class="chip">Telegram Bot <span>delivery</span></span>
+      <span class="chip">Nomos <span>trend analysis</span></span>
+      <span class="chip">launchd <span>weekly schedule</span></span>
+    </div>
+  </section>
+
+  <section id="docs">
+    <p class="eyebrow">Docs</p>
+    <div class="callout">
+      <div class="copy">
+        <h2>Operational notes live with the collector.</h2>
+        <p>The README covers the local CLI, output shape, Telegram commands, schedule, and Supabase infrastructure.</p>
+      </div>
+      <a class="btn" href="README.md">Open README</a>
+    </div>
+    <div class="links" style="margin-top: 18px;">
+      <a class="doc-link" href="README.md">Project README <code>README.md</code></a>
+      <a class="doc-link" href="docs/log.md">Project log <code>docs/log.md</code></a>
+      <a class="doc-link" href="origin.md">Origin note <code>origin.md</code></a>
+      <a class="doc-link" href="../docs/products.html">Products index <code>docs/products.html</code></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Claude Insights <span class="sep">/</span> weekly usage reports <span class="sep">/</span> <a href="../index.html">Internal Landings</a>
+</footer>
+
+</body>
+</html>
