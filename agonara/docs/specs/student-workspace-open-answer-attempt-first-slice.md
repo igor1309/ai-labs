@@ -3,7 +3,7 @@ date: 2026-06-01
 model: gpt-5
 description: "Spec: Agonara Student Workspace open-answer attempt first-slice contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,21 @@ type: spec
 ## Goal
 
 Define the Agonara v0.0.1 backend contract for Student Workspace-owned open-answer attempts, submitted answers, evaluation outcomes, and feedback linked to accepted open-answer check and criterion revisions.
+
+## Implementation status
+
+Implemented by [Student Workspace Open-Answer Attempt First Slice Implementation Plan](../plans/implemented/student-workspace-open-answer-attempt-first-slice.md).
+
+### Implementation Evidence
+
+- Student Workspace submit/evaluate/failure/read commands: [student-workspace.js](../../src/student-workspace.js)
+- Attempt, evaluation, failure, idempotency, and backup/restore persistence: [storage.js](../../src/storage.js)
+- Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Storage coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented first slice supports Student-owned submission, scoped idempotency, internal evaluation and failure transitions, owner-only domain reads, accepted-revision snapshot preservation, redacted summaries/details, backup/restore preservation, and orphan graph rejection. This first-slice implementation did not introduce HTTP routes, UI, CLI commands, provider calls, human review, mastery, weak-area, progress, quick-check, topic-level, period-level, or institutional grading behavior; the later public HTTP surface is specified separately by [Student Workspace Open-Answer Attempt API](student-workspace-open-answer-attempt-api.md).
 
 ## Public interface
 
@@ -111,7 +126,7 @@ recordOpenAnswerEvaluationFailure(input: {
 
 `markOpenAnswerAttemptEvaluating`, `recordOpenAnswerEvaluation`, and `recordOpenAnswerEvaluationFailure` are Student Workspace internal commands. They are not product-role commands for Students, Program Curators, or Admins.
 
-Each command result is either:
+### Command Result Envelope
 
 - `{ status: "accepted"; value: ... }`
 - `{ status: "rejected"; reason: StudentWorkspaceAttemptRejectionReason }`

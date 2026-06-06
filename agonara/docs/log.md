@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Mark the Student Workspace open-answer attempt first-slice spec implemented with evidence links to the archived plan, Student Workspace domain commands, persistence, backup/restore coverage, and executable acceptance.
 - Align the implemented open-answer attempt API spec with shipped response envelopes: submission returns an attempt summary, and detail reads return the full attempt detail.
 - Mark the Student Workspace open-answer attempt API spec implemented with evidence links to the archived plan, HTTP adapters, domain commands, HTTP route coverage, and executable acceptance.
 - Mark the Student Workspace open-answer evaluation status/evidence spec implemented with evidence links to the archived plan, evaluator-run commands, owner-only reads, persistence, backup/restore coverage, and executable acceptance.
