@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Provision Agonara GitHub deploy secrets from the inventory-backed RackNerd VPS target: `AGONARA_VPS_HOST=172.245.246.108`, `AGONARA_VPS_USER=root`, and the verified local agent SSH key, leaving trunk-only readiness as the remaining preflight blocker on this branch.
 - Run the Agonara first-release preflight from the current branch, confirming the trunk guard blocks readiness execution, the first release tag is still absent, and the required Agonara GitHub deploy SSH secret names are missing.
 - Audit Agonara release readiness against Product Intent closeout, deployment handoff gates, first-release prerequisites, public-prod open questions, and the readiness script before release execution.
 - Refresh the Identity implementation notes so HTTP audit-event redaction and pagination are no longer described as deferred.
