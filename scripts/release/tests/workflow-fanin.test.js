@@ -87,6 +87,17 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(!stagingDeploy.includes("&& rm -f /tmp/agonara-smoke.json"));
     assert.ok(!prodDeploy.includes("&& rm -f /tmp/agonara-smoke.json"));
   });
+
+  it('cleans uploaded Agonara deploy source after failed staging or any prod outcome', () => {
+    const stagingDeploy = jobSection('deploy-agonara-staging');
+    const prodDeploy = jobSection('deploy-agonara-prod');
+
+    assert.ok(stagingDeploy.includes('Clean deploy upload after staging failure'));
+    assert.ok(stagingDeploy.includes('if: failure()'));
+    assert.ok(prodDeploy.includes('Clean deploy upload'));
+    assert.ok(prodDeploy.includes('if: always()'));
+    assert.ok(prodDeploy.indexOf('Rollback production on failure') < prodDeploy.indexOf('Clean deploy upload'));
+  });
 });
 
 function jobSection(jobName) {

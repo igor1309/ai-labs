@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Clean Agonara release source uploads on staging failure and after every prod deploy outcome, while preserving rollback ordering before final cleanup.
 - Harden Agonara release smoke cleanup so staging/prod evaluator-smoke JSON files are removed inside the container even when smoke execution or validation fails.
 - Add an Agonara first-release readiness script that verifies the `agonara_v0.1.0` tag, trunk branch, tag absence, package/manifest sync, Docker-unit status, and release workflow deploy/failure fan-in before the first tag is pushed.
 - Add a fail-fast Agonara release deploy secret preflight in `release-unit.yml` so a missing `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`, or `AGONARA_VPS_SSH_KEY` stops before source upload and reports the missing secret name without printing secret values.
