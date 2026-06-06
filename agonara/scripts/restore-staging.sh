@@ -19,8 +19,11 @@ if [[ ! -f "${BACKUP_FILE}" ]]; then
   exit 1
 fi
 
-cd "${DEPLOY_ROOT}"
+test -s "${BACKUP_FILE}"
 BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"
+docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c 'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"' sh "${BACKUP_BASENAME}" >/dev/null
+
+cd "${DEPLOY_ROOT}"
 "${COMPOSE[@]}" down
 docker run --rm -v "${DATA_VOLUME}:/data" -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c 'find /data -mindepth 1 -exec rm -rf {} + && tar -xzf "/restore/$1" -C /data' sh "${BACKUP_BASENAME}"
 "${COMPOSE[@]}" up -d --no-build --wait

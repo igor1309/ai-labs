@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Bring staging backup/restore rehearsal to production integrity parity by requiring `agonara.sqlite` before transfer or destructive restore, and enforce the staging lifecycle in first-release readiness.
 - Require production backup archives to contain `agonara.sqlite` before service restart, off-host transfer, retention pruning, or reported success, with first-release readiness coverage.
 - Preflight production restore archives for non-empty, readable tar content before shutting down or replacing data, and enforce the destructive ordering, no-rebuild restart, and health gate in first-release readiness.
 - Extend the Agonara first-release readiness check to verify production backup requires off-host storage, recovers service on archive failure, rejects empty archives, transfers successfully, and prunes local retention.

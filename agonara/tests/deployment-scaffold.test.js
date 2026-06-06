@@ -381,6 +381,31 @@ test("stagingBackupRestoreScripts_shouldRehearseOffHostBackupAgainstStagingVolum
   );
 });
 
+test("stagingBackup_shouldRequireAgonaraDatabaseInArchiveBeforeTransfer", () => {
+  assert.equal(
+    appearsInOrder(files.backupStaging, [
+      'test -s "${BACKUP_DIR}/${BACKUP_FILE}"',
+      'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"',
+      '"${COMPOSE[@]}" start agonara',
+      '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
+    ]),
+    true,
+  );
+});
+
+test("stagingRestore_shouldValidateDatabaseArchiveBeforeMutatingData", () => {
+  assert.equal(
+    appearsInOrder(files.restoreStaging, [
+      'test -s "${BACKUP_FILE}"',
+      'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"',
+      '"${COMPOSE[@]}" down',
+      "find /data -mindepth 1",
+      "tar -xzf",
+    ]),
+    true,
+  );
+});
+
 function readText(path) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
 }

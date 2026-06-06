@@ -137,6 +137,8 @@ function runReadinessChecks() {
   checks.push('production backup');
   checkProductionRestore();
   checks.push('production restore');
+  checkStagingBackupAndRestore();
+  checks.push('staging backup and restore');
 
   if (checkGithubSecrets) {
     checkGithubDeploySecretNames();
@@ -346,6 +348,61 @@ function checkProductionRestore() {
   ];
   if (!linesAppearInOrder(executableLines, requiredSequence)) {
     throw new Error(`${scriptPath} must validate the backup before replacing production data, restart without rebuild, and health-gate availability`);
+  }
+}
+
+function checkStagingBackupAndRestore() {
+  const backupPath = 'agonara/scripts/backup-staging.sh';
+  const restorePath = 'agonara/scripts/restore-staging.sh';
+  const backupFullPath = join(repoRoot, backupPath);
+  const restoreFullPath = join(repoRoot, restorePath);
+  if (!existsSync(backupFullPath)) {
+    throw new Error(`${backupPath} is missing`);
+  }
+  if (!existsSync(restoreFullPath)) {
+    throw new Error(`${restorePath} is missing`);
+  }
+
+  const backupLines = shellExecutableLines(readFileSync(backupFullPath, 'utf8'));
+  const restoreLines = shellExecutableLines(readFileSync(restoreFullPath, 'utf8'));
+  const backupSequence = [
+    'set -euo pipefail',
+    'BACKUP_DIR="${AGONARA_BACKUP_DIR:-${DEPLOY_ROOT}/backups/staging}"',
+    'BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"',
+    'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-staging_agonara-staging-data}"',
+    'BACKUP_FILE="agonara-staging-data-${TIMESTAMP}.tar.gz"',
+    'COMPOSE=(docker compose --env-file .env.staging -f compose.staging.yml)',
+    'restart_staging() {',
+    '"${COMPOSE[@]}" start agonara >/dev/null 2>&1 || true',
+    '}',
+    'trap restart_staging EXIT',
+    '"${COMPOSE[@]}" stop agonara',
+    'docker run --rm -v "${DATA_VOLUME}:/data:ro" -v "${BACKUP_DIR}:/backup" alpine:3.20 tar -czf "/backup/${BACKUP_FILE}" -C /data .',
+    'test -s "${BACKUP_DIR}/${BACKUP_FILE}"',
+    'docker run --rm -v "${BACKUP_DIR}:/backup:ro" alpine:3.20 sh -c \'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_FILE}" >/dev/null',
+    '"${COMPOSE[@]}" start agonara',
+    'trap - EXIT',
+    '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
+    'find "${BACKUP_DIR}" -type f -name "agonara-staging-data-*.tar.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -delete',
+    'echo "Staging backup successful: ${BACKUP_FILE}"',
+  ];
+  const restoreSequence = [
+    'set -euo pipefail',
+    'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-staging_agonara-staging-data}"',
+    'BACKUP_FILE="${1:-}"',
+    'COMPOSE=(docker compose --env-file .env.staging -f compose.staging.yml)',
+    'test -s "${BACKUP_FILE}"',
+    'BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"',
+    'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_BASENAME}" >/dev/null',
+    'cd "${DEPLOY_ROOT}"',
+    '"${COMPOSE[@]}" down',
+    'docker run --rm -v "${DATA_VOLUME}:/data" -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'find /data -mindepth 1 -exec rm -rf {} + && tar -xzf "/restore/$1" -C /data\' sh "${BACKUP_BASENAME}"',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    'docker exec agonara-staging node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
+    'echo "Staging restore successful"',
+  ];
+  if (!linesAppearInOrder(backupLines, backupSequence) || !linesAppearInOrder(restoreLines, restoreSequence)) {
+    throw new Error('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement');
   }
 }
 
