@@ -42,6 +42,7 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stdout.includes('OK deploy upload preflight'));
     assert.ok(result.stdout.includes('OK deploy health gate'));
     assert.ok(result.stdout.includes('OK deploy image lifecycle'));
+    assert.ok(result.stdout.includes('OK deploy tier isolation'));
     assert.ok(result.stdout.includes('OK rollback health gate'));
     assert.ok(result.stdout.includes('OK production backup'));
     assert.ok(result.stdout.includes('OK production restore'));
@@ -464,6 +465,42 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
   });
 
+  it('fails when production compose exposes a non-loopback host port', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace('"127.0.0.1:18080:8080"', '"18080:8080"'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when staging compose shares the production data volume', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      stagingCompose: validCompose({ staging: true })
+        .replaceAll('agonara-staging-data', 'agonara-data'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when staging compose uses the production env file', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      stagingCompose: validCompose({ staging: true })
+        .replace('env_file: .env.staging', 'env_file: .env.prod'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
   it('fails when rollback does not health-gate restored service availability', () => {
     writeAgonaraReleaseRepo(tmp, {
       rollbackProd: validRollbackScript().replace(rollbackHealthGate(), ''),
@@ -771,6 +808,8 @@ function writeAgonaraReleaseRepo(dir, {
   dockerfile = validDockerfile(),
   workflow = validReleaseWorkflow(),
   ciWorkflow = validCiWorkflow(),
+  stagingCompose = validCompose({ staging: true }),
+  prodCompose = validCompose({ staging: false }),
   deployStaging = validDeployScript('compose.staging.yml'),
   deployProd = validDeployScript('compose.prod.yml'),
   rollbackProd = validRollbackScript(),
@@ -791,6 +830,8 @@ function writeAgonaraReleaseRepo(dir, {
     packages: { '': { name: 'agonara', version: '0.1.0' } },
   }));
   writeFileSync(join(dir, 'agonara/Dockerfile'), dockerfile);
+  writeFileSync(join(dir, 'agonara/compose.staging.yml'), stagingCompose);
+  writeFileSync(join(dir, 'agonara/compose.prod.yml'), prodCompose);
   mkdirSync(join(dir, 'agonara/scripts'), { recursive: true });
   writeFileSync(join(dir, 'agonara/scripts/deploy-staging.sh'), deployStaging);
   writeFileSync(join(dir, 'agonara/scripts/deploy-prod.sh'), deployProd);
@@ -818,6 +859,34 @@ function validDockerfile() {
     'FROM node:22',
     'COPY --chown=agonara:agonara package.json package-lock.json ./',
     'RUN npm ci --omit=dev',
+  ].join('\n');
+}
+
+function validCompose({ staging }) {
+  const tier = staging ? 'staging' : 'prod';
+  const containerName = staging ? 'agonara-staging' : 'agonara';
+  const image = staging ? 'agonara:staging' : 'agonara:latest';
+  const hostPort = staging ? '18081' : '18080';
+  const volume = staging ? 'agonara-staging-data' : 'agonara-data';
+  return [
+    `name: agonara-${tier}`,
+    'services:',
+    '  agonara:',
+    `    image: ${image}`,
+    `    container_name: ${containerName}`,
+    `    env_file: .env.${tier}`,
+    '    environment:',
+    '      AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}',
+    '      AGONARA_NOMOS_API_KEY: ${AGONARA_NOMOS_API_KEY:-}',
+    '      AGONARA_NOMOS_BASE_URL: ${AGONARA_NOMOS_BASE_URL:-}',
+    '      AGONARA_NOMOS_MODEL: ${AGONARA_NOMOS_MODEL:-}',
+    '      AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN: ${AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN:-}',
+    '    ports:',
+    `      - "127.0.0.1:${hostPort}:8080"`,
+    '    volumes:',
+    `      - ${volume}:/data`,
+    'volumes:',
+    `  ${volume}:`,
   ].join('\n');
 }
 

@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: enforce Agonara staging/production Compose isolation and required runtime configuration in first-release readiness.
 - Release units: tighten Agonara deploy image lifecycle readiness to require post-replacement health gates, staging git-SHA tags, and production rollback retention.
 - Release units: enforce Agonara deploy image lifecycle ordering, immutable version/SHA tags, and production rollback retention in first-release readiness.
 - Release units: enforce Agonara staging backup/restore archive integrity and destructive ordering so the restore rehearsal exercises the same guarantees as production.

@@ -133,6 +133,8 @@ function runReadinessChecks() {
   checks.push('deploy health gate');
   checkDeployImageLifecycle();
   checks.push('deploy image lifecycle');
+  checkDeployTierIsolation();
+  checks.push('deploy tier isolation');
   checkRollbackHealthGate();
   checks.push('rollback health gate');
   checkProductionBackup();
@@ -285,6 +287,51 @@ function checkDeployImageLifecycle() {
 
 function deployHealthGateLine(containerName) {
   return `docker exec -e EXPECTED_VERSION="\${DEPLOY_VERSION}" ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'`;
+}
+
+function checkDeployTierIsolation() {
+  const stagingCompose = readFileSync(join(repoRoot, 'agonara/compose.staging.yml'), 'utf8');
+  const prodCompose = readFileSync(join(repoRoot, 'agonara/compose.prod.yml'), 'utf8');
+  const sharedRuntimeConfiguration = [
+    'AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}',
+    'AGONARA_NOMOS_API_KEY: ${AGONARA_NOMOS_API_KEY:-}',
+    'AGONARA_NOMOS_BASE_URL: ${AGONARA_NOMOS_BASE_URL:-}',
+    'AGONARA_NOMOS_MODEL: ${AGONARA_NOMOS_MODEL:-}',
+    'AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN: ${AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN:-}',
+  ];
+  const stagingRequirements = [
+    'name: agonara-staging',
+    'image: agonara:staging',
+    'container_name: agonara-staging',
+    'env_file: .env.staging',
+    '"127.0.0.1:18081:8080"',
+    'agonara-staging-data:/data',
+    'agonara-staging-data:',
+    ...sharedRuntimeConfiguration,
+  ];
+  const prodRequirements = [
+    'name: agonara-prod',
+    'image: agonara:latest',
+    'container_name: agonara',
+    'env_file: .env.prod',
+    '"127.0.0.1:18080:8080"',
+    'agonara-data:/data',
+    'agonara-data:',
+    ...sharedRuntimeConfiguration,
+  ];
+  const valid = stagingRequirements.every($0 => stagingCompose.includes($0))
+    && prodRequirements.every($0 => prodCompose.includes($0))
+    && publishedPortLines(stagingCompose).length === 1
+    && publishedPortLines(prodCompose).length === 1;
+  if (!valid) {
+    throw new Error('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes');
+  }
+}
+
+function publishedPortLines(compose) {
+  return compose.split('\n')
+    .map($0 => $0.trim())
+    .filter($0 => /^-\s*["']?(?:\d{1,3}(?:\.\d{1,3}){3}:)?\d+:\d+/.test($0));
 }
 
 function checkRollbackHealthGate() {

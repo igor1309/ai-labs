@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Enforce ADR-017 deployment-tier isolation in first-release readiness: distinct Compose project/container identities, loopback ports, env files, data volumes, and required host-side runtime configuration.
 - Tighten deploy image lifecycle readiness to require the staging and production health gates after no-build container replacement, with focused coverage for staging git-SHA tags and production rollback retention.
 - Extend first-release readiness to enforce build-before-downtime deploy ordering, version and git-SHA image tags, no-rebuild startup, and prior-production rollback retention.
 - Bring staging backup/restore rehearsal to production integrity parity by requiring `agonara.sqlite` before transfer or destructive restore, and enforce the staging lifecycle in first-release readiness.
