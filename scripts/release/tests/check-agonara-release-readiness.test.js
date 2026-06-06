@@ -243,8 +243,8 @@ describe('check-agonara-release-readiness', () => {
   it('fails when workflow notifications do not depend on Agonara deploy jobs', () => {
     writeAgonaraReleaseRepo(tmp, {
       workflow: validReleaseWorkflow().replace(
-        '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
-        '    needs: [deploy-agonara-staging]',
+        workflowNotifyFanIn(),
+        workflowNotifyFanIn().replace('    needs: [deploy-agonara-staging, deploy-agonara-prod]', '    needs: [deploy-agonara-staging]'),
       ),
     });
 
@@ -252,6 +252,20 @@ describe('check-agonara-release-readiness', () => {
 
     assert.equal(result.exitCode, 1);
     assert.ok(result.stderr.includes('release-unit.yml notify job must include Agonara deploy failures and report their results'));
+  });
+
+  it('fails when GitHub release does not depend on Agonara deploy jobs', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowGithubReleaseFanIn(),
+        workflowGithubReleaseFanIn().replace('    needs: [deploy-agonara-staging, deploy-agonara-prod]', '    needs: [deploy-agonara-staging]'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml github-release job must require successful Agonara deploys before release creation'));
   });
 
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
@@ -474,6 +488,22 @@ function validReleaseWorkflow() {
     workflowHealthGate('agonara'),
     workflowSmokeGate('agonara'),
     workflowProdCleanupLifecycle(),
+    workflowGithubReleaseFanIn(),
+    workflowNotifyFanIn(),
+  ].join('\n');
+}
+
+function workflowGithubReleaseFanIn() {
+  return [
+    '  github-release:',
+    '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
+    "      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-staging.result == 'success')",
+    "      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')",
+  ].join('\n');
+}
+
+function workflowNotifyFanIn() {
+  return [
     '  notify:',
     '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
     "      || needs.deploy-agonara-staging.result == 'failure'",

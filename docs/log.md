@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
 - Release units: extend the Agonara first-release readiness check to verify failure notifications trigger on staging/prod deploy failures and report both deploy results.
 - Release units: extend the Agonara first-release readiness check to verify staging failure cleanup and production rollback run before final upload cleanup.
 - Release units: extend the Agonara first-release readiness check to verify workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.

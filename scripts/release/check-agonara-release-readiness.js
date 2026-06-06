@@ -119,6 +119,7 @@ function runReadinessChecks() {
   checkWorkflowSmokeGate(stagingJob, 'agonara-staging');
   checkWorkflowSmokeGate(prodJob, 'agonara');
   checkWorkflowCleanupLifecycle(stagingJob, prodJob);
+  checkWorkflowGithubReleaseFanIn(workflow);
   checkWorkflowNotifyFanIn(workflow);
   checks.push('release workflow');
 
@@ -280,6 +281,19 @@ function checkWorkflowNotifyFanIn(workflow) {
   const dependsOnAgonaraDeploys = notifyNeeds.has('deploy-agonara-staging') && notifyNeeds.has('deploy-agonara-prod');
   if (!dependsOnAgonaraDeploys || !requiredNeedles.every($0 => notifyJob.includes($0))) {
     throw new Error('release-unit.yml notify job must include Agonara deploy failures and report their results');
+  }
+}
+
+function checkWorkflowGithubReleaseFanIn(workflow) {
+  const githubReleaseJob = getWorkflowJob(workflow, 'github-release');
+  const releaseNeeds = workflowJobNeeds(githubReleaseJob);
+  const requiredNeedles = [
+    "(needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-staging.result == 'success')",
+    "(needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')",
+  ];
+  const dependsOnAgonaraDeploys = releaseNeeds.has('deploy-agonara-staging') && releaseNeeds.has('deploy-agonara-prod');
+  if (!dependsOnAgonaraDeploys || !requiredNeedles.every($0 => githubReleaseJob.includes($0))) {
+    throw new Error('release-unit.yml github-release job must require successful Agonara deploys before release creation');
   }
 }
 

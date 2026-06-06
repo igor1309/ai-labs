@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
 - Extend the Agonara first-release readiness check to verify release failure notifications trigger on staging/prod deploy failures and report both deploy results.
 - Extend the Agonara first-release readiness check to verify staging failure cleanup and production rollback run before final upload cleanup.
 - Extend the Agonara first-release readiness check to verify release workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.
