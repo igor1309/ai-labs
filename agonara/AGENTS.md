@@ -11,3 +11,7 @@ Agonara aims to follow the My Way approach.
 Use the repository-level instructions as the baseline, and use `../docs/my-way/`
 as the source of truth for My Way methodology when product intent, pre-ADR, ADR,
 spec, implementation-plan, or review work is in scope.
+
+## Deployment Discipline
+
+For Agonara deployment work, read `docs/deployment-discipline.md`.
