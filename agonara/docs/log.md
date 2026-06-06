@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Harden deployment-tier isolation readiness against commented requirements and alternate public port syntax, and require SQLite state to remain on the isolated `/data` volume.
 - Enforce ADR-017 deployment-tier isolation in first-release readiness: distinct Compose project/container identities, loopback ports, env files, data volumes, and required host-side runtime configuration.
 - Tighten deploy image lifecycle readiness to require the staging and production health gates after no-build container replacement, with focused coverage for staging git-SHA tags and production rollback retention.
 - Extend first-release readiness to enforce build-before-downtime deploy ordering, version and git-SHA image tags, no-rebuild startup, and prior-production rollback retention.

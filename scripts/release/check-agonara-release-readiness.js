@@ -292,7 +292,10 @@ function deployHealthGateLine(containerName) {
 function checkDeployTierIsolation() {
   const stagingCompose = readFileSync(join(repoRoot, 'agonara/compose.staging.yml'), 'utf8');
   const prodCompose = readFileSync(join(repoRoot, 'agonara/compose.prod.yml'), 'utf8');
+  const stagingLines = activeYamlLines(stagingCompose);
+  const prodLines = activeYamlLines(prodCompose);
   const sharedRuntimeConfiguration = [
+    'AGONARA_DB_PATH: /data/agonara.sqlite',
     'AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}',
     'AGONARA_NOMOS_API_KEY: ${AGONARA_NOMOS_API_KEY:-}',
     'AGONARA_NOMOS_BASE_URL: ${AGONARA_NOMOS_BASE_URL:-}',
@@ -304,8 +307,8 @@ function checkDeployTierIsolation() {
     'image: agonara:staging',
     'container_name: agonara-staging',
     'env_file: .env.staging',
-    '"127.0.0.1:18081:8080"',
-    'agonara-staging-data:/data',
+    '- "127.0.0.1:18081:8080"',
+    '- agonara-staging-data:/data',
     'agonara-staging-data:',
     ...sharedRuntimeConfiguration,
   ];
@@ -314,24 +317,49 @@ function checkDeployTierIsolation() {
     'image: agonara:latest',
     'container_name: agonara',
     'env_file: .env.prod',
-    '"127.0.0.1:18080:8080"',
-    'agonara-data:/data',
+    '- "127.0.0.1:18080:8080"',
+    '- agonara-data:/data',
     'agonara-data:',
     ...sharedRuntimeConfiguration,
   ];
-  const valid = stagingRequirements.every($0 => stagingCompose.includes($0))
-    && prodRequirements.every($0 => prodCompose.includes($0))
-    && publishedPortLines(stagingCompose).length === 1
-    && publishedPortLines(prodCompose).length === 1;
+  const valid = stagingRequirements.every($0 => stagingLines.includes($0))
+    && prodRequirements.every($0 => prodLines.includes($0))
+    && JSON.stringify(yamlListItems(stagingCompose, 'ports')) === JSON.stringify(['- "127.0.0.1:18081:8080"'])
+    && JSON.stringify(yamlListItems(prodCompose, 'ports')) === JSON.stringify(['- "127.0.0.1:18080:8080"']);
   if (!valid) {
     throw new Error('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes');
   }
 }
 
-function publishedPortLines(compose) {
+function activeYamlLines(compose) {
   return compose.split('\n')
     .map($0 => $0.trim())
-    .filter($0 => /^-\s*["']?(?:\d{1,3}(?:\.\d{1,3}){3}:)?\d+:\d+/.test($0));
+    .filter($0 => $0 !== '' && !$0.startsWith('#'));
+}
+
+function yamlListItems(compose, key) {
+  const items = [];
+  let keyIndent;
+  for (const line of compose.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) {
+      continue;
+    }
+    const indent = line.length - line.trimStart().length;
+    if (keyIndent === undefined) {
+      if (trimmed === `${key}:`) {
+        keyIndent = indent;
+      }
+      continue;
+    }
+    if (indent <= keyIndent) {
+      break;
+    }
+    if (trimmed.startsWith('- ')) {
+      items.push(trimmed);
+    }
+  }
+  return items;
 }
 
 function checkRollbackHealthGate() {

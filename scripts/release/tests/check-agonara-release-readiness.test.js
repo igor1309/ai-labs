@@ -501,6 +501,56 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
   });
 
+  it('fails when the required loopback port only appears in a comment', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace(
+          '      - "127.0.0.1:18080:8080"',
+          [
+            '      # - "127.0.0.1:18080:8080"',
+            '      - "18080:8080"',
+          ].join('\n'),
+        ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when production compose adds a long-syntax public port', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace(
+          '      - "127.0.0.1:18080:8080"',
+          [
+            '      - "127.0.0.1:18080:8080"',
+            '      - target: 8080',
+            '        published: "18082"',
+            '        host_ip: 0.0.0.0',
+          ].join('\n'),
+        ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when production database state is outside the isolated data volume', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace('      AGONARA_DB_PATH: /data/agonara.sqlite\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
   it('fails when rollback does not health-gate restored service availability', () => {
     writeAgonaraReleaseRepo(tmp, {
       rollbackProd: validRollbackScript().replace(rollbackHealthGate(), ''),
@@ -876,6 +926,7 @@ function validCompose({ staging }) {
     `    container_name: ${containerName}`,
     `    env_file: .env.${tier}`,
     '    environment:',
+    '      AGONARA_DB_PATH: /data/agonara.sqlite',
     '      AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}',
     '      AGONARA_NOMOS_API_KEY: ${AGONARA_NOMOS_API_KEY:-}',
     '      AGONARA_NOMOS_BASE_URL: ${AGONARA_NOMOS_BASE_URL:-}',
