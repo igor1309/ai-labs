@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara accepted checks and assessment criter
 
 Deliver the Agonara v0.0.1 backend domain contract for Program-scoped accepted assessment criteria and accepted open-answer checks as versioned Program corpus, with curator-owned candidate state before acceptance.
 
-This plan implements [Accepted Checks and Assessment Criteria First Slice](../../specs/accepted-checks-and-assessment-criteria-first-slice.md), [ADR-011](../../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-010](../../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), and the effective participation contract from [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md). It must preserve INT-05 from [Product Intent](../../intent_learning_program_app.md) by making accepted criteria and open-answer checks addressable without introducing student attempts or feedback in this slice.
+This plan implements [Accepted Checks and Assessment Criteria First Slice](../../specs/accepted-checks-and-assessment-criteria-first-slice.md), [ADR-011](../../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-010](../../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), and the effective participation contract from [ADR-007](../../adr/adr-007-effective-participation-authorization-contract.md). It must preserve INT-05 from [Product Intent](../../intent/intent_learning_program_app.md) by making accepted criteria and open-answer checks addressable without introducing student attempts or feedback in this slice.
 
 ## Execution mode
 

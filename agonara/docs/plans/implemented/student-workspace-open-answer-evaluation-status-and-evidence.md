@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer evaluat
 
 Deliver the Agonara v0.0.1 Student Workspace domain contract for explicit open-answer evaluator runs, redacted internal evidence metadata, terminal evaluation transitions, and owner-only status reads.
 
-This plan implements [Student Workspace Open-Answer Evaluation Status and Evidence](../../specs/student-workspace-open-answer-evaluation-status-and-evidence.md) and [ADR-013](../../adr/adr-013-student-workspace-open-answer-evaluation-governance.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring transport and orchestration concerns.
+This plan implements [Student Workspace Open-Answer Evaluation Status and Evidence](../../specs/student-workspace-open-answer-evaluation-status-and-evidence.md) and [ADR-013](../../adr/adr-013-student-workspace-open-answer-evaluation-governance.md). It preserves STU-13 and INT-05 from [Product Intent](../../intent/intent_learning_program_app.md) while keeping final feedback in Student Workspace and deferring transport and orchestration concerns.
 
 ## Execution mode
 
