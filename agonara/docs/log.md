@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Align the implemented evaluator orchestration spec with timeout behavior by documenting `evaluator_job_lease_active` for unexpired leases.
 - Mark the Student Workspace open-answer evaluator orchestration spec implemented with evidence links to the archived plan, command/query surface, persistence, backup/restore coverage, and executable acceptance.
 - Mark the Student Workspace open-answer evaluator worker spec implemented with evidence links to the archived plan, worker command, backup/restore coverage, executable acceptance, and ADR-018 runtime extension.
 - Harden container-boundary readiness against later-stage privilege reset, healthcheck disablement, and entrypoint override by requiring one stage, one healthcheck, and the server command last.

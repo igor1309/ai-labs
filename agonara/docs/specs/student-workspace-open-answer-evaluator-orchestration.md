@@ -49,6 +49,7 @@ type StudentWorkspaceEvaluatorOrchestrationRejectionReason =
   | "evaluator_job_not_found"
   | "evaluator_job_conflict"
   | "evaluator_job_not_claimed"
+  | "evaluator_job_lease_active"
   | "evaluator_job_lease_mismatch"
   | "evaluator_job_lease_expired"
   | "evaluator_budget_exceeded"
@@ -297,7 +298,7 @@ These commands and queries are internal Student Workspace domain operations. Ord
 50. `cancelOpenAnswerEvaluatorJob` changes the job to `cancelled`, clears any lease, changes the evaluator run to `cancelled`, and restores the attempt to `submitted` or `evaluation_failed` according to the pre-run failure state.
 51. `cancelOpenAnswerEvaluatorJob` must make later completion, evidence, failure, renewal, or timeout calls for the cancelled job reject.
 52. `timeOutOpenAnswerEvaluatorJob` accepts only `leased` jobs whose lease `expiresAt` is less than or equal to `now`.
-53. `timeOutOpenAnswerEvaluatorJob` rejects unexpired leases with `evaluator_job_conflict`.
+53. `timeOutOpenAnswerEvaluatorJob` rejects unexpired leases with `evaluator_job_lease_active`.
 54. `timeOutOpenAnswerEvaluatorJob` rejects terminal jobs with `evaluator_job_conflict`.
 55. `timeOutOpenAnswerEvaluatorJob` changes the job to `timed_out`, clears the lease, changes the evaluator run to `failed`, changes the attempt status to `evaluation_failed`, and records an active timeout failure.
 56. `timeOutOpenAnswerEvaluatorJob` must preserve submitted answer and accepted revision references.
@@ -354,7 +355,7 @@ These commands and queries are internal Student Workspace domain operations. Ord
 23. `cancelOpenAnswerEvaluatorJob` cancels waiting, retry-waiting, and leased jobs and restores the attempt according to pre-run failure state.
 24. `cancelOpenAnswerEvaluatorJob` makes later completion, evidence, failure, renewal, and timeout calls reject.
 25. `timeOutOpenAnswerEvaluatorJob` times out an expired leased job and records an active timeout failure.
-26. `timeOutOpenAnswerEvaluatorJob` rejects unexpired and terminal jobs.
+26. `timeOutOpenAnswerEvaluatorJob` rejects unexpired jobs with `evaluator_job_lease_active` and terminal jobs with `evaluator_job_conflict`.
 27. Failure, retry, cancellation, and timeout preserve submitted answers and accepted revision references.
 
 ### Queries and Boundaries
