@@ -2,6 +2,8 @@
 
 ## 2026-06-06
 
+- Harden the new landing/architecture pages after adversarial review: hedge the landing's deployment language to mark the dockerized self-hosted shape as a provisional target (matching `deployment-target.md`), give each of the five modules a distinct accent so colour uniquely identifies a module, and scope the Identity module block to `identity.js` so `cli.js` is attributed once as the Operator CLI surface.
+- Add `index.html` project landing reflecting the current implementation snapshot (five-module split, shipped slices, product surfaces, stack) in the established Agonara brand style, with a progressive-disclosure link to a new `architecture.html` covering the module responsibility map, ownership rules, open-answer evaluation flow, source layout, runtime/storage, cross-cutting concerns, deployment, and the ADR index; surface both from the workspace landing index and the project README. Point landing/architecture/README/workspace-index links at the consolidated `docs/intent/user-stories.html` path.
 - Consolidate loose `docs/` files into purpose-named subfolders: move the Product Intent set (`intent_learning_program_app.md`, curator/student/admin user stories, `user-stories.html`) under `docs/intent/` and the Program Membership Pre-ADR under `docs/pre-adr/`, then repoint every cross-referencing link in the intent doc, Pre-ADR, ADRs, specs, the identity first-slice note, and archived implementation plans.
 
 ## 2026-06-04
